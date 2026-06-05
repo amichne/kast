@@ -55,9 +55,9 @@ def headless_zip():
 asset_path.parent.mkdir(parents=True, exist_ok=True)
 if kind == "headless":
     headless_zip()
-elif kind == "intellij":
+elif kind == "idea":
     with zipfile.ZipFile(asset_path, "w") as archive:
-        write_entry(archive, "backend-intellij/lib/backend-intellij.jar", b"plugin")
+        write_entry(archive, "backend-idea/lib/backend-idea.jar", b"plugin")
 else:
     raise SystemExit(f"unknown asset kind: {kind}")
 PY
@@ -73,7 +73,7 @@ write_expected_assets() {
   write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
   write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
   write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
-  write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
+  write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
   write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
   write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   write_text_asset "${release_dir}/kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
@@ -115,7 +115,7 @@ entries = [
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
     ("devin-headless-linux-x64", f"kast-devin-headless-runtime-linux-x64-{tag}.tar.gz"),
     ("headless", f"kast-headless-{tag}.zip"),
-    ("intellij", f"kast-intellij-{tag}.zip"),
+    ("idea", f"kast-idea-{tag}.zip"),
 ]
 payload = {
     "builds": [
@@ -154,7 +154,7 @@ assets=(
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   "kast-devin-headless-runtime-linux-x64-${tag}.tar.gz"
   "kast-headless-${tag}.zip"
-  "kast-intellij-${tag}.zip"
+  "kast-idea-${tag}.zip"
 )
 
 write_expected_assets
@@ -171,13 +171,13 @@ core_assets=(
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
   "kast-headless-${tag}.zip"
-  "kast-intellij-${tag}.zip"
+  "kast-idea-${tag}.zip"
 )
 write_text_asset "${release_dir}/kast-${tag}-linux-x64.zip"
 write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
 write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
 write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
-write_zip_asset "${release_dir}/kast-intellij-${tag}.zip" intellij
+write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
 write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
 write_sha256sums "$release_dir" "${core_assets[@]}"
 write_provenance
@@ -202,7 +202,7 @@ path = Path(sys.argv[1])
 payload = json.loads(path.read_text(encoding="utf-8"))
 payload["builds"] = [
     entry for entry in payload["builds"]
-    if entry.get("platformId") != "intellij"
+    if entry.get("platformId") != "idea"
 ]
 path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY

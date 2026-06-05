@@ -14,12 +14,12 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Headless          | `kast` CLI plus a packaged IntelliJ backend | Terminals, CI, agents, no-IDE machines | `kast backend install headless`, then `kast up` |
+| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast backend install headless`, then `kast up` |
 | IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project |
 
 ## Headless backend
 
-A separate JVM process backed by packaged IntelliJ components. `kast up` is
+A separate JVM process backed by packaged IDEA components. `kast up` is
 the high-level entry point. It reuses a running headless backend when one
 already serves the workspace, or auto-starts one from the configured runtime
 libraries when it doesn't. Use `kast daemon start` only when you need the
@@ -93,7 +93,7 @@ bootstrap step.
 
 ## IDEA / Android Studio plugin backend
 
-The same plugin ZIP runs inside a running IntelliJ IDEA 2025.3 or Android
+The same plugin ZIP runs inside a running IDEA 2025.3 or Android
 Studio 2025.3.1+ instance. It reuses the IDE's K2 analysis session, project
 model, and indexes — no second JVM, no second indexing pass.
 
@@ -114,7 +114,7 @@ How a session unfolds:
 7. External tools connect and speak the same JSON-RPC.
 
 !!! tip
-    Set `backends.intellij.enabled = false` in `config.toml` to disable
+    Set `backends.idea.enabled = false` in `config.toml` to disable
     the plugin without uninstalling it.
 
 The plugin actions that shell out to `kast`, including
@@ -170,8 +170,8 @@ terminal, CI, and hosted-agent work, and IDEA or Android Studio when the IDE is
 already open.
 
 When multiple runtimes are running, pin a command with `--backend-name=headless`
-or `--backend-name=intellij` to be explicit. The
-`intellij` backend name is the stable machine identifier for the IDE-hosted
+or `--backend-name=idea` to be explicit. The
+`idea` backend name is the stable machine identifier for the IDE-hosted
 runtime, even when the human-facing docs call it the IDEA plugin.
 
 ## Next steps

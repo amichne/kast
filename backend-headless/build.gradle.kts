@@ -7,7 +7,7 @@ plugins {
 extra["kastIncludeShadowJar"] = "false"
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().requiredVersion
+private val ideaDistributionVersion = catalog.findVersion("idea").get().requiredVersion
 
 val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
@@ -15,7 +15,7 @@ val ideaDistribution: Configuration by configurations.creating {
 }
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/headless-intellij-distributions/$intellijIdeaVersion")))
+    set(file(gradle.gradleUserHomeDir.resolve("kast/headless-idea-distributions/$ideaDistributionVersion")))
 
 }
 
@@ -29,7 +29,7 @@ val extractLegacyPluginClasses: TaskProvider<ExtractLegacyPluginClassesTask> by 
 
 val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
     archives.from(ideaDistribution)
-    ideaVersion.set(intellijIdeaVersion)
+    ideaVersion.set(ideaDistributionVersion)
     outputDirectory.set(extractedIdeaDistributionDirectory)
 }
 
@@ -120,7 +120,7 @@ val headlessPluginRuntime: Configuration by configurations.creating {
     exclude(group = "org.slf4j", module = "slf4j-api")
 }
 
-val backendIntellijPluginArtifacts: Configuration by configurations.creating {
+val backendIdeaPluginArtifacts: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
     isTransitive = false
@@ -168,19 +168,19 @@ val headlessPluginImplementationJar by tasks.registering(Jar::class) {
     }
 }
 
-val headlessBackendIntellijRuntimeJar by tasks.registering(Jar::class) {
-    archiveBaseName.set("backend-intellij")
+val headlessBackendIdeaRuntimeJar by tasks.registering(Jar::class) {
+    archiveBaseName.set("backend-idea")
     archiveVersion.set(buildVersion)
     archiveClassifier.set("headless-runtime")
-    val backendIntellijBaseJar = providers.provider {
-        backendIntellijPluginArtifacts.files.single { artifact ->
-            artifact.name.startsWith("backend-intellij-") && artifact.name.endsWith("-base.jar")
+    val backendIdeaBaseJar = providers.provider {
+        backendIdeaPluginArtifacts.files.single { artifact ->
+            artifact.name.startsWith("backend-idea-") && artifact.name.endsWith("-base.jar")
         }
     }
-    from(backendIntellijBaseJar.map { artifact -> zipTree(artifact) }) {
+    from(backendIdeaBaseJar.map { artifact -> zipTree(artifact) }) {
         exclude("META-INF/plugin.xml")
     }
-    dependsOn(backendIntellijPluginArtifacts)
+    dependsOn(backendIdeaPluginArtifacts)
     isZip64 = true
 }
 
@@ -202,13 +202,13 @@ sourceSets.main {
 }
 
 dependencies {
-    ideaDistribution("com.jetbrains.intellij.idea:ideaIC:$intellijIdeaVersion@zip") {
+    ideaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
 
     compileOnly(project(":analysis-api"))
     compileOnly(project(":analysis-server"))
-    compileOnly(project(":backend-intellij"))
+    compileOnly(project(":backend-idea"))
     compileOnly(project(":backend-shared"))
     compileOnly(project(":index-store"))
     implementation(ideaLibs)
@@ -218,15 +218,15 @@ dependencies {
 
     headlessPluginRuntime(project(":analysis-api"))
     headlessPluginRuntime(project(":analysis-server"))
-    headlessPluginRuntime(project(":backend-intellij"))
+    headlessPluginRuntime(project(":backend-idea"))
     headlessPluginRuntime(project(":backend-shared"))
     headlessPluginRuntime(project(":index-store"))
     headlessPluginRuntime(libs.coroutines.core)
 
-    backendIntellijPluginArtifacts(project(":backend-intellij"))
+    backendIdeaPluginArtifacts(project(":backend-idea"))
 
     testImplementation(project(":analysis-api"))
-    testImplementation(project(":backend-intellij"))
+    testImplementation(project(":backend-idea"))
 }
 
 tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
@@ -374,13 +374,13 @@ val headlessPluginRequiredClassEntries = listOf(
     "io/github/amichne/kast/server/AnalysisServer.class",
     "io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.class",
     "io/github/amichne/kast/shared/analysis/PsiReferenceScanner.class",
-    "io/github/amichne/kast/intellij/KastIntelliJBackendRuntime.class",
+    "io/github/amichne/kast/idea/KastIdeaBackendRuntime.class",
 )
 
 val headlessPluginRuntimeJarPrefixes = listOf(
     "analysis-api-",
     "analysis-server-",
-    "backend-intellij-",
+    "backend-idea-",
     "backend-shared-",
     "index-store-",
     "kotlinx-coroutines-core",
@@ -402,10 +402,10 @@ tasks.named<Sync>("syncPortableDist") {
     from(headlessPluginImplementationJar) {
         into("idea-home/plugins/kast-headless/lib")
     }
-    from(headlessPluginRuntime.filter { artifact -> !artifact.name.startsWith("backend-intellij-") }) {
+    from(headlessPluginRuntime.filter { artifact -> !artifact.name.startsWith("backend-idea-") }) {
         into("idea-home/plugins/kast-headless/lib")
     }
-    from(headlessBackendIntellijRuntimeJar) {
+    from(headlessBackendIdeaRuntimeJar) {
         into("idea-home/plugins/kast-headless/lib")
     }
     dependsOn("syncRuntimeLibs")

@@ -15,7 +15,7 @@ import io.github.amichne.kast.shared.analysis.resolvedFilePath
  * Recursively expands a type graph using a [TypeEdgeResolver] for edge discovery.
  * Does not depend on any backend-specific types (no headless session, no telemetry).
  *
- * @param readAccess wraps PSI access between edge-resolver calls. The IntelliJ plugin
+ * @param readAccess wraps PSI access between edge-resolver calls. The IDEA plugin
  *        backend supplies `runReadAction`; headless can pass [ReadAccessScope.IDENTITY].
  */
 class TypeHierarchyEngine(

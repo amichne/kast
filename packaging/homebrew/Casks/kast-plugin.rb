@@ -43,9 +43,9 @@ cask "kast-plugin" do
   version artifact_version
   sha256 "02e49c5d5f08f3a52d50f6ca925ed7b044cf5a81861fa1c4a421fbe61283e46f"
 
-  url "#{plugin_release_root}/v#{version}/kast-intellij-v#{version}.zip"
-  name "Kast IntelliJ Plugin"
-  desc "IntelliJ IDEA plugin bundle for Kast Kotlin analysis"
+  url "#{plugin_release_root}/v#{version}/kast-idea-v#{version}.zip"
+  name "Kast IDEA Plugin"
+  desc "JetBrains IDE plugin bundle for Kast Kotlin analysis"
   homepage "https://github.com/amichne/kast"
 
   livecheck do
@@ -56,7 +56,7 @@ cask "kast-plugin" do
   stage_only true
 
   postflight do
-    plugin_root = staged_path/"backend-intellij"
+    plugin_root = staged_path/"backend-idea"
     plugins_dirs = jetbrains_plugin_dirs.call
 
     if plugins_dirs.empty?
@@ -103,7 +103,7 @@ cask "kast-plugin" do
   end
 
   uninstall_postflight do
-    plugin_root = staged_path/"backend-intellij"
+    plugin_root = staged_path/"backend-idea"
 
     jetbrains_plugin_dirs.call.each do |plugins_dir|
       link_path = plugins_dir/"kast"

@@ -27,7 +27,7 @@ abstract class ExtractLegacyPluginClassesTask : DefaultTask() {
                     file.invariantSeparatorsPath.contains("/plugins/Kotlin/kotlinc/lib/")
             }
             ?: throw GradleException(
-                "IntelliJ IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
+                "IDEA distribution under $distributionRoot did not contain plugins/Kotlin/kotlinc/lib/kotlin-compiler.jar.",
             )
 
         val excludedEntries = setOf(

@@ -20,5 +20,5 @@ include(
     ":index-store",
     ":backend-headless",
     ":backend-shared",
-    ":backend-intellij"
+    ":backend-idea"
 )

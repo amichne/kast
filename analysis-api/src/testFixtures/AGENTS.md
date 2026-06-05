@@ -11,7 +11,7 @@ Keep this unit deterministic so downstream tests stay readable and stable.
   `analysis-api` test-fixtures variant for reuse in downstream tests.
 - Own fake backends, deterministic fixture files, and helpers that make server
   and backend tests easier to read.
-- Do not add production-only behavior, network servers, or IntelliJ Platform
+- Do not add production-only behavior, network servers, or IDEA Platform
   dependencies here.
 - Keep fixtures small and explicit. Stable offsets, file contents, and
   capability sets matter because downstream tests depend on them.

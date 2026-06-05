@@ -71,7 +71,7 @@ entries = [
     ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
     ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
     ("headless", f"kast-headless-{tag}.zip"),
-    ("intellij", f"kast-intellij-{tag}.zip"),
+    ("idea", f"kast-idea-{tag}.zip"),
 ]
 payload = {
     "builds": [

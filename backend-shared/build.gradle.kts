@@ -3,7 +3,7 @@ plugins {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellijIdeaVersion = catalog.findVersion("intellij-idea").get().requiredVersion
+private val ideaDistributionVersion = catalog.findVersion("idea").get().requiredVersion
 
 val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
@@ -11,12 +11,12 @@ val ideaDistribution: Configuration by configurations.creating {
 }
 
 private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
-    set(file(gradle.gradleUserHomeDir.resolve("kast/shared-intellij-distributions/$intellijIdeaVersion")))
+    set(file(gradle.gradleUserHomeDir.resolve("kast/shared-idea-distributions/$ideaDistributionVersion")))
 }
 
 val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
     archives.from(ideaDistribution)
-    ideaVersion.set(intellijIdeaVersion)
+    ideaVersion.set(ideaDistributionVersion)
     outputDirectory.set(extractedIdeaDistributionDirectory)
 }
 
@@ -47,7 +47,7 @@ val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
 }
 
 dependencies {
-    ideaDistribution("com.jetbrains.intellij.idea:ideaIC:$intellijIdeaVersion@zip") {
+    ideaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
         isTransitive = false
     }
 

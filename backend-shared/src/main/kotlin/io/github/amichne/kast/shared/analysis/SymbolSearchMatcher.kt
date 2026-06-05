@@ -8,7 +8,7 @@ import java.util.regex.PatternSyntaxException
  * Matches symbol names against a search pattern.
  *
  * When [regex] is false, performs case-insensitive substring matching (similar to
- * IntelliJ's "Go to Class" behavior). When [regex] is true, compiles the pattern
+ * IDEA's "Go to Class" behavior). When [regex] is true, compiles the pattern
  * as a [java.util.regex.Pattern] and matches against the full symbol name.
  */
 class SymbolSearchMatcher private constructor(

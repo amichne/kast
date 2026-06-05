@@ -2,7 +2,7 @@
     <id>io.github.amichne.kast.headless</id>
     <name>Kast Headless Analysis Backend</name>
     <vendor url="https://github.com/amichne/kast">amichne</vendor>
-    <description>Kast headless analysis backend for IntelliJ IDEA Community</description>
+    <description>Kast headless analysis backend for IDEA Community</description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.kotlin</depends>

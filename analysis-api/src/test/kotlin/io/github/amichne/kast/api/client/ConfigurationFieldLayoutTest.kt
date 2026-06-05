@@ -62,7 +62,7 @@ class ConfigurationFieldLayoutTest {
             "IndexingReferenceBatchSize.kt",
             "IndexingRemoteEnabled.kt",
             "IndexingRemoteSourceIndexUrl.kt",
-            "IntellijBackendEnabled.kt",
+            "IdeaBackendEnabled.kt",
             "OptionalConfigString.kt",
             "PathsBinDir.kt",
             "PathsCacheDir.kt",

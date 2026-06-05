@@ -59,10 +59,10 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
 
 pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
     let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
-    if backend_name == BackendName::Intellij {
+    if backend_name == BackendName::Idea {
         return Err(CliError::new(
             "DAEMON_START_ERROR",
-            "The intellij backend is hosted by IntelliJ IDEA and cannot be launched by kast daemon start.",
+            "The idea backend is hosted by IDEA and cannot be launched by kast daemon start.",
         ));
     }
     let runtime_libs_dir =
@@ -111,7 +111,7 @@ fn headless_idea_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<Pat
         .ok_or_else(|| {
             CliError::new(
                 "DAEMON_START_ERROR",
-                "Cannot locate IntelliJ IDEA home for headless backend. Set backends.headless.ideaHome in `kast config init` output, or pass --idea-home.",
+                "Cannot locate IDEA home for headless backend. Set backends.headless.ideaHome in `kast config init` output, or pass --idea-home.",
             )
         })
 }
@@ -371,7 +371,7 @@ mod tests {
     }
 
     #[test]
-    fn java_command_rejects_intellij_backend_launch() {
+    fn java_command_rejects_idea_backend_launch() {
         let temp = tempfile::tempdir().unwrap();
         let libs = temp.path().join("runtime-libs");
         fs::create_dir_all(&libs).unwrap();
@@ -380,7 +380,7 @@ mod tests {
         config.backends.headless.runtime_libs_dir = Some(libs);
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: Some(crate::cli::BackendName::Intellij),
+            backend_name: Some(crate::cli::BackendName::Idea),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),

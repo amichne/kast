@@ -124,7 +124,7 @@ class ConfigurationFieldDecoder : NullHandlingDecoder<ConfigurationField<*>> {
             IndexingReferenceBatchSize::class to FieldDecoder(ValueKind.Int) { IndexingReferenceBatchSize(it as Int) },
             IndexingRemoteEnabled::class to FieldDecoder(ValueKind.Boolean) { IndexingRemoteEnabled(it as Boolean) },
             IndexingRemoteSourceIndexUrl::class to FieldDecoder(ValueKind.OptionalString) { IndexingRemoteSourceIndexUrl(it as OptionalConfigString) },
-            IntellijBackendEnabled::class to FieldDecoder(ValueKind.Boolean) { IntellijBackendEnabled(it as Boolean) },
+            IdeaBackendEnabled::class to FieldDecoder(ValueKind.Boolean) { IdeaBackendEnabled(it as Boolean) },
             PathsBinDir::class to FieldDecoder(ValueKind.String) { PathsBinDir(it as String) },
             PathsCacheDir::class to FieldDecoder(ValueKind.String) { PathsCacheDir(it as String) },
             PathsDescriptorDir::class to FieldDecoder(ValueKind.String) { PathsDescriptorDir(it as String) },

@@ -11,7 +11,7 @@ analysis backend as a JVM process and keeps CLI-owned work in Rust:
 - JSON-RPC passthrough over Unix domain sockets
 - descriptor-based `up`, `status`, and `stop`
 - embedded skill and Copilot extension installation
-- Homebrew cask-backed IntelliJ plugin download and optional profile linking
+- Homebrew cask-backed IDEA plugin download and optional profile linking
 - install state recorded directly in `config.toml`
 - direct read-only `source-index.db` metrics through `rusqlite`
 - interactive metrics graph browsing through `ratatui`

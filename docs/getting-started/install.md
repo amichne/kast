@@ -48,7 +48,7 @@ kast up --workspace-root="$PWD"
 ```
 
 Use the headless backend for hosted Linux agents that need a packaged
-IntelliJ-backed runtime:
+IDEA-backed runtime:
 
 ```console title="Install and warm the headless backend"
 kast backend install headless
@@ -250,7 +250,7 @@ Then use the IDE menu:
 
 Download the plugin zip and install it from disk:
 
-1. Download `kast-intellij-<version>.zip` from the
+1. Download `kast-idea-<version>.zip` from the
    [latest release](https://github.com/amichne/kast/releases/latest).
 2. In IDEA or Android Studio: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
    pick the zip.

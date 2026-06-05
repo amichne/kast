@@ -86,7 +86,7 @@ require(
     "README mirror CLI example must match the package version",
 )
 require(
-    f"/v{plugin_version}/kast-intellij-v{plugin_version}.zip" in docs,
+    f"/v{plugin_version}/kast-idea-v{plugin_version}.zip" in docs,
     "README mirror plugin example must match the package version",
 )
 require("monorepo `amichne/kast` release workflow" in docs, "README must document monorepo release ownership")
@@ -102,11 +102,11 @@ require('cask "kast-plugin"' in plugin, "kast-plugin cask token is missing")
 require("HOMEBREW_KAST_ARTIFACT_ROOT" in plugin, "kast-plugin cask must support a shared artifact mirror root")
 require("HOMEBREW_KAST_PLUGIN_RELEASE_ROOT" in plugin, "kast-plugin cask must support a plugin-specific release root")
 require("kast/releases/download" in plugin, "kast-plugin cask must default to monorepo release assets")
-require("kast-intellij-v" in plugin, "kast-plugin cask must target the IntelliJ plugin asset")
+require("kast-idea-v" in plugin, "kast-plugin cask must target the IDEA plugin asset")
 require("stage_only true" in plugin, "kast-plugin cask must keep the plugin bundle Homebrew-managed")
 require("https://github.com/amichne/kast/releases" in plugin, "kast-plugin cask livecheck must follow monorepo releases")
-require("postflight do" in plugin, "kast-plugin cask must link into IntelliJ after install")
-require("uninstall_postflight do" in plugin, "kast-plugin cask must remove IntelliJ links on uninstall")
+require("postflight do" in plugin, "kast-plugin cask must link into IDEA after install")
+require("uninstall_postflight do" in plugin, "kast-plugin cask must remove IDEA links on uninstall")
 require("KAST_JETBRAINS_CONFIG_ROOT" in plugin, "kast-plugin cask must support testable JetBrains config roots")
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -140,7 +140,7 @@ with tempfile.TemporaryDirectory() as tmp:
         "updater must preserve the source-index schema version",
     )
     require("/v9.8.7/kast-v9.8.7-macos-arm64.zip" in updated_docs, "updater must set the README CLI mirror example")
-    require("/v9.8.7/kast-intellij-v9.8.7.zip" in updated_docs, "updater must set the README plugin mirror example")
+    require("/v9.8.7/kast-idea-v9.8.7.zip" in updated_docs, "updater must set the README plugin mirror example")
     require('sha256 "' + ("1" * 64) + '"' in updated_kast, "updater must set macOS x64 sha")
     require('sha256 "' + ("2" * 64) + '"' in updated_kast, "updater must set macOS arm64 sha")
     require('sha256 "' + ("3" * 64) + '"' in updated_kast, "updater must set Linux x64 sha")

@@ -9,8 +9,8 @@ If you need a new dependency, add it to the narrowest unit that needs it and upd
 
 Kast is a Kotlin analysis tool with one line-delimited JSON-RPC contract and
 two supported operator paths: the repo-local `kast` CLI manages a headless JVM
-daemon for local automation and CI, and the IntelliJ plugin backend runs inside
-a running IntelliJ IDEA instance.
+daemon for local automation and CI, and the IDEA plugin backend runs inside
+a running IDEA or Android Studio instance.
 
 Subdirectory `AGENTS.md` files narrow these rules for their own units. When a
 rule exists in both places, follow the deeper file.
@@ -68,13 +68,13 @@ Use this map to choose the narrowest unit that owns a change.
   request limits, and descriptor lifecycle
 - `index-store`: SQLite source index persistence, file manifest state,
   workspace discovery cache payload storage, and generic reference-index
-  batching without IntelliJ or backend runtime dependencies
+  batching without IDEA or backend runtime dependencies
 - `backend-headless`: headless host, Analysis API session bootstrap,
-  packaged IntelliJ runtime bootstrap, and runtime startup
-- `backend-intellij`: IntelliJ IDEA plugin backend, project-level service,
+  packaged IDEA runtime bootstrap, and runtime startup
+- `backend-idea`: IDEA / Android Studio plugin backend, project-level service,
   plugin lifecycle, and IDE-hosted analysis server
 - `backend-shared`: shared analysis utilities consumed by both backend
-  runtimes via compileOnly IntelliJ platform dependencies
+  runtimes via compileOnly IDEA platform dependencies
 - `analysis-api/src/testFixtures`: fake backend fixtures and shared contract
   assertions for tests
 - `build-logic`: Gradle convention plugins, runtime-lib sync, wrapper
@@ -176,7 +176,7 @@ Apply these rules across the repo before local unit rules add more detail.
 - Change the smallest unit that owns the behavior. Pull shared semantics down
   into `analysis-api` only when multiple hosts or transports need them.
 - Keep host-specific dependencies out of shared units. `analysis-api` and
-  `analysis-server` must stay free of IntelliJ-only APIs.
+  `analysis-server` must stay free of IDEA-only APIs.
 - Keep headless runtime behavior in `backend-headless` unless another
   surviving runtime genuinely needs it.
 - Use `kast` in commands, docs, and packaging targets.
@@ -189,12 +189,12 @@ Apply these rules across the repo before local unit rules add more detail.
   operator-facing control plane, installer, packaged skill, and Copilot
   extension distribution; `analysis-server` owns transport and
   descriptor plumbing, `backend-headless` owns headless runtime behavior,
-  `backend-intellij` owns IDE-hosted runtime behavior, and
+  `backend-idea` owns IDE-hosted runtime behavior, and
   `analysis-api` test fixtures stay out of production code paths.
 - Treat `docs/` plus `zensical.toml` as the documentation source of truth.
   `site/` is generated output and should be rebuilt, not hand-edited.
 - Prefer repo-root packaging entry points for shipped artifacts: `./kast.sh build`
-  builds the portable distribution artifacts; `./gradlew buildIntellijPlugin` builds the IntelliJ
+  builds the portable distribution artifacts; `./gradlew buildIdeaPlugin` builds the IDEA
   plugin zip.
 - Verify with the narrowest Gradle task that proves the change. Broaden the
   scope when you touch shared contracts, build logic, or cross-module behavior.

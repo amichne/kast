@@ -42,7 +42,7 @@ flowchart LR
 
     subgraph "Runtime plane"
       HEADLESS["backend-headless<br/>headless K2 session"]
-      IDEA["backend-intellij<br/>IDE-hosted session"]
+      IDEA["backend-idea<br/>IDE-hosted session"]
       SHARED["backend-shared<br/>shared analysis utilities"]
     end
 
@@ -68,7 +68,7 @@ lives.
 
 | Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
 |---|---|---|---|
-| Headless | A packaged IntelliJ backend outside any open IDE | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
+| Headless | A packaged IDEA backend outside any open IDE | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
 | IDEA plugin | An already-open IDEA or Android Studio project, reusing the IDE's project model, PSI, and indexes | IDE project lifecycle | Local tools when the IDE is already open |
 
 If IDEA or Android Studio is warm, external tools connect to the plugin backend
@@ -87,7 +87,7 @@ exposes the same surface independently.
     | `analysis-api` | Shared contract, serializable models, capability flags, edit validation | Keeps protocol semantics stable across all consumers |
     | `analysis-server` | JSON-RPC transport, dispatch, descriptor lifecycle | Isolates transport concerns from semantic logic |
     | `backend-headless` | Headless runtime, workspace discovery, K2 session bootstrap | Concentrates stateful analysis in one runtime |
-    | `backend-intellij` | IDE-hosted runtime, plugin lifecycle, project service | Reuses the IDE project model when IDEA or Android Studio is running |
+    | `backend-idea` | IDE-hosted runtime, plugin lifecycle, project service | Reuses the IDE project model when IDEA or Android Studio is running |
     | `backend-shared` | Shared analysis helpers for both runtimes | Avoids duplicate semantic utility code |
     | `analysis-api` test fixtures | Contract fixtures and fake backend infrastructure | Pins behavior consistency across implementations without a separate production module |
     | `build-logic` | Gradle conventions, wrapper generation, runtime-lib sync | Keeps build and packaging rules centralized |

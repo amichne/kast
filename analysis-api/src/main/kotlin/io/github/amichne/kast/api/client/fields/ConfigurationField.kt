@@ -37,7 +37,7 @@ sealed class ConfigurationField<T> {
             HeadlessBackendEnabled(true),
             HeadlessRuntimeLibsDir(OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir().toString())),
             HeadlessIdeaHome(OptionalConfigString.Unset),
-            IntellijBackendEnabled(true),
+            IdeaBackendEnabled(true),
             PathsInstallRoot(defaultConfigInstallRoot().toString()),
             PathsBinDir(defaultConfigBinDir().toString()),
             PathsLibDir(defaultConfigLibDir().toString()),

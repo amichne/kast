@@ -10,7 +10,7 @@ class HeadlessProjectOpener {
         val projectPath = workspaceRoot.toAbsolutePath().normalize()
         val project = ProjectManagerEx.getInstanceEx()
             .openProject(projectPath, openProjectTask())
-            ?: error("IntelliJ could not open project: $projectPath")
+            ?: error("IDEA could not open project: $projectPath")
 
         println("Project opened: ${project.name}")
         return project

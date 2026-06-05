@@ -1,7 +1,7 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
 use crate::cli::{
-    InstallArgs, InstallCommand, IntellijPluginInstallArgs, ResourceInstallArgs, UninstallArgs,
+    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs, UninstallArgs,
     UninstallCommand,
 };
 use crate::config;
@@ -61,7 +61,7 @@ pub struct InstallCopilotExtensionResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallIntellijPluginResult {
+pub struct InstallIdeaPluginResult {
     pub cask_token: String,
     pub brew_action: String,
     pub brew_command: Vec<String>,
@@ -97,7 +97,7 @@ pub struct VerifyExtensionResult {
 pub enum InstallResult {
     Skill(InstallSkillResult),
     Copilot(InstallCopilotExtensionResult),
-    IntellijPlugin(InstallIntellijPluginResult),
+    IdeaPlugin(InstallIdeaPluginResult),
     Archive(ArchiveInstallResult),
 }
 
@@ -125,8 +125,8 @@ pub fn install(args: InstallArgs) -> Result<InstallResult> {
         Some(InstallCommand::CopilotExtension(resource_args)) => {
             install_copilot_extension(resource_args).map(InstallResult::Copilot)
         }
-        Some(InstallCommand::IntellijPlugin(resource_args)) => {
-            install_intellij_plugin(resource_args).map(InstallResult::IntellijPlugin)
+        Some(InstallCommand::IdeaPlugin(resource_args)) => {
+            install_idea_plugin(resource_args).map(InstallResult::IdeaPlugin)
         }
         None => install_archive(args).map(InstallResult::Archive),
     }
@@ -189,9 +189,7 @@ pub fn install_copilot_extension(
     })
 }
 
-pub fn install_intellij_plugin(
-    args: IntellijPluginInstallArgs,
-) -> Result<InstallIntellijPluginResult> {
+pub fn install_idea_plugin(args: IdeaPluginInstallArgs) -> Result<InstallIdeaPluginResult> {
     let homebrew = discover_homebrew_context()?;
     verify_homebrew_cli(&homebrew)?;
     let mut warnings = vec![];
@@ -211,19 +209,17 @@ pub fn install_intellij_plugin(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| format!("{formula_tap}/{KAST_PLUGIN_CASK_NAME}"));
     if args.link_jetbrains_profiles {
-        return install_intellij_plugin_into_jetbrains_profiles(
-            args, homebrew, cask_token, warnings,
-        );
+        return install_idea_plugin_into_jetbrains_profiles(args, homebrew, cask_token, warnings);
     }
-    download_intellij_plugin(args, homebrew, cask_token, warnings)
+    download_idea_plugin(args, homebrew, cask_token, warnings)
 }
 
-fn download_intellij_plugin(
-    args: IntellijPluginInstallArgs,
+fn download_idea_plugin(
+    args: IdeaPluginInstallArgs,
     homebrew: HomebrewContext,
     cask_token: String,
     warnings: Vec<String>,
-) -> Result<InstallIntellijPluginResult> {
+) -> Result<InstallIdeaPluginResult> {
     let download_dir = args
         .download_dir
         .map(config::normalize)
@@ -242,7 +238,7 @@ fn download_intellij_plugin(
         if !output.status.success() {
             return Err(command_error(
                 "HOMEBREW_CASK_FETCH_FAILED",
-                "Homebrew failed to fetch the Kast IntelliJ plugin cask",
+                "Homebrew failed to fetch the Kast IDEA plugin cask",
                 &brew_args,
                 &output,
             ));
@@ -253,7 +249,7 @@ fn download_intellij_plugin(
         downloaded_path = Some(destination.display().to_string());
     }
 
-    Ok(InstallIntellijPluginResult {
+    Ok(InstallIdeaPluginResult {
         cask_token,
         brew_action: "fetch".to_string(),
         brew_command: std::iter::once("brew".to_string())
@@ -272,12 +268,12 @@ fn download_intellij_plugin(
     })
 }
 
-fn install_intellij_plugin_into_jetbrains_profiles(
-    args: IntellijPluginInstallArgs,
+fn install_idea_plugin_into_jetbrains_profiles(
+    args: IdeaPluginInstallArgs,
     homebrew: HomebrewContext,
     cask_token: String,
     warnings: Vec<String>,
-) -> Result<InstallIntellijPluginResult> {
+) -> Result<InstallIdeaPluginResult> {
     let jetbrains_config_root = args
         .jetbrains_config_root
         .map(config::normalize)
@@ -315,14 +311,14 @@ fn install_intellij_plugin_into_jetbrains_profiles(
         if !output.status.success() {
             return Err(command_error(
                 "HOMEBREW_CASK_INSTALL_FAILED",
-                "Homebrew failed to install the Kast IntelliJ plugin cask",
+                "Homebrew failed to install the Kast IDEA plugin cask",
                 &brew_args,
                 &output,
             ));
         }
     }
 
-    Ok(InstallIntellijPluginResult {
+    Ok(InstallIdeaPluginResult {
         cask_token,
         brew_action: brew_action.to_string(),
         brew_command: std::iter::once("brew".to_string())
@@ -714,7 +710,7 @@ fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
     let mut error = CliError::new(
         "HOMEBREW_INSTALL_REQUIRED",
         format!(
-            "`kast install intellij-plugin` must be run from the Homebrew-installed kast binary under {}",
+            "`kast install idea-plugin` must be run from the Homebrew-installed kast binary under {}",
             homebrew.formula_prefix.display()
         ),
     );
@@ -1027,13 +1023,13 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path();
         for dir in [
-            "IntelliJIdea2025.2",
-            "IntelliJIdea2026.2",
+            "AndroidStudio2025.2",
+            "AndroidStudio2026.2",
             "GoLand2024.2",
             "PyCharmCE2024.1",
-            "IntelliJIdea2025.2-backup/2025-07-27-00-54",
+            "AndroidStudio2025.2-backup/2025-07-27-00-54",
             "Toolbox",
-            "IntelliJIdea2025.2/plugins/python-ce/helpers/typeshed/stubs/flake8/flake8",
+            "AndroidStudio2025.2/plugins/python-ce/helpers/typeshed/stubs/flake8/flake8",
         ] {
             fs::create_dir_all(root.join(dir)).unwrap();
         }
@@ -1047,9 +1043,9 @@ mod tests {
         assert_eq!(
             relative,
             vec![
+                "AndroidStudio2026.2/plugins",
+                "AndroidStudio2025.2/plugins",
                 "GoLand2024.2/plugins",
-                "IntelliJIdea2026.2/plugins",
-                "IntelliJIdea2025.2/plugins",
                 "PyCharmCE2024.1/plugins",
             ]
         );
@@ -1074,7 +1070,7 @@ mod tests {
     fn download_destination_strips_homebrew_cache_hash() {
         let destination = download_destination(
             Path::new(
-                "/Users/example/Library/Caches/Homebrew/downloads/hash--kast-intellij-v0.7.26.zip",
+                "/Users/example/Library/Caches/Homebrew/downloads/hash--kast-idea-v0.7.26.zip",
             ),
             Path::new("/Users/example/Downloads"),
         )
@@ -1082,7 +1078,7 @@ mod tests {
 
         assert_eq!(
             destination,
-            Path::new("/Users/example/Downloads/kast-intellij-v0.7.26.zip")
+            Path::new("/Users/example/Downloads/kast-idea-v0.7.26.zip")
         );
     }
 

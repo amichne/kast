@@ -31,7 +31,7 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
     fun extract() {
         val archiveFile = archives.singleFile
         val outputRoot = outputDirectory.get().asFile.toPath()
-        val versionMarker = outputRoot.resolve(".kast-intellij-version")
+        val versionMarker = outputRoot.resolve(".kast-idea-version")
         if (Files.isDirectory(outputRoot) && Files.isRegularFile(versionMarker)) {
             if (Files.readString(versionMarker).trim() == ideaVersion.get()) {
                 return
@@ -39,7 +39,7 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
         }
 
         val parent = outputRoot.parent
-            ?: throw GradleException("IntelliJ extraction output must have a parent directory: $outputRoot")
+            ?: throw GradleException("IDEA extraction output must have a parent directory: $outputRoot")
         Files.createDirectories(parent)
         val tempRoot = Files.createTempDirectory(parent, "${outputRoot.fileName}.tmp-")
         try {
@@ -63,7 +63,7 @@ abstract class ExtractIdeaDistributionTask : DefaultTask() {
                     }
                 }
             }
-            Files.writeString(tempRoot.resolve(".kast-intellij-version"), ideaVersion.get())
+            Files.writeString(tempRoot.resolve(".kast-idea-version"), ideaVersion.get())
             outputRoot.toFile().deleteRecursively()
             try {
                 Files.move(tempRoot, outputRoot, StandardCopyOption.ATOMIC_MOVE)

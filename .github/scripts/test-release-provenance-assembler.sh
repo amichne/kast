@@ -55,9 +55,9 @@ write_provenance \
   "cli-macos-arm64" \
   "kast-${tag}-macos-arm64.zip"
 write_provenance \
-  "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json" \
-  "intellij" \
-  "kast-intellij-${tag}.zip"
+  "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json" \
+  "idea" \
+  "kast-idea-${tag}.zip"
 write_provenance \
   "${scratch_dir}/provenance-headless/dist/build-provenance-headless.json" \
   "headless" \
@@ -80,7 +80,7 @@ output="${scratch_dir}/dist/build-provenance.json"
   "${scratch_dir}/provenance-cli-macos-x64" \
   "${scratch_dir}/provenance-devin-headless" \
   "${scratch_dir}/provenance-headless" \
-  "${scratch_dir}/provenance-intellij" \
+  "${scratch_dir}/provenance-idea" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 python3 - "$output" <<'PY'
@@ -97,7 +97,7 @@ expected = [
     "cli-macos-x64",
     "devin-headless-linux-x64",
     "headless",
-    "intellij",
+    "idea",
     "ubuntu-debian-headless-x86_64",
 ]
 if platforms != expected:
@@ -112,13 +112,13 @@ rm -rf "${scratch_dir}/provenance-devin-headless" "${scratch_dir}/provenance-ubu
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
   "${scratch_dir}/provenance-headless" \
-  "${scratch_dir}/provenance-intellij"
+  "${scratch_dir}/provenance-idea"
 
-rm "${scratch_dir}/provenance-intellij/dist/build-provenance-intellij.json"
-if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-intellij" \
+rm "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json"
+if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-idea" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
-  die "assembler unexpectedly passed with missing intellij provenance"
+  die "assembler unexpectedly passed with missing idea provenance"
 fi
-grep -Fq "missing=['intellij']" "${scratch_dir}/missing.err" || die "missing provenance failure did not name intellij"
+grep -Fq "missing=['idea']" "${scratch_dir}/missing.err" || die "missing provenance failure did not name idea"
 
 printf '%s\n' "Release provenance assembler test passed"

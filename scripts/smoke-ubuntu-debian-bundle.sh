@@ -191,7 +191,7 @@ bundle_root="${extract_dir}/kast-${platform}-${version}"
 [[ ! -e "${bundle_root}/scripts/verify-kast-devin.sh" ]] || die "Bundle must not include a second verifier script"
 [[ -f "${bundle_root}/manifest.json" ]] || die "Bundle missing manifest"
 [[ -f "${bundle_root}/LICENSE" ]] || die "Bundle missing license"
-[[ ! -e "${bundle_root}/backend-intellij" ]] || die "Bundle must not include the IDEA plugin"
+[[ ! -e "${bundle_root}/backend-idea" ]] || die "Bundle must not include the IDEA plugin"
 [[ ! -e "${bundle_root}/java" ]] || die "Bundle must not include Java"
 
 python3 - "${bundle_root}/manifest.json" "$version" "$platform" "$bundle_kind" "$backend_role" <<'PY'
