@@ -2,7 +2,10 @@ use crate::config;
 use crate::error::{CliError, Result};
 use crate::source_index_db;
 use crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION;
-use glob::Pattern;
+use crate::symbol_query_filters::{
+    CompiledSymbolQueryFilters, DeclarationFilterInput, SymbolQueryFilterCriteria, UsageFacet,
+    is_build_logic_location,
+};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -409,16 +412,6 @@ struct SemanticSignal {
     reason: &'static str,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum UsageFacet {
-    PublicApi,
-    InternalApi,
-    ModulePrivate,
-    Bridge,
-    BuildLogic,
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NextRequests {
@@ -462,28 +455,7 @@ impl<'a> SymbolQueryDatabase<'a> {
     }
 
     fn query(&self, request: SymbolQueryRequest) -> Result<SymbolQueryResponse> {
-        let compiled_file_glob = match request.filters.file_glob.as_deref() {
-            None => None,
-            Some(pattern) if pattern.starts_with("regex:") => {
-                return Err(CliError::new(
-                    "INVALID_FILTER",
-                    "regex: file filters are not supported by symbol/query",
-                ));
-            }
-            Some(pattern) => {
-                let normalized = pattern.strip_prefix("glob:").unwrap_or(pattern);
-                Some(
-                    Pattern::new(normalized)
-                        .map_err(|error| CliError::new("INVALID_FILTER", error.to_string()))?,
-                )
-            }
-        };
-        let compiled_exclude_patterns = request
-            .filters
-            .exclude_patterns
-            .iter()
-            .map(|pattern| compile_glob_filter("excludePatterns", pattern))
-            .collect::<Result<Vec<_>>>()?;
+        let compiled_filters = CompiledSymbolQueryFilters::new(request.filters.criteria())?;
         let modes = QueryModes::from_request(&request);
         let declarations = self.declarations()?;
         let by_key: HashMap<_, _> = declarations
@@ -495,11 +467,7 @@ impl<'a> SymbolQueryDatabase<'a> {
         let terms = query_terms(&request.query);
 
         for declaration in declarations {
-            if !request.filters.matches(
-                &declaration,
-                compiled_file_glob.as_ref(),
-                &compiled_exclude_patterns,
-            ) {
+            if !compiled_filters.matches(declaration.filter_input()) {
                 continue;
             }
             let exact_matches = if modes.exact {
@@ -513,7 +481,7 @@ impl<'a> SymbolQueryDatabase<'a> {
                 Vec::new()
             };
             let usage_facets = self.usage_facets(&declaration)?;
-            if !request.filters.usage_facets_match(&usage_facets) {
+            if !compiled_filters.usage_facets_match(&usage_facets) {
                 continue;
             }
             let anchored = anchor_matches(&request.anchor, &declaration);
@@ -545,15 +513,11 @@ impl<'a> SymbolQueryDatabase<'a> {
             if let Some(anchor_fq_id) = anchor_fq_id {
                 for (key, paths) in self.graph_candidates(anchor_fq_id, &request.graph)? {
                     if let Some(declaration) = by_key.get(&key) {
-                        if !request.filters.matches(
-                            declaration,
-                            compiled_file_glob.as_ref(),
-                            &compiled_exclude_patterns,
-                        ) {
+                        if !compiled_filters.matches(declaration.filter_input()) {
                             continue;
                         }
                         let usage_facets = self.usage_facets(declaration)?;
-                        if !request.filters.usage_facets_match(&usage_facets) {
+                        if !compiled_filters.usage_facets_match(&usage_facets) {
                             continue;
                         }
                         candidates
@@ -815,7 +779,7 @@ impl<'a> SymbolQueryDatabase<'a> {
         if self.is_bridge_declaration(declaration)? {
             facets.push(UsageFacet::Bridge);
         }
-        if is_build_logic_location(declaration) {
+        if is_build_logic_location(declaration.filter_input()) {
             facets.push(UsageFacet::BuildLogic);
         }
         Ok(facets)
@@ -1275,88 +1239,21 @@ impl QueryModes {
 }
 
 impl SymbolQueryFilters {
-    fn matches(
-        &self,
-        declaration: &DeclarationRow,
-        file_glob: Option<&Pattern>,
-        exclude_patterns: &[Pattern],
-    ) -> bool {
-        if !self.kinds.is_empty() && !self.kinds.iter().any(|kind| kind == &declaration.kind) {
-            return false;
+    fn criteria(&self) -> SymbolQueryFilterCriteria<'_> {
+        SymbolQueryFilterCriteria {
+            kinds: &self.kinds,
+            visibility: &self.visibility,
+            module_path: self.module_path.as_deref(),
+            source_set: self.source_set.as_deref(),
+            file_glob: self.file_glob.as_deref(),
+            package_prefix: self.package_prefix.as_deref(),
+            fq_name_prefix: self.fq_name_prefix.as_deref(),
+            gradle_project: self.gradle_project.as_deref(),
+            relative_path_prefix: self.relative_path_prefix.as_deref(),
+            production_only: self.production_only,
+            exclude_patterns: &self.exclude_patterns,
+            usage_facets: &self.usage_facets,
         }
-        if !self.visibility.is_empty()
-            && !self
-                .visibility
-                .iter()
-                .any(|visibility| visibility == &declaration.visibility)
-        {
-            return false;
-        }
-        if let Some(module_path) = &self.module_path
-            && declaration.module_path.as_ref() != Some(module_path)
-        {
-            return false;
-        }
-        if let Some(source_set) = &self.source_set
-            && declaration.source_set.as_ref() != Some(source_set)
-        {
-            return false;
-        }
-        if let Some(package_prefix) = &self.package_prefix
-            && !declaration
-                .package_fq_name
-                .as_ref()
-                .is_some_and(|package| package.starts_with(package_prefix))
-        {
-            return false;
-        }
-        if let Some(fq_name_prefix) = &self.fq_name_prefix
-            && !declaration.fq_name.starts_with(fq_name_prefix)
-        {
-            return false;
-        }
-        if let Some(gradle_project) = &self.gradle_project
-            && !declaration
-                .module_path
-                .as_deref()
-                .is_some_and(|module| gradle_project_matches(module, gradle_project))
-        {
-            return false;
-        }
-        if let Some(relative_path_prefix) = &self.relative_path_prefix
-            && !relative_path_prefix_matches(&declaration.relative_path, relative_path_prefix)
-        {
-            return false;
-        }
-        if self.production_only
-            && (declaration.source_set.as_deref() != Some("main")
-                || is_build_logic_location(declaration))
-        {
-            return false;
-        }
-        if exclude_patterns
-            .iter()
-            .any(|pattern| declaration_location_matches(pattern, declaration))
-        {
-            return false;
-        }
-        if let Some(pattern) = file_glob
-            && !pattern.matches_path(Path::new(&declaration.path))
-            && !pattern.matches_path(Path::new(&declaration.relative_path))
-            && !pattern.matches(&declaration.relative_path)
-            && !pattern.matches(&declaration.filename)
-        {
-            return false;
-        }
-        true
-    }
-
-    fn usage_facets_match(&self, usage_facets: &[UsageFacet]) -> bool {
-        self.usage_facets.is_empty()
-            || self
-                .usage_facets
-                .iter()
-                .any(|requested| usage_facets.contains(requested))
     }
 }
 
@@ -1386,6 +1283,20 @@ impl DeclarationRow {
                 path: self.path.clone(),
             },
             declaration_offset: self.declaration_offset,
+        }
+    }
+
+    fn filter_input(&self) -> DeclarationFilterInput<'_> {
+        DeclarationFilterInput {
+            fq_name: &self.fq_name,
+            kind: &self.kind,
+            visibility: &self.visibility,
+            absolute_path: &self.path,
+            relative_path: &self.relative_path,
+            filename: &self.filename,
+            module_path: self.module_path.as_deref(),
+            source_set: self.source_set.as_deref(),
+            package_fq_name: self.package_fq_name.as_deref(),
         }
     }
 }
@@ -1731,61 +1642,6 @@ fn next_requests(declaration: &DeclarationRow) -> NextRequests {
 
 fn query_terms(query: &str) -> Vec<String> {
     lexical_tokens(query)
-}
-
-fn compile_glob_filter(field: &str, pattern: &str) -> Result<Pattern> {
-    if pattern.starts_with("regex:") {
-        return Err(CliError::new(
-            "INVALID_FILTER",
-            format!("regex: {field} filters are not supported by symbol/query"),
-        ));
-    }
-    let normalized = pattern.strip_prefix("glob:").unwrap_or(pattern);
-    Pattern::new(normalized)
-        .map_err(|error| CliError::new("INVALID_FILTER", format!("{field}: {error}")))
-}
-
-fn gradle_project_matches(module_path: &str, gradle_project: &str) -> bool {
-    module_path == gradle_project
-        || module_path
-            .strip_prefix(gradle_project)
-            .is_some_and(|suffix| suffix.starts_with(':'))
-}
-
-fn relative_path_prefix_matches(relative_path: &str, prefix: &str) -> bool {
-    let relative_path = normalize_relative_filter_path(relative_path);
-    let prefix = normalize_relative_filter_path(prefix);
-    if prefix.ends_with('/') {
-        relative_path.starts_with(&prefix)
-    } else {
-        relative_path == prefix || relative_path.starts_with(&format!("{prefix}/"))
-    }
-}
-
-fn declaration_location_matches(pattern: &Pattern, declaration: &DeclarationRow) -> bool {
-    declaration
-        .module_path
-        .as_deref()
-        .is_some_and(|module| pattern.matches(module))
-        || pattern.matches(&normalize_relative_filter_path(&declaration.relative_path))
-        || pattern.matches_path(Path::new(&declaration.relative_path))
-}
-
-fn is_build_logic_location(declaration: &DeclarationRow) -> bool {
-    let module_path = declaration.module_path.as_deref().unwrap_or_default();
-    let relative_path = normalize_relative_filter_path(&declaration.relative_path);
-    module_path == ":build-logic"
-        || module_path.starts_with(":build-logic:")
-        || module_path == ":buildSrc"
-        || module_path.starts_with(":buildSrc:")
-        || relative_path == "build-logic"
-        || relative_path.starts_with("build-logic/")
-        || relative_path == "buildSrc"
-        || relative_path.starts_with("buildSrc/")
-}
-
-fn normalize_relative_filter_path(path: &str) -> String {
-    path.replace('\\', "/").trim_start_matches("./").to_string()
 }
 
 fn lexical_field_matches(

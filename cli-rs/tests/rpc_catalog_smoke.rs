@@ -200,16 +200,23 @@ fn command_catalog_is_schema_backed_and_self_consistent() {
 fn symbol_query_catalog_documents_relevance_filters() {
     let catalog = catalog();
     let filters = &catalog["commands"]["symbol/query"]["request"]["fields"]["filters"]["fields"];
-    for field in [
-        "gradleProject",
-        "relativePathPrefix",
-        "productionOnly",
-        "excludePatterns",
-        "usageFacets",
+    for (field, expected_note) in [
+        ("gradleProject", "Gradle project path"),
+        ("relativePathPrefix", "workspace-root-relative"),
+        ("productionOnly", "sourceSet=main"),
+        ("excludePatterns", "module path or relative path"),
+        ("usageFacets", "computed declaration facets"),
     ] {
         assert!(
             filters.get(field).is_some(),
             "symbol/query filters should document {field}"
+        );
+        let note = filters[field]["description"]
+            .as_str()
+            .unwrap_or_else(|| panic!("symbol/query filter {field} should include a description"));
+        assert!(
+            note.contains(expected_note),
+            "symbol/query filter {field} description should mention {expected_note}: {note}"
         );
     }
 
