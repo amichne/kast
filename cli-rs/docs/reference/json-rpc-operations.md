@@ -22,7 +22,7 @@ nested object fields, variants, enum values, response types, and Copilot
 The Copilot extension does not maintain a parallel tool schema. Its shared
 `kast-tools.mjs` module loads the same catalog, derives each tool's parameter
 schema from the command request model, and calls the catalog's JSON-RPC
-`method` value. During `kast install copilot-extension`, the Rust installer
+`method` value. During `kast install copilot`, the Rust installer
 copies the catalog into `extensions/_shared/commands.json` so installed
 extensions use the same operation definitions as the packaged skill.
 

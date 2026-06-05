@@ -14,7 +14,7 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast backend install headless`, then `kast up` |
+| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast install headless`, then `kast up` |
 | IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project |
 
 ## Headless backend
@@ -36,7 +36,7 @@ Install:
 ```console title="Install the headless backend"
 brew tap amichne/kast
 brew install kast
-kast backend install headless
+kast install headless
 ```
 
 On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the offline
@@ -72,7 +72,7 @@ How a session unfolds:
 1. You run `kast up --workspace-root="$PWD"` somewhere. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm. If the backend is missing, `kast up`
-   reports the exact `kast backend install <backend>` command.
+   reports the exact `kast install <backend>` command.
 2. You run more `kast` commands against the same workspace. The CLI
    finds the running backend and reuses it.
 3. The daemon stays alive. No cold starts between commands.

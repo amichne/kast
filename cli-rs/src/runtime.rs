@@ -599,7 +599,7 @@ fn workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
 
 fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) -> CliError {
     let backend_name = backend_name.unwrap_or(BackendName::Headless);
-    let install_command = format!("kast backend install {}", backend_name.canonical());
+    let install_command = format!("kast install {}", backend_name.canonical());
     let mut error = CliError::new(
         "NO_BACKEND_AVAILABLE",
         format!(

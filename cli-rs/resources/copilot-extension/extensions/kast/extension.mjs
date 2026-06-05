@@ -258,7 +258,7 @@ if (!bin) {
   const installedVersion = readInstalledExtensionVersion();
   if (cliVersion && installedVersion && cliVersion !== installedVersion) {
     const syncResult = await execBash(
-      `${JSON.stringify(bin)} install copilot-extension --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))}`,
+      `${JSON.stringify(bin)} install copilot --target-dir=${JSON.stringify(join(REPO_ROOT, ".github"))}`,
     );
     if (syncResult.ok) {
       await session.log(
@@ -268,7 +268,7 @@ if (!bin) {
     } else {
       const msg =
         `kast version mismatch: CLI=${cliVersion}, extension=${installedVersion}. ` +
-        "Auto-sync failed. Run `kast install copilot-extension` manually.";
+        "Auto-sync failed. Run `kast install copilot` manually.";
       await session.log(`kast extension: ${msg}`, { level: "warning" });
     }
   }

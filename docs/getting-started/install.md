@@ -37,7 +37,7 @@ Use Homebrew for ordinary terminal use when your platform is supported.
 Install one backend component after the CLI is on `PATH`.
 
 ```console title="Install the headless backend"
-kast backend install headless
+kast install headless
 ```
 
 Use the headless backend for terminal work, local automation, and CI jobs that
@@ -51,12 +51,12 @@ Use the headless backend for hosted Linux agents that need a packaged
 IDEA-backed runtime:
 
 ```console title="Install and warm the headless backend"
-kast backend install headless
+kast install headless
 kast up --backend=headless --workspace-root="$PWD"
 ```
 
 If `kast up` cannot find the selected backend, it reports the exact
-`kast backend install <backend>` command to run.
+`kast install <backend>` command to run.
 
 ## Ubuntu/Debian bundle
 
@@ -200,7 +200,7 @@ CLI-managed inventory.
 From the repository root, run:
 
 ```console title="Install Copilot agents, hooks, and extensions"
-kast install copilot-extension
+kast install copilot
 ```
 
 The install writes these packaged trees:
@@ -210,10 +210,10 @@ The install writes these packaged trees:
 - `.github/extensions`
 
 Pass `--target-dir` when you need to install into another workspace's
-`.github` directory. Pass `--yes=true` to replace an older managed copy:
+`.github` directory. Pass `--force` to replace an older managed copy:
 
 ```console title="Install into another workspace"
-kast install copilot-extension --target-dir=/Users/alex/work/project/.github --yes=true
+kast install copilot --target-dir=/Users/alex/work/project/.github --force
 ```
 
 To remove only packaged files, use the uninstall command:

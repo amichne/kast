@@ -90,11 +90,11 @@ that matches what you're seeing.
     Files you created under `.github` are preserved, and the CLI-managed
     inventory drops the repo entry.
 
-    To inspect the managed set, reinstall with `--yes=true`, then uninstall
+    To inspect the managed set, reinstall with `--force`, then uninstall
     again:
 
     ```console
-    kast install copilot-extension --yes=true
+    kast install copilot --force
     kast uninstall copilot-extension
     ```
 
