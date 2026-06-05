@@ -13,6 +13,7 @@ mod self_mgmt;
 mod source_index_db;
 mod source_index_schema;
 mod symbol_query;
+mod symbol_query_filters;
 
 use clap::{CommandFactory, Parser};
 use cli::{Cli, Command};

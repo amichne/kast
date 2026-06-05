@@ -204,6 +204,9 @@ Notes:
 
 - Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.
 - Hard filters are enforced by SQLite/compiler facts, never by semantic score.
+- Nested filters include gradleProject, relativePathPrefix, productionOnly, excludePatterns, and usageFacets.
+- usageFacets is the supported public filter for computed declaration facets; symbol/query does not expose clusterKinds.
+- Token matching is computed by the Rust CLI from query text and indexed declaration fields without persisted token tables.
 - Graph depth defaults to 1 and is capped at 2 in the first implementation.
 - Semantic discovery is represented in the response shape but reports available=false until a sidecar exists.
 

@@ -234,21 +234,26 @@
               "nullable": true
             "gradleProject":
               "type": "string"
+              "description": "Gradle project path filter. Matches an exact project such as :lib or child projects such as :lib:payments; an optional source-set suffix like [main] is ignored."
               "optional": true
               "nullable": true
             "relativePathPrefix":
               "type": "string"
+              "description": "Matches the workspace-root-relative path prefix from path_prefixes plus filename, using normalized slash-separated segments."
               "optional": true
               "nullable": true
             "productionOnly":
               "type": "boolean"
+              "description": "Restricts results to sourceSet=main and excludes build logic locations such as buildSrc and build-logic."
               "optional": true
             "excludePatterns":
               "type": "array"
+              "description": "Glob patterns matched against module path or relative path; matching declarations are excluded."
               "optional": true
               "items": "string"
             "usageFacets":
               "type": "array"
+              "description": "Filters by computed declaration facets derived from declarations, references, metadata, and supertypes."
               "optional": true
               "items":
                 "type": "string"
@@ -350,6 +355,9 @@
     "notes":
       - "Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface."
       - "Hard filters are enforced by SQLite/compiler facts, never by semantic score."
+      - "Nested filters include gradleProject, relativePathPrefix, productionOnly, excludePatterns, and usageFacets."
+      - "usageFacets is the supported public filter for computed declaration facets; symbol/query does not expose clusterKinds."
+      - "Token matching is computed by the Rust CLI from query text and indexed declaration fields without persisted token tables."
       - "Graph depth defaults to 1 and is capped at 2 in the first implementation."
       - "Semantic discovery is represented in the response shape but reports available=false until a sidecar exists."
   "symbol/resolve":
