@@ -72,7 +72,7 @@ How a session unfolds:
 1. You run `kast up --workspace-root="$PWD"` somewhere. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm. If the backend is missing, `kast up`
-   reports the exact `kast install <backend>` command.
+   reports the exact `kast install headless` command.
 2. You run more `kast` commands against the same workspace. The CLI
    finds the running backend and reuses it.
 3. The daemon stays alive. No cold starts between commands.

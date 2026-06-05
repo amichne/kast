@@ -49,16 +49,87 @@ class WorkspacePathsTest {
     }
 
     @Test
-    fun `workspace data directory uses install root for git remotes`() {
+    fun `workspace data directory uses install root git worktree path for git remotes`() {
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
+        val gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             installRoot = { installRoot },
-            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = tempDir.resolve("main.git"),
+                    gitDir = gitDir,
+                    remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
+                )
+            },
+        )
+        val worktreeHash = gitWorktreeHash(workspaceRoot, gitDir)
+
+        assertEquals(
+            installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
+            resolver.workspaceDataDirectory(workspaceRoot),
+        )
+    }
+
+    @Test
+    fun `workspace data directory isolates sibling git worktrees from the same remote`() {
+        val installRoot = tempDir.resolve("install-root")
+        val commonDir = tempDir.resolve("main.git")
+        val firstRoot = tempDir.resolve("kast")
+        val secondRoot = tempDir.resolve("kast-feature")
+        val remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast")
+        val resolver = WorkspaceDirectoryResolver(
+            installRoot = { installRoot },
+            gitWorkspaceResolver = { root ->
+                when (root.toAbsolutePath().normalize()) {
+                    firstRoot.toAbsolutePath().normalize() -> GitWorkspace(
+                        toplevel = firstRoot,
+                        commonDir = commonDir,
+                        gitDir = commonDir.resolve("worktrees/kast"),
+                        remote = remote,
+                    )
+                    secondRoot.toAbsolutePath().normalize() -> GitWorkspace(
+                        toplevel = secondRoot,
+                        commonDir = commonDir,
+                        gitDir = commonDir.resolve("worktrees/kast-feature"),
+                        remote = remote,
+                    )
+                    else -> null
+                }
+            },
+        )
+
+        val first = resolver.workspaceDataDirectory(firstRoot)
+        val second = resolver.workspaceDataDirectory(secondRoot)
+
+        assertTrue(first.startsWith(installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees")))
+        assertTrue(second.startsWith(installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees")))
+        assertTrue(first != second, "sibling worktrees should not share workspace data: first=$first second=$second")
+        assertEquals(first, resolver.workspaceCacheDirectory(firstRoot).parent)
+        assertEquals(second.resolve("cache/source-index.db"), resolver.workspaceDatabasePath(secondRoot))
+    }
+
+    @Test
+    fun `workspace data directory supports git worktrees without parseable origin`() {
+        val installRoot = tempDir.resolve("install-root")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val commonDir = tempDir.resolve("main.git")
+        val gitDir = commonDir.resolve("worktrees/workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            installRoot = { installRoot },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = commonDir,
+                    gitDir = gitDir,
+                    remote = null,
+                )
+            },
         )
 
         assertEquals(
-            installRoot.resolve("workspaces/github.com/amichne/kast"),
+            installRoot.resolve("workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
     }
