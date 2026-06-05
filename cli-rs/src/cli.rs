@@ -57,6 +57,11 @@ pub enum Command {
     },
     /// Install a portable archive or packaged resources.
     Install(InstallArgs),
+    /// Report the current installed version of a Kast component.
+    Current {
+        #[command(subcommand)]
+        command: CurrentCommand,
+    },
     /// Report the recorded global Kast install state.
     Info,
     /// Verify the global Kast install is still healthy.
@@ -103,6 +108,9 @@ pub struct BackendInstallArgs {
     #[arg(long)]
     pub base_url: Option<String>,
     /// Replace an existing installed backend version.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Deprecated alias for --force.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub yes: Option<bool>,
 }
@@ -397,13 +405,36 @@ pub struct InstallArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum InstallCommand {
+    /// Install the headless JVM backend.
+    Headless(HeadlessInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
     /// Install the packaged Copilot agents and extensions.
-    CopilotExtension(ResourceInstallArgs),
+    #[command(alias = "copilot-extension")]
+    Copilot(ResourceInstallArgs),
     /// Download the Homebrew-managed IDEA plugin cask.
-    #[command(alias = "developer-plugin")]
-    IdeaPlugin(IdeaPluginInstallArgs),
+    #[command(alias = "idea-plugin", alias = "developer-plugin")]
+    Plugin(IdeaPluginInstallArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct HeadlessInstallArgs {
+    /// Local backend zip archive. When omitted, kast downloads the release asset.
+    #[arg(long)]
+    pub archive: Option<PathBuf>,
+    /// Release tag or version. Defaults to this CLI version.
+    #[arg(long)]
+    pub version: Option<String>,
+    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
+    /// Defaults to the matching GitHub release.
+    #[arg(long)]
+    pub base_url: Option<String>,
+    /// Replace an existing installed backend version.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Deprecated alias for --force.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub yes: Option<bool>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -420,6 +451,9 @@ pub struct IdeaPluginInstallArgs {
     /// Override the cask token. Defaults to <kast formula tap>/kast-plugin.
     #[arg(long)]
     pub cask_token: Option<String>,
+    /// Replace or refetch the plugin artifact when the installer supports it.
+    #[arg(short = 'f', long)]
+    pub force: bool,
     /// Print the planned Homebrew command without running it.
     #[arg(long)]
     pub dry_run: bool,
@@ -437,6 +471,9 @@ pub struct ResourceInstallArgs {
     #[arg(long)]
     pub link_name: Option<String>,
     /// Overwrite existing managed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Deprecated alias for --force.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub yes: Option<bool>,
 }
@@ -451,6 +488,31 @@ pub struct UninstallArgs {
 pub enum UninstallCommand {
     /// Remove packaged Copilot agents and extensions from the current workspace.
     CopilotExtension(ResourceInstallArgs),
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum CurrentCommand {
+    /// Report the current Homebrew-managed IDEA plugin version.
+    Plugin,
+    /// Report the current installed headless backend version.
+    Headless,
+    /// Report the current installed packaged skill version.
+    Skill(ResourceCurrentArgs),
+    /// Report the current installed Copilot extension version.
+    Copilot(ResourceCurrentArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct ResourceCurrentArgs {
+    /// Target root directory.
+    #[arg(long)]
+    pub target_dir: Option<PathBuf>,
+    /// Directory name for the installed skill. Defaults to kast.
+    #[arg(long)]
+    pub name: Option<String>,
+    /// Deprecated alias for --name.
+    #[arg(long)]
+    pub link_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]

@@ -44,11 +44,11 @@ From the workspace root:
 
 ## Force a reinstall
 
-Pass `--yes=true` to skip the confirmation. Use `--target-dir` for a
+Pass `--force` to skip the confirmation. Use `--target-dir` for a
 custom path:
 
 ```console title="Force reinstall to a custom path"
-kast install skill --target-dir=/absolute/path/to/skills --yes=true
+kast install skill --target-dir=/absolute/path/to/skills --force
 ```
 
 ??? info "What's in the skill directory"
@@ -93,11 +93,11 @@ portable Agent Skills bundle.
 
 ## Install the Copilot extension files
 
-Use `install copilot-extension` when you want the packaged GitHub Copilot
+Use `install copilot` when you want the packaged GitHub Copilot
 agent, hook, and native extension files in the current repository:
 
 ```console title="Install Copilot agents, hooks, and extensions"
-kast install copilot-extension
+kast install copilot
 ```
 
 The command writes into `<cwd>/.github` by default, including packaged
@@ -105,10 +105,10 @@ The command writes into `<cwd>/.github` by default, including packaged
 under `.github/extensions`. Packaged scripts are installed executable, and the
 command records the installed CLI version in `.github/.kast-copilot-version`.
 Pass `--target-dir` to point at another workspace `.github` directory, and
-`--yes=true` to replace an older installed copy:
+`--force` to replace an older installed copy:
 
 ```console title="Force reinstall Copilot extension files"
-kast install copilot-extension --target-dir=/absolute/path/to/repo/.github --yes=true
+kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 ```
 
 To remove only packaged Copilot files, use the uninstall command:

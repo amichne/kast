@@ -111,6 +111,12 @@ fn run() -> Result<i32> {
             println!();
             Ok(0)
         }
+        Command::Current { command } => {
+            let result = install::current(command)?;
+            serde_json::to_writer_pretty(io::stdout(), &result)?;
+            println!();
+            Ok(0)
+        }
         Command::Info => {
             let result = self_mgmt::status()?;
             serde_json::to_writer_pretty(io::stdout(), &result)?;

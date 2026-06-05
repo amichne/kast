@@ -1,8 +1,10 @@
 use crate::SCHEMA_VERSION;
+use crate::backend::{self, BackendResult};
 use crate::cli;
 use crate::cli::{
-    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs, UninstallArgs,
-    UninstallCommand,
+    BackendComponent, BackendInstallArgs, CurrentCommand, HeadlessInstallArgs,
+    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceCurrentArgs, ResourceInstallArgs,
+    UninstallArgs, UninstallCommand,
 };
 use crate::config;
 use crate::error::{CliError, Result};
@@ -98,6 +100,7 @@ pub enum InstallResult {
     Skill(InstallSkillResult),
     Copilot(InstallCopilotExtensionResult),
     IdeaPlugin(InstallIdeaPluginResult),
+    Headless(backend::BackendInstallResult),
     Archive(ArchiveInstallResult),
 }
 
@@ -117,18 +120,59 @@ pub enum UninstallResult {
     Copilot(InstallCopilotExtensionResult),
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrentComponentResult {
+    pub component: String,
+    pub installed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cask_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub install_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime_libs_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idea_home: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+    pub schema_version: u32,
+}
+
 pub fn install(args: InstallArgs) -> Result<InstallResult> {
     match args.command {
+        Some(InstallCommand::Headless(headless_args)) => {
+            install_headless(headless_args).map(InstallResult::Headless)
+        }
         Some(InstallCommand::Skill(resource_args)) => {
             install_skill(resource_args).map(InstallResult::Skill)
         }
-        Some(InstallCommand::CopilotExtension(resource_args)) => {
+        Some(InstallCommand::Copilot(resource_args)) => {
             install_copilot_extension(resource_args).map(InstallResult::Copilot)
         }
-        Some(InstallCommand::IdeaPlugin(resource_args)) => {
+        Some(InstallCommand::Plugin(resource_args)) => {
             install_idea_plugin(resource_args).map(InstallResult::IdeaPlugin)
         }
         None => install_archive(args).map(InstallResult::Archive),
+    }
+}
+
+pub fn current(command: CurrentCommand) -> Result<CurrentComponentResult> {
+    match command {
+        CurrentCommand::Plugin => current_plugin(),
+        CurrentCommand::Headless => current_headless(),
+        CurrentCommand::Skill(args) => {
+            current_resource("skill", current_skill_target(args), ".kast-version", vec![])
+        }
+        CurrentCommand::Copilot(args) => current_resource(
+            "copilot",
+            current_copilot_target(args),
+            COPILOT_EXTENSION_MARKER,
+            vec![],
+        ),
     }
 }
 
@@ -139,6 +183,150 @@ pub fn uninstall(args: UninstallArgs) -> Result<UninstallResult> {
         }
         None => self_mgmt::uninstall().map(UninstallResult::SelfManaged),
     }
+}
+
+fn current_plugin() -> Result<CurrentComponentResult> {
+    let mut warnings = vec![];
+    let cask_token = match homebrew_formula_tap() {
+        Ok(tap) => format!("{tap}/{KAST_PLUGIN_CASK_NAME}"),
+        Err(error) => {
+            warnings.push(format!(
+                "Could not resolve the Homebrew tap for kast; using {DEFAULT_KAST_TAP}: {}",
+                error.message
+            ));
+            format!("{DEFAULT_KAST_TAP}/{KAST_PLUGIN_CASK_NAME}")
+        }
+    };
+    let cask_name = cask_name(&cask_token);
+    let version = match homebrew_cask_version(&cask_name) {
+        Ok(version) => version,
+        Err(error) => {
+            warnings.push(format!(
+                "Could not resolve the installed Homebrew cask version for {cask_name}: {}",
+                error.message
+            ));
+            None
+        }
+    };
+    Ok(CurrentComponentResult {
+        component: "plugin".to_string(),
+        installed: version.is_some(),
+        version,
+        cask_token: Some(cask_token),
+        install_dir: None,
+        target_dir: None,
+        runtime_libs_dir: None,
+        idea_home: None,
+        warnings,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
+    let backend_args = BackendInstallArgs {
+        backend: BackendComponent::Headless,
+        archive: args.archive,
+        version: args.version,
+        base_url: args.base_url,
+        force: args.force,
+        yes: args.yes,
+    };
+    match backend::run(cli::BackendCommand::Install(backend_args))? {
+        BackendResult::Install(result) => Ok(result),
+        BackendResult::Uninstall(_) => Err(CliError::new(
+            "CLI_USAGE",
+            "install headless unexpectedly returned an uninstall result",
+        )),
+    }
+}
+
+fn current_headless() -> Result<CurrentComponentResult> {
+    let backend = self_mgmt::read_global_install_state()?.and_then(|install| {
+        install
+            .backends
+            .into_iter()
+            .find(|backend| backend.name == BackendComponent::Headless.canonical())
+    });
+    Ok(match backend {
+        Some(backend) => CurrentComponentResult {
+            component: "headless".to_string(),
+            installed: true,
+            version: Some(backend.version),
+            cask_token: None,
+            install_dir: Some(backend.install_dir),
+            target_dir: None,
+            runtime_libs_dir: Some(backend.runtime_libs_dir),
+            idea_home: backend.idea_home,
+            warnings: vec![],
+            schema_version: SCHEMA_VERSION,
+        },
+        None => CurrentComponentResult {
+            component: "headless".to_string(),
+            installed: false,
+            version: None,
+            cask_token: None,
+            install_dir: None,
+            target_dir: None,
+            runtime_libs_dir: None,
+            idea_home: None,
+            warnings: vec![],
+            schema_version: SCHEMA_VERSION,
+        },
+    })
+}
+
+fn current_resource(
+    component: &str,
+    target: PathBuf,
+    marker_name: &str,
+    warnings: Vec<String>,
+) -> Result<CurrentComponentResult> {
+    let marker = target.join(marker_name);
+    let version = marker
+        .is_file()
+        .then(|| {
+            fs::read_to_string(&marker)
+                .unwrap_or_default()
+                .trim()
+                .to_string()
+        })
+        .filter(|value| !value.is_empty());
+    Ok(CurrentComponentResult {
+        component: component.to_string(),
+        installed: version.is_some(),
+        version,
+        cask_token: None,
+        install_dir: None,
+        target_dir: Some(target.display().to_string()),
+        runtime_libs_dir: None,
+        idea_home: None,
+        warnings,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn current_skill_target(args: ResourceCurrentArgs) -> PathBuf {
+    let target_root = args
+        .target_dir
+        .map(config::normalize)
+        .unwrap_or_else(default_skill_target_dir);
+    let name = args
+        .name
+        .or(args.link_name)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "kast".to_string());
+    target_root.join(name)
+}
+
+fn current_copilot_target(args: ResourceCurrentArgs) -> PathBuf {
+    let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
+        config::normalize(
+            env::current_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join(".github"),
+        )
+    });
+    target.join(COPILOT_EXTENSION_DIR)
 }
 
 pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
@@ -156,7 +344,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         &KAST_SKILL,
         &target,
         ".kast-version",
-        args.yes.unwrap_or(false),
+        args.force || args.yes.unwrap_or(false),
     )?;
     Ok(InstallSkillResult {
         installed_at: target.display().to_string(),
@@ -177,7 +365,7 @@ pub fn install_copilot_extension(
         )
     });
     let extension_target = target.join(COPILOT_EXTENSION_DIR);
-    let skipped = install_copilot_extension_dir(&extension_target)?;
+    let skipped = install_copilot_extension_dir(&extension_target, args.force)?;
     write_copilot_rpc_catalog(&extension_target)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
     Ok(InstallCopilotExtensionResult {
@@ -234,6 +422,7 @@ fn download_idea_plugin(
     let mut downloaded_path = None;
     if !args.dry_run {
         fs::create_dir_all(&download_dir)?;
+        eprintln!("Fetching Kast IDEA plugin cask {cask_token} with Homebrew...");
         let output = run_brew_command(&brew_args)?;
         if !output.status.success() {
             return Err(command_error(
@@ -246,6 +435,7 @@ fn download_idea_plugin(
         let cache_path = homebrew_cask_cache_path(&cask_token)?;
         let destination = download_destination(&cache_path, &download_dir)?;
         fs::copy(&cache_path, &destination)?;
+        eprintln!("Downloaded Kast IDEA plugin to {}", destination.display());
         downloaded_path = Some(destination.display().to_string());
     }
 
@@ -301,11 +491,14 @@ fn install_idea_plugin_into_jetbrains_profiles(
     } else {
         "install"
     };
-    let brew_args = vec![
+    let mut brew_args = vec![
         brew_action.to_string(),
         "--cask".to_string(),
         cask_token.clone(),
     ];
+    if args.force {
+        brew_args.insert(2, "--force".to_string());
+    }
     if !args.dry_run {
         let output = run_brew_with_jetbrains_root(&brew_args, &jetbrains_config_root)?;
         if !output.status.success() {
@@ -462,12 +655,13 @@ fn write_copilot_rpc_catalog(target: &Path) -> Result<()> {
     Ok(())
 }
 
-fn install_copilot_extension_dir(target: &Path) -> Result<bool> {
+fn install_copilot_extension_dir(target: &Path, force: bool) -> Result<bool> {
     let marker = target.join(COPILOT_EXTENSION_MARKER);
-    let skipped = marker
-        .is_file()
-        .then(|| fs::read_to_string(&marker).unwrap_or_default())
-        .is_some_and(|current| current.trim() == cli::version());
+    let skipped = !force
+        && marker
+            .is_file()
+            .then(|| fs::read_to_string(&marker).unwrap_or_default())
+            .is_some_and(|current| current.trim() == cli::version());
     let source = COPILOT_EXTENSION
         .get_dir(COPILOT_EXTENSION_DIR)
         .ok_or_else(|| {
@@ -486,7 +680,7 @@ fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> 
     let marker = target.join(marker_name);
     if marker.is_file() {
         let current = fs::read_to_string(&marker).unwrap_or_default();
-        if current.trim() == cli::version() {
+        if !force && current.trim() == cli::version() {
             return Ok(true);
         }
     }
@@ -710,7 +904,7 @@ fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
     let mut error = CliError::new(
         "HOMEBREW_INSTALL_REQUIRED",
         format!(
-            "`kast install idea-plugin` must be run from the Homebrew-installed kast binary under {}",
+            "`kast install plugin` must be run from the Homebrew-installed kast binary under {}",
             homebrew.formula_prefix.display()
         ),
     );
@@ -788,6 +982,27 @@ fn parse_homebrew_formula_tap(json: &str) -> Option<String> {
 fn homebrew_cask_installed(cask_name: &str) -> Result<bool> {
     let output = run_brew(&["list", "--cask", cask_name])?;
     Ok(output.status.success())
+}
+
+fn homebrew_cask_version(cask_name: &str) -> Result<Option<String>> {
+    let output = run_brew(&["list", "--cask", "--versions", cask_name])?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(parse_homebrew_cask_version(&stdout, cask_name))
+}
+
+fn parse_homebrew_cask_version(output: &str, cask_name: &str) -> Option<String> {
+    output.lines().find_map(|line| {
+        let mut parts = line.split_whitespace();
+        let name = parts.next()?;
+        if name != cask_name {
+            return None;
+        }
+        let version = parts.collect::<Vec<_>>().join(" ");
+        (!version.trim().is_empty()).then_some(version)
+    })
 }
 
 fn homebrew_cask_cache_path(cask_token: &str) -> Result<PathBuf> {
@@ -1009,6 +1224,7 @@ mod tests {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
             link_name: None,
+            force: false,
             yes: Some(false),
         };
         let first = install_skill(args.clone()).unwrap();

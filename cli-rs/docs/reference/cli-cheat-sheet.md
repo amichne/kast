@@ -69,10 +69,15 @@ installation state recorded in `config.toml`.
 |---------|--------------|
 | `kast config init` | Write the default global config file with concrete paths if missing. |
 | `kast install` | Initialize a portable archive install and record install state in `config.toml`. |
+| `kast install headless` | Install the packaged headless backend. |
 | `kast install skill` | Install the packaged Kast skill into a target directory. |
-| `kast install copilot-extension` | Install packaged Copilot agents, hooks, and extensions. |
-| `kast install idea-plugin` | Download the Homebrew `kast-plugin` cask ZIP to `~/Downloads`. |
-| `kast install idea-plugin --link-jetbrains-profiles` | Install or reinstall the Homebrew `kast-plugin` cask and link it into local JetBrains IDE profiles. |
+| `kast install copilot` | Install packaged Copilot agents, hooks, and extensions. |
+| `kast install plugin` | Download the Homebrew `kast-plugin` cask ZIP to `~/Downloads`. |
+| `kast install plugin --link-jetbrains-profiles` | Install or reinstall the Homebrew `kast-plugin` cask and link it into local JetBrains IDE profiles. |
+| `kast current headless` | Print the recorded headless backend version. |
+| `kast current skill` | Print the installed packaged skill version. |
+| `kast current copilot` | Print the installed Copilot extension version for the current repo. |
+| `kast current plugin` | Print the Homebrew-installed IDEA plugin cask version. |
 | `kast info` | Print the recorded global install state. |
 | `kast doctor` | Verify the global install is still healthy. |
 | `kast uninstall copilot-extension` | Remove managed Copilot resources. |
