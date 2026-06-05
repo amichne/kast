@@ -1,7 +1,7 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
 use crate::cli::{
-    InstallArgs, InstallCommand, IdeaPluginInstallArgs, ResourceInstallArgs, UninstallArgs,
+    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs, UninstallArgs,
     UninstallCommand,
 };
 use crate::config;
@@ -189,9 +189,7 @@ pub fn install_copilot_extension(
     })
 }
 
-pub fn install_idea_plugin(
-    args: IdeaPluginInstallArgs,
-) -> Result<InstallIdeaPluginResult> {
+pub fn install_idea_plugin(args: IdeaPluginInstallArgs) -> Result<InstallIdeaPluginResult> {
     let homebrew = discover_homebrew_context()?;
     verify_homebrew_cli(&homebrew)?;
     let mut warnings = vec![];
@@ -211,9 +209,7 @@ pub fn install_idea_plugin(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| format!("{formula_tap}/{KAST_PLUGIN_CASK_NAME}"));
     if args.link_jetbrains_profiles {
-        return install_idea_plugin_into_jetbrains_profiles(
-            args, homebrew, cask_token, warnings,
-        );
+        return install_idea_plugin_into_jetbrains_profiles(args, homebrew, cask_token, warnings);
     }
     download_idea_plugin(args, homebrew, cask_token, warnings)
 }

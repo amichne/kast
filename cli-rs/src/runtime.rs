@@ -496,8 +496,7 @@ fn select_status_candidate(
         b.ready
             .cmp(&a.ready)
             .then_with(|| {
-                (b.descriptor.backend_name == "idea")
-                    .cmp(&(a.descriptor.backend_name == "idea"))
+                (b.descriptor.backend_name == "idea").cmp(&(a.descriptor.backend_name == "idea"))
             })
             .then_with(|| {
                 (b.descriptor.backend_name == "headless")

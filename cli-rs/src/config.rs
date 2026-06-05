@@ -571,10 +571,7 @@ defaultBackend = "sidecar"
         );
 
         config.runtime.default_backend = Some(BackendName::Idea);
-        assert_eq!(
-            resolve_runtime_backend(&config, None),
-            BackendName::Idea
-        );
+        assert_eq!(resolve_runtime_backend(&config, None), BackendName::Idea);
         assert_eq!(
             resolve_runtime_backend(&config, Some(BackendName::Headless)),
             BackendName::Headless
