@@ -286,6 +286,42 @@ fn symbol_query_catalog_samples_validate_against_shared_schema() {
 }
 
 #[test]
+fn workspace_files_tool_is_documented_as_secondary_and_bounded() {
+    let catalog = catalog();
+    let workspace_files = &catalog["commands"]["raw/workspace-files"];
+    let description = workspace_files["tool"]["description"]
+        .as_str()
+        .expect("workspace files tool description");
+
+    assert!(
+        description.contains("Secondary"),
+        "workspace files should be presented as secondary guidance: {description}"
+    );
+    assert!(
+        description.contains("Prefer symbol/query"),
+        "workspace files should steer agents to symbol/query first: {description}"
+    );
+    assert!(
+        description.contains("includeFiles=false"),
+        "workspace files should advertise the bounded default: {description}"
+    );
+
+    let maximal: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/requests/raw/workspace-files/maximal.json"
+    ))
+    .expect("workspace-files maximal request");
+    assert_eq!(maximal["params"]["includeFiles"], Value::Bool(true));
+    assert_eq!(
+        maximal["params"]["moduleName"],
+        Value::String(":analysis-api".to_string())
+    );
+    assert_eq!(
+        maximal["params"]["maxFilesPerModule"],
+        Value::Number(25.into())
+    );
+}
+
+#[test]
 fn command_catalog_owns_copilot_tool_surface() {
     let catalog = catalog();
     let commands = catalog["commands"].as_object().expect("commands object");

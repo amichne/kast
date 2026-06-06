@@ -1019,7 +1019,7 @@
     "responseType": "WorkspaceFilesResult"
     "tool":
       "name": "kast_workspace_files"
-      "description": "List Kotlin workspace modules and (optionally) their source files. Use to discover scope before scaffolding or resolving symbols. Far cheaper than recursive directory listings; truncation is reported per-module."
+      "description": "Secondary workspace inspection tool for Kotlin modules and optional source files. Prefer symbol/query, raw/workspace-symbol, or raw/workspace-search with tight filters first. Use includeFiles=false for the bounded module summary; when file paths are required, pass moduleName and a small maxFilesPerModule."
   "raw/implementations":
     "method": "raw/implementations"
     "category": "raw"

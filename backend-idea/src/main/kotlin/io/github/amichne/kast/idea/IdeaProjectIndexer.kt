@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -147,12 +148,12 @@ internal class IdeaProjectIndexer(
 
     private fun discoverModuleSpecs(): List<IdeaModuleSpec> =
         ModuleManager.getInstance(project).modules
-            .sortedBy { module -> module.name }
+            .sortedBy(::indexedModuleNameForModule)
             .map { module ->
                 val rootManager = ModuleRootManager.getInstance(module)
                 IdeaModuleSpec(
-                    name = module.name,
-                    dependencyModuleNames = rootManager.dependencies.map { dependency -> dependency.name }.sorted(),
+                    name = indexedModuleNameForModule(module),
+                    dependencyModuleNames = rootManager.dependencies.map(::indexedModuleNameForModule).sorted(),
                 )
             }
 
@@ -169,7 +170,22 @@ internal class IdeaProjectIndexer(
         val virtualFile = psiFile.virtualFile
         val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return@runIdeaReadAction null
         val sourceSet = sourceSetForFile(virtualFile.path)
-        if (sourceSet == null) module.name else "${module.name}[$sourceSet]"
+        indexedModuleNameForFilePath(
+            ideaModuleName = module.name,
+            filePath = virtualFile.path,
+            workspaceRoot = workspaceRoot,
+            sourceSet = sourceSet,
+        )
+    }
+
+    private fun indexedModuleNameForModule(module: Module): String {
+        val rootManager = ModuleRootManager.getInstance(module)
+        return rootManager.sourceRoots
+            .asSequence()
+            .mapNotNull { root -> gradleProjectPathForFile(root.path, workspaceRoot) }
+            .sorted()
+            .firstOrNull()
+            ?: module.name
     }
 
     private fun sourceSetForFile(path: String): String? {
@@ -189,6 +205,35 @@ internal class IdeaProjectIndexer(
         val path = Path.of(filePath)
         return if (Files.isRegularFile(path)) Files.getLastModifiedTime(path).toMillis() else 0L
     }
+}
+
+internal fun indexedModuleNameForFilePath(
+    ideaModuleName: String,
+    filePath: String,
+    workspaceRoot: Path,
+    sourceSet: String?,
+): String {
+    val modulePath = gradleProjectPathForFile(filePath, workspaceRoot) ?: ideaModuleName
+    return if (sourceSet == null) modulePath else "$modulePath[$sourceSet]"
+}
+
+private fun gradleProjectPathForFile(
+    filePath: String,
+    workspaceRoot: Path,
+): String? {
+    val root = workspaceRoot.toAbsolutePath().normalize()
+    val path = Path.of(filePath).toAbsolutePath().normalize()
+    if (!path.startsWith(root)) return null
+
+    val segments = root.relativize(path).map { segment -> segment.toString() }
+    val srcIndex = segments.indexOf("src")
+    if (srcIndex < 0) return null
+
+    val projectSegments = segments.take(srcIndex)
+    return if (projectSegments.isEmpty()) ":" else projectSegments.joinToString(
+        separator = ":",
+        prefix = ":",
+    )
 }
 
 internal data class IdeaModuleSpec(

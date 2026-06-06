@@ -248,16 +248,16 @@ object OperationDocRegistry {
         OperationDoc(
             operationId = "workspaceFiles",
             jsonRpcMethod = "raw/workspace-files",
-            summary = "List workspace modules and source files",
+            summary = "List workspace modules and optional source files",
             tag = "read",
             capability = "WORKSPACE_FILES",
             requestSchema = "WorkspaceFilesQuery",
             responseSchema = "WorkspaceFilesResult",
-            description = "Lists workspace modules and their source files. Use this " +
-                "to discover the project structure visible to the daemon.",
+            description = "Lists workspace modules and optionally source files. Use this " +
+                "as a secondary scope check after bounded symbol or text queries.",
             behavioralNotes = listOf(
-                "Set `includeFiles` to true to include individual file paths per module.",
-                "Filter by `moduleName` to inspect a single module.",
+                "Leave `includeFiles` false for the bounded module summary.",
+                "When file paths are required, filter by `moduleName` and set a small `maxFilesPerModule`.",
             ),
             cliExample = "kast rpc --request-file=docs/examples/workspaceFiles-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),

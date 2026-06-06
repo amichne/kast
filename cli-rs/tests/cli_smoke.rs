@@ -337,6 +337,14 @@ fn smoke_core_cli_commands() {
         .expect("install skill");
     assert!(skill.status.success());
     assert!(skill_dir.join("kast/SKILL.md").is_file());
+    assert!(skill_dir.join("kast/references/commands.json").is_file());
+    assert!(skill_dir.join("kast/references/quickstart.md").is_file());
+    assert!(
+        skill_dir
+            .join("kast/scripts/validate-rpc-request.py")
+            .is_file()
+    );
+    assert!(skill_dir.join("kast/scripts/resolve-kast.sh").is_file());
 
     let github_dir = temp.path().join(".github");
     let copilot = kast(&home, &config_home)
@@ -1588,5 +1596,32 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(
         !kast_extension.contains("hooks:"),
         "packaged Kast extension must not register Copilot SDK hooks"
+    );
+}
+
+#[test]
+fn repo_local_copilot_extension_is_installed_for_extension_only_use() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repo root");
+    let extension_root = root.join(".github/extensions/kast");
+
+    assert!(
+        extension_root.join("extension.mjs").is_file(),
+        "repo-local Copilot extension entrypoint must exist for extension-only GitHub Copilot use"
+    );
+    assert!(
+        extension_root.join("_shared/kast-tools.mjs").is_file(),
+        "repo-local Copilot extension must include its own tool loader"
+    );
+    assert!(
+        extension_root.join("_shared/commands.json").is_file(),
+        "repo-local Copilot extension must include its own command catalog"
+    );
+    assert!(
+        !root
+            .join(".github/extensions/_shared/commands.json")
+            .exists(),
+        "repo-local extension must not depend on the legacy shared catalog location"
     );
 }

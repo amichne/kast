@@ -64,7 +64,7 @@ Each method listed here is validated against the generated catalog.
 | Block | Use it for | Methods |
 | --- | --- | --- |
 | Check runtime | Confirm the daemon is reachable, ready, and honest about supported work. | `health`<br>`runtime/status`<br>`capabilities` |
-| Choose targets | List files, search symbols or text, and narrow ambiguous names before deeper calls. | `raw/workspace-files`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`symbol/resolve`<br>`raw/file-outline` |
+| Choose targets | Query indexed declarations or bounded symbol/text searches before optional workspace file inspection. | `symbol/query`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`symbol/resolve`<br>`raw/file-outline` |
 | Inspect semantics | Resolve declarations, inspect scopes, and read implementation or completion context. | `raw/resolve`<br>`raw/semantic-insertion-point`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | Trace relationships | Move from one declaration to usages, callers, callees, and type relationships. | `symbol/references`<br>`raw/references`<br>`symbol/callers`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy` |
 | Plan changes | Ask Kast to derive edit plans or generation context before mutating files. | `symbol/scaffold`<br>`symbol/rename`<br>`raw/rename`<br>`raw/optimize-imports` |

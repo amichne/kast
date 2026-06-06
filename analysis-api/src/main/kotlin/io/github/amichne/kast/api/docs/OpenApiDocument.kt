@@ -344,7 +344,7 @@ object OpenApiDocument {
         ),
         "/rpc/raw/workspace-files" to readMethod(
             operationId = "workspaceFiles",
-            summary = "List workspace modules and their source files",
+            summary = "List workspace modules and optional source files",
             method = "raw/workspace-files",
             requestSchema = "WorkspaceFilesQuery",
             responseSchema = "WorkspaceFilesResult",

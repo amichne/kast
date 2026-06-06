@@ -1029,9 +1029,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
-    ??? example "raw/workspace-files — List workspace modules and source files"
+    ??? example "raw/workspace-files — List workspace modules and optional source files"
 
-        Lists workspace modules and their source files. Use this to discover the project structure visible to the daemon.
+        Lists workspace modules and optionally source files. Use this as a secondary scope check after bounded symbol or text queries.
 
         **Capability** &nbsp;·&nbsp; `WORKSPACE_FILES`
 
@@ -1090,8 +1090,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
         !!! note "Behavioral notes"
 
-            - Set `includeFiles` to true to include individual file paths per module.
-            - Filter by `moduleName` to inspect a single module.
+            - Leave `includeFiles` false for the bounded module summary.
+            - When file paths are required, filter by `moduleName` and set a small `maxFilesPerModule`.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 

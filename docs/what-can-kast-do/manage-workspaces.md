@@ -103,16 +103,17 @@ kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{"fi
 
 ## Inspect workspace files (RPC)
 
-`raw/workspace-files` returns the modules, source roots, and files the
-daemon found. Run it when you want to verify the daemon sees what
-you think it sees. File-path enumeration is capped per module so large workspaces
-can inspect scope without forcing the daemon to materialize every path in
-one response.
+`raw/workspace-files` returns the modules, source roots, and optionally files
+the daemon found. Prefer `symbol/query`, `raw/workspace-symbol`, or
+`raw/workspace-search` when you already have a target name or text pattern.
+Run workspace files as a secondary scope check when you need to verify the
+daemon sees a module. Request file paths only for a named module with a small
+cap.
 
 === "CLI"
 
-    ```console title="List workspace files"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-files","params":{"includeFiles":true,"maxFilesPerModule":500}}' \
+    ```console title="List one module summary"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25}}' \
       --workspace-root="$PWD"
     ```
 
@@ -122,8 +123,9 @@ one response.
     {
       "method": "raw/workspace-files",
       "params": {
-        "includeFiles": true,
-        "maxFilesPerModule": 500
+        "moduleName": ":analysis-api",
+        "includeFiles": false,
+        "maxFilesPerModule": 25
       },
       "id": 1, "jsonrpc": "2.0"
     }

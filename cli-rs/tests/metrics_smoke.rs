@@ -568,6 +568,40 @@ fn symbol_query_applies_new_filters_and_reports_filter_evidence() {
 }
 
 #[test]
+fn symbol_query_filters_test_fixtures_by_gradle_module_and_source_set() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let fixture = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        49,
+        serde_json::json!({
+            "query": "FakeAnalysisBackend",
+            "modes": ["lexical", "structural"],
+            "filters": {
+                "gradleProject": ":analysis-api",
+                "modulePath": ":analysis-api",
+                "sourceSet": "testFixtures"
+            },
+            "limit": 10
+        }),
+    );
+
+    assert_eq!(
+        result_fq_names(&fixture),
+        vec!["io.github.amichne.kast.testing.FakeAnalysisBackend".to_string()]
+    );
+    assert_hard_filter_fields(&fixture, ["gradleProject", "modulePath", "sourceSet"]);
+}
+
+#[test]
 fn symbol_query_computes_usage_facets_and_filters_by_them() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -823,6 +857,10 @@ fn seed_source_index(workspace: &std::path::Path) {
         (3, "lib/test"),
         (4, "build-logic"),
         (5, "lib/payments"),
+        (
+            6,
+            "analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing",
+        ),
     ] {
         conn.execute(
             "INSERT INTO path_prefixes VALUES (?, ?)",
@@ -841,6 +879,7 @@ fn seed_source_index(workspace: &std::path::Path) {
         (8, "lib.CardPaymentProcessorTest"),
         (9, "buildlogic.BuildPaymentProcessor"),
         (10, "lib.payments.PaymentBridge"),
+        (11, "io.github.amichne.kast.testing.FakeAnalysisBackend"),
     ] {
         conn.execute(
             "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
@@ -859,6 +898,7 @@ fn seed_source_index(workspace: &std::path::Path) {
         (3, "CardPaymentProcessorTest.kt", ":lib", "test"),
         (4, "BuildPaymentProcessor.kt", ":build-logic", "main"),
         (5, "PaymentBridge.kt", ":lib:payments", "main"),
+        (6, "FakeAnalysisBackend.kt", ":analysis-api", "testFixtures"),
     ] {
         conn.execute(
             "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (?, ?, ?, ?)",
@@ -919,6 +959,15 @@ fn seed_source_index(workspace: &std::path::Path) {
             ":lib:payments",
             "main",
         ),
+        (
+            11,
+            "CLASS",
+            "PUBLIC",
+            6,
+            "FakeAnalysisBackend.kt",
+            ":analysis-api",
+            "testFixtures",
+        ),
     ] {
         conn.execute(
             "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
@@ -962,6 +1011,10 @@ fn seed_source_files(workspace: &std::path::Path) {
     std::fs::create_dir_all(workspace.join("lib/test")).expect("lib test sources");
     std::fs::create_dir_all(workspace.join("build-logic")).expect("build logic sources");
     std::fs::create_dir_all(workspace.join("lib/payments")).expect("lib payments sources");
+    std::fs::create_dir_all(
+        workspace.join("analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing"),
+    )
+    .expect("analysis-api test fixtures sources");
     std::fs::write(
         workspace.join("app/A.kt"),
         r#"package app
@@ -1054,4 +1107,12 @@ class PaymentBridge
 "#,
     )
     .expect("PaymentBridge.kt");
+    std::fs::write(
+        workspace.join("analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt"),
+        r#"package io.github.amichne.kast.testing
+
+class FakeAnalysisBackend
+"#,
+    )
+    .expect("FakeAnalysisBackend.kt");
 }

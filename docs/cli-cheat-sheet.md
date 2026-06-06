@@ -49,7 +49,7 @@ same `filePath` and `offset` into the next request.
 | `raw/file-outline`               | Return a tree of named declarations in a file.                              | `filePath`                                                  |
 | `raw/workspace-symbol`           | Search for symbols by name across the workspace.                            | `pattern`, `regex`, `maxResults`                            |
 | `raw/workspace-search`           | Search workspace file contents by text or regex.                            | `pattern`, `regex`, `caseSensitive`, `fileGlob`             |
-| `raw/workspace-files`            | List workspace modules, source roots, and optional file paths.              | `includeFiles`, `maxFilesPerModule`                         |
+| `raw/workspace-files`            | Secondary module summary and bounded optional file paths.                   | `moduleName`, `includeFiles`, `maxFilesPerModule`            |
 | `raw/semantic-insertion-point`   | Find a safe position to insert new code into a class or file.               | `position`, `target`                                        |
 | `raw/diagnostics`                | Return errors and warnings for one or more files.                           | `filePaths`                                                 |
 | `raw/code-actions`               | Return available code actions at a file position.                           | `position`                                                  |

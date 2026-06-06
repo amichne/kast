@@ -50,7 +50,7 @@ SKILL_DIR="/absolute/path/to/this/skill"
 KAST_REQUEST="$KAST_TMP/request.json"
 KAST_RESULT="$KAST_TMP/kast.json"
 KAST_STDERR="$KAST_TMP/kast.stderr"
-printf '%s\n' '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"includeFiles":true},"id":1}' >"$KAST_REQUEST"
+printf '%s\n' '{"jsonrpc":"2.0","method":"symbol/query","params":{"query":"Widget","modes":["exact","lexical"],"filters":{"relativePathPrefix":"src/"},"limit":10},"id":1}' >"$KAST_REQUEST"
 python3 "$SKILL_DIR/scripts/validate-rpc-request.py" --request-file "$KAST_REQUEST" >"$KAST_TMP/validation.json"
 kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
@@ -59,9 +59,11 @@ Read `KAST_STDERR` only when the command fails.
 
 ## Editor Agent Loop
 
-1. Orient semantically. Use `raw/workspace-files` for module/file shape,
-   `raw/workspace-symbol` for broad symbol lookup, or `raw/workspace-search`
-   for Kotlin literals/comments. Avoid opening many files speculatively.
+1. Orient semantically with tight bounds. Prefer `symbol/query` with
+   `limit`, `filters`, and narrow modes; use `raw/workspace-symbol` for broad
+   symbol lookup or `raw/workspace-search` for Kotlin literals/comments.
+   Keep `raw/workspace-files` as a secondary module-summary tool and request
+   file paths only with `moduleName` and a small `maxFilesPerModule`.
 2. Identify the declaration. Use `symbol/discover` when names are ambiguous or
    when you have file, line, or snippet context. Feed returned `resolveParams`
    into `symbol/resolve`.
@@ -122,7 +124,8 @@ required fields, response types, enum values, or request `type` variants.
 | Need | Preferred route |
 | --- | --- |
 | Warm or inspect a workspace backend | `kast up`, `kast status`, `kast capabilities` |
-| Discover modules and Kotlin files | `kast rpc` method `raw/workspace-files` |
+| Discover indexed declarations with filters | `kast rpc` method `symbol/query` |
+| Discover modules, then optionally bounded files | `kast rpc` method `raw/workspace-files` with `includeFiles=false` unless file paths are required |
 | Fuzzy symbol discovery by name | `kast rpc` method `raw/workspace-symbol` |
 | Guided symbol disambiguation | `kast rpc` method `symbol/discover` |
 | Fuzzy text search in Kotlin source | `kast rpc` method `raw/workspace-search` |
