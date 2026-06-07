@@ -16,6 +16,19 @@ path to your project root. Backend selection can be pinned with
 `--backend-name=headless` or `--backend-name=idea` where the
 command supports it.
 
+## Output modes
+
+Operator commands default to readable Markdown-style summaries so humans can
+see status, next steps, paths, and warnings without parsing JSON. Add
+`--output json` when automation needs the structured payload:
+
+```console title="Machine-readable status"
+kast --output json status --workspace-root="$PWD"
+```
+
+`kast rpc` is the exception: it is the raw JSON-RPC transport and always
+returns the backend contract response on stdout.
+
 ## Workspace lifecycle
 
 The daemon owns Kotlin state. These commands start it, inspect it,
@@ -24,12 +37,12 @@ command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
-| `kast up`               | Start the backend if needed and wait until it is servable.                   | `--workspace-root`, `--backend-name`               |
-| `kast status`           | Report whether a backend is running and what state it is in.                 | `--workspace-root`                                 |
+| `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--workspace-root`, `--backend-name`, `--output`   |
+| `kast status`           | Report whether a backend is running and what state it is in.                 | `--workspace-root`, `--output`                     |
 | `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |
 | `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
-| `kast stop`             | Shut the backend down cleanly.                                               | `--workspace-root`                                 |
-| `kast capabilities`     | Print which JSON-RPC methods this backend supports.                           | `--workspace-root`                                 |
+| `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--workspace-root`, `--output`                     |
+| `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--workspace-root`, `--output`                     |
 | `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 
 ## Read operations
@@ -86,14 +99,31 @@ projection.
 | `symbol/write-and-validate`   | Apply generated Kotlin code and validate the result.           | request `type`, file target, edit content               |
 | `database/metrics`            | Query Rust-owned source-index metrics without a running daemon. | `metric`, optional filters                              |
 
+## Direct source-index commands
+
+The `metrics` commands read `source-index.db` directly through the Rust CLI.
+They print readable summaries by default and preserve full rows with
+`--output json`.
+
+| Command | What it does | Common flags |
+|---------|--------------|--------------|
+| `kast metrics fan-in` | Rank symbols by incoming references. | `--workspace-root`, `--database`, `--limit`, `--output` |
+| `kast metrics fan-out` | Rank files by outgoing references. | `--workspace-root`, `--database`, `--limit`, `--output` |
+| `kast metrics dead-code` | List declarations with no inbound reference rows. | `--workspace-root`, `--file-glob`, `--folder-filter`, `--output` |
+| `kast metrics impact <symbol>` | Walk files and symbols affected by a symbol change. | `--workspace-root`, `--depth`, `--output` |
+| `kast metrics coupling` | Report cross-module references. | `--workspace-root`, `--database`, `--output` |
+| `kast metrics search <query>` | Search indexed symbols by name. | `--workspace-root`, `--limit`, `--output` |
+| `kast metrics graph <symbol>` | Open the interactive graph, or print readable/JSON output outside a TTY. | `--workspace-root`, `--depth`, `--json`, `--output` |
+
 ## Command tiers
 
 Not every command targets the same audience. `kast` organizes
 its surface into two tiers — both fully supported.
 
 **Tier 1 (primary path):** `up`, `status`, `stop`, `capabilities`,
-and `rpc`. The default operational flow starts or checks a
-workspace session, then sends explicit JSON-RPC requests.
+and `rpc`. The default operational flow starts or checks a workspace session
+with readable CLI summaries, then sends explicit JSON-RPC requests for
+compiler-backed analysis.
 
 **Tier 2 (specialized RPC methods):** the `raw/*`, `symbol/*`, and
 `database/*` method families. Use them for semantic navigation,

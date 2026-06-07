@@ -7,6 +7,7 @@ mod error;
 mod install;
 mod metrics;
 mod metrics_database;
+mod output;
 mod rpc;
 mod runtime;
 mod self_mgmt;
@@ -16,34 +17,62 @@ mod symbol_query;
 mod symbol_query_filters;
 
 use clap::{CommandFactory, Parser};
-use cli::{Cli, Command};
+use cli::{Cli, Command, OutputFormat, ShellKind};
 use error::{CliError, Result};
-use std::io::{self, Write};
+use std::io;
 
 const SCHEMA_VERSION: u32 = 3;
 
 fn main() {
-    let exit_code = match run() {
-        Ok(code) => code,
+    let exit_code = match parse_cli() {
+        Ok(Some(cli)) => {
+            let output_format = cli.output;
+            match run(cli) {
+                Ok(code) => code,
+                Err(error) => {
+                    let _ = output::print_error(&error, output_format);
+                    1
+                }
+            }
+        }
+        Ok(None) => 0,
         Err(error) => {
-            let response = error.to_response();
-            let _ = serde_json::to_writer_pretty(io::stderr(), &response);
-            let _ = writeln!(io::stderr());
+            let _ = output::print_error(&error, requested_output_format());
             1
         }
     };
     std::process::exit(exit_code);
 }
 
-fn run() -> Result<i32> {
-    let cli = match Cli::try_parse() {
-        Ok(cli) => cli,
+fn parse_cli() -> Result<Option<Cli>> {
+    match Cli::try_parse() {
+        Ok(cli) => Ok(Some(cli)),
         Err(error) if !error.use_stderr() => {
             error.print()?;
-            return Ok(0);
+            Ok(None)
         }
-        Err(error) => return Err(CliError::from_clap(error)),
-    };
+        Err(error) => Err(CliError::from_clap(error)),
+    }
+}
+
+fn requested_output_format() -> OutputFormat {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--output" {
+            if args.next().as_deref() == Some("json") {
+                return OutputFormat::Json;
+            }
+            continue;
+        }
+        if arg == "--output=json" {
+            return OutputFormat::Json;
+        }
+    }
+    OutputFormat::Human
+}
+
+fn run(cli: Cli) -> Result<i32> {
+    let output_format = cli.output;
     match cli.command.unwrap_or(Command::Help { topic: vec![] }) {
         Command::Help { topic } => {
             if topic.is_empty() {
@@ -70,8 +99,11 @@ fn run() -> Result<i32> {
         },
         Command::Backend { command } => {
             let result = backend::run(command)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_backend_result(&result)?;
+            }
             Ok(0)
         }
         Command::Rpc(args) => {
@@ -81,65 +113,122 @@ fn run() -> Result<i32> {
         }
         Command::Up(args) => {
             let result = runtime::workspace_ensure(args)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_workspace_ensure(&result)?;
+            }
             Ok(0)
         }
         Command::Status(args) => {
             let result = runtime::workspace_status(args)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_workspace_status(&result)?;
+            }
             Ok(0)
         }
         Command::Stop(args) => {
             let result = runtime::workspace_stop(args)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_stop_result(&result)?;
+            }
             Ok(0)
         }
         Command::Capabilities(args) => {
             let result = runtime::capabilities(args)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_capabilities(&result)?;
+            }
             Ok(0)
         }
         Command::Demo(args) => demo::run(args),
-        Command::Metrics { command } => metrics::run(command),
+        Command::Metrics { command } => metrics::run(command, output_format),
+        Command::Install(args)
+            if matches!(args.command, Some(cli::InstallCommand::Completion(_))) =>
+        {
+            let Some(cli::InstallCommand::Completion(completion_args)) = args.command else {
+                unreachable!("install completion guard should only match completion commands")
+            };
+            print_completion(completion_args);
+            Ok(0)
+        }
         Command::Install(args) => {
             let result = install::install(args)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_install_result(&result)?;
+            }
             Ok(0)
         }
         Command::Current { command } => {
             let result = install::current(command)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_current_component(&result)?;
+            }
             Ok(0)
         }
         Command::Info => {
             let result = self_mgmt::status()?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_self_status(&result)?;
+            }
             Ok(0)
         }
         Command::Doctor => {
             let result = self_mgmt::doctor()?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_doctor(&result)?;
+            }
             Ok(if result.ok { 0 } else { 1 })
         }
         Command::Uninstall(args) => {
             let result = install::uninstall(args)?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_uninstall_result(&result)?;
+            }
             Ok(0)
         }
         Command::VerifyExtension => {
             let result = install::verify_extension()?;
-            serde_json::to_writer_pretty(io::stdout(), &result)?;
-            println!();
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_verify_extension(&result)?;
+            }
             Ok(if result.ok { 0 } else { 1 })
         }
+    }
+}
+
+fn print_completion(args: cli::CompletionArgs) {
+    let mut command = Cli::command();
+    let command_name = args.command_name.unwrap_or_else(|| "kast".to_string());
+    clap_complete::generate(
+        completion_shell(args.shell),
+        &mut command,
+        command_name,
+        &mut io::stdout(),
+    );
+}
+
+fn completion_shell(shell: ShellKind) -> clap_complete::Shell {
+    match shell {
+        ShellKind::Bash => clap_complete::Shell::Bash,
+        ShellKind::Zsh => clap_complete::Shell::Zsh,
     }
 }

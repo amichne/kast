@@ -99,7 +99,7 @@ kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 # Agent-readable symbol graph snapshot
-kast demo --workspace-root "$PWD" --query EventBean --json \
+kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 

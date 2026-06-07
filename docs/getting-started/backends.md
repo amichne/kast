@@ -72,10 +72,14 @@ How a session unfolds:
 1. You run `kast up --workspace-root="$PWD"` somewhere. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm. If the backend is missing, `kast up`
-   reports the exact `kast install headless` command.
+   reports the exact `kast install headless` command in a readable error
+   summary.
 2. You run more `kast` commands against the same workspace. The CLI
    finds the running backend and reuses it.
 3. The daemon stays alive. No cold starts between commands.
+
+Add `--output json` to lifecycle commands when automation needs the full
+descriptor payload instead of the readable summary.
 
 The packaged Copilot extension also runs
 `kast up --accept-indexing=true` at session start, so agent
@@ -141,8 +145,9 @@ sourceIndexUrl = "file:///absolute/path/to/source-index.db"
 ## Capability surface
 
 Today, both backends advertise the same capabilities. Run
-`kast capabilities` to confirm what's supported on the backend you're
-talking to.
+`kast capabilities` to summarize what's supported on the backend you're
+talking to, or `kast --output json capabilities` for the full machine-readable
+payload.
 
 ## How the CLI picks a backend
 
@@ -160,8 +165,8 @@ to return as soon as the daemon is servable. Read commands like `resolve` and
 `references` never start a backend implicitly — they fail fast. So: run `up`
 first, or open the project in IDEA or Android Studio with the plugin installed.
 
-`kast status` reports backend state and helps you debug
-connection issues.
+`kast status` reports backend state, selected runtime details, and actionable
+next steps when no daemon is available.
 
 ## Running multiple runtimes
 

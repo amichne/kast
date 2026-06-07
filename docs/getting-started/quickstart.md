@@ -6,9 +6,10 @@ icon: lucide/zap
 
 # Quickstart
 
-By the end of this page you'll have asked the daemon two questions —
-"what symbol is this?" and "who uses it?" — and gotten structured JSON
-back, with proof the search finished.
+By the end of this page you'll have started a readable CLI session, then
+asked the daemon two compiler-backed questions: "what symbol is this?" and
+"who uses it?" The lifecycle commands print Markdown-style summaries by
+default; raw analysis requests still return JSON-RPC payloads.
 
 The walkthrough uses the headless backend because it works anywhere:
 your terminal, a CI runner, an agent loop. If IDEA or Android Studio is already
@@ -56,12 +57,28 @@ sequenceDiagram
     Daemon->>K2: Bootstrap session
     K2-->>Daemon: Indexing complete
     Daemon-->>CLI: READY
-    CLI-->>You: JSON result with runtime metadata
+    CLI-->>You: Markdown status summary
 ```
 
 The first start indexes every Kotlin file. Later commands reuse the warm
 state — the cost you pay here buys you fast lookups for the rest of the
 session.
+
+The default output is meant to be read:
+
+```markdown title="Example output"
+# Kast up
+
+- Workspace: `/workspace`
+- Started new daemon: yes
+
+## Selected runtime
+- Backend: `headless`
+- Runtime state: `READY`
+```
+
+Use `--output json` on lifecycle and install commands when a script needs
+the original structured payload.
 
 !!! tip
     Pass `--accept-indexing=true` to return as soon as the daemon can
@@ -163,11 +180,12 @@ Four commands. You:
    session.
 2. Resolved a cursor position to a real declaration with type info — no
    string match.
-3. Got every reference back, with proof the search was exhaustive.
+3. Got every reference back as JSON-RPC, with proof the search was exhaustive.
 4. Shut the daemon down cleanly.
 
-Every response is structured JSON. No regex, no guessing, no "we might
-have missed some."
+The CLI defaults to readable summaries for lifecycle work and keeps JSON
+where JSON is the contract: `kast rpc` and explicit `--output json` calls.
+No regex, no guessing, no "we might have missed some."
 
 ## Next steps
 

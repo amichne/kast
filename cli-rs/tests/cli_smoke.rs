@@ -274,7 +274,14 @@ fn smoke_core_cli_commands() {
         .expect("install help");
     assert!(install_help.status.success());
     let install_help_stdout = String::from_utf8_lossy(&install_help.stdout);
-    for command in ["plugin", "headless", "skill", "copilot"] {
+    for command in [
+        "plugin",
+        "headless",
+        "skill",
+        "copilot",
+        "shell",
+        "completion",
+    ] {
         assert!(
             install_help_stdout.contains(command),
             "install help should list {command}: {install_help_stdout}"
@@ -295,6 +302,20 @@ fn smoke_core_cli_commands() {
             "install {command} help should expose -f/--force: {stdout}"
         );
     }
+    let shell_help = kast(&home, &config_home)
+        .args(["install", "shell", "--help"])
+        .output()
+        .expect("install shell help");
+    assert!(shell_help.status.success());
+    let shell_help_stdout = String::from_utf8_lossy(&shell_help.stdout);
+    assert!(
+        shell_help_stdout.contains("--shell"),
+        "install shell help should expose --shell: {shell_help_stdout}"
+    );
+    assert!(
+        shell_help_stdout.contains("--profile"),
+        "install shell help should expose --profile: {shell_help_stdout}"
+    );
     let current_help = kast(&home, &config_home)
         .args(["current", "--help"])
         .output()
@@ -314,7 +335,8 @@ fn smoke_core_cli_commands() {
         .expect("demo help");
     assert!(demo_help.status.success());
     let demo_help_stdout = String::from_utf8_lossy(&demo_help.stdout);
-    assert!(demo_help_stdout.contains("symbol-walking demo"));
+    assert!(demo_help_stdout.contains("source-index demo"));
+    assert!(demo_help_stdout.contains("compare"));
     assert!(!demo_help_stdout.contains("--no-fallback"));
 
     let config = kast(&home, &config_home)
@@ -397,6 +419,8 @@ fn smoke_core_cli_commands() {
 
     let status = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "status",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -405,6 +429,239 @@ fn smoke_core_cli_commands() {
         .expect("status");
     assert!(status.status.success());
     assert!(String::from_utf8_lossy(&status.stdout).contains("\"candidates\": []"));
+}
+
+#[test]
+fn install_completion_command_renders_shell_completion_scripts() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let bash = kast(&home, &config_home)
+        .args(["install", "completion", "bash"])
+        .output()
+        .expect("bash completion");
+    assert!(
+        bash.status.success(),
+        "bash completion should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&bash.stdout),
+        String::from_utf8_lossy(&bash.stderr)
+    );
+    let bash_stdout = String::from_utf8_lossy(&bash.stdout);
+    assert!(
+        bash_stdout.contains("complete"),
+        "bash completion should register a completion function: {bash_stdout}"
+    );
+    assert!(
+        bash_stdout.contains("kast"),
+        "bash completion should target the kast command: {bash_stdout}"
+    );
+
+    let zsh = kast(&home, &config_home)
+        .args(["install", "completion", "zsh", "--command-name", "kast-dev"])
+        .output()
+        .expect("zsh completion");
+    assert!(
+        zsh.status.success(),
+        "zsh completion should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&zsh.stdout),
+        String::from_utf8_lossy(&zsh.stderr)
+    );
+    let zsh_stdout = String::from_utf8_lossy(&zsh.stdout);
+    assert!(
+        zsh_stdout.contains("#compdef kast-dev"),
+        "zsh completion should use the requested command name: {zsh_stdout}"
+    );
+}
+
+#[test]
+fn install_shell_writes_path_and_completion_profile_integration() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let install_root = temp.path().join("kast-install");
+    let profile = temp.path().join(".zshrc");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            r#"[paths]
+installRoot = "{}"
+"#,
+            install_root.display()
+        ),
+    )
+    .expect("config");
+
+    let install = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "shell",
+            "--shell",
+            "zsh",
+            "--profile",
+            profile.to_str().expect("profile path"),
+            "--command-name",
+            "kast-dev",
+        ])
+        .output()
+        .expect("install shell");
+    assert!(
+        install.status.success(),
+        "install shell should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install shell json");
+    assert_eq!(stdout["shell"], "zsh");
+    assert_eq!(stdout["commandName"], "kast-dev");
+    assert_eq!(
+        stdout["binDir"],
+        install_root.join("bin").display().to_string()
+    );
+    assert_eq!(stdout["profileUpdated"], true);
+
+    let source_file = PathBuf::from(stdout["sourceFile"].as_str().expect("source file"));
+    let source = std::fs::read_to_string(&source_file).expect("source file content");
+    assert!(
+        source.contains(&format!(
+            "export KAST_CONFIG_HOME={}",
+            shell_single_quote(config_home.to_str().expect("config path"))
+        )),
+        "source file should export the active config home: {source}"
+    );
+    assert!(
+        source.contains(&format!(
+            "_kast_bin_dir={}",
+            shell_single_quote(&install_root.join("bin").display().to_string())
+        )),
+        "source file should store the configured bin directory: {source}"
+    );
+    assert!(
+        source.contains("export PATH=\"${_kast_bin_dir}:${PATH}\""),
+        "source file should prepend the configured bin directory: {source}"
+    );
+    assert!(
+        source.contains("kast-dev install completion zsh --command-name kast-dev"),
+        "source file should wire completions for kast-dev: {source}"
+    );
+
+    let profile_content = std::fs::read_to_string(&profile).expect("profile content");
+    assert!(
+        profile_content.contains("# >>> kast shell integration >>>"),
+        "profile should contain a managed block: {profile_content}"
+    );
+    assert!(
+        profile_content.contains(&format!(
+            "source {}",
+            shell_single_quote(source_file.to_str().expect("source file path"))
+        )),
+        "profile should source the managed integration file: {profile_content}"
+    );
+}
+
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+#[test]
+fn help_topic_dumps_selected_command_help() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let help = kast(&home, &config_home)
+        .args(["help", "install", "headless"])
+        .output()
+        .expect("help topic");
+
+    assert!(
+        help.status.success(),
+        "help topic should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&help.stdout),
+        String::from_utf8_lossy(&help.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    assert!(
+        stdout.contains("Install the headless JVM backend"),
+        "selected help should include the command description: {stdout}"
+    );
+    assert!(
+        stdout.contains("--archive"),
+        "selected help should include the command flags: {stdout}"
+    );
+    assert!(
+        !stdout.contains("Help topic:"),
+        "topic help should not use the placeholder renderer: {stdout}"
+    );
+}
+
+#[test]
+fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let human = kast(&home, &config_home)
+        .args([
+            "status",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("status human");
+
+    assert!(
+        human.status.success(),
+        "human status should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&human.stdout),
+        String::from_utf8_lossy(&human.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&human.stdout);
+    assert!(
+        stdout.starts_with("# Kast status\n"),
+        "status should default to a readable Markdown-style summary: {stdout}"
+    );
+    assert!(
+        stdout.contains("No runtime candidates were found."),
+        "status should include an actionable empty-state message: {stdout}"
+    );
+    assert!(
+        serde_json::from_slice::<serde_json::Value>(&human.stdout).is_err(),
+        "default status output should not be JSON"
+    );
+
+    let json = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "status",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("status json");
+
+    assert!(
+        json.status.success(),
+        "json status should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&json.stdout),
+        String::from_utf8_lossy(&json.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&json.stdout).expect("status json");
+    assert_eq!(
+        stdout["candidates"].as_array().expect("candidates").len(),
+        0
+    );
 }
 
 #[test]
@@ -430,6 +687,8 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -479,6 +738,8 @@ fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract()
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -527,6 +788,8 @@ fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -575,6 +838,8 @@ fn backend_install_downloaded_archive_requires_sha256sums() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -618,6 +883,8 @@ fn backend_install_downloaded_archive_requires_provenance() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -648,6 +915,8 @@ fn backend_install_headless_archive_configures_runtime_and_install_state() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -699,6 +968,8 @@ fn install_headless_gateway_and_current_report_installed_version() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "install",
             "headless",
             "--archive",
@@ -722,7 +993,7 @@ fn install_headless_gateway_and_current_report_installed_version() {
     assert_eq!(stdout["version"], "v9.8.7");
 
     let current = kast(&home, &config_home)
-        .args(["current", "headless"])
+        .args(["--output", "json", "current", "headless"])
         .output()
         .expect("current headless");
 
@@ -760,6 +1031,8 @@ fn backend_uninstall_removes_headless_component() {
     let archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "backend",
             "install",
             "headless",
@@ -778,7 +1051,7 @@ fn backend_uninstall_removes_headless_component() {
     );
 
     let uninstall = kast(&home, &config_home)
-        .args(["backend", "uninstall", "headless"])
+        .args(["--output", "json", "backend", "uninstall", "headless"])
         .output()
         .expect("backend uninstall");
     assert!(
@@ -826,10 +1099,7 @@ fn up_without_installed_backend_reports_exact_backend_install_command() {
         "up should fail without an installed backend"
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
-    assert!(
-        stderr.contains("\"code\": \"NO_BACKEND_AVAILABLE\""),
-        "{stderr}"
-    );
+    assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
     assert!(
         stderr.contains("kast install headless"),
         "stderr should include exact install command: {stderr}"
@@ -994,7 +1264,7 @@ fn idea_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
 
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
-        .args(["install", "idea-plugin", "--dry-run"])
+        .args(["--output", "json", "install", "idea-plugin", "--dry-run"])
         .output()
         .expect("install idea plugin");
 
@@ -1032,6 +1302,8 @@ fn plugin_install_gateway_downloads_with_progress_on_stderr() {
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
         .args([
+            "--output",
+            "json",
             "install",
             "plugin",
             "--download-dir",
@@ -1079,7 +1351,7 @@ fn current_plugin_reports_homebrew_cask_version() {
     let current = kast(&home, &config_home)
         .env("PATH", &brew_bin)
         .env("KAST_FAKE_BREW_CASK_VERSION", "9.8.7")
-        .args(["current", "plugin"])
+        .args(["--output", "json", "current", "plugin"])
         .output()
         .expect("current plugin");
 
@@ -1112,6 +1384,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
 
     let skill = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "install",
             "skill",
             "--target-dir",
@@ -1134,6 +1408,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
     std::fs::write(stale_skill.join("force-removes.txt"), b"stale\n").expect("force marker");
     let forced_skill = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "install",
             "skill",
             "--target-dir",
@@ -1155,6 +1431,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
 
     let current_skill = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "current",
             "skill",
             "--target-dir",
@@ -1176,6 +1454,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
 
     let copilot = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "install",
             "copilot",
             "--target-dir",
@@ -1196,6 +1476,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
 
     let current_copilot = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "current",
             "copilot",
             "--target-dir",
@@ -1233,6 +1515,8 @@ fn idea_plugin_link_flag_uses_profile_install_mode() {
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
         .args([
+            "--output",
+            "json",
             "install",
             "idea-plugin",
             "--link-jetbrains-profiles",
@@ -1389,7 +1673,7 @@ schemaVersion = 3
     .expect("config");
 
     let doctor = kast(&home, &config_home)
-        .arg("doctor")
+        .args(["--output", "json", "doctor"])
         .output()
         .expect("doctor");
 
@@ -1442,7 +1726,7 @@ runtimeLibsDir = "{}"
     .expect("config");
 
     let doctor = kast(&home, &config_home)
-        .arg("doctor")
+        .args(["--output", "json", "doctor"])
         .output()
         .expect("doctor");
     let stdout = String::from_utf8_lossy(&doctor.stdout);
@@ -1468,6 +1752,8 @@ fn archive_install_writes_config_owned_install_state() {
 
     let install = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "install",
             "--archive",
             archive.to_str().expect("archive path"),
@@ -1490,7 +1776,7 @@ fn archive_install_writes_config_owned_install_state() {
     assert!(!home.join(".kast/.manifest.json").exists());
 
     let info = kast(&home, &config_home)
-        .arg("info")
+        .args(["--output", "json", "info"])
         .output()
         .expect("info");
     assert!(info.status.success());
@@ -1499,7 +1785,7 @@ fn archive_install_writes_config_owned_install_state() {
     assert!(stdout.contains("\"install\""), "{stdout}");
 
     let doctor = kast(&home, &config_home)
-        .arg("doctor")
+        .args(["--output", "json", "doctor"])
         .output()
         .expect("doctor");
     assert!(
@@ -1510,7 +1796,7 @@ fn archive_install_writes_config_owned_install_state() {
     );
 
     let uninstall = kast(&home, &config_home)
-        .arg("uninstall")
+        .args(["--output", "json", "uninstall"])
         .output()
         .expect("uninstall");
     assert!(
@@ -1557,7 +1843,7 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("kast demo"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(routing_builder.contains("\"expected_route\": \"rust-kast-cli\""));
-    assert!(routing_builder.contains("kast demo --json"));
+    assert!(routing_builder.contains("kast demo --view symbol --json"));
     assert!(!skill.contains("JVM CLI"));
     assert!(!skill.contains("Kotlin serialization models"));
     assert!(!skill.contains("KAST_CLI_PATH"));

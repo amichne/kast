@@ -573,7 +573,7 @@ def build_promotion_candidates(cases: list[RoutingCase]) -> dict[str, object]:
                     "kast rpc symbol/references",
                     "kast rpc symbol/callers",
                     "kast metrics",
-                    "kast demo --json",
+                    "kast demo --view symbol --json",
                 ],
                 "forbidden_ops": ["grep", "rg"],
                 "stage": "candidate",
