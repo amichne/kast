@@ -146,8 +146,8 @@ internal class IdeaProjectIndexer(
             ).map { (path, _) -> path }
     }
 
-    private fun discoverModuleSpecs(): List<IdeaModuleSpec> =
-        ModuleManager.getInstance(project).modules
+    private fun discoverModuleSpecs(): List<IdeaModuleSpec> {
+        val moduleSpecs = ModuleManager.getInstance(project).modules
             .sortedBy(::indexedModuleNameForModule)
             .map { module ->
                 val rootManager = ModuleRootManager.getInstance(module)
@@ -156,9 +156,11 @@ internal class IdeaProjectIndexer(
                     dependencyModuleNames = rootManager.dependencies.map(::indexedModuleNameForModule).sorted(),
                 )
             }
+        return mergeModuleSpecsByName(moduleSpecs)
+    }
 
     private fun buildIdeaDependencyGraph(moduleSpecs: List<IdeaModuleSpec>): Map<String, Set<String>> =
-        moduleSpecs
+        mergeModuleSpecsByName(moduleSpecs)
             .associate { module ->
                 module.name to module.dependencyModuleNames.toSet()
             }
@@ -241,6 +243,21 @@ internal data class IdeaModuleSpec(
     val dependencyModuleNames: List<String>,
 )
 
+internal fun mergeModuleSpecsByName(moduleSpecs: List<IdeaModuleSpec>): List<IdeaModuleSpec> =
+    moduleSpecs
+        .groupBy(IdeaModuleSpec::name)
+        .map { (name, specs) ->
+            IdeaModuleSpec(
+                name = name,
+                dependencyModuleNames = specs
+                    .flatMap(IdeaModuleSpec::dependencyModuleNames)
+                    .filterNot { dependencyName -> dependencyName == name }
+                    .toSortedSet()
+                    .toList(),
+            )
+        }
+        .sortedBy(IdeaModuleSpec::name)
+
 internal fun computeModulePriorityOrder(
     activeModule: String?,
     moduleSpecs: List<IdeaModuleSpec>,
@@ -249,9 +266,10 @@ internal fun computeModulePriorityOrder(
 ): List<String> {
     if (depth < 0) return emptyList()
 
-    val moduleNames = moduleSpecs.mapTo(mutableSetOf()) { it.name }.sorted()
+    val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
+    val moduleNames = mergedModuleSpecs.mapTo(mutableSetOf()) { it.name }.sorted()
     if (activeModule == null || activeModule !in moduleNames) {
-        return topologicallySortModules(moduleSpecs)
+        return topologicallySortModules(mergedModuleSpecs)
     }
 
     val priorityModules = linkedSetOf<String>()
@@ -270,17 +288,18 @@ internal fun computeModulePriorityOrder(
             }
     }
 
-    return (priorityModules + topologicallySortModules(moduleSpecs).filterNot { it in priorityModules }).toList()
+    return (priorityModules + topologicallySortModules(mergedModuleSpecs).filterNot { it in priorityModules }).toList()
 }
 
 private fun topologicallySortModules(moduleSpecs: List<IdeaModuleSpec>): List<String> {
-    val modulesByName = moduleSpecs.associateBy(IdeaModuleSpec::name)
-    val incomingEdges = moduleSpecs
+    val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
+    val modulesByName = mergedModuleSpecs.associateBy(IdeaModuleSpec::name)
+    val incomingEdges = mergedModuleSpecs
         .associate { spec -> spec.name to spec.dependencyModuleNames.toMutableSet() }
         .toMutableMap()
 
     val outgoingEdges = linkedMapOf<String, MutableSet<String>>()
-    for (spec in moduleSpecs) {
+    for (spec in mergedModuleSpecs) {
         for (dependencyName in spec.dependencyModuleNames) {
             if (!modulesByName.containsKey(dependencyName)) {
                 continue
@@ -292,7 +311,7 @@ private fun topologicallySortModules(moduleSpecs: List<IdeaModuleSpec>): List<St
     }
 
     val readyNames = ArrayDeque(
-        moduleSpecs
+        mergedModuleSpecs
             .filter { spec -> incomingEdges.getValue(spec.name).isEmpty() }
             .map(IdeaModuleSpec::name)
             .sorted(),

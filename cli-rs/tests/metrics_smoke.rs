@@ -187,6 +187,26 @@ fn reads_metrics_directly_from_source_index_db() {
         "compare demo should show lexical-only candidates: {demo_short_search_json}"
     );
     assert!(
+        !demo_short_search_json["snapshot"]["leftPane"]["rows"]
+            .as_array()
+            .expect("lexical rows")
+            .iter()
+            .any(|row| row["fqName"] == Value::String("app.A".to_string())),
+        "lexical identifier hits in A.kt must not be attributed to the app.A declaration: {demo_short_search_json}"
+    );
+    assert!(
+        demo_short_search_json["snapshot"]["leftPane"]["rows"]
+            .as_array()
+            .expect("lexical rows")
+            .iter()
+            .any(|row| row["label"] == Value::String("Foo".to_string())
+                && row["fqName"].is_null()
+                && row["path"]
+                    .as_str()
+                    .is_some_and(|path| path.ends_with("app/A.kt"))),
+        "compare demo should keep source tokens as lexical rows: {demo_short_search_json}"
+    );
+    assert!(
         demo_short_search_json["snapshot"]["filters"]["chips"]
             .as_array()
             .expect("filter chips")
@@ -195,9 +215,13 @@ fn reads_metrics_directly_from_source_index_db() {
                 && chip["selected"] == Value::String("any".to_string())),
         "compare demo should expose compact filter chips: {demo_short_search_json}"
     );
-    assert_eq!(
-        demo_short_search_json["snapshot"]["diffBuckets"]["lexicalOnly"][0]["label"],
-        Value::String("FooNotes".to_string())
+    assert!(
+        demo_short_search_json["snapshot"]["diffBuckets"]["lexicalOnly"]
+            .as_array()
+            .expect("lexical-only diff bucket")
+            .iter()
+            .any(|row| row["label"] == Value::String("FooNotes".to_string())),
+        "compare diff should include lexical-only FooNotes: {demo_short_search_json}"
     );
     assert!(
         demo_short_search_json["snapshot"]["preview"]["title"]
@@ -973,6 +997,11 @@ fn seed_source_index(workspace: &std::path::Path) {
         [],
     )
     .expect("lexical-only identifier");
+    conn.execute(
+        "INSERT INTO identifier_paths(identifier, prefix_id, filename) VALUES ('Foo', 1, 'A.kt')",
+        [],
+    )
+    .expect("lexical token in source file");
     for (fq_id, kind, visibility, prefix, filename, module, source_set) in [
         (1, "CLASS", "PUBLIC", 1, "A.kt", ":app", "main"),
         (2, "CLASS", "PUBLIC", 1, "B.kt", ":app", "main"),

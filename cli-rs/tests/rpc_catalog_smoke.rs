@@ -379,6 +379,14 @@ fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
     assert!(!extension_source.contains("from \"../_shared/"));
     assert!(!extension_source.contains("--yes=true"));
     assert!(!extension_source.contains("join(REPO_ROOT, \".github\", \".kast-copilot-version\")"));
+    assert!(
+        extension_source.contains("help rpc"),
+        "resolver should validate the CLI command surface without requiring a backend"
+    );
+    assert!(
+        !extension_source.contains("\"method\":\"health\""),
+        "resolver must not reject a valid CLI just because the backend is unavailable"
+    );
 }
 
 #[test]
