@@ -261,6 +261,31 @@ Download the plugin zip and install it from disk:
     IDE's K2 analysis session, project model, and indexes. Install the
     CLI separately if you also want a terminal entry point.
 
+## Install a local development build
+
+From a repository checkout, use the development install task to build the
+debug Rust CLI, install it as `kast-dev`, wire shell integration for that
+binary, build the IDEA plugin, and replace the plugin in your newest local
+IntelliJ IDEA profile:
+
+```console title="Install local development CLI and plugin"
+./gradlew installDevelopmentLocal
+```
+
+Use properties when Gradle should target a specific shell profile or IDE
+profile:
+
+```console title="Install into explicit local targets"
+./gradlew installDevelopmentLocal \
+  -PkastDevShell=zsh \
+  -PkastDevShellProfile="$HOME/.zshrc" \
+  -PkastDevJetBrainsProfile=IntelliJIdea2025.3
+```
+
+If auto-detection is not enough, pass the plugins directory directly with
+`-PkastDevJetBrainsPluginsDir="<profile>/plugins"`. Restart the IDE after
+replacing the plugin.
+
 ## Install shell integration
 
 Use `kast install shell` to add the configured `binDir` to your `PATH`,
@@ -279,12 +304,11 @@ file under `KAST_CONFIG_HOME/shell`.
     kast install shell --shell zsh
     ```
 
-For a local development CLI installed with `./gradlew installDevelopmentCli`,
-run the development binary once so the generated profile block targets
-`kast-dev`:
+For only a local development CLI, use `installDevelopmentShell` so the
+generated profile block targets `kast-dev`:
 
 ```console title="Install kast-dev shell integration"
-~/.kast/bin/kast-dev install shell --shell zsh
+./gradlew installDevelopmentShell -PkastDevShell=zsh
 ```
 
 If you only need completion code for packaging or manual sourcing, print it
