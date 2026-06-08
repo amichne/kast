@@ -117,7 +117,7 @@ tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-runtime-verify.XXXXXX")"
 workspace_root="${tmp_dir}/workspace"
 mkdir -p "$workspace_root"
 
-up_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" up --workspace-root "$workspace_root" --accept-indexing=true)"
+up_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" --output json up --workspace-root "$workspace_root" --accept-indexing=true)"
 python3 - "$up_output" <<'PY'
 import json
 import sys
