@@ -48,4 +48,48 @@ class IdeaProjectIndexerModuleNameTest {
 
         assertEquals("scratch", moduleName)
     }
+
+    @Test
+    fun `module priority order merges duplicate indexed module specs before sorting`() {
+        val specs = listOf(
+            IdeaModuleSpec(":analysis-api", listOf(":build-logic")),
+            IdeaModuleSpec(":analysis-api", listOf(":index-store")),
+            IdeaModuleSpec(":build-logic", emptyList()),
+            IdeaModuleSpec(":index-store", emptyList()),
+        )
+
+        val order = computeModulePriorityOrder(
+            activeModule = null,
+            moduleSpecs = specs,
+            dependentModuleGraph = emptyMap(),
+            depth = 2,
+        )
+
+        assertEquals(
+            listOf(":build-logic", ":index-store", ":analysis-api"),
+            order,
+        )
+    }
+
+    @Test
+    fun `module priority order ignores self dependencies introduced by duplicate source set modules`() {
+        val specs = listOf(
+            IdeaModuleSpec(":analysis-api", listOf(":analysis-api", ":index-store")),
+            IdeaModuleSpec(":analysis-api", listOf(":build-logic")),
+            IdeaModuleSpec(":build-logic", emptyList()),
+            IdeaModuleSpec(":index-store", emptyList()),
+        )
+
+        val order = computeModulePriorityOrder(
+            activeModule = null,
+            moduleSpecs = specs,
+            dependentModuleGraph = emptyMap(),
+            depth = 2,
+        )
+
+        assertEquals(
+            listOf(":build-logic", ":index-store", ":analysis-api"),
+            order,
+        )
+    }
 }

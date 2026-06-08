@@ -175,7 +175,7 @@ async function resolveKastBinary() {
 
   const rejected = [];
   for (const candidate of candidates) {
-    if (await supportsWrapperCommands(candidate)) {
+    if (await supportsKastCli(candidate)) {
       kastBinary = candidate;
       return candidate;
     }
@@ -183,21 +183,16 @@ async function resolveKastBinary() {
   }
 
   resolveError = rejected.length
-    ? `no resolved Rust kast CLI supports kast rpc; rejected: ${rejected.join(", ")}`
+    ? `no resolved Rust kast CLI exposes kast commands; rejected: ${rejected.join(", ")}`
     : "no Rust kast CLI candidate found; build cli-rs or install a matching Kast release";
   return null;
 }
 
-async function supportsWrapperCommands(path) {
-  const cmd = `${JSON.stringify(path)} rpc '{"jsonrpc":"2.0","method":"health","id":1}' --workspace-root=${JSON.stringify(REPO_ROOT)}`;
-  const { ok, stdout } = await execBash(cmd);
-  if (!ok) return false;
-  try {
-    const parsed = JSON.parse(stdout.trim());
-    return parsed?.jsonrpc === "2.0" && Object.prototype.hasOwnProperty.call(parsed, "result");
-  } catch {
-    return false;
-  }
+async function supportsKastCli(path) {
+  if (!await readCliVersion(path)) return false;
+  const { ok, stdout, stderr } = await execBash(`${JSON.stringify(path)} help rpc`);
+  const helpText = `${stdout}\n${stderr}`;
+  return ok && /\brpc\b/i.test(helpText);
 }
 
 async function callKast(method, params) {
