@@ -100,7 +100,7 @@ grep -Fq "runtimeLibsDir = \"${runtime_libs}\"" "$config_file" || die "config.to
 grep -Fq "ideaHome = \"${idea_home}\"" "$config_file" || die "config.toml does not point at bundled IDEA home"
 grep -Fq "binaryPath = \"${cli_path}\"" "$config_file" || die "config.toml does not point at bundled CLI"
 
-doctor_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" doctor)"
+doctor_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" --output json doctor)"
 python3 - "$doctor_output" <<'PY'
 import json
 import sys

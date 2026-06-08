@@ -102,6 +102,11 @@ cat > "${cli_tree}/kast" <<'FAKE_KAST'
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${1:-}" == "--output" ]]; then
+  [[ "${2:-}" == "json" ]] || { echo "unexpected --output value: ${2:-}" >&2; exit 1; }
+  shift 2
+fi
+
 case "${1:-help}" in
   doctor)
     [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
