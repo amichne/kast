@@ -152,6 +152,155 @@ struct PreviewLine {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct CompareDemoResponse {
+    ok: bool,
+    snapshot: CompareSnapshot,
+    schema_version: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompareSnapshot {
+    mode: &'static str,
+    workspace_root: String,
+    database: String,
+    query: String,
+    view_mode: CompareViewMode,
+    sort: CompareSort,
+    filters: CompareFilterSnapshot,
+    left_pane: ComparePaneSnapshot,
+    right_pane: ComparePaneSnapshot,
+    diff_buckets: CompareDiffBuckets,
+    selection: CompareSelection,
+    preview: SourcePreview,
+    index: DemoIndex,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum CompareViewMode {
+    Full,
+    Difference,
+}
+
+impl CompareViewMode {
+    fn toggle(self) -> Self {
+        match self {
+            Self::Full => Self::Difference,
+            Self::Difference => Self::Full,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum CompareSort {
+    Module,
+    Visibility,
+    Kind,
+    Alphabetical,
+}
+
+impl CompareSort {
+    fn next(self) -> Self {
+        match self {
+            Self::Module => Self::Visibility,
+            Self::Visibility => Self::Kind,
+            Self::Kind => Self::Alphabetical,
+            Self::Alphabetical => Self::Module,
+        }
+    }
+
+    fn previous(self) -> Self {
+        match self {
+            Self::Module => Self::Alphabetical,
+            Self::Visibility => Self::Module,
+            Self::Kind => Self::Visibility,
+            Self::Alphabetical => Self::Kind,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum CompareBadge {
+    Common,
+    LexicalOnly,
+    SemanticOnly,
+    FilteredOut,
+}
+
+#[derive(Debug, Clone, Default)]
+struct CompareFilters {
+    kind: Option<String>,
+    visibility: Option<String>,
+    source_set: Option<String>,
+    module: Option<String>,
+    relation: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompareFilterSnapshot {
+    chips: Vec<CompareFilterChip>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompareFilterChip {
+    key: &'static str,
+    label: &'static str,
+    selected: String,
+    options: Vec<String>,
+    color: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ComparePaneSnapshot {
+    title: &'static str,
+    rows: Vec<CompareRow>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompareRow {
+    id: String,
+    label: String,
+    fq_name: Option<String>,
+    kind: Option<String>,
+    visibility: Option<String>,
+    path: Option<String>,
+    module_path: Option<String>,
+    source_set: Option<String>,
+    relation_kinds: Vec<String>,
+    incoming_references: i64,
+    outgoing_references: i64,
+    group_path: Vec<String>,
+    depth: usize,
+    badge: CompareBadge,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompareDiffBuckets {
+    lexical_only: Vec<CompareRow>,
+    semantic_only: Vec<CompareRow>,
+    filtered_out: Vec<CompareRow>,
+    common_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompareSelection {
+    pane: &'static str,
+    row: usize,
+    fq_name: Option<String>,
+    label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SpatialDemoResponse {
     ok: bool,
     snapshot: SpatialAstSnapshot,
@@ -463,6 +612,57 @@ enum InputMode {
     Search,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CompareFocus {
+    Search,
+    Filters,
+    Sort,
+    Lexical,
+    Semantic,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ComparePane {
+    Lexical,
+    Semantic,
+}
+
+impl ComparePane {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Lexical => "lexical",
+            Self::Semantic => "semantic",
+        }
+    }
+}
+
+struct CompareSnapshotRequest<'a> {
+    query: &'a str,
+    filters: &'a CompareFilters,
+    sort: CompareSort,
+    view_mode: CompareViewMode,
+    requested_symbol: Option<&'a str>,
+    selected_lexical: usize,
+    selected_semantic: usize,
+    active_pane: ComparePane,
+}
+
+struct CompareApp {
+    db: DemoDatabase,
+    request: DemoRequest,
+    query: String,
+    filters: CompareFilters,
+    sort: CompareSort,
+    view_mode: CompareViewMode,
+    snapshot: CompareSnapshot,
+    focus: CompareFocus,
+    active_filter: usize,
+    selected_lexical: usize,
+    selected_semantic: usize,
+    message: String,
+    should_quit: bool,
+}
+
 struct DemoApp {
     db: DemoDatabase,
     request: DemoRequest,
@@ -511,9 +711,42 @@ struct SpatialDemoApp {
 
 pub fn run(args: DemoArgs) -> Result<i32> {
     match args.view {
+        DemoView::Compare => run_compare_demo(args),
         DemoView::Symbol => run_symbol_demo(args),
         DemoView::Spatial => run_spatial_demo(args),
     }
+}
+
+fn run_compare_demo(args: DemoArgs) -> Result<i32> {
+    let request = DemoRequest::from_args(args)?;
+    let mut db = DemoDatabase::open(request.clone())?;
+    let initial_query = request
+        .query
+        .clone()
+        .or_else(|| {
+            request
+                .symbol
+                .as_deref()
+                .map(simple_symbol_name)
+                .map(str::to_string)
+        })
+        .unwrap_or_default();
+    let snapshot = db.compare_snapshot(CompareSnapshotRequest {
+        query: &initial_query,
+        filters: &CompareFilters::default(),
+        sort: CompareSort::Module,
+        view_mode: CompareViewMode::Full,
+        requested_symbol: request.symbol.as_deref(),
+        selected_lexical: 0,
+        selected_semantic: 0,
+        active_pane: ComparePane::Semantic,
+    })?;
+
+    if request.json || !io::stdout().is_terminal() {
+        return print_compare_json_snapshot(snapshot);
+    }
+
+    run_compare_tui(CompareApp::from_snapshot(db, request, snapshot))
 }
 
 fn run_symbol_demo(args: DemoArgs) -> Result<i32> {
@@ -658,6 +891,83 @@ impl DemoDatabase {
             outgoing,
             preview,
             trail,
+            index: self.index()?,
+        })
+    }
+
+    fn compare_snapshot(&mut self, request: CompareSnapshotRequest<'_>) -> Result<CompareSnapshot> {
+        let mut lexical_rows = self.lexical_compare_rows(request.query, self.request.limit)?;
+        let mut semantic_rows = self.semantic_compare_rows(request.query, self.request.limit)?;
+        let mut semantic_filtered = apply_compare_filters(&semantic_rows, request.filters);
+        sort_compare_rows(&mut lexical_rows, request.sort);
+        sort_compare_rows(&mut semantic_rows, request.sort);
+        sort_compare_rows(&mut semantic_filtered, request.sort);
+
+        let diff_buckets =
+            build_compare_diff_buckets(&lexical_rows, &semantic_rows, &semantic_filtered);
+        apply_compare_badges(&mut lexical_rows, &semantic_rows, true);
+        apply_compare_badges(&mut semantic_filtered, &lexical_rows, false);
+
+        let (left_rows, right_rows) = match request.view_mode {
+            CompareViewMode::Full => (lexical_rows.clone(), semantic_filtered.clone()),
+            CompareViewMode::Difference => {
+                let mut right = diff_buckets.semantic_only.clone();
+                right.extend(diff_buckets.filtered_out.clone());
+                (diff_buckets.lexical_only.clone(), right)
+            }
+        };
+        let selected_semantic = request
+            .selected_semantic
+            .min(right_rows.len().saturating_sub(1));
+        let selected_lexical = request
+            .selected_lexical
+            .min(left_rows.len().saturating_sub(1));
+        let selected = selected_compare_row(
+            request.requested_symbol,
+            &left_rows,
+            &right_rows,
+            selected_lexical,
+            selected_semantic,
+            request.active_pane,
+        );
+        let selected_row = selected.map(|(_, _, row)| row);
+        let preview = selected_row
+            .map(|row| {
+                SourcePreview::from_location(
+                    row.path.as_deref(),
+                    None,
+                    format!("Compare: {}", row.label),
+                )
+            })
+            .unwrap_or_else(|| SourcePreview::message("No compare row selected"));
+        let selection = CompareSelection {
+            pane: selected
+                .map(|(pane, _, _)| pane.as_str())
+                .unwrap_or_else(|| request.active_pane.as_str()),
+            row: selected.map(|(_, index, _)| index).unwrap_or(0),
+            fq_name: selected_row.and_then(|row| row.fq_name.clone()),
+            label: selected_row.map(|row| row.label.clone()),
+        };
+
+        Ok(CompareSnapshot {
+            mode: "searchCompare",
+            workspace_root: self.request.workspace_root.display().to_string(),
+            database: self.request.database.display().to_string(),
+            query: request.query.to_string(),
+            view_mode: request.view_mode,
+            sort: request.sort,
+            filters: compare_filter_snapshot(request.filters, &semantic_rows),
+            left_pane: ComparePaneSnapshot {
+                title: "Lexical index",
+                rows: left_rows,
+            },
+            right_pane: ComparePaneSnapshot {
+                title: "Kast semantic",
+                rows: right_rows,
+            },
+            diff_buckets,
+            selection,
+            preview,
             index: self.index()?,
         })
     }
@@ -1038,6 +1348,105 @@ impl DemoDatabase {
             .into_iter()
             .map(|name| self.symbol_hit(&name))
             .collect()
+    }
+
+    fn semantic_compare_rows(&self, query: &str, limit: usize) -> Result<Vec<CompareRow>> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let names = if query.trim().is_empty() {
+            self.popular_symbols(limit)?
+        } else {
+            self.search_symbol_names(query, limit)?
+        };
+        let mut rows = Vec::new();
+        for name in names {
+            if let Some(detail) = self.symbol_detail(&name)?
+                && detail.kind.is_some()
+            {
+                rows.push(compare_row_from_detail(detail, CompareBadge::Common));
+            }
+        }
+        Ok(rows)
+    }
+
+    fn lexical_compare_rows(&self, query: &str, limit: usize) -> Result<Vec<CompareRow>> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let mut rows = Vec::new();
+        let mut seen = BTreeSet::new();
+        for row in self.semantic_compare_rows(query, limit)? {
+            seen.insert(compare_row_key(&row));
+            rows.push(row);
+        }
+        if query.trim().is_empty() || rows.len() >= limit {
+            return Ok(rows);
+        }
+
+        let needle = source_index_db::escape_like(&query.to_lowercase());
+        let pattern = format!("%{needle}%");
+        let mut stmt = self
+            .conn
+            .prepare(
+                r#"
+                SELECT paths.identifier,
+                       prefixes.dir_path,
+                       paths.filename,
+                       metadata.module_path,
+                       metadata.source_set
+                FROM identifier_paths paths
+                LEFT JOIN path_prefixes prefixes ON prefixes.prefix_id = paths.prefix_id
+                LEFT JOIN file_metadata metadata
+                  ON metadata.prefix_id = paths.prefix_id
+                 AND metadata.filename = paths.filename
+                WHERE LOWER(paths.identifier) LIKE ? ESCAPE '\'
+                ORDER BY LENGTH(paths.identifier),
+                         paths.identifier,
+                         COALESCE(prefixes.dir_path, ''),
+                         paths.filename
+                LIMIT ?
+                "#,
+            )
+            .map_err(sql_error)?;
+        let candidates = stmt
+            .query_map(params![pattern, limit as i64], |row| {
+                let dir = row.get::<_, Option<String>>(1)?.unwrap_or_default();
+                let filename: String = row.get(2)?;
+                Ok((
+                    row.get::<_, String>(0)?,
+                    self.compose_path(dir, filename),
+                    row.get::<_, Option<String>>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                ))
+            })
+            .map_err(sql_error)?;
+        for candidate in candidates {
+            let (identifier, path, module_path, source_set) = candidate.map_err(sql_error)?;
+            let row = CompareRow {
+                id: format!("lexical:{path}:{identifier}"),
+                label: identifier,
+                fq_name: None,
+                kind: None,
+                visibility: None,
+                path: Some(path),
+                module_path,
+                source_set,
+                relation_kinds: Vec::new(),
+                incoming_references: 0,
+                outgoing_references: 0,
+                group_path: Vec::new(),
+                depth: 0,
+                badge: CompareBadge::LexicalOnly,
+            };
+            if seen.insert(compare_row_key(&row)) {
+                rows.push(row);
+            }
+            if rows.len() == limit {
+                break;
+            }
+        }
+        Ok(rows)
     }
 
     fn search_symbol_names(&self, query: &str, limit: usize) -> Result<Vec<String>> {
@@ -1790,6 +2199,193 @@ impl DemoApp {
     }
 }
 
+impl CompareApp {
+    fn from_snapshot(db: DemoDatabase, request: DemoRequest, snapshot: CompareSnapshot) -> Self {
+        Self {
+            db,
+            request,
+            query: snapshot.query.clone(),
+            filters: CompareFilters::default(),
+            sort: snapshot.sort,
+            view_mode: snapshot.view_mode,
+            snapshot,
+            focus: CompareFocus::Search,
+            active_filter: 0,
+            selected_lexical: 0,
+            selected_semantic: 0,
+            message: "Type a query, Enter searches, Tab reaches filters, v toggles differences."
+                .to_string(),
+            should_quit: false,
+        }
+    }
+
+    fn on_key(&mut self, key: KeyEvent) -> Result<()> {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+            self.should_quit = true;
+            return Ok(());
+        }
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Esc if self.focus != CompareFocus::Search => {
+                self.should_quit = true
+            }
+            KeyCode::Tab => self.focus = self.focus.next(),
+            KeyCode::BackTab => self.focus = self.focus.previous(),
+            KeyCode::Char('v') | KeyCode::Char('V') => {
+                self.view_mode = self.view_mode.toggle();
+                self.refresh_snapshot()?;
+                self.message = format!("View mode: {:?}", self.view_mode);
+            }
+            _ => match self.focus {
+                CompareFocus::Search => self.on_search_key(key)?,
+                CompareFocus::Filters => self.on_filter_key(key)?,
+                CompareFocus::Sort => self.on_sort_key(key)?,
+                CompareFocus::Lexical => self.on_pane_key(key, true)?,
+                CompareFocus::Semantic => self.on_pane_key(key, false)?,
+            },
+        }
+        Ok(())
+    }
+
+    fn on_search_key(&mut self, key: KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => self.should_quit = true,
+            KeyCode::Enter => {
+                self.selected_lexical = 0;
+                self.selected_semantic = 0;
+                self.refresh_snapshot()?;
+                self.message = format!(
+                    "{} lexical, {} semantic",
+                    self.snapshot.left_pane.rows.len(),
+                    self.snapshot.right_pane.rows.len()
+                );
+            }
+            KeyCode::Backspace => {
+                self.query.pop();
+            }
+            KeyCode::Char(value) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.query.push(value);
+            }
+            KeyCode::Down => self.focus = CompareFocus::Semantic,
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn on_filter_key(&mut self, key: KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Left | KeyCode::Char('h') => {
+                self.active_filter = self.active_filter.saturating_sub(1);
+            }
+            KeyCode::Right | KeyCode::Char('l') => {
+                self.active_filter = (self.active_filter + 1).min(4);
+            }
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                self.cycle_active_filter()?;
+            }
+            KeyCode::Down => self.focus = CompareFocus::Lexical,
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn on_sort_key(&mut self, key: KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Left | KeyCode::Char('h') => self.sort = self.sort.previous(),
+            KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter | KeyCode::Char(' ') => {
+                self.sort = self.sort.next()
+            }
+            KeyCode::Down => self.focus = CompareFocus::Lexical,
+            _ => {}
+        }
+        self.refresh_snapshot()
+    }
+
+    fn on_pane_key(&mut self, key: KeyEvent, lexical: bool) -> Result<()> {
+        match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.move_selection(lexical, -1);
+                self.refresh_snapshot()?;
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.move_selection(lexical, 1);
+                self.refresh_snapshot()?;
+            }
+            KeyCode::Left | KeyCode::Char('h') if !lexical => {
+                self.focus = CompareFocus::Lexical;
+                self.refresh_snapshot()?;
+            }
+            KeyCode::Right | KeyCode::Char('l') if lexical => {
+                self.focus = CompareFocus::Semantic;
+                self.refresh_snapshot()?;
+            }
+            KeyCode::Enter => self.refresh_snapshot()?,
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn cycle_active_filter(&mut self) -> Result<()> {
+        let chips = &self.snapshot.filters.chips;
+        let Some(chip) = chips.get(self.active_filter) else {
+            return Ok(());
+        };
+        let current = chip.selected.as_str();
+        let index = chip
+            .options
+            .iter()
+            .position(|option| option == current)
+            .unwrap_or(0);
+        let next = chip.options[(index + 1) % chip.options.len()].clone();
+        let value = if next == "any" { None } else { Some(next) };
+        match chip.key {
+            "kind" => self.filters.kind = value,
+            "visibility" => self.filters.visibility = value,
+            "sourceSet" => self.filters.source_set = value,
+            "module" => self.filters.module = value,
+            "relation" => self.filters.relation = value,
+            _ => {}
+        }
+        self.selected_semantic = 0;
+        self.refresh_snapshot()
+    }
+
+    fn move_selection(&mut self, lexical: bool, delta: isize) {
+        if lexical {
+            self.selected_lexical = move_index(
+                self.selected_lexical,
+                self.snapshot.left_pane.rows.len(),
+                delta,
+            );
+        } else {
+            self.selected_semantic = move_index(
+                self.selected_semantic,
+                self.snapshot.right_pane.rows.len(),
+                delta,
+            );
+        }
+    }
+
+    fn refresh_snapshot(&mut self) -> Result<()> {
+        self.snapshot = self.db.compare_snapshot(CompareSnapshotRequest {
+            query: &self.query,
+            filters: &self.filters,
+            sort: self.sort,
+            view_mode: self.view_mode,
+            requested_symbol: None,
+            selected_lexical: self.selected_lexical,
+            selected_semantic: self.selected_semantic,
+            active_pane: self.focus.compare_pane(),
+        })?;
+        self.selected_lexical = self
+            .selected_lexical
+            .min(self.snapshot.left_pane.rows.len().saturating_sub(1));
+        self.selected_semantic = self
+            .selected_semantic
+            .min(self.snapshot.right_pane.rows.len().saturating_sub(1));
+        Ok(())
+    }
+}
+
 impl SpatialDemoApp {
     fn from_snapshot(
         db: DemoDatabase,
@@ -2185,6 +2781,45 @@ impl SpatialFocus {
     }
 }
 
+impl CompareFocus {
+    fn next(self) -> Self {
+        match self {
+            Self::Search => Self::Filters,
+            Self::Filters => Self::Sort,
+            Self::Sort => Self::Lexical,
+            Self::Lexical => Self::Semantic,
+            Self::Semantic => Self::Search,
+        }
+    }
+
+    fn previous(self) -> Self {
+        match self {
+            Self::Search => Self::Semantic,
+            Self::Filters => Self::Search,
+            Self::Sort => Self::Filters,
+            Self::Lexical => Self::Sort,
+            Self::Semantic => Self::Lexical,
+        }
+    }
+
+    fn title(self) -> &'static str {
+        match self {
+            Self::Search => "search",
+            Self::Filters => "filters",
+            Self::Sort => "sort",
+            Self::Lexical => "lexical",
+            Self::Semantic => "semantic",
+        }
+    }
+
+    fn compare_pane(self) -> ComparePane {
+        match self {
+            Self::Lexical => ComparePane::Lexical,
+            Self::Search | Self::Filters | Self::Sort | Self::Semantic => ComparePane::Semantic,
+        }
+    }
+}
+
 impl DemoPane {
     fn next(self) -> Self {
         match self {
@@ -2301,6 +2936,19 @@ fn run_spatial_tui(mut app: SpatialDemoApp) -> Result<i32> {
     result
 }
 
+fn run_compare_tui(mut app: CompareApp) -> Result<i32> {
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    let result = run_compare_event_loop(&mut terminal, &mut app);
+    disable_raw_mode().ok();
+    execute!(terminal.backend_mut(), LeaveAlternateScreen).ok();
+    terminal.show_cursor().ok();
+    result
+}
+
 fn run_demo_event_loop(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     app: &mut DemoApp,
@@ -2324,6 +2972,23 @@ fn run_spatial_event_loop(
 ) -> Result<i32> {
     loop {
         terminal.draw(|frame| render_spatial_demo(frame, app))?;
+        if app.should_quit {
+            break Ok(0);
+        }
+        if event::poll(Duration::from_millis(120))?
+            && let Event::Key(key) = event::read()?
+        {
+            app.on_key(key)?;
+        }
+    }
+}
+
+fn run_compare_event_loop(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    app: &mut CompareApp,
+) -> Result<i32> {
+    loop {
+        terminal.draw(|frame| render_compare_demo(frame, app))?;
         if app.should_quit {
             break Ok(0);
         }
@@ -2361,6 +3026,94 @@ fn render_spatial_demo(frame: &mut Frame<'_>, app: &SpatialDemoApp) {
     render_spatial_header(frame, root[0], app);
     render_spatial_body(frame, root[1], app);
     render_spatial_footer(frame, root[2], app);
+}
+
+fn render_compare_demo(frame: &mut Frame<'_>, app: &CompareApp) {
+    let root = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(7),
+            Constraint::Min(10),
+            Constraint::Length(2),
+        ])
+        .split(frame.area());
+    render_compare_header(frame, root[0], app);
+    render_compare_body(frame, root[1], app);
+    render_compare_footer(frame, root[2], app);
+}
+
+fn render_compare_header(frame: &mut Frame<'_>, area: Rect, app: &CompareApp) {
+    let search_style = if app.focus == CompareFocus::Search {
+        Style::default().fg(Color::Black).bg(Color::Cyan)
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+    let chips = app
+        .snapshot
+        .filters
+        .chips
+        .iter()
+        .enumerate()
+        .map(|(index, chip)| {
+            let active = app.focus == CompareFocus::Filters && app.active_filter == index;
+            Span::styled(
+                format!(" {}:{} ", chip.label, chip.selected),
+                Style::default()
+                    .fg(compare_chip_color(chip.color))
+                    .add_modifier(if active {
+                        Modifier::REVERSED
+                    } else {
+                        Modifier::empty()
+                    }),
+            )
+        })
+        .collect::<Vec<_>>();
+    let sort_style = if app.focus == CompareFocus::Sort {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Yellow)
+    };
+    let lines = vec![
+        Line::from(vec![
+            Span::styled(
+                "Kast Search Compare",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("  "),
+            Span::styled(format!(" search: {} ", app.query), search_style),
+        ]),
+        Line::from(chips),
+        Line::from(vec![
+            Span::styled("sort ", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{:?}", app.sort).to_lowercase(), sort_style),
+            Span::raw(format!(
+                "  view {:?}  common {}  lexical-only {}  semantic-only {}  filtered {}",
+                app.view_mode,
+                app.snapshot.diff_buckets.common_count,
+                app.snapshot.diff_buckets.lexical_only.len(),
+                app.snapshot.diff_buckets.semantic_only.len(),
+                app.snapshot.diff_buckets.filtered_out.len()
+            )),
+        ]),
+        Line::from(vec![
+            Span::styled("focus ", Style::default().fg(Color::DarkGray)),
+            Span::styled(app.focus.title(), Style::default().fg(Color::Green)),
+            Span::raw(format!("  {}", app.message)),
+        ]),
+    ];
+    frame.render_widget(
+        Paragraph::new(lines).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray)),
+        ),
+        area,
+    );
 }
 
 fn render_header(frame: &mut Frame<'_>, area: Rect, app: &DemoApp) {
@@ -2531,6 +3284,112 @@ fn render_spatial_body(frame: &mut Frame<'_>, area: Rect, app: &SpatialDemoApp) 
     render_spatial_overlay_status(frame, left[2], app);
     render_spatial_canvas(frame, columns[1], app);
     render_spatial_details(frame, columns[2], app);
+}
+
+fn render_compare_body(frame: &mut Frame<'_>, area: Rect, app: &CompareApp) {
+    if area.width < 110 {
+        let rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(32),
+                Constraint::Percentage(32),
+                Constraint::Percentage(36),
+            ])
+            .split(area);
+        render_compare_rows(
+            frame,
+            rows[0],
+            &app.snapshot.left_pane,
+            app.selected_lexical,
+            app.focus == CompareFocus::Lexical,
+            app.sort,
+        );
+        render_compare_rows(
+            frame,
+            rows[1],
+            &app.snapshot.right_pane,
+            app.selected_semantic,
+            app.focus == CompareFocus::Semantic,
+            app.sort,
+        );
+        render_source_preview(frame, rows[2], &app.snapshot.preview);
+        return;
+    }
+
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(32),
+            Constraint::Percentage(34),
+            Constraint::Percentage(34),
+        ])
+        .split(area);
+    render_compare_rows(
+        frame,
+        columns[0],
+        &app.snapshot.left_pane,
+        app.selected_lexical,
+        app.focus == CompareFocus::Lexical,
+        app.sort,
+    );
+    render_compare_rows(
+        frame,
+        columns[1],
+        &app.snapshot.right_pane,
+        app.selected_semantic,
+        app.focus == CompareFocus::Semantic,
+        app.sort,
+    );
+    render_source_preview(frame, columns[2], &app.snapshot.preview);
+}
+
+fn render_compare_rows(
+    frame: &mut Frame<'_>,
+    area: Rect,
+    pane: &ComparePaneSnapshot,
+    selected: usize,
+    focused: bool,
+    sort: CompareSort,
+) {
+    let items: Vec<ListItem<'_>> = pane
+        .rows
+        .iter()
+        .map(|row| {
+            let indent = if sort == CompareSort::Module {
+                "  ".repeat(row.depth.saturating_sub(1))
+            } else {
+                String::new()
+            };
+            ListItem::new(Line::from(vec![
+                Span::styled(
+                    format!("{}{: <12}", indent, compare_badge_label(&row.badge)),
+                    compare_badge_style(&row.badge),
+                ),
+                Span::styled(
+                    row.label.clone(),
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(format!(
+                    "  {} {} {} in {} out {}",
+                    row.kind.as_deref().unwrap_or("-"),
+                    row.visibility.as_deref().unwrap_or("-"),
+                    row.module_path.as_deref().unwrap_or("-"),
+                    row.incoming_references,
+                    row.outgoing_references
+                )),
+            ]))
+        })
+        .collect();
+    render_list(
+        frame,
+        area,
+        pane.title.to_string(),
+        items,
+        selected,
+        focused,
+    );
 }
 
 fn render_search(frame: &mut Frame<'_>, area: Rect, app: &DemoApp) {
@@ -2749,6 +3608,20 @@ fn render_spatial_details(frame: &mut Frame<'_>, area: Rect, app: &SpatialDemoAp
 fn render_spatial_footer(frame: &mut Frame<'_>, area: Rect, app: &SpatialDemoApp) {
     let text = format!(
         "focus {} | arrows select | Enter open/focus | Space collapse | O overlay | P projection | F/C center | / search | b back | q quit | db {}",
+        app.focus.title(),
+        compact_path(&app.request.database.display().to_string())
+    );
+    frame.render_widget(
+        Paragraph::new(text)
+            .block(Block::default().borders(Borders::TOP))
+            .wrap(Wrap { trim: true }),
+        area,
+    );
+}
+
+fn render_compare_footer(frame: &mut Frame<'_>, area: Rect, app: &CompareApp) {
+    let text = format!(
+        "focus {} | type query | Enter search/apply | Tab focus | arrows select/cycle | v full/difference | q quit | db {}",
         app.focus.title(),
         compact_path(&app.request.database.display().to_string())
     );
@@ -3016,6 +3889,277 @@ fn print_spatial_json_snapshot(snapshot: SpatialAstSnapshot) -> Result<i32> {
     serde_json::to_writer_pretty(io::stdout(), &serde_json::to_value(response)?)?;
     println!();
     Ok(0)
+}
+
+fn print_compare_json_snapshot(snapshot: CompareSnapshot) -> Result<i32> {
+    let response = CompareDemoResponse {
+        ok: true,
+        snapshot,
+        schema_version: SCHEMA_VERSION,
+    };
+    serde_json::to_writer_pretty(io::stdout(), &serde_json::to_value(response)?)?;
+    println!();
+    Ok(0)
+}
+
+fn compare_row_from_detail(detail: SymbolDetail, badge: CompareBadge) -> CompareRow {
+    let relation_kinds = detail.by_edge_kind.keys().cloned().collect();
+    let path = detail.path.clone();
+    let label = detail.simple_name.clone();
+    let mut row = CompareRow {
+        id: format!("symbol:{}", detail.fq_name),
+        label,
+        fq_name: Some(detail.fq_name),
+        kind: detail.kind,
+        visibility: detail.visibility,
+        path,
+        module_path: detail.module_path,
+        source_set: detail.source_set,
+        relation_kinds,
+        incoming_references: detail.incoming_references,
+        outgoing_references: detail.outgoing_references,
+        group_path: Vec::new(),
+        depth: 0,
+        badge,
+    };
+    assign_compare_module_path(&mut row);
+    row
+}
+
+fn apply_compare_filters(rows: &[CompareRow], filters: &CompareFilters) -> Vec<CompareRow> {
+    rows.iter()
+        .filter(|row| {
+            filter_matches(&row.kind, &filters.kind)
+                && filter_matches(&row.visibility, &filters.visibility)
+                && filter_matches(&row.source_set, &filters.source_set)
+                && filter_matches(&row.module_path, &filters.module)
+                && filters
+                    .relation
+                    .as_ref()
+                    .is_none_or(|relation| row.relation_kinds.iter().any(|kind| kind == relation))
+        })
+        .cloned()
+        .collect()
+}
+
+fn filter_matches(value: &Option<String>, selected: &Option<String>) -> bool {
+    selected
+        .as_ref()
+        .is_none_or(|selected| value.as_ref() == Some(selected))
+}
+
+fn build_compare_diff_buckets(
+    lexical_rows: &[CompareRow],
+    semantic_rows: &[CompareRow],
+    semantic_filtered: &[CompareRow],
+) -> CompareDiffBuckets {
+    let lexical_keys: BTreeSet<_> = lexical_rows.iter().map(compare_row_key).collect();
+    let semantic_keys: BTreeSet<_> = semantic_rows.iter().map(compare_row_key).collect();
+    let filtered_keys: BTreeSet<_> = semantic_filtered.iter().map(compare_row_key).collect();
+
+    let mut lexical_only: Vec<_> = lexical_rows
+        .iter()
+        .filter(|row| !semantic_keys.contains(&compare_row_key(row)))
+        .cloned()
+        .map(|mut row| {
+            row.badge = CompareBadge::LexicalOnly;
+            row
+        })
+        .collect();
+    let mut semantic_only: Vec<_> = semantic_rows
+        .iter()
+        .filter(|row| !lexical_keys.contains(&compare_row_key(row)))
+        .cloned()
+        .map(|mut row| {
+            row.badge = CompareBadge::SemanticOnly;
+            row
+        })
+        .collect();
+    let mut filtered_out: Vec<_> = semantic_rows
+        .iter()
+        .filter(|row| {
+            let key = compare_row_key(row);
+            lexical_keys.contains(&key) && !filtered_keys.contains(&key)
+        })
+        .cloned()
+        .map(|mut row| {
+            row.badge = CompareBadge::FilteredOut;
+            row
+        })
+        .collect();
+    sort_compare_rows(&mut lexical_only, CompareSort::Module);
+    sort_compare_rows(&mut semantic_only, CompareSort::Module);
+    sort_compare_rows(&mut filtered_out, CompareSort::Module);
+
+    CompareDiffBuckets {
+        lexical_only,
+        semantic_only,
+        filtered_out,
+        common_count: lexical_keys.intersection(&semantic_keys).count(),
+    }
+}
+
+fn selected_compare_row<'a>(
+    requested_symbol: Option<&str>,
+    left_rows: &'a [CompareRow],
+    right_rows: &'a [CompareRow],
+    selected_lexical: usize,
+    selected_semantic: usize,
+    active_pane: ComparePane,
+) -> Option<(ComparePane, usize, &'a CompareRow)> {
+    let requested = requested_symbol.and_then(|symbol| {
+        right_rows
+            .iter()
+            .enumerate()
+            .find(|(_, row)| row.fq_name.as_deref() == Some(symbol))
+            .map(|(index, row)| (ComparePane::Semantic, index, row))
+    });
+    let lexical = left_rows
+        .get(selected_lexical)
+        .map(|row| (ComparePane::Lexical, selected_lexical, row));
+    let semantic = right_rows
+        .get(selected_semantic)
+        .map(|row| (ComparePane::Semantic, selected_semantic, row));
+
+    requested.or(match active_pane {
+        ComparePane::Lexical => lexical.or(semantic),
+        ComparePane::Semantic => semantic.or(lexical),
+    })
+}
+
+fn apply_compare_badges(rows: &mut [CompareRow], other_rows: &[CompareRow], left_side: bool) {
+    let other_keys: BTreeSet<_> = other_rows.iter().map(compare_row_key).collect();
+    for row in rows {
+        row.badge = if other_keys.contains(&compare_row_key(row)) {
+            CompareBadge::Common
+        } else if left_side {
+            CompareBadge::LexicalOnly
+        } else {
+            CompareBadge::SemanticOnly
+        };
+    }
+}
+
+fn sort_compare_rows(rows: &mut [CompareRow], sort: CompareSort) {
+    for row in rows.iter_mut() {
+        assign_compare_module_path(row);
+    }
+    rows.sort_by(|left, right| match sort {
+        CompareSort::Module => compare_module_tuple(left).cmp(&compare_module_tuple(right)),
+        CompareSort::Visibility => compare_optional(&left.visibility, &right.visibility)
+            .then_with(|| compare_module_tuple(left).cmp(&compare_module_tuple(right))),
+        CompareSort::Kind => compare_optional(&left.kind, &right.kind)
+            .then_with(|| compare_module_tuple(left).cmp(&compare_module_tuple(right))),
+        CompareSort::Alphabetical => left
+            .label
+            .cmp(&right.label)
+            .then_with(|| compare_row_key(left).cmp(&compare_row_key(right))),
+    });
+}
+
+fn compare_optional(left: &Option<String>, right: &Option<String>) -> std::cmp::Ordering {
+    left.as_deref()
+        .unwrap_or("")
+        .cmp(right.as_deref().unwrap_or(""))
+}
+
+fn compare_module_tuple(row: &CompareRow) -> (String, String, String, String) {
+    (
+        row.module_path.clone().unwrap_or_default(),
+        row.source_set.clone().unwrap_or_default(),
+        row.path
+            .as_deref()
+            .map(simple_file_name)
+            .unwrap_or("")
+            .to_string(),
+        row.label.clone(),
+    )
+}
+
+fn assign_compare_module_path(row: &mut CompareRow) {
+    row.group_path = vec![
+        row.module_path
+            .clone()
+            .unwrap_or_else(|| "workspace".to_string()),
+        row.source_set.clone().unwrap_or_else(|| "main".to_string()),
+        row.path
+            .as_deref()
+            .map(simple_file_name)
+            .unwrap_or(&row.label)
+            .to_string(),
+    ];
+    row.depth = row.group_path.len();
+}
+
+fn compare_row_key(row: &CompareRow) -> String {
+    row.fq_name
+        .clone()
+        .unwrap_or_else(|| format!("lexical:{}", row.id))
+}
+
+fn compare_filter_snapshot(filters: &CompareFilters, rows: &[CompareRow]) -> CompareFilterSnapshot {
+    CompareFilterSnapshot {
+        chips: vec![
+            compare_filter_chip(
+                "kind",
+                "Kind",
+                &filters.kind,
+                rows.iter().filter_map(|row| row.kind.clone()),
+                "magenta",
+            ),
+            compare_filter_chip(
+                "visibility",
+                "Visibility",
+                &filters.visibility,
+                rows.iter().filter_map(|row| row.visibility.clone()),
+                "yellow",
+            ),
+            compare_filter_chip(
+                "sourceSet",
+                "Source set",
+                &filters.source_set,
+                rows.iter().filter_map(|row| row.source_set.clone()),
+                "cyan",
+            ),
+            compare_filter_chip(
+                "module",
+                "Module",
+                &filters.module,
+                rows.iter().filter_map(|row| row.module_path.clone()),
+                "green",
+            ),
+            compare_filter_chip(
+                "relation",
+                "Relation",
+                &filters.relation,
+                rows.iter().flat_map(|row| row.relation_kinds.clone()),
+                "blue",
+            ),
+        ],
+    }
+}
+
+fn compare_filter_chip<I>(
+    key: &'static str,
+    label: &'static str,
+    selected: &Option<String>,
+    values: I,
+    color: &'static str,
+) -> CompareFilterChip
+where
+    I: Iterator<Item = String>,
+{
+    let mut unique = BTreeSet::new();
+    unique.extend(values);
+    let mut options = vec!["any".to_string()];
+    options.extend(unique);
+    CompareFilterChip {
+        key,
+        label,
+        selected: selected.clone().unwrap_or_else(|| "any".to_string()),
+        options,
+        color,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4091,6 +5235,35 @@ fn compact_kind(kind: &str) -> String {
     }
 }
 
+fn compare_chip_color(color: &str) -> Color {
+    match color {
+        "magenta" => Color::Magenta,
+        "yellow" => Color::Yellow,
+        "cyan" => Color::Cyan,
+        "green" => Color::Green,
+        "blue" => Color::Blue,
+        _ => Color::White,
+    }
+}
+
+fn compare_badge_label(badge: &CompareBadge) -> &'static str {
+    match badge {
+        CompareBadge::Common => "=",
+        CompareBadge::LexicalOnly => "lexical",
+        CompareBadge::SemanticOnly => "semantic",
+        CompareBadge::FilteredOut => "filtered",
+    }
+}
+
+fn compare_badge_style(badge: &CompareBadge) -> Style {
+    match badge {
+        CompareBadge::Common => Style::default().fg(Color::DarkGray),
+        CompareBadge::LexicalOnly => Style::default().fg(Color::Magenta),
+        CompareBadge::SemanticOnly => Style::default().fg(Color::Green),
+        CompareBadge::FilteredOut => Style::default().fg(Color::Yellow),
+    }
+}
+
 fn spatial_overlay_title(mode: SpatialOverlayMode) -> &'static str {
     match mode {
         SpatialOverlayMode::StructureOnly => "structure",
@@ -4378,6 +5551,177 @@ class Shape {
         assert!(nodes.len() <= SPATIAL_MAX_STRUCTURAL_NODES_PER_FILE);
     }
 
+    #[test]
+    fn compare_filters_are_single_select_and_filter_semantic_rows() {
+        let rows = vec![
+            sample_compare_row(
+                Some("app.PublicThing"),
+                "PublicThing",
+                "CLASS",
+                "PUBLIC",
+                ":app",
+                "main",
+                ["CALL"],
+            ),
+            sample_compare_row(
+                Some("lib.PrivateHelper"),
+                "PrivateHelper",
+                "FUNCTION",
+                "PRIVATE",
+                ":lib",
+                "test",
+                ["TYPE_REF"],
+            ),
+        ];
+        let filters = CompareFilters {
+            kind: Some("FUNCTION".to_string()),
+            visibility: Some("PRIVATE".to_string()),
+            source_set: Some("test".to_string()),
+            module: Some(":lib".to_string()),
+            relation: Some("TYPE_REF".to_string()),
+        };
+
+        let filtered = apply_compare_filters(&rows, &filters);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].fq_name.as_deref(), Some("lib.PrivateHelper"));
+    }
+
+    #[test]
+    fn compare_diff_buckets_separate_lexical_noise_semantic_only_and_filtered_rows() {
+        let lexical = vec![
+            sample_compare_row(
+                Some("lib.Foo"),
+                "Foo",
+                "CLASS",
+                "PUBLIC",
+                ":lib",
+                "main",
+                ["CALL"],
+            ),
+            sample_lexical_only_row("FooNotes"),
+        ];
+        let semantic = vec![
+            sample_compare_row(
+                Some("lib.Foo"),
+                "Foo",
+                "CLASS",
+                "PUBLIC",
+                ":lib",
+                "main",
+                ["CALL"],
+            ),
+            sample_compare_row(
+                Some("lib.FooWidget"),
+                "FooWidget",
+                "CLASS",
+                "PUBLIC",
+                ":lib",
+                "main",
+                ["CALL"],
+            ),
+        ];
+        let filtered = vec![semantic[0].clone()];
+
+        let buckets = build_compare_diff_buckets(&lexical, &semantic, &filtered);
+
+        assert_eq!(buckets.common_count, 1);
+        assert_eq!(buckets.lexical_only[0].label, "FooNotes");
+        assert_eq!(
+            buckets.semantic_only[0].fq_name.as_deref(),
+            Some("lib.FooWidget")
+        );
+        assert!(
+            buckets.filtered_out.is_empty(),
+            "semantic-only rows should not also be counted as filtered-out rows"
+        );
+    }
+
+    #[test]
+    fn compare_diff_buckets_keep_common_filtered_rows_separate() {
+        let lexical = vec![sample_compare_row(
+            Some("lib.Foo"),
+            "Foo",
+            "CLASS",
+            "PUBLIC",
+            ":lib",
+            "main",
+            ["CALL"],
+        )];
+        let semantic = vec![lexical[0].clone()];
+        let filtered = Vec::new();
+
+        let buckets = build_compare_diff_buckets(&lexical, &semantic, &filtered);
+
+        assert_eq!(buckets.common_count, 1);
+        assert!(buckets.lexical_only.is_empty());
+        assert!(buckets.semantic_only.is_empty());
+        assert_eq!(buckets.filtered_out[0].fq_name.as_deref(), Some("lib.Foo"));
+    }
+
+    #[test]
+    fn compare_selection_prefers_the_active_lexical_pane() {
+        let lexical = vec![sample_lexical_only_row("FooNotes")];
+        let semantic = vec![sample_compare_row(
+            Some("lib.Foo"),
+            "Foo",
+            "CLASS",
+            "PUBLIC",
+            ":lib",
+            "main",
+            ["CALL"],
+        )];
+
+        let selected = selected_compare_row(None, &lexical, &semantic, 0, 0, ComparePane::Lexical)
+            .expect("selected row");
+
+        assert_eq!(selected.0, ComparePane::Lexical);
+        assert_eq!(selected.2.label, "FooNotes");
+    }
+
+    #[test]
+    fn compare_module_sort_renders_tree_shaped_group_paths() {
+        let mut rows = vec![
+            sample_compare_row(
+                Some("lib.Zed"),
+                "Zed",
+                "FUNCTION",
+                "INTERNAL",
+                ":lib",
+                "test",
+                ["TYPE_REF"],
+            ),
+            sample_compare_row(
+                Some("app.Alpha"),
+                "Alpha",
+                "CLASS",
+                "PUBLIC",
+                ":app",
+                "main",
+                ["CALL"],
+            ),
+        ];
+
+        sort_compare_rows(&mut rows, CompareSort::Module);
+
+        assert_eq!(rows[0].fq_name.as_deref(), Some("app.Alpha"));
+        assert_eq!(
+            rows[0].group_path,
+            vec![
+                ":app".to_string(),
+                "main".to_string(),
+                "Alpha.kt".to_string()
+            ]
+        );
+        assert_eq!(rows[1].depth, 3);
+    }
+
+    #[test]
+    fn compare_view_mode_toggle_switches_between_full_and_difference() {
+        assert_eq!(CompareViewMode::Full.toggle(), CompareViewMode::Difference);
+        assert_eq!(CompareViewMode::Difference.toggle(), CompareViewMode::Full);
+    }
+
     fn sample_spatial_tree(collapse_file: bool) -> SpatialTree {
         let root_id = "workspace".to_string();
         let file_id = "file:/workspace/app/A.kt".to_string();
@@ -4540,6 +5884,66 @@ class Shape {
             source_set: Some("main".to_string()),
             walkable: true,
         }
+    }
+
+    fn sample_compare_row<const N: usize>(
+        fq_name: Option<&str>,
+        label: &str,
+        kind: &str,
+        visibility: &str,
+        module_path: &str,
+        source_set: &str,
+        relation_kinds: [&str; N],
+    ) -> CompareRow {
+        let path = format!(
+            "/workspace/{}/{}.kt",
+            module_path.trim_start_matches(':'),
+            label
+        );
+        let mut row = CompareRow {
+            id: fq_name
+                .map(|name| format!("symbol:{name}"))
+                .unwrap_or_else(|| format!("lexical:{label}")),
+            label: label.to_string(),
+            fq_name: fq_name.map(str::to_string),
+            kind: Some(kind.to_string()),
+            visibility: Some(visibility.to_string()),
+            path: Some(path),
+            module_path: Some(module_path.to_string()),
+            source_set: Some(source_set.to_string()),
+            relation_kinds: relation_kinds
+                .iter()
+                .map(|value| value.to_string())
+                .collect(),
+            incoming_references: 1,
+            outgoing_references: 2,
+            group_path: Vec::new(),
+            depth: 0,
+            badge: CompareBadge::Common,
+        };
+        assign_compare_module_path(&mut row);
+        row
+    }
+
+    fn sample_lexical_only_row(label: &str) -> CompareRow {
+        let mut row = CompareRow {
+            id: format!("lexical:/workspace/lib/{label}.md:{label}"),
+            label: label.to_string(),
+            fq_name: None,
+            kind: None,
+            visibility: None,
+            path: Some(format!("/workspace/lib/{label}.md")),
+            module_path: Some(":lib".to_string()),
+            source_set: Some("main".to_string()),
+            relation_kinds: Vec::new(),
+            incoming_references: 0,
+            outgoing_references: 0,
+            group_path: Vec::new(),
+            depth: 0,
+            badge: CompareBadge::LexicalOnly,
+        };
+        assign_compare_module_path(&mut row);
+        row
     }
 
     fn framebuffer_text(buffer: &TerminalFrameBuffer) -> String {

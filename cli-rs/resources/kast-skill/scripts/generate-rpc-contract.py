@@ -113,6 +113,8 @@ def sample_string(name: str) -> str:
         return "**/*.kt"
     if lower == "folderfilter":
         return "src/main/kotlin"
+    if lower == "modulename":
+        return ":analysis-api"
     if lower == "modulepath":
         return ":app"
     if lower == "sourcesset" or lower == "sourceset":

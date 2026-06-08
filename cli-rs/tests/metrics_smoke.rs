@@ -52,11 +52,37 @@ fn reads_metrics_directly_from_source_index_db() {
         String::from_utf8_lossy(&fan_in.stderr)
     );
     let fan_in_stdout = String::from_utf8_lossy(&fan_in.stdout);
-    assert!(fan_in_stdout.contains("\"targetFqName\": \"lib.Foo\""));
-    assert!(fan_in_stdout.contains("\"occurrenceCount\": 3"));
+    assert!(fan_in_stdout.starts_with("# Kast metrics fan-in\n"));
+    assert!(fan_in_stdout.contains("targetFqName=`lib.Foo`"));
+    assert!(fan_in_stdout.contains("occurrenceCount=3"));
+    assert!(serde_json::from_slice::<Value>(&fan_in.stdout).is_err());
+
+    let fan_in_json = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "metrics",
+            "fan-in",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("metrics fan-in json");
+    assert!(
+        fan_in_json.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&fan_in_json.stderr)
+    );
+    let fan_in_json_stdout = String::from_utf8_lossy(&fan_in_json.stdout);
+    assert!(fan_in_json_stdout.contains("\"targetFqName\": \"lib.Foo\""));
+    assert!(fan_in_json_stdout.contains("\"occurrenceCount\": 3"));
 
     let search = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "metrics",
             "search",
             "--workspace-root",
@@ -74,6 +100,8 @@ fn reads_metrics_directly_from_source_index_db() {
 
     let short_search = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "metrics",
             "search",
             "--workspace-root",
@@ -115,8 +143,10 @@ fn reads_metrics_directly_from_source_index_db() {
             "--workspace-root",
             workspace.to_str().expect("workspace"),
             "--json",
-            "--symbol",
-            "app.A",
+            "--query",
+            "Fo",
+            "--limit",
+            "10",
         ])
         .output()
         .expect("demo snapshot");
@@ -125,41 +155,80 @@ fn reads_metrics_directly_from_source_index_db() {
         "stderr: {}",
         String::from_utf8_lossy(&demo.stderr)
     );
-    let demo_stdout = String::from_utf8_lossy(&demo.stdout);
-    assert!(demo_stdout.contains("\"mode\": \"symbolWalk\""));
-    assert!(demo_stdout.contains("\"fqName\": \"app.A\""));
-    assert!(demo_stdout.contains("\"fqName\": \"app.B\""));
-    assert!(demo_stdout.contains("\"fqName\": \"lib.Foo\""));
-    assert!(demo_stdout.contains("\"title\": \"Declaration: A\""));
-    assert!(demo_stdout.contains("\"focusedLine\""));
-
-    let demo_short_search = kast(&home, &config_home)
-        .args([
-            "demo",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-            "--json",
-            "--query",
-            "Fo",
-            "--limit",
-            "5",
-        ])
-        .output()
-        .expect("demo short search snapshot");
-    assert!(
-        demo_short_search.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&demo_short_search.stderr)
-    );
     let demo_short_search_json: Value =
-        serde_json::from_slice(&demo_short_search.stdout).expect("demo short search json");
+        serde_json::from_slice(&demo.stdout).expect("compare demo json");
+    assert_eq!(
+        demo_short_search_json["snapshot"]["mode"],
+        Value::String("searchCompare".to_string())
+    );
+    assert_eq!(
+        demo_short_search_json["snapshot"]["viewMode"],
+        Value::String("full".to_string())
+    );
+    assert_eq!(
+        demo_short_search_json["snapshot"]["sort"],
+        Value::String("module".to_string())
+    );
     assert!(
-        demo_short_search_json["snapshot"]["searchResults"]
+        demo_short_search_json["snapshot"]["rightPane"]["rows"]
             .as_array()
-            .expect("search results")
+            .expect("semantic rows")
             .iter()
-            .any(|hit| hit["fqName"] == Value::String("lib.FooWidget".to_string())),
-        "demo short search should include FooWidget: {demo_short_search_json}"
+            .any(|row| row["fqName"] == Value::String("lib.FooWidget".to_string())),
+        "compare demo should include semantic FooWidget: {demo_short_search_json}"
+    );
+    assert!(
+        demo_short_search_json["snapshot"]["leftPane"]["rows"]
+            .as_array()
+            .expect("lexical rows")
+            .iter()
+            .any(|row| row["label"] == Value::String("FooNotes".to_string())
+                && row["badge"] == Value::String("lexicalOnly".to_string())),
+        "compare demo should show lexical-only candidates: {demo_short_search_json}"
+    );
+    assert!(
+        !demo_short_search_json["snapshot"]["leftPane"]["rows"]
+            .as_array()
+            .expect("lexical rows")
+            .iter()
+            .any(|row| row["fqName"] == Value::String("app.A".to_string())),
+        "lexical identifier hits in A.kt must not be attributed to the app.A declaration: {demo_short_search_json}"
+    );
+    assert!(
+        demo_short_search_json["snapshot"]["leftPane"]["rows"]
+            .as_array()
+            .expect("lexical rows")
+            .iter()
+            .any(|row| row["label"] == Value::String("Foo".to_string())
+                && row["fqName"].is_null()
+                && row["path"]
+                    .as_str()
+                    .is_some_and(|path| path.ends_with("app/A.kt"))),
+        "compare demo should keep source tokens as lexical rows: {demo_short_search_json}"
+    );
+    assert!(
+        demo_short_search_json["snapshot"]["filters"]["chips"]
+            .as_array()
+            .expect("filter chips")
+            .iter()
+            .any(|chip| chip["key"] == Value::String("kind".to_string())
+                && chip["selected"] == Value::String("any".to_string())),
+        "compare demo should expose compact filter chips: {demo_short_search_json}"
+    );
+    assert!(
+        demo_short_search_json["snapshot"]["diffBuckets"]["lexicalOnly"]
+            .as_array()
+            .expect("lexical-only diff bucket")
+            .iter()
+            .any(|row| row["label"] == Value::String("FooNotes".to_string())),
+        "compare diff should include lexical-only FooNotes: {demo_short_search_json}"
+    );
+    assert!(
+        demo_short_search_json["snapshot"]["preview"]["title"]
+            .as_str()
+            .expect("preview title")
+            .contains("Foo"),
+        "compare demo should include a useful source preview: {demo_short_search_json}"
     );
 
     let demo_symbol_view = kast(&home, &config_home)
@@ -185,6 +254,10 @@ fn reads_metrics_directly_from_source_index_db() {
     assert_eq!(
         demo_symbol_view_json["snapshot"]["mode"],
         Value::String("symbolWalk".to_string())
+    );
+    assert_eq!(
+        demo_symbol_view_json["snapshot"]["current"]["fqName"],
+        Value::String("app.A".to_string())
     );
 
     let spatial = kast(&home, &config_home)
@@ -568,6 +641,40 @@ fn symbol_query_applies_new_filters_and_reports_filter_evidence() {
 }
 
 #[test]
+fn symbol_query_filters_test_fixtures_by_gradle_module_and_source_set() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let fixture = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        49,
+        serde_json::json!({
+            "query": "FakeAnalysisBackend",
+            "modes": ["lexical", "structural"],
+            "filters": {
+                "gradleProject": ":analysis-api",
+                "modulePath": ":analysis-api",
+                "sourceSet": "testFixtures"
+            },
+            "limit": 10
+        }),
+    );
+
+    assert_eq!(
+        result_fq_names(&fixture),
+        vec!["io.github.amichne.kast.testing.FakeAnalysisBackend".to_string()]
+    );
+    assert_hard_filter_fields(&fixture, ["gradleProject", "modulePath", "sourceSet"]);
+}
+
+#[test]
 fn symbol_query_computes_usage_facets_and_filters_by_them() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -823,6 +930,10 @@ fn seed_source_index(workspace: &std::path::Path) {
         (3, "lib/test"),
         (4, "build-logic"),
         (5, "lib/payments"),
+        (
+            6,
+            "analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing",
+        ),
     ] {
         conn.execute(
             "INSERT INTO path_prefixes VALUES (?, ?)",
@@ -841,6 +952,7 @@ fn seed_source_index(workspace: &std::path::Path) {
         (8, "lib.CardPaymentProcessorTest"),
         (9, "buildlogic.BuildPaymentProcessor"),
         (10, "lib.payments.PaymentBridge"),
+        (11, "io.github.amichne.kast.testing.FakeAnalysisBackend"),
     ] {
         conn.execute(
             "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
@@ -855,10 +967,12 @@ fn seed_source_index(workspace: &std::path::Path) {
         (2, "Foo.kt", ":lib", "main"),
         (2, "Bar.kt", ":lib", "main"),
         (2, "FooWidget.kt", ":lib", "main"),
+        (2, "FooNotes.md", ":lib", "main"),
         (2, "CardPaymentProcessor.kt", ":lib", "main"),
         (3, "CardPaymentProcessorTest.kt", ":lib", "test"),
         (4, "BuildPaymentProcessor.kt", ":build-logic", "main"),
         (5, "PaymentBridge.kt", ":lib:payments", "main"),
+        (6, "FakeAnalysisBackend.kt", ":analysis-api", "testFixtures"),
     ] {
         conn.execute(
             "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (?, ?, ?, ?)",
@@ -870,12 +984,24 @@ fn seed_source_index(workspace: &std::path::Path) {
             params![prefix, filename],
         )
         .expect("file manifest");
-        conn.execute(
-            "INSERT INTO identifier_paths(identifier, prefix_id, filename) VALUES (?, ?, ?)",
-            params![filename.trim_end_matches(".kt"), prefix, filename],
-        )
-        .expect("identifier path");
+        if filename.ends_with(".kt") {
+            conn.execute(
+                "INSERT INTO identifier_paths(identifier, prefix_id, filename) VALUES (?, ?, ?)",
+                params![filename.trim_end_matches(".kt"), prefix, filename],
+            )
+            .expect("identifier path");
+        }
     }
+    conn.execute(
+        "INSERT INTO identifier_paths(identifier, prefix_id, filename) VALUES ('FooNotes', 2, 'FooNotes.md')",
+        [],
+    )
+    .expect("lexical-only identifier");
+    conn.execute(
+        "INSERT INTO identifier_paths(identifier, prefix_id, filename) VALUES ('Foo', 1, 'A.kt')",
+        [],
+    )
+    .expect("lexical token in source file");
     for (fq_id, kind, visibility, prefix, filename, module, source_set) in [
         (1, "CLASS", "PUBLIC", 1, "A.kt", ":app", "main"),
         (2, "CLASS", "PUBLIC", 1, "B.kt", ":app", "main"),
@@ -918,6 +1044,15 @@ fn seed_source_index(workspace: &std::path::Path) {
             "PaymentBridge.kt",
             ":lib:payments",
             "main",
+        ),
+        (
+            11,
+            "CLASS",
+            "PUBLIC",
+            6,
+            "FakeAnalysisBackend.kt",
+            ":analysis-api",
+            "testFixtures",
         ),
     ] {
         conn.execute(
@@ -962,6 +1097,10 @@ fn seed_source_files(workspace: &std::path::Path) {
     std::fs::create_dir_all(workspace.join("lib/test")).expect("lib test sources");
     std::fs::create_dir_all(workspace.join("build-logic")).expect("build logic sources");
     std::fs::create_dir_all(workspace.join("lib/payments")).expect("lib payments sources");
+    std::fs::create_dir_all(
+        workspace.join("analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing"),
+    )
+    .expect("analysis-api test fixtures sources");
     std::fs::write(
         workspace.join("app/A.kt"),
         r#"package app
@@ -1022,6 +1161,7 @@ class FooWidget
 "#,
     )
     .expect("FooWidget.kt");
+    std::fs::write(workspace.join("lib/FooNotes.md"), "# FooNotes\n").expect("FooNotes.md");
     std::fs::write(
         workspace.join("lib/CardPaymentProcessor.kt"),
         r#"package lib
@@ -1054,4 +1194,12 @@ class PaymentBridge
 "#,
     )
     .expect("PaymentBridge.kt");
+    std::fs::write(
+        workspace.join("analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt"),
+        r#"package io.github.amichne.kast.testing
+
+class FakeAnalysisBackend
+"#,
+    )
+    .expect("FakeAnalysisBackend.kt");
 }

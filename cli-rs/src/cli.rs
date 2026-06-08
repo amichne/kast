@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -10,8 +10,17 @@ use std::path::PathBuf;
     disable_help_subcommand = true
 )]
 pub struct Cli {
+    /// Select readable text or machine-readable JSON for operator command output.
+    #[arg(long, value_enum, global = true, default_value = "human")]
+    pub output: OutputFormat,
     #[command(subcommand)]
     pub command: Option<Command>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum OutputFormat {
+    Human,
+    Json,
 }
 
 #[derive(Debug, Subcommand)]
@@ -48,7 +57,7 @@ pub enum Command {
     Stop(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
-    /// Open the interactive symbol-walking demo backed by source-index.db.
+    /// Open the interactive source-index demo backed by source-index.db.
     Demo(DemoArgs),
     /// Query source-index metrics directly from SQLite.
     Metrics {
@@ -221,19 +230,21 @@ pub struct DemoArgs {
     /// Initial symbol search query.
     #[arg(long)]
     pub query: Option<String>,
-    /// Maximum rows per symbol-walk pane.
+    /// Maximum rows per demo pane.
     #[arg(long, default_value_t = 30)]
     pub limit: usize,
     /// Print a deterministic JSON snapshot instead of entering the TUI.
     #[arg(long)]
     pub json: bool,
     /// Demo visualization to run.
-    #[arg(long, value_enum, default_value = "symbol")]
+    #[arg(long, value_enum, default_value = "compare")]
     pub view: DemoView,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum DemoView {
+    /// Dual-pane comparison between lexical index candidates and Kast semantic matches.
+    Compare,
     /// Existing source-index-backed symbol walk.
     Symbol,
     /// Spatial structural tree over source-index declarations.
@@ -415,6 +426,20 @@ pub enum InstallCommand {
     /// Download the Homebrew-managed IDEA plugin cask.
     #[command(alias = "idea-plugin", alias = "developer-plugin")]
     Plugin(IdeaPluginInstallArgs),
+    /// Install shell PATH and completion integration.
+    Shell(ShellInstallArgs),
+    /// Print shell completion scripts.
+    Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct CompletionArgs {
+    /// Shell to generate completion code for.
+    #[arg(value_enum)]
+    pub shell: ShellKind,
+    /// Command name to embed in completion output. Defaults to kast.
+    #[arg(long)]
+    pub command_name: Option<String>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -455,6 +480,25 @@ pub struct IdeaPluginInstallArgs {
     #[arg(short = 'f', long)]
     pub force: bool,
     /// Print the planned Homebrew command without running it.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct ShellInstallArgs {
+    /// Shell to install integration for. Defaults to the current SHELL.
+    #[arg(long, value_enum)]
+    pub shell: Option<ShellKind>,
+    /// Shell profile file to patch. Defaults to ~/.zshrc or ~/.bashrc.
+    #[arg(long)]
+    pub profile: Option<PathBuf>,
+    /// Managed source file to write. Defaults to <KAST_CONFIG_HOME>/shell/<command>.<shell>.
+    #[arg(long)]
+    pub source_file: Option<PathBuf>,
+    /// Command name to add completions for. Defaults to this executable's file name.
+    #[arg(long)]
+    pub command_name: Option<String>,
+    /// Print the planned integration without writing files.
     #[arg(long)]
     pub dry_run: bool,
 }
@@ -515,6 +559,28 @@ pub struct ResourceCurrentArgs {
     pub link_name: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum ShellKind {
+    Bash,
+    Zsh,
+}
+
+impl ShellKind {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Bash => "bash",
+            Self::Zsh => "zsh",
+        }
+    }
+
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Bash => "bash",
+            Self::Zsh => "zsh",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BackendName {
@@ -549,10 +615,22 @@ pub fn version() -> &'static str {
 }
 
 pub fn print_topic_help(topic: &[String]) -> crate::error::Result<()> {
-    let joined = topic.join(" ");
-    println!("Kast CLI {}", version());
+    let mut command = Cli::command();
+    let mut selected = &mut command;
+    let mut traversed = Vec::new();
+    for part in topic {
+        traversed.push(part.as_str());
+        selected = selected.find_subcommand_mut(part).ok_or_else(|| {
+            crate::error::CliError::new(
+                "CLI_HELP_TOPIC_NOT_FOUND",
+                format!(
+                    "No Kast help topic named `{}`. Run `kast --help` for the full command tree.",
+                    traversed.join(" ")
+                ),
+            )
+        })?;
+    }
+    selected.print_long_help()?;
     println!();
-    println!("Help topic: {joined}");
-    println!("Run `kast --help` for the full command tree.");
     Ok(())
 }

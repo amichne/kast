@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -145,19 +146,21 @@ internal class IdeaProjectIndexer(
             ).map { (path, _) -> path }
     }
 
-    private fun discoverModuleSpecs(): List<IdeaModuleSpec> =
-        ModuleManager.getInstance(project).modules
-            .sortedBy { module -> module.name }
+    private fun discoverModuleSpecs(): List<IdeaModuleSpec> {
+        val moduleSpecs = ModuleManager.getInstance(project).modules
+            .sortedBy(::indexedModuleNameForModule)
             .map { module ->
                 val rootManager = ModuleRootManager.getInstance(module)
                 IdeaModuleSpec(
-                    name = module.name,
-                    dependencyModuleNames = rootManager.dependencies.map { dependency -> dependency.name }.sorted(),
+                    name = indexedModuleNameForModule(module),
+                    dependencyModuleNames = rootManager.dependencies.map(::indexedModuleNameForModule).sorted(),
                 )
             }
+        return mergeModuleSpecsByName(moduleSpecs)
+    }
 
     private fun buildIdeaDependencyGraph(moduleSpecs: List<IdeaModuleSpec>): Map<String, Set<String>> =
-        moduleSpecs
+        mergeModuleSpecsByName(moduleSpecs)
             .associate { module ->
                 module.name to module.dependencyModuleNames.toSet()
             }
@@ -169,7 +172,22 @@ internal class IdeaProjectIndexer(
         val virtualFile = psiFile.virtualFile
         val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return@runIdeaReadAction null
         val sourceSet = sourceSetForFile(virtualFile.path)
-        if (sourceSet == null) module.name else "${module.name}[$sourceSet]"
+        indexedModuleNameForFilePath(
+            ideaModuleName = module.name,
+            filePath = virtualFile.path,
+            workspaceRoot = workspaceRoot,
+            sourceSet = sourceSet,
+        )
+    }
+
+    private fun indexedModuleNameForModule(module: Module): String {
+        val rootManager = ModuleRootManager.getInstance(module)
+        return rootManager.sourceRoots
+            .asSequence()
+            .mapNotNull { root -> gradleProjectPathForFile(root.path, workspaceRoot) }
+            .sorted()
+            .firstOrNull()
+            ?: module.name
     }
 
     private fun sourceSetForFile(path: String): String? {
@@ -191,10 +209,54 @@ internal class IdeaProjectIndexer(
     }
 }
 
+internal fun indexedModuleNameForFilePath(
+    ideaModuleName: String,
+    filePath: String,
+    workspaceRoot: Path,
+    sourceSet: String?,
+): String {
+    val modulePath = gradleProjectPathForFile(filePath, workspaceRoot) ?: ideaModuleName
+    return if (sourceSet == null) modulePath else "$modulePath[$sourceSet]"
+}
+
+private fun gradleProjectPathForFile(
+    filePath: String,
+    workspaceRoot: Path,
+): String? {
+    val root = workspaceRoot.toAbsolutePath().normalize()
+    val path = Path.of(filePath).toAbsolutePath().normalize()
+    if (!path.startsWith(root)) return null
+
+    val segments = root.relativize(path).map { segment -> segment.toString() }
+    val srcIndex = segments.indexOf("src")
+    if (srcIndex < 0) return null
+
+    val projectSegments = segments.take(srcIndex)
+    return if (projectSegments.isEmpty()) ":" else projectSegments.joinToString(
+        separator = ":",
+        prefix = ":",
+    )
+}
+
 internal data class IdeaModuleSpec(
     val name: String,
     val dependencyModuleNames: List<String>,
 )
+
+internal fun mergeModuleSpecsByName(moduleSpecs: List<IdeaModuleSpec>): List<IdeaModuleSpec> =
+    moduleSpecs
+        .groupBy(IdeaModuleSpec::name)
+        .map { (name, specs) ->
+            IdeaModuleSpec(
+                name = name,
+                dependencyModuleNames = specs
+                    .flatMap(IdeaModuleSpec::dependencyModuleNames)
+                    .filterNot { dependencyName -> dependencyName == name }
+                    .toSortedSet()
+                    .toList(),
+            )
+        }
+        .sortedBy(IdeaModuleSpec::name)
 
 internal fun computeModulePriorityOrder(
     activeModule: String?,
@@ -204,9 +266,10 @@ internal fun computeModulePriorityOrder(
 ): List<String> {
     if (depth < 0) return emptyList()
 
-    val moduleNames = moduleSpecs.mapTo(mutableSetOf()) { it.name }.sorted()
+    val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
+    val moduleNames = mergedModuleSpecs.mapTo(mutableSetOf()) { it.name }.sorted()
     if (activeModule == null || activeModule !in moduleNames) {
-        return topologicallySortModules(moduleSpecs)
+        return topologicallySortModules(mergedModuleSpecs)
     }
 
     val priorityModules = linkedSetOf<String>()
@@ -225,17 +288,18 @@ internal fun computeModulePriorityOrder(
             }
     }
 
-    return (priorityModules + topologicallySortModules(moduleSpecs).filterNot { it in priorityModules }).toList()
+    return (priorityModules + topologicallySortModules(mergedModuleSpecs).filterNot { it in priorityModules }).toList()
 }
 
 private fun topologicallySortModules(moduleSpecs: List<IdeaModuleSpec>): List<String> {
-    val modulesByName = moduleSpecs.associateBy(IdeaModuleSpec::name)
-    val incomingEdges = moduleSpecs
+    val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
+    val modulesByName = mergedModuleSpecs.associateBy(IdeaModuleSpec::name)
+    val incomingEdges = mergedModuleSpecs
         .associate { spec -> spec.name to spec.dependencyModuleNames.toMutableSet() }
         .toMutableMap()
 
     val outgoingEdges = linkedMapOf<String, MutableSet<String>>()
-    for (spec in moduleSpecs) {
+    for (spec in mergedModuleSpecs) {
         for (dependencyName in spec.dependencyModuleNames) {
             if (!modulesByName.containsKey(dependencyName)) {
                 continue
@@ -247,7 +311,7 @@ private fun topologicallySortModules(moduleSpecs: List<IdeaModuleSpec>): List<St
     }
 
     val readyNames = ArrayDeque(
-        moduleSpecs
+        mergedModuleSpecs
             .filter { spec -> incomingEdges.getValue(spec.name).isEmpty() }
             .map(IdeaModuleSpec::name)
             .sorted(),

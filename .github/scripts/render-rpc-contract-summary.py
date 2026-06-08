@@ -37,11 +37,12 @@ FLOW_BLOCKS = [
     ),
     (
         "Choose targets",
-        "List files, search symbols or text, and narrow ambiguous names before deeper calls.",
+        "Query indexed declarations or bounded symbol/text searches before optional workspace file inspection.",
         [
-            "raw/workspace-files",
+            "symbol/query",
             "raw/workspace-symbol",
             "raw/workspace-search",
+            "raw/workspace-files",
             "symbol/resolve",
             "raw/file-outline",
         ],

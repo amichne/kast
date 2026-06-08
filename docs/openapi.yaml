@@ -332,7 +332,7 @@ paths:
   "/rpc/raw/workspace-files":
     post:
       operationId: workspaceFiles
-      summary: List workspace modules and their source files
+      summary: List workspace modules and optional source files
       tags:
         - read
       x-jsonrpc-method: raw/workspace-files

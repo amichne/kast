@@ -17,8 +17,11 @@ run_kast_rpc() {
   kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 }
 
-# List workspace modules
-run_kast_rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"includeFiles":true},"id":1}'
+# Query indexed declarations with tight bounds
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/query","params":{"query":"EventBean","modes":["exact","lexical"],"filters":{"relativePathPrefix":"src/"},"limit":10},"id":1}'
+
+# Secondary module summary; request file paths only with moduleName and a small cap
+run_kast_rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25},"id":1}'
 
 # Resolve an ambiguous symbol
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
@@ -52,5 +55,5 @@ kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 # Agent-readable symbol graph snapshot
-kast demo --workspace-root "$PWD" --query EventBean --json \
+kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   >"$KAST_RESULT" 2>"$KAST_STDERR"

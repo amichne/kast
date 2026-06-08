@@ -251,7 +251,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin truncated: Boolean` :material-information-outline:{ title="Default: false" } | True when the result stopped at `maxResults`. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "raw/workspace-files — List workspace modules and source files"
+    ??? info "raw/workspace-files — List workspace modules and optional source files"
 
         **Capability** &nbsp;·&nbsp; `WORKSPACE_FILES`
 

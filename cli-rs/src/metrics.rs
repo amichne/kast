@@ -1,4 +1,5 @@
 use crate::SCHEMA_VERSION;
+use crate::cli::OutputFormat;
 use crate::cli::{
     MetricsCommand, MetricsFilterArgs, MetricsGraphArgs, MetricsImpactArgs, MetricsLimitArgs,
     MetricsScopeArgs, MetricsSearchArgs,
@@ -86,26 +87,29 @@ struct MetricsRpcResponse {
     schema_version: u32,
 }
 
-pub fn run(command: MetricsCommand) -> Result<i32> {
+pub fn run(command: MetricsCommand, output_format: OutputFormat) -> Result<i32> {
     let request = MetricsRequest::from_command(command)?;
     if request.metric == "graph" {
-        return run_graph(request);
+        return run_graph(request, output_format);
     }
 
     let result = query_direct(&request);
     match result {
-        Ok(results) => print_metrics_response(&request, results),
+        Ok(results) => print_metrics_response(&request, results, output_format),
         Err(error) => Err(error.into_cli_error()),
     }
 }
 
-fn run_graph(request: MetricsRequest) -> Result<i32> {
+fn run_graph(request: MetricsRequest, output_format: OutputFormat) -> Result<i32> {
     let graph = MetricsDatabase::open(&request)
         .and_then(|db| db.graph(request.symbol.as_deref().unwrap_or_default(), request.depth))
         .map_err(DirectMetricsError::into_cli_error)?;
 
-    if request.graph_json || !io::stdout().is_terminal() {
-        return print_metrics_response(&request, serde_json::to_value(graph)?);
+    if request.graph_json || output_format == OutputFormat::Json {
+        return print_metrics_response(&request, serde_json::to_value(graph)?, OutputFormat::Json);
+    }
+    if !io::stdout().is_terminal() {
+        return print_metrics_response(&request, serde_json::to_value(graph)?, OutputFormat::Human);
     }
 
     run_graph_tui(&graph)
@@ -214,20 +218,145 @@ fn json_rpc_success(id: Value, result: Value) -> Value {
     })
 }
 
-fn print_metrics_response(request: &MetricsRequest, results: Value) -> Result<i32> {
-    print_json_value(&serde_json::to_value(MetricsResponse {
+fn print_metrics_response(
+    request: &MetricsRequest,
+    results: Value,
+    output_format: OutputFormat,
+) -> Result<i32> {
+    let response = serde_json::to_value(MetricsResponse {
         ok: true,
         query: request.query(),
         results,
         log_file: String::new(),
         schema_version: SCHEMA_VERSION,
-    })?)
+    })?;
+    if output_format == OutputFormat::Json {
+        print_json_value(&response)
+    } else {
+        print_human_metrics_response(request, &response)
+    }
 }
 
 fn print_json_value(value: &Value) -> Result<i32> {
     serde_json::to_writer_pretty(io::stdout(), value)?;
     println!();
     Ok(0)
+}
+
+fn print_human_metrics_response(request: &MetricsRequest, response: &Value) -> Result<i32> {
+    println!("# Kast metrics {}", metric_display_name(request.metric));
+    println!();
+    println!("- Workspace: `{}`", request.workspace_root.display());
+    println!("- Database: `{}`", request.database.display());
+    println!("- Limit: {}", request.limit);
+    if let Some(symbol) = &request.symbol {
+        println!("- Symbol/query: `{symbol}`");
+    }
+    if request.depth != 3 || matches!(request.metric, "impact" | "graph") {
+        println!("- Depth: {}", request.depth);
+    }
+    if let Some(file_glob) = request.filter.file_glob() {
+        println!("- File glob: `{file_glob}`");
+    }
+    if let Some(folder_filter) = request.filter.folder_filter() {
+        println!("- Folder filter: `{folder_filter}`");
+    }
+    println!();
+    println!("## Results");
+    let results = response.get("results").unwrap_or(&Value::Null);
+    print_metric_results(results);
+    println!();
+    println!("Use `kast --output json metrics ...` for the structured metrics payload.");
+    Ok(0)
+}
+
+fn print_metric_results(results: &Value) {
+    match results {
+        Value::Array(items) if items.is_empty() => {
+            println!("No rows matched.");
+        }
+        Value::Array(items) => {
+            for item in items.iter().take(20) {
+                println!("- {}", summarize_value(item));
+            }
+            if items.len() > 20 {
+                println!("- ... {} more rows", items.len() - 20);
+            }
+        }
+        Value::Object(object) => {
+            if let Some(nodes) = object.get("nodes").and_then(Value::as_array) {
+                println!("- Nodes: {}", nodes.len());
+            }
+            if let Some(edges) = object.get("edges").and_then(Value::as_array) {
+                println!("- Edges: {}", edges.len());
+            }
+            let summary = summarize_value(results);
+            if summary != "object" {
+                println!("- {summary}");
+            }
+        }
+        Value::Null => println!("No results were returned."),
+        other => println!("- {}", summarize_value(other)),
+    }
+}
+
+fn summarize_value(value: &Value) -> String {
+    match value {
+        Value::Object(object) => {
+            let preferred = [
+                "targetFqName",
+                "sourceFqName",
+                "fqName",
+                "filePath",
+                "path",
+                "modulePath",
+                "edgeType",
+                "occurrenceCount",
+                "referenceCount",
+                "incomingReferences",
+                "outgoingReferences",
+                "focalNodeId",
+            ];
+            let fields: Vec<_> = preferred
+                .iter()
+                .filter_map(|key| {
+                    object
+                        .get(*key)
+                        .map(|field| format!("{key}={}", summarize_scalar(field)))
+                })
+                .collect();
+            if fields.is_empty() {
+                "object".to_string()
+            } else {
+                fields.join(", ")
+            }
+        }
+        other => summarize_scalar(other),
+    }
+}
+
+fn summarize_scalar(value: &Value) -> String {
+    match value {
+        Value::String(value) => format!("`{value}`"),
+        Value::Number(value) => value.to_string(),
+        Value::Bool(value) => value.to_string(),
+        Value::Array(values) => format!("{} item(s)", values.len()),
+        Value::Object(_) => "object".to_string(),
+        Value::Null => "null".to_string(),
+    }
+}
+
+fn metric_display_name(metric: &str) -> &'static str {
+    match metric {
+        "fanIn" => "fan-in",
+        "fanOut" => "fan-out",
+        "deadCode" => "dead-code",
+        "impact" => "impact",
+        "coupling" => "coupling",
+        "search" => "search",
+        "graph" => "graph",
+        _ => "query",
+    }
 }
 
 impl MetricsRequest {

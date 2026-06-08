@@ -261,21 +261,38 @@ Download the plugin zip and install it from disk:
     IDE's K2 analysis session, project model, and indexes. Install the
     CLI separately if you also want a terminal entry point.
 
-## Enable shell completion
+## Install shell integration
 
-To enable shell completion:
+Use `kast install shell` to add the configured `binDir` to your `PATH`,
+export the active `KAST_CONFIG_HOME`, and source completions from a managed
+file under `KAST_CONFIG_HOME/shell`.
 
 === "Bash"
 
-    ```console title="Source completion in Bash"
-    source <(kast completion bash)
+    ```console title="Install Bash integration"
+    kast install shell --shell bash
     ```
 
 === "Zsh"
 
-    ```console title="Source completion in Zsh"
-    source <(kast completion zsh)
+    ```console title="Install Zsh integration"
+    kast install shell --shell zsh
     ```
+
+For a local development CLI installed with `./gradlew installDevelopmentCli`,
+run the development binary once so the generated profile block targets
+`kast-dev`:
+
+```console title="Install kast-dev shell integration"
+~/.kast/bin/kast-dev install shell --shell zsh
+```
+
+If you only need completion code for packaging or manual sourcing, print it
+directly:
+
+```console title="Print completion code"
+kast install completion zsh
+```
 
 ## Verify the install
 
