@@ -89,8 +89,15 @@ fn run(cli: Cli) -> Result<i32> {
         }
         Command::Config { command } => match command {
             cli::ConfigCommand::Init => {
-                let path = config::init_config()?;
-                println!("Wrote {}", path.display());
+                let result = install::install_affected(cli::AffectedInstallArgs {
+                    apply: true,
+                    jetbrains_config_root: None,
+                })?;
+                if output_format == OutputFormat::Json {
+                    output::print_json(&result)?;
+                } else {
+                    output::print_install_result(&install::InstallResult::Affected(result))?;
+                }
                 Ok(0)
             }
         },

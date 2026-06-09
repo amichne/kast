@@ -37,6 +37,10 @@ elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
   printf 'fake brew fetched kast plugin\n' >&2
 elif [ "$1" = "--cache" ] && [ "$2" = "--cask" ]; then
   printf '%s\n' "${{HOME:-/tmp}}/000--kast-plugin.zip"
+elif [ "$1" = "install" ] && [ "$2" = "--cask" ]; then
+  printf 'fake brew installed kast plugin\n' >&2
+elif [ "$1" = "reinstall" ] && [ "$2" = "--cask" ]; then
+  printf 'fake brew reinstalled kast plugin\n' >&2
 elif [ "$1" = "list" ] && [ "$2" = "--cask" ]; then
   if [ "${{KAST_FAKE_BREW_CASK_VERSION:-}}" != "" ]; then
     printf 'kast-plugin %s\n' "$KAST_FAKE_BREW_CASK_VERSION"
@@ -432,6 +436,63 @@ fn smoke_core_cli_commands() {
 }
 
 #[test]
+fn top_level_help_hides_recovery_and_internal_install_surfaces() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let help = kast(&home, &config_home)
+        .arg("--help")
+        .output()
+        .expect("help");
+    assert!(help.status.success());
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    for command in ["up", "status", "install", "current", "doctor"] {
+        assert!(
+            stdout
+                .lines()
+                .any(|line| line.trim_start().starts_with(command)),
+            "top-level help should show {command}: {stdout}"
+        );
+    }
+    for hidden in [
+        "config",
+        "daemon",
+        "backend",
+        "info",
+        "verify-extension",
+        "uninstall",
+    ] {
+        assert!(
+            !stdout
+                .lines()
+                .any(|line| line.trim_start().starts_with(hidden)),
+            "top-level help should hide {hidden}: {stdout}"
+        );
+    }
+
+    let install_help = kast(&home, &config_home)
+        .args(["install", "--help"])
+        .output()
+        .expect("install help");
+    assert!(install_help.status.success());
+    let install_stdout = String::from_utf8_lossy(&install_help.stdout);
+    assert!(
+        install_stdout.contains("affected"),
+        "install help should show the repair command: {install_stdout}"
+    );
+    assert!(
+        !install_stdout.contains("--archive"),
+        "install help should hide archive install internals: {install_stdout}"
+    );
+    assert!(
+        !install_stdout.contains("portable archive"),
+        "install help should not describe retired portable archive flow: {install_stdout}"
+    );
+}
+
+#[test]
 fn install_completion_command_renders_shell_completion_scripts() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -482,8 +543,10 @@ fn install_shell_writes_path_and_completion_profile_integration() {
     let config_home = temp.path().join("config");
     let install_root = temp.path().join("kast-install");
     let profile = temp.path().join(".zshrc");
+    let empty_path = temp.path().join("empty-path");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config");
+    std::fs::create_dir_all(&empty_path).expect("empty path");
     std::fs::write(
         config_home.join("config.toml"),
         format!(
@@ -496,6 +559,7 @@ installRoot = "{}"
     .expect("config");
 
     let install = kast(&home, &config_home)
+        .env("PATH", &empty_path)
         .args([
             "--output",
             "json",
@@ -562,6 +626,66 @@ installRoot = "{}"
             shell_single_quote(source_file.to_str().expect("source file path"))
         )),
         "profile should source the managed integration file: {profile_content}"
+    );
+}
+
+#[test]
+fn install_shell_prefers_running_cli_directory_over_stale_config_bin_dir() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let stale_bin = home.join(".kast/bin");
+    let profile = temp.path().join(".zshrc");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config");
+    std::fs::create_dir_all(&stale_bin).expect("stale bin");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            r#"[paths]
+binDir = "{}"
+"#,
+            stale_bin.display()
+        ),
+    )
+    .expect("config");
+
+    let install = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "shell",
+            "--shell",
+            "zsh",
+            "--profile",
+            profile.to_str().expect("profile path"),
+        ])
+        .output()
+        .expect("install shell");
+
+    assert!(
+        install.status.success(),
+        "install shell should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install shell json");
+    let running_bin = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    assert_eq!(stdout["commandName"], "kast");
+    assert_eq!(stdout["binDir"], running_bin.display().to_string());
+    let source_file = PathBuf::from(stdout["sourceFile"].as_str().expect("source file"));
+    let source = std::fs::read_to_string(&source_file).expect("source file content");
+    assert!(
+        !source.contains(&stale_bin.display().to_string()),
+        "source file should not point at stale config binDir: {source}"
+    );
+    assert!(
+        source.contains(&running_bin.display().to_string()),
+        "source file should point at the running kast binary directory: {source}"
     );
 }
 
@@ -1370,6 +1494,267 @@ fn current_plugin_reports_homebrew_cask_version() {
 }
 
 #[test]
+fn install_affected_repairs_stale_local_setup_only_when_applied() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let repo = temp.path().join("repo");
+    let jetbrains_root = home.join("Library/Application Support/JetBrains");
+    let profile_plugins = jetbrains_root.join("IntelliJIdea2026.1/plugins");
+    let stale_backend = home.join(".kast/lib/backends/standalone-v0.7.35");
+    let stale_current = home.join(".kast/lib/backends/current");
+    let stale_runtime_libs = stale_current.join("runtime-libs");
+    let skill = home.join(".codex/skills/kast");
+    let copilot = repo.join(".github/extensions/kast");
+    let shell_source = config_home.join("shell/kast.zsh");
+    let old_bin = home.join(".kast/bin");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    std::fs::create_dir_all(&skill).expect("skill");
+    std::fs::create_dir_all(&copilot).expect("copilot");
+    std::fs::create_dir_all(&old_bin).expect("old bin");
+    std::fs::create_dir_all(&profile_plugins).expect("profile plugins");
+    std::fs::create_dir_all(shell_source.parent().expect("shell source parent"))
+        .expect("shell dir");
+    std::fs::write(old_bin.join("kast"), b"old binary\n").expect("old binary");
+    std::fs::write(skill.join(".kast-version"), b"old\n").expect("skill marker");
+    std::fs::write(skill.join("old.txt"), b"stale\n").expect("skill stale file");
+    std::fs::write(copilot.join(".kast-copilot-version"), b"old\n").expect("copilot marker");
+    std::fs::write(copilot.join("old.txt"), b"stale\n").expect("copilot stale file");
+    std::fs::write(
+        &shell_source,
+        format!(
+            "# Managed by `kast install shell`; re-run that command after moving Kast.\n\
+export KAST_CONFIG_HOME='{}'\n\
+_kast_bin_dir='{}'\n",
+            config_home.display(),
+            old_bin.display()
+        ),
+    )
+    .expect("shell source");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        "/opt/homebrew/Caskroom/kast-plugin/0.7.35/backend-idea",
+        profile_plugins.join("kast"),
+    )
+    .expect("stale plugin symlink");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            r#"[backends.standalone]
+runtimeLibsDir = "{}"
+
+[cli]
+binaryPath = "{}"
+
+[install]
+components = ["backend:standalone"]
+installedAt = "unix:1"
+managedPaths = [
+    "lib/backends/standalone-v0.7.35",
+    "lib/backends/current",
+]
+platform = "macos-aarch64"
+schemaVersion = 3
+shellRcPatches = []
+version = "0.7.35"
+
+[[install.backends]]
+installDir = "{}"
+name = "standalone"
+runtimeLibsDir = "{}"
+version = "v0.7.35"
+
+[[install.repos]]
+copilotExtensionVersion = "old"
+path = "{}"
+"#,
+            stale_runtime_libs.display(),
+            old_bin.join("kast").display(),
+            stale_backend.display(),
+            stale_runtime_libs.display(),
+            repo.display()
+        ),
+    )
+    .expect("config");
+
+    let dry_run = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_BREW_CASK_VERSION", "9.8.7")
+        .args([
+            "--output",
+            "json",
+            "install",
+            "affected",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("dry run affected install");
+
+    assert!(
+        dry_run.status.success(),
+        "dry run should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&dry_run.stdout),
+        String::from_utf8_lossy(&dry_run.stderr)
+    );
+    let dry_run_stdout: serde_json::Value =
+        serde_json::from_slice(&dry_run.stdout).expect("dry run json");
+    assert_eq!(dry_run_stdout["applied"], false);
+    assert_eq!(
+        dry_run_stdout["applyCommand"],
+        "kast install affected --apply"
+    );
+    assert!(dry_run_stdout["actions"].as_array().expect("actions").len() >= 5);
+    assert!(
+        std::fs::read_to_string(config_home.join("config.toml"))
+            .expect("config after dry run")
+            .contains("[backends.standalone]")
+    );
+    assert_eq!(
+        std::fs::read_to_string(skill.join(".kast-version")).expect("skill after dry run"),
+        "old\n"
+    );
+
+    let apply = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_BREW_CASK_VERSION", "9.8.7")
+        .args([
+            "--output",
+            "json",
+            "install",
+            "affected",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+            "--apply",
+        ])
+        .output()
+        .expect("apply affected install");
+
+    assert!(
+        apply.status.success(),
+        "apply should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&apply.stdout),
+        String::from_utf8_lossy(&apply.stderr)
+    );
+    let apply_stdout: serde_json::Value =
+        serde_json::from_slice(&apply.stdout).expect("apply json");
+    assert_eq!(apply_stdout["applied"], true);
+    assert!(
+        !apply_stdout["backups"]
+            .as_array()
+            .expect("backups")
+            .is_empty(),
+        "apply should create backups"
+    );
+    let config_after =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("config after apply");
+    assert!(!config_after.contains("[backends.standalone]"));
+    assert!(!config_after.contains("backend:standalone"));
+    assert!(config_after.contains(env!("CARGO_BIN_EXE_kast")));
+    assert_ne!(
+        std::fs::read_to_string(skill.join(".kast-version")).expect("skill after apply"),
+        "old\n"
+    );
+    assert!(!skill.join("old.txt").exists());
+    assert_ne!(
+        std::fs::read_to_string(copilot.join(".kast-copilot-version"))
+            .expect("copilot after apply"),
+        "old\n"
+    );
+    assert!(!copilot.join("old.txt").exists());
+    let shell_after = std::fs::read_to_string(&shell_source).expect("shell after apply");
+    assert!(!shell_after.contains(&old_bin.display().to_string()));
+    #[cfg(unix)]
+    assert_eq!(
+        std::fs::read_link(profile_plugins.join("kast")).expect("plugin symlink after apply"),
+        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
+    );
+}
+
+#[test]
+fn config_init_repairs_stale_brew_and_removed_backend_state() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let stale_bin = home.join(".kast/bin");
+    let stale_backend = home.join(".kast/lib/backends/standalone-v0.7.35");
+    let stale_current = home.join(".kast/lib/backends/current");
+    let stale_runtime_libs = stale_current.join("runtime-libs");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&stale_bin).expect("stale bin");
+    std::fs::write(stale_bin.join("kast"), b"old binary\n").expect("old binary");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            r#"[backends.standalone]
+runtimeLibsDir = "{}"
+
+[cli]
+binaryPath = "{}"
+
+[install]
+components = ["backend:standalone"]
+installedAt = "unix:1"
+managedPaths = [
+    "lib/backends/standalone-v0.7.35",
+    "lib/backends/current",
+]
+platform = "macos-aarch64"
+schemaVersion = 3
+shellRcPatches = []
+version = "0.7.35"
+
+[[install.backends]]
+installDir = "{}"
+name = "standalone"
+runtimeLibsDir = "{}"
+version = "v0.7.35"
+"#,
+            stale_runtime_libs.display(),
+            stale_bin.join("kast").display(),
+            stale_backend.display(),
+            stale_runtime_libs.display(),
+        ),
+    )
+    .expect("config");
+
+    let repair = kast(&home, &config_home)
+        .args(["--output", "json", "config", "init"])
+        .output()
+        .expect("config init");
+
+    assert!(
+        repair.status.success(),
+        "config init should repair stale state: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&repair.stdout).expect("repair json");
+    assert_eq!(stdout["applied"], true);
+    assert!(
+        stdout["actions"]
+            .as_array()
+            .expect("actions")
+            .iter()
+            .any(|action| action["kind"] == "update-cli-binary-path"),
+        "config init should update stale cli binary path: {stdout}"
+    );
+    let config_after =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("config after repair");
+    assert!(!config_after.contains("[backends.standalone]"));
+    assert!(!config_after.contains("backend:standalone"));
+    assert!(config_after.contains(env!("CARGO_BIN_EXE_kast")));
+}
+
+#[test]
 fn install_resource_gateways_support_force_and_current_versions() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -1549,6 +1934,85 @@ fn idea_plugin_link_flag_uses_profile_install_mode() {
             .to_string()
     );
     assert!(stdout.get("downloadDir").is_none(), "{stdout}");
+}
+
+#[test]
+fn plugin_install_repairs_stale_config_before_linking_profiles() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    let stale_bin = home.join(".kast/bin");
+    let stale_backend = home.join(".kast/lib/backends/standalone-v0.7.35");
+    let stale_runtime_libs = home.join(".kast/lib/backends/current/runtime-libs");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&stale_bin).expect("stale bin");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    std::fs::write(stale_bin.join("kast"), b"old binary\n").expect("old binary");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            r#"[backends.standalone]
+runtimeLibsDir = "{}"
+
+[cli]
+binaryPath = "{}"
+
+[install]
+components = ["backend:standalone"]
+installedAt = "unix:1"
+managedPaths = ["lib/backends/standalone-v0.7.35", "lib/backends/current"]
+platform = "macos-aarch64"
+schemaVersion = 3
+version = "0.7.35"
+
+[[install.backends]]
+installDir = "{}"
+name = "standalone"
+runtimeLibsDir = "{}"
+version = "v0.7.35"
+"#,
+            stale_runtime_libs.display(),
+            stale_bin.join("kast").display(),
+            stale_backend.display(),
+            stale_runtime_libs.display(),
+        ),
+    )
+    .expect("config");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "plugin",
+            "--link-jetbrains-profiles",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "plugin install should repair config before linking profiles: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&install.stdout).expect("install json");
+    assert_eq!(stdout["brewAction"], "install");
+    let config_after =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("config after repair");
+    assert!(!config_after.contains("[backends.standalone]"));
+    assert!(!config_after.contains("backend:standalone"));
+    assert!(config_after.contains(env!("CARGO_BIN_EXE_kast")));
 }
 
 #[test]

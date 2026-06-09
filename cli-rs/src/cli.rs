@@ -32,17 +32,20 @@ pub enum Command {
     },
     /// Print the packaged CLI version.
     Version,
-    /// Write and inspect Kast configuration.
+    /// Repair Kast configuration.
+    #[command(hide = true)]
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
     },
     /// Start the headless JVM backend for a workspace.
+    #[command(hide = true)]
     Daemon {
         #[command(subcommand)]
         command: DaemonCommand,
     },
     /// Install or remove JVM backend components.
+    #[command(hide = true)]
     Backend {
         #[command(subcommand)]
         command: BackendCommand,
@@ -64,7 +67,7 @@ pub enum Command {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Install a portable archive or packaged resources.
+    /// Install or repair Kast resources.
     Install(InstallArgs),
     /// Report the current installed version of a Kast component.
     Current {
@@ -72,12 +75,15 @@ pub enum Command {
         command: CurrentCommand,
     },
     /// Report the recorded global Kast install state.
+    #[command(hide = true)]
     Info,
     /// Verify the global Kast install is still healthy.
     Doctor,
     /// Remove config-managed files or packaged resources.
+    #[command(hide = true)]
     Uninstall(UninstallArgs),
     /// Verify the installed Copilot extension version matches this CLI.
+    #[command(hide = true)]
     VerifyExtension,
 }
 
@@ -401,16 +407,16 @@ pub struct InstallArgs {
     #[command(subcommand)]
     pub command: Option<InstallCommand>,
     /// Absolute path to a portable Kast zip archive to install.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub archive: Option<PathBuf>,
     /// Instance name for the installed build.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub instance: Option<String>,
     /// Root directory for instances.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub instances_root: Option<PathBuf>,
     /// Directory for launcher scripts.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub bin_dir: Option<PathBuf>,
 }
 
@@ -418,6 +424,8 @@ pub struct InstallArgs {
 pub enum InstallCommand {
     /// Install the headless JVM backend.
     Headless(HeadlessInstallArgs),
+    /// Audit and repair stale Kast installs, resources, and profile links.
+    Affected(AffectedInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
     /// Install the packaged Copilot agents and extensions.
@@ -430,6 +438,16 @@ pub enum InstallCommand {
     Shell(ShellInstallArgs),
     /// Print shell completion scripts.
     Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AffectedInstallArgs {
+    /// Apply the planned repairs. Without this flag, no files are changed.
+    #[arg(long)]
+    pub apply: bool,
+    /// JetBrains config root containing IDE profile directories to audit.
+    #[arg(long)]
+    pub jetbrains_config_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]
