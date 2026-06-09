@@ -355,6 +355,125 @@ class KastConfigTest {
     }
 
     @Test
+    fun `resolved runtime config json loads without reading toml install state`() {
+        val runtimeConfig = tempDir.resolve("runtime-config.json").apply {
+            writeText(
+                """
+                {
+                  "server": {
+                    "maxResults": 42,
+                    "requestTimeoutMillis": 1234,
+                    "maxConcurrentRequests": 7
+                  },
+                  "indexing": {
+                    "phase2Enabled": false,
+                    "phase2BatchSize": 11,
+                    "phase2Parallelism": 2,
+                    "phase2PriorityDepth": 1,
+                    "identifierIndexWaitMillis": 9876,
+                    "referenceBatchSize": 13,
+                    "remote": {
+                      "enabled": true,
+                      "sourceIndexUrl": "file:///tmp/source-index.db"
+                    }
+                  },
+                  "cache": {
+                    "enabled": false,
+                    "writeDelayMillis": 55,
+                    "sourceIndexSaveDelayMillis": 66
+                  },
+                  "watcher": {
+                    "debounceMillis": 77
+                  },
+                  "gradle": {
+                    "toolingApiTimeoutMillis": 8888
+                  },
+                  "telemetry": {
+                    "enabled": true,
+                    "scopes": "references",
+                    "detail": "debug",
+                    "outputFile": "/tmp/telemetry.json"
+                  },
+                  "profiling": {
+                    "enabled": true,
+                    "modes": "cpu,alloc",
+                    "durationSeconds": 99,
+                    "outputDir": "/tmp/profiles",
+                    "otlpEndpoint": "http://localhost:4317",
+                    "emitManifest": false
+                  },
+                  "runtime": {
+                    "defaultBackend": "headless"
+                  },
+                  "backends": {
+                    "headless": {
+                      "enabled": true,
+                      "runtimeLibsDir": "/opt/kast/runtime-libs",
+                      "ideaHome": "/opt/kast/idea-home"
+                    },
+                    "idea": {
+                      "enabled": false
+                    }
+                  },
+                  "paths": {
+                    "installRoot": "/opt/kast",
+                    "binDir": "/opt/kast/bin",
+                    "libDir": "/opt/kast/lib",
+                    "cacheDir": "/opt/kast/cache",
+                    "logsDir": "/opt/kast/logs",
+                    "descriptorDir": "/opt/kast/cache/daemons",
+                    "socketDir": "/tmp"
+                  },
+                  "cli": {
+                    "binaryPath": "/opt/kast/bin/kast"
+                  },
+                  "install": {
+                    "managedPaths": [
+                      "lib/backends/headless/headless-v0.8.0",
+                      "lib/backends/headless/current"
+                    ]
+                  }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val config = KastConfig.loadResolvedJson(runtimeConfig)
+
+        assertEquals(42, config.server.maxResults.value)
+        assertEquals(1234L, config.server.requestTimeoutMillis.value)
+        assertEquals(7, config.server.maxConcurrentRequests.value)
+        assertEquals(false, config.indexing.phase2Enabled.value)
+        assertEquals(11, config.indexing.phase2BatchSize.value)
+        assertEquals(2, config.indexing.phase2Parallelism.value)
+        assertEquals(1, config.indexing.phase2PriorityDepth.value)
+        assertEquals(9876L, config.indexing.identifierIndexWaitMillis.value)
+        assertEquals(13, config.indexing.referenceBatchSize.value)
+        assertEquals(true, config.indexing.remote.enabled.value)
+        assertEquals("file:///tmp/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
+        assertEquals(false, config.cache.enabled.value)
+        assertEquals(55L, config.cache.writeDelayMillis.value)
+        assertEquals(66L, config.cache.sourceIndexSaveDelayMillis.value)
+        assertEquals(77L, config.watcher.debounceMillis.value)
+        assertEquals(8888L, config.gradle.toolingApiTimeoutMillis.value)
+        assertEquals(true, config.telemetry.enabled.value)
+        assertEquals("references", config.telemetry.scopes.value)
+        assertEquals("debug", config.telemetry.detail.value)
+        assertEquals("/tmp/telemetry.json", config.telemetry.outputFile.value.orNull)
+        assertEquals(true, config.profiling.enabled.value)
+        assertEquals("cpu,alloc", config.profiling.modes.value)
+        assertEquals(99L, config.profiling.durationSeconds.value)
+        assertEquals("/tmp/profiles", config.profiling.outputDir.value)
+        assertEquals("http://localhost:4317", config.profiling.otlpEndpoint.value.orNull)
+        assertEquals(false, config.profiling.emitManifest.value)
+        assertEquals("/opt/kast/runtime-libs", config.backends.headless.runtimeLibsDir.value.orNull)
+        assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)
+        assertEquals(false, config.backends.idea.enabled.value)
+        assertEquals("/opt/kast/cache", config.paths.cacheDir.value)
+        assertEquals("/opt/kast/bin/kast", config.cli.binaryPath.value)
+    }
+
+    @Test
     @OptIn(ExperimentalHoplite::class)
     fun hopliteDecodesReadableTomlDirectlyIntoConfigurationFieldOverrideLeaves() {
         val installRoot = tempDir.resolve("install-root")

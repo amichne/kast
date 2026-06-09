@@ -151,8 +151,6 @@ pub enum MetricsCommand {
     Coupling(MetricsScopeArgs),
     /// Search indexed symbols using persistent SQLite FTS.
     Search(MetricsSearchArgs),
-    /// Open an interactive metrics graph, or print it as JSON when stdout is not a TTY.
-    Graph(MetricsGraphArgs),
 }
 
 #[derive(Debug, Args, Clone)]
@@ -209,20 +207,6 @@ pub struct MetricsSearchArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct MetricsGraphArgs {
-    #[command(flatten)]
-    pub scope: MetricsScopeArgs,
-    /// Fully-qualified focal symbol name.
-    pub symbol: String,
-    /// Maximum reverse-reference depth.
-    #[arg(long, default_value_t = 3)]
-    pub depth: usize,
-    /// Print JSON instead of entering the terminal UI.
-    #[arg(long)]
-    pub json: bool,
-}
-
-#[derive(Debug, Args, Clone)]
 pub struct DemoArgs {
     /// Absolute workspace root containing the Kast source-index cache.
     #[arg(long)]
@@ -253,8 +237,6 @@ pub enum DemoView {
     Compare,
     /// Existing source-index-backed symbol walk.
     Symbol,
-    /// Spatial structural tree over source-index declarations.
-    Spatial,
 }
 
 #[derive(Debug, Args, Clone)]

@@ -3,11 +3,17 @@ package io.github.amichne.kast.headless
 import com.intellij.openapi.application.ApplicationStarter
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.io.path.writeText
 
 class HeadlessServerOptionsTest {
+    @TempDir
+    lateinit var tempDir: Path
+
     @Test
     fun `headless starter implements IDEA app starter extension type`() {
         assertEquals(Any::class.java, HeadlessApplicationStarter::class.java.superclass)
@@ -32,6 +38,36 @@ class HeadlessServerOptionsTest {
             (options.serverOptions.transport as AnalysisTransport.UnixDomainSocket).socketPath,
         )
         assertTrue(options.smokeOnly)
+    }
+
+    @Test
+    fun `starter args load rust resolved runtime config file`() {
+        val runtimeConfig = tempDir.resolve("runtime-config.json").apply {
+            writeText(
+                """
+                {
+                  "server": {
+                    "maxResults": 42,
+                    "requestTimeoutMillis": 1234,
+                    "maxConcurrentRequests": 7
+                  }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val options = HeadlessServerOptions.parseStarterArgs(
+            listOf(
+                HeadlessApplicationStarter.COMMAND_NAME,
+                "--workspace-root=/tmp/project",
+                "--runtime-config-file=$runtimeConfig",
+            ),
+        )
+
+        assertEquals(42, options.serverOptions.maxResults)
+        assertEquals(1234L, options.serverOptions.requestTimeoutMillis)
+        assertEquals(7, options.serverOptions.maxConcurrentRequests)
+        assertNotNull(options.runtimeConfig)
     }
 
     @Test

@@ -2,6 +2,8 @@ package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
 import io.github.amichne.kast.api.contract.ServerLimits
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -22,6 +24,12 @@ data class KastConfig(
         requestTimeoutMillis = server.requestTimeoutMillis.value,
         maxConcurrentRequests = server.maxConcurrentRequests.value,
     )
+
+    /**
+     * Applies typed runtime overrides after the base configuration has already
+     * been resolved by the owning boundary.
+     */
+    fun withOverrides(overrides: KastConfigOverride): KastConfig = merge(overrides)
 
     companion object {
         fun defaults(): KastConfig {
@@ -103,7 +111,229 @@ data class KastConfig(
             val loaded = loadConfigOverrides(configFiles)
             return defaults().merge(loaded).merge(overrides)
         }
+
+        /**
+         * Loads the Rust CLI's fully resolved runtime configuration handoff.
+         *
+         * This path intentionally avoids TOML parsing in the JVM backend; the
+         * Rust CLI owns config file parsing and passes this JSON to headless.
+         */
+        fun loadResolvedJson(
+            configFile: Path,
+            overrides: KastConfigOverride = KastConfigOverride(),
+        ): KastConfig {
+            val document = runtimeConfigJson.decodeFromString<RuntimeConfigDocument>(
+                Files.readString(configFile),
+            )
+            return defaults()
+                .merge(document.toKastConfigOverride())
+                .merge(overrides)
+        }
     }
+}
+
+private val runtimeConfigJson = Json {
+    ignoreUnknownKeys = true
+}
+
+@Serializable
+private data class RuntimeConfigDocument(
+    val server: RuntimeServerConfig? = null,
+    val indexing: RuntimeIndexingConfig? = null,
+    val cache: RuntimeCacheConfig? = null,
+    val watcher: RuntimeWatcherConfig? = null,
+    val gradle: RuntimeGradleConfig? = null,
+    val telemetry: RuntimeTelemetryConfig? = null,
+    val profiling: RuntimeProfilingConfig? = null,
+    val backends: RuntimeBackendsConfig? = null,
+    val paths: RuntimePathsConfig? = null,
+    val cli: RuntimeCliConfig? = null,
+) {
+    fun toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
+        server = server?.toOverride(),
+        indexing = indexing?.toOverride(),
+        cache = cache?.toOverride(),
+        watcher = watcher?.toOverride(),
+        gradle = gradle?.toOverride(),
+        telemetry = telemetry?.toOverride(),
+        profiling = profiling?.toOverride(),
+        backends = backends?.toOverride(),
+        paths = paths?.toOverride(),
+        cli = cli?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeServerConfig(
+    val maxResults: Int? = null,
+    val requestTimeoutMillis: Long? = null,
+    val maxConcurrentRequests: Int? = null,
+) {
+    fun toOverride(): ServerConfigOverride = ServerConfigOverride(
+        maxResults = maxResults?.let(::ServerMaxResults),
+        requestTimeoutMillis = requestTimeoutMillis?.let(::ServerRequestTimeoutMillis),
+        maxConcurrentRequests = maxConcurrentRequests?.let(::ServerMaxConcurrentRequests),
+    )
+}
+
+@Serializable
+private data class RuntimeIndexingConfig(
+    val phase2Enabled: Boolean? = null,
+    val phase2BatchSize: Int? = null,
+    val phase2Parallelism: Int? = null,
+    val phase2PriorityDepth: Int? = null,
+    val identifierIndexWaitMillis: Long? = null,
+    val referenceBatchSize: Int? = null,
+    val remote: RuntimeRemoteIndexConfig? = null,
+) {
+    fun toOverride(): IndexingConfigOverride = IndexingConfigOverride(
+        phase2Enabled = phase2Enabled?.let(::IndexingPhase2Enabled),
+        phase2BatchSize = phase2BatchSize?.let(::IndexingPhase2BatchSize),
+        phase2Parallelism = phase2Parallelism?.let(::IndexingPhase2Parallelism),
+        phase2PriorityDepth = phase2PriorityDepth?.let(::IndexingPhase2PriorityDepth),
+        identifierIndexWaitMillis = identifierIndexWaitMillis?.let(::IndexingIdentifierIndexWaitMillis),
+        referenceBatchSize = referenceBatchSize?.let(::IndexingReferenceBatchSize),
+        remote = remote?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeRemoteIndexConfig(
+    val enabled: Boolean? = null,
+    val sourceIndexUrl: String? = null,
+) {
+    fun toOverride(): RemoteIndexConfigOverride = RemoteIndexConfigOverride(
+        enabled = enabled?.let(::IndexingRemoteEnabled),
+        sourceIndexUrl = sourceIndexUrl?.let(::OptionalConfigString)?.let(::IndexingRemoteSourceIndexUrl),
+    )
+}
+
+@Serializable
+private data class RuntimeCacheConfig(
+    val enabled: Boolean? = null,
+    val writeDelayMillis: Long? = null,
+    val sourceIndexSaveDelayMillis: Long? = null,
+) {
+    fun toOverride(): CacheConfigOverride = CacheConfigOverride(
+        enabled = enabled?.let(::CacheEnabled),
+        writeDelayMillis = writeDelayMillis?.let(::CacheWriteDelayMillis),
+        sourceIndexSaveDelayMillis = sourceIndexSaveDelayMillis?.let(::CacheSourceIndexSaveDelayMillis),
+    )
+}
+
+@Serializable
+private data class RuntimeWatcherConfig(
+    val debounceMillis: Long? = null,
+) {
+    fun toOverride(): WatcherConfigOverride = WatcherConfigOverride(
+        debounceMillis = debounceMillis?.let(::WatcherDebounceMillis),
+    )
+}
+
+@Serializable
+private data class RuntimeGradleConfig(
+    val toolingApiTimeoutMillis: Long? = null,
+) {
+    fun toOverride(): GradleConfigOverride = GradleConfigOverride(
+        toolingApiTimeoutMillis = toolingApiTimeoutMillis?.let(::GradleToolingApiTimeoutMillis),
+    )
+}
+
+@Serializable
+private data class RuntimeTelemetryConfig(
+    val enabled: Boolean? = null,
+    val scopes: String? = null,
+    val detail: String? = null,
+    val outputFile: String? = null,
+) {
+    fun toOverride(): TelemetryConfigOverride = TelemetryConfigOverride(
+        enabled = enabled?.let(::TelemetryEnabled),
+        scopes = scopes?.let(::TelemetryScopes),
+        detail = detail?.let(::TelemetryDetail),
+        outputFile = outputFile?.let(::OptionalConfigString)?.let(::TelemetryOutputFile),
+    )
+}
+
+@Serializable
+private data class RuntimeProfilingConfig(
+    val enabled: Boolean? = null,
+    val modes: String? = null,
+    val durationSeconds: Long? = null,
+    val outputDir: String? = null,
+    val otlpEndpoint: String? = null,
+    val emitManifest: Boolean? = null,
+) {
+    fun toOverride(): ProfilingConfigOverride = ProfilingConfigOverride(
+        enabled = enabled?.let(::ProfilingEnabled),
+        modes = modes?.let(::ProfilingModes),
+        durationSeconds = durationSeconds?.let(::ProfilingDurationSeconds),
+        outputDir = outputDir?.let(::ProfilingOutputDir),
+        otlpEndpoint = otlpEndpoint?.let(::OptionalConfigString)?.let(::ProfilingOtlpEndpoint),
+        emitManifest = emitManifest?.let(::ProfilingEmitManifest),
+    )
+}
+
+@Serializable
+private data class RuntimeBackendsConfig(
+    val headless: RuntimeHeadlessBackendConfig? = null,
+    val idea: RuntimeIdeaBackendConfig? = null,
+) {
+    fun toOverride(): BackendsConfigOverride = BackendsConfigOverride(
+        headless = headless?.toOverride(),
+        idea = idea?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeHeadlessBackendConfig(
+    val enabled: Boolean? = null,
+    val runtimeLibsDir: String? = null,
+    val ideaHome: String? = null,
+) {
+    fun toOverride(): HeadlessBackendConfigOverride = HeadlessBackendConfigOverride(
+        enabled = enabled?.let(::HeadlessBackendEnabled),
+        runtimeLibsDir = runtimeLibsDir?.let(::OptionalConfigString)?.let(::HeadlessRuntimeLibsDir),
+        ideaHome = ideaHome?.let(::OptionalConfigString)?.let(::HeadlessIdeaHome),
+    )
+}
+
+@Serializable
+private data class RuntimeIdeaBackendConfig(
+    val enabled: Boolean? = null,
+) {
+    fun toOverride(): IdeaBackendConfigOverride = IdeaBackendConfigOverride(
+        enabled = enabled?.let(::IdeaBackendEnabled),
+    )
+}
+
+@Serializable
+private data class RuntimePathsConfig(
+    val installRoot: String? = null,
+    val binDir: String? = null,
+    val libDir: String? = null,
+    val cacheDir: String? = null,
+    val logsDir: String? = null,
+    val descriptorDir: String? = null,
+    val socketDir: String? = null,
+) {
+    fun toOverride(): PathsConfigOverride = PathsConfigOverride(
+        installRoot = installRoot?.let(::PathsInstallRoot),
+        binDir = binDir?.let(::PathsBinDir),
+        libDir = libDir?.let(::PathsLibDir),
+        cacheDir = cacheDir?.let(::PathsCacheDir),
+        logsDir = logsDir?.let(::PathsLogsDir),
+        descriptorDir = descriptorDir?.let(::PathsDescriptorDir),
+        socketDir = socketDir?.let(::PathsSocketDir),
+    )
+}
+
+@Serializable
+private data class RuntimeCliConfig(
+    val binaryPath: String? = null,
+) {
+    fun toOverride(): CliConfigOverride = CliConfigOverride(
+        binaryPath = binaryPath?.let(::CliBinaryPath),
+    )
 }
 
 private fun loadConfigOverrides(configFiles: List<Path>): KastConfigOverride {

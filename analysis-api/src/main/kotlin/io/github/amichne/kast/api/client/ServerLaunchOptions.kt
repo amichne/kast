@@ -22,7 +22,10 @@ data class ServerLaunchOptions(
     val profilingOverride: ProfilingConfigOverride? = null,
 ) {
     companion object {
-        fun parse(args: Array<String>): ServerLaunchOptions {
+        fun parse(
+            args: Array<String>,
+            config: KastConfig? = null,
+        ): ServerLaunchOptions {
             val values = mutableMapOf<String, String>()
             args.forEach { argument ->
                 if (argument == "--stdio") {
@@ -39,7 +42,7 @@ data class ServerLaunchOptions(
                 }
                 values[parts[0]] = parts[1]
             }
-            return fromValues(values)
+            return fromValues(values, config)
         }
 
         fun fromValues(
@@ -50,7 +53,7 @@ data class ServerLaunchOptions(
                 values["workspace-root"]
                     ?: System.getProperty("user.dir"),
             ).toAbsolutePath().normalize()
-            val resolvedConfig = config ?: KastConfig.load(workspaceRoot)
+            val resolvedConfig = config ?: KastConfig.defaults()
             return ServerLaunchOptions(
                 workspaceRoot = workspaceRoot,
                 sourceRoots = parsePathList(values["source-roots"]),
