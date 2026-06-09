@@ -20,24 +20,41 @@ import kotlin.system.exitProcess
 
 data class HeadlessServerOptions(
     val serverOptions: ServerLaunchOptions,
+    val runtimeConfig: KastConfig? = null,
     val smokeOnly: Boolean = false,
 ) {
     companion object {
+        const val RUNTIME_CONFIG_FILE_PREFIX = "--runtime-config-file="
+
         fun parseStarterArgs(args: List<String>): HeadlessServerOptions {
             val normalizedArgs = args.dropCommandName()
             val smokeOnly = normalizedArgs.any { it == "--smoke-only" }
+            val runtimeConfig = normalizedArgs.runtimeConfigFile()?.let(KastConfig::loadResolvedJson)
             val serverArgs = normalizedArgs
                 .filterNot { it == "--smoke-only" }
                 .filterNot { it.startsWith(HeadlessBootstrapOptions.IDEA_HOME_PREFIX) }
+                .filterNot { it.startsWith(RUNTIME_CONFIG_FILE_PREFIX) }
                 .toTypedArray()
+            val serverOptions = ServerLaunchOptions.parse(
+                args = serverArgs,
+                config = runtimeConfig,
+            )
             return HeadlessServerOptions(
-                serverOptions = ServerLaunchOptions.parse(serverArgs),
+                serverOptions = serverOptions,
+                runtimeConfig = runtimeConfig?.withOverrides(
+                    HeadlessConfigProperties.configOverride(serverOptions.profilingOverride),
+                ),
                 smokeOnly = smokeOnly,
             )
         }
 
         private fun List<String>.dropCommandName(): List<String> =
             if (firstOrNull() == HeadlessApplicationStarter.COMMAND_NAME) drop(1) else this
+
+        private fun List<String>.runtimeConfigFile(): Path? = firstOrNull { it.startsWith(RUNTIME_CONFIG_FILE_PREFIX) }
+            ?.removePrefix(RUNTIME_CONFIG_FILE_PREFIX)
+            ?.takeIf(String::isNotBlank)
+            ?.let { Path.of(it).toAbsolutePath().normalize() }
     }
 }
 
@@ -97,7 +114,7 @@ object HeadlessRuntime {
         val serverOptions = options.serverOptions
         val workspaceRoot = serverOptions.workspaceRoot
         val project = projectOpener.openProject(workspaceRoot)
-        val config = KastConfig.load(
+        val config = options.runtimeConfig ?: KastConfig.load(
             workspaceRoot = workspaceRoot,
             overrides = HeadlessConfigProperties.configOverride(serverOptions.profilingOverride),
         )
