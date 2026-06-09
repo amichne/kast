@@ -27,10 +27,13 @@ the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast`;
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
-brew install kast-plugin
+kast install plugin --link-jetbrains-profiles
 ```
 
-Use Homebrew for ordinary terminal use when your platform is supported.
+Use Homebrew for ordinary local use when your platform is supported. The plugin
+install command installs or refreshes the Homebrew cask, links existing
+JetBrains profile plugin directories, and repairs stale global CLI config paths
+before it touches profiles.
 
 ## Install a backend
 
@@ -57,6 +60,28 @@ kast up --backend=headless --workspace-root="$PWD"
 
 If `kast up` cannot find the selected backend, it reports the exact
 `kast install headless` command to run.
+
+## Repair affected local installs
+
+Use `kast install affected` after upgrading Kast, moving between install
+methods, or seeing `kast doctor` report stale managed paths. The default mode
+is a dry run: it audits global config, retired backend state, installed Kast
+skills, managed Copilot extension copies, managed shell source files, and
+existing JetBrains profile plugin links without changing files.
+
+```console title="Audit affected installs"
+kast install affected
+```
+
+To apply the planned repair, rerun with `--apply`. The command creates backups
+under `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
+
+```console title="Repair affected installs"
+kast install affected --apply
+```
+
+Backend downloads stay explicit. If the repair removes stale backend metadata
+and you need the headless backend, run `kast install headless` afterwards.
 
 ## Ubuntu/Debian bundle
 
@@ -231,7 +256,14 @@ The IDEA / Android Studio plugin exposes the same install and uninstall flow
 from the IDE. The action calls the CLI path from `[cli] binaryPath` in
 `config.toml`; it doesn't search `PATH`.
 
-Before using the action, confirm the configured binary exists and is
+Before using the action, run the local plugin install once so the CLI path is
+written or repaired:
+
+```console title="Install and link local IDE profiles"
+kast install plugin --link-jetbrains-profiles
+```
+
+If you manage config by hand, keep the configured binary absolute and
 executable:
 
 ```toml title="$HOME/.config/kast/config.toml"
@@ -288,9 +320,10 @@ replacing the plugin.
 
 ## Install shell integration
 
-Use `kast install shell` to add the configured `binDir` to your `PATH`,
-export the active `KAST_CONFIG_HOME`, and source completions from a managed
-file under `KAST_CONFIG_HOME/shell`.
+Use `kast install shell` to add the directory that contains the active `kast`
+binary to your `PATH`, export the active `KAST_CONFIG_HOME`, and source
+completions from a managed file under `KAST_CONFIG_HOME/shell`. When the command
+name cannot be resolved, Kast falls back to the configured `binDir`.
 
 === "Bash"
 
