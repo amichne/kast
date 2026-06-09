@@ -117,7 +117,22 @@ fn reads_metrics_directly_from_source_index_db() {
     );
     assert!(String::from_utf8_lossy(&short_search.stdout).contains("\"lib.FooWidget\""));
 
-    let graph = kast(&home, &config_home)
+    let metrics_help = kast(&home, &config_home)
+        .args(["metrics", "--help"])
+        .output()
+        .expect("metrics help");
+    assert!(
+        metrics_help.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&metrics_help.stderr)
+    );
+    let metrics_help_stdout = String::from_utf8_lossy(&metrics_help.stdout);
+    assert!(
+        !metrics_help_stdout.contains("graph"),
+        "metrics graph visualization should not be exposed: {metrics_help_stdout}"
+    );
+
+    let removed_graph = kast(&home, &config_home)
         .args([
             "metrics",
             "graph",
@@ -127,15 +142,13 @@ fn reads_metrics_directly_from_source_index_db() {
             "lib.Foo",
         ])
         .output()
-        .expect("metrics graph");
+        .expect("removed metrics graph");
     assert!(
-        graph.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&graph.stderr)
+        !removed_graph.status.success(),
+        "metrics graph should no longer be commandable: stdout={}, stderr={}",
+        String::from_utf8_lossy(&removed_graph.stdout),
+        String::from_utf8_lossy(&removed_graph.stderr)
     );
-    let graph_stdout = String::from_utf8_lossy(&graph.stdout);
-    assert!(graph_stdout.contains("\"focalNodeId\": \"symbol:lib.Foo\""));
-    assert!(graph_stdout.contains("\"edgeType\": \"REFERENCED_BY\""));
 
     let demo = kast(&home, &config_home)
         .args([
@@ -260,7 +273,30 @@ fn reads_metrics_directly_from_source_index_db() {
         Value::String("app.A".to_string())
     );
 
-    let spatial = kast(&home, &config_home)
+    let demo_help = kast(&home, &config_home)
+        .args(["demo", "--help"])
+        .output()
+        .expect("demo help");
+    assert!(
+        demo_help.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&demo_help.stderr)
+    );
+    let demo_help_stdout = String::from_utf8_lossy(&demo_help.stdout);
+    assert!(
+        demo_help_stdout.contains("compare"),
+        "compare demo should remain exposed: {demo_help_stdout}"
+    );
+    assert!(
+        demo_help_stdout.contains("symbol"),
+        "symbol demo should remain exposed: {demo_help_stdout}"
+    );
+    assert!(
+        !demo_help_stdout.contains("spatial"),
+        "spatial demo should not be exposed: {demo_help_stdout}"
+    );
+
+    let removed_spatial = kast(&home, &config_home)
         .args([
             "demo",
             "--workspace-root",
@@ -272,75 +308,12 @@ fn reads_metrics_directly_from_source_index_db() {
             "app.A",
         ])
         .output()
-        .expect("spatial demo snapshot");
+        .expect("removed spatial demo");
     assert!(
-        spatial.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&spatial.stderr)
-    );
-    let spatial_json: Value = serde_json::from_slice(&spatial.stdout).expect("spatial json");
-    assert_eq!(
-        spatial_json["snapshot"]["mode"],
-        Value::String("spatialAst".to_string())
-    );
-    assert_eq!(
-        spatial_json["snapshot"]["selection"]["nodeId"],
-        Value::String("symbol:app.A".to_string())
-    );
-    assert_eq!(
-        spatial_json["snapshot"]["tree"]["rootId"],
-        Value::String("workspace".to_string())
-    );
-    let identities: std::collections::BTreeSet<_> = spatial_json["snapshot"]["tree"]["nodes"]
-        .as_array()
-        .expect("tree nodes")
-        .iter()
-        .filter_map(|node| node["identity"].as_str())
-        .collect();
-    for identity in [
-        "compilerSymbol",
-        "sourceIndexDeclaration",
-        "fileOutlineNode",
-        "structuralOnly",
-        "syntheticAggregate",
-    ] {
-        assert!(
-            identities.contains(identity),
-            "spatial snapshot should include {identity}: {spatial_json}"
-        );
-    }
-    assert!(
-        spatial_json["snapshot"]["visibleNodes"]
-            .as_array()
-            .expect("visible nodes")
-            .iter()
-            .any(
-                |node| node["nodeId"] == Value::String("symbol:app.A".to_string())
-                    && node["selected"] == Value::Bool(true)
-            ),
-        "selected symbol should be projected into the visible node list: {spatial_json}"
-    );
-    assert!(
-        spatial_json["snapshot"]["incoming"]
-            .as_array()
-            .expect("incoming relations")
-            .iter()
-            .any(|relation| relation["fqName"] == Value::String("app.B".to_string())),
-        "spatial snapshot should carry callers/references in: {spatial_json}"
-    );
-    assert!(
-        spatial_json["snapshot"]["outgoing"]
-            .as_array()
-            .expect("outgoing relations")
-            .iter()
-            .any(|relation| relation["fqName"] == Value::String("lib.Foo".to_string())),
-        "spatial snapshot should carry callees/references out: {spatial_json}"
-    );
-    assert!(
-        spatial_json["snapshot"]["preview"]["title"]
-            .as_str()
-            .expect("preview title")
-            .contains("A")
+        !removed_spatial.status.success(),
+        "spatial demo should no longer be commandable: stdout={}, stderr={}",
+        String::from_utf8_lossy(&removed_spatial.stdout),
+        String::from_utf8_lossy(&removed_spatial.stderr)
     );
 
     let metrics_rpc_request = serde_json::json!({

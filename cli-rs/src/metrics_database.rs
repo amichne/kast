@@ -7,7 +7,7 @@ use glob::Pattern;
 use rusqlite::{Connection, ErrorCode, OpenFlags, OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::ffi::c_int;
 use std::path::{Path, PathBuf};
 use std::sync::{
@@ -157,46 +157,6 @@ struct ChangeImpactNode {
     edge_kind: Option<String>,
     occurrence_count: i64,
     confidence: Confidence,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct MetricsGraph {
-    focal_node_id: String,
-    pub(crate) nodes: Vec<MetricsGraphNode>,
-    edges: Vec<MetricsGraphEdge>,
-    index: MetricsGraphIndex,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct MetricsGraphNode {
-    pub(crate) id: String,
-    pub(crate) name: String,
-    #[serde(rename = "type")]
-    pub(crate) node_type: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) parent_id: Option<String>,
-    pub(crate) children: Vec<String>,
-    pub(crate) attributes: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MetricsGraphEdge {
-    from: String,
-    to: String,
-    edge_type: &'static str,
-    weight: i64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MetricsGraphIndex {
-    symbol_count: usize,
-    file_count: usize,
-    reference_count: i64,
-    max_depth: usize,
 }
 
 #[derive(Debug)]
@@ -599,174 +559,6 @@ impl<'a> MetricsDatabase<'a> {
         serde_json::to_value(values).map_err(json_direct_error)
     }
 
-    pub(crate) fn graph(&self, fq_name: &str, depth: usize) -> DirectResult<MetricsGraph> {
-        let focal = self.fan_in_metric(fq_name)?;
-        let impact = self.change_impact_nodes(fq_name, depth)?;
-        let direct_references: Vec<_> = impact
-            .iter()
-            .filter(|node| node.depth == 1 && node.via_target_fq_name == fq_name)
-            .cloned()
-            .collect();
-        let child_ids_by_parent = self.child_ids_by_parent(focal.as_ref(), &impact, fq_name);
-        let mut impact_by_source_path: BTreeMap<String, Vec<ChangeImpactNode>> = BTreeMap::new();
-        for node in impact.iter().cloned() {
-            impact_by_source_path
-                .entry(node.source_path.clone())
-                .or_default()
-                .push(node);
-        }
-
-        let mut nodes = Vec::new();
-        nodes.push(focal_symbol_node(
-            fq_name,
-            focal.as_ref(),
-            &direct_references,
-            &child_ids_by_parent,
-        ));
-        if let Some(target_path) = focal
-            .as_ref()
-            .and_then(|metric| metric.target_path.as_ref())
-        {
-            nodes.push(target_file_node(
-                target_path,
-                focal.as_ref().expect("focal checked"),
-                &child_ids_by_parent,
-            ));
-        }
-        for nodes_for_path in impact_by_source_path.values() {
-            let representative = nodes_for_path
-                .iter()
-                .min_by_key(|node| node.depth)
-                .expect("impact group");
-            nodes.push(source_file_node(
-                nodes_for_path,
-                &child_ids_by_parent,
-                &parent_id_for(representative, &impact, fq_name),
-            ));
-            for node in nodes_for_path {
-                nodes.push(reference_edge_node(node));
-            }
-        }
-
-        let mut edges = Vec::new();
-        if let Some(target_path) = focal
-            .as_ref()
-            .and_then(|metric| metric.target_path.as_ref())
-        {
-            edges.push(MetricsGraphEdge {
-                from: file_node_id(target_path),
-                to: symbol_node_id(fq_name),
-                edge_type: "CONTAINS",
-                weight: 1,
-            });
-        }
-        for nodes_for_path in impact_by_source_path.values() {
-            let representative = nodes_for_path
-                .iter()
-                .min_by_key(|node| node.depth)
-                .expect("impact group");
-            edges.push(MetricsGraphEdge {
-                from: parent_id_for(representative, &impact, fq_name),
-                to: source_file_node_id(&representative.source_path),
-                edge_type: "REFERENCED_BY",
-                weight: nodes_for_path
-                    .iter()
-                    .map(|node| node.occurrence_count)
-                    .sum(),
-            });
-            for node in nodes_for_path {
-                edges.push(MetricsGraphEdge {
-                    from: source_file_node_id(&node.source_path),
-                    to: reference_edge_node_id(node),
-                    edge_type: "REFERENCES",
-                    weight: node.occurrence_count,
-                });
-            }
-        }
-
-        let mut symbols = BTreeSet::from([fq_name.to_string()]);
-        for node in &impact {
-            symbols.insert(node.via_target_fq_name.clone());
-        }
-        let mut files = BTreeSet::new();
-        if let Some(target_path) = focal
-            .as_ref()
-            .and_then(|metric| metric.target_path.as_ref())
-        {
-            files.insert(target_path.clone());
-        }
-        for node in &impact {
-            files.insert(node.source_path.clone());
-        }
-
-        Ok(MetricsGraph {
-            focal_node_id: symbol_node_id(fq_name),
-            nodes,
-            edges,
-            index: MetricsGraphIndex {
-                symbol_count: symbols.len(),
-                file_count: files.len(),
-                reference_count: impact.iter().map(|node| node.occurrence_count).sum(),
-                max_depth: impact.iter().map(|node| node.depth).max().unwrap_or(0),
-            },
-        })
-    }
-
-    fn fan_in_metric(&self, fq_name: &str) -> DirectResult<Option<FanInMetric>> {
-        let confidence = self.current_confidence()?;
-        let edge_breakdown = self.edge_breakdown_for_target(fq_name)?;
-        let mut stmt = self
-            .conn
-            .prepare(
-                r#"
-                SELECT target_name.fq_name,
-                       target_prefix.dir_path,
-                       refs.tgt_filename,
-                       target_meta.module_path,
-                       target_meta.source_set,
-                       COUNT(*) AS occurrence_count,
-                       COUNT(DISTINCT refs.src_prefix_id || ':' || refs.src_filename) AS source_file_count,
-                       COUNT(DISTINCT source_meta.module_path) AS source_module_count
-                FROM symbol_references refs
-                LEFT JOIN file_metadata source_meta
-                  ON source_meta.prefix_id = refs.src_prefix_id
-                 AND source_meta.filename = refs.src_filename
-                LEFT JOIN file_metadata target_meta
-                  ON target_meta.prefix_id = refs.tgt_prefix_id
-                 AND target_meta.filename = refs.tgt_filename
-                JOIN fq_names target_name ON target_name.fq_id = refs.target_fq_id
-                LEFT JOIN path_prefixes target_prefix ON target_prefix.prefix_id = refs.tgt_prefix_id
-                WHERE target_name.fq_name = ?
-                GROUP BY refs.target_fq_id,
-                         refs.tgt_prefix_id,
-                         refs.tgt_filename,
-                         target_meta.module_path,
-                         target_meta.source_set
-                ORDER BY occurrence_count DESC,
-                         COALESCE(target_prefix.dir_path || '/' || refs.tgt_filename, '') ASC
-                LIMIT 1
-                "#,
-            )
-            .map_err(sql_error)?;
-        let metric = stmt
-            .query_row(params![fq_name], |row| {
-                Ok(FanInMetric {
-                    target_fq_name: row.get(0)?,
-                    target_path: self.nullable_path(row, 1, 2)?,
-                    target_module_path: row.get(3)?,
-                    target_source_set: row.get(4)?,
-                    occurrence_count: row.get(5)?,
-                    source_file_count: row.get(6)?,
-                    source_module_count: row.get(7)?,
-                    by_edge_kind: edge_breakdown.clone(),
-                    confidence: confidence.clone(),
-                })
-            })
-            .optional()
-            .map_err(sql_error)?;
-        Ok(metric.filter(|metric| self.request.filter().matches(metric.target_path.as_deref())))
-    }
-
     fn change_impact_nodes(
         &self,
         fq_name: &str,
@@ -851,32 +643,6 @@ impl<'a> MetricsDatabase<'a> {
                 row.get::<_, i64>(2)?,
             ))
         }))
-    }
-
-    fn edge_breakdown_for_target(&self, fq_name: &str) -> DirectResult<BTreeMap<String, i64>> {
-        let mut stmt = self
-            .conn
-            .prepare(
-                r#"
-                SELECT refs.edge_kind, COUNT(*)
-                FROM symbol_references refs
-                JOIN fq_names names ON names.fq_id = refs.target_fq_id
-                WHERE names.fq_name = ?
-                GROUP BY refs.edge_kind
-                "#,
-            )
-            .map_err(sql_error)?;
-        let rows = stmt
-            .query_map(params![fq_name], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-            })
-            .map_err(sql_error)?;
-        let mut values = BTreeMap::new();
-        for row in rows {
-            let (edge_kind, count) = row.map_err(sql_error)?;
-            values.insert(edge_kind, count);
-        }
-        Ok(values)
     }
 
     fn edge_breakdowns_by_source(&self) -> DirectResult<BTreeMap<String, BTreeMap<String, i64>>> {
@@ -1284,38 +1050,6 @@ impl<'a> MetricsDatabase<'a> {
         };
         config::normalize(path).display().to_string()
     }
-
-    fn child_ids_by_parent(
-        &self,
-        focal: Option<&FanInMetric>,
-        impact: &[ChangeImpactNode],
-        fq_name: &str,
-    ) -> BTreeMap<String, Vec<String>> {
-        let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
-        if let Some(focal) = focal
-            && let Some(target_path) = &focal.target_path
-        {
-            values.insert(
-                file_node_id(target_path),
-                vec![symbol_node_id(&focal.target_fq_name)],
-            );
-        }
-        for node in impact {
-            let parent_id = parent_id_for(node, impact, fq_name);
-            let children = values.entry(parent_id).or_default();
-            let child = source_file_node_id(&node.source_path);
-            if !children.contains(&child) {
-                children.push(child);
-            }
-        }
-        for node in impact {
-            values
-                .entry(source_file_node_id(&node.source_path))
-                .or_default()
-                .push(reference_edge_node_id(node));
-        }
-        values
-    }
 }
 
 impl Confidence {
@@ -1380,155 +1114,6 @@ fn dead_code_reason(visibility: &str) -> &'static str {
     }
 }
 
-fn focal_symbol_node(
-    fq_name: &str,
-    focal: Option<&FanInMetric>,
-    direct_references: &[ChangeImpactNode],
-    child_ids_by_parent: &BTreeMap<String, Vec<String>>,
-) -> MetricsGraphNode {
-    let mut attributes = Vec::new();
-    if let Some(target_path) = focal.and_then(|metric| metric.target_path.as_ref()) {
-        attributes.push(format!("path={target_path}"));
-    }
-    if let Some(module) = focal.and_then(|metric| metric.target_module_path.as_ref()) {
-        attributes.push(format!("module={module}"));
-    }
-    if let Some(source_set) = focal.and_then(|metric| metric.target_source_set.as_ref()) {
-        attributes.push(format!("sourceSet={source_set}"));
-    }
-    attributes.push(format!(
-        "incomingReferences={}",
-        focal
-            .map(|metric| metric.occurrence_count)
-            .unwrap_or_else(|| direct_references
-                .iter()
-                .map(|node| node.occurrence_count)
-                .sum())
-    ));
-    attributes.push(format!(
-        "sourceFiles={}",
-        focal
-            .map(|metric| metric.source_file_count)
-            .unwrap_or_else(|| {
-                direct_references
-                    .iter()
-                    .map(|node| node.source_path.clone())
-                    .collect::<BTreeSet<_>>()
-                    .len() as i64
-            })
-    ));
-    if let Some(source_module_count) = focal.map(|metric| metric.source_module_count) {
-        attributes.push(format!("sourceModules={source_module_count}"));
-    }
-    let id = symbol_node_id(fq_name);
-    MetricsGraphNode {
-        id: id.clone(),
-        name: fq_name.to_string(),
-        node_type: "SYMBOL",
-        parent_id: focal
-            .and_then(|metric| metric.target_path.as_ref())
-            .map(|path| file_node_id(path)),
-        children: child_ids_by_parent.get(&id).cloned().unwrap_or_default(),
-        attributes,
-    }
-}
-
-fn target_file_node(
-    target_path: &str,
-    focal: &FanInMetric,
-    child_ids_by_parent: &BTreeMap<String, Vec<String>>,
-) -> MetricsGraphNode {
-    let id = file_node_id(target_path);
-    let mut attributes = vec!["role=target".to_string()];
-    if let Some(module) = &focal.target_module_path {
-        attributes.push(format!("module={module}"));
-    }
-    if let Some(source_set) = &focal.target_source_set {
-        attributes.push(format!("sourceSet={source_set}"));
-    }
-    MetricsGraphNode {
-        id: id.clone(),
-        name: target_path.to_string(),
-        node_type: "FILE",
-        parent_id: None,
-        children: child_ids_by_parent.get(&id).cloned().unwrap_or_default(),
-        attributes,
-    }
-}
-
-fn source_file_node(
-    nodes: &[ChangeImpactNode],
-    child_ids_by_parent: &BTreeMap<String, Vec<String>>,
-    parent_id: &str,
-) -> MetricsGraphNode {
-    let representative = nodes.iter().min_by_key(|node| node.depth).expect("nodes");
-    let id = source_file_node_id(&representative.source_path);
-    MetricsGraphNode {
-        id: id.clone(),
-        name: representative.source_path.clone(),
-        node_type: "FILE",
-        parent_id: Some(parent_id.to_string()),
-        children: child_ids_by_parent.get(&id).cloned().unwrap_or_default(),
-        attributes: vec![
-            format!("incomingDepth={}", representative.depth),
-            format!(
-                "references={}",
-                nodes.iter().map(|node| node.occurrence_count).sum::<i64>()
-            ),
-            format!("via={}", representative.via_target_fq_name),
-        ],
-    }
-}
-
-fn reference_edge_node(node: &ChangeImpactNode) -> MetricsGraphNode {
-    MetricsGraphNode {
-        id: reference_edge_node_id(node),
-        name: node.via_target_fq_name.clone(),
-        node_type: "REFERENCE_EDGE",
-        parent_id: Some(source_file_node_id(&node.source_path)),
-        children: vec![],
-        attributes: vec![
-            format!("from={}", node.source_path),
-            format!("to={}", node.via_target_fq_name),
-            format!("references={}", node.occurrence_count),
-        ],
-    }
-}
-
-fn parent_id_for(node: &ChangeImpactNode, impact: &[ChangeImpactNode], fq_name: &str) -> String {
-    impact
-        .iter()
-        .find(|candidate| {
-            candidate.depth == node.depth.saturating_sub(1)
-                && node.via_target_fq_name.rsplit('.').next().unwrap_or("")
-                    == candidate
-                        .source_path
-                        .rsplit('/')
-                        .next()
-                        .unwrap_or("")
-                        .strip_suffix(".kt")
-                        .unwrap_or("")
-        })
-        .map(|candidate| source_file_node_id(&candidate.source_path))
-        .unwrap_or_else(|| symbol_node_id(fq_name))
-}
-
-fn symbol_node_id(fq_name: &str) -> String {
-    format!("symbol:{fq_name}")
-}
-
-fn file_node_id(path: &str) -> String {
-    format!("file:{path}")
-}
-
-fn source_file_node_id(path: &str) -> String {
-    format!("source-file:{path}")
-}
-
-fn reference_edge_node_id(node: &ChangeImpactNode) -> String {
-    format!("via:{}:{}", node.via_target_fq_name, node.source_path)
-}
-
 fn sql_error(error: rusqlite::Error) -> DirectMetricsError {
     if error.sqlite_error_code() == Some(ErrorCode::OperationInterrupted) {
         return DirectMetricsError::Query(CliError::new(
@@ -1575,22 +1160,6 @@ mod tests {
             )
             .expect("test metrics request")
         }
-    }
-
-    #[test]
-    fn graph_resolves_focal_symbol_outside_small_fan_in_ranking() {
-        let fixture = seed_fixture();
-        let request = fixture.request("graph", Some("lib.Target"), 1, 1);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
-
-        let graph = db.graph("lib.Target", 1).expect("graph");
-
-        assert_eq!(graph.focal_node_id, "symbol:lib.Target");
-        assert!(graph.nodes.iter().any(|node| {
-            node.id == format!("file:{}", fixture.workspace.join("lib/Target.kt").display())
-                && node.children == vec!["symbol:lib.Target".to_string()]
-        }));
     }
 
     #[test]
