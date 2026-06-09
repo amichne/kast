@@ -2295,6 +2295,15 @@ fn packaged_skill_targets_rust_kast_only() {
 
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
+    assert!(skill.contains("Use for Gradle project file work"));
+    assert!(skill.contains("Default to Kast"));
+    assert!(skill.contains("project file operations"));
+    assert!(skill.contains("Use Kast to discover the owning module"));
+    assert!(skill.contains("when the path is not already exact"));
+    assert!(skill.contains("Unknown symbol"));
+    assert!(skill.contains("symbol/query"));
+    assert!(skill.contains("raw/workspace-files"));
+    assert!(skill.contains("includeFiles=false"));
     assert!(skill.contains("kast metrics fan-in"));
     assert!(skill.contains("kast demo"));
     assert!(skill.contains("raw/type-hierarchy"));
@@ -2306,6 +2315,7 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("kast metrics impact"));
     assert!(quickstart.contains("kast demo"));
     assert!(routing_reference.contains("rust-kast-cli"));
+    assert!(!routing_reference.contains("evals/"));
     assert!(routing_builder.contains("\"expected_route\": \"rust-kast-cli\""));
     assert!(routing_builder.contains("kast demo --view symbol --json"));
     assert!(!skill.contains("JVM CLI"));
