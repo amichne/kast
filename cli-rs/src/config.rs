@@ -12,6 +12,12 @@ pub struct KastConfig {
     pub server: ServerConfig,
     #[serde(skip_serializing_if = "RuntimeConfig::is_default")]
     pub runtime: RuntimeConfig,
+    pub indexing: IndexingConfig,
+    pub cache: CacheConfig,
+    pub watcher: WatcherConfig,
+    pub gradle: GradleConfig,
+    pub telemetry: TelemetryConfig,
+    pub profiling: ProfilingConfig,
     pub paths: PathsConfig,
     pub backends: BackendsConfig,
     pub cli: CliConfig,
@@ -40,6 +46,65 @@ impl RuntimeConfig {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct IndexingConfig {
+    pub phase2_enabled: bool,
+    pub phase2_batch_size: u32,
+    pub phase2_parallelism: u32,
+    pub phase2_priority_depth: u32,
+    pub identifier_index_wait_millis: u64,
+    pub reference_batch_size: u32,
+    pub remote: RemoteIndexConfig,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteIndexConfig {
+    pub enabled: bool,
+    pub source_index_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheConfig {
+    pub enabled: bool,
+    pub write_delay_millis: u64,
+    pub source_index_save_delay_millis: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatcherConfig {
+    pub debounce_millis: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GradleConfig {
+    pub tooling_api_timeout_millis: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TelemetryConfig {
+    pub enabled: bool,
+    pub scopes: String,
+    pub detail: String,
+    pub output_file: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfilingConfig {
+    pub enabled: bool,
+    pub modes: String,
+    pub duration_seconds: u64,
+    pub output_dir: String,
+    pub otlp_endpoint: Option<String>,
+    pub emit_manifest: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PathsConfig {
     pub install_root: PathBuf,
     pub bin_dir: PathBuf,
@@ -53,13 +118,21 @@ pub struct PathsConfig {
 #[derive(Debug, Clone, Serialize)]
 pub struct BackendsConfig {
     pub headless: HeadlessBackendConfig,
+    pub idea: IdeaBackendConfig,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HeadlessBackendConfig {
+    pub enabled: bool,
     pub runtime_libs_dir: Option<PathBuf>,
     pub idea_home: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdeaBackendConfig {
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -73,6 +146,12 @@ pub struct CliConfig {
 struct PartialConfig {
     server: Option<PartialServer>,
     runtime: Option<PartialRuntime>,
+    indexing: Option<PartialIndexing>,
+    cache: Option<PartialCache>,
+    watcher: Option<PartialWatcher>,
+    gradle: Option<PartialGradle>,
+    telemetry: Option<PartialTelemetry>,
+    profiling: Option<PartialProfiling>,
     paths: Option<PartialPaths>,
     backends: Option<PartialBackends>,
     cli: Option<PartialCli>,
@@ -94,6 +173,65 @@ struct PartialRuntime {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct PartialIndexing {
+    phase2_enabled: Option<bool>,
+    phase2_batch_size: Option<u32>,
+    phase2_parallelism: Option<u32>,
+    phase2_priority_depth: Option<u32>,
+    identifier_index_wait_millis: Option<u64>,
+    reference_batch_size: Option<u32>,
+    remote: Option<PartialRemoteIndex>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialRemoteIndex {
+    enabled: Option<bool>,
+    source_index_url: Option<Option<String>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialCache {
+    enabled: Option<bool>,
+    write_delay_millis: Option<u64>,
+    source_index_save_delay_millis: Option<u64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialWatcher {
+    debounce_millis: Option<u64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialGradle {
+    tooling_api_timeout_millis: Option<u64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialTelemetry {
+    enabled: Option<bool>,
+    scopes: Option<String>,
+    detail: Option<String>,
+    output_file: Option<Option<String>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialProfiling {
+    enabled: Option<bool>,
+    modes: Option<String>,
+    duration_seconds: Option<u64>,
+    output_dir: Option<String>,
+    otlp_endpoint: Option<Option<String>>,
+    emit_manifest: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PartialPaths {
     install_root: Option<PathBuf>,
     bin_dir: Option<PathBuf>,
@@ -107,13 +245,21 @@ struct PartialPaths {
 #[derive(Debug, Default, Deserialize)]
 struct PartialBackends {
     headless: Option<PartialHeadless>,
+    idea: Option<PartialIdea>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialHeadless {
+    enabled: Option<bool>,
     runtime_libs_dir: Option<Option<PathBuf>>,
     idea_home: Option<Option<PathBuf>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialIdea {
+    enabled: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -138,6 +284,43 @@ impl KastConfig {
                 max_concurrent_requests: 4,
             },
             runtime: RuntimeConfig::default(),
+            indexing: IndexingConfig {
+                phase2_enabled: true,
+                phase2_batch_size: 50,
+                phase2_parallelism: 4,
+                phase2_priority_depth: 2,
+                identifier_index_wait_millis: 10_000,
+                reference_batch_size: 50,
+                remote: RemoteIndexConfig {
+                    enabled: false,
+                    source_index_url: None,
+                },
+            },
+            cache: CacheConfig {
+                enabled: true,
+                write_delay_millis: 5_000,
+                source_index_save_delay_millis: 5_000,
+            },
+            watcher: WatcherConfig {
+                debounce_millis: 200,
+            },
+            gradle: GradleConfig {
+                tooling_api_timeout_millis: 120_000,
+            },
+            telemetry: TelemetryConfig {
+                enabled: false,
+                scopes: "all".to_string(),
+                detail: "basic".to_string(),
+                output_file: None,
+            },
+            profiling: ProfilingConfig {
+                enabled: false,
+                modes: "cpu".to_string(),
+                duration_seconds: 30,
+                output_dir: "{logsDir}/profiling".to_string(),
+                otlp_endpoint: None,
+                emit_manifest: true,
+            },
             paths: PathsConfig {
                 install_root,
                 bin_dir: bin_dir.clone(),
@@ -149,9 +332,11 @@ impl KastConfig {
             },
             backends: BackendsConfig {
                 headless: HeadlessBackendConfig {
+                    enabled: true,
                     runtime_libs_dir: Some(lib_dir.join("backends/headless/current/runtime-libs")),
                     idea_home: None,
                 },
+                idea: IdeaBackendConfig { enabled: true },
             },
             cli: CliConfig {
                 binary_path: env::current_exe().unwrap_or_else(|_| bin_dir.join("kast")),
@@ -235,14 +420,105 @@ impl KastConfig {
         {
             self.runtime.default_backend = Some(value);
         }
-        if let Some(backends) = partial.backends
-            && let Some(headless) = backends.headless
-        {
-            if let Some(value) = headless.runtime_libs_dir {
-                self.backends.headless.runtime_libs_dir = value.map(normalize);
+        if let Some(indexing) = partial.indexing {
+            if let Some(value) = indexing.phase2_enabled {
+                self.indexing.phase2_enabled = value;
             }
-            if let Some(value) = headless.idea_home {
-                self.backends.headless.idea_home = value.map(normalize);
+            if let Some(value) = indexing.phase2_batch_size {
+                self.indexing.phase2_batch_size = value;
+            }
+            if let Some(value) = indexing.phase2_parallelism {
+                self.indexing.phase2_parallelism = value;
+            }
+            if let Some(value) = indexing.phase2_priority_depth {
+                self.indexing.phase2_priority_depth = value;
+            }
+            if let Some(value) = indexing.identifier_index_wait_millis {
+                self.indexing.identifier_index_wait_millis = value;
+            }
+            if let Some(value) = indexing.reference_batch_size {
+                self.indexing.reference_batch_size = value;
+            }
+            if let Some(remote) = indexing.remote {
+                if let Some(value) = remote.enabled {
+                    self.indexing.remote.enabled = value;
+                }
+                if let Some(value) = remote.source_index_url {
+                    self.indexing.remote.source_index_url = value;
+                }
+            }
+        }
+        if let Some(cache) = partial.cache {
+            if let Some(value) = cache.enabled {
+                self.cache.enabled = value;
+            }
+            if let Some(value) = cache.write_delay_millis {
+                self.cache.write_delay_millis = value;
+            }
+            if let Some(value) = cache.source_index_save_delay_millis {
+                self.cache.source_index_save_delay_millis = value;
+            }
+        }
+        if let Some(watcher) = partial.watcher
+            && let Some(value) = watcher.debounce_millis
+        {
+            self.watcher.debounce_millis = value;
+        }
+        if let Some(gradle) = partial.gradle
+            && let Some(value) = gradle.tooling_api_timeout_millis
+        {
+            self.gradle.tooling_api_timeout_millis = value;
+        }
+        if let Some(telemetry) = partial.telemetry {
+            if let Some(value) = telemetry.enabled {
+                self.telemetry.enabled = value;
+            }
+            if let Some(value) = telemetry.scopes {
+                self.telemetry.scopes = value;
+            }
+            if let Some(value) = telemetry.detail {
+                self.telemetry.detail = value;
+            }
+            if let Some(value) = telemetry.output_file {
+                self.telemetry.output_file = value;
+            }
+        }
+        if let Some(profiling) = partial.profiling {
+            if let Some(value) = profiling.enabled {
+                self.profiling.enabled = value;
+            }
+            if let Some(value) = profiling.modes {
+                self.profiling.modes = value;
+            }
+            if let Some(value) = profiling.duration_seconds {
+                self.profiling.duration_seconds = value;
+            }
+            if let Some(value) = profiling.output_dir {
+                self.profiling.output_dir = value;
+            }
+            if let Some(value) = profiling.otlp_endpoint {
+                self.profiling.otlp_endpoint = value;
+            }
+            if let Some(value) = profiling.emit_manifest {
+                self.profiling.emit_manifest = value;
+            }
+        }
+        if let Some(backends) = partial.backends {
+            if let Some(headless) = backends.headless {
+                if let Some(value) = headless.enabled {
+                    self.backends.headless.enabled = value;
+                }
+                if let Some(value) = headless.runtime_libs_dir {
+                    self.backends.headless.runtime_libs_dir = value.map(normalize);
+                }
+                if let Some(value) = headless.idea_home {
+                    self.backends.headless.idea_home = value.map(normalize);
+                }
+            }
+            if let Some(idea) = backends.idea
+                && let Some(value) = idea.enabled
+            {
+                self.backends.idea.enabled = value;
             }
         }
         if let Some(cli) = partial.cli
