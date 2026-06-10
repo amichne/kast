@@ -37,7 +37,9 @@ def parse_junit_xml(xml_path, module):
         skipped_count = int(suite.get("skipped", 0))
         time_val = float(suite.get("time", 0))
         for tc in suite.findall("testcase"):
-            fe = tc.find("failure") or tc.find("error")
+            fe = tc.find("failure")
+            if fe is None:
+                fe = tc.find("error")
             if fe is not None:
                 st = fe.text or ""
                 head = "\n".join(st.strip().split("\n")[:5])

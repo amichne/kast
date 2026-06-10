@@ -17,7 +17,7 @@ const COMMAND_CATALOG_CANDIDATES = [
   // packaged skill catalog so installed tools do not carry a second catalog.
   join(HERE, "commands.json"),
   // Repository development path.
-  resolve(HERE, "..", "..", "..", "kast-skill", "references", "commands.json"),
+  resolve(HERE, "..", "..", "..", "..", "kast-skill", "references", "commands.json"),
 ];
 
 function loadCommandCatalog() {
@@ -50,10 +50,6 @@ function orderedCommands(catalog) {
   return commands;
 }
 
-function jsonType(type, nullable) {
-  return nullable ? [type, "null"] : type;
-}
-
 function itemSchema(items) {
   if (!items) return { type: "object", additionalProperties: true };
   if (typeof items === "string") {
@@ -78,15 +74,14 @@ function fieldsToProperties(fields) {
 }
 
 function fieldSchema(field) {
-  const nullable = field?.nullable === true;
   const schema = {};
   switch (field?.type) {
     case "array":
-      schema.type = jsonType("array", nullable);
+      schema.type = "array";
       schema.items = itemSchema(field.items);
       break;
     case "object":
-      schema.type = jsonType("object", nullable);
+      schema.type = "object";
       if (field.fields) {
         schema.properties = fieldsToProperties(field.fields);
         const required = requestRequired(field);
@@ -99,15 +94,15 @@ function fieldSchema(field) {
     case "boolean":
     case "integer":
     case "string":
-      schema.type = jsonType(field.type, nullable);
+      schema.type = field.type;
       break;
     default:
-      schema.type = nullable ? ["object", "null"] : "object";
+      schema.type = "object";
       schema.additionalProperties = true;
       break;
   }
   if (Array.isArray(field?.enum)) {
-    schema.enum = nullable ? [...field.enum, null] : [...field.enum];
+    schema.enum = field.enum.filter((value) => value !== null);
   }
   return schema;
 }
@@ -123,24 +118,55 @@ function requestSchema(request) {
   return schema;
 }
 
-function variantSchema(variantName, request) {
-  const schema = requestSchema(request);
-  schema.properties = {
-    type: { type: "string", enum: [variantName] },
-    ...schema.properties,
+function variantRequirementSummary(variantName, request) {
+  const required = requestRequired(request)
+    .filter((name) => name !== "type")
+    .join(", ");
+  return `${variantName}: ${required || "no additional required fields"}`;
+}
+
+function variantDescription(command) {
+  const variants = command.variants ? Object.entries(command.variants) : [];
+  if (variants.length === 0) return command.tool.description;
+  const summary = variants
+    .map(([variantName, request]) => variantRequirementSummary(variantName, request))
+    .join("; ");
+  return `${command.tool.description} Set type to one of: ${summary}.`;
+}
+
+function mergeCompatibleProperties(target, source) {
+  for (const [name, schema] of Object.entries(source ?? {})) {
+    if (name === "type") continue;
+    if (!target[name]) {
+      target[name] = schema;
+    }
+  }
+}
+
+// Keep the model-facing schema in the common provider subset. The Kast RPC
+// layer still validates the precise discriminated request after the tool call.
+function compatibleVariantParameters(variants) {
+  const properties = {};
+  const variantNames = [];
+  for (const [variantName, request] of variants) {
+    variantNames.push(variantName);
+    mergeCompatibleProperties(properties, requestSchema(request).properties);
+  }
+  return {
+    type: "object",
+    properties: {
+      type: { type: "string", enum: variantNames },
+      ...properties,
+    },
+    additionalProperties: false,
+    required: ["type"],
   };
-  schema.required = ["type", ...requestRequired(request)];
-  return schema;
 }
 
 function parametersForCommand(command) {
   const variants = command.variants ? Object.entries(command.variants) : [];
   if (variants.length === 0) return requestSchema(command.request);
-  return {
-    type: "object",
-    oneOf: variants.map(([variantName, request]) => variantSchema(variantName, request)),
-    discriminator: { propertyName: "type" },
-  };
+  return compatibleVariantParameters(variants);
 }
 
 function collectNamedFields(request, name, out = []) {
@@ -170,7 +196,7 @@ function buildToolSpecs(catalog) {
     .map((command) => ({
       name: command.tool.name,
       method: command.method,
-      description: command.tool.description,
+      description: variantDescription(command),
       defaultArgs: command.tool.defaultArgs,
       parameters: parametersForCommand(command),
       lowercaseKind: usesLowercaseKind(command),

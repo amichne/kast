@@ -35,6 +35,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-docs-content-contract.sh
 
+      - name: Test Copilot extension contract
+        shell: bash
+        run: node ./.github/scripts/test-copilot-extension-contract.mjs
+
       - name: Test workspace repo coordination
         shell: bash
         run: ./.github/scripts/test-workspace-sync-status.sh
