@@ -217,22 +217,24 @@ images, private artifact stores, and CI-style setup scripts.
 ## Install the Copilot extension
 
 Install the Copilot extension when you want the repository-local GitHub
-Copilot files that ship with `kast`. The command copies packaged agents,
-hooks, and native extensions into `.github`, marks scripts executable,
-writes `.github/.kast-copilot-version`, and records the managed repo in the
-CLI-managed inventory.
+Copilot files that ship with `kast`. The command copies the packaged native
+extension into `.github/extensions/kast`, marks scripts executable, writes
+`.github/extensions/kast/.kast-copilot-version`, and records the managed repo
+in the CLI-managed inventory.
 
 From the repository root, run:
 
-```console title="Install Copilot agents, hooks, and extensions"
+```console title="Install Copilot extension files"
 kast install copilot
 ```
 
 The install writes these packaged trees:
 
-- `.github/agents`
-- `.github/hooks`
-- `.github/extensions`
+- `.github/extensions/kast/extension.mjs`
+- `.github/extensions/kast/_shared`
+- `.github/extensions/kast/agents`
+- `.github/extensions/kast/kotlin-gradle-loop`
+- `.github/extensions/kast/scripts`
 
 Pass `--target-dir` when you need to install into another workspace's
 `.github` directory. Pass `--force` to replace an older managed copy:
@@ -243,11 +245,11 @@ kast install copilot --target-dir=/Users/alex/work/project/.github --force
 
 To remove only packaged files, use the uninstall command:
 
-```console title="Uninstall Copilot agents, hooks, and extensions"
+```console title="Uninstall Copilot extension files"
 kast uninstall copilot-extension
 ```
 
-Uninstall removes the packaged manifest entries and the version marker. It
+Uninstall removes the packaged extension files and the version marker. It
 preserves foreign files that you created under `.github`.
 
 ### Install Copilot extension from IDEA or Android Studio

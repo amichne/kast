@@ -64,7 +64,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 - Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
   Copilot-extension resources as contract surfaces. If one changes, update its consumers together:
   `docs/openapi.yaml`, `cli-rs/resources/kast-skill/**`, `.github/extensions/kast/**`,
-  `.github/hooks/**`, `kast.sh`/`install.sh`, and the related tests.
+  `.github/instructions/**`, `.github/copilot-instructions.md`, `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in every surviving runtime
   that advertises it. Update parity coverage and keep advertised capabilities honest.
 - In this repo, "indexing" means real K2/PSI-backed symbol extraction into the SQLite source index, not file walking.
@@ -73,10 +73,12 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
   `join(timeout)` in `close()` or shutdown paths; otherwise macOS `@TempDir` cleanup races show up in tests.
 - `docs/` plus `zensical.toml` are the documentation source of truth. `site/`
   and generated `docs/reference/*.md` output are build artifacts and should not be hand-edited.
-- `.github/hooks/hooks.json` is the authoritative hook manifest. Packaged
-  Copilot resources are embedded by the Rust CLI in `cli-rs/`.
-- Source `.github/hooks/skill-shadowing.json` intentionally keeps repo-local entries, while the packaged Copilot bundle
-  filters it down to portable entries backed by `shadowingExtensionId`.
+- Packaged Copilot resources are embedded by the Rust CLI under
+  `cli-rs/resources/copilot-extension` and installed into
+  `.github/extensions/kast`.
+- `.github/skill-shadowing.json` maps repo-local skills to Copilot extension
+  shadowing metadata. Keep workflow guidance in instructions or packaged
+  extension agent material, not in retired hook paths.
 - Use `kast` terminology in commands, docs, and packaging targets.
 - CI runs on both ubuntu and macOS. IDEA path filtering should use
   `GlobalSearchScope.projectScope(project)` instead of `project.basePath`

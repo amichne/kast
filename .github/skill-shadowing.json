@@ -11,8 +11,8 @@
             "id": "kotlin-gradle-loop",
             "skillPath": ".agents/skills/kotlin-gradle-loop/SKILL.md",
             "requireRead": false,
-            "shadowingExtensionId": "kotlin-gradle-loop",
-            "extensionPath": ".github/extensions/kotlin-gradle-loop/extension.mjs"
+            "shadowingExtensionId": "kast",
+            "extensionPath": ".github/extensions/kast/extension.mjs"
         }
     ]
 }
