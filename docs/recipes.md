@@ -110,6 +110,10 @@ if you want the full story.
 
 ??? example "Rename a symbol safely"
 
+    Fast path: start with `raw/rename` when you already have the
+    file+offset. Do not pre-resolve or enumerate references just to
+    plan scope; the compiler-backed rename computes the usage edits.
+
     Three steps: plan, review, apply. The plan response carries
     SHA-256 hashes of every file `kast` read. If anything changes
     on disk before you apply, the apply step rejects with a clear
@@ -132,9 +136,10 @@ if you want the full story.
 
 ??? example "Clean up imports"
 
-    Same plan-then-apply flow as rename. `raw/optimize-imports`
-    returns the edits `kast` would make; `apply-edits` writes
-    them with conflict detection.
+    Same direct-mutation flow as rename. `raw/optimize-imports`
+    owns applicability for the files you name; do not run symbol
+    discovery first. It returns the edits `kast` would make, and
+    `apply-edits` writes them with conflict detection.
 
     ```console
     kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/optimize-imports","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \

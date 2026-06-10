@@ -67,6 +67,13 @@ run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/query","params":{"query":"EventB
 # Secondary module summary; request file paths only with moduleName and a small cap
 run_kast_rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25},"id":1}'
 
+# Fast path: compiler-owned existing-code mutation by exact position.
+# Do not pre-resolve or enumerate references; rename computes scope and edits.
+run_kast_rpc '{"jsonrpc":"2.0","method":"raw/rename","params":{"position":{"filePath":"/abs/path/EventBean.kt","offset":42},"newName":"RenamedEventBean","dryRun":true},"id":1}'
+
+# Fast path: direct validated rename by exact position.
+run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME_BY_OFFSET_REQUEST","filePath":"/abs/path/EventBean.kt","offset":42,"newName":"RenamedEventBean"},"id":1}'
+
 # Resolve an ambiguous symbol
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
 
@@ -85,7 +92,8 @@ run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/callers","params":{"symbol":"pro
 # Scaffold a file
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/scaffold","params":{"targetFile":"/abs/path/EventBean.kt"},"id":1}'
 
-# Rename
+# Name-only rename; use this only when the endpoint can disambiguate enough or
+# after the cheapest discovery step provides kind/fileHint/containingType.
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"},"id":1}'
 
 # Write and validate

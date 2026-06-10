@@ -72,7 +72,8 @@ sequenceDiagram
 The four steps:
 
 1. Name the target conversationally.
-2. Have the agent resolve the symbol before gathering anything else.
+2. Have the agent resolve the symbol before gathering usage evidence. For
+   exact-position mutations, ask it to call the mutation method directly.
 3. Confirm the kind, `fqName`, and declaration location match what you
    meant.
 4. Then ask for references, call hierarchy, rename impact, or

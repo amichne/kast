@@ -27,6 +27,20 @@ fails or reports a skill/CLI version mismatch.
 ## Gradle File Routing
 
 - Use for Gradle project file work, not only direct Kotlin edits.
+- Compiler-owned mutation fast path: when the user gives an exact Kotlin
+  file+offset, file list, or edit range for an existing-code mutation that K2,
+  IDEA, or Gradle tooling models, call the mutation operation directly. Do not
+  pre-run `symbol/resolve`, `symbol/references`, `symbol/callers`, or
+  `symbol/scaffold` just to plan scope. Let `symbol/rename`, `raw/rename`,
+  `raw/optimize-imports`, `raw/code-actions`, or future move/package mutation
+  methods compute applicability, usage sites, conflicts, edits, and affected
+  files.
+- Fast-path bounds: use it only for mutations of existing declarations/usages,
+  imports, generated edit plans, or tool-reported code actions. For name-only
+  requests, resolve or discover only enough to get a safe file+offset when the
+  mutation endpoint cannot disambiguate. Enumerate references, callers,
+  hierarchy, or metrics only when the user asks for impact review or when the
+  mutation result reports a bounded/incomplete search.
 - Unknown symbol: start with `symbol/query`; use tight `query`, `limit`,
   `modes`, and filters such as `relativePathPrefix`, `gradleProject`,
   `sourceSet`, or `kinds`.
@@ -41,8 +55,10 @@ fails or reports a skill/CLI version mismatch.
   when the path is not already exact.
 - Kotlin edits: `symbol/rename`, `symbol/write-and-validate`,
   `raw/semantic-insertion-point`, `raw/completions`, `raw/code-actions`,
-  `raw/apply-edits`, `raw/optimize-imports`; still run Kast before external
-  patches and diagnostics after.
+  `raw/apply-edits`, `raw/optimize-imports`. Use mutation methods directly for
+  compiler-owned changes. Use discovery/scaffold first for net-new code,
+  manual transformations, or agent-authored replacements whose applicability is
+  not modeled by the backend. Run diagnostics after either path.
 - Impact/proof: `raw/type-hierarchy`, `raw/implementations`,
   `database/metrics`, `kast metrics fan-in`, other `kast metrics` subcommands,
   `kast demo --json`, `raw/workspace-refresh`, `raw/diagnostics`, then the

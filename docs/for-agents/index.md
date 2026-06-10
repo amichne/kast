@@ -28,11 +28,14 @@ kast up --workspace-root="$PWD"
 # 4. Hand off — your agent now has the Kast skill loaded
 ```
 
-Done. The skill teaches the workflow and the resolve-first pattern. The
-backend keeps Kotlin state warm. Agents should prefer native `kast_*`
-tools and fall back to `kast rpc` when they need the CLI directly;
-humans use `kast up`, `kast status`, and `kast stop` to manage the
-daemon. The rest of this page is what your agent picks up from that.
+Done. The skill teaches the workflow: resolve first for identity and
+usage questions, but go straight to compiler-owned mutation methods for
+exact-position renames, import cleanup, code actions, and other
+tool-modeled existing-code edits. The backend keeps Kotlin state warm.
+Agents should prefer native `kast_*` tools and fall back to `kast rpc`
+when they need the CLI directly; humans use `kast up`, `kast status`,
+and `kast stop` to manage the daemon. The rest of this page is what
+your agent picks up from that.
 
 The agent talks to any runtime over the same JSON-RPC. Headless runs as an
 independent packaged IDEA-backed daemon for terminals, CI, and hosted
@@ -117,8 +120,8 @@ Once `kast` is wired in, these stop being approximations:
   — no guessing.
 - **Walk a call graph** with explicit bounds — and say where it was
   truncated and why.
-- **Plan a rename** with conflict detection — verify the plan, then
-  apply.
+- **Plan a rename** directly from the file+offset with conflict
+  detection — verify the plan, then apply.
 - **Find implementations** of an interface — concrete subclasses, not
   string matches.
 - **Check diagnostics** to confirm code still compiles — without

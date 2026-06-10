@@ -12,10 +12,32 @@ plan, then send it back for application. If any file changed on
 disk in between, the hashes won't match and the daemon refuses to
 write. Conflict-aware, fully auditable, no surprises.
 
+## Fast-path order
+
+For existing-code mutations that the backend understands, start at the
+mutation. Do not run a separate resolve, references, callers, or
+scaffold pass just to discover what the rename or move might touch.
+`raw/rename` and `symbol/rename` already ask the compiler-backed
+backend to compute applicability, usage sites, conflicts, edits, and
+affected files.
+
+Use this order:
+
+1. Call the compiler-owned mutation with the exact file+offset, file
+   list, or range you already have.
+2. Review or apply the returned plan, depending on the command.
+3. Prove the result with diagnostics or the narrowest Gradle task.
+
+Only resolve first when the request is name-only and you need a safe
+file+offset anchor. Only gather references or callers when the user
+asks for impact analysis, or when the mutation reports a bounded or
+incomplete search.
+
 ## The plan → hash → apply flow
 
-The sequence below is the full round-trip for a guarded rename. The
-same flow applies to any mutation that returns `fileHashes`.
+The sequence below is the full round-trip for a guarded rename. It
+starts directly with the mutation planner; the same flow applies to any
+mutation that returns `fileHashes`.
 
 
 ```mermaid
@@ -76,7 +98,7 @@ the workspace — without writing anything. The response carries
     ```text title="Natural-language prompt"
     Use the Kast skill to rename the function at offset 20 in
     /workspace/src/Sample.kt to "welcome". Show me the edit plan
-    before applying it.
+    before applying it. Do not pre-resolve or find references first.
     ```
 
 The response contains the full edit plan:
