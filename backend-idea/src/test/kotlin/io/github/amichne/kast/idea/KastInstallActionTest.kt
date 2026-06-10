@@ -64,7 +64,11 @@ class KastInstallActionTest {
         )
 
         assertEquals(KastInstallCommandResult.Success, result)
-        assertTrue(Files.isRegularFile(workspaceRoot.resolve(".github/.kast-copilot-version")))
+        assertTrue(
+            Files.isRegularFile(
+                workspaceRoot.resolve(".github/extensions/kast/.kast-copilot-version"),
+            ),
+        )
         assertTrue(Files.isRegularFile(workspaceRoot.resolve(".github/extensions/kast/extension.mjs")))
     }
 
@@ -93,7 +97,7 @@ class KastInstallActionTest {
               done
               [[ -n "${'$'}target_dir" ]] || exit 2
               mkdir -p "${'$'}target_dir/extensions/kast"
-              printf '%s\n' test > "${'$'}target_dir/.kast-copilot-version"
+              printf '%s\n' test > "${'$'}target_dir/extensions/kast/.kast-copilot-version"
               printf '%s\n' '// fake extension' > "${'$'}target_dir/extensions/kast/extension.mjs"
               exit 0
             fi
