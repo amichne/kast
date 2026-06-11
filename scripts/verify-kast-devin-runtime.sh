@@ -12,6 +12,10 @@ Usage: scripts/verify-kast-devin-runtime.sh [--prefix <bundle-root>]
 
 Verify an unpacked Kast Devin headless runtime bundle, then prove ordinary
 `kast up` and `kast rpc` commands use its configured headless backend.
+
+Environment:
+  KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS  Milliseconds to wait for cold runtime
+                                      startup. Defaults to 180000.
 USAGE
 }
 
@@ -24,6 +28,7 @@ resolve_default_prefix() {
 prefix=""
 tmp_dir=""
 workspace_root=""
+wait_timeout_ms="${KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS:-180000}"
 
 cleanup() {
   if [[ -n "$tmp_dir" ]]; then
@@ -53,6 +58,7 @@ if [[ -z "$prefix" ]]; then
   prefix="$(resolve_default_prefix)"
 fi
 prefix="$(cd -- "$prefix" >/dev/null 2>&1 && pwd)" || die "Bundle prefix not found: $prefix"
+[[ "$wait_timeout_ms" =~ ^[0-9]+$ ]] || die "KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS must be numeric: $wait_timeout_ms"
 
 manifest="${prefix}/manifest.json"
 config_file="${prefix}/config.toml"
@@ -117,7 +123,7 @@ tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-runtime-verify.XXXXXX")"
 workspace_root="${tmp_dir}/workspace"
 mkdir -p "$workspace_root"
 
-up_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" --output json up --workspace-root "$workspace_root")"
+up_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" --output json up --workspace-root "$workspace_root" --wait-timeout-ms="${wait_timeout_ms}")"
 python3 - "$up_output" <<'PY'
 import json
 import sys

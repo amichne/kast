@@ -120,14 +120,19 @@ case "${1:-help}" in
     ;;
   up)
     [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
+    seen_wait_timeout=false
     for arg in "$@"; do
       case "$arg" in
         --backend|--backend=*)
           echo "verify script must not pass --backend to up" >&2
           exit 1
           ;;
+        --wait-timeout-ms=180000)
+          seen_wait_timeout=true
+          ;;
       esac
     done
+    [[ "$seen_wait_timeout" == true ]] || { echo "verify script must pass --wait-timeout-ms=180000 to up" >&2; exit 1; }
     grep -Fq 'defaultBackend = "headless"' "${KAST_CONFIG_HOME}/config.toml"
     touch "${KAST_CONFIG_HOME}/up-called"
     printf '%s\n' '{"selected":{"descriptor":{"backendName":"headless"},"runtimeStatus":{"backendName":"headless"}}}'
@@ -275,6 +280,13 @@ grep -Fq "ideaHome = \"${backend_root}/idea-home\"" "$config_file" \
 grep -Fq "binaryPath = \"${bundle_root}/bin/kast\"" "$config_file" \
   || die "config.toml does not point at bundled CLI"
 grep -Fq "version = \"9.8.7\"" "$config_file" || die "config.toml does not normalize install version"
+
+invalid_timeout_log="${scratch_dir}/invalid-timeout.log"
+if KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS=not-a-number "${bundle_root}/scripts/verify-kast-devin-runtime.sh" --prefix "$bundle_root" >"$invalid_timeout_log" 2>&1; then
+  die "verify script accepted a non-numeric KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS"
+fi
+grep -Fq "KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS must be numeric" "$invalid_timeout_log" \
+  || die "verify script did not explain invalid KAST_DEVIN_RUNTIME_WAIT_TIMEOUT_MS"
 
 "${bundle_root}/scripts/verify-kast-devin-runtime.sh" --prefix "$bundle_root"
 [[ -f "${bundle_root}/up-called" ]] || die "verify script did not run kast up"
