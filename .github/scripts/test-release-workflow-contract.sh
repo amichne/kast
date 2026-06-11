@@ -59,6 +59,7 @@ release_provenance_assembler="${repo_root}/scripts/assemble-release-provenance.p
 release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
 maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
+ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-docker.sh"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -80,6 +81,7 @@ for path in \
   "$release_asset_verifier" \
   "$release_state_verifier" \
   "$maven_central_verifier" \
+  "$ubuntu_debian_validator" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -199,6 +201,7 @@ require_contains "$release_state_verifier" "homebrew-kast" "Release state verifi
 require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central verifier must check analysis-api"
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
+require_contains "$ubuntu_debian_validator" "--accept-indexing=true" "Ubuntu/Debian validator must accept servable indexing state during cold startup"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 
 printf '%s\n' "Release workflow contract passed"
