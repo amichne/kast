@@ -55,6 +55,55 @@ class KastPluginServiceConfigTest {
     }
 
     @Test
+    fun `idea config loader returns loaded config when config is valid`() {
+        val workspaceRoot = Path.of("/tmp/workspace")
+        val expectedConfig = KastConfig.defaults().copy(
+            server = KastConfig.defaults().server.copy(
+                maxResults = ServerMaxResults(42),
+            ),
+        )
+
+        val config = loadIdeaKastConfig(
+            workspaceRoot = workspaceRoot,
+            loader = { path ->
+                assertEquals(workspaceRoot, path)
+                expectedConfig
+            },
+            reportFailure = { _, error -> error("Unexpected config load failure: $error") },
+        )
+
+        assertEquals(42, config.server.maxResults.value)
+    }
+
+    @Test
+    fun `idea config loader falls back to defaults when config is invalid`() {
+        val workspaceRoot = Path.of("/tmp/workspace")
+        var reportedWorkspace: Path? = null
+        var reportedError: Exception? = null
+
+        val config = loadIdeaKastConfig(
+            workspaceRoot = workspaceRoot,
+            loader = { error("Invalid Kast config line 1 in config.toml") },
+            reportFailure = { path, error ->
+                reportedWorkspace = path
+                reportedError = error
+            },
+        )
+
+        assertEquals(KastConfig.defaults(), config)
+        assertEquals(
+            ServerLimits(
+                maxResults = 500,
+                requestTimeoutMillis = 30_000L,
+                maxConcurrentRequests = 4,
+            ),
+            ideaServerLimits(config),
+        )
+        assertEquals(workspaceRoot, reportedWorkspace)
+        assertTrue(reportedError?.message?.contains("Invalid Kast config") == true)
+    }
+
+    @Test
     fun `idea telemetry uses config`() {
         val telemetry = IdeaBackendTelemetry.fromConfig(
             workspaceRoot = Path.of("/tmp/workspace"),

@@ -213,6 +213,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
             archive: args.headless_archive,
             version: args.version.clone(),
             base_url: args.base_url,
+            insecure_skip_tls_verify: false,
             force: args.force,
         })?)
     };
@@ -322,6 +323,7 @@ pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendIns
         archive: args.archive,
         version: args.version,
         base_url: args.base_url,
+        insecure_skip_tls_verify: args.insecure_skip_tls_verify,
         force: args.force,
     };
     match backend::run(cli::BackendCommand::Install(backend_args))? {
