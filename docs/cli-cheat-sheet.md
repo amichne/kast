@@ -40,7 +40,8 @@ command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
-| `kast setup`            | Install the headless backend and standard local integrations.                | `--force`, `--skip-shell`, `--include-copilot`     |
+| `kast setup`            | Install or update local integrations and refresh existing managed assets.    | `--force`, `--skip-shell`, `--skip-headless`, `--skip-plugin`, `--include-copilot` |
+| `kast install headless` | Install the packaged headless backend explicitly.                            | `--version`, `--base-url`, `--force`               |
 | `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--backend`, `--output`                            |
 | `kast status`           | Report whether a backend is running and what state it is in.                 | `--output`                                         |
 | `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |

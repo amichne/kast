@@ -8,22 +8,6 @@ use std::process::{Command, Stdio};
 
 const HEADLESS_MAIN_CLASS: &str = "io.github.amichne.kast.headless.HeadlessMainKt";
 
-pub fn run_foreground(args: DaemonStartArgs) -> Result<i32> {
-    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
-    let config = KastConfig::load(&workspace_root)?;
-    let command = java_command(&args, &config)?;
-    let mut process = Command::new(&command[0]);
-    apply_daemon_environment(&mut process);
-    let status = process
-        .args(&command[1..])
-        .current_dir(workspace_root)
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-    Ok(status.code().unwrap_or(1))
-}
-
 pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
@@ -60,7 +44,7 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     if backend_name == BackendName::Idea {
         return Err(CliError::new(
             "DAEMON_START_ERROR",
-            "The idea backend is hosted by IDEA and cannot be launched by kast daemon start.",
+            "The idea backend is hosted by IDEA and cannot be launched as a headless runtime.",
         ));
     }
     let runtime_libs_dir =

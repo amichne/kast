@@ -109,19 +109,14 @@ that matches what you're seeing.
     kast install plugin --link-jetbrains-profiles
     ```
 
-??? question "Copilot extension uninstall leaves files behind"
+??? question "Copilot extension files look stale"
 
-    `kast uninstall copilot-extension` removes only files
-    listed in the packaged manifest plus `.github/.kast-copilot-version`.
-    Files you created under `.github` are preserved, and the CLI-managed
-    inventory drops the repo entry.
-
-    To inspect the managed set, reinstall with `--force`, then uninstall
-    again:
+    Reinstall the packaged files with `--force`. This replaces the managed
+    extension copy under `.github/extensions/kast` and records the running CLI
+    version without touching unrelated `.github` content.
 
     ```console
     kast install copilot --force
-    kast uninstall copilot-extension
     ```
 
 ## Analysis results

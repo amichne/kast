@@ -11,8 +11,9 @@ planned edit is safe to apply.
 
 `kast` has two independent runtime modes:
 
-- **Headless CLI + backend** — install the `kast` CLI and run
-  `kast setup` for a packaged IDEA-backed runtime and local integrations.
+- **Headless CLI + backend** — install the `kast` CLI, run
+  `kast setup` for local integrations, and add the packaged IDEA-backed
+  runtime with `kast install headless` when you need an independent backend.
   Works in terminals, CI, hosted agents, and images that need an offline,
   self-contained Ubuntu/Debian bundle.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
@@ -38,11 +39,12 @@ brew tap amichne/kast
 brew install kast
 ```
 
-Set up the backend and standard local integrations for the runtime you want:
+Set up standard local integrations, then add the headless backend when you
+want an independent runtime:
 
 ```console
-# Terminal, CI, or agent runtime without an IDE
 kast setup
+kast install headless
 ```
 
 Use the Ubuntu/Debian installer when Homebrew is not available, or when the
@@ -61,8 +63,11 @@ Warm the configured backend before running analysis commands. Headless is the
 default non-IDE backend:
 
 ```console
-# First-time setup
+# First-time local setup
 kast setup
+
+# Install the independent headless backend when needed
+kast install headless
 
 # Start or warm the backend
 kast up --backend=headless

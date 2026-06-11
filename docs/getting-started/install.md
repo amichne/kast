@@ -27,20 +27,22 @@ the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast`;
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
-kast install plugin --link-jetbrains-profiles
+kast setup
 ```
 
-Use Homebrew for ordinary local use when your platform is supported. The plugin
-install command installs or refreshes the Homebrew cask, links existing
-JetBrains profile plugin directories, and repairs stale global CLI config paths
-before it touches profiles.
+Use Homebrew for ordinary local use when your platform is supported. `kast
+setup` installs shell integration, repairs managed resources, refreshes any
+already-installed headless backend, and on macOS installs or refreshes the IDEA
+plugin cask when JetBrains profile directories are present. Disable individual
+parts with `--skip-repair`, `--skip-shell`, `--skip-headless`,
+`--skip-plugin`, `--skip-skill`, or `--skip-copilot`.
 
 ## Install a backend
 
 Install one backend component after the CLI is on `PATH`.
 
 ```console title="Install the headless backend"
-kast setup
+kast install headless
 ```
 
 Use the headless backend for terminal work, local automation, and CI jobs that
@@ -54,7 +56,8 @@ Use the headless backend for hosted Linux agents that need a packaged
 IDEA-backed runtime:
 
 ```console title="Install and warm the headless backend"
-kast setup
+kast install headless
+kast setup --skip-headless
 kast up --backend=headless
 ```
 
@@ -81,14 +84,15 @@ kast install affected --apply
 ```
 
 Backend downloads stay explicit. If the repair removes stale backend metadata
-and you need the headless backend, run `kast setup` afterwards.
+and you need the headless backend, run `kast install headless` afterwards.
 
 ## Ubuntu/Debian bundle
 
 Use the Ubuntu/Debian bundle when a CI image, hosted agent snapshot, mirror, or
 air-gapped host should install Kast without Homebrew, Rust, Gradle, or network
 access to individual release assets. This is the offline bundle path; the normal
-interactive path is CLI first, then `kast setup`.
+interactive path is CLI first, `kast setup` for local integrations, and
+`kast install headless` only when you need the independent backend.
 
 The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
 with a matching `.sha256` sidecar. Each bundle contains the
@@ -241,14 +245,9 @@ Pass `--target-dir` when you need to install into another workspace's
 kast install copilot --target-dir=/Users/alex/work/project/.github --force
 ```
 
-To remove only packaged files, use the uninstall command:
-
-```console title="Uninstall Copilot agents, hooks, and extensions"
-kast uninstall copilot-extension
-```
-
-Uninstall removes the packaged manifest entries and the version marker. It
-preserves foreign files that you created under `.github`.
+To refresh packaged files in place, reinstall with `--force`. This replaces the
+managed extension copy while preserving unrelated files that you created under
+`.github`.
 
 ### Install Copilot extension from IDEA or Android Studio
 

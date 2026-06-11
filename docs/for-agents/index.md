@@ -42,15 +42,17 @@ project, reusing the IDE's project model, indexes, and analysis session.
 ## Local and hosted agent setup
 
 Local agents usually inherit a developer's installed CLI and workspace, then
-run `kast setup` for the backend and local integrations. Hosted Ubuntu/Debian
-agents can either run setup on demand or install into a contained root from the
-self-contained offline bundle before the session starts.
+run `kast setup` for local integrations and managed-asset repair. Install the
+headless backend explicitly with `kast install headless` when the agent needs
+an independent runtime. Hosted Ubuntu/Debian agents can install into a
+contained root from the self-contained offline bundle before the session
+starts.
 Homebrew is still the developer install path when the target supports it.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
-| Local developer agent | `kast setup` with optional `--include-copilot` | Headless backend or IDEA backend | The packaged skill and native `kast_*` tools |
-| CI review agent | `kast setup --skip-shell` | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
+| Local developer agent | `kast setup` with optional `--include-copilot`; `kast install headless` only when needed | Headless backend or IDEA backend | The packaged skill and native `kast_*` tools |
+| CI review agent | `kast install headless`, then `kast setup --skip-shell --skip-headless` | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
 | Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the offline release bundle | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 
 Use the Ubuntu/Debian path when the agent image cannot rely on a human shell

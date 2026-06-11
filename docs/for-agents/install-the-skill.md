@@ -103,22 +103,14 @@ kast install copilot
 The command writes into `<cwd>/.github` by default, including packaged
 `.github/agents`, `.github/hooks`, and self-contained native extension scripts
 under `.github/extensions`. Packaged scripts are installed executable, and the
-command records the installed CLI version in `.github/.kast-copilot-version`.
+command records the installed CLI version in
+`.github/extensions/kast/.kast-copilot-version`.
 Pass `--target-dir` to point at another workspace `.github` directory, and
 `--force` to replace an older installed copy:
 
 ```console title="Force reinstall Copilot extension files"
 kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 ```
-
-To remove only packaged Copilot files, use the uninstall command:
-
-```console title="Uninstall Copilot extension files"
-kast uninstall copilot-extension
-```
-
-Uninstall removes the packaged manifest files and the version marker. It
-preserves foreign files you created under `.github`.
 
 ## Next steps
 

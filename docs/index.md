@@ -75,6 +75,7 @@ Three commands, run from the root of any Kotlin project. Requires Java 21+.
 brew tap amichne/kast
 brew install kast
 kast setup
+kast install headless
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
 kast up --backend=headless

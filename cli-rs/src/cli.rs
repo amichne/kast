@@ -32,24 +32,6 @@ pub enum Command {
     },
     /// Print the packaged CLI version.
     Version,
-    /// Repair Kast configuration.
-    #[command(hide = true)]
-    Config {
-        #[command(subcommand)]
-        command: ConfigCommand,
-    },
-    /// Start the headless JVM backend for a workspace.
-    #[command(hide = true)]
-    Daemon {
-        #[command(subcommand)]
-        command: DaemonCommand,
-    },
-    /// Install or remove JVM backend components.
-    #[command(hide = true)]
-    Backend {
-        #[command(subcommand)]
-        command: BackendCommand,
-    },
     /// Send a raw JSON-RPC request to the workspace daemon.
     Rpc(RpcArgs),
     /// Start or warm the workspace daemon.
@@ -67,47 +49,18 @@ pub enum Command {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Install the headless backend and standard local integrations.
+    /// Install or update local integrations and managed assets.
     Setup(SetupArgs),
     /// Install or repair Kast resources.
     Install(InstallArgs),
-    /// Report the current installed version of a Kast component.
-    #[command(hide = true)]
-    Current {
-        #[command(subcommand)]
-        command: CurrentCommand,
-    },
-    /// Report the recorded global Kast install state.
-    #[command(hide = true)]
-    Info,
     /// Verify the global Kast install is still healthy.
     Doctor,
-    /// Remove config-managed files or packaged resources.
-    #[command(hide = true)]
-    Uninstall(UninstallArgs),
-    /// Verify the installed Copilot extension version matches this CLI.
-    #[command(hide = true)]
-    VerifyExtension,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum ConfigCommand {
-    /// Write a default Kast config file.
-    Init,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum DaemonCommand {
-    /// Launch the headless JVM backend in the foreground.
-    Start(DaemonStartArgs),
 }
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum BackendCommand {
     /// Install one backend component from a release asset or local archive.
     Install(BackendInstallArgs),
-    /// Remove one backend component managed by kast.
-    Uninstall(BackendUninstallArgs),
 }
 
 #[derive(Debug, Args, Clone)]
@@ -128,13 +81,6 @@ pub struct BackendInstallArgs {
     /// Replace an existing installed backend version.
     #[arg(short = 'f', long)]
     pub force: bool,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct BackendUninstallArgs {
-    /// Backend component to remove.
-    #[arg(value_enum)]
-    pub backend: BackendComponent,
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -397,30 +343,45 @@ pub struct SetupArgs {
     /// Replace existing installed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
+    /// Skip global config and managed asset repair.
+    #[arg(long)]
+    pub skip_repair: bool,
     /// Shell to install integration for. Defaults to the current SHELL.
     #[arg(long, value_enum)]
     pub shell: Option<ShellKind>,
     /// Skip shell PATH and completion integration.
     #[arg(long)]
     pub skip_shell: bool,
-    /// Local headless backend zip archive. When omitted, kast downloads the release asset.
+    /// Skip headless backend installation or refresh.
+    #[arg(long)]
+    pub skip_headless: bool,
+    /// Skip IDEA plugin installation or profile linking.
+    #[arg(long)]
+    pub skip_plugin: bool,
+    /// Local headless backend zip archive for refreshing an existing headless install.
     #[arg(long)]
     pub headless_archive: Option<PathBuf>,
-    /// Release tag or version. Defaults to this CLI version.
+    /// Release tag or version for refreshing an existing headless install.
     #[arg(long)]
     pub version: Option<String>,
-    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
+    /// Release directory URL used when refreshing an existing headless install.
     #[arg(long)]
     pub base_url: Option<String>,
     /// Install the packaged kast skill into the configured target directory.
     #[arg(long)]
     pub include_skill: bool,
+    /// Skip packaged kast skill installation even when --include-skill is present.
+    #[arg(long)]
+    pub skip_skill: bool,
     /// Target root directory for --include-skill.
     #[arg(long)]
     pub skill_target_dir: Option<PathBuf>,
     /// Install the packaged Copilot agents and extensions.
     #[arg(long)]
     pub include_copilot: bool,
+    /// Skip packaged Copilot extension installation even when --include-copilot is present.
+    #[arg(long)]
+    pub skip_copilot: bool,
     /// Target .github directory for --include-copilot.
     #[arg(long)]
     pub copilot_target_dir: Option<PathBuf>,
@@ -559,40 +520,6 @@ pub struct ResourceInstallArgs {
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct UninstallArgs {
-    #[command(subcommand)]
-    pub command: Option<UninstallCommand>,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum UninstallCommand {
-    /// Remove packaged Copilot agents and extensions from the current workspace.
-    CopilotExtension(ResourceInstallArgs),
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum CurrentCommand {
-    /// Report the current Homebrew-managed IDEA plugin version.
-    Plugin,
-    /// Report the current installed headless backend version.
-    Headless,
-    /// Report the current installed packaged skill version.
-    Skill(ResourceCurrentArgs),
-    /// Report the current installed Copilot extension version.
-    Copilot(ResourceCurrentArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct ResourceCurrentArgs {
-    /// Target root directory.
-    #[arg(long)]
-    pub target_dir: Option<PathBuf>,
-    /// Directory name for the installed skill. Defaults to kast.
-    #[arg(long)]
-    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
