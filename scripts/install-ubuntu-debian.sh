@@ -70,6 +70,34 @@ infer_version_from_bundle_name() {
   esac
 }
 
+read_bundle_manifest_value() {
+  local manifest_path="$1"
+  local field_name="$2"
+  command -v python3 >/dev/null 2>&1 || return 1
+  python3 - "$manifest_path" "$field_name" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+field_name = sys.argv[2]
+try:
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+
+if payload.get("schemaVersion") != 1:
+    raise SystemExit(1)
+if payload.get("kind") != "KAST_UBUNTU_DEBIAN_BUNDLE":
+    raise SystemExit(1)
+
+value = payload.get(field_name)
+if not isinstance(value, str) or not value.strip():
+    raise SystemExit(1)
+print(value.strip())
+PY
+}
+
 infer_version_from_context() {
   if [[ -n "${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}" ]]; then
     infer_version_from_bundle_name "$(basename -- "$KAST_UBUNTU_DEBIAN_ARTIFACT_PATH")" && return
@@ -78,6 +106,7 @@ infer_version_from_context() {
   local script_dir
   script_dir="$(resolve_script_dir)"
   if [[ -f "${script_dir}/../manifest.json" && -x "${script_dir}/../bin/kast" ]]; then
+    read_bundle_manifest_value "${script_dir}/../manifest.json" "version" && return
     infer_version_from_bundle_name "$(basename -- "$(cd -- "${script_dir}/.." && pwd)")" && return
   fi
 
@@ -100,6 +129,7 @@ infer_bundle_kind_from_context() {
   local script_dir
   script_dir="$(resolve_script_dir)"
   if [[ -f "${script_dir}/../manifest.json" && -x "${script_dir}/../bin/kast" ]]; then
+    read_bundle_manifest_value "${script_dir}/../manifest.json" "backendKind" && return
     infer_bundle_kind_from_name "$(basename -- "$(cd -- "${script_dir}/.." && pwd)")" && return
   fi
 

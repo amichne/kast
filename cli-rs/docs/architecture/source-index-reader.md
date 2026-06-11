@@ -40,10 +40,8 @@ The direct reader powers two public surfaces:
 | `kast metrics ...` | Machine-readable rankings, impact views, coupling, search, and graph JSON. |
 | `kast demo` | Interactive symbol walking and spatial structure views with source previews. |
 
-`kast metrics graph` remains the lower-level graph browser. `kast demo`
-is the higher-level presentation surface for walking from symbol to
-symbol or inspecting workspace/file/declaration structure during a
-terminal session.
+`kast demo` is the presentation surface for walking from symbol to symbol or
+inspecting workspace/file/declaration structure during a terminal session.
 
 ## Local benchmark evidence
 

@@ -20,8 +20,7 @@ that matches what you're seeing.
     1. Verify the workspace root exists and contains Kotlin sources:
 
         ```console
-        kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
-          --workspace-root=/path/to/project
+        kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}'
         ```
 
     2. Check that Java 21 or newer is available:
@@ -51,8 +50,8 @@ that matches what you're seeing.
     - Wait for `state: READY` before running queries
     - If indexing never finishes, check the project's Gradle
       wrapper works (`./gradlew tasks` should succeed)
-    - Pass `--accept-indexing=true` to `up` if you
-      can live with partial results while indexing finishes
+    - If indexing never reaches READY, inspect the daemon log from
+      `kast status --output json`
 
 ??? question "Shell can't find kast after install"
 
@@ -82,6 +81,33 @@ that matches what you're seeing.
     ```
 
     Then run **Tools → Kast → Install Copilot Extension** again.
+
+??? question "Kast does not open IDEA for a Copilot session"
+
+    **Symptoms:** Copilot starts, but `kast` reports `IDEA_NOT_RUNNING` or
+    `IDEA_PLUGIN_NOT_INSTALLED` instead of opening the IDE.
+
+    `kast` only opens a GUI IDE when both the backend and launch policy are
+    explicit. Configure the IDEA launch policy:
+
+    ```toml title="$HOME/.config/kast/config.toml"
+    [runtime]
+    defaultBackend = "idea"
+
+    [runtime.ideaLaunch]
+    enabled = true
+    command = "idea"
+    waitTimeoutMillis = 90000
+    requireInstalledPlugin = true
+    ```
+
+    Then set `KAST_COPILOT_IDEA_AUTOSTART=1` for the Copilot extension so its
+    startup and tool calls pass `--backend=idea`. If the plugin check fails,
+    install or repair the profile link:
+
+    ```console
+    kast install plugin --link-jetbrains-profiles
+    ```
 
 ??? question "Copilot extension uninstall leaves files behind"
 
@@ -158,10 +184,8 @@ that matches what you're seeing.
     observation window, you'll get a stale answer. Refresh first:
 
     ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' \
-      --workspace-root="$PWD"
-    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/App.kt"]}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}'
+    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/App.kt"]}}'
     ```
 
     Same fix applies to `raw/resolve`, `raw/references`,

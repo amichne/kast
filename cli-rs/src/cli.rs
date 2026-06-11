@@ -67,9 +67,12 @@ pub enum Command {
         #[command(subcommand)]
         command: MetricsCommand,
     },
+    /// Install the headless backend and standard local integrations.
+    Setup(SetupArgs),
     /// Install or repair Kast resources.
     Install(InstallArgs),
     /// Report the current installed version of a Kast component.
+    #[command(hide = true)]
     Current {
         #[command(subcommand)]
         command: CurrentCommand,
@@ -125,9 +128,6 @@ pub struct BackendInstallArgs {
     /// Replace an existing installed backend version.
     #[arg(short = 'f', long)]
     pub force: bool,
-    /// Deprecated alias for --force.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub yes: Option<bool>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -263,50 +263,58 @@ pub struct RuntimeArgs {
     #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
     pub backend_name: Option<BackendName>,
     /// IDEA Community installation home for the headless backend.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub idea_home: Option<PathBuf>,
     /// Maximum time to wait for a ready daemon when a command needs one.
-    #[arg(long, default_value_t = 60_000)]
+    #[arg(long, default_value_t = 60_000, hide = true)]
     pub wait_timeout_ms: u64,
     /// Allow up to return while the daemon is servable in INDEXING.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    #[arg(long, num_args = 0..=1, default_missing_value = "true", hide = true)]
     pub accept_indexing: Option<bool>,
     /// Fail instead of auto-starting a headless daemon.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    #[arg(long, num_args = 0..=1, default_missing_value = "true", hide = true)]
     pub no_auto_start: Option<bool>,
     /// Unix-domain socket path for the backend to listen on when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub socket_path: Option<PathBuf>,
     /// Source module name passed to the backend when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub module_name: Option<String>,
     /// Comma-separated source root paths passed to the backend when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub source_roots: Option<String>,
     /// Comma-separated classpath JAR paths passed to the backend when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub classpath: Option<String>,
     /// Request timeout in milliseconds passed to the backend when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub request_timeout_ms: Option<u64>,
     /// Maximum results passed to the backend when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub max_results: Option<u32>,
     /// Maximum concurrent requests passed to the backend when auto-started.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub max_concurrent_requests: Option<u32>,
     /// Enable profiling for an auto-started daemon.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub profile: bool,
     /// Comma-separated profiling modes.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub profile_modes: Option<String>,
     /// Profiling duration in seconds.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub profile_duration: Option<u64>,
     /// OTLP endpoint override while profiling is enabled.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub profile_otlp_endpoint: Option<String>,
+    /// Release tag or version to use when auto-installing a missing headless backend.
+    #[arg(long, hide = true)]
+    pub install_version: Option<String>,
+    /// Release directory URL to use when auto-installing a missing headless backend.
+    #[arg(long, hide = true)]
+    pub install_base_url: Option<String>,
+    #[arg(skip = true)]
+    pub auto_install_headless: bool,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -385,6 +393,46 @@ impl From<RuntimeArgs> for DaemonStartArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+pub struct SetupArgs {
+    /// Replace existing installed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Shell to install integration for. Defaults to the current SHELL.
+    #[arg(long, value_enum)]
+    pub shell: Option<ShellKind>,
+    /// Skip shell PATH and completion integration.
+    #[arg(long)]
+    pub skip_shell: bool,
+    /// Local headless backend zip archive. When omitted, kast downloads the release asset.
+    #[arg(long)]
+    pub headless_archive: Option<PathBuf>,
+    /// Release tag or version. Defaults to this CLI version.
+    #[arg(long)]
+    pub version: Option<String>,
+    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
+    #[arg(long)]
+    pub base_url: Option<String>,
+    /// Install the packaged kast skill into the configured target directory.
+    #[arg(long)]
+    pub include_skill: bool,
+    /// Target root directory for --include-skill.
+    #[arg(long)]
+    pub skill_target_dir: Option<PathBuf>,
+    /// Install the packaged Copilot agents and extensions.
+    #[arg(long)]
+    pub include_copilot: bool,
+    /// Target .github directory for --include-copilot.
+    #[arg(long)]
+    pub copilot_target_dir: Option<PathBuf>,
+    /// Link the Homebrew cask into local JetBrains IDE profiles.
+    #[arg(long)]
+    pub link_jetbrains_profiles: bool,
+    /// JetBrains config root containing IDE profile directories.
+    #[arg(long)]
+    pub jetbrains_config_root: Option<PathBuf>,
+}
+
+#[derive(Debug, Args, Clone)]
 pub struct InstallArgs {
     #[command(subcommand)]
     pub command: Option<InstallCommand>,
@@ -457,9 +505,6 @@ pub struct HeadlessInstallArgs {
     /// Replace an existing installed backend version.
     #[arg(short = 'f', long)]
     pub force: bool,
-    /// Deprecated alias for --force.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub yes: Option<bool>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -511,15 +556,9 @@ pub struct ResourceInstallArgs {
     /// Directory name for the installed skill. Defaults to kast.
     #[arg(long)]
     pub name: Option<String>,
-    /// Deprecated alias for --name.
-    #[arg(long)]
-    pub link_name: Option<String>,
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
-    /// Deprecated alias for --force.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub yes: Option<bool>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -554,9 +593,6 @@ pub struct ResourceCurrentArgs {
     /// Directory name for the installed skill. Defaults to kast.
     #[arg(long)]
     pub name: Option<String>,
-    /// Deprecated alias for --name.
-    #[arg(long)]
-    pub link_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]

@@ -7,7 +7,6 @@ internal class UninstallCopilotExtensionAction : KastInstallAction() {
         "uninstall",
         "copilot-extension",
         "--target-dir=${workspaceRoot.resolve(".github")}",
-        "--yes=true",
     )
 
     override fun successMessage(workspaceRoot: Path): String =

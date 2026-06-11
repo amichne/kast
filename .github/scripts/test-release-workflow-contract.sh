@@ -59,6 +59,9 @@ release_provenance_assembler="${repo_root}/scripts/assemble-release-provenance.p
 release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
 maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
+ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-docker.sh"
+ci_gradle_retry="${repo_root}/scripts/ci-gradle-retry.sh"
+ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -80,6 +83,9 @@ for path in \
   "$release_asset_verifier" \
   "$release_state_verifier" \
   "$maven_central_verifier" \
+  "$ubuntu_debian_validator" \
+  "$ci_gradle_retry" \
+  "$ci_gradle_retry_test" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -116,6 +122,8 @@ require_contains "$ci_workflow" "cache-cleanup: always" "CI Gradle setup must ke
 require_contains "$ci_workflow" "packaging/homebrew/scripts/test-formulas.py" "CI must validate Homebrew package templates"
 require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests must consume a locally built CLI artifact"
 require_contains "$ci_workflow" "Smoke Devin headless runtime contract" "CI must smoke the Devin runtime bundle contract"
+require_contains "$ci_workflow" "Test CI Gradle retry helper" "CI must test the Gradle retry helper before using it"
+require_contains "$ci_workflow" "./scripts/ci-gradle-retry.sh" "CI Gradle steps must use retry helper for transient repository failures"
 require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
 require_contains "$ci_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
 require_not_contains "$ci_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
@@ -153,6 +161,7 @@ require_contains "$release_workflow" "scripts/verify-release-assets.sh" "Release
 require_contains "$release_workflow" "Verify published release state" "Release must have a final published-state verification job"
 require_contains "$release_workflow" "scripts/verify-release-state.sh" "Release must verify the final published state"
 require_contains "$release_workflow" "scripts/verify-maven-central.sh" "Release must verify Maven Central coordinates"
+require_contains "$release_workflow" "./scripts/ci-gradle-retry.sh" "Release Gradle steps must use retry helper for transient repository failures"
 require_contains "$release_workflow" "needs.validate-jvm.result == 'success'" "Release publication must require local JVM and Maven validation"
 require_contains "$release_workflow" "needs.publish-release.result" "Final release verification must read the publish-release result"
 require_contains "$release_workflow" "Publish release finished with result" "Final release verification must fail when publication did not complete"
@@ -177,6 +186,7 @@ require_contains "$offline_bundle_workflow" "gh release upload" "Offline bundle 
 require_contains "$devin_runtime_workflow" "workflow_dispatch:" "Devin runtime workflow must be manually dispatchable"
 require_contains "$devin_runtime_workflow" "publish_to_release:" "Devin runtime workflow must require explicit release append"
 require_contains "$devin_runtime_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "Devin runtime workflow must build the agent headless profile"
+require_contains "$devin_runtime_workflow" "./scripts/ci-gradle-retry.sh" "Devin runtime Gradle build must use retry helper for transient repository failures"
 require_contains "$devin_runtime_workflow" "scripts/package-devin-headless-runtime.sh" "Devin runtime workflow must package the runtime bundle"
 require_contains "$devin_runtime_workflow" "scripts/verify-kast-devin-runtime.sh" "Devin runtime workflow must verify the runtime bundle"
 require_contains "$devin_runtime_workflow" "scripts/merge-release-provenance.py" "Devin runtime workflow must merge optional provenance"
@@ -199,6 +209,8 @@ require_contains "$release_state_verifier" "homebrew-kast" "Release state verifi
 require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central verifier must check analysis-api"
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
+require_contains "$ubuntu_debian_validator" "--accept-indexing=true" "Ubuntu/Debian validator must accept servable indexing state during cold startup"
+require_contains "$ubuntu_debian_validator" 'kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --accept-indexing=true --no-auto-start=true' "Ubuntu/Debian validator capabilities smoke must accept servable indexing state"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 
 printf '%s\n' "Release workflow contract passed"

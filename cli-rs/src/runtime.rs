@@ -3,12 +3,13 @@ use crate::cli::{BackendName, DaemonStartArgs, RpcArgs, RuntimeArgs};
 use crate::config::{self, KastConfig};
 use crate::daemon;
 use crate::error::{CliError, Result};
+use crate::install;
 use crate::rpc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -165,7 +166,7 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let config = KastConfig::load(&workspace_root)?;
+    let mut config = KastConfig::load(&workspace_root)?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, true)?;
     if let Some(selected) = select_servable(
@@ -180,6 +181,25 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
             log_file: None,
             selected,
             note: None,
+            schema_version: SCHEMA_VERSION,
+        });
+    }
+
+    let idea_launch_ops = SystemIdeaBackendLaunchOps;
+    if let Some(selected) = maybe_launch_idea_backend(
+        &workspace_root,
+        &config,
+        preference,
+        args.accept_indexing.unwrap_or(false),
+        &idea_launch_ops,
+    )? {
+        return Ok(WorkspaceEnsureResult {
+            workspace_root: workspace_root.display().to_string(),
+            descriptor_directory: inspection.descriptor_directory.display().to_string(),
+            started: true,
+            log_file: None,
+            selected,
+            note: Some("Started IDEA with the configured runtime.ideaLaunch command.".to_string()),
             schema_version: SCHEMA_VERSION,
         });
     }
@@ -201,13 +221,32 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         ));
     }
 
-    let runtime_libs_dir = config
+    let runtime_libs_dir = match config
         .backends
         .headless
         .runtime_libs_dir
         .clone()
         .filter(|path| path.is_dir())
-        .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?;
+    {
+        Some(path) => path,
+        None if launch_backend == BackendName::Headless && args.auto_install_headless => {
+            install::install_headless(crate::cli::HeadlessInstallArgs {
+                archive: None,
+                version: args.install_version.clone(),
+                base_url: args.install_base_url.clone(),
+                force: false,
+            })?;
+            config = KastConfig::load(&workspace_root)?;
+            config
+                .backends
+                .headless
+                .runtime_libs_dir
+                .clone()
+                .filter(|path| path.is_dir())
+                .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?
+        }
+        None => return Err(no_backend_error(&workspace_root, Some(launch_backend))),
+    };
     let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
     let daemon_args = DaemonStartArgs {
         workspace_root: Some(workspace_root.clone()),
@@ -321,6 +360,9 @@ pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
         profile_modes: None,
         profile_duration: None,
         profile_otlp_endpoint: None,
+        install_version: None,
+        install_base_url: None,
+        auto_install_headless: false,
     })?;
     rpc::raw(
         Path::new(&ensure.selected.descriptor.socket_path),
@@ -642,7 +684,7 @@ fn runtime_backend_preference(
     backend_name: Option<BackendName>,
 ) -> RuntimeBackendPreference {
     backend_name
-        .or(config.runtime.default_backend)
+        .or(config.runtime.default_backend.backend_name())
         .map(RuntimeBackendPreference::Fixed)
         .unwrap_or(RuntimeBackendPreference::Automatic)
 }
@@ -710,7 +752,7 @@ fn terminate_process(pid: u64, force: bool) {
 }
 
 fn workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
-    Ok(config::normalize(value.unwrap_or(env::current_dir()?)))
+    config::resolve_workspace_root(value)
 }
 
 fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) -> CliError {
@@ -719,18 +761,123 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
     let mut error = CliError::new(
         "NO_BACKEND_AVAILABLE",
         format!(
-            "No {} backend is installed or running for {}. Install it with: {}. Then start with: kast up --backend={} --workspace-root={}",
+            "No {} backend is installed or running for {}. Install it with: {}. Then start with: kast up --backend={}",
             backend_name.canonical(),
             workspace_root.display(),
             install_command,
-            backend_name.canonical(),
-            workspace_root.display()
+            backend_name.canonical()
         ),
     );
     error
         .details
         .insert("installCommand".to_string(), install_command);
     error
+}
+
+trait IdeaBackendLaunchOps {
+    fn plugin_installed(&self) -> Result<bool>;
+
+    fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()>;
+
+    fn wait_for_servable(
+        &self,
+        workspace_root: &Path,
+        accept_indexing: bool,
+        wait_timeout_ms: u64,
+    ) -> Result<RuntimeCandidateStatus>;
+}
+
+struct SystemIdeaBackendLaunchOps;
+
+impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
+    fn plugin_installed(&self) -> Result<bool> {
+        install::kast_idea_plugin_installed()
+    }
+
+    fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
+        let mut error = match Command::new(command).arg(workspace_root).spawn() {
+            Ok(_) => return Ok(()),
+            Err(error) => CliError::new(
+                "IDEA_LAUNCH_FAILED",
+                format!(
+                    "Failed to launch IDEA with `{}` for {}: {error}",
+                    command.display(),
+                    workspace_root.display()
+                ),
+            ),
+        };
+        error
+            .details
+            .insert("command".to_string(), command.display().to_string());
+        error.details.insert(
+            "workspaceRoot".to_string(),
+            workspace_root.display().to_string(),
+        );
+        Err(error)
+    }
+
+    fn wait_for_servable(
+        &self,
+        workspace_root: &Path,
+        accept_indexing: bool,
+        wait_timeout_ms: u64,
+    ) -> Result<RuntimeCandidateStatus> {
+        wait_for_servable(
+            workspace_root,
+            Some(BackendName::Idea),
+            accept_indexing,
+            wait_timeout_ms,
+        )
+    }
+}
+
+fn maybe_launch_idea_backend(
+    workspace_root: &Path,
+    config: &KastConfig,
+    preference: RuntimeBackendPreference,
+    accept_indexing: bool,
+    ops: &dyn IdeaBackendLaunchOps,
+) -> Result<Option<RuntimeCandidateStatus>> {
+    if preference.fixed_backend() != Some(BackendName::Idea) {
+        return Ok(None);
+    }
+    let launch_config = &config.runtime.idea_launch;
+    if !launch_config.enabled {
+        return Ok(None);
+    }
+    if !config.backends.idea.enabled {
+        return Err(CliError::new(
+            "IDEA_BACKEND_DISABLED",
+            "runtime.ideaLaunch is enabled, but backends.idea.enabled is false.",
+        ));
+    }
+    if launch_config.command.as_os_str().is_empty() {
+        return Err(CliError::new(
+            "IDEA_LAUNCH_CONFIG_INVALID",
+            "runtime.ideaLaunch.command must not be empty.",
+        ));
+    }
+    if launch_config.require_installed_plugin && !ops.plugin_installed()? {
+        let install_command = "kast install plugin".to_string();
+        let mut error = CliError::new(
+            "IDEA_PLUGIN_NOT_INSTALLED",
+            format!(
+                "Cannot launch IDEA for {} because no JetBrains profile with the Kast plugin was found. Install it with: {install_command}",
+                workspace_root.display()
+            ),
+        );
+        error
+            .details
+            .insert("installCommand".to_string(), install_command);
+        return Err(error);
+    }
+    ops.launch(&launch_config.command, workspace_root)?;
+    ops.wait_for_servable(
+        workspace_root,
+        accept_indexing,
+        launch_config.wait_timeout_millis.get(),
+    )
+    .map(Some)
 }
 
 fn daemon_log_file(
@@ -893,7 +1040,7 @@ mod tests {
     #[test]
     fn runtime_backend_preference_preserves_cli_and_config_authority() {
         let mut config = KastConfig::defaults();
-        config.runtime.default_backend = Some(BackendName::Idea);
+        config.runtime.default_backend = config::RuntimeDefaultBackend::Idea;
 
         assert_eq!(
             runtime_backend_preference(&config, None),
@@ -919,5 +1066,179 @@ mod tests {
             fallback_launch_backend(RuntimeBackendPreference::Fixed(BackendName::Idea)),
             None,
         );
+    }
+
+    struct FakeIdeaLaunchOps {
+        plugin_installed: bool,
+        launch_result: std::cell::RefCell<Option<Result<()>>>,
+        wait_result: std::cell::RefCell<Option<Result<RuntimeCandidateStatus>>>,
+        launches: std::cell::RefCell<Vec<(PathBuf, PathBuf)>>,
+        waits: std::cell::RefCell<Vec<u64>>,
+    }
+
+    impl FakeIdeaLaunchOps {
+        fn ready(plugin_installed: bool) -> Self {
+            Self {
+                plugin_installed,
+                launch_result: std::cell::RefCell::new(Some(Ok(()))),
+                wait_result: std::cell::RefCell::new(Some(Ok(candidate(
+                    "idea",
+                    RuntimeState::Ready,
+                    false,
+                )))),
+                launches: std::cell::RefCell::new(vec![]),
+                waits: std::cell::RefCell::new(vec![]),
+            }
+        }
+    }
+
+    impl IdeaBackendLaunchOps for FakeIdeaLaunchOps {
+        fn plugin_installed(&self) -> Result<bool> {
+            Ok(self.plugin_installed)
+        }
+
+        fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
+            self.launches
+                .borrow_mut()
+                .push((command.to_path_buf(), workspace_root.to_path_buf()));
+            self.launch_result.borrow_mut().take().unwrap_or(Ok(()))
+        }
+
+        fn wait_for_servable(
+            &self,
+            _workspace_root: &Path,
+            _accept_indexing: bool,
+            wait_timeout_ms: u64,
+        ) -> Result<RuntimeCandidateStatus> {
+            self.waits.borrow_mut().push(wait_timeout_ms);
+            self.wait_result
+                .borrow_mut()
+                .take()
+                .unwrap_or_else(|| Ok(candidate("idea", RuntimeState::Ready, false)))
+        }
+    }
+
+    #[test]
+    fn idea_launch_is_skipped_unless_enabled_and_idea_is_selected() {
+        let workspace = PathBuf::from("/work/kast");
+        let config = KastConfig::defaults();
+        let ops = FakeIdeaLaunchOps::ready(true);
+
+        let selected = maybe_launch_idea_backend(
+            &workspace,
+            &config,
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            false,
+            &ops,
+        )
+        .unwrap();
+
+        assert!(selected.is_none());
+        assert!(ops.launches.borrow().is_empty());
+    }
+
+    #[test]
+    fn idea_launch_requires_installed_plugin_when_configured() {
+        let workspace = PathBuf::from("/work/kast");
+        let mut config = KastConfig::defaults();
+        config.runtime.default_backend = config::RuntimeDefaultBackend::Idea;
+        config.runtime.idea_launch.enabled = true;
+        let ops = FakeIdeaLaunchOps::ready(false);
+
+        let error = maybe_launch_idea_backend(
+            &workspace,
+            &config,
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            false,
+            &ops,
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "IDEA_PLUGIN_NOT_INSTALLED");
+        assert!(ops.launches.borrow().is_empty());
+        assert_eq!(
+            error.details.get("installCommand").map(String::as_str),
+            Some("kast install plugin")
+        );
+    }
+
+    #[test]
+    fn idea_launch_runs_configured_command_and_waits_for_descriptor() {
+        let workspace = PathBuf::from("/work/kast");
+        let mut config = KastConfig::defaults();
+        config.runtime.default_backend = config::RuntimeDefaultBackend::Idea;
+        config.runtime.idea_launch.enabled = true;
+        config.runtime.idea_launch.command = PathBuf::from("/usr/local/bin/idea");
+        config.runtime.idea_launch.wait_timeout_millis = std::num::NonZeroU64::new(12_345).unwrap();
+        let ops = FakeIdeaLaunchOps::ready(true);
+
+        let selected = maybe_launch_idea_backend(
+            &workspace,
+            &config,
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            true,
+            &ops,
+        )
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(selected.descriptor.backend_name, "idea");
+        assert_eq!(
+            ops.launches.borrow().as_slice(),
+            &[(PathBuf::from("/usr/local/bin/idea"), workspace)]
+        );
+        assert_eq!(ops.waits.borrow().as_slice(), &[12_345]);
+    }
+
+    #[test]
+    fn idea_launch_surfaces_launch_failures() {
+        let workspace = PathBuf::from("/work/kast");
+        let mut config = KastConfig::defaults();
+        config.runtime.default_backend = config::RuntimeDefaultBackend::Idea;
+        config.runtime.idea_launch.enabled = true;
+        let ops = FakeIdeaLaunchOps {
+            launch_result: std::cell::RefCell::new(Some(Err(CliError::new(
+                "IDEA_LAUNCH_FAILED",
+                "boom",
+            )))),
+            ..FakeIdeaLaunchOps::ready(true)
+        };
+
+        let error = maybe_launch_idea_backend(
+            &workspace,
+            &config,
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            false,
+            &ops,
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "IDEA_LAUNCH_FAILED");
+    }
+
+    #[test]
+    fn idea_launch_surfaces_wait_timeout() {
+        let workspace = PathBuf::from("/work/kast");
+        let mut config = KastConfig::defaults();
+        config.runtime.default_backend = config::RuntimeDefaultBackend::Idea;
+        config.runtime.idea_launch.enabled = true;
+        let ops = FakeIdeaLaunchOps {
+            wait_result: std::cell::RefCell::new(Some(Err(CliError::new(
+                "RUNTIME_TIMEOUT",
+                "timed out",
+            )))),
+            ..FakeIdeaLaunchOps::ready(true)
+        };
+
+        let error = maybe_launch_idea_backend(
+            &workspace,
+            &config,
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            false,
+            &ops,
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code, "RUNTIME_TIMEOUT");
     }
 }

@@ -39,18 +39,15 @@ stateDiagram-v2
 `up` starts the daemon and blocks until it is servable.
 
 ```console title="Start the daemon and wait for READY"
-kast up \
-  --workspace-root="$PWD"
+kast up
 ```
 
-Pass `--accept-indexing=true` when partial results during indexing
-are acceptable.
+Run `kast status` in another shell when you need to watch startup progress.
 
 ### Check daemon state
 
 ```console title="Check daemon state"
-kast status \
-  --workspace-root="$PWD"
+kast status
 ```
 
 ### Stop the daemon
@@ -58,8 +55,7 @@ kast status \
 Stop explicitly when you're done. Don't leave orphans behind.
 
 ```console title="Stop the daemon cleanly"
-kast stop \
-  --workspace-root="$PWD"
+kast stop
 ```
 
 ## Workspace discovery
@@ -90,15 +86,13 @@ files it touched. Use `raw/workspace-refresh` via `kast rpc` only as
 a manual recovery when an external change slipped past the watcher.
 
 ```console title="Full workspace refresh"
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}' \
-  --workspace-root="$PWD"
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}'
 ```
 
 Targeted refresh:
 
 ```console title="Targeted refresh"
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' \
-  --workspace-root="$PWD"
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}'
 ```
 
 ## Inspect workspace files (RPC)
@@ -113,8 +107,7 @@ cap.
 === "CLI"
 
     ```console title="List one module summary"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25}}'
     ```
 
 === "JSON-RPC"
@@ -154,8 +147,7 @@ Run it before calling something the headless backend doesn't yet
 implement.
 
 ```console title="Query supported capabilities"
-kast capabilities \
-  --workspace-root="$PWD"
+kast capabilities
 ```
 
 ## Check runtime health
@@ -164,8 +156,7 @@ kast capabilities \
 full runtime metadata.
 
 ```console title="Liveness check"
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}' \
-  --workspace-root="$PWD"
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}'
 ```
 
 ## Next steps

@@ -7,7 +7,7 @@ internal class InstallCopilotExtensionAction : KastInstallAction() {
         "install",
         "copilot-extension",
         "--target-dir=${workspaceRoot.resolve(".github")}",
-        "--yes=true",
+        "--force",
     )
 
     override fun successMessage(workspaceRoot: Path): String =

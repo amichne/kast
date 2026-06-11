@@ -74,13 +74,13 @@ Three commands, run from the root of any Kotlin project. Requires Java 21+.
 # 1. Install the kast CLI
 brew tap amichne/kast
 brew install kast
+kast setup
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
-kast up --backend-name=headless --workspace-root="$PWD"
+kast up --backend=headless
 
 # 3. Resolve a symbol — point at any .kt file and any byte offset on a name
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/App.kt","offset":42}}}' \
-  --workspace-root="$PWD"
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/App.kt","offset":42}}}'
 ```
 
 The first `up` is the slow command — the daemon discovers

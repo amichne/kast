@@ -13,8 +13,8 @@ default; raw analysis requests still return JSON-RPC payloads.
 
 The walkthrough uses the headless backend because it works anywhere:
 your terminal, a CI runner, an agent loop. If IDEA or Android Studio is already
-open on the project with the plugin installed, swap `--backend-name=headless`
-for `--backend-name=idea` and skip the start/stop steps. The plugin
+open on the project with the plugin installed, swap `--backend=headless`
+for `--backend=idea` and skip the start/stop steps. The plugin
 reuses the IDE's analysis session — no second daemon to babysit.
 
 ## Before you begin
@@ -35,14 +35,18 @@ You need:
 
 ## Step 1: Start the headless backend
 
-Run every command from your project root. The first call is the slow
-one — the daemon discovers your project and indexes Kotlin files. After
-that, you're hitting a warm session.
+Run commands from your project root or any subdirectory below it. Kast
+walks up to the nearest Gradle or `.kast` marker when `--workspace-root`
+is omitted. The first call is the slow one — the daemon discovers your
+project and indexes Kotlin files. After that, you're hitting a warm
+session.
+
+```console title="First-time local setup"
+kast setup
+```
 
 ```console linenums="1" title="Start the daemon"
-kast up \
-  --backend-name=headless \
-  --workspace-root="$PWD"
+kast up --backend=headless
 ```
 
 ```mermaid
@@ -80,11 +84,6 @@ The default output is meant to be read:
 Use `--output json` on lifecycle and install commands when a script needs
 the original structured payload.
 
-!!! tip
-    Pass `--accept-indexing=true` to return as soon as the daemon can
-    serve requests, even before indexing finishes. Queries during
-    indexing may return partial results.
-
 ## Step 2: Resolve a symbol
 
 Pick a Kotlin file and a byte offset that lands on a symbol name. `kast`
@@ -99,8 +98,7 @@ of the declaration at that offset.
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
 kast rpc \
-  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/resolve\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}" \
-  --workspace-root="$PWD"
+  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/resolve\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}"
 ```
 
 ```json hl_lines="3-4" title="Example response"
@@ -131,8 +129,7 @@ Same file, same offset. Ask for every reference across the workspace.
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
 kast rpc \
-  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/references\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}" \
-  --workspace-root="$PWD"
+  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/references\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}"
 ```
 
 ```json hl_lines="10-11" title="Example response"
@@ -167,9 +164,7 @@ every candidate file. The reference list is complete for this workspace
 Free the resources when you're done.
 
 ```console title="Stop the daemon"
-kast stop \
-  --backend-name=headless \
-  --workspace-root="$PWD"
+kast stop --backend=headless
 ```
 
 ## What just happened

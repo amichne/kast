@@ -9,8 +9,7 @@ use std::process::{Command, Stdio};
 const HEADLESS_MAIN_CLASS: &str = "io.github.amichne.kast.headless.HeadlessMainKt";
 
 pub fn run_foreground(args: DaemonStartArgs) -> Result<i32> {
-    let workspace_root =
-        config::normalize(args.workspace_root.clone().unwrap_or(env::current_dir()?));
+    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
     let command = java_command(&args, &config)?;
     let mut process = Command::new(&command[0]);
@@ -26,8 +25,7 @@ pub fn run_foreground(args: DaemonStartArgs) -> Result<i32> {
 }
 
 pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
-    let workspace_root =
-        config::normalize(args.workspace_root.clone().unwrap_or(env::current_dir()?));
+    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
     let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
     let command = java_command(&args, &config)?;
@@ -106,8 +104,7 @@ fn write_runtime_config_file(
     runtime_libs_dir: &Path,
     idea_home: &Path,
 ) -> Result<PathBuf> {
-    let workspace_root =
-        config::normalize(args.workspace_root.clone().unwrap_or(env::current_dir()?));
+    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let runtime_config_dir = config.paths.cache_dir.join("runtime-config");
     fs::create_dir_all(&runtime_config_dir)?;
     let runtime_config_file = runtime_config_dir.join(format!(

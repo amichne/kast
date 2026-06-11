@@ -70,6 +70,34 @@ fi
     brew
 }
 
+fn write_fake_java(home: &Path, log_file: &Path) -> PathBuf {
+    let java_home = home.join("fake-java-home");
+    let java = java_home.join("bin/java");
+    std::fs::create_dir_all(java.parent().expect("java bin")).expect("java bin");
+    std::fs::write(
+        &java,
+        format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > {}\nexit 0\n",
+            shell_quote(log_file)
+        ),
+    )
+    .expect("fake java");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&java)
+            .expect("java metadata")
+            .permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&java, permissions).expect("java mode");
+    }
+    java_home
+}
+
+fn shell_quote(path: &Path) -> String {
+    format!("'{}'", path.display().to_string().replace('\'', "'\\''"))
+}
+
 fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
     assert_eq!(backend, "headless", "unsupported backend fixture");
     let staging = root.join(format!("{backend}-staging"));
@@ -305,6 +333,14 @@ fn smoke_core_cli_commands() {
             stdout.contains("-f, --force"),
             "install {command} help should expose -f/--force: {stdout}"
         );
+        assert!(
+            !stdout.contains("--yes"),
+            "install {command} help should not expose deprecated --yes: {stdout}"
+        );
+        assert!(
+            !stdout.contains("--link-name"),
+            "install {command} help should not expose deprecated --link-name: {stdout}"
+        );
     }
     let shell_help = kast(&home, &config_home)
         .args(["install", "shell", "--help"])
@@ -332,6 +368,12 @@ fn smoke_core_cli_commands() {
             "current help should list {command}: {current_help_stdout}"
         );
     }
+    for deprecated in ["--yes", "--link-name"] {
+        assert!(
+            !current_help_stdout.contains(deprecated),
+            "current help should not expose deprecated {deprecated}: {current_help_stdout}"
+        );
+    }
 
     let demo_help = kast(&home, &config_home)
         .args(["demo", "--help"])
@@ -357,7 +399,7 @@ fn smoke_core_cli_commands() {
             "skill",
             "--target-dir",
             skill_dir.to_str().expect("skill path"),
-            "--yes=true",
+            "--force",
         ])
         .output()
         .expect("install skill");
@@ -448,7 +490,7 @@ fn top_level_help_hides_recovery_and_internal_install_surfaces() {
         .expect("help");
     assert!(help.status.success());
     let stdout = String::from_utf8_lossy(&help.stdout);
-    for command in ["up", "status", "install", "current", "doctor"] {
+    for command in ["up", "status", "install", "setup", "doctor"] {
         assert!(
             stdout
                 .lines()
@@ -460,6 +502,7 @@ fn top_level_help_hides_recovery_and_internal_install_surfaces() {
         "config",
         "daemon",
         "backend",
+        "current",
         "info",
         "verify-extension",
         "uninstall",
@@ -469,6 +512,41 @@ fn top_level_help_hides_recovery_and_internal_install_surfaces() {
                 .lines()
                 .any(|line| line.trim_start().starts_with(hidden)),
             "top-level help should hide {hidden}: {stdout}"
+        );
+    }
+
+    let up_help = kast(&home, &config_home)
+        .args(["up", "--help"])
+        .output()
+        .expect("up help");
+    assert!(up_help.status.success());
+    let up_help_stdout = String::from_utf8_lossy(&up_help.stdout);
+    for visible in ["--workspace-root", "--backend"] {
+        assert!(
+            up_help_stdout.contains(visible),
+            "up help should retain primary flag {visible}: {up_help_stdout}"
+        );
+    }
+    for hidden in [
+        "--idea-home",
+        "--wait-timeout-ms",
+        "--accept-indexing",
+        "--no-auto-start",
+        "--socket-path",
+        "--module-name",
+        "--source-roots",
+        "--classpath",
+        "--request-timeout-ms",
+        "--max-results",
+        "--max-concurrent-requests",
+        "--profile",
+        "--profile-modes",
+        "--profile-duration",
+        "--profile-otlp-endpoint",
+    ] {
+        assert!(
+            !up_help_stdout.contains(hidden),
+            "up help should hide low-level flag {hidden}: {up_help_stdout}"
         );
     }
 
@@ -789,6 +867,43 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
 }
 
 #[test]
+fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let nested = workspace.join("app/src/main/kotlin");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&nested).expect("nested");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "pluginManagement {}\n",
+    )
+    .expect("settings marker");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_kast"))
+        .current_dir(&nested)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .args(["--output", "json", "status"])
+        .output()
+        .expect("status");
+
+    assert!(
+        status.status.success(),
+        "status should resolve workspace marker from cwd: stdout={}, stderr={}",
+        String::from_utf8_lossy(&status.stdout),
+        String::from_utf8_lossy(&status.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&status.stdout).expect("status json");
+    let expected_workspace = std::fs::canonicalize(&workspace).expect("canonical workspace");
+    assert_eq!(
+        stdout["workspaceRoot"].as_str().expect("workspace root"),
+        expected_workspace.to_str().expect("workspace path")
+    );
+}
+
+#[test]
 fn backend_install_downloaded_archive_verifies_release_metadata() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -837,6 +952,68 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
         home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
             .is_file()
     );
+}
+
+#[test]
+fn up_auto_installs_missing_headless_backend_before_startup() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let release_dir = temp.path().join("release");
+    let java_log = temp.path().join("java.log");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::create_dir_all(&release_dir).expect("release dir");
+    let java_home = write_fake_java(temp.path(), &java_log);
+    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
+    write_backend_release_metadata(
+        &release_dir,
+        "headless",
+        &asset_name,
+        None,
+        None,
+        true,
+        true,
+    );
+    let server = serve_directory(release_dir);
+    let base_url = server.base_url();
+
+    let up = kast(&home, &config_home)
+        .env("JAVA_HOME", &java_home)
+        .args([
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend=headless",
+            "--install-version",
+            "v9.8.7",
+            "--install-base-url",
+            &base_url,
+            "--wait-timeout-ms",
+            "1",
+        ])
+        .output()
+        .expect("up");
+
+    assert!(
+        !up.status.success(),
+        "fake daemon should time out after auto-install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&up.stdout),
+        String::from_utf8_lossy(&up.stderr)
+    );
+    assert!(
+        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .is_file(),
+        "up should install the missing headless backend before startup"
+    );
+    for _ in 0..100 {
+        if java_log.is_file() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    panic!("up should reach the Java spawn boundary after installing the backend");
 }
 
 #[test]
@@ -1144,6 +1321,82 @@ fn install_headless_gateway_and_current_report_installed_version() {
             .expect("runtime libs dir")
             .ends_with(".kast/lib/backends/headless/current/runtime-libs")
     );
+
+    let doctor = kast(&home, &config_home)
+        .args(["--output", "json", "doctor"])
+        .output()
+        .expect("doctor");
+    assert!(
+        doctor.status.success(),
+        "doctor should include installed component versions: stdout={}, stderr={}",
+        String::from_utf8_lossy(&doctor.stdout),
+        String::from_utf8_lossy(&doctor.stderr)
+    );
+    let doctor_stdout: serde_json::Value =
+        serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    assert_eq!(doctor_stdout["ok"], true);
+    assert_eq!(
+        doctor_stdout["install"]["version"],
+        env!("CARGO_PKG_VERSION")
+    );
+    assert_eq!(doctor_stdout["install"]["backends"][0]["name"], "headless");
+    assert_eq!(doctor_stdout["install"]["backends"][0]["version"], "v9.8.7");
+}
+
+#[test]
+fn setup_installs_headless_and_requested_workspace_resources() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
+    let skill_dir = temp.path().join("skills");
+    let github_dir = temp.path().join(".github");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let setup = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--headless-archive",
+            archive.to_str().expect("archive path"),
+            "--version",
+            "v9.8.7",
+            "--force",
+            "--skip-shell",
+            "--include-skill",
+            "--skill-target-dir",
+            skill_dir.to_str().expect("skill path"),
+            "--include-copilot",
+            "--copilot-target-dir",
+            github_dir.to_str().expect("github path"),
+        ])
+        .output()
+        .expect("setup");
+
+    assert!(
+        setup.status.success(),
+        "setup should install requested resources: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert_eq!(stdout["schemaVersion"], 3);
+    assert_eq!(stdout["repair"]["applied"], true);
+    assert_eq!(stdout["headless"]["backendName"], "headless");
+    assert_eq!(stdout["headless"]["version"], "v9.8.7");
+    assert!(
+        stdout.get("shell").is_none(),
+        "shell should be skipped: {stdout}"
+    );
+    assert_eq!(stdout["skill"]["skipped"], false);
+    assert_eq!(stdout["copilot"]["skipped"], false);
+    assert!(skill_dir.join("kast/SKILL.md").is_file());
+    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(
+        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .is_file()
+    );
 }
 
 #[test]
@@ -1200,7 +1453,7 @@ fn backend_uninstall_removes_headless_component() {
 }
 
 #[test]
-fn up_without_installed_backend_reports_exact_backend_install_command() {
+fn up_without_installed_backend_reports_exact_backend_install_command_when_auto_start_disabled() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -1214,6 +1467,7 @@ fn up_without_installed_backend_reports_exact_backend_install_command() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
+            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -1250,6 +1504,7 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
+            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -1286,6 +1541,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
+            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -1752,6 +2008,81 @@ version = "v0.7.35"
     assert!(!config_after.contains("[backends.standalone]"));
     assert!(!config_after.contains("backend:standalone"));
     assert!(config_after.contains(env!("CARGO_BIN_EXE_kast")));
+}
+
+#[test]
+fn ordinary_commands_repair_stale_install_version_once() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let install_root = temp.path().join("install-root");
+    let managed_bin = install_root.join("bin/kast");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(managed_bin.parent().expect("managed bin parent"))
+        .expect("managed bin parent");
+    std::fs::write(&managed_bin, b"managed kast\n").expect("managed bin");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            r#"[paths]
+installRoot = "{}"
+
+[install]
+components = ["shell"]
+installedAt = "unix:1"
+managedPaths = ["bin/kast"]
+platform = "macos-aarch64"
+schemaVersion = 3
+shellRcPatches = []
+version = "0.0.1"
+"#,
+            install_root.display()
+        ),
+    )
+    .expect("config");
+
+    let first = kast(&home, &config_home)
+        .args(["--output", "json", "info"])
+        .output()
+        .expect("first info");
+
+    assert!(
+        first.status.success(),
+        "first info should repair stale install metadata: stdout={}, stderr={}",
+        String::from_utf8_lossy(&first.stdout),
+        String::from_utf8_lossy(&first.stderr)
+    );
+    let first_stdout: serde_json::Value =
+        serde_json::from_slice(&first.stdout).expect("first info json");
+    assert_eq!(
+        first_stdout["install"]["version"],
+        env!("CARGO_PKG_VERSION")
+    );
+    let config_after_first =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("config after first");
+    assert!(
+        config_after_first.contains(&format!("version = \"{}\"", env!("CARGO_PKG_VERSION"))),
+        "{config_after_first}"
+    );
+
+    let second = kast(&home, &config_home)
+        .args(["--output", "json", "info"])
+        .output()
+        .expect("second info");
+
+    assert!(
+        second.status.success(),
+        "second info should be idempotent: stdout={}, stderr={}",
+        String::from_utf8_lossy(&second.stdout),
+        String::from_utf8_lossy(&second.stderr)
+    );
+    let config_after_second =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("config after second");
+    assert_eq!(
+        config_after_second, config_after_first,
+        "repair should not rewrite install metadata when the version already matches"
+    );
 }
 
 #[test]

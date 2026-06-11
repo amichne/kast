@@ -22,6 +22,28 @@ class KastSettingsConfigurableTest {
     fun `changed settings produce minimal workspace toml`() {
         val state = KastSettingsState().apply {
             loadFromConfig(KastConfig.defaults())
+            runtimeDefaultBackend = "idea"
+            cliBinaryPath = "/tmp/kast"
+            backendsIdeaEnabled = false
+        }
+
+        val toml = state.toWorkspaceToml()
+
+        assertTrue(toml.contains("[runtime]"))
+        assertTrue(toml.contains("defaultBackend = \"idea\""))
+        assertTrue(toml.contains("[cli]"))
+        assertTrue(toml.contains("binaryPath = \"/tmp/kast\""))
+        assertTrue(toml.contains("[backends.idea]"))
+        assertTrue(toml.contains("enabled = false"))
+        assertFalse(toml.contains("maxResults"))
+        assertFalse(toml.contains("runtimeLibsDir"))
+        assertFalse(toml.contains("[telemetry]"))
+    }
+
+    @Test
+    fun `legacy tuning fields are not emitted from plugin settings`() {
+        val state = KastSettingsState().apply {
+            loadFromConfig(KastConfig.defaults())
             serverMaxResults = 42
             backendsHeadlessRuntimeLibsDir = "/tmp/runtime-libs"
             telemetryEnabled = true
@@ -29,28 +51,66 @@ class KastSettingsConfigurableTest {
 
         val toml = state.toWorkspaceToml()
 
+        assertEquals("", toml)
+    }
+
+    @Test
+    fun `public settings merge preserves unrelated advanced toml`() {
+        val existingToml = """
+            [server]
+            maxResults = 1000
+
+            [runtime]
+            defaultBackend = "headless"
+
+            [runtime.ideaLaunch]
+            enabled = true
+            command = "/custom/idea"
+            waitTimeoutMillis = 12345
+
+            [backends.idea]
+            enabled = false
+
+            [cli]
+            binaryPath = "/old/kast"
+        """.trimIndent() + "\n"
+        val state = KastSettingsState().apply {
+            loadFromConfig(KastConfig.defaults())
+            runtimeDefaultBackend = "idea"
+            cliBinaryPath = "/new/kast"
+        }
+
+        val toml = mergePublicWorkspaceToml(existingToml, state)
+
         assertTrue(toml.contains("[server]"))
-        assertTrue(toml.contains("maxResults = 42"))
-        assertTrue(toml.contains("[backends.headless]"))
-        assertTrue(toml.contains("runtimeLibsDir = \"/tmp/runtime-libs\""))
-        assertTrue(toml.contains("[telemetry]"))
+        assertTrue(toml.contains("maxResults = 1000"))
+        assertTrue(toml.contains("[runtime.ideaLaunch]"))
         assertTrue(toml.contains("enabled = true"))
-        assertFalse(toml.contains("requestTimeoutMillis"))
+        assertTrue(toml.contains("command = \"/custom/idea\""))
+        assertTrue(toml.contains("waitTimeoutMillis = 12345"))
+        assertTrue(toml.contains("[runtime]"))
+        assertTrue(toml.contains("defaultBackend = \"idea\""))
+        assertTrue(toml.contains("[cli]"))
+        assertTrue(toml.contains("binaryPath = \"/new/kast\""))
+        assertFalse(toml.contains("defaultBackend = \"headless\""))
+        assertFalse(toml.contains("binaryPath = \"/old/kast\""))
     }
 
     @Test
     fun `state builds override groups from nullable fields`() {
         val state = KastSettingsState().apply {
-            serverMaxResults = 42
-            indexingRemoteEnabled = true
-            telemetryOutputFile = "/tmp/spans.jsonl"
+            runtimeDefaultBackend = "idea"
+            backendsIdeaEnabled = false
+            cliBinaryPath = "/tmp/kast"
         }
         val override = state.toOverride()
 
-        assertEquals(42, override.server?.maxResults?.value)
-        assertEquals(true, override.indexing?.remote?.enabled?.value)
-        assertEquals("/tmp/spans.jsonl", override.telemetry?.outputFile?.value?.orNull)
-        assertEquals(null, override.cache)
+        assertEquals("idea", override.runtime?.defaultBackend?.value)
+        assertEquals(false, override.backends?.idea?.enabled?.value)
+        assertEquals("/tmp/kast", override.cli?.binaryPath?.value)
+        assertEquals(null, override.server)
+        assertEquals(null, override.indexing)
+        assertEquals(null, override.telemetry)
     }
 
     @Test

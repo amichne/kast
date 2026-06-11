@@ -90,7 +90,7 @@ fn install(args: BackendInstallArgs) -> Result<BackendInstallResult> {
     let (archive, downloaded, temp_download) = resolve_archive(&args, &version)?;
     let install_dir = install_dir(&config, args.backend, &version);
     let current_dir = current_dir(&config, args.backend);
-    let force = args.force || args.yes.unwrap_or(false);
+    let force = args.force;
     let skipped = install_dir.exists() && !force;
 
     if !skipped {

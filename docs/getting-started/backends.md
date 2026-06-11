@@ -14,8 +14,8 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast install headless`, then `kast up` |
-| IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project |
+| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast setup`, then `kast up` |
+| IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project; optionally launched by `kast` |
 
 ## Headless backend
 
@@ -36,7 +36,7 @@ Install:
 ```console title="Install the headless backend"
 brew tap amichne/kast
 brew install kast
-kast install headless
+kast setup
 ```
 
 On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the offline
@@ -64,16 +64,15 @@ Warm a headless backend. The selector is optional because headless is the
 default non-IDE backend:
 
 ```console title="Start the packaged headless backend"
-kast up --workspace-root="$PWD"
+kast up
 ```
 
 How a session unfolds:
 
-1. You run `kast up --workspace-root="$PWD"` somewhere. It
+1. You run `kast up` somewhere inside the workspace. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm. If the backend is missing, `kast up`
-   reports the exact `kast install headless` command in a readable error
-   summary.
+   installs the verified release asset before starting the daemon.
 2. You run more `kast` commands against the same workspace. The CLI
    finds the running backend and reuses it.
 3. The daemon stays alive. No cold starts between commands.
@@ -81,10 +80,8 @@ How a session unfolds:
 Add `--output json` to lifecycle commands when automation needs the full
 descriptor payload instead of the readable summary.
 
-The packaged Copilot extension also runs
-`kast up --accept-indexing=true` at session start, so agent
-sessions often find a warm headless backend without a separate manual
-bootstrap step.
+The packaged Copilot extension also runs `kast up` at session start, so agent
+sessions often find a warm backend without a separate manual bootstrap step.
 
 ??? info "How headless discovers your project"
 
@@ -121,6 +118,33 @@ How a session unfolds:
     Set `backends.idea.enabled = false` in `config.toml` to disable
     the plugin without uninstalling it.
 
+### Opt in to IDE self-start
+
+By default, `kast` never opens a GUI IDE for you. To let `kast up
+--backend=idea` or a pinned Copilot session start IDEA when the plugin is
+already installed, opt in with runtime config:
+
+```toml title="$HOME/.config/kast/config.toml"
+[runtime]
+defaultBackend = "idea"
+
+[runtime.ideaLaunch]
+enabled = true
+command = "idea"
+waitTimeoutMillis = 90000
+requireInstalledPlugin = true
+```
+
+`command` is executed directly with the workspace root as its only argument;
+set an absolute path when `idea` is not on `PATH`. When
+`requireInstalledPlugin` is true, `kast` first checks JetBrains profile
+directories for the Kast plugin and reports `kast install plugin` if none are
+linked.
+
+For Copilot, set `KAST_COPILOT_IDEA_AUTOSTART=1` in the extension environment
+to pin startup and tool RPCs to `--backend=idea`. That flag does not launch an
+IDE by itself; `runtime.ideaLaunch.enabled` remains the launch opt-in.
+
 The plugin actions that shell out to `kast`, including
 **Tools → Kast → Install Copilot Extension** and
 **Tools → Kast → Uninstall Copilot Extension**, read the executable path from
@@ -151,19 +175,17 @@ payload.
 
 ## How the CLI picks a backend
 
-Without `--backend-name`, the CLI uses these rules in order:
+Without `--backend`, the CLI uses these rules in order:
 
-1. A servable IDEA backend for the workspace? Use it.
-2. A servable headless backend for the workspace? Use it.
-3. Neither? Error out — no backend available.
+1. A `--backend` flag, when present.
+2. `[runtime] defaultBackend`, when configured as `headless` or `idea`.
+3. Automatic selection.
 
-`kast up` is the only command that starts a backend for
-you. It boots or reuses the selected daemon and, by default, blocks until
-indexing finishes. Pass `--backend=headless` when you want to be explicit, or
-omit the selector for the headless default. Pass `--accept-indexing=true`
-to return as soon as the daemon is servable. Read commands like `resolve` and
-`references` never start a backend implicitly — they fail fast. So: run `up`
-first, or open the project in IDEA or Android Studio with the plugin installed.
+Automatic selection prefers a servable IDEA backend, then a servable headless
+backend. If neither is running, `kast up` starts the packaged headless backend.
+When the selected backend is IDEA and no compatible descriptor is running,
+`kast` only opens the IDE if `runtime.ideaLaunch.enabled = true`; otherwise it
+reports that IDEA is not running.
 
 `kast status` reports backend state, selected runtime details, and actionable
 next steps when no daemon is available.
@@ -174,8 +196,8 @@ Nothing stops you from using both runtimes. The practical setup is headless for
 terminal, CI, and hosted-agent work, and IDEA or Android Studio when the IDE is
 already open.
 
-When multiple runtimes are running, pin a command with `--backend-name=headless`
-or `--backend-name=idea` to be explicit. The
+When multiple runtimes are running, pin a command with `--backend=headless`
+or `--backend=idea` to be explicit. The
 `idea` backend name is the stable machine identifier for the IDE-hosted
 runtime, even when the human-facing docs call it the IDEA plugin.
 

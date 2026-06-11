@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
-use std::env;
 use std::path::{Path, PathBuf};
 
 pub(crate) fn try_handle_raw_rpc(
@@ -29,9 +28,8 @@ pub(crate) fn try_handle_raw_rpc(
         .get("workspaceRoot")
         .and_then(Value::as_str)
         .map(PathBuf::from)
-        .or(workspace_root_arg)
-        .unwrap_or(env::current_dir()?);
-    let workspace_root = config::normalize(workspace_root);
+        .or(workspace_root_arg);
+    let workspace_root = config::resolve_workspace_root(workspace_root)?;
     let response = run_symbol_query(&workspace_root, params, id)?;
     Ok(Some(serde_json::to_string(&response)?))
 }

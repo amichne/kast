@@ -57,7 +57,7 @@ class KastInstallActionTest {
                 "install",
                 "copilot-extension",
                 "--target-dir=" + workspaceRoot.resolve(".github"),
-                "--yes=true",
+                "--force",
             ),
             timeout = 90,
             timeoutUnit = TimeUnit.SECONDS,

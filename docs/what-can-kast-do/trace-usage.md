@@ -23,8 +23,7 @@ pay for the scope the language actually requires.
 === "CLI"
 
     ```console title="Find all references to a symbol"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"includeDeclaration":true}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"includeDeclaration":true}}'
     ```
 
 === "JSON-RPC"
@@ -147,8 +146,7 @@ per-node children, and a timeout. Every limit is reported back in
 === "CLI"
 
     ```console title="Find incoming callers two levels deep"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"direction":"INCOMING","depth":3,"maxTotalCalls":256,"maxChildrenPerNode":64}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":42},"direction":"INCOMING","depth":3,"maxTotalCalls":256,"maxChildrenPerNode":64}}'
     ```
 
 === "JSON-RPC"
@@ -287,8 +285,7 @@ interface. `direction` picks the way:
 === "CLI"
 
     ```console title="Get supertypes and subtypes"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/type-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/Greeter.kt","offset":45},"direction":"BOTH","depth":3}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/type-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/Greeter.kt","offset":45},"direction":"BOTH","depth":3}}'
     ```
 
 === "JSON-RPC"

@@ -6,66 +6,29 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
     val sections = buildList {
         add(
             tomlSection(
-                "server",
-                "maxResults" to serverMaxResults.changedFrom(defaults.server.maxResults.value),
-                "requestTimeoutMillis" to serverRequestTimeoutMillis.changedFrom(defaults.server.requestTimeoutMillis.value),
-                "maxConcurrentRequests" to serverMaxConcurrentRequests.changedFrom(defaults.server.maxConcurrentRequests.value),
-            ),
-        )
-        add(
-            tomlSection(
-                "indexing",
-                "phase2Enabled" to indexingPhase2Enabled.changedFrom(defaults.indexing.phase2Enabled.value),
-                "phase2BatchSize" to indexingPhase2BatchSize.changedFrom(defaults.indexing.phase2BatchSize.value),
-                "phase2PriorityDepth" to indexingPhase2PriorityDepth.changedFrom(defaults.indexing.phase2PriorityDepth.value),
-                "identifierIndexWaitMillis" to indexingIdentifierIndexWaitMillis.changedFrom(defaults.indexing.identifierIndexWaitMillis.value),
-                "referenceBatchSize" to indexingReferenceBatchSize.changedFrom(defaults.indexing.referenceBatchSize.value),
-            ),
-        )
-        add(
-            tomlSection(
-                "indexing.remote",
-                "enabled" to indexingRemoteEnabled.changedFrom(defaults.indexing.remote.enabled.value),
-                "sourceIndexUrl" to indexingRemoteSourceIndexUrl.changedFrom(defaults.indexing.remote.sourceIndexUrl.value.orNull),
-            ),
-        )
-        add(
-            tomlSection(
-                "cache",
-                "enabled" to cacheEnabled.changedFrom(defaults.cache.enabled.value),
-                "writeDelayMillis" to cacheWriteDelayMillis.changedFrom(defaults.cache.writeDelayMillis.value),
-                "sourceIndexSaveDelayMillis" to cacheSourceIndexSaveDelayMillis.changedFrom(defaults.cache.sourceIndexSaveDelayMillis.value),
-            ),
-        )
-        add(tomlSection("watcher", "debounceMillis" to watcherDebounceMillis.changedFrom(defaults.watcher.debounceMillis.value)))
-        add(
-            tomlSection(
-                "gradle",
-                "toolingApiTimeoutMillis" to gradleToolingApiTimeoutMillis.changedFrom(defaults.gradle.toolingApiTimeoutMillis.value),
-            ),
-        )
-        add(
-            tomlSection(
-                "telemetry",
-                "enabled" to telemetryEnabled.changedFrom(defaults.telemetry.enabled.value),
-                "scopes" to telemetryScopes.changedFrom(defaults.telemetry.scopes.value),
-                "detail" to telemetryDetail.changedFrom(defaults.telemetry.detail.value),
-                "outputFile" to telemetryOutputFile.changedFrom(defaults.telemetry.outputFile.value.orNull),
-            ),
-        )
-        add(
-            tomlSection(
-                "backends.headless",
-                "enabled" to backendsHeadlessEnabled.changedFrom(defaults.backends.headless.enabled.value),
-                "runtimeLibsDir" to backendsHeadlessRuntimeLibsDir.changedFrom(defaults.backends.headless.runtimeLibsDir.value.orNull),
-                "ideaHome" to backendsHeadlessIdeaHome.changedFrom(defaults.backends.headless.ideaHome.value.orNull),
+                "runtime",
+                "defaultBackend" to runtimeDefaultBackend.changedFrom(defaults.runtime.defaultBackend.value),
             ),
         )
         add(tomlSection("backends.idea", "enabled" to backendsIdeaEnabled.changedFrom(defaults.backends.idea.enabled.value)))
+        add(tomlSection("cli", "binaryPath" to cliBinaryPath.changedFrom(defaults.cli.binaryPath.value)))
     }.filter(String::isNotBlank)
 
     if (sections.isEmpty()) return ""
     return sections.joinToString(separator = System.lineSeparator() + System.lineSeparator(), postfix = System.lineSeparator())
+}
+
+internal fun mergePublicWorkspaceToml(
+    existingToml: String,
+    state: KastSettingsState,
+    defaults: KastConfig = KastConfig.defaults(),
+): String {
+    val preserved = removeManagedPublicSettings(existingToml).trimEnd()
+    val publicSettings = state.toWorkspaceToml(defaults).trimEnd()
+    val merged = listOf(preserved, publicSettings)
+        .filter(String::isNotBlank)
+        .joinToString(separator = System.lineSeparator() + System.lineSeparator())
+    return if (merged.isBlank()) "" else merged + System.lineSeparator()
 }
 
 private fun tomlSection(
@@ -90,3 +53,87 @@ private fun tomlValue(value: Any): String = when (value) {
     is Number -> value.toString()
     else -> error("Unsupported TOML value type: ${value::class.java.name}")
 }
+
+private val managedPublicKeys = setOf(
+    "runtime.defaultbackend",
+    "backends.idea.enabled",
+    "cli.binarypath",
+)
+
+private fun removeManagedPublicSettings(toml: String): String {
+    if (toml.isBlank()) return ""
+    val blocks = toml.lineSequence()
+        .fold(mutableListOf(SectionBlock(""))) { blocks, line ->
+            val section = line.tomlSectionName()
+            if (section != null) {
+                blocks.add(SectionBlock(section))
+            }
+            blocks.last().lines.add(line)
+            blocks
+        }
+    return blocks
+        .mapNotNull { block -> block.withoutManagedPublicKeys() }
+        .flatMap { it.lines }
+        .joinToString(separator = System.lineSeparator())
+        .trimEnd()
+        .let { if (it.isBlank()) "" else it + System.lineSeparator() }
+}
+
+private data class SectionBlock(
+    val name: String,
+    val lines: MutableList<String> = mutableListOf(),
+) {
+    fun withoutManagedPublicKeys(): SectionBlock? {
+        val filtered = copy(lines = lines.filterNot(::isManagedLine).toMutableList())
+        if (filtered.name.normalizedConfigPath() !in managedPublicSections) return filtered
+        val hasEntries = filtered.lines.any { line -> line.isTomlEntry() }
+        return filtered.takeIf { hasEntries }
+    }
+
+    private fun isManagedLine(line: String): Boolean {
+        val separator = line.withoutTomlComment().indexOf('=')
+        if (separator <= 0) return false
+        val key = line.substring(0, separator).trim()
+        return listOf(name, key)
+            .filter(String::isNotBlank)
+            .joinToString(".")
+            .normalizedConfigPath() in managedPublicKeys
+    }
+}
+
+private val managedPublicSections = managedPublicKeys
+    .map { it.substringBeforeLast(".") }
+    .toSet()
+
+private fun String.tomlSectionName(): String? {
+    val trimmed = withoutTomlComment().trim()
+    return trimmed
+        .takeIf { it.startsWith("[") && it.endsWith("]") }
+        ?.removePrefix("[")
+        ?.removeSuffix("]")
+}
+
+private fun String.isTomlEntry(): Boolean =
+    withoutTomlComment().trim().let { it.isNotBlank() && !it.startsWith("[") && '=' in it }
+
+private fun String.withoutTomlComment(): String {
+    var quoted = false
+    var quote = '\u0000'
+    var escaped = false
+    forEachIndexed { index, char ->
+        when {
+            escaped -> escaped = false
+            quoted && char == '\\' -> escaped = true
+            quoted && char == quote -> quoted = false
+            !quoted && (char == '"' || char == '\'') -> {
+                quoted = true
+                quote = char
+            }
+            !quoted && char == '#' -> return substring(0, index)
+        }
+    }
+    return this
+}
+
+private fun String.normalizedConfigPath(): String =
+    split('.').joinToString(".") { segment -> segment.filterNot { it == '-' || it == '_' }.lowercase() }

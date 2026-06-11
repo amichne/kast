@@ -178,7 +178,9 @@ expect_failure_contains \
 grep -Fq "$(basename -- "$bundle_path")" "${bundle_path}.sha256" || die "SHA-256 sidecar does not name the bundle"
 
 tar -xzf "$bundle_path" -C "$extract_dir"
-bundle_root="${extract_dir}/kast-${platform}-${version}"
+extracted_bundle_root="${extract_dir}/kast-${platform}-${version}"
+bundle_root="${extract_dir}/renamed-kast-bundle"
+mv "$extracted_bundle_root" "$bundle_root"
 
 [[ -x "${bundle_root}/bin/kast" ]] || die "Bundle missing executable Rust CLI"
 [[ -x "${bundle_root}/lib/backends/${backend_install_name}/${backend_launcher}" ]] || die "Bundle missing ${backend_launcher} launcher"
@@ -210,6 +212,26 @@ assert payload["entrypoint"] == "scripts/install-ubuntu-debian.sh", payload
 roles = {entry["role"] for entry in payload["artifacts"]}
 assert {"cli", sys.argv[5]}.issubset(roles), payload
 PY
+
+manifest_install_root="${scratch_dir}/manifest-install-root"
+manifest_bin_dir="${scratch_dir}/manifest-bin"
+manifest_config_home="${scratch_dir}/manifest-config"
+mkdir -p "$manifest_bin_dir"
+
+HOME="$home_dir" \
+PATH="$manifest_bin_dir:$PATH" \
+KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
+KAST_UBUNTU_DEBIAN_ROOT="$manifest_install_root" \
+KAST_UBUNTU_DEBIAN_BIN_DIR="$manifest_bin_dir" \
+KAST_UBUNTU_DEBIAN_CONFIG_HOME="$manifest_config_home" \
+KAST_JAVA_CMD=sh \
+"${bundle_root}/scripts/install-ubuntu-debian.sh" install
+
+manifest_config_file="${manifest_config_home}/config.toml"
+manifest_installed_home="${manifest_install_root}/${version}"
+[[ -f "$manifest_config_file" ]] || die "Manifest-based install did not write config.toml"
+grep -Fq "runtimeLibsDir = \"${manifest_installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$manifest_config_file" \
+  || die "Manifest-based install did not infer bundle version from manifest.json"
 
 HOME="$home_dir" \
 PATH="$bin_dir:$PATH" \
