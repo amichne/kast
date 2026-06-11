@@ -123,7 +123,7 @@ tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-runtime-verify.XXXXXX")"
 workspace_root="${tmp_dir}/workspace"
 mkdir -p "$workspace_root"
 
-up_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" --output json up --workspace-root "$workspace_root" --wait-timeout-ms="${wait_timeout_ms}")"
+up_output="$(KAST_CONFIG_HOME="$prefix" "$cli_path" --output json up --workspace-root "$workspace_root" --accept-indexing=true --wait-timeout-ms="${wait_timeout_ms}")"
 python3 - "$up_output" <<'PY'
 import json
 import sys

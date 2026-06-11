@@ -121,6 +121,7 @@ case "${1:-help}" in
   up)
     [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
     seen_wait_timeout=false
+    seen_accept_indexing=false
     for arg in "$@"; do
       case "$arg" in
         --backend|--backend=*)
@@ -130,12 +131,16 @@ case "${1:-help}" in
         --wait-timeout-ms=180000)
           seen_wait_timeout=true
           ;;
+        --accept-indexing=true)
+          seen_accept_indexing=true
+          ;;
       esac
     done
     [[ "$seen_wait_timeout" == true ]] || { echo "verify script must pass --wait-timeout-ms=180000 to up" >&2; exit 1; }
+    [[ "$seen_accept_indexing" == true ]] || { echo "verify script must pass --accept-indexing=true to up" >&2; exit 1; }
     grep -Fq 'defaultBackend = "headless"' "${KAST_CONFIG_HOME}/config.toml"
     touch "${KAST_CONFIG_HOME}/up-called"
-    printf '%s\n' '{"selected":{"descriptor":{"backendName":"headless"},"runtimeStatus":{"backendName":"headless"}}}'
+    printf '%s\n' '{"selected":{"descriptor":{"backendName":"headless"},"runtimeStatus":{"backendName":"headless","state":"INDEXING","indexing":true}}}'
     ;;
   rpc)
     [[ -n "${KAST_CONFIG_HOME:-}" ]] || { echo "missing KAST_CONFIG_HOME" >&2; exit 1; }
