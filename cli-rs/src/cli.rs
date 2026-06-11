@@ -78,6 +78,9 @@ pub struct BackendInstallArgs {
     /// Defaults to the matching GitHub release.
     #[arg(long)]
     pub base_url: Option<String>,
+    /// Disable TLS certificate verification for downloads; SHA256SUMS and provenance checks still run.
+    #[arg(long)]
+    pub insecure_skip_tls_verify: bool,
     /// Replace an existing installed backend version.
     #[arg(short = 'f', long)]
     pub force: bool,
@@ -259,6 +262,9 @@ pub struct RuntimeArgs {
     /// Release directory URL to use when auto-installing a missing headless backend.
     #[arg(long, hide = true)]
     pub install_base_url: Option<String>,
+    /// Disable TLS certificate verification for auto-install downloads.
+    #[arg(long, hide = true)]
+    pub install_insecure_skip_tls_verify: bool,
     #[arg(skip = true)]
     pub auto_install_headless: bool,
 }
@@ -463,6 +469,9 @@ pub struct HeadlessInstallArgs {
     /// Defaults to the matching GitHub release.
     #[arg(long)]
     pub base_url: Option<String>,
+    /// Disable TLS certificate verification for downloads; SHA256SUMS and provenance checks still run.
+    #[arg(long)]
+    pub insecure_skip_tls_verify: bool,
     /// Replace an existing installed backend version.
     #[arg(short = 'f', long)]
     pub force: bool,

@@ -27,7 +27,7 @@ internal class KastPluginService(
 
         LOG.info("Starting kast idea backend for workspace: $workspaceRoot")
 
-        val kastConfig = KastConfig.load(workspaceRoot)
+        val kastConfig = loadIdeaKastConfig(workspaceRoot)
         val socketPath = defaultSocketPath(workspaceRoot)
         runningBackend = KastIdeaBackendRuntime.start(
             project = project,
@@ -63,6 +63,23 @@ internal class KastPluginService(
         private val LOG = Logger.getInstance(KastPluginService::class.java)
     }
 }
+
+internal fun loadIdeaKastConfig(
+    workspaceRoot: Path,
+    loader: (Path) -> KastConfig = KastConfig::load,
+    reportFailure: (Path, Exception) -> Unit = { path, error ->
+        Logger.getInstance(KastPluginService::class.java).warn(
+            "Failed to load Kast config for workspace $path; starting IDEA backend with defaults.",
+            error,
+        )
+    },
+): KastConfig =
+    try {
+        loader(workspaceRoot)
+    } catch (error: Exception) {
+        reportFailure(workspaceRoot, error)
+        KastConfig.defaults()
+    }
 
 internal fun ideaServerLimits(config: KastConfig): ServerLimits = ServerLimits(
     maxConcurrentRequests = config.server.maxConcurrentRequests.value.coerceAtLeast(1),

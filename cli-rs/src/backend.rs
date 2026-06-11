@@ -44,6 +44,11 @@ struct TempTree {
     path: PathBuf,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct DownloadTlsPolicy {
+    insecure_skip_tls_verify: bool,
+}
+
 #[derive(Debug, Deserialize)]
 struct ReleaseProvenance {
     builds: Vec<ReleaseProvenanceBuild>,
@@ -151,15 +156,36 @@ fn resolve_archive(
     let base_url = base_url.trim_end_matches('/');
     let checksums = temp.path.join("SHA256SUMS");
     let provenance = temp.path.join("build-provenance.json");
-    download_with_http(&format!("{base_url}/SHA256SUMS"), &checksums)?;
-    download_with_http(&format!("{base_url}/build-provenance.json"), &provenance)?;
-    download_with_http(&format!("{base_url}/{asset_name}"), &archive)?;
+    let agent = download_agent(DownloadTlsPolicy {
+        insecure_skip_tls_verify: args.insecure_skip_tls_verify,
+    });
+    download_with_http(&agent, &format!("{base_url}/SHA256SUMS"), &checksums)?;
+    download_with_http(
+        &agent,
+        &format!("{base_url}/build-provenance.json"),
+        &provenance,
+    )?;
+    download_with_http(&agent, &format!("{base_url}/{asset_name}"), &archive)?;
     verify_downloaded_release_asset(args.backend, &asset_name, &archive, &checksums, &provenance)?;
     Ok((archive, true, Some(temp)))
 }
 
-fn download_with_http(url: &str, output: &Path) -> Result<()> {
-    let mut response = ureq::get(url).call().map_err(|error| {
+fn download_agent(policy: DownloadTlsPolicy) -> ureq::Agent {
+    ureq::Agent::config_builder()
+        .tls_config(download_tls_config(policy))
+        .build()
+        .new_agent()
+}
+
+fn download_tls_config(policy: DownloadTlsPolicy) -> ureq::tls::TlsConfig {
+    ureq::tls::TlsConfig::builder()
+        .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+        .disable_verification(policy.insecure_skip_tls_verify)
+        .build()
+}
+
+fn download_with_http(agent: &ureq::Agent, url: &str, output: &Path) -> Result<()> {
+    let mut response = agent.get(url).call().map_err(|error| {
         CliError::new(
             "BACKEND_DOWNLOAD_FAILED",
             format!("Failed to download backend release asset from {url}: {error}"),
@@ -548,4 +574,41 @@ fn current_timestamp() -> String {
         .unwrap_or_default()
         .as_secs();
     format!("unix:{seconds}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn download_tls_config_uses_platform_verifier_by_default() {
+        let config = download_tls_config(DownloadTlsPolicy {
+            insecure_skip_tls_verify: false,
+        });
+
+        assert!(
+            matches!(config.root_certs(), ureq::tls::RootCerts::PlatformVerifier),
+            "backend downloads should trust the operating system certificate store by default"
+        );
+        assert!(
+            !config.disable_verification(),
+            "default backend downloads must keep TLS verification enabled"
+        );
+    }
+
+    #[test]
+    fn download_tls_config_can_disable_verification_for_enterprise_escape_hatch() {
+        let config = download_tls_config(DownloadTlsPolicy {
+            insecure_skip_tls_verify: true,
+        });
+
+        assert!(
+            matches!(config.root_certs(), ureq::tls::RootCerts::PlatformVerifier),
+            "the escape hatch should only disable verification, not change other TLS policy"
+        );
+        assert!(
+            config.disable_verification(),
+            "the explicit escape hatch should disable TLS verification"
+        );
+    }
 }

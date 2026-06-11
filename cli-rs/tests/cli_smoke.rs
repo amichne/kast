@@ -333,6 +333,12 @@ fn smoke_core_cli_commands() {
             stdout.contains("-f, --force"),
             "install {command} help should expose -f/--force: {stdout}"
         );
+        if command == "headless" {
+            assert!(
+                stdout.contains("--insecure-skip-tls-verify"),
+                "install headless help should expose the enterprise TLS escape hatch: {stdout}"
+            );
+        }
         assert!(
             !stdout.contains("--yes"),
             "install {command} help should not expose deprecated --yes: {stdout}"
@@ -930,6 +936,7 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
             "v9.8.7",
             "--base-url",
             &base_url,
+            "--insecure-skip-tls-verify",
         ])
         .output()
         .expect("install headless");

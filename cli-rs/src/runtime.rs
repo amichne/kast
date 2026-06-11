@@ -234,6 +234,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
                 archive: None,
                 version: args.install_version.clone(),
                 base_url: args.install_base_url.clone(),
+                insecure_skip_tls_verify: args.install_insecure_skip_tls_verify,
                 force: false,
             })?;
             config = KastConfig::load(&workspace_root)?;
@@ -362,6 +363,7 @@ pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
         profile_otlp_endpoint: None,
         install_version: None,
         install_base_url: None,
+        install_insecure_skip_tls_verify: false,
         auto_install_headless: false,
     })?;
     rpc::raw(
