@@ -112,9 +112,11 @@ that matches what you're seeing.
 ??? question "Copilot extension uninstall leaves files behind"
 
     `kast uninstall copilot-extension` removes only files
-    listed in the packaged manifest plus `.github/.kast-copilot-version`.
-    Files you created under `.github` are preserved, and the CLI-managed
-    inventory drops the repo entry.
+    from the packaged extension file set plus
+    `.github/extensions/kast/.kast-copilot-version`. It also cleans older
+    managed hook files when they are present. Files you created under
+    `.github` are preserved, and the CLI-managed inventory drops the repo
+    entry.
 
     To inspect the managed set, reinstall with `--force`, then uninstall
     again:

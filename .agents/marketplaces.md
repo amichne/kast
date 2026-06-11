@@ -37,8 +37,9 @@ or security reason.
 - `.github/skill-shadowing.json` maps repo-local skills to Copilot extensions;
   `kast` is required-read and shadows `cli-rs/resources/kast-skill/SKILL.md`
   when the `.github/extensions/kast/extension.mjs` extension is loaded.
-- `.github/hooks/hooks.json` is the authoritative Copilot hook manifest for
-  this repo. Keep workflow guidance in instructions or skills, not in vendored
+- Packaged Copilot resources for this repo live under
+  `.github/extensions/kast`. Keep workflow guidance in instructions, skills,
+  or packaged extension agent material, not in retired hook paths or vendored
   marketplace payloads.
 - `workspace.repos.toml` records sibling repositories that move with Kast. Treat
   those entries as checkouts, not vendored marketplace or plugin source.

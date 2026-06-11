@@ -134,15 +134,15 @@ searching non-Kotlin files. For Kotlin source, use
 `kast_workspace_symbol` for symbol-name searches and
 `kast_workspace_search` for string, comment, and arbitrary content searches.
 
-## Agent hooks
+## Copilot extension resources
 
-`.github/hooks/hooks.json` is the authoritative source for GitHub Copilot hook
-configuration in this repository. Use the standard Copilot hook schema:
-`{"version":1,"hooks":{...}}` with command hooks only. The repo-level hooks
-use `sessionStart` plus `postToolUse` state capture to track session-owned file
-edits, then run final command-based validation from `sessionEnd`. Workflow
-guidance that depends on skills, such as `refresh-affected-agents` or docs
-refresh, belongs in agent instructions rather than in the hook manifest.
+The packaged Copilot integration is extension-only in this repository. Do not
+add `.github/hooks` for Kast install behavior. Managed Copilot files live under
+`.github/extensions/kast`, and `kast install copilot` writes the extension-local
+version marker at `.github/extensions/kast/.kast-copilot-version`. Workflow
+guidance belongs in agent instructions, `.github/copilot-instructions.md`,
+`.github/instructions`, or packaged extension agent material rather than in a
+hook manifest.
 
 ## Copilot extension
 
@@ -161,13 +161,13 @@ never use `grep`/`rg`/`ast-grep` for symbol operations.
 
 ## Skill composition
 
-| Phase               | Primary skill               | Supporting skill     |
-|---------------------|-----------------------------|----------------------|
-| Understand the code | `kast` (scaffold, explore)  | —                    |
-| Plan a change       | `kast` (impact, scaffold)   | —                    |
-| Make the change     | `kast` (write-and-validate) | `kotlin-standards`   |
-| Validate the change | `kast` (diagnostics)        | `kotlin-gradle-loop` |
-| Document the change | `docs-writer`               | —                    |
+| Phase               | Primary route               | Supporting route                  |
+|---------------------|-----------------------------|-----------------------------------|
+| Understand the code | `kast` (scaffold, explore)  | —                                 |
+| Plan a change       | `kast` (impact, scaffold)   | —                                 |
+| Make the change     | `kast` (write-and-validate) | `kotlin-standards`                |
+| Validate the change | `kast` (diagnostics)        | Kast extension Gradle-loop tools  |
+| Document the change | `docs-writer`               | —                                 |
 
 ## Working rules
 
@@ -207,7 +207,8 @@ enumerate all consumers: `docs/openapi.yaml`, `cli-rs/resources/kast-skill/SKILL
 `cli-rs/resources/kast-skill/evals/**/*`,
 `cli-rs/resources/kast-skill/references/*`, `cli-rs/resources/kast-skill/scripts/*`,
 `evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
-`.github/agents/**/*`, `.github/hooks/**/*`, `cli-rs/resources/**/*`, and
+`.github/extensions/kast/**/*`, `.github/instructions/**/*`,
+`.github/copilot-instructions.md`, `cli-rs/resources/**/*`, and
 `kast.sh`.
 These are contract surfaces — a change without updating all consumers silently
 breaks the distribution.

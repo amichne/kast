@@ -87,25 +87,26 @@ kast install skill --target-dir=/absolute/path/to/skills --force
     binaryPath = "/home/alex/.local/bin/kast"
     ```
 
-GitHub Copilot custom agents are a separate surface. Personas and tool
-restrictions for Copilot belong in `.github/agents/*.md` — not in the
-portable Agent Skills bundle.
+GitHub Copilot custom agents are a separate surface. Packaged Kast Copilot
+agent material belongs under `.github/extensions/kast/agents/*.md` — not in
+the portable Agent Skills bundle.
 
 ## Install the Copilot extension files
 
 Use `install copilot` when you want the packaged GitHub Copilot
-agent, hook, and native extension files in the current repository:
+native extension files in the current repository:
 
-```console title="Install Copilot agents, hooks, and extensions"
+```console title="Install Copilot extension files"
 kast install copilot
 ```
 
-The command writes into `<cwd>/.github` by default, including packaged
-`.github/agents`, `.github/hooks`, and self-contained native extension scripts
-under `.github/extensions`. Packaged scripts are installed executable, and the
-command records the installed CLI version in `.github/.kast-copilot-version`.
-Pass `--target-dir` to point at another workspace `.github` directory, and
-`--force` to replace an older installed copy:
+The command writes into `<cwd>/.github` by default. The managed install lives
+under `.github/extensions/kast`, including the extension entry point, helper
+agent material, the RPC command catalog, and support scripts. Packaged scripts
+are installed executable, and the command records the installed CLI version in
+`.github/extensions/kast/.kast-copilot-version`. Pass `--target-dir` to point
+at another workspace `.github` directory, and `--force` to replace an older
+installed copy:
 
 ```console title="Force reinstall Copilot extension files"
 kast install copilot --target-dir=/absolute/path/to/repo/.github --force
@@ -117,7 +118,7 @@ To remove only packaged Copilot files, use the uninstall command:
 kast uninstall copilot-extension
 ```
 
-Uninstall removes the packaged manifest files and the version marker. It
+Uninstall removes the packaged extension files and the version marker. It
 preserves foreign files you created under `.github`.
 
 ## Next steps
