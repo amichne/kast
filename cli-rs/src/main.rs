@@ -89,32 +89,6 @@ fn run(cli: Cli) -> Result<i32> {
             println!("Kast CLI {}", cli::version());
             Ok(0)
         }
-        Command::Config { command } => match command {
-            cli::ConfigCommand::Init => {
-                let result = install::install_affected(cli::AffectedInstallArgs {
-                    apply: true,
-                    jetbrains_config_root: None,
-                })?;
-                if output_format == OutputFormat::Json {
-                    output::print_json(&result)?;
-                } else {
-                    output::print_install_result(&install::InstallResult::Affected(result))?;
-                }
-                Ok(0)
-            }
-        },
-        Command::Daemon { command } => match command {
-            cli::DaemonCommand::Start(args) => daemon::run_foreground(args),
-        },
-        Command::Backend { command } => {
-            let result = backend::run(command)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
-            } else {
-                output::print_backend_result(&result)?;
-            }
-            Ok(0)
-        }
         Command::Rpc(args) => {
             let response = runtime::rpc_passthrough(args)?;
             println!("{response}");
@@ -186,48 +160,12 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(0)
         }
-        Command::Current { command } => {
-            let result = install::current(command)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
-            } else {
-                output::print_current_component(&result)?;
-            }
-            Ok(0)
-        }
-        Command::Info => {
-            let result = self_mgmt::status()?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
-            } else {
-                output::print_self_status(&result)?;
-            }
-            Ok(0)
-        }
         Command::Doctor => {
             let result = self_mgmt::doctor()?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
             } else {
                 output::print_doctor(&result)?;
-            }
-            Ok(if result.ok { 0 } else { 1 })
-        }
-        Command::Uninstall(args) => {
-            let result = install::uninstall(args)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
-            } else {
-                output::print_uninstall_result(&result)?;
-            }
-            Ok(0)
-        }
-        Command::VerifyExtension => {
-            let result = install::verify_extension()?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
-            } else {
-                output::print_verify_extension(&result)?;
             }
             Ok(if result.ok { 0 } else { 1 })
         }
@@ -240,7 +178,6 @@ fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
         Command::Help { .. }
             | Command::Version
             | Command::Setup(_)
-            | Command::Config { .. }
             | Command::Install(cli::InstallArgs {
                 command: Some(
                     cli::InstallCommand::Affected(_) | cli::InstallCommand::Completion(_)

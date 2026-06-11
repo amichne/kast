@@ -2,9 +2,9 @@ use crate::SCHEMA_VERSION;
 use crate::backend::{self, BackendResult};
 use crate::cli;
 use crate::cli::{
-    AffectedInstallArgs, BackendComponent, BackendInstallArgs, CurrentCommand, HeadlessInstallArgs,
-    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceCurrentArgs, ResourceInstallArgs,
-    SetupArgs, ShellInstallArgs, ShellKind, UninstallArgs, UninstallCommand,
+    AffectedInstallArgs, BackendComponent, BackendInstallArgs, HeadlessInstallArgs,
+    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs, SetupArgs,
+    ShellInstallArgs, ShellKind,
 };
 use crate::config;
 use crate::error::{CliError, Result};
@@ -32,17 +32,6 @@ const COPILOT_EXTENSION_DIR: &str = "extensions/kast";
 const COPILOT_EXTENSION_MARKER: &str = ".kast-copilot-version";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
-const LEGACY_COPILOT_HOOK_FILES: &[&str] = &[
-    "export-session.py",
-    "hook-state.sh",
-    "hooks.json",
-    "record-paths.sh",
-    "require-skills.sh",
-    "resolve-kast-path.sh",
-    "session-end.sh",
-    "session-start.sh",
-    "skill-shadowing.json",
-];
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -128,7 +117,8 @@ pub struct InstallAffectedResult {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SetupResult {
-    pub repair: InstallAffectedResult,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repair: Option<InstallAffectedResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub headless: Option<backend::BackendInstallResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -142,16 +132,6 @@ pub struct SetupResult {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
     pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VerifyExtensionResult {
-    pub ok: bool,
-    #[serde(rename = "cli_version")]
-    pub cli_version: String,
-    #[serde(rename = "extension_version")]
-    pub extension_version: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -172,35 +152,6 @@ pub struct ArchiveInstallResult {
     pub installed_at: String,
     pub instance: String,
     pub skipped: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(untagged)]
-pub enum UninstallResult {
-    SelfManaged(self_mgmt::SelfUninstallResult),
-    Copilot(InstallCopilotExtensionResult),
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CurrentComponentResult {
-    pub component: String,
-    pub installed: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cask_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub install_dir: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_dir: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub runtime_libs_dir: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub idea_home: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub warnings: Vec<String>,
     pub schema_version: u32,
 }
 
@@ -233,16 +184,38 @@ pub fn install(args: InstallArgs) -> Result<InstallResult> {
 }
 
 pub fn setup(args: SetupArgs) -> Result<SetupResult> {
-    let repair = install_affected(AffectedInstallArgs {
-        apply: true,
-        jetbrains_config_root: args.jetbrains_config_root.clone(),
-    })?;
-    let headless = install_headless(HeadlessInstallArgs {
-        archive: args.headless_archive,
-        version: args.version.clone(),
-        base_url: args.base_url,
-        force: args.force,
-    })?;
+    let repair = if args.skip_repair {
+        None
+    } else {
+        Some(install_affected(AffectedInstallArgs {
+            apply: true,
+            jetbrains_config_root: args.jetbrains_config_root.clone(),
+        })?)
+    };
+    let headless_present = if args.skip_headless {
+        false
+    } else {
+        setup_headless_present()?
+    };
+    if !args.skip_headless
+        && !headless_present
+        && (args.headless_archive.is_some() || args.version.is_some() || args.base_url.is_some())
+    {
+        return Err(CliError::new(
+            "CLI_USAGE",
+            "`kast setup` does not add a new headless backend. Run `kast install headless` for first-time headless backend installation.",
+        ));
+    }
+    let headless = if args.skip_headless || !headless_present {
+        None
+    } else {
+        Some(install_headless(HeadlessInstallArgs {
+            archive: args.headless_archive,
+            version: args.version.clone(),
+            base_url: args.base_url,
+            force: args.force,
+        })?)
+    };
     let shell = if args.skip_shell {
         None
     } else {
@@ -254,7 +227,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
             dry_run: false,
         })?)
     };
-    let skill = if args.include_skill {
+    let skill = if args.include_skill && !args.skip_skill {
         Some(install_skill(ResourceInstallArgs {
             target_dir: args.skill_target_dir,
             name: None,
@@ -263,7 +236,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     } else {
         None
     };
-    let copilot = if args.include_copilot {
+    let copilot = if args.include_copilot && !args.skip_copilot {
         Some(install_copilot_extension(ResourceInstallArgs {
             target_dir: args.copilot_target_dir,
             name: None,
@@ -272,7 +245,9 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     } else {
         None
     };
-    let idea_plugin = if args.link_jetbrains_profiles {
+    let link_jetbrains_profiles = args.link_jetbrains_profiles
+        || setup_detected_jetbrains_profiles(&args.jetbrains_config_root)?;
+    let idea_plugin = if link_jetbrains_profiles && !args.skip_plugin {
         Some(install_idea_plugin(IdeaPluginInstallArgs {
             jetbrains_config_root: args.jetbrains_config_root,
             link_jetbrains_profiles: true,
@@ -286,7 +261,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     };
     Ok(SetupResult {
         repair,
-        headless: Some(headless),
+        headless,
         shell,
         skill,
         copilot,
@@ -294,6 +269,37 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
         warnings: vec![],
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn setup_detected_jetbrains_profiles(jetbrains_config_root: &Option<PathBuf>) -> Result<bool> {
+    if !cfg!(target_os = "macos") {
+        return Ok(false);
+    }
+    let root = jetbrains_config_root
+        .clone()
+        .map(config::normalize)
+        .unwrap_or_else(default_jetbrains_config_root);
+    Ok(!jetbrains_plugin_dirs(&root)?.is_empty())
+}
+
+fn setup_headless_present() -> Result<bool> {
+    if self_mgmt::read_global_install_state()?.is_some_and(|install| {
+        install.backends.into_iter().any(|backend| {
+            backend.name == BackendComponent::Headless.canonical()
+                && Path::new(&backend.runtime_libs_dir)
+                    .join("classpath.txt")
+                    .is_file()
+                && path_exists_or_symlink(Path::new(&backend.install_dir))
+        })
+    }) {
+        return Ok(true);
+    }
+    let global_config = config::KastConfig::load_global()?;
+    Ok(global_config
+        .backends
+        .headless
+        .runtime_libs_dir
+        .is_some_and(|runtime_libs_dir| runtime_libs_dir.join("classpath.txt").is_file()))
 }
 
 pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedResult>> {
@@ -310,68 +316,6 @@ pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedR
     .map(Some)
 }
 
-pub fn current(command: CurrentCommand) -> Result<CurrentComponentResult> {
-    match command {
-        CurrentCommand::Plugin => current_plugin(),
-        CurrentCommand::Headless => current_headless(),
-        CurrentCommand::Skill(args) => {
-            current_resource("skill", current_skill_target(args), ".kast-version", vec![])
-        }
-        CurrentCommand::Copilot(args) => current_resource(
-            "copilot",
-            current_copilot_target(args),
-            COPILOT_EXTENSION_MARKER,
-            vec![],
-        ),
-    }
-}
-
-pub fn uninstall(args: UninstallArgs) -> Result<UninstallResult> {
-    match args.command {
-        Some(UninstallCommand::CopilotExtension(resource_args)) => {
-            uninstall_copilot_extension(resource_args).map(UninstallResult::Copilot)
-        }
-        None => self_mgmt::uninstall().map(UninstallResult::SelfManaged),
-    }
-}
-
-fn current_plugin() -> Result<CurrentComponentResult> {
-    let mut warnings = vec![];
-    let cask_token = match homebrew_formula_tap() {
-        Ok(tap) => format!("{tap}/{KAST_PLUGIN_CASK_NAME}"),
-        Err(error) => {
-            warnings.push(format!(
-                "Could not resolve the Homebrew tap for kast; using {DEFAULT_KAST_TAP}: {}",
-                error.message
-            ));
-            format!("{DEFAULT_KAST_TAP}/{KAST_PLUGIN_CASK_NAME}")
-        }
-    };
-    let cask_name = cask_name(&cask_token);
-    let version = match homebrew_cask_version(&cask_name) {
-        Ok(version) => version,
-        Err(error) => {
-            warnings.push(format!(
-                "Could not resolve the installed Homebrew cask version for {cask_name}: {}",
-                error.message
-            ));
-            None
-        }
-    };
-    Ok(CurrentComponentResult {
-        component: "plugin".to_string(),
-        installed: version.is_some(),
-        version,
-        cask_token: Some(cask_token),
-        install_dir: None,
-        target_dir: None,
-        runtime_libs_dir: None,
-        idea_home: None,
-        warnings,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
 pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
     let backend_args = BackendInstallArgs {
         backend: BackendComponent::Headless,
@@ -382,10 +326,6 @@ pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendIns
     };
     match backend::run(cli::BackendCommand::Install(backend_args))? {
         BackendResult::Install(result) => Ok(result),
-        BackendResult::Uninstall(_) => Err(CliError::new(
-            "CLI_USAGE",
-            "install headless unexpectedly returned an uninstall result",
-        )),
     }
 }
 
@@ -1174,94 +1114,6 @@ fn backup_timestamp() -> String {
         .unwrap_or_else(|_| "0".to_string())
 }
 
-fn current_headless() -> Result<CurrentComponentResult> {
-    let backend = self_mgmt::read_global_install_state()?.and_then(|install| {
-        install
-            .backends
-            .into_iter()
-            .find(|backend| backend.name == BackendComponent::Headless.canonical())
-    });
-    Ok(match backend {
-        Some(backend) => CurrentComponentResult {
-            component: "headless".to_string(),
-            installed: true,
-            version: Some(backend.version),
-            cask_token: None,
-            install_dir: Some(backend.install_dir),
-            target_dir: None,
-            runtime_libs_dir: Some(backend.runtime_libs_dir),
-            idea_home: backend.idea_home,
-            warnings: vec![],
-            schema_version: SCHEMA_VERSION,
-        },
-        None => CurrentComponentResult {
-            component: "headless".to_string(),
-            installed: false,
-            version: None,
-            cask_token: None,
-            install_dir: None,
-            target_dir: None,
-            runtime_libs_dir: None,
-            idea_home: None,
-            warnings: vec![],
-            schema_version: SCHEMA_VERSION,
-        },
-    })
-}
-
-fn current_resource(
-    component: &str,
-    target: PathBuf,
-    marker_name: &str,
-    warnings: Vec<String>,
-) -> Result<CurrentComponentResult> {
-    let marker = target.join(marker_name);
-    let version = marker
-        .is_file()
-        .then(|| {
-            fs::read_to_string(&marker)
-                .unwrap_or_default()
-                .trim()
-                .to_string()
-        })
-        .filter(|value| !value.is_empty());
-    Ok(CurrentComponentResult {
-        component: component.to_string(),
-        installed: version.is_some(),
-        version,
-        cask_token: None,
-        install_dir: None,
-        target_dir: Some(target.display().to_string()),
-        runtime_libs_dir: None,
-        idea_home: None,
-        warnings,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
-fn current_skill_target(args: ResourceCurrentArgs) -> PathBuf {
-    let target_root = args
-        .target_dir
-        .map(config::normalize)
-        .unwrap_or_else(default_skill_target_dir);
-    let name = args
-        .name
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| "kast".to_string());
-    target_root.join(name)
-}
-
-fn current_copilot_target(args: ResourceCurrentArgs) -> PathBuf {
-    let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
-        config::normalize(
-            env::current_dir()
-                .unwrap_or_else(|_| PathBuf::from("."))
-                .join(".github"),
-        )
-    });
-    target.join(COPILOT_EXTENSION_DIR)
-}
-
 pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
     let target_root = args
         .target_dir
@@ -1649,61 +1501,6 @@ fn install_idea_plugin_into_jetbrains_profiles(
     })
 }
 
-pub fn uninstall_copilot_extension(
-    args: ResourceInstallArgs,
-) -> Result<InstallCopilotExtensionResult> {
-    let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
-        config::normalize(
-            env::current_dir()
-                .unwrap_or_else(|_| PathBuf::from("."))
-                .join(".github"),
-        )
-    });
-    let extension_target = target.join(COPILOT_EXTENSION_DIR);
-    let shared_catalog = extension_target.join("_shared/commands.json");
-    if shared_catalog.is_file() {
-        fs::remove_file(shared_catalog)?;
-    }
-    if let Some(source) = COPILOT_EXTENSION.get_dir(COPILOT_EXTENSION_DIR) {
-        remove_embedded_files_stripped(source, source.path(), &extension_target)?;
-    }
-    let marker = extension_target.join(COPILOT_EXTENSION_MARKER);
-    if marker.exists() {
-        fs::remove_file(marker)?;
-    }
-    let _ = fs::remove_dir(&extension_target);
-    remove_legacy_copilot_hooks(&target)?;
-    let legacy_marker = target.join(COPILOT_EXTENSION_MARKER);
-    if legacy_marker.exists() {
-        fs::remove_file(legacy_marker)?;
-    }
-    self_mgmt::forget_copilot_repo(&target)?;
-    Ok(InstallCopilotExtensionResult {
-        installed_at: extension_target.display().to_string(),
-        version: cli::version().to_string(),
-        skipped: false,
-        warnings: vec![],
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
-pub fn verify_extension() -> Result<VerifyExtensionResult> {
-    let marker = env::current_dir()?
-        .join(".github")
-        .join(COPILOT_EXTENSION_DIR)
-        .join(COPILOT_EXTENSION_MARKER);
-    let extension_version = fs::read_to_string(marker)
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    let cli_version = cli::version().to_string();
-    Ok(VerifyExtensionResult {
-        ok: extension_version == cli_version,
-        cli_version,
-        extension_version,
-    })
-}
-
 fn install_archive(args: InstallArgs) -> Result<ArchiveInstallResult> {
     let archive = args.archive.ok_or_else(|| {
         CliError::new(
@@ -1897,75 +1694,6 @@ fn copy_entry_stripped(
     }
     Ok(())
 }
-
-fn remove_embedded_files_stripped(
-    dir: &Dir<'_>,
-    strip_prefix: &Path,
-    target_root: &Path,
-) -> Result<()> {
-    for entry in dir.entries() {
-        remove_entry_stripped(entry, strip_prefix, target_root)?;
-    }
-    Ok(())
-}
-
-fn remove_entry_stripped(
-    entry: &DirEntry<'_>,
-    strip_prefix: &Path,
-    target_root: &Path,
-) -> Result<()> {
-    match entry {
-        DirEntry::Dir(dir) => {
-            for child in dir.entries() {
-                remove_entry_stripped(child, strip_prefix, target_root)?;
-            }
-            let relative = dir.path().strip_prefix(strip_prefix).map_err(|error| {
-                CliError::new(
-                    "INSTALL_RESOURCE_PATH_INVALID",
-                    format!(
-                        "Packaged resource path {} is not under {}: {error}",
-                        dir.path().display(),
-                        strip_prefix.display()
-                    ),
-                )
-            })?;
-            let target = target_root.join(relative);
-            if target.is_dir() {
-                let _ = fs::remove_dir(&target);
-            }
-        }
-        DirEntry::File(file) => {
-            let relative = file.path().strip_prefix(strip_prefix).map_err(|error| {
-                CliError::new(
-                    "INSTALL_RESOURCE_PATH_INVALID",
-                    format!(
-                        "Packaged resource path {} is not under {}: {error}",
-                        file.path().display(),
-                        strip_prefix.display()
-                    ),
-                )
-            })?;
-            let target = target_root.join(relative);
-            if target.is_file() {
-                fs::remove_file(target)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-fn remove_legacy_copilot_hooks(target_root: &Path) -> Result<()> {
-    let hooks_dir = target_root.join("hooks");
-    for file_name in LEGACY_COPILOT_HOOK_FILES {
-        let path = hooks_dir.join(file_name);
-        if path.is_file() {
-            fs::remove_file(path)?;
-        }
-    }
-    let _ = fs::remove_dir(&hooks_dir);
-    Ok(())
-}
-
 #[cfg(unix)]
 fn set_executable_if_script(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;

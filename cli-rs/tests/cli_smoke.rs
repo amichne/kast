@@ -356,25 +356,6 @@ fn smoke_core_cli_commands() {
         shell_help_stdout.contains("--profile"),
         "install shell help should expose --profile: {shell_help_stdout}"
     );
-    let current_help = kast(&home, &config_home)
-        .args(["current", "--help"])
-        .output()
-        .expect("current help");
-    assert!(current_help.status.success());
-    let current_help_stdout = String::from_utf8_lossy(&current_help.stdout);
-    for command in ["plugin", "headless", "skill", "copilot"] {
-        assert!(
-            current_help_stdout.contains(command),
-            "current help should list {command}: {current_help_stdout}"
-        );
-    }
-    for deprecated in ["--yes", "--link-name"] {
-        assert!(
-            !current_help_stdout.contains(deprecated),
-            "current help should not expose deprecated {deprecated}: {current_help_stdout}"
-        );
-    }
-
     let demo_help = kast(&home, &config_home)
         .args(["demo", "--help"])
         .output()
@@ -385,11 +366,11 @@ fn smoke_core_cli_commands() {
     assert!(demo_help_stdout.contains("compare"));
     assert!(!demo_help_stdout.contains("--no-fallback"));
 
-    let config = kast(&home, &config_home)
-        .args(["config", "init"])
+    let repair = kast(&home, &config_home)
+        .args(["install", "affected", "--apply"])
         .output()
-        .expect("config init");
-    assert!(config.status.success());
+        .expect("install affected");
+    assert!(repair.status.success());
     assert!(config_home.join("config.toml").is_file());
 
     let skill_dir = temp.path().join("skills");
@@ -447,20 +428,6 @@ fn smoke_core_cli_commands() {
     assert!(
         !github_dir.join("hooks").exists(),
         "copilot extension install must not write .github/hooks integration"
-    );
-
-    let verify = Command::new(env!("CARGO_BIN_EXE_kast"))
-        .current_dir(temp.path())
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", &config_home)
-        .arg("verify-extension")
-        .output()
-        .expect("verify extension");
-    assert!(
-        verify.status.success(),
-        "verify-extension should read the marker inside extensions/kast: stdout={}, stderr={}",
-        String::from_utf8_lossy(&verify.stdout),
-        String::from_utf8_lossy(&verify.stderr)
     );
 
     let status = kast(&home, &config_home)
@@ -568,6 +535,35 @@ fn top_level_help_hides_recovery_and_internal_install_surfaces() {
         !install_stdout.contains("portable archive"),
         "install help should not describe retired portable archive flow: {install_stdout}"
     );
+}
+
+#[test]
+fn stale_hidden_top_level_commands_are_removed() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    for command in [
+        "config",
+        "daemon",
+        "backend",
+        "current",
+        "info",
+        "verify-extension",
+        "uninstall",
+    ] {
+        let output = kast(&home, &config_home)
+            .args([command, "--help"])
+            .output()
+            .unwrap_or_else(|error| panic!("{command} --help: {error}"));
+        assert!(
+            !output.status.success(),
+            "stale top-level command {command} should be removed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 #[test]
@@ -928,7 +924,6 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--version",
@@ -937,16 +932,16 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
             &base_url,
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
 
     assert!(
         install.status.success(),
-        "verified backend install should succeed: stdout={}, stderr={}",
+        "verified headless install should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
     let stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("backend install json");
+        serde_json::from_slice(&install.stdout).expect("install headless json");
     assert_eq!(stdout["downloaded"], true);
     assert!(
         home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
@@ -1041,7 +1036,6 @@ fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract()
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--version",
@@ -1050,7 +1044,7 @@ fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract()
             &base_url,
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
 
     assert!(
         !install.status.success(),
@@ -1091,7 +1085,6 @@ fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--version",
@@ -1100,7 +1093,7 @@ fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
             &base_url,
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
 
     assert!(
         !install.status.success(),
@@ -1141,7 +1134,6 @@ fn backend_install_downloaded_archive_requires_sha256sums() {
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--version",
@@ -1150,7 +1142,7 @@ fn backend_install_downloaded_archive_requires_sha256sums() {
             &base_url,
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
 
     assert!(!install.status.success());
     let stderr = String::from_utf8_lossy(&install.stderr);
@@ -1186,7 +1178,6 @@ fn backend_install_downloaded_archive_requires_provenance() {
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--version",
@@ -1195,7 +1186,7 @@ fn backend_install_downloaded_archive_requires_provenance() {
             &base_url,
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
 
     assert!(!install.status.success());
     let stderr = String::from_utf8_lossy(&install.stderr);
@@ -1218,7 +1209,6 @@ fn backend_install_headless_archive_configures_runtime_and_install_state() {
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--archive",
@@ -1227,16 +1217,16 @@ fn backend_install_headless_archive_configures_runtime_and_install_state() {
             "v9.8.7",
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
 
     assert!(
         install.status.success(),
-        "backend install should succeed: stdout={}, stderr={}",
+        "install headless should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
     let stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("backend install json");
+        serde_json::from_slice(&install.stdout).expect("install headless json");
     assert_eq!(stdout["backendName"], "headless");
     assert_eq!(stdout["version"], "v9.8.7");
     assert_eq!(stdout["downloaded"], false);
@@ -1260,7 +1250,7 @@ fn backend_install_headless_archive_configures_runtime_and_install_state() {
 }
 
 #[test]
-fn install_headless_gateway_and_current_report_installed_version() {
+fn install_headless_gateway_and_doctor_report_installed_version() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -1293,35 +1283,6 @@ fn install_headless_gateway_and_current_report_installed_version() {
     assert_eq!(stdout["backendName"], "headless");
     assert_eq!(stdout["version"], "v9.8.7");
 
-    let current = kast(&home, &config_home)
-        .args(["--output", "json", "current", "headless"])
-        .output()
-        .expect("current headless");
-
-    assert!(
-        current.status.success(),
-        "current headless should report installed backend: stdout={}, stderr={}",
-        String::from_utf8_lossy(&current.stdout),
-        String::from_utf8_lossy(&current.stderr)
-    );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&current.stdout).expect("current headless json");
-    assert_eq!(stdout["component"], "headless");
-    assert_eq!(stdout["installed"], true);
-    assert_eq!(stdout["version"], "v9.8.7");
-    assert!(
-        stdout["installDir"]
-            .as_str()
-            .expect("install dir")
-            .ends_with(".kast/lib/backends/headless/headless-v9.8.7")
-    );
-    assert!(
-        stdout["runtimeLibsDir"]
-            .as_str()
-            .expect("runtime libs dir")
-            .ends_with(".kast/lib/backends/headless/current/runtime-libs")
-    );
-
     let doctor = kast(&home, &config_home)
         .args(["--output", "json", "doctor"])
         .output()
@@ -1344,11 +1305,10 @@ fn install_headless_gateway_and_current_report_installed_version() {
 }
 
 #[test]
-fn setup_installs_headless_and_requested_workspace_resources() {
+fn setup_skip_headless_keeps_clean_machine_backend_free() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
-    let archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
     let skill_dir = temp.path().join("skills");
     let github_dir = temp.path().join(".github");
     std::fs::create_dir_all(&home).expect("home");
@@ -1358,11 +1318,7 @@ fn setup_installs_headless_and_requested_workspace_resources() {
             "--output",
             "json",
             "setup",
-            "--headless-archive",
-            archive.to_str().expect("archive path"),
-            "--version",
-            "v9.8.7",
-            "--force",
+            "--skip-headless",
             "--skip-shell",
             "--include-skill",
             "--skill-target-dir",
@@ -1383,8 +1339,7 @@ fn setup_installs_headless_and_requested_workspace_resources() {
     let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
     assert_eq!(stdout["schemaVersion"], 3);
     assert_eq!(stdout["repair"]["applied"], true);
-    assert_eq!(stdout["headless"]["backendName"], "headless");
-    assert_eq!(stdout["headless"]["version"], "v9.8.7");
+    assert!(stdout.get("headless").is_none(), "{stdout}");
     assert!(
         stdout.get("shell").is_none(),
         "shell should be skipped: {stdout}"
@@ -1394,62 +1349,261 @@ fn setup_installs_headless_and_requested_workspace_resources() {
     assert!(skill_dir.join("kast/SKILL.md").is_file());
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
     assert!(
-        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
-            .is_file()
+        !home
+            .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .exists()
     );
 }
 
 #[test]
-fn backend_uninstall_removes_headless_component() {
+fn setup_defaults_to_shell_without_adding_headless_on_clean_machine() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
+
+    let setup = kast(&home, &config_home)
+        .args(["--output", "json", "setup", "--shell", "zsh"])
+        .output()
+        .expect("setup");
+
+    assert!(
+        setup.status.success(),
+        "clean setup should install local integrations without adding headless: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert_eq!(stdout["repair"]["applied"], true);
+    assert!(stdout.get("headless").is_none(), "{stdout}");
+    assert_eq!(stdout["shell"]["shell"], "zsh");
+    assert!(
+        home.join(".zshrc").is_file(),
+        "setup should install shell integration by default"
+    );
+    assert!(
+        !home
+            .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .exists(),
+        "plain setup must not create a headless backend"
+    );
+}
+
+#[test]
+fn setup_rejects_headless_inputs_when_headless_is_not_installed() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
     let archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let setup = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--headless-archive",
+            archive.to_str().expect("archive path"),
+            "--version",
+            "v9.8.7",
+            "--skip-shell",
+        ])
+        .output()
+        .expect("setup");
+
+    assert!(
+        !setup.status.success(),
+        "clean setup should reject headless-specific inputs: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&setup.stderr);
+    assert!(
+        stderr.contains("kast install headless"),
+        "error should point to the explicit install path: {stderr}"
+    );
+    assert!(
+        !home
+            .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .exists()
+    );
+}
+
+#[test]
+fn setup_refreshes_existing_headless_backend() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let first_archive = write_backend_archive(&temp.path().join("first"), "headless", "v9.8.7");
+    let second_archive = write_backend_archive(&temp.path().join("second"), "headless", "v9.8.8");
+    std::fs::create_dir_all(&home).expect("home");
+
     let install = kast(&home, &config_home)
         .args([
             "--output",
             "json",
-            "backend",
             "install",
             "headless",
             "--archive",
-            archive.to_str().expect("archive path"),
+            first_archive.to_str().expect("first archive"),
             "--version",
             "v9.8.7",
         ])
         .output()
-        .expect("backend install");
+        .expect("install headless");
     assert!(
         install.status.success(),
-        "install headless: stdout={}, stderr={}",
+        "initial explicit headless install should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
 
-    let uninstall = kast(&home, &config_home)
-        .args(["--output", "json", "backend", "uninstall", "headless"])
+    let setup = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--headless-archive",
+            second_archive.to_str().expect("second archive"),
+            "--version",
+            "v9.8.8",
+            "--force",
+            "--skip-shell",
+        ])
         .output()
-        .expect("backend uninstall");
-    assert!(
-        uninstall.status.success(),
-        "backend uninstall should succeed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&uninstall.stdout),
-        String::from_utf8_lossy(&uninstall.stderr)
-    );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&uninstall.stdout).expect("backend uninstall json");
-    assert_eq!(stdout["backendName"], "headless");
-    assert_eq!(stdout["skipped"], false);
+        .expect("setup");
 
-    assert!(!home.join(".kast/lib/backends/headless/current").exists());
     assert!(
-        !home
-            .join(".kast/lib/backends/headless/headless-v9.8.7")
-            .exists()
+        setup.status.success(),
+        "setup should refresh an existing headless backend: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert_eq!(stdout["headless"]["backendName"], "headless");
+    assert_eq!(stdout["headless"]["version"], "v9.8.8");
+    assert!(
+        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .is_file()
     );
     let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
-    assert!(!config.contains("[install]"), "{config}");
+    assert!(config.contains("version = \"v9.8.8\""), "{config}");
+}
+
+#[test]
+fn setup_skip_flags_disable_all_components() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let skill_dir = temp.path().join("skills");
+    let github_dir = temp.path().join(".github");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let setup = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--skip-repair",
+            "--skip-shell",
+            "--skip-headless",
+            "--skip-plugin",
+            "--include-skill",
+            "--skip-skill",
+            "--skill-target-dir",
+            skill_dir.to_str().expect("skill path"),
+            "--include-copilot",
+            "--skip-copilot",
+            "--copilot-target-dir",
+            github_dir.to_str().expect("github path"),
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("setup");
+
+    assert!(
+        setup.status.success(),
+        "setup with all skip flags should succeed without side effects: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert!(stdout.get("repair").is_none(), "{stdout}");
+    assert!(stdout.get("shell").is_none(), "{stdout}");
+    assert!(stdout.get("headless").is_none(), "{stdout}");
+    assert!(stdout.get("ideaPlugin").is_none(), "{stdout}");
+    assert!(stdout.get("skill").is_none(), "{stdout}");
+    assert!(stdout.get("copilot").is_none(), "{stdout}");
+    assert!(!config_home.join("config.toml").exists());
+    assert!(!home.join(".zshrc").exists());
+    assert!(!skill_dir.join("kast").exists());
+    assert!(!github_dir.join("extensions/kast").exists());
+    assert!(
+        !jetbrains_root
+            .join("IntelliJIdea2026.1/plugins/kast")
+            .exists()
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn setup_installs_plugin_for_detected_jetbrains_profiles_on_macos() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let setup = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--skip-shell",
+            "--skip-headless",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("setup");
+
+    assert!(
+        setup.status.success(),
+        "setup should install plugin for detected JetBrains profiles: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert_eq!(stdout["ideaPlugin"]["brewAction"], "install");
+    assert_eq!(stdout["ideaPlugin"]["brewCommand"][1], "install");
+    assert_eq!(stdout["ideaPlugin"]["brewCommand"][2], "--cask");
+    assert_eq!(
+        stdout["ideaPlugin"]["jetbrainsConfigRoot"],
+        jetbrains_root.display().to_string()
+    );
+    assert_eq!(
+        stdout["ideaPlugin"]["pluginDirectories"][0],
+        jetbrains_root
+            .join("IntelliJIdea2026.1/plugins")
+            .display()
+            .to_string()
+    );
 }
 
 #[test]
@@ -1717,39 +1871,6 @@ fn plugin_install_gateway_downloads_with_progress_on_stderr() {
 }
 
 #[test]
-fn current_plugin_reports_homebrew_cask_version() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let brew_bin = temp.path().join("bin");
-    std::fs::create_dir_all(&home).expect("home");
-    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
-        .parent()
-        .expect("binary parent");
-    write_fake_brew(&brew_bin, formula_prefix);
-
-    let current = kast(&home, &config_home)
-        .env("PATH", &brew_bin)
-        .env("KAST_FAKE_BREW_CASK_VERSION", "9.8.7")
-        .args(["--output", "json", "current", "plugin"])
-        .output()
-        .expect("current plugin");
-
-    assert!(
-        current.status.success(),
-        "current plugin should report cask version: stdout={}, stderr={}",
-        String::from_utf8_lossy(&current.stdout),
-        String::from_utf8_lossy(&current.stderr)
-    );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&current.stdout).expect("current plugin json");
-    assert_eq!(stdout["component"], "plugin");
-    assert_eq!(stdout["installed"], true);
-    assert_eq!(stdout["version"], "9.8.7");
-    assert_eq!(stdout["caskToken"], "amichne/kast/kast-plugin");
-}
-
-#[test]
 fn install_affected_repairs_stale_local_setup_only_when_applied() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -1935,7 +2056,7 @@ path = "{}"
 }
 
 #[test]
-fn config_init_repairs_stale_brew_and_removed_backend_state() {
+fn install_affected_repairs_stale_brew_and_removed_backend_state() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -1983,13 +2104,13 @@ version = "v0.7.35"
     .expect("config");
 
     let repair = kast(&home, &config_home)
-        .args(["--output", "json", "config", "init"])
+        .args(["--output", "json", "install", "affected", "--apply"])
         .output()
-        .expect("config init");
+        .expect("install affected");
 
     assert!(
         repair.status.success(),
-        "config init should repair stale state: stdout={}, stderr={}",
+        "install affected should repair stale state: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
@@ -2001,7 +2122,7 @@ version = "v0.7.35"
             .expect("actions")
             .iter()
             .any(|action| action["kind"] == "update-cli-binary-path"),
-        "config init should update stale cli binary path: {stdout}"
+        "install affected should update stale cli binary path: {stdout}"
     );
     let config_after =
         std::fs::read_to_string(config_home.join("config.toml")).expect("config after repair");
@@ -2043,18 +2164,18 @@ version = "0.0.1"
     .expect("config");
 
     let first = kast(&home, &config_home)
-        .args(["--output", "json", "info"])
+        .args(["--output", "json", "doctor"])
         .output()
-        .expect("first info");
+        .expect("first doctor");
 
     assert!(
         first.status.success(),
-        "first info should repair stale install metadata: stdout={}, stderr={}",
+        "first doctor should repair stale install metadata: stdout={}, stderr={}",
         String::from_utf8_lossy(&first.stdout),
         String::from_utf8_lossy(&first.stderr)
     );
     let first_stdout: serde_json::Value =
-        serde_json::from_slice(&first.stdout).expect("first info json");
+        serde_json::from_slice(&first.stdout).expect("first doctor json");
     assert_eq!(
         first_stdout["install"]["version"],
         env!("CARGO_PKG_VERSION")
@@ -2067,13 +2188,13 @@ version = "0.0.1"
     );
 
     let second = kast(&home, &config_home)
-        .args(["--output", "json", "info"])
+        .args(["--output", "json", "doctor"])
         .output()
-        .expect("second info");
+        .expect("second doctor");
 
     assert!(
         second.status.success(),
-        "second info should be idempotent: stdout={}, stderr={}",
+        "second doctor should be idempotent: stdout={}, stderr={}",
         String::from_utf8_lossy(&second.stdout),
         String::from_utf8_lossy(&second.stderr)
     );
@@ -2145,28 +2266,9 @@ fn install_resource_gateways_support_force_and_current_versions() {
     assert_eq!(forced_skill_stdout["skipped"], false);
     assert!(!stale_skill.join("force-removes.txt").exists());
 
-    let current_skill = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "current",
-            "skill",
-            "--target-dir",
-            skill_dir.to_str().expect("skill path"),
-        ])
-        .output()
-        .expect("current skill");
-    assert!(
-        current_skill.status.success(),
-        "current skill should report installed version: stdout={}, stderr={}",
-        String::from_utf8_lossy(&current_skill.stdout),
-        String::from_utf8_lossy(&current_skill.stderr)
-    );
-    let current_skill_stdout: serde_json::Value =
-        serde_json::from_slice(&current_skill.stdout).expect("current skill json");
-    assert_eq!(current_skill_stdout["component"], "skill");
-    assert_eq!(current_skill_stdout["installed"], true);
-    assert_eq!(current_skill_stdout["version"], skill_stdout["version"]);
+    let skill_marker =
+        std::fs::read_to_string(stale_skill.join(".kast-version")).expect("skill marker");
+    assert_eq!(skill_marker.trim(), skill_stdout["version"]);
 
     let copilot = kast(&home, &config_home)
         .args([
@@ -2190,28 +2292,10 @@ fn install_resource_gateways_support_force_and_current_versions() {
         serde_json::from_slice(&copilot.stdout).expect("copilot install json");
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
 
-    let current_copilot = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "current",
-            "copilot",
-            "--target-dir",
-            github_dir.to_str().expect("github path"),
-        ])
-        .output()
-        .expect("current copilot");
-    assert!(
-        current_copilot.status.success(),
-        "current copilot should report installed version: stdout={}, stderr={}",
-        String::from_utf8_lossy(&current_copilot.stdout),
-        String::from_utf8_lossy(&current_copilot.stderr)
-    );
-    let current_copilot_stdout: serde_json::Value =
-        serde_json::from_slice(&current_copilot.stdout).expect("current copilot json");
-    assert_eq!(current_copilot_stdout["component"], "copilot");
-    assert_eq!(current_copilot_stdout["installed"], true);
-    assert_eq!(current_copilot_stdout["version"], copilot_stdout["version"]);
+    let copilot_marker =
+        std::fs::read_to_string(github_dir.join("extensions/kast/.kast-copilot-version"))
+            .expect("copilot marker");
+    assert_eq!(copilot_marker.trim(), copilot_stdout["version"]);
 }
 
 #[test]
@@ -2570,15 +2654,6 @@ fn archive_install_writes_config_owned_install_state() {
     assert!(config.contains("binaryPath = "), "{config}");
     assert!(!home.join(".kast/.manifest.json").exists());
 
-    let info = kast(&home, &config_home)
-        .args(["--output", "json", "info"])
-        .output()
-        .expect("info");
-    assert!(info.status.success());
-    let stdout = String::from_utf8_lossy(&info.stdout);
-    assert!(stdout.contains("\"configPath\""), "{stdout}");
-    assert!(stdout.contains("\"install\""), "{stdout}");
-
     let doctor = kast(&home, &config_home)
         .args(["--output", "json", "doctor"])
         .output()
@@ -2589,22 +2664,6 @@ fn archive_install_writes_config_owned_install_state() {
         String::from_utf8_lossy(&doctor.stdout),
         String::from_utf8_lossy(&doctor.stderr)
     );
-
-    let uninstall = kast(&home, &config_home)
-        .args(["--output", "json", "uninstall"])
-        .output()
-        .expect("uninstall");
-    assert!(
-        uninstall.status.success(),
-        "uninstall should remove config-owned install state: stdout={}, stderr={}",
-        String::from_utf8_lossy(&uninstall.stdout),
-        String::from_utf8_lossy(&uninstall.stderr)
-    );
-    let stdout = String::from_utf8_lossy(&uninstall.stdout);
-    assert!(stdout.contains("\"removedInstallState\": true"), "{stdout}");
-    let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
-    assert!(!config.contains("[install]"), "{config}");
-    assert!(!home.join(".kast").exists());
 }
 
 #[test]

@@ -14,7 +14,7 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast setup`, then `kast up` |
+| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast install headless`, then `kast up` |
 | IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project; optionally launched by `kast` |
 
 ## Headless backend
@@ -22,8 +22,7 @@ your scripts and prompts don't change when you switch.
 A separate JVM process backed by packaged IDEA components. `kast up` is
 the high-level entry point. It reuses a running headless backend when one
 already serves the workspace, or auto-starts one from the configured runtime
-libraries when it doesn't. Use `kast daemon start` only when you need the
-lower-level control directly.
+libraries when it doesn't.
 
 Reach for it when:
 
@@ -37,6 +36,7 @@ Install:
 brew tap amichne/kast
 brew install kast
 kast setup
+kast install headless
 ```
 
 On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the offline
@@ -51,8 +51,8 @@ runtime libraries under
 `$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/headless-<version>/runtime-libs`.
 To use a different installation, point `backends.headless.runtimeLibsDir` at
 the installed `runtime-libs` directory and `backends.headless.ideaHome` at the
-installed headless IDEA home in `config.toml`, or pass
-`--runtime-libs-dir` to `kast daemon start`:
+installed headless IDEA home in `config.toml`. Then pass `--backend=headless`
+to runtime commands:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [backends.headless]

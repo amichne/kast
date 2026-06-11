@@ -52,16 +52,6 @@ pub struct ManagedRepo {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SelfStatusResult {
-    pub installed: bool,
-    pub config_path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub install: Option<InstallState>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
     pub installed: bool,
     pub config_path: String,
@@ -72,28 +62,6 @@ pub struct SelfDoctorResult {
     pub issues: Vec<String>,
     pub warnings: Vec<String>,
     pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SelfUninstallResult {
-    pub skipped: bool,
-    pub removed_managed_paths: Vec<String>,
-    pub cleaned_shell_rc_files: Vec<String>,
-    pub removed_install_state: bool,
-    pub removed_install_root: bool,
-    pub schema_version: u32,
-}
-
-pub fn status() -> Result<SelfStatusResult> {
-    let config_path = config::global_config_path();
-    let install = read_install_state(&config_path)?;
-    Ok(SelfStatusResult {
-        installed: install.is_some(),
-        config_path: config_path.display().to_string(),
-        install,
-        schema_version: SCHEMA_VERSION,
-    })
 }
 
 pub fn doctor() -> Result<SelfDoctorResult> {
@@ -156,49 +124,6 @@ pub fn doctor() -> Result<SelfDoctorResult> {
     })
 }
 
-pub fn uninstall() -> Result<SelfUninstallResult> {
-    let path = config::global_config_path();
-    let Some(install) = read_install_state(&path)? else {
-        return Ok(SelfUninstallResult {
-            skipped: true,
-            removed_managed_paths: vec![],
-            cleaned_shell_rc_files: vec![],
-            removed_install_state: false,
-            removed_install_root: false,
-            schema_version: SCHEMA_VERSION,
-        });
-    };
-    let global_config = config::KastConfig::load_global()?;
-    let install_root = global_config.paths.install_root;
-    let mut removed = vec![];
-    for managed_path_value in install.managed_paths {
-        let managed = managed_path(&install_root, &managed_path_value);
-        if managed.is_file() {
-            fs::remove_file(&managed)?;
-            removed.push(managed_path_value);
-        } else if managed.is_dir() {
-            fs::remove_dir_all(&managed)?;
-            removed.push(managed_path_value);
-        }
-    }
-    let removed_install_state = remove_install_state(&path)?;
-    let removed_install_root =
-        if install_root.is_dir() && fs::read_dir(&install_root)?.next().is_none() {
-            fs::remove_dir(&install_root)?;
-            true
-        } else {
-            false
-        };
-    Ok(SelfUninstallResult {
-        skipped: false,
-        removed_managed_paths: removed,
-        cleaned_shell_rc_files: vec![],
-        removed_install_state,
-        removed_install_root,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
 pub fn write_install_state(install: &InstallState) -> Result<PathBuf> {
     let path = config::global_config_path();
     let mut document = default_config_document()?;
@@ -242,32 +167,6 @@ pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
         install.version = cli::version().to_string();
     }
     write_install_state(&install)?;
-    Ok(())
-}
-
-pub fn forget_copilot_repo(github_dir: &Path) -> Result<()> {
-    let path = config::global_config_path();
-    let Some(mut install) = read_install_state(&path)? else {
-        return Ok(());
-    };
-    let repo_root = github_dir
-        .parent()
-        .unwrap_or(github_dir)
-        .to_path_buf()
-        .components()
-        .collect::<PathBuf>();
-    let repo_path = repo_root.display().to_string();
-    install.repos.retain(|repo| repo.path != repo_path);
-    if install.components.is_empty()
-        && install.backends.is_empty()
-        && install.managed_paths.is_empty()
-        && install.shell_rc_patches.is_empty()
-        && install.repos.is_empty()
-    {
-        remove_install_state(&path)?;
-    } else {
-        write_install_state(&install)?;
-    }
     Ok(())
 }
 

@@ -641,7 +641,7 @@ pub fn backend_runtime_libs_dir(
         BackendName::Idea => {
             return Err(CliError::new(
                 "DAEMON_START_ERROR",
-                "The idea backend is hosted by IDEA and cannot be launched by kast daemon start.",
+                "The idea backend is hosted by IDEA and cannot be launched as a headless runtime.",
             ));
         }
     };

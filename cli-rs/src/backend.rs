@@ -1,7 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{
-    self, BackendCommand, BackendComponent, BackendInstallArgs, BackendUninstallArgs,
-};
+use crate::cli::{self, BackendCommand, BackendComponent, BackendInstallArgs};
 use crate::config::{self, KastConfig};
 use crate::error::{CliError, Result};
 use crate::self_mgmt::{self, BackendComponentState, InstallState};
@@ -18,7 +16,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[serde(untagged)]
 pub enum BackendResult {
     Install(BackendInstallResult),
-    Uninstall(BackendUninstallResult),
 }
 
 #[derive(Debug, Serialize)]
@@ -34,15 +31,6 @@ pub struct BackendInstallResult {
     pub source_archive: String,
     pub downloaded: bool,
     pub skipped: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackendUninstallResult {
-    pub backend_name: String,
-    pub skipped: bool,
-    pub removed_paths: Vec<String>,
     pub schema_version: u32,
 }
 
@@ -78,7 +66,6 @@ impl Drop for TempTree {
 pub fn run(command: BackendCommand) -> Result<BackendResult> {
     match command {
         BackendCommand::Install(args) => install(args).map(BackendResult::Install),
-        BackendCommand::Uninstall(args) => uninstall(args).map(BackendResult::Uninstall),
     }
 }
 
@@ -135,66 +122,6 @@ fn install(args: BackendInstallArgs) -> Result<BackendInstallResult> {
         source_archive: archive.display().to_string(),
         downloaded,
         skipped,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
-fn uninstall(args: BackendUninstallArgs) -> Result<BackendUninstallResult> {
-    let config = KastConfig::load_global()?;
-    let component_name = args.backend.canonical();
-    let mut install = self_mgmt::read_global_install_state()?.unwrap_or_else(default_install_state);
-    let matching: Vec<_> = install
-        .backends
-        .iter()
-        .filter(|backend| backend.name == component_name)
-        .cloned()
-        .collect();
-    if matching.is_empty() {
-        return Ok(BackendUninstallResult {
-            backend_name: component_name.to_string(),
-            skipped: true,
-            removed_paths: vec![],
-            schema_version: SCHEMA_VERSION,
-        });
-    }
-
-    let current = current_dir(&config, args.backend);
-    let mut removed_paths = vec![];
-    remove_path_recording(&current, &mut removed_paths)?;
-    for backend in &matching {
-        remove_path_recording(Path::new(&backend.install_dir), &mut removed_paths)?;
-    }
-
-    install
-        .backends
-        .retain(|backend| backend.name != component_name);
-    install
-        .components
-        .retain(|component| component != &format!("backend:{component_name}"));
-    install.managed_paths.retain(|path| {
-        path != &relative_or_display(&config.paths.install_root, &current)
-            && matching.iter().all(|backend| {
-                path != &relative_or_display(
-                    &config.paths.install_root,
-                    Path::new(&backend.install_dir),
-                )
-            })
-    });
-    if install.components.is_empty()
-        && install.backends.is_empty()
-        && install.managed_paths.is_empty()
-        && install.shell_rc_patches.is_empty()
-        && install.repos.is_empty()
-    {
-        self_mgmt::remove_global_install_state()?;
-    } else {
-        self_mgmt::write_install_state(&install)?;
-    }
-
-    Ok(BackendUninstallResult {
-        backend_name: component_name.to_string(),
-        skipped: false,
-        removed_paths,
         schema_version: SCHEMA_VERSION,
     })
 }
@@ -580,13 +507,6 @@ fn copy_dir(source: &Path, target: &Path) -> Result<()> {
             let permissions = fs::metadata(&source_path)?.permissions();
             fs::set_permissions(&target_path, permissions)?;
         }
-    }
-    Ok(())
-}
-
-fn remove_path_recording(path: &Path, removed_paths: &mut Vec<String>) -> Result<()> {
-    if remove_path(path)? {
-        removed_paths.push(path.display().to_string());
     }
     Ok(())
 }

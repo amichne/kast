@@ -1,16 +1,15 @@
-use crate::backend::{BackendInstallResult, BackendResult, BackendUninstallResult};
+use crate::backend::BackendInstallResult;
 use crate::cli::OutputFormat;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ArchiveInstallResult, CurrentComponentResult, InstallAffectedResult,
-    InstallCopilotExtensionResult, InstallIdeaPluginResult, InstallResult, InstallShellResult,
-    InstallSkillResult, SetupResult, UninstallResult, VerifyExtensionResult,
+    ArchiveInstallResult, InstallAffectedResult, InstallCopilotExtensionResult,
+    InstallIdeaPluginResult, InstallResult, InstallShellResult, InstallSkillResult, SetupResult,
 };
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
     WorkspaceStatusResult,
 };
-use crate::self_mgmt::{SelfDoctorResult, SelfStatusResult, SelfUninstallResult};
+use crate::self_mgmt::SelfDoctorResult;
 use serde::Serialize;
 use serde_json::Value;
 use std::io;
@@ -44,13 +43,6 @@ pub fn print_error(error: &CliError, output: OutputFormat) -> Result<()> {
     Ok(())
 }
 
-pub fn print_backend_result(result: &BackendResult) -> Result<()> {
-    match result {
-        BackendResult::Install(result) => print_backend_install(result),
-        BackendResult::Uninstall(result) => print_backend_uninstall(result),
-    }
-}
-
 pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
         InstallResult::Skill(result) => print_skill_install(result),
@@ -60,13 +52,6 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
         InstallResult::Affected(result) => print_affected_install(result),
         InstallResult::Headless(result) => print_backend_install(result),
         InstallResult::Archive(result) => print_archive_install(result),
-    }
-}
-
-pub fn print_uninstall_result(result: &UninstallResult) -> Result<()> {
-    match result {
-        UninstallResult::SelfManaged(result) => print_self_uninstall(result),
-        UninstallResult::Copilot(result) => print_copilot_uninstall(result),
     }
 }
 
@@ -164,55 +149,6 @@ pub fn print_capabilities(value: &Value) -> Result<()> {
     Ok(())
 }
 
-pub fn print_current_component(result: &CurrentComponentResult) -> Result<()> {
-    println!("# Kast current {}", result.component);
-    println!();
-    println!("- Installed: {}", yes_no(result.installed));
-    if let Some(version) = &result.version {
-        println!("- Version: `{version}`");
-    }
-    print_optional("Cask token", result.cask_token.as_deref());
-    print_optional("Install directory", result.install_dir.as_deref());
-    print_optional("Target directory", result.target_dir.as_deref());
-    print_optional("Runtime libraries", result.runtime_libs_dir.as_deref());
-    print_optional("IDEA home", result.idea_home.as_deref());
-    print_warnings(&result.warnings);
-    if !result.installed {
-        println!();
-        println!("## Next steps");
-        println!("- Install it with `kast install {}`.", result.component);
-    }
-    Ok(())
-}
-
-pub fn print_self_status(result: &SelfStatusResult) -> Result<()> {
-    println!("# Kast info");
-    println!();
-    println!("- Installed: {}", yes_no(result.installed));
-    println!("- Config path: `{}`", result.config_path);
-    if let Some(install) = &result.install {
-        println!("- CLI version: `{}`", value_or_dash(&install.version));
-        println!("- Platform: `{}`", value_or_dash(&install.platform));
-        if !install.components.is_empty() {
-            println!("- Components: {}", install.components.join(", "));
-        }
-        if !install.backends.is_empty() {
-            println!();
-            println!("## Backends");
-            for backend in &install.backends {
-                println!(
-                    "- {} `{}` runtime `{}`",
-                    backend.name, backend.version, backend.runtime_libs_dir
-                );
-            }
-        }
-    } else {
-        println!();
-        println!("No install state is recorded in config.toml.");
-    }
-    Ok(())
-}
-
 pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
     println!("# Kast doctor");
     println!();
@@ -255,7 +191,9 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
 pub fn print_setup(result: &SetupResult) -> Result<()> {
     println!("# Kast setup");
     println!();
-    println!("- Repair applied: {}", yes_no(result.repair.applied));
+    if let Some(repair) = &result.repair {
+        println!("- Repair applied: {}", yes_no(repair.applied));
+    }
     if let Some(headless) = &result.headless {
         println!("- Headless backend: `{}`", headless.version);
     }
@@ -278,20 +216,6 @@ pub fn print_setup(result: &SetupResult) -> Result<()> {
     Ok(())
 }
 
-pub fn print_verify_extension(result: &VerifyExtensionResult) -> Result<()> {
-    println!("# Kast verify extension");
-    println!();
-    println!("- Version match: {}", yes_no(result.ok));
-    println!("- CLI version: `{}`", result.cli_version);
-    println!("- Extension version: `{}`", result.extension_version);
-    if !result.ok {
-        println!();
-        println!("## Next steps");
-        println!("- Reinstall the extension: `kast install copilot --force`.");
-    }
-    Ok(())
-}
-
 fn print_backend_install(result: &BackendInstallResult) -> Result<()> {
     println!("# Kast backend install");
     println!();
@@ -307,23 +231,6 @@ fn print_backend_install(result: &BackendInstallResult) -> Result<()> {
     println!("## Next steps");
     println!("- Start it: `kast up --backend={}`", result.backend_name);
     println!("- Inspect it: `kast status`");
-    Ok(())
-}
-
-fn print_backend_uninstall(result: &BackendUninstallResult) -> Result<()> {
-    println!("# Kast backend uninstall");
-    println!();
-    println!("- Backend: `{}`", result.backend_name);
-    println!("- Skipped: {}", yes_no(result.skipped));
-    if result.removed_paths.is_empty() {
-        println!("- Removed paths: none");
-    } else {
-        println!();
-        println!("## Removed paths");
-        for path in &result.removed_paths {
-            println!("- `{path}`");
-        }
-    }
     Ok(())
 }
 
@@ -348,16 +255,6 @@ fn print_copilot_install(title: &str, result: &InstallCopilotExtensionResult) ->
     println!("- Extension path: `{}`", result.installed_at);
     println!("- Version: `{}`", result.version);
     println!("- Reused existing install: {}", yes_no(result.skipped));
-    print_warnings(&result.warnings);
-    Ok(())
-}
-
-fn print_copilot_uninstall(result: &InstallCopilotExtensionResult) -> Result<()> {
-    println!("# Kast Copilot uninstall");
-    println!();
-    println!("- Extension path: `{}`", result.installed_at);
-    println!("- CLI version: `{}`", result.version);
-    println!("- Removed managed files: yes");
     print_warnings(&result.warnings);
     Ok(())
 }
@@ -439,23 +336,6 @@ fn print_affected_install(result: &InstallAffectedResult) -> Result<()> {
     }
     print_messages("Backups", &result.backups);
     print_warnings(&result.warnings);
-    Ok(())
-}
-
-fn print_self_uninstall(result: &SelfUninstallResult) -> Result<()> {
-    println!("# Kast uninstall");
-    println!();
-    println!("- Skipped: {}", yes_no(result.skipped));
-    println!(
-        "- Removed install state: {}",
-        yes_no(result.removed_install_state)
-    );
-    println!(
-        "- Removed install root: {}",
-        yes_no(result.removed_install_root)
-    );
-    print_messages("Removed managed paths", &result.removed_managed_paths);
-    print_messages("Cleaned shell rc files", &result.cleaned_shell_rc_files);
     Ok(())
 }
 

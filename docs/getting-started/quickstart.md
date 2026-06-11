@@ -43,6 +43,7 @@ session.
 
 ```console title="First-time local setup"
 kast setup
+kast install headless
 ```
 
 ```console linenums="1" title="Start the daemon"
