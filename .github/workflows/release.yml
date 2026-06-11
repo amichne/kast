@@ -200,6 +200,7 @@ jobs:
 
       - name: Run JVM tests and local publication checks
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           test
           :analysis-api:publishToMavenLocal
@@ -322,7 +323,7 @@ jobs:
             signing_args+=(-Psigning.gnupg.passphrase="$SIGNING_GPG_PASSPHRASE")
           fi
           set +e
-          ./gradlew publishAndReleaseToMavenCentral "${signing_args[@]}" \
+          ./scripts/ci-gradle-retry.sh ./gradlew publishAndReleaseToMavenCentral "${signing_args[@]}" \
             -Pkast.publish.target=release \
             -Pversion="${{ needs.prepare-release.outputs.release_version }}" \
             --no-configuration-cache \
@@ -475,6 +476,7 @@ jobs:
 
       - name: Build IDEA plugin
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :backend-idea:buildPlugin
           :backend-idea:verifyPluginStructure

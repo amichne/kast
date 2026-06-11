@@ -55,6 +55,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-provenance-merge.sh
 
+      - name: Test CI Gradle retry helper
+        shell: bash
+        run: ./.github/scripts/test-ci-gradle-retry.sh
+
       - name: Test Homebrew package renderer
         shell: bash
         run: packaging/homebrew/scripts/test-formulas.py
@@ -85,6 +89,7 @@ jobs:
 
       - name: Publish public modules to Maven local
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :build-logic:test
           :analysis-api:publishToMavenLocal
@@ -166,6 +171,7 @@ jobs:
 
       - name: Test JVM backend modules
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :analysis-api:test
           :analysis-server:test
@@ -173,7 +179,7 @@ jobs:
           :backend-headless:test
 
       - name: Build headless backend distribution
-        run: ./gradlew :backend-headless:portableDistZip
+        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip
 
       - name: Assert headless distribution excludes fat jar
         shell: bash
@@ -206,7 +212,7 @@ jobs:
 
       - name: Build agent headless backend distribution
         if: matrix.os == 'ubuntu-latest'
-        run: ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent
+        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent
 
   install-ubuntu-debian-container:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
@@ -300,7 +306,7 @@ jobs:
           path: dist
 
       - name: Build agent headless backend distribution
-        run: ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent -Pversion=9.8.7
+        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent -Pversion=9.8.7
 
       - name: Package and verify Devin runtime
         shell: bash
@@ -355,6 +361,7 @@ jobs:
 
       - name: Smoke analysis-server socket transport
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :analysis-server:test
           --tests io.github.amichne.kast.server.AnalysisServerSocketTest
@@ -384,12 +391,14 @@ jobs:
 
       - name: Test IDEA plugin
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :backend-idea:test
           -PexcludeTags=performance
 
       - name: Build and verify IDEA plugin distribution
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :backend-idea:buildPlugin
           :backend-idea:verifyPluginStructure
@@ -405,4 +414,4 @@ jobs:
           retention-days: 1
 
       - name: Run IDEA plugin performance baselines
-        run: ./gradlew :backend-idea:test -PincludeTags=performance
+        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-idea:test -PincludeTags=performance

@@ -74,6 +74,7 @@ jobs:
 
       - name: Build agent headless backend
         run: >
+          ./scripts/ci-gradle-retry.sh
           ./gradlew
           :backend-headless:portableDistZip
           -PkastHeadlessIdeaHomeProfile=agent
