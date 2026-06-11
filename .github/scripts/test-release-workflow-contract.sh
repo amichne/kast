@@ -210,6 +210,7 @@ require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central ve
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
 require_contains "$ubuntu_debian_validator" "--accept-indexing=true" "Ubuntu/Debian validator must accept servable indexing state during cold startup"
+require_contains "$ubuntu_debian_validator" 'kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --accept-indexing=true --no-auto-start=true' "Ubuntu/Debian validator capabilities smoke must accept servable indexing state"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 
 printf '%s\n' "Release workflow contract passed"

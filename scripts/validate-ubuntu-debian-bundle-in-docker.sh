@@ -117,6 +117,6 @@ docker run --rm \
       --accept-indexing=true \
       --wait-timeout-ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS}"
     kast status "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true
-    kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --no-auto-start=true
+    kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --accept-indexing=true --no-auto-start=true
     kast stop "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" || true
   '
