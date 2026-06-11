@@ -1101,10 +1101,7 @@ mod tests {
             self.launches
                 .borrow_mut()
                 .push((command.to_path_buf(), workspace_root.to_path_buf()));
-            self.launch_result
-                .borrow_mut()
-                .take()
-                .unwrap_or_else(|| Ok(()))
+            self.launch_result.borrow_mut().take().unwrap_or(Ok(()))
         }
 
         fn wait_for_servable(

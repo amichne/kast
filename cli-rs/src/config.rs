@@ -90,7 +90,7 @@ pub struct IdeaLaunchConfig {
 impl IdeaLaunchConfig {
     fn is_default(&self) -> bool {
         !self.enabled
-            && self.command == PathBuf::from("idea")
+            && self.command.as_path() == Path::new("idea")
             && self.wait_timeout_millis.get() == 90_000
             && self.require_installed_plugin
     }
@@ -1105,13 +1105,13 @@ requireInstalledPlugin = false
         config.apply(read_partial_config(&config_file).unwrap());
 
         assert_eq!(config.runtime.default_backend, RuntimeDefaultBackend::Idea);
-        assert_eq!(config.runtime.idea_launch.enabled, true);
+        assert!(config.runtime.idea_launch.enabled);
         assert_eq!(
             config.runtime.idea_launch.command,
             PathBuf::from("/usr/local/bin/idea")
         );
         assert_eq!(config.runtime.idea_launch.wait_timeout_millis.get(), 45_678);
-        assert_eq!(config.runtime.idea_launch.require_installed_plugin, false);
+        assert!(!config.runtime.idea_launch.require_installed_plugin);
     }
 
     #[test]
