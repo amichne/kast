@@ -53,8 +53,25 @@ class KastConfigTest {
     fun `defaults expose paths and cli sections`() {
         val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
 
+        assertTrue("runtime" in configFields)
         assertTrue("paths" in configFields)
         assertTrue("cli" in configFields)
+    }
+
+    @Test
+    fun `defaults expose runtime field defaults`() {
+        val config = KastConfig.defaults()
+
+        assertEquals("runtime", config.runtime.defaultBackend.section)
+        assertEquals("defaultBackend", config.runtime.defaultBackend.key)
+        assertEquals(ConfigurationDefault("auto"), config.runtime.defaultBackend.default)
+        assertEquals("auto", config.runtime.defaultBackend.value)
+        assertEquals("runtime.ideaLaunch", config.runtime.ideaLaunch.enabled.section)
+        assertEquals("enabled", config.runtime.ideaLaunch.enabled.key)
+        assertEquals(false, config.runtime.ideaLaunch.enabled.value)
+        assertEquals("idea", config.runtime.ideaLaunch.command.value)
+        assertEquals(90_000L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
+        assertEquals(true, config.runtime.ideaLaunch.requireInstalledPlugin.value)
     }
 
     @Test
@@ -131,6 +148,11 @@ class KastConfigTest {
             "profiling" to "outputDir",
             "profiling" to "otlpEndpoint",
             "profiling" to "emitManifest",
+            "runtime" to "defaultBackend",
+            "runtime.ideaLaunch" to "enabled",
+            "runtime.ideaLaunch" to "command",
+            "runtime.ideaLaunch" to "waitTimeoutMillis",
+            "runtime.ideaLaunch" to "requireInstalledPlugin",
             "backends.headless" to "enabled",
             "backends.headless" to "runtimeLibsDir",
             "backends.headless" to "ideaHome",
@@ -254,6 +276,15 @@ class KastConfigTest {
                 [server]
                 max-results = 75
 
+                [runtime]
+                default-backend = "idea"
+
+                [runtime.idea-launch]
+                enabled = true
+                command = "/Applications/IntelliJ IDEA.app/Contents/MacOS/idea"
+                wait-timeout-millis = 12345
+                require-installed-plugin = false
+
                 [cache]
                 enabled = false
 
@@ -274,6 +305,11 @@ class KastConfigTest {
         )
 
         assertEquals(75, config.server.maxResults.value)
+        assertEquals("idea", config.runtime.defaultBackend.value)
+        assertEquals(true, config.runtime.ideaLaunch.enabled.value)
+        assertEquals("/Applications/IntelliJ IDEA.app/Contents/MacOS/idea", config.runtime.ideaLaunch.command.value)
+        assertEquals(12_345L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
+        assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
         assertEquals(45_000L, config.server.requestTimeoutMillis.value)
         assertEquals(
             KastConfig.defaults().server.maxConcurrentRequests.value,
@@ -403,7 +439,13 @@ class KastConfigTest {
                     "emitManifest": false
                   },
                   "runtime": {
-                    "defaultBackend": "headless"
+                    "defaultBackend": "headless",
+                    "ideaLaunch": {
+                      "enabled": true,
+                      "command": "/usr/local/bin/idea",
+                      "waitTimeoutMillis": 45678,
+                      "requireInstalledPlugin": false
+                    }
                   },
                   "backends": {
                     "headless": {
@@ -466,6 +508,11 @@ class KastConfigTest {
         assertEquals("/tmp/profiles", config.profiling.outputDir.value)
         assertEquals("http://localhost:4317", config.profiling.otlpEndpoint.value.orNull)
         assertEquals(false, config.profiling.emitManifest.value)
+        assertEquals("headless", config.runtime.defaultBackend.value)
+        assertEquals(true, config.runtime.ideaLaunch.enabled.value)
+        assertEquals("/usr/local/bin/idea", config.runtime.ideaLaunch.command.value)
+        assertEquals(45_678L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
+        assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
         assertEquals("/opt/kast/runtime-libs", config.backends.headless.runtimeLibsDir.value.orNull)
         assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)
         assertEquals(false, config.backends.idea.enabled.value)
@@ -483,6 +530,15 @@ class KastConfigTest {
                 """
                 [server]
                 maxResults = 123
+
+                [runtime]
+                defaultBackend = "idea"
+
+                [runtime.ideaLaunch]
+                enabled = true
+                command = "$installRoot/bin/idea"
+                waitTimeoutMillis = 67890
+                requireInstalledPlugin = false
 
                 [indexing]
                 phase2PriorityDepth = 3
@@ -512,6 +568,11 @@ class KastConfigTest {
             .loadConfigOrThrow<KastConfigOverride>(listOf(configFile.toString()))
 
         val maxResults: Any? = loaded.server?.maxResults
+        val decodedDefaultBackend: Any? = loaded.runtime?.defaultBackend
+        val decodedIdeaLaunchEnabled: Any? = loaded.runtime?.ideaLaunch?.enabled
+        val decodedIdeaLaunchCommand: Any? = loaded.runtime?.ideaLaunch?.command
+        val decodedIdeaLaunchWaitTimeoutMillis: Any? = loaded.runtime?.ideaLaunch?.waitTimeoutMillis
+        val decodedIdeaLaunchRequireInstalledPlugin: Any? = loaded.runtime?.ideaLaunch?.requireInstalledPlugin
         val decodedPriorityDepth: Any? = loaded.indexing?.phase2PriorityDepth
         val decodedInstallRoot: Any? = loaded.paths?.installRoot
         val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
@@ -525,6 +586,12 @@ class KastConfigTest {
         assertEquals("server", (maxResults as ServerMaxResults).section)
         assertEquals("maxResults", maxResults.key)
         assertEquals(500, maxResults.default.unwrap)
+
+        assertEquals(RuntimeDefaultBackend("idea"), decodedDefaultBackend)
+        assertEquals(IdeaLaunchEnabled(true), decodedIdeaLaunchEnabled)
+        assertEquals(IdeaLaunchCommand("$installRoot/bin/idea"), decodedIdeaLaunchCommand)
+        assertEquals(IdeaLaunchWaitTimeoutMillis(67_890L), decodedIdeaLaunchWaitTimeoutMillis)
+        assertEquals(IdeaLaunchRequireInstalledPlugin(false), decodedIdeaLaunchRequireInstalledPlugin)
 
         assertTrue(
             decodedPriorityDepth is IndexingPhase2PriorityDepth,

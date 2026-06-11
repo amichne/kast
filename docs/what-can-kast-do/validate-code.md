@@ -25,8 +25,7 @@ before review.
     Pass one file path:
 
     ```console title="Run diagnostics on one file"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt"]}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt"]}}'
     ```
 
 === "Multiple files"
@@ -34,8 +33,7 @@ before review.
     Pass a comma-separated list:
 
     ```console title="Run diagnostics on multiple files"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","/absolute/path/to/src/main/kotlin/com/shop/PaymentGateway.kt"]}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","/absolute/path/to/src/main/kotlin/com/shop/PaymentGateway.kt"]}}'
     ```
 
 The response is a `diagnostics` array. Each entry carries the file,
@@ -77,7 +75,7 @@ next to your normal Kotlin build. Bring up a daemon, diff for
 changed `.kt` files, run diagnostics, fail on errors.
 
 ```bash title="Run diagnostics in CI"
-kast up --workspace-root="$PWD"
+kast up
 
 python3 - <<'PY'
 import json
@@ -99,9 +97,7 @@ with open("diagnostics-request.json", "w") as handle:
     json.dump(request, handle)
 PY
 
-kast rpc --request-file=diagnostics-request.json \
-  --workspace-root="$PWD" \
-  > diagnostics.json
+kast rpc --request-file=diagnostics-request.json > diagnostics.json
 
 jq -e '[.diagnostics[] | select(.severity == "ERROR")] | length == 0' diagnostics.json
 ```
@@ -119,8 +115,7 @@ what `kast` can do about it.
 === "CLI example"
 
     ```console title="Request code actions at a position"
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/code-actions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312}}}' \
-      --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/code-actions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312}}}'
     ```
 
 === "JSON-RPC request"
@@ -169,8 +164,7 @@ suggests at a position. One-shot lookup, not an editor sync — send
 a position, get back a candidate list.
 
 ```console title="Query completions at a position"
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/completions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312},"maxResults":50}}' \
-  --workspace-root="$PWD"
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/completions","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/com/shop/OrderService.kt","offset":312},"maxResults":50}}'
 ```
 
 `maxResults` caps the list; `kindFilter` narrows to specific

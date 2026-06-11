@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
+use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize)]
@@ -31,16 +32,78 @@ pub struct ServerConfig {
     pub max_concurrent_requests: u32,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_backend: Option<BackendName>,
+    #[serde(skip_serializing_if = "RuntimeDefaultBackend::is_auto")]
+    pub default_backend: RuntimeDefaultBackend,
+    #[serde(skip_serializing_if = "IdeaLaunchConfig::is_default")]
+    pub idea_launch: IdeaLaunchConfig,
 }
 
 impl RuntimeConfig {
     fn is_default(&self) -> bool {
-        self.default_backend.is_none()
+        self.default_backend.is_auto() && self.idea_launch.is_default()
+    }
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            default_backend: RuntimeDefaultBackend::Auto,
+            idea_launch: IdeaLaunchConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RuntimeDefaultBackend {
+    Auto,
+    Idea,
+    Headless,
+}
+
+impl RuntimeDefaultBackend {
+    pub fn backend_name(self) -> Option<BackendName> {
+        match self {
+            Self::Auto => None,
+            Self::Idea => Some(BackendName::Idea),
+            Self::Headless => Some(BackendName::Headless),
+        }
+    }
+
+    fn is_auto(&self) -> bool {
+        matches!(self, Self::Auto)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdeaLaunchConfig {
+    pub enabled: bool,
+    pub command: PathBuf,
+    pub wait_timeout_millis: NonZeroU64,
+    pub require_installed_plugin: bool,
+}
+
+impl IdeaLaunchConfig {
+    fn is_default(&self) -> bool {
+        !self.enabled
+            && self.command == PathBuf::from("idea")
+            && self.wait_timeout_millis.get() == 90_000
+            && self.require_installed_plugin
+    }
+}
+
+impl Default for IdeaLaunchConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            command: PathBuf::from("idea"),
+            wait_timeout_millis: NonZeroU64::new(90_000).expect("default IDEA launch timeout"),
+            require_installed_plugin: true,
+        }
     }
 }
 
@@ -168,7 +231,17 @@ struct PartialServer {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialRuntime {
-    default_backend: Option<BackendName>,
+    default_backend: Option<RuntimeDefaultBackend>,
+    idea_launch: Option<PartialIdeaLaunch>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialIdeaLaunch {
+    enabled: Option<bool>,
+    command: Option<PathBuf>,
+    wait_timeout_millis: Option<NonZeroU64>,
+    require_installed_plugin: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -415,10 +488,24 @@ impl KastConfig {
                 self.server.max_concurrent_requests = value;
             }
         }
-        if let Some(runtime) = partial.runtime
-            && let Some(value) = runtime.default_backend
-        {
-            self.runtime.default_backend = Some(value);
+        if let Some(runtime) = partial.runtime {
+            if let Some(value) = runtime.default_backend {
+                self.runtime.default_backend = value;
+            }
+            if let Some(idea_launch) = runtime.idea_launch {
+                if let Some(value) = idea_launch.enabled {
+                    self.runtime.idea_launch.enabled = value;
+                }
+                if let Some(value) = idea_launch.command {
+                    self.runtime.idea_launch.command = value;
+                }
+                if let Some(value) = idea_launch.wait_timeout_millis {
+                    self.runtime.idea_launch.wait_timeout_millis = value;
+                }
+                if let Some(value) = idea_launch.require_installed_plugin {
+                    self.runtime.idea_launch.require_installed_plugin = value;
+                }
+            }
         }
         if let Some(indexing) = partial.indexing {
             if let Some(value) = indexing.phase2_enabled {
@@ -567,7 +654,7 @@ pub fn backend_runtime_libs_dir(
 }
 
 pub fn server_launch_args(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
-    let workspace_root = normalize(args.workspace_root.clone().unwrap_or(env::current_dir()?));
+    let workspace_root = resolve_workspace_root(args.workspace_root.clone())?;
     let socket_path = args
         .socket_path
         .clone()
@@ -647,6 +734,38 @@ pub fn normalize(path: PathBuf) -> PathBuf {
     .components()
     .collect()
 }
+
+pub fn resolve_workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
+    if let Some(value) = value {
+        return Ok(normalize(value));
+    }
+    let current = env::current_dir()?;
+    Ok(find_workspace_marker_root(&current)
+        .map(normalize)
+        .unwrap_or_else(|| normalize(current)))
+}
+
+fn find_workspace_marker_root(start: &Path) -> Option<PathBuf> {
+    let mut current = Some(start);
+    while let Some(path) = current {
+        if WORKSPACE_MARKERS
+            .iter()
+            .any(|marker| path.join(marker).exists())
+        {
+            return Some(path.to_path_buf());
+        }
+        current = path.parent();
+    }
+    None
+}
+
+const WORKSPACE_MARKERS: &[&str] = &[
+    "settings.gradle.kts",
+    "settings.gradle",
+    "build.gradle.kts",
+    "build.gradle",
+    ".kast",
+];
 
 pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
     let root = normalize(workspace_root.to_path_buf());
@@ -953,7 +1072,7 @@ mod tests {
         fs::write(
             &config_file,
             r#"[runtime]
-defaultBackend = "headless"
+defaultBackend = "auto"
 "#,
         )
         .unwrap();
@@ -961,7 +1080,38 @@ defaultBackend = "headless"
         let mut config = KastConfig::defaults();
         config.apply(read_partial_config(&config_file).unwrap());
 
-        assert_eq!(config.runtime.default_backend, Some(BackendName::Headless));
+        assert_eq!(config.runtime.default_backend, RuntimeDefaultBackend::Auto);
+    }
+
+    #[test]
+    fn parses_runtime_idea_launch() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[runtime]
+defaultBackend = "idea"
+
+[runtime.ideaLaunch]
+enabled = true
+command = "/usr/local/bin/idea"
+waitTimeoutMillis = 45678
+requireInstalledPlugin = false
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert_eq!(config.runtime.default_backend, RuntimeDefaultBackend::Idea);
+        assert_eq!(config.runtime.idea_launch.enabled, true);
+        assert_eq!(
+            config.runtime.idea_launch.command,
+            PathBuf::from("/usr/local/bin/idea")
+        );
+        assert_eq!(config.runtime.idea_launch.wait_timeout_millis.get(), 45_678);
+        assert_eq!(config.runtime.idea_launch.require_installed_plugin, false);
     }
 
     #[test]

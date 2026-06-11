@@ -30,7 +30,7 @@ Defined by the `kast` analysis daemon.
 | Code | Name | Common cause |
 |------|------|-------------|
 | `-32000` | Server error | General server-side failure. Read the message for details. |
-| `-32001` | Not ready | Daemon is still indexing. Wait for `state: READY` or pass `--accept-indexing=true`. |
+| `-32001` | Not ready | Daemon is still indexing. Wait for `state: READY` before running semantic queries. |
 | `-32002` | File not found | Path doesn't exist in the workspace. Make sure it's absolute and inside the workspace root. |
 | `-32003` | Symbol not found | No symbol at the offset. Check the offset lands on an identifier. |
 | `-32004` | Conflict | File hashes don't match during apply-edits. A file changed after the plan was created. Re-plan, re-apply. |

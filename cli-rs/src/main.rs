@@ -73,7 +73,9 @@ fn requested_output_format() -> OutputFormat {
 
 fn run(cli: Cli) -> Result<i32> {
     let output_format = cli.output;
-    match cli.command.unwrap_or(Command::Help { topic: vec![] }) {
+    let command = cli.command.unwrap_or(Command::Help { topic: vec![] });
+    maybe_repair_after_cli_upgrade(&command)?;
+    match command {
         Command::Help { topic } => {
             if topic.is_empty() {
                 Cli::command().print_long_help()?;
@@ -118,7 +120,8 @@ fn run(cli: Cli) -> Result<i32> {
             println!("{response}");
             Ok(0)
         }
-        Command::Up(args) => {
+        Command::Up(mut args) => {
+            args.auto_install_headless = true;
             let result = runtime::workspace_ensure(args)?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
@@ -156,6 +159,15 @@ fn run(cli: Cli) -> Result<i32> {
         }
         Command::Demo(args) => demo::run(args),
         Command::Metrics { command } => metrics::run(command, output_format),
+        Command::Setup(args) => {
+            let result = install::setup(args)?;
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_setup(&result)?;
+            }
+            Ok(0)
+        }
         Command::Install(args)
             if matches!(args.command, Some(cli::InstallCommand::Completion(_))) =>
         {
@@ -220,6 +232,25 @@ fn run(cli: Cli) -> Result<i32> {
             Ok(if result.ok { 0 } else { 1 })
         }
     }
+}
+
+fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
+    if matches!(
+        command,
+        Command::Help { .. }
+            | Command::Version
+            | Command::Setup(_)
+            | Command::Config { .. }
+            | Command::Install(cli::InstallArgs {
+                command: Some(
+                    cli::InstallCommand::Affected(_) | cli::InstallCommand::Completion(_)
+                ),
+                ..
+            })
+    ) {
+        return Ok(());
+    }
+    install::repair_if_running_cli_version_changed().map(|_| ())
 }
 
 fn print_completion(args: cli::CompletionArgs) {

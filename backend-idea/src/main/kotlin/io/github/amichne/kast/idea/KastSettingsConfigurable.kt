@@ -4,53 +4,26 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.Configurable
-import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBTextField
-import com.intellij.ui.dsl.builder.Cell
-import com.intellij.ui.dsl.builder.Row
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.dsl.builder.selected
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JComponent
-import javax.swing.JTextField
 
 internal class KastSettingsConfigurable(
     private val project: Project,
 ) : Configurable {
     private var panel: DialogPanel? = null
 
-    private lateinit var serverMaxResults: JBTextField
-    private lateinit var serverRequestTimeoutMillis: JBTextField
-    private lateinit var serverMaxConcurrentRequests: JBTextField
-    private lateinit var indexingPhase2Enabled: JBCheckBox
-    private lateinit var indexingPhase2BatchSize: JBTextField
-    private lateinit var indexingPhase2PriorityDepth: JBTextField
-    private lateinit var indexingIdentifierIndexWaitMillis: JBTextField
-    private lateinit var indexingReferenceBatchSize: JBTextField
-    private lateinit var indexingRemoteEnabled: JBCheckBox
-    private lateinit var indexingRemoteSourceIndexUrl: JBTextField
-    private lateinit var cacheEnabled: JBCheckBox
-    private lateinit var cacheWriteDelayMillis: JBTextField
-    private lateinit var cacheSourceIndexSaveDelayMillis: JBTextField
-    private lateinit var watcherDebounceMillis: JBTextField
-    private lateinit var gradleToolingApiTimeoutMillis: JBTextField
-    private lateinit var telemetryEnabled: JBCheckBox
-    private lateinit var telemetryScopes: JBTextField
-    private lateinit var telemetryDetail: ComboBox<KastTelemetryDetailLevel>
-    private lateinit var telemetryOutputFile: TextFieldWithBrowseButton
-    private lateinit var backendsHeadlessEnabled: JBCheckBox
-    private lateinit var backendsHeadlessRuntimeLibsDir: TextFieldWithBrowseButton
-    private lateinit var backendsHeadlessIdeaHome: TextFieldWithBrowseButton
+    private lateinit var runtimeDefaultBackend: ComboBox<KastRuntimeDefaultBackendOption>
     private lateinit var backendsIdeaEnabled: JBCheckBox
-    private var loadedTelemetryDetailRaw: String? = null
+    private lateinit var cliBinaryPath: TextFieldWithBrowseButton
 
     override fun getDisplayName(): String = "Kast"
 
@@ -59,29 +32,9 @@ internal class KastSettingsConfigurable(
     override fun isModified(): Boolean {
         ensurePanel()
         val state = KastSettingsState.getInstance(project)
-        return serverMaxResults.text != state.serverMaxResults.display() ||
-            serverRequestTimeoutMillis.text != state.serverRequestTimeoutMillis.display() ||
-            serverMaxConcurrentRequests.text != state.serverMaxConcurrentRequests.display() ||
-            indexingPhase2Enabled.isSelected != (state.indexingPhase2Enabled ?: false) ||
-            indexingPhase2BatchSize.text != state.indexingPhase2BatchSize.display() ||
-            indexingPhase2PriorityDepth.text != state.indexingPhase2PriorityDepth.display() ||
-            indexingIdentifierIndexWaitMillis.text != state.indexingIdentifierIndexWaitMillis.display() ||
-            indexingReferenceBatchSize.text != state.indexingReferenceBatchSize.display() ||
-            indexingRemoteEnabled.isSelected != (state.indexingRemoteEnabled ?: false) ||
-            indexingRemoteSourceIndexUrl.text != state.indexingRemoteSourceIndexUrl.orEmpty() ||
-            cacheEnabled.isSelected != (state.cacheEnabled ?: false) ||
-            cacheWriteDelayMillis.text != state.cacheWriteDelayMillis.display() ||
-            cacheSourceIndexSaveDelayMillis.text != state.cacheSourceIndexSaveDelayMillis.display() ||
-            watcherDebounceMillis.text != state.watcherDebounceMillis.display() ||
-            gradleToolingApiTimeoutMillis.text != state.gradleToolingApiTimeoutMillis.display() ||
-            telemetryEnabled.isSelected != (state.telemetryEnabled ?: false) ||
-            telemetryScopes.text != state.telemetryScopes.orEmpty() ||
-            selectedTelemetryDetailConfigValue(state) != state.telemetryDetail ||
-            telemetryOutputFile.text != state.telemetryOutputFile.orEmpty() ||
-            backendsHeadlessEnabled.isSelected != (state.backendsHeadlessEnabled ?: false) ||
-            backendsHeadlessRuntimeLibsDir.text != state.backendsHeadlessRuntimeLibsDir.orEmpty() ||
-            backendsHeadlessIdeaHome.text != state.backendsHeadlessIdeaHome.orEmpty() ||
-            backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false)
+        return selectedRuntimeDefaultBackend().configValue != state.runtimeDefaultBackend ||
+            backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false) ||
+            cliBinaryPath.text != state.cliBinaryPath.orEmpty()
     }
 
     override fun reset() {
@@ -96,18 +49,19 @@ internal class KastSettingsConfigurable(
         ensurePanel()
         val workspaceRoot = workspaceRoot() ?: return
         val state = KastSettingsState.getInstance(project)
-        val previousServer = state.toOverride().server
         val previousBackends = state.toOverride().backends
         updateStateFromFields(state)
 
         val configPath = WorkspaceDirectoryResolver()
             .workspaceDataDirectory(workspaceRoot)
             .resolve("config.toml")
+        val existingToml = if (Files.isRegularFile(configPath)) Files.readString(configPath) else ""
+        val nextToml = mergePublicWorkspaceToml(existingToml, state)
         Files.createDirectories(configPath.parent)
-        Files.writeString(configPath, state.toWorkspaceToml())
+        Files.writeString(configPath, nextToml)
 
-        val nextOverride = state.toOverride()
-        if (previousServer != nextOverride.server || previousBackends != nextOverride.backends) {
+        val nextBackends = state.toOverride().backends
+        if (previousBackends != nextBackends) {
             KastPluginService.getInstance(project).restartServer()
         }
     }
@@ -119,220 +73,59 @@ internal class KastSettingsConfigurable(
     private fun ensurePanel(): DialogPanel = panel ?: buildPanel().also { panel = it }
 
     private fun buildPanel(): DialogPanel = panel {
-        collapsibleGroup("Server") {
-            row("Max results:") {
-                serverMaxResults = requiredIntegerTextField("Server max results").component
+        group("Runtime") {
+            row("Default backend:") {
+                runtimeDefaultBackend = comboBox(KastRuntimeDefaultBackendOption.entries.toList()).component
             }
-            row("Request timeout (ms):") {
-                serverRequestTimeoutMillis = requiredLongTextField("Server request timeout millis").component
-            }
-            row("Max concurrent requests:") {
-                serverMaxConcurrentRequests = requiredIntegerTextField("Server max concurrent requests").component
-            }
-        }
-
-        collapsibleGroup("Indexing") {
             row {
-                indexingPhase2Enabled = checkBox("Phase 2 enabled").component
-            }
-            row("Phase 2 batch size:") {
-                indexingPhase2BatchSize = requiredIntegerTextField("Indexing phase 2 batch size").component
-            }
-            row("Phase 2 priority depth:") {
-                indexingPhase2PriorityDepth = requiredIntegerTextField("Indexing phase 2 priority depth").component
-            }
-            row("Identifier index wait (ms):") {
-                indexingIdentifierIndexWaitMillis = requiredLongTextField("Identifier index wait millis").component
-            }
-            row("Reference batch size:") {
-                indexingReferenceBatchSize = requiredIntegerTextField("Indexing reference batch size").component
-            }
-            lateinit var remoteEnabledCell: Cell<JBCheckBox>
-            row {
-                remoteEnabledCell = checkBox("Remote index enabled").also { indexingRemoteEnabled = it.component }
-            }
-            row("Remote source index URL:") {
-                indexingRemoteSourceIndexUrl = textField()
-                    .enabledIf(remoteEnabledCell.selected)
-                    .component
+                backendsIdeaEnabled = checkBox("IDEA backend enabled").component
             }
         }
 
-        collapsibleGroup("Cache") {
-            row {
-                cacheEnabled = checkBox("Enabled").component
-            }
-            row("Write delay (ms):") {
-                cacheWriteDelayMillis = requiredLongTextField("Cache write delay millis").component
-            }
-            row("Source index save delay (ms):") {
-                cacheSourceIndexSaveDelayMillis = requiredLongTextField("Cache source index save delay millis").component
-            }
-        }
-
-        collapsibleGroup("Watcher") {
-            row("Debounce (ms):") {
-                watcherDebounceMillis = requiredLongTextField("Watcher debounce millis").component
-            }
-        }
-
-        collapsibleGroup("Gradle") {
-            row("Tooling API timeout (ms):") {
-                gradleToolingApiTimeoutMillis = requiredLongTextField("Gradle tooling API timeout millis").component
-            }
-        }
-
-        collapsibleGroup("Telemetry") {
-            lateinit var telemetryEnabledCell: Cell<JBCheckBox>
-            row {
-                telemetryEnabledCell = checkBox("Enabled").also { telemetryEnabled = it.component }
-            }
-            row("Scopes:") {
-                telemetryScopes = textField()
-                    .enabledIf(telemetryEnabledCell.selected)
-                    .comment("Comma-separated list, or \"all\". Valid scopes: ${canonicalTelemetryScopes()}.")
-                    .component
-            }
-            row("Detail:") {
-                telemetryDetail = comboBox(KastTelemetryDetailLevel.entries.toList())
-                    .enabledIf(telemetryEnabledCell.selected)
-                    .component
-            }
-            row("Output file:") {
-                telemetryOutputFile = textFieldWithBrowseButton(
+        group("CLI") {
+            row("Binary path:") {
+                cliBinaryPath = textFieldWithBrowseButton(
                     FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
-                        .withTitle("Select Telemetry Output File"),
+                        .withTitle("Select Kast CLI Binary"),
                     project,
-                ) { it.path }
-                    .enabledIf(telemetryEnabledCell.selected)
-                    .component
-            }
-        }
-
-        collapsibleGroup("Backends") {
-            lateinit var headlessEnabledCell: Cell<JBCheckBox>
-            row {
-                headlessEnabledCell = checkBox("Headless enabled").also { backendsHeadlessEnabled = it.component }
-            }
-            row("Runtime libs directory:") {
-                backendsHeadlessRuntimeLibsDir = textFieldWithBrowseButton(
-                    FileChooserDescriptorFactory.createSingleFolderDescriptor()
-                        .withTitle("Select Runtime Libs Directory"),
-                    project,
-                ) { it.path }
-                    .enabledIf(headlessEnabledCell.selected)
-                    .component
-            }
-            row("IDEA home:") {
-                backendsHeadlessIdeaHome = textFieldWithBrowseButton(
-                    FileChooserDescriptorFactory.createSingleFolderDescriptor()
-                        .withTitle("Select IDEA Home"),
-                    project,
-                ) { it.path }
-                    .enabledIf(headlessEnabledCell.selected)
-                    .component
-            }
-            row {
-                backendsIdeaEnabled = checkBox("IDEA enabled").component
+                ) { it.path }.component
             }
         }
     }
-
-    private fun Row.requiredIntegerTextField(label: String): Cell<JBTextField> =
-        textField()
-            .validationOnInput { field -> field.integerValidationMessage(label)?.let { error(it) } }
-            .validationOnApply { field -> field.integerValidationMessage(label)?.let { error(it) } }
-
-    private fun Row.requiredLongTextField(label: String): Cell<JBTextField> =
-        textField()
-            .validationOnInput { field -> field.longValidationMessage(label)?.let { error(it) } }
-            .validationOnApply { field -> field.longValidationMessage(label)?.let { error(it) } }
 
     private fun loadFieldsFromState() {
         val state = KastSettingsState.getInstance(project)
-        serverMaxResults.text = state.serverMaxResults.display()
-        serverRequestTimeoutMillis.text = state.serverRequestTimeoutMillis.display()
-        serverMaxConcurrentRequests.text = state.serverMaxConcurrentRequests.display()
-        indexingPhase2Enabled.isSelected = state.indexingPhase2Enabled ?: false
-        indexingPhase2BatchSize.text = state.indexingPhase2BatchSize.display()
-        indexingPhase2PriorityDepth.text = state.indexingPhase2PriorityDepth.display()
-        indexingIdentifierIndexWaitMillis.text = state.indexingIdentifierIndexWaitMillis.display()
-        indexingReferenceBatchSize.text = state.indexingReferenceBatchSize.display()
-        indexingRemoteEnabled.isSelected = state.indexingRemoteEnabled ?: false
-        indexingRemoteSourceIndexUrl.text = state.indexingRemoteSourceIndexUrl.orEmpty()
-        cacheEnabled.isSelected = state.cacheEnabled ?: false
-        cacheWriteDelayMillis.text = state.cacheWriteDelayMillis.display()
-        cacheSourceIndexSaveDelayMillis.text = state.cacheSourceIndexSaveDelayMillis.display()
-        watcherDebounceMillis.text = state.watcherDebounceMillis.display()
-        gradleToolingApiTimeoutMillis.text = state.gradleToolingApiTimeoutMillis.display()
-        telemetryEnabled.isSelected = state.telemetryEnabled ?: false
-        telemetryScopes.text = state.telemetryScopes.orEmpty()
-        loadedTelemetryDetailRaw = state.telemetryDetail
-        telemetryDetail.selectedItem = KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
-        telemetryOutputFile.text = state.telemetryOutputFile.orEmpty()
-        backendsHeadlessEnabled.isSelected = state.backendsHeadlessEnabled ?: false
-        backendsHeadlessRuntimeLibsDir.text = state.backendsHeadlessRuntimeLibsDir.orEmpty()
-        backendsHeadlessIdeaHome.text = state.backendsHeadlessIdeaHome.orEmpty()
+        runtimeDefaultBackend.selectedItem =
+            KastRuntimeDefaultBackendOption.fromConfigValue(state.runtimeDefaultBackend)
         backendsIdeaEnabled.isSelected = state.backendsIdeaEnabled ?: false
+        cliBinaryPath.text = state.cliBinaryPath.orEmpty()
     }
 
     private fun updateStateFromFields(state: KastSettingsState) {
-        state.serverMaxResults = serverMaxResults.readRequiredInt("Server max results")
-        state.serverRequestTimeoutMillis = serverRequestTimeoutMillis.readRequiredLong("Server request timeout millis")
-        state.serverMaxConcurrentRequests = serverMaxConcurrentRequests.readRequiredInt("Server max concurrent requests")
-        state.indexingPhase2Enabled = indexingPhase2Enabled.isSelected
-        state.indexingPhase2BatchSize = indexingPhase2BatchSize.readRequiredInt("Indexing phase 2 batch size")
-        state.indexingPhase2PriorityDepth = indexingPhase2PriorityDepth.readRequiredInt("Indexing phase 2 priority depth")
-        state.indexingIdentifierIndexWaitMillis = indexingIdentifierIndexWaitMillis.readRequiredLong("Identifier index wait millis")
-        state.indexingReferenceBatchSize = indexingReferenceBatchSize.readRequiredInt("Indexing reference batch size")
-        state.indexingRemoteEnabled = indexingRemoteEnabled.isSelected
-        state.indexingRemoteSourceIndexUrl = indexingRemoteSourceIndexUrl.text.takeIf(String::isNotBlank)
-        state.cacheEnabled = cacheEnabled.isSelected
-        state.cacheWriteDelayMillis = cacheWriteDelayMillis.readRequiredLong("Cache write delay millis")
-        state.cacheSourceIndexSaveDelayMillis = cacheSourceIndexSaveDelayMillis.readRequiredLong("Cache source index save delay millis")
-        state.watcherDebounceMillis = watcherDebounceMillis.readRequiredLong("Watcher debounce millis")
-        state.gradleToolingApiTimeoutMillis = gradleToolingApiTimeoutMillis.readRequiredLong("Gradle tooling API timeout millis")
-        state.telemetryEnabled = telemetryEnabled.isSelected
-        state.telemetryScopes = telemetryScopes.text.takeIf(String::isNotBlank)
-        state.telemetryDetail = selectedTelemetryDetailConfigValue(state)?.takeIf(String::isNotBlank)
-        state.telemetryOutputFile = telemetryOutputFile.text.takeIf(String::isNotBlank)
-        state.backendsHeadlessEnabled = backendsHeadlessEnabled.isSelected
-        state.backendsHeadlessRuntimeLibsDir = backendsHeadlessRuntimeLibsDir.text.takeIf(String::isNotBlank)
-        state.backendsHeadlessIdeaHome = backendsHeadlessIdeaHome.text.takeIf(String::isNotBlank)
+        state.runtimeDefaultBackend = selectedRuntimeDefaultBackend().configValue
         state.backendsIdeaEnabled = backendsIdeaEnabled.isSelected
-        loadedTelemetryDetailRaw = state.telemetryDetail
+        state.cliBinaryPath = cliBinaryPath.text.takeIf(String::isNotBlank)
     }
 
-    private fun selectedTelemetryDetailConfigValue(state: KastSettingsState): String? {
-        val selected = selectedTelemetryDetail()
-        return if (state.telemetryDetail == loadedTelemetryDetailRaw &&
-            selected == KastTelemetryDetailLevel.fromConfigValue(state.telemetryDetail)
-        ) {
-            state.telemetryDetail
-        } else {
-            selected.configValue
-        }
-    }
-
-    private fun selectedTelemetryDetail(): KastTelemetryDetailLevel =
-        telemetryDetail.selectedItem as? KastTelemetryDetailLevel ?: KastTelemetryDetailLevel.BASIC
+    private fun selectedRuntimeDefaultBackend(): KastRuntimeDefaultBackendOption =
+        runtimeDefaultBackend.selectedItem as? KastRuntimeDefaultBackendOption
+            ?: KastRuntimeDefaultBackendOption.AUTO
 
     private fun workspaceRoot(): Path? = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
 }
 
-private fun Number?.display(): String = this?.toString().orEmpty()
+private enum class KastRuntimeDefaultBackendOption(
+    val configValue: String,
+    private val label: String,
+) {
+    AUTO("auto", "Automatic"),
+    HEADLESS("headless", "Headless"),
+    IDEA("idea", "IDEA");
 
-private fun canonicalTelemetryScopes(): String =
-    IdeaTelemetryScope.entries.joinToString(", ") { it.name.lowercase().replace('_', '-') }
+    override fun toString(): String = label
 
-private fun JTextField.integerValidationMessage(label: String): String? =
-    if (text.toIntOrNull() == null) "$label must be an integer" else null
-
-private fun JTextField.longValidationMessage(label: String): String? =
-    if (text.toLongOrNull() == null) "$label must be a long integer" else null
-
-private fun JTextField.readRequiredInt(label: String): Int =
-    text.toIntOrNull() ?: throw ConfigurationException("$label must be an integer")
-
-private fun JTextField.readRequiredLong(label: String): Long =
-    text.toLongOrNull() ?: throw ConfigurationException("$label must be a long integer")
+    companion object {
+        fun fromConfigValue(value: String?): KastRuntimeDefaultBackendOption =
+            entries.firstOrNull { it.configValue == value } ?: AUTO
+    }
+}

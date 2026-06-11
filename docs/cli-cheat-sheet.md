@@ -11,10 +11,13 @@ small: lifecycle commands, install/manage commands, validation
 helpers, and `rpc` for the analysis contract. Common flags only;
 run `kast <command> --help` for the full set.
 
-Lifecycle and RPC commands take `--workspace-root`, the absolute
-path to your project root. Backend selection can be pinned with
-`--backend-name=headless` or `--backend-name=idea` where the
-command supports it.
+Lifecycle, metrics, demo, and RPC commands default to the current
+workspace. When run from a subdirectory, Kast walks up to
+`settings.gradle.kts`, `settings.gradle`, `build.gradle.kts`,
+`build.gradle`, or `.kast`. Use `--workspace-root` only when you
+need to target a different directory. Backend selection can be pinned
+with `--backend=headless` or `--backend=idea` where the command
+supports it.
 
 ## Output modes
 
@@ -23,7 +26,7 @@ see status, next steps, paths, and warnings without parsing JSON. Add
 `--output json` when automation needs the structured payload:
 
 ```console title="Machine-readable status"
-kast --output json status --workspace-root="$PWD"
+kast --output json status
 ```
 
 `kast rpc` is the exception: it is the raw JSON-RPC transport and always
@@ -37,12 +40,13 @@ command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
-| `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--workspace-root`, `--backend-name`, `--output`   |
-| `kast status`           | Report whether a backend is running and what state it is in.                 | `--workspace-root`, `--output`                     |
+| `kast setup`            | Install the headless backend and standard local integrations.                | `--force`, `--skip-shell`, `--include-copilot`     |
+| `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--backend`, `--output`                            |
+| `kast status`           | Report whether a backend is running and what state it is in.                 | `--output`                                         |
 | `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |
 | `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
-| `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--workspace-root`, `--output`                     |
-| `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--workspace-root`, `--output`                     |
+| `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--output`                                         |
+| `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--output`                                         |
 | `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 
 ## Read operations
@@ -107,13 +111,12 @@ They print readable summaries by default and preserve full rows with
 
 | Command | What it does | Common flags |
 |---------|--------------|--------------|
-| `kast metrics fan-in` | Rank symbols by incoming references. | `--workspace-root`, `--database`, `--limit`, `--output` |
-| `kast metrics fan-out` | Rank files by outgoing references. | `--workspace-root`, `--database`, `--limit`, `--output` |
-| `kast metrics dead-code` | List declarations with no inbound reference rows. | `--workspace-root`, `--file-glob`, `--folder-filter`, `--output` |
-| `kast metrics impact <symbol>` | Walk files and symbols affected by a symbol change. | `--workspace-root`, `--depth`, `--output` |
-| `kast metrics coupling` | Report cross-module references. | `--workspace-root`, `--database`, `--output` |
-| `kast metrics search <query>` | Search indexed symbols by name. | `--workspace-root`, `--limit`, `--output` |
-| `kast metrics graph <symbol>` | Open the interactive graph, or print readable/JSON output outside a TTY. | `--workspace-root`, `--depth`, `--json`, `--output` |
+| `kast metrics fan-in` | Rank symbols by incoming references. | `--database`, `--limit`, `--output` |
+| `kast metrics fan-out` | Rank files by outgoing references. | `--database`, `--limit`, `--output` |
+| `kast metrics dead-code` | List declarations with no inbound reference rows. | `--file-glob`, `--folder-filter`, `--output` |
+| `kast metrics impact <symbol>` | Walk files and symbols affected by a symbol change. | `--depth`, `--output` |
+| `kast metrics coupling` | Report cross-module references. | `--database`, `--output` |
+| `kast metrics search <query>` | Search indexed symbols by name. | `--limit`, `--output` |
 
 ## Command tiers
 

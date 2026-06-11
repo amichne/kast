@@ -4,7 +4,7 @@ use crate::error::{CliError, Result};
 use crate::install::{
     ArchiveInstallResult, CurrentComponentResult, InstallAffectedResult,
     InstallCopilotExtensionResult, InstallIdeaPluginResult, InstallResult, InstallShellResult,
-    InstallSkillResult, UninstallResult, VerifyExtensionResult,
+    InstallSkillResult, SetupResult, UninstallResult, VerifyExtensionResult,
 };
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -83,11 +83,8 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         println!("No runtime candidates were found.");
         println!();
         println!("## Next steps");
-        println!(
-            "- Start a backend: `kast up --workspace-root {}`",
-            result.workspace_root
-        );
-        println!("- Install the headless backend if needed: `kast install headless`");
+        println!("- Start a backend: `kast up`");
+        println!("- Install the headless backend and local integrations if needed: `kast setup`");
     }
     if result.selected.is_some() && result.candidates.len() > 1 {
         println!();
@@ -119,14 +116,8 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     print_candidate("Selected runtime", &result.selected);
     println!();
     println!("## Next steps");
-    println!(
-        "- Check state again: `kast status --workspace-root {}`",
-        result.workspace_root
-    );
-    println!(
-        "- Send analysis requests with `kast rpc --workspace-root {}`",
-        result.workspace_root
-    );
+    println!("- Check state again: `kast status`");
+    println!("- Send analysis requests with `kast rpc`");
     Ok(())
 }
 
@@ -234,10 +225,56 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
     );
     print_messages("Issues", &result.issues);
     print_warnings(&result.warnings);
+    if let Some(install) = &result.install {
+        println!();
+        println!("## Installed versions");
+        println!("- CLI: `{}`", value_or_dash(&install.version));
+        if !install.components.is_empty() {
+            println!("- Components: {}", install.components.join(", "));
+        }
+        for backend in &install.backends {
+            println!(
+                "- Backend {}: `{}` runtime `{}`",
+                backend.name, backend.version, backend.runtime_libs_dir
+            );
+        }
+        for repo in &install.repos {
+            println!(
+                "- Copilot repo `{}`: `{}`",
+                repo.path, repo.copilot_extension_version
+            );
+        }
+    }
     if result.ok {
         println!();
         println!("No blocking issues were found.");
     }
+    Ok(())
+}
+
+pub fn print_setup(result: &SetupResult) -> Result<()> {
+    println!("# Kast setup");
+    println!();
+    println!("- Repair applied: {}", yes_no(result.repair.applied));
+    if let Some(headless) = &result.headless {
+        println!("- Headless backend: `{}`", headless.version);
+    }
+    if let Some(shell) = &result.shell {
+        println!(
+            "- Shell integration: `{}` profile `{}`",
+            shell.shell, shell.profile
+        );
+    }
+    if let Some(skill) = &result.skill {
+        println!("- Skill: `{}`", skill.installed_at);
+    }
+    if let Some(copilot) = &result.copilot {
+        println!("- Copilot extension: `{}`", copilot.installed_at);
+    }
+    if let Some(plugin) = &result.idea_plugin {
+        println!("- IDEA plugin action: `{}`", plugin.brew_action);
+    }
+    print_warnings(&result.warnings);
     Ok(())
 }
 
@@ -268,11 +305,8 @@ fn print_backend_install(result: &BackendInstallResult) -> Result<()> {
     println!("- Reused existing install: {}", yes_no(result.skipped));
     println!();
     println!("## Next steps");
-    println!(
-        "- Start it: `kast up --backend={} --workspace-root \"$PWD\"`",
-        result.backend_name
-    );
-    println!("- Inspect it: `kast status --workspace-root \"$PWD\"`");
+    println!("- Start it: `kast up --backend={}`", result.backend_name);
+    println!("- Inspect it: `kast status`");
     Ok(())
 }
 

@@ -359,11 +359,10 @@ fn command_catalog_owns_copilot_tool_surface() {
 
 #[test]
 fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
-    let extension_source = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources/copilot-extension/extensions/kast/extension.mjs"),
-    )
-    .expect("kast extension source");
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let extension_path =
+        manifest_dir.join("resources/copilot-extension/extensions/kast/extension.mjs");
+    let extension_source = std::fs::read_to_string(&extension_path).expect("kast extension source");
 
     assert!(extension_source.contains("from \"./_shared/kast-tools.mjs\""));
     assert!(extension_source.contains("from \"./kotlin-gradle-loop/tools.mjs\""));
@@ -376,8 +375,12 @@ fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
     );
     assert!(extension_source.contains("join(REPO_ROOT, \".github\")"));
     assert!(extension_source.contains("join(HERE, \".kast-copilot-version\")"));
+    assert!(extension_source.contains("KAST_COPILOT_IDEA_AUTOSTART"));
+    assert!(extension_source.contains("--backend=idea"));
     assert!(!extension_source.contains("from \"../_shared/"));
     assert!(!extension_source.contains("--yes=true"));
+    assert!(!extension_source.contains("--accept-indexing"));
+    assert!(!extension_source.contains("open -a"));
     assert!(!extension_source.contains("join(REPO_ROOT, \".github\", \".kast-copilot-version\")"));
     assert!(
         extension_source.contains("help rpc"),
@@ -387,6 +390,15 @@ fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
         !extension_source.contains("\"method\":\"health\""),
         "resolver must not reject a valid CLI just because the backend is unavailable"
     );
+
+    let repo_extension_source =
+        std::fs::read_to_string(manifest_dir.join("../.github/extensions/kast/extension.mjs"))
+            .expect("repo-local kast extension source");
+    assert!(repo_extension_source.contains("KAST_COPILOT_IDEA_AUTOSTART"));
+    assert!(repo_extension_source.contains("--backend=idea"));
+    assert!(!repo_extension_source.contains("--yes=true"));
+    assert!(!repo_extension_source.contains("--accept-indexing"));
+    assert!(!repo_extension_source.contains("open -a"));
 }
 
 #[test]

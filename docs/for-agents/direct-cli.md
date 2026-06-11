@@ -46,13 +46,13 @@ grepping. It's a semantic declaration search.
 === "Basic search"
 
     ```console title="Find declarations by name"
-    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":"HealthCheckService","maxResults":100,"regex":false,"includeDeclarationScope":false},"id":1}' --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":"HealthCheckService","maxResults":100,"regex":false,"includeDeclarationScope":false},"id":1}'
     ```
 
 === "Regex matching"
 
     ```console title="Pattern-based matching"
-    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":".*Service$","maxResults":100,"regex":true,"includeDeclarationScope":false},"id":1}' --workspace-root="$PWD"
+    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":".*Service$","maxResults":100,"regex":true,"includeDeclarationScope":false},"id":1}'
     ```
 
 ```json hl_lines="4-5" title="Response — symbol metadata for each match"
@@ -85,14 +85,14 @@ intermediate text search.
 Small requests fit inline as JSON-RPC payloads:
 
 ```console title="Inline JSON for ad hoc queries"
-kast rpc '{"jsonrpc":"2.0","method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}' --workspace-root="$PWD"
+kast rpc '{"jsonrpc":"2.0","method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}'
 ```
 
 Complex payloads — especially `raw/apply-edits`, which needs a structured
 edit plan — go through `--request-file`:
 
 ```console title="Request file for structured payloads"
-kast rpc --workspace-root="$PWD" --request-file=/path/to/request.json
+kast rpc --request-file=/path/to/request.json
 ```
 
 `request.json` should contain the full JSON-RPC envelope, including

@@ -56,6 +56,7 @@ const REPO_ROOT = (() => {
 })();
 const RESOLVE_SCRIPT = join(HERE, "scripts", "resolve-kast.sh");
 const COPILOT_VERSION_MARKER = join(HERE, ".kast-copilot-version");
+const COPILOT_IDEA_AUTOSTART_ENV = "KAST_COPILOT_IDEA_AUTOSTART";
 
 let kastBinary = null;
 let kastVersion = null;
@@ -84,6 +85,15 @@ function readTomlKey(filePath, section, key) {
   } catch { /* file absent or unreadable */
   }
   return null;
+}
+
+function truthyEnv(name) {
+  const value = String(process.env[name] ?? "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
+function copilotBackendArg() {
+  return truthyEnv(COPILOT_IDEA_AUTOSTART_ENV) ? " --backend=idea" : "";
 }
 
 function execBash(command, env = process.env) {
@@ -205,7 +215,7 @@ async function callKast(method, params) {
     });
   }
   const request = JSON.stringify({ jsonrpc: "2.0", method, params: params ?? {}, id: 1 });
-  const cmd = `${JSON.stringify(bin)} rpc ${JSON.stringify(request)} --workspace-root=${JSON.stringify(REPO_ROOT)}`;
+  const cmd = `${JSON.stringify(bin)} rpc ${JSON.stringify(request)} --workspace-root=${JSON.stringify(REPO_ROOT)}${copilotBackendArg()}`;
   const { ok, stdout, stderr, code } = await execBash(cmd);
   const out = stdout.trim();
   if (!out) {
@@ -275,7 +285,7 @@ if (!bin) {
     { ephemeral: true },
   );
   execBash(
-    `${JSON.stringify(bin)} up --workspace-root=${JSON.stringify(REPO_ROOT)} --accept-indexing=true`,
+    `${JSON.stringify(bin)} up --workspace-root=${JSON.stringify(REPO_ROOT)}${copilotBackendArg()}`,
   ).then(({ok, stderr}) => {
     if (!ok) {
       session.log(

@@ -4,7 +4,7 @@ use crate::cli;
 use crate::cli::{
     AffectedInstallArgs, BackendComponent, BackendInstallArgs, CurrentCommand, HeadlessInstallArgs,
     IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceCurrentArgs, ResourceInstallArgs,
-    ShellInstallArgs, ShellKind, UninstallArgs, UninstallCommand,
+    SetupArgs, ShellInstallArgs, ShellKind, UninstallArgs, UninstallCommand,
 };
 use crate::config;
 use crate::error::{CliError, Result};
@@ -127,6 +127,25 @@ pub struct InstallAffectedResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SetupResult {
+    pub repair: InstallAffectedResult,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headless: Option<backend::BackendInstallResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shell: Option<InstallShellResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skill: Option<InstallSkillResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub copilot: Option<InstallCopilotExtensionResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idea_plugin: Option<InstallIdeaPluginResult>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VerifyExtensionResult {
     pub ok: bool,
     #[serde(rename = "cli_version")]
@@ -213,6 +232,84 @@ pub fn install(args: InstallArgs) -> Result<InstallResult> {
     }
 }
 
+pub fn setup(args: SetupArgs) -> Result<SetupResult> {
+    let repair = install_affected(AffectedInstallArgs {
+        apply: true,
+        jetbrains_config_root: args.jetbrains_config_root.clone(),
+    })?;
+    let headless = install_headless(HeadlessInstallArgs {
+        archive: args.headless_archive,
+        version: args.version.clone(),
+        base_url: args.base_url,
+        force: args.force,
+    })?;
+    let shell = if args.skip_shell {
+        None
+    } else {
+        Some(install_shell(ShellInstallArgs {
+            shell: args.shell,
+            profile: None,
+            source_file: None,
+            command_name: None,
+            dry_run: false,
+        })?)
+    };
+    let skill = if args.include_skill {
+        Some(install_skill(ResourceInstallArgs {
+            target_dir: args.skill_target_dir,
+            name: None,
+            force: args.force,
+        })?)
+    } else {
+        None
+    };
+    let copilot = if args.include_copilot {
+        Some(install_copilot_extension(ResourceInstallArgs {
+            target_dir: args.copilot_target_dir,
+            name: None,
+            force: args.force,
+        })?)
+    } else {
+        None
+    };
+    let idea_plugin = if args.link_jetbrains_profiles {
+        Some(install_idea_plugin(IdeaPluginInstallArgs {
+            jetbrains_config_root: args.jetbrains_config_root,
+            link_jetbrains_profiles: true,
+            download_dir: None,
+            cask_token: None,
+            force: args.force,
+            dry_run: false,
+        })?)
+    } else {
+        None
+    };
+    Ok(SetupResult {
+        repair,
+        headless: Some(headless),
+        shell,
+        skill,
+        copilot,
+        idea_plugin,
+        warnings: vec![],
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedResult>> {
+    let Some(install) = self_mgmt::read_global_install_state()? else {
+        return Ok(None);
+    };
+    if install.version.trim() == cli::version() {
+        return Ok(None);
+    }
+    install_affected(AffectedInstallArgs {
+        apply: true,
+        jetbrains_config_root: None,
+    })
+    .map(Some)
+}
+
 pub fn current(command: CurrentCommand) -> Result<CurrentComponentResult> {
     match command {
         CurrentCommand::Plugin => current_plugin(),
@@ -275,14 +372,13 @@ fn current_plugin() -> Result<CurrentComponentResult> {
     })
 }
 
-fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
+pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
     let backend_args = BackendInstallArgs {
         backend: BackendComponent::Headless,
         archive: args.archive,
         version: args.version,
         base_url: args.base_url,
         force: args.force,
-        yes: args.yes,
     };
     match backend::run(cli::BackendCommand::Install(backend_args))? {
         BackendResult::Install(result) => Ok(result),
@@ -455,6 +551,19 @@ fn repair_affected_config_state(
         return Ok(());
     };
     let mut install_changed = false;
+    if install.version.trim() != cli::version() {
+        push_affected_action(
+            result,
+            "update-install-version",
+            &config_path,
+            &format!(
+                "Record the running kast CLI version {} in install metadata.",
+                cli::version()
+            ),
+            None,
+        );
+        install_changed = true;
+    }
 
     let mut surviving_backends = vec![];
     for backend in install.backends {
@@ -624,9 +733,7 @@ fn repair_affected_skill_targets(
             install_skill(ResourceInstallArgs {
                 target_dir: Some(target_root),
                 name: Some("kast".to_string()),
-                link_name: None,
                 force: true,
-                yes: None,
             })?;
         }
     }
@@ -670,9 +777,7 @@ fn repair_affected_copilot_repos(
             install_copilot_extension(ResourceInstallArgs {
                 target_dir: Some(github_dir),
                 name: None,
-                link_name: None,
                 force: true,
-                yes: None,
             })?;
         }
     }
@@ -918,6 +1023,21 @@ fn path_exists_or_symlink(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
 }
 
+pub(crate) fn kast_idea_plugin_installed() -> Result<bool> {
+    let jetbrains_config_root = env::var_os("KAST_JETBRAINS_CONFIG_ROOT")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .map(config::normalize)
+        .unwrap_or_else(default_jetbrains_config_root);
+    kast_idea_plugin_installed_under(&jetbrains_config_root)
+}
+
+pub(crate) fn kast_idea_plugin_installed_under(jetbrains_config_root: &Path) -> Result<bool> {
+    Ok(jetbrains_plugin_dirs(jetbrains_config_root)?
+        .into_iter()
+        .any(|plugin_dir| path_exists_or_symlink(&plugin_dir.join("kast"))))
+}
+
 fn should_update_cli_binary_path(path: &Path, current_exe: &Path) -> bool {
     if !path_exists_or_symlink(path) {
         return true;
@@ -1126,7 +1246,6 @@ fn current_skill_target(args: ResourceCurrentArgs) -> PathBuf {
         .unwrap_or_else(default_skill_target_dir);
     let name = args
         .name
-        .or(args.link_name)
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     target_root.join(name)
@@ -1150,16 +1269,10 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         .unwrap_or_else(default_skill_target_dir);
     let name = args
         .name
-        .or(args.link_name)
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let skipped = install_dir(
-        &KAST_SKILL,
-        &target,
-        ".kast-version",
-        args.force || args.yes.unwrap_or(false),
-    )?;
+    let skipped = install_dir(&KAST_SKILL, &target, ".kast-version", args.force)?;
     Ok(InstallSkillResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
@@ -1691,7 +1804,7 @@ fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> 
         return Err(CliError::new(
             "INSTALL_TARGET_EXISTS",
             format!(
-                "{} already exists. Pass --yes=true to replace it.",
+                "{} already exists. Pass --force to replace it.",
                 target.display()
             ),
         ));
@@ -2226,9 +2339,7 @@ mod tests {
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
-            link_name: None,
             force: false,
-            yes: Some(false),
         };
         let first = install_skill(args.clone()).unwrap();
         assert!(!first.skipped);

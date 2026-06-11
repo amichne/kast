@@ -40,26 +40,26 @@ before it touches profiles.
 Install one backend component after the CLI is on `PATH`.
 
 ```console title="Install the headless backend"
-kast install headless
+kast setup
 ```
 
 Use the headless backend for terminal work, local automation, and CI jobs that
 do not need an IDE-hosted project model. Start it with:
 
 ```console title="Warm the headless backend"
-kast up --workspace-root="$PWD"
+kast up
 ```
 
 Use the headless backend for hosted Linux agents that need a packaged
 IDEA-backed runtime:
 
 ```console title="Install and warm the headless backend"
-kast install headless
-kast up --backend=headless --workspace-root="$PWD"
+kast setup
+kast up --backend=headless
 ```
 
-If `kast up` cannot find the selected backend, it reports the exact
-`kast install headless` command to run.
+If `kast up` cannot find the selected headless backend, it installs the
+verified release asset before starting the daemon.
 
 ## Repair affected local installs
 
@@ -81,14 +81,14 @@ kast install affected --apply
 ```
 
 Backend downloads stay explicit. If the repair removes stale backend metadata
-and you need the headless backend, run `kast install headless` afterwards.
+and you need the headless backend, run `kast setup` afterwards.
 
 ## Ubuntu/Debian bundle
 
 Use the Ubuntu/Debian bundle when a CI image, hosted agent snapshot, mirror, or
 air-gapped host should install Kast without Homebrew, Rust, Gradle, or network
 access to individual release assets. This is the offline bundle path; the normal
-interactive path is CLI first, then `kast install headless`.
+interactive path is CLI first, then `kast setup`.
 
 The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
 with a matching `.sha256` sidecar. Each bundle contains the
@@ -126,7 +126,7 @@ The installer refuses non-Ubuntu/Debian hosts, installs to
 Start the bundled backend explicitly as headless:
 
 ```bash title="Warm the Ubuntu/Debian headless backend"
-kast up --backend=headless --workspace-root="$PWD"
+kast up --backend=headless
 ```
 
 Use `scripts/package-ubuntu-debian-bundle.sh` when building the release bundle

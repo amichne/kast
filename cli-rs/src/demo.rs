@@ -18,7 +18,6 @@ use ratatui::{Frame, Terminal};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Stdout};
 use std::path::PathBuf;
@@ -435,7 +434,7 @@ fn run_symbol_demo(args: DemoArgs) -> Result<i32> {
 
 impl DemoRequest {
     fn from_args(args: DemoArgs) -> Result<Self> {
-        let workspace_root = config::normalize(args.workspace_root.unwrap_or(env::current_dir()?));
+        let workspace_root = config::resolve_workspace_root(args.workspace_root)?;
         let database = args
             .database
             .map(config::normalize)

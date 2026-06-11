@@ -66,6 +66,8 @@ pub struct SelfDoctorResult {
     pub installed: bool,
     pub config_path: String,
     pub minimum_backend_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub install: Option<InstallState>,
     pub ok: bool,
     pub issues: Vec<String>,
     pub warnings: Vec<String>,
@@ -146,6 +148,7 @@ pub fn doctor() -> Result<SelfDoctorResult> {
         installed: install.is_some(),
         config_path: config_path.display().to_string(),
         minimum_backend_version: minimum_backend_version.to_string(),
+        install,
         ok: issues.is_empty(),
         issues,
         warnings,

@@ -9,6 +9,7 @@ import java.nio.file.Path
 
 data class KastConfig(
     val server: ServerConfig,
+    val runtime: RuntimeConfig,
     val indexing: IndexingConfig,
     val cache: CacheConfig,
     val watcher: WatcherConfig,
@@ -47,6 +48,15 @@ data class KastConfig(
                     maxResults = ServerMaxResults(500),
                     requestTimeoutMillis = ServerRequestTimeoutMillis(30_000L),
                     maxConcurrentRequests = ServerMaxConcurrentRequests(4),
+                ),
+                runtime = RuntimeConfig(
+                    defaultBackend = RuntimeDefaultBackend("auto"),
+                    ideaLaunch = IdeaLaunchConfig(
+                        enabled = IdeaLaunchEnabled(false),
+                        command = IdeaLaunchCommand("idea"),
+                        waitTimeoutMillis = IdeaLaunchWaitTimeoutMillis(90_000L),
+                        requireInstalledPlugin = IdeaLaunchRequireInstalledPlugin(true),
+                    ),
                 ),
                 indexing = IndexingConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
@@ -139,6 +149,7 @@ private val runtimeConfigJson = Json {
 @Serializable
 private data class RuntimeConfigDocument(
     val server: RuntimeServerConfig? = null,
+    val runtime: RuntimeRuntimeConfig? = null,
     val indexing: RuntimeIndexingConfig? = null,
     val cache: RuntimeCacheConfig? = null,
     val watcher: RuntimeWatcherConfig? = null,
@@ -151,6 +162,7 @@ private data class RuntimeConfigDocument(
 ) {
     fun toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
         server = server?.toOverride(),
+        runtime = runtime?.toOverride(),
         indexing = indexing?.toOverride(),
         cache = cache?.toOverride(),
         watcher = watcher?.toOverride(),
@@ -160,6 +172,32 @@ private data class RuntimeConfigDocument(
         backends = backends?.toOverride(),
         paths = paths?.toOverride(),
         cli = cli?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeRuntimeConfig(
+    val defaultBackend: String? = null,
+    val ideaLaunch: RuntimeIdeaLaunchConfig? = null,
+) {
+    fun toOverride(): RuntimeConfigOverride = RuntimeConfigOverride(
+        defaultBackend = defaultBackend?.let(::RuntimeDefaultBackend),
+        ideaLaunch = ideaLaunch?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeIdeaLaunchConfig(
+    val enabled: Boolean? = null,
+    val command: String? = null,
+    val waitTimeoutMillis: Long? = null,
+    val requireInstalledPlugin: Boolean? = null,
+) {
+    fun toOverride(): IdeaLaunchConfigOverride = IdeaLaunchConfigOverride(
+        enabled = enabled?.let(::IdeaLaunchEnabled),
+        command = command?.let(::IdeaLaunchCommand),
+        waitTimeoutMillis = waitTimeoutMillis?.let(::IdeaLaunchWaitTimeoutMillis),
+        requireInstalledPlugin = requireInstalledPlugin?.let(::IdeaLaunchRequireInstalledPlugin),
     )
 }
 
@@ -407,6 +445,7 @@ private fun normalizeConfigPath(path: String): String =
 
 private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
     server = serverOverride(),
+    runtime = runtimeOverride(),
     indexing = indexingOverride(),
     cache = cacheOverride(),
     watcher = watcherOverride(),
@@ -417,6 +456,25 @@ private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = Kas
     paths = pathsOverride(),
     cli = cliOverride(),
 )
+
+private fun Map<String, String>.runtimeOverride(): RuntimeConfigOverride? {
+    val defaultBackend = stringValue("runtime.defaultbackend")?.let(::RuntimeDefaultBackend)
+    val ideaLaunch = ideaLaunchOverride()
+    return takeIfAny(defaultBackend, ideaLaunch) {
+        RuntimeConfigOverride(defaultBackend, ideaLaunch)
+    }
+}
+
+private fun Map<String, String>.ideaLaunchOverride(): IdeaLaunchConfigOverride? {
+    val enabled = booleanValue("runtime.idealaunch.enabled")?.let(::IdeaLaunchEnabled)
+    val command = stringValue("runtime.idealaunch.command")?.let(::IdeaLaunchCommand)
+    val waitTimeoutMillis = longValue("runtime.idealaunch.waittimeoutmillis")?.let(::IdeaLaunchWaitTimeoutMillis)
+    val requireInstalledPlugin =
+        booleanValue("runtime.idealaunch.requireinstalledplugin")?.let(::IdeaLaunchRequireInstalledPlugin)
+    return takeIfAny(enabled, command, waitTimeoutMillis, requireInstalledPlugin) {
+        IdeaLaunchConfigOverride(enabled, command, waitTimeoutMillis, requireInstalledPlugin)
+    }
+}
 
 private fun Map<String, String>.serverOverride(): ServerConfigOverride? {
     val maxResults = intValue("server.maxresults")?.let(::ServerMaxResults)
@@ -558,6 +616,18 @@ data class ServerConfig(
     val maxConcurrentRequests: ServerMaxConcurrentRequests,
 )
 
+data class RuntimeConfig(
+    val defaultBackend: RuntimeDefaultBackend,
+    val ideaLaunch: IdeaLaunchConfig,
+)
+
+data class IdeaLaunchConfig(
+    val enabled: IdeaLaunchEnabled,
+    val command: IdeaLaunchCommand,
+    val waitTimeoutMillis: IdeaLaunchWaitTimeoutMillis,
+    val requireInstalledPlugin: IdeaLaunchRequireInstalledPlugin,
+)
+
 data class IndexingConfig(
     val phase2Enabled: IndexingPhase2Enabled,
     val phase2BatchSize: IndexingPhase2BatchSize,
@@ -634,6 +704,7 @@ data class CliConfig(
 
 data class KastConfigOverride(
     val server: ServerConfigOverride? = null,
+    val runtime: RuntimeConfigOverride? = null,
     val indexing: IndexingConfigOverride? = null,
     val cache: CacheConfigOverride? = null,
     val watcher: WatcherConfigOverride? = null,
@@ -643,6 +714,18 @@ data class KastConfigOverride(
     val backends: BackendsConfigOverride? = null,
     val paths: PathsConfigOverride? = null,
     val cli: CliConfigOverride? = null,
+)
+
+data class RuntimeConfigOverride(
+    val defaultBackend: RuntimeDefaultBackend? = null,
+    val ideaLaunch: IdeaLaunchConfigOverride? = null,
+)
+
+data class IdeaLaunchConfigOverride(
+    val enabled: IdeaLaunchEnabled? = null,
+    val command: IdeaLaunchCommand? = null,
+    val waitTimeoutMillis: IdeaLaunchWaitTimeoutMillis? = null,
+    val requireInstalledPlugin: IdeaLaunchRequireInstalledPlugin? = null,
 )
 
 data class ServerConfigOverride(
@@ -729,6 +812,7 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
     val mergedPaths = paths.merge(override.paths)
     return copy(
         server = server.merge(override.server),
+        runtime = runtime.merge(override.runtime),
         indexing = indexing.merge(override.indexing),
         cache = cache.merge(override.cache),
         watcher = watcher.merge(override.watcher),
@@ -745,6 +829,18 @@ private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = 
     maxResults = override?.maxResults ?: maxResults,
     requestTimeoutMillis = override?.requestTimeoutMillis ?: requestTimeoutMillis,
     maxConcurrentRequests = override?.maxConcurrentRequests ?: maxConcurrentRequests,
+)
+
+private fun RuntimeConfig.merge(override: RuntimeConfigOverride?): RuntimeConfig = copy(
+    defaultBackend = override?.defaultBackend ?: defaultBackend,
+    ideaLaunch = ideaLaunch.merge(override?.ideaLaunch),
+)
+
+private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLaunchConfig = copy(
+    enabled = override?.enabled ?: enabled,
+    command = override?.command ?: command,
+    waitTimeoutMillis = override?.waitTimeoutMillis ?: waitTimeoutMillis,
+    requireInstalledPlugin = override?.requireInstalledPlugin ?: requireInstalledPlugin,
 )
 
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(

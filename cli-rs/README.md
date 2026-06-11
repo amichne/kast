@@ -14,7 +14,6 @@ analysis backend as a JVM process and keeps CLI-owned work in Rust:
 - Homebrew cask-backed IDEA plugin download and optional profile linking
 - install state recorded directly in `config.toml`
 - direct read-only `source-index.db` metrics through `rusqlite`
-- interactive metrics graph browsing through `ratatui`
 - interactive symbol walking and spatial structure demos through `ratatui`
 
 The current Rust binary supports the control-plane commands and the direct
@@ -26,12 +25,11 @@ cargo build --release
 target/release/kast --help
 target/release/kast version
 target/release/kast config init
-target/release/kast status --workspace-root=/absolute/path/to/workspace
-target/release/kast metrics fan-in --workspace-root=/absolute/path/to/workspace
-target/release/kast metrics search --workspace-root=/absolute/path/to/workspace Foo
-target/release/kast metrics graph --workspace-root=/absolute/path/to/workspace lib.Foo
-target/release/kast demo --workspace-root=/absolute/path/to/workspace --symbol lib.Foo
-target/release/kast demo --view spatial --workspace-root=/absolute/path/to/workspace --symbol lib.Foo
+target/release/kast status
+target/release/kast metrics fan-in
+target/release/kast metrics search Foo
+target/release/kast demo --symbol lib.Foo
+target/release/kast demo --view spatial --symbol lib.Foo
 ```
 
 The monorepo release workflow publishes platform-specific CLI zips named

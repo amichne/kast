@@ -12,7 +12,7 @@ planned edit is safe to apply.
 `kast` has two independent runtime modes:
 
 - **Headless CLI + backend** — install the `kast` CLI and run
-  `kast install headless` for a packaged IDEA-backed runtime.
+  `kast setup` for a packaged IDEA-backed runtime and local integrations.
   Works in terminals, CI, hosted agents, and images that need an offline,
   self-contained Ubuntu/Debian bundle.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
@@ -38,11 +38,11 @@ brew tap amichne/kast
 brew install kast
 ```
 
-Install exactly one backend for the runtime you want:
+Set up the backend and standard local integrations for the runtime you want:
 
 ```console
 # Terminal, CI, or agent runtime without an IDE
-kast install headless
+kast setup
 ```
 
 Use the Ubuntu/Debian installer when Homebrew is not available, or when the
@@ -61,12 +61,14 @@ Warm the configured backend before running analysis commands. Headless is the
 default non-IDE backend:
 
 ```console
+# First-time setup
+kast setup
+
 # Start or warm the backend
-kast up --backend=headless --workspace-root=/path/to/your/workspace
+kast up --backend=headless
 
 # Once READY, send JSON-RPC requests through the CLI
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/path/to/your/workspace/src/App.kt","offset":42}}}' \
-  --workspace-root=/path/to/your/workspace
+kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/path/to/your/workspace/src/App.kt","offset":42}}}'
 ```
 
 If IDEA or Android Studio with the plugin is already open on the project, skip

@@ -9,7 +9,6 @@ use crate::error::{CliError, Result};
 use crate::metrics_database::{DirectMetricsError, DirectResult, FileFilter, MetricsDatabase};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::env;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -359,7 +358,7 @@ impl MetricsRequest {
         symbol: Option<String>,
         depth: usize,
     ) -> Result<Self> {
-        let workspace_root = config::normalize(scope.workspace_root.unwrap_or(env::current_dir()?));
+        let workspace_root = config::resolve_workspace_root(scope.workspace_root)?;
         let database = scope
             .database
             .map(config::normalize)
@@ -393,12 +392,8 @@ impl MetricsRequest {
                 ));
             }
         };
-        let workspace_root = config::normalize(
-            params
-                .workspace_root
-                .or(workspace_root_arg)
-                .unwrap_or(env::current_dir()?),
-        );
+        let workspace_root =
+            config::resolve_workspace_root(params.workspace_root.or(workspace_root_arg))?;
         let database = config::workspace_database_path(&workspace_root)?;
         Ok(Self {
             workspace_root,

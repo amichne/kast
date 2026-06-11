@@ -6,7 +6,7 @@ internal class InstallSkillAction : KastInstallAction() {
     override fun buildArgs(workspaceRoot: Path): List<String> = listOf(
         "install",
         "skill",
-        "--yes=true",
+        "--force",
     )
 
     override fun successMessage(workspaceRoot: Path): String =
