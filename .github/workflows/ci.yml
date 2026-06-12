@@ -43,6 +43,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-kast-hooks.sh
 
+      - name: Test Kast Copilot plugin package
+        shell: bash
+        run: ./.github/scripts/test-kast-copilot-plugin.sh
+
       - name: Test workspace repo coordination
         shell: bash
         run: ./.github/scripts/test-workspace-sync-status.sh
