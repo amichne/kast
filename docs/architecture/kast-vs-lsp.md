@@ -19,10 +19,10 @@ LSP optimizes for the human at the keyboard. `kast` optimizes for
 the caller that needs proof. Different audience, different
 guarantees.
 
-Kast now also exposes a read-only LSP adapter with
+Kast now also exposes an LSP adapter with
 `kast lsp --stdio`. That adapter does not replace the native Kast
-contract; it translates standard LSP navigation requests into the
-existing compiler-backed `raw/*` RPC methods.
+contract; it translates standard LSP navigation and prepared rename
+requests into the existing compiler-backed `raw/*` RPC methods.
 
 | Concern | LSP | Kast |
 |---------|-----|------|
@@ -47,11 +47,12 @@ LSP servers tune for low latency and incremental updates tied to
 the editing session. They don't prove completeness because the
 human can see the code and judge.
 
-Use `kast lsp --stdio` when a standard LSP client needs read-only
-Kotlin navigation from Kast: definition, references, hover, document
-symbols, workspace symbols, implementations, call hierarchy, and type
-hierarchy. The adapter advertises only backend-supported read
-capabilities and does not expose rename or other write operations.
+Use `kast lsp --stdio` when a standard LSP client needs Kotlin
+navigation from Kast: definition, references, hover, document symbols,
+workspace symbols, implementations, call hierarchy, type hierarchy, and
+prepared rename. The adapter advertises only backend-supported
+capabilities; rename is planned through Kast's `raw/rename` dry-run
+flow before the LSP client applies the returned `WorkspaceEdit`.
 
 ## Where kast fits
 
@@ -95,10 +96,10 @@ LSP's `WorkspaceEdit` describes changes the editor should apply.
 The edit lands in the editor's undo buffer. No built-in conflict
 detection — the editor trusts the server.
 
-`kast` uses a two-phase plan-and-apply. Rename returns an edit plan
-with SHA-256 file hashes. You review, you apply. If anything
-changed in between, `kast` rejects the apply with a clear conflict
-error.
+`kast` uses a two-phase plan-and-apply. Native RPC rename returns an
+edit plan with SHA-256 file hashes. The LSP adapter uses the same
+compiler-backed rename planner and exposes the planned edits as a
+`WorkspaceEdit` for LSP clients.
 
 ### Session lifecycle
 
@@ -114,7 +115,8 @@ Yes. Plenty of teams run an LSP-based Kotlin server in their
 editors for real-time editing, and `kast` in CI and agent workflows
 for automated analysis. They don't conflict — they solve different
 problems. `kast lsp --stdio` is the bridge for clients that can
-consume LSP but should still receive Kast's compiler-grounded facts.
+consume LSP but should still receive Kast's compiler-grounded facts and
+rename plans.
 
 ## Next steps
 

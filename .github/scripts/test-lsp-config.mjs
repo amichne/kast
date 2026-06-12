@@ -86,6 +86,7 @@ if (initialize.error) {
   assert(capabilities && typeof capabilities === "object", "initialize result must include capabilities");
   assert(capabilities.textDocumentSync?.openClose === true, "textDocumentSync.openClose must be true");
   assert(capabilities.workspaceSymbolProvider !== undefined, "workspaceSymbolProvider must be advertised");
+  assert(capabilities.renameProvider?.prepareProvider === true, "Kast LSP must advertise prepared rename when supported");
 }
 
 let workspaceSymbol = null;

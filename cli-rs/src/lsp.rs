@@ -209,6 +209,7 @@ impl<C: KastRpcClient> LspServer<C> {
     }
 
     fn initialize(&mut self, params: Value) -> LspResult<Value> {
+        let initialization_options = initialization_options(&params)?;
         let workspace_root = match self.rpc.initial_workspace_root() {
             Some(root) => root,
             None => root_from_initialize_params(&params)?
@@ -218,6 +219,10 @@ impl<C: KastRpcClient> LspServer<C> {
         self.rpc.set_workspace_root(workspace_root.clone());
         self.workspace_root = Some(workspace_root);
         let capabilities = self.rpc.capabilities().map_err(LspError::from)?;
+        if initialization_options.fail_on_stale_index {
+            let runtime_status = self.rpc_request("runtime/status", json!({}))?;
+            reject_stale_runtime(&runtime_status)?;
+        }
         let server_capabilities = server_capabilities(&capabilities);
         self.backend_capabilities = Some(capabilities);
         Ok(json!({
@@ -796,6 +801,79 @@ impl<C: KastRpcClient> LspServer<C> {
 struct HierarchyTarget {
     file_path: String,
     offset: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct LspInitializationOptions {
+    fail_on_stale_index: bool,
+}
+
+fn initialization_options(params: &Value) -> LspResult<LspInitializationOptions> {
+    let Some(options) = params.get("initializationOptions") else {
+        return Ok(LspInitializationOptions::default());
+    };
+    if options.is_null() {
+        return Ok(LspInitializationOptions::default());
+    }
+    let options = options
+        .as_object()
+        .ok_or_else(|| LspError::invalid_params("initializationOptions must be an object"))?;
+
+    if let Some(index_mode) = options.get("indexMode") {
+        let index_mode = index_mode.as_str().ok_or_else(|| {
+            LspError::invalid_params("initializationOptions.indexMode must be a string")
+        })?;
+        if index_mode != "compiler-backed" {
+            return Err(LspError::invalid_params(format!(
+                "unsupported initializationOptions.indexMode `{index_mode}`"
+            )));
+        }
+    }
+
+    if let Some(prefer_compiler_facts) = options.get("preferCompilerFactsOverTextSearch") {
+        let prefer_compiler_facts = prefer_compiler_facts.as_bool().ok_or_else(|| {
+            LspError::invalid_params(
+                "initializationOptions.preferCompilerFactsOverTextSearch must be a boolean",
+            )
+        })?;
+        if !prefer_compiler_facts {
+            return Err(LspError::invalid_params(
+                "kast lsp requires compiler facts over text search",
+            ));
+        }
+    }
+
+    let fail_on_stale_index = match options.get("failOnStaleIndex") {
+        Some(value) => value.as_bool().ok_or_else(|| {
+            LspError::invalid_params("initializationOptions.failOnStaleIndex must be a boolean")
+        })?,
+        None => false,
+    };
+    Ok(LspInitializationOptions {
+        fail_on_stale_index,
+    })
+}
+
+fn reject_stale_runtime(status: &Value) -> LspResult<()> {
+    let state = status
+        .get("state")
+        .and_then(Value::as_str)
+        .ok_or_else(|| LspError::backend_contract("runtime/status missing state"))?;
+    let indexing = status
+        .get("indexing")
+        .and_then(Value::as_bool)
+        .ok_or_else(|| LspError::backend_contract("runtime/status missing indexing"))?;
+    if state != "READY" || indexing {
+        let message = status
+            .get("message")
+            .and_then(Value::as_str)
+            .unwrap_or("runtime is not ready");
+        return Err(LspError::server_error(
+            "LSP_STALE_INDEX",
+            format!("LSP initialization requires a ready, non-indexing runtime: {message}"),
+        ));
+    }
+    Ok(())
 }
 
 fn hierarchy_target_from_item(item: &Value) -> LspResult<HierarchyTarget> {
@@ -1501,6 +1579,37 @@ mod tests {
         assert_eq!(caps["referencesProvider"], false);
         assert_eq!(caps["typeHierarchyProvider"], false);
         assert_eq!(caps["renameProvider"], false);
+    }
+
+    #[test]
+    fn initialize_rejects_indexing_runtime_when_stale_index_must_fail_closed() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        rpc.respond(
+            "runtime/status",
+            json!({
+                "state": "INDEXING",
+                "healthy": true,
+                "active": true,
+                "indexing": true,
+                "backendName": "idea",
+                "backendVersion": "test",
+                "workspaceRoot": temp.path().display().to_string(),
+                "message": "IDEA is indexing",
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        let error = server
+            .initialize(json!({
+                "initializationOptions": {
+                    "indexMode": "compiler-backed",
+                    "failOnStaleIndex": true,
+                    "preferCompilerFactsOverTextSearch": true
+                }
+            }))
+            .expect_err("indexing runtime should fail closed");
+        assert_eq!(error.data_code, "LSP_STALE_INDEX");
     }
 
     #[test]

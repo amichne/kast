@@ -9,8 +9,8 @@
 - Treat stale, not-ready, missing, or ambiguous Kast/LSP results as blockers,
   not as permission to guess from grep or file dumps.
 - Do not perform Kotlin refactors until the symbol has been resolved and
-  references have been enumerated. Use write-capable Kast/RPC operations only
-  when the requested edit is explicit and validation is planned.
+  references have been enumerated. Use LSP rename or write-capable Kast/RPC
+  operations only when the requested edit is explicit and validation is planned.
 - If LSP is unavailable or unsupported for the operation, use the native
   `kast_*` tools next. If a bash fallback is genuinely necessary, call
   `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell

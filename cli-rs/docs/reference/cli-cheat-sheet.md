@@ -49,7 +49,7 @@ command.
 | `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
 | `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--output`                                         |
 | `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--output`                                         |
-| `kast lsp --stdio`      | Run the read-only Language Server Protocol adapter over stdio.                | `--workspace-root`, `--backend`                    |
+| `kast lsp --stdio`      | Run the Language Server Protocol adapter over stdio.                          | `--workspace-root`, `--backend`                    |
 | `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 
 ## Read operations
@@ -108,10 +108,11 @@ projection.
 
 ## Language Server Protocol
 
-`kast lsp --stdio` exposes the read-only navigation subset through
+`kast lsp --stdio` exposes Kotlin navigation and prepared rename through
 standard LSP framing while reusing the existing Kast daemon and raw
 RPC methods. It advertises only capabilities supported by the selected
-backend and never exposes write-capable LSP operations.
+backend. Rename is planned through `raw/rename` with `dryRun=true`,
+then returned to the LSP client as a `WorkspaceEdit`.
 
 | LSP method | Backing Kast method |
 |------------|---------------------|
@@ -123,6 +124,7 @@ backend and never exposes write-capable LSP operations.
 | `textDocument/implementation` | `raw/implementations` |
 | `textDocument/prepareCallHierarchy`, `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls` | `raw/resolve`, `raw/call-hierarchy` |
 | `textDocument/prepareTypeHierarchy`, `typeHierarchy/supertypes`, `typeHierarchy/subtypes` | `raw/resolve`, `raw/type-hierarchy` |
+| `textDocument/prepareRename`, `textDocument/rename` | `raw/resolve`, `raw/rename` |
 
 ## Direct source-index commands
 
@@ -147,7 +149,7 @@ its surface into two tiers — both fully supported.
 **Tier 1 (primary path):** `up`, `status`, `stop`, `capabilities`,
 `rpc`, and `lsp`. The default operational flow starts or checks a workspace
 session with readable CLI summaries, then sends explicit JSON-RPC requests or
-LSP-framed read-only requests for compiler-backed analysis.
+LSP-framed requests for compiler-backed analysis and prepared rename.
 
 **Tier 2 (specialized RPC methods):** the `raw/*`, `symbol/*`, and
 `database/*` method families. Use them for semantic navigation,
