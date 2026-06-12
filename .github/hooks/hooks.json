@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "command": ".github/hooks/kast-session-start.sh"
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "command": ".github/hooks/kast-pre-tool-use.sh"
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "command": ".github/hooks/kast-post-tool-use.sh"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "command": ".github/hooks/kast-agent-stop.sh"
+      }
+    ]
+  }
+}

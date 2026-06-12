@@ -39,6 +39,10 @@ jobs:
         shell: bash
         run: node ./.github/scripts/test-copilot-extension-contract.mjs
 
+      - name: Test Kast hook policy
+        shell: bash
+        run: ./.github/scripts/test-kast-hooks.sh
+
       - name: Test workspace repo coordination
         shell: bash
         run: ./.github/scripts/test-workspace-sync-status.sh
