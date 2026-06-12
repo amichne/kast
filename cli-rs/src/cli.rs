@@ -42,6 +42,8 @@ pub enum Command {
     Stop(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
+    /// Run a read-only Language Server Protocol adapter over stdio.
+    Lsp(LspArgs),
     /// Open the interactive source-index demo backed by source-index.db.
     Demo(DemoArgs),
     /// Query source-index metrics directly from SQLite.
@@ -319,6 +321,22 @@ pub struct DaemonStartArgs {
     /// OTLP endpoint override while profiling is enabled.
     #[arg(long)]
     pub profile_otlp_endpoint: Option<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct LspArgs {
+    /// Enable stdio transport.
+    #[arg(long)]
+    pub stdio: bool,
+    /// Absolute workspace root for daemon lifecycle and LSP requests.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
+    /// Pin LSP requests to a specific backend.
+    #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
+    pub backend_name: Option<BackendName>,
+    /// Maximum time to wait for a ready daemon when LSP needs one.
+    #[arg(long, default_value_t = 60_000)]
+    pub request_timeout_ms: u64,
 }
 
 impl From<RuntimeArgs> for DaemonStartArgs {
