@@ -31,7 +31,13 @@ assert(
 
 const command = process.env.KAST_LSP_TEST_COMMAND ?? server.command;
 const timeoutMs = process.env.KAST_LSP_REQUEST_TIMEOUT_MS ?? "1000";
+const backend = process.env.KAST_LSP_BACKEND;
+const requireInitializeSuccess = process.env.KAST_LSP_REQUIRE_INITIALIZE_SUCCESS === "1";
+const workspaceSymbolQuery = process.env.KAST_LSP_WORKSPACE_SYMBOL_QUERY;
 const args = [...server.args, "--workspace-root", repoRoot, "--request-timeout-ms", timeoutMs];
+if (backend) {
+  args.push("--backend", backend);
+}
 const child = spawn(command, args, {
   cwd: repoRoot,
   env: process.env,
@@ -62,6 +68,50 @@ const initialize = await readOneMessage(child, () => stdout, (value) => {
   stdout = value;
 });
 
+const initializeErrorCode = initialize.error?.data?.code;
+if (initialize.error) {
+  assert(!requireInitializeSuccess, `initialize failed with ${initializeErrorCode}: ${initialize.error.message}`);
+  assert(
+    [
+      "DAEMON_START_ERROR",
+      "HEADLESS_BACKEND_NOT_INSTALLED",
+      "IDEA_NOT_RUNNING",
+      "NO_BACKEND_AVAILABLE",
+      "RUNTIME_TIMEOUT",
+    ].includes(initializeErrorCode),
+    `initialize failed with unexpected code ${initializeErrorCode}`,
+  );
+} else {
+  const capabilities = initialize.result?.capabilities;
+  assert(capabilities && typeof capabilities === "object", "initialize result must include capabilities");
+  assert(capabilities.textDocumentSync?.openClose === true, "textDocumentSync.openClose must be true");
+  assert(capabilities.workspaceSymbolProvider !== undefined, "workspaceSymbolProvider must be advertised");
+}
+
+let workspaceSymbol = null;
+if (workspaceSymbolQuery) {
+  assert(!initialize.error, "workspace symbol smoke requires successful initialize");
+  writeMessage(child, {
+    jsonrpc: "2.0",
+    id: 3,
+    method: "workspace/symbol",
+    params: {
+      query: workspaceSymbolQuery,
+    },
+  });
+  const response = await readOneMessage(child, () => stdout, (value) => {
+    stdout = value;
+  });
+  assert(!response.error, `workspace/symbol failed: ${response.error?.message}`);
+  assert(Array.isArray(response.result), "workspace/symbol result must be an array");
+  assert(response.result.length > 0, `workspace/symbol returned no results for ${workspaceSymbolQuery}`);
+  workspaceSymbol = {
+    query: workspaceSymbolQuery,
+    resultCount: response.result.length,
+    first: response.result[0],
+  };
+}
+
 writeMessage(child, {
   jsonrpc: "2.0",
   id: 2,
@@ -82,31 +132,13 @@ child.stdin.end();
 const exitCode = await waitForExit(child);
 assert(exitCode === 0, `kast lsp exited with ${exitCode}: ${stderr.toString("utf8")}`);
 
-const initializeErrorCode = initialize.error?.data?.code;
-if (initialize.error) {
-  assert(
-    [
-      "DAEMON_START_ERROR",
-      "HEADLESS_BACKEND_NOT_INSTALLED",
-      "IDEA_NOT_RUNNING",
-      "NO_BACKEND_AVAILABLE",
-      "RUNTIME_TIMEOUT",
-    ].includes(initializeErrorCode),
-    `initialize failed with unexpected code ${initializeErrorCode}`,
-  );
-} else {
-  const capabilities = initialize.result?.capabilities;
-  assert(capabilities && typeof capabilities === "object", "initialize result must include capabilities");
-  assert(capabilities.textDocumentSync?.openClose === true, "textDocumentSync.openClose must be true");
-  assert(capabilities.workspaceSymbolProvider !== undefined, "workspaceSymbolProvider must be advertised");
-}
-
 console.log(JSON.stringify({
   ok: true,
   command,
   args,
   initializeErrorCode: initializeErrorCode ?? null,
   serverInfo: initialize.result?.serverInfo ?? null,
+  workspaceSymbol,
 }, null, 2));
 
 function assert(condition, message) {
