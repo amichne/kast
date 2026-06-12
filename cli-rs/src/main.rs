@@ -5,6 +5,7 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
+mod lsp;
 mod metrics;
 mod metrics_database;
 mod output;
@@ -131,6 +132,7 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(0)
         }
+        Command::Lsp(args) => lsp::run(args),
         Command::Demo(args) => demo::run(args),
         Command::Metrics { command } => metrics::run(command, output_format),
         Command::Setup(args) => {
@@ -177,6 +179,7 @@ fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
         command,
         Command::Help { .. }
             | Command::Version
+            | Command::Lsp(_)
             | Command::Setup(_)
             | Command::Install(cli::InstallArgs {
                 command: Some(

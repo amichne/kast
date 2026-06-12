@@ -19,6 +19,11 @@ LSP optimizes for the human at the keyboard. `kast` optimizes for
 the caller that needs proof. Different audience, different
 guarantees.
 
+Kast now also exposes a read-only LSP adapter with
+`kast lsp --stdio`. That adapter does not replace the native Kast
+contract; it translates standard LSP navigation requests into the
+existing compiler-backed `raw/*` RPC methods.
+
 | Concern | LSP | Kast |
 |---------|-----|------|
 | **Primary audience** | Human in an editor | Script, agent, or pipeline |
@@ -41,6 +46,12 @@ Reach for LSP when:
 LSP servers tune for low latency and incremental updates tied to
 the editing session. They don't prove completeness because the
 human can see the code and judge.
+
+Use `kast lsp --stdio` when a standard LSP client needs read-only
+Kotlin navigation from Kast: definition, references, hover, document
+symbols, workspace symbols, implementations, call hierarchy, and type
+hierarchy. The adapter advertises only backend-supported read
+capabilities and does not expose rename or other write operations.
 
 ## Where kast fits
 
@@ -102,7 +113,8 @@ agent sessions where the caller controls timing.
 Yes. Plenty of teams run an LSP-based Kotlin server in their
 editors for real-time editing, and `kast` in CI and agent workflows
 for automated analysis. They don't conflict — they solve different
-problems.
+problems. `kast lsp --stdio` is the bridge for clients that can
+consume LSP but should still receive Kast's compiler-grounded facts.
 
 ## Next steps
 

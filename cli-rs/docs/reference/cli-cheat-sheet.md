@@ -29,8 +29,9 @@ see status, next steps, paths, and warnings without parsing JSON. Add
 kast --output json status
 ```
 
-`kast rpc` is the exception: it is the raw JSON-RPC transport and always
-returns the backend contract response on stdout.
+`kast rpc` is the raw JSON-RPC transport and always returns the backend
+contract response on stdout. `kast lsp --stdio` is the Language Server
+Protocol adapter and writes LSP-framed JSON-RPC messages on stdout.
 
 ## Workspace lifecycle
 
@@ -48,6 +49,7 @@ command.
 | `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
 | `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--output`                                         |
 | `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--output`                                         |
+| `kast lsp --stdio`      | Run the read-only Language Server Protocol adapter over stdio.                | `--workspace-root`, `--backend`                    |
 | `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 
 ## Read operations
@@ -104,6 +106,24 @@ projection.
 | `symbol/write-and-validate`   | Apply generated Kotlin code and validate the result.           | request `type`, file target, edit content               |
 | `database/metrics`            | Query Rust-owned source-index metrics without a running daemon. | `metric`, optional filters                              |
 
+## Language Server Protocol
+
+`kast lsp --stdio` exposes the read-only navigation subset through
+standard LSP framing while reusing the existing Kast daemon and raw
+RPC methods. It advertises only capabilities supported by the selected
+backend and never exposes write-capable LSP operations.
+
+| LSP method | Backing Kast method |
+|------------|---------------------|
+| `textDocument/definition` | `raw/resolve` |
+| `textDocument/references` | `raw/references` |
+| `textDocument/hover` | `raw/resolve` |
+| `textDocument/documentSymbol` | `raw/file-outline` |
+| `workspace/symbol` | `raw/workspace-symbol` |
+| `textDocument/implementation` | `raw/implementations` |
+| `textDocument/prepareCallHierarchy`, `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls` | `raw/resolve`, `raw/call-hierarchy` |
+| `textDocument/prepareTypeHierarchy`, `typeHierarchy/supertypes`, `typeHierarchy/subtypes` | `raw/resolve`, `raw/type-hierarchy` |
+
 ## Direct source-index commands
 
 The `metrics` commands read `source-index.db` directly through the Rust CLI.
@@ -125,9 +145,9 @@ Not every command targets the same audience. `kast` organizes
 its surface into two tiers — both fully supported.
 
 **Tier 1 (primary path):** `up`, `status`, `stop`, `capabilities`,
-and `rpc`. The default operational flow starts or checks a workspace session
-with readable CLI summaries, then sends explicit JSON-RPC requests for
-compiler-backed analysis.
+`rpc`, and `lsp`. The default operational flow starts or checks a workspace
+session with readable CLI summaries, then sends explicit JSON-RPC requests or
+LSP-framed read-only requests for compiler-backed analysis.
 
 **Tier 2 (specialized RPC methods):** the `raw/*`, `symbol/*`, and
 `database/*` method families. Use them for semantic navigation,

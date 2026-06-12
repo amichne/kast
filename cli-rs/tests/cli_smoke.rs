@@ -358,6 +358,38 @@ fn smoke_core_cli_commands() {
         shell_help_stdout.contains("--shell"),
         "install shell help should expose --shell: {shell_help_stdout}"
     );
+
+    let lsp_help = kast(&home, &config_home)
+        .args(["lsp", "--help"])
+        .output()
+        .expect("lsp help");
+    assert!(lsp_help.status.success());
+    let lsp_help_stdout = String::from_utf8_lossy(&lsp_help.stdout);
+    for visible in [
+        "--stdio",
+        "--workspace-root",
+        "--backend",
+        "--request-timeout-ms",
+    ] {
+        assert!(
+            lsp_help_stdout.contains(visible),
+            "lsp help should expose {visible}: {lsp_help_stdout}"
+        );
+    }
+
+    let lsp_without_stdio = kast(&home, &config_home)
+        .arg("lsp")
+        .output()
+        .expect("lsp without stdio");
+    assert!(
+        !lsp_without_stdio.status.success(),
+        "lsp without --stdio should fail closed"
+    );
+    assert!(
+        String::from_utf8_lossy(&lsp_without_stdio.stderr).contains("kast lsp --stdio"),
+        "lsp usage error should name the supported command: stderr={}",
+        String::from_utf8_lossy(&lsp_without_stdio.stderr)
+    );
     assert!(
         shell_help_stdout.contains("--profile"),
         "install shell help should expose --profile: {shell_help_stdout}"
