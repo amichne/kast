@@ -86,4 +86,26 @@ for event in ["sessionStart", "preToolUse", "postToolUse", "sessionEnd"]:
     assert manifest["hooks"][event][0]["type"] == "command", event
 PY
 
+python3 - "$repo_root" <<'PY'
+import importlib.util
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+module_path = root / "kast-copilot-plugin/hooks/kast-hook-policy.py"
+spec = importlib.util.spec_from_file_location("kast_hook_policy", module_path)
+module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+
+paths = module.extract_paths_from_command(
+    "perl -pi -e s/foo/bar/g analysis-api/src/main/kotlin/Symbol.kt"
+)
+assert paths == ["analysis-api/src/main/kotlin/Symbol.kt"], paths
+
+repeated_slashes = "/" * 10_000
+assert module.extract_paths_from_command(f"cat {repeated_slashes}") == [repeated_slashes]
+PY
+
 printf 'Kast hook tests passed\n'

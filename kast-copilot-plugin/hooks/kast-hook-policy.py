@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -341,7 +342,31 @@ def collect_paths(value: Any, output: list[str]) -> None:
 def extract_paths_from_command(command: str) -> list[str]:
     if not command:
         return []
-    return re.findall(r"(?<![\w./-])(?:[./\w-]+/)+[\w.-]+", command)
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        tokens = command.split()
+    paths: list[str] = []
+    for token in tokens:
+        candidate = shell_path_token(token)
+        if candidate is not None:
+            paths.append(candidate)
+    return paths
+
+
+def shell_path_token(token: str) -> str | None:
+    candidate = token.strip().strip(",;:")
+    if not candidate or candidate.startswith("-") or "/" not in candidate:
+        return None
+    if is_shell_pattern_expression(candidate):
+        return None
+    if candidate.startswith(("http://", "https://")):
+        return None
+    return candidate
+
+
+def is_shell_pattern_expression(value: str) -> bool:
+    return value.startswith(("s/", "m/", "y/", "tr/"))
 
 
 def strip_file_uri(value: str) -> str:
