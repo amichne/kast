@@ -124,6 +124,13 @@ jobs:
         working-directory: cli-rs
         run: KAST_VERSION=0.0.0-ci cargo build --release --locked
 
+      - name: Test LSP config smoke
+        shell: bash
+        run: >
+          KAST_LSP_TEST_COMMAND="$GITHUB_WORKSPACE/cli-rs/target/release/kast"
+          KAST_LSP_REQUEST_TIMEOUT_MS=1000
+          node ./.github/scripts/test-lsp-config.mjs
+
       - name: Package Rust CLI CI asset
         shell: bash
         run: |

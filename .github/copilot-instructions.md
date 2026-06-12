@@ -2,10 +2,19 @@
 
 ## Repo-specific tooling
 
-- For Kotlin code, search, references, callers, diagnostics, or edits, use the native `kast_*` tools first. If a bash
-  fallback is genuinely necessary, call
-  `kast rpc '<jsonrpc-request>'` directly instead of relying on
-  exported shell state across tool calls.
+- For Kotlin symbol navigation, use the `kast-kotlin` LSP server configured in
+  `.github/lsp.json` before broad text search. Prefer LSP definition,
+  references, hover, workspace symbols, document symbols, implementations, and
+  call hierarchy for read-only discovery.
+- Treat stale, not-ready, missing, or ambiguous Kast/LSP results as blockers,
+  not as permission to guess from grep or file dumps.
+- Do not perform Kotlin refactors until the symbol has been resolved and
+  references have been enumerated. Use write-capable Kast/RPC operations only
+  when the requested edit is explicit and validation is planned.
+- If LSP is unavailable or unsupported for the operation, use the native
+  `kast_*` tools next. If a bash fallback is genuinely necessary, call
+  `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell
+  state across tool calls.
 - `.github/extensions/kast/extension.mjs` is the primary Copilot extension entrypoint. It resolves the `kast` CLI once
   per session, exposes the native
   `kast_*` tools, and soft-warns when generic tools target `.kt` or `.kts`

@@ -1,0 +1,23 @@
+{
+  "lspServers": {
+    "kast-kotlin": {
+      "command": "kast",
+      "args": [
+        "lsp",
+        "--stdio"
+      ],
+      "fileExtensions": {
+        ".kt": "kotlin",
+        ".kts": "kotlin"
+      },
+      "rootUri": ".",
+      "initializationTimeoutMs": 120000,
+      "requestTimeoutMs": 90000,
+      "initializationOptions": {
+        "indexMode": "compiler-backed",
+        "failOnStaleIndex": true,
+        "preferCompilerFactsOverTextSearch": true
+      }
+    }
+  }
+}
