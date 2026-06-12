@@ -826,7 +826,7 @@ type LspResult<T> = std::result::Result<T, LspError>;
 #[derive(Debug)]
 struct LspError {
     code: i64,
-    data_code: &'static str,
+    data_code: String,
     message: String,
 }
 
@@ -834,7 +834,7 @@ impl LspError {
     fn invalid_request(message: impl Into<String>) -> Self {
         Self {
             code: -32600,
-            data_code: "LSP_INVALID_REQUEST",
+            data_code: "LSP_INVALID_REQUEST".to_string(),
             message: message.into(),
         }
     }
@@ -842,7 +842,7 @@ impl LspError {
     fn invalid_params(message: impl Into<String>) -> Self {
         Self {
             code: -32602,
-            data_code: "LSP_INVALID_PARAMS",
+            data_code: "LSP_INVALID_PARAMS".to_string(),
             message: message.into(),
         }
     }
@@ -850,7 +850,7 @@ impl LspError {
     fn method_not_found(message: impl Into<String>) -> Self {
         Self {
             code: -32601,
-            data_code: "LSP_METHOD_NOT_FOUND",
+            data_code: "LSP_METHOD_NOT_FOUND".to_string(),
             message: message.into(),
         }
     }
@@ -859,10 +859,10 @@ impl LspError {
         Self::server_error("LSP_BACKEND_CONTRACT_INVALID", message)
     }
 
-    fn server_error(data_code: &'static str, message: impl Into<String>) -> Self {
+    fn server_error(data_code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             code: -32000,
-            data_code,
+            data_code: data_code.into(),
             message: message.into(),
         }
     }
@@ -870,7 +870,12 @@ impl LspError {
 
 impl From<CliError> for LspError {
     fn from(value: CliError) -> Self {
-        Self::server_error(value.code, value.message)
+        let data_code = value
+            .details
+            .get("backendCode")
+            .cloned()
+            .unwrap_or_else(|| value.code.to_string());
+        Self::server_error(data_code, value.message)
     }
 }
 
@@ -1122,6 +1127,7 @@ mod tests {
         capabilities: Value,
         calls: RefCell<Vec<(String, Value)>>,
         responses: RefCell<HashMap<String, Value>>,
+        errors: RefCell<HashMap<String, (String, String)>>,
     }
 
     impl FakeRpc {
@@ -1141,6 +1147,7 @@ mod tests {
                 }),
                 calls: RefCell::new(Vec::new()),
                 responses: RefCell::new(HashMap::new()),
+                errors: RefCell::new(HashMap::new()),
             }
         }
 
@@ -1148,6 +1155,13 @@ mod tests {
             self.responses
                 .borrow_mut()
                 .insert(method.to_string(), response);
+        }
+
+        fn fail_with_backend_code(&self, method: &str, backend_code: &str, message: &str) {
+            self.errors.borrow_mut().insert(
+                method.to_string(),
+                (backend_code.to_string(), message.to_string()),
+            );
         }
     }
 
@@ -1166,6 +1180,13 @@ mod tests {
 
         fn request(&mut self, method: &str, params: Value) -> Result<Value> {
             self.calls.borrow_mut().push((method.to_string(), params));
+            if let Some((backend_code, message)) = self.errors.borrow().get(method) {
+                let mut error = CliError::new("RPC_ERROR", format!("{backend_code}: {message}"));
+                error
+                    .details
+                    .insert("backendCode".to_string(), backend_code.clone());
+                return Err(error);
+            }
             self.responses
                 .borrow()
                 .get(method)
@@ -1184,6 +1205,74 @@ mod tests {
             .expect("read result")
             .expect("message");
         assert_eq!(decoded, value);
+    }
+
+    #[test]
+    fn lifecycle_runs_over_framed_stdio_until_exit() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        let mut server = LspServer::new(rpc);
+        let mut input = Vec::new();
+        write_message(
+            &mut input,
+            &json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": { "rootUri": path_to_file_uri(&temp.path().display().to_string()) }
+            }),
+        )
+        .expect("initialize frame");
+        write_message(
+            &mut input,
+            &json!({
+                "jsonrpc": "2.0",
+                "method": "initialized",
+                "params": {}
+            }),
+        )
+        .expect("initialized frame");
+        write_message(
+            &mut input,
+            &json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "shutdown",
+                "params": {}
+            }),
+        )
+        .expect("shutdown frame");
+        write_message(
+            &mut input,
+            &json!({
+                "jsonrpc": "2.0",
+                "method": "exit",
+                "params": {}
+            }),
+        )
+        .expect("exit frame");
+
+        let mut output = Vec::new();
+        server
+            .serve(io::Cursor::new(input), &mut output)
+            .expect("serve");
+
+        let mut output_cursor = io::Cursor::new(output);
+        let initialize_response = read_message(&mut output_cursor)
+            .expect("read initialize")
+            .expect("initialize response");
+        let shutdown_response = read_message(&mut output_cursor)
+            .expect("read shutdown")
+            .expect("shutdown response");
+        assert_eq!(initialize_response["id"], 1);
+        assert_eq!(
+            initialize_response["result"]["serverInfo"]["name"],
+            "kast-lsp"
+        );
+        assert_eq!(shutdown_response["id"], 2);
+        assert_eq!(shutdown_response["result"], Value::Null);
+        assert!(server.shutdown_requested);
+        assert!(server.exited);
     }
 
     #[test]
@@ -1262,6 +1351,205 @@ mod tests {
     }
 
     #[test]
+    fn references_map_lsp_position_and_include_declaration_to_raw_references() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        let source = "package sample\n\nfun greet() = Unit\nfun caller() = greet()\n";
+        fs::write(&file, source).expect("fixture");
+        let declaration_start = source.find("greet").expect("declaration");
+        let call_start = source.rfind("greet").expect("call");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/references",
+            json!({
+                "references": [
+                    location(&file, declaration_start, declaration_start + "greet".len()),
+                    location(&file, call_start, call_start + "greet".len())
+                ],
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let result = server
+            .references(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 3, "character": 15 },
+                "context": { "includeDeclaration": true }
+            }))
+            .expect("references");
+        let references = result.as_array().expect("references");
+        assert_eq!(references.len(), 2);
+        assert_eq!(references[1]["range"]["start"]["line"], 3);
+        assert_eq!(references[1]["range"]["start"]["character"], 15);
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls[0].0, "raw/references");
+        assert_eq!(calls[0].1["includeDeclaration"], true);
+        assert_eq!(calls[0].1["position"]["offset"], call_start);
+    }
+
+    #[test]
+    fn hover_returns_compact_symbol_markdown_from_raw_resolve() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/resolve",
+            json!({
+                "symbol": {
+                    "fqName": "sample.greet",
+                    "kind": "FUNCTION",
+                    "location": location(&file, 20, 25),
+                    "returnType": "Unit",
+                    "documentation": "Greets the caller."
+                }
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let result = server
+            .hover(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 }
+            }))
+            .expect("hover");
+        let value = result["contents"]["value"]
+            .as_str()
+            .expect("hover markdown");
+        assert!(value.contains("FUNCTION sample.greet: Unit"));
+        assert!(value.contains("Greets the caller."));
+        assert!(!value.contains("package sample"));
+    }
+
+    #[test]
+    fn document_symbols_map_nested_outline_without_file_contents() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        let source = "package sample\n\nclass Greeter {\n  fun greet() = Unit\n}\n";
+        fs::write(&file, source).expect("fixture");
+        let class_start = source.find("Greeter").expect("class");
+        let function_start = source.find("greet").expect("function");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/file-outline",
+            json!({
+                "symbols": [{
+                    "symbol": sample_symbol(
+                        &file,
+                        class_start,
+                        class_start + "Greeter".len(),
+                        "sample.Greeter",
+                        "CLASS"
+                    ),
+                    "children": [{
+                        "symbol": sample_symbol(
+                            &file,
+                            function_start,
+                            function_start + "greet".len(),
+                            "sample.Greeter.greet",
+                            "FUNCTION"
+                        ),
+                        "children": []
+                    }]
+                }],
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let result = server
+            .document_symbol(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) }
+            }))
+            .expect("document symbols");
+        let symbols = result.as_array().expect("symbols");
+        assert_eq!(symbols.len(), 1);
+        assert_eq!(symbols[0]["name"], "Greeter");
+        assert_eq!(symbols[0]["children"][0]["name"], "greet");
+        assert!(symbols[0].get("text").is_none());
+        assert_eq!(server.rpc.calls.borrow()[0].0, "raw/file-outline");
+    }
+
+    #[test]
+    fn workspace_symbols_are_bounded_and_location_oriented() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        let symbols = (0..(MAX_LSP_RESULTS + 5))
+            .map(|index| sample_symbol(&file, 20, 25, &format!("sample.Symbol{index}"), "FUNCTION"))
+            .collect::<Vec<_>>();
+        rpc.respond(
+            "raw/workspace-symbol",
+            json!({
+                "symbols": symbols,
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let result = server
+            .workspace_symbol(json!({ "query": "Symbol" }))
+            .expect("workspace symbols");
+        let symbols = result.as_array().expect("symbols");
+        assert_eq!(symbols.len(), MAX_LSP_RESULTS);
+        assert_eq!(
+            symbols[0]["location"]["uri"],
+            path_to_file_uri(&file.display().to_string())
+        );
+        assert!(symbols[0].get("text").is_none());
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls[0].0, "raw/workspace-symbol");
+        assert_eq!(calls[0].1["maxResults"], MAX_LSP_RESULTS);
+    }
+
+    #[test]
+    fn implementation_maps_symbols_to_lsp_locations() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        let source = "package sample\n\ninterface Greeter\nclass FriendlyGreeter : Greeter\n";
+        fs::write(&file, source).expect("fixture");
+        let implementation_start = source.find("FriendlyGreeter").expect("implementation");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/implementations",
+            json!({
+                "implementations": [
+                    sample_symbol(
+                        &file,
+                        implementation_start,
+                        implementation_start + "FriendlyGreeter".len(),
+                        "sample.FriendlyGreeter",
+                        "CLASS"
+                    )
+                ],
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let result = server
+            .implementation(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 10 }
+            }))
+            .expect("implementation");
+        let implementations = result.as_array().expect("implementations");
+        assert_eq!(implementations.len(), 1);
+        assert_eq!(implementations[0]["range"]["start"]["line"], 3);
+        assert_eq!(implementations[0]["range"]["start"]["character"], 6);
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls[0].0, "raw/implementations");
+        assert_eq!(calls[0].1["maxResults"], MAX_LSP_RESULTS);
+    }
+
+    #[test]
     fn hierarchy_requests_use_item_data_for_follow_up_rpc() {
         let temp = tempfile::tempdir().expect("temp");
         let workspace = temp.path();
@@ -1318,6 +1606,73 @@ mod tests {
         assert_eq!(calls[1].0, "raw/call-hierarchy");
         assert_eq!(calls[1].1["position"]["offset"], 20);
         assert_eq!(calls[1].1["direction"], "INCOMING");
+    }
+
+    #[test]
+    fn outgoing_call_hierarchy_uses_lsp_outgoing_call_shape() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        let source = "package sample\n\nfun greet() = Unit\nfun caller() = greet()\n";
+        fs::write(&file, source).expect("fixture");
+        let caller_start = source.find("caller").expect("caller");
+        let greet_start = source.find("greet").expect("greet");
+        let call_site_start = source.rfind("greet").expect("call site");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/resolve",
+            json!({
+                "symbol": sample_symbol(
+                    &file,
+                    caller_start,
+                    caller_start + "caller".len(),
+                    "sample.caller",
+                    "FUNCTION"
+                )
+            }),
+        );
+        rpc.respond(
+            "raw/call-hierarchy",
+            json!({
+                "root": {
+                    "symbol": sample_symbol(
+                        &file,
+                        caller_start,
+                        caller_start + "caller".len(),
+                        "sample.caller",
+                        "FUNCTION"
+                    ),
+                    "children": [{
+                        "symbol": sample_symbol(
+                            &file,
+                            greet_start,
+                            greet_start + "greet".len(),
+                            "sample.greet",
+                            "FUNCTION"
+                        ),
+                        "callSite": location(&file, call_site_start, call_site_start + "greet".len()),
+                        "children": []
+                    }]
+                }
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let prepared = server
+            .prepare_call_hierarchy(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 3, "character": 4 }
+            }))
+            .expect("prepare");
+        let item = prepared.as_array().expect("array")[0].clone();
+        let outgoing = server
+            .call_hierarchy(json!({ "item": item }), "OUTGOING")
+            .expect("outgoing");
+        let calls = outgoing.as_array().expect("outgoing");
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0]["to"]["name"], "greet");
+        assert!(calls[0].get("from").is_none());
+        assert_eq!(calls[0]["fromRanges"][0]["start"]["line"], 3);
     }
 
     #[test]
@@ -1397,6 +1752,55 @@ mod tests {
             }))
             .expect_err("dirty buffer should fail");
         assert_eq!(error.data_code, "LSP_UNSAVED_BUFFER_UNSUPPORTED");
+    }
+
+    #[test]
+    fn backend_ambiguity_errors_remain_explicit_in_lsp_error_data() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "fun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.fail_with_backend_code(
+            "raw/resolve",
+            "AMBIGUOUS_ANCHOR",
+            "multiple declarations matched the requested anchor",
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let error = server
+            .definition(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 0, "character": 4 }
+            }))
+            .expect_err("ambiguous symbol should fail closed");
+        assert_eq!(error.data_code, "AMBIGUOUS_ANCHOR");
+        assert!(error.message.contains("multiple declarations"));
+    }
+
+    #[test]
+    fn stale_or_not_ready_backend_errors_remain_explicit_in_lsp_error_data() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "fun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.fail_with_backend_code(
+            "raw/references",
+            "RUNTIME_TIMEOUT",
+            "Timed out waiting for headless runtime to become ready",
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let error = server
+            .references(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 0, "character": 4 },
+                "context": { "includeDeclaration": false }
+            }))
+            .expect_err("not-ready backend should fail closed");
+        assert_eq!(error.data_code, "RUNTIME_TIMEOUT");
+        assert!(error.message.contains("Timed out"));
     }
 
     fn sample_symbol(file: &Path, start: usize, end: usize, fq_name: &str, kind: &str) -> Value {
