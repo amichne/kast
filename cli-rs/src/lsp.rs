@@ -3,7 +3,7 @@ use crate::config;
 use crate::error::{CliError, Result};
 use crate::{rpc, runtime};
 use serde_json::{Map, Value, json};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -115,6 +115,7 @@ struct LspServer<C: KastRpcClient> {
     workspace_root: Option<PathBuf>,
     backend_capabilities: Option<Value>,
     documents: HashMap<PathBuf, OpenDocument>,
+    prepared_renames: HashSet<String>,
     shutdown_requested: bool,
     exited: bool,
 }
@@ -126,6 +127,7 @@ impl<C: KastRpcClient> LspServer<C> {
             workspace_root: None,
             backend_capabilities: None,
             documents: HashMap::new(),
+            prepared_renames: HashSet::new(),
             shutdown_requested: false,
             exited: false,
         }
@@ -198,6 +200,8 @@ impl<C: KastRpcClient> LspServer<C> {
             "textDocument/prepareTypeHierarchy" => self.prepare_type_hierarchy(params),
             "typeHierarchy/supertypes" => self.type_hierarchy(params, "SUPERTYPES"),
             "typeHierarchy/subtypes" => self.type_hierarchy(params, "SUBTYPES"),
+            "textDocument/prepareRename" => self.prepare_rename(params),
+            "textDocument/rename" => self.rename(params),
             _ => Err(LspError::method_not_found(format!(
                 "unsupported LSP method `{method}`"
             ))),
@@ -257,6 +261,7 @@ impl<C: KastRpcClient> LspServer<C> {
             .to_string();
         self.documents
             .insert(path, OpenDocument { text, dirty: true });
+        self.prepared_renames.clear();
         Ok(())
     }
 
@@ -267,6 +272,7 @@ impl<C: KastRpcClient> LspServer<C> {
         let uri = string_field(document, "uri")?;
         let path = self.path_from_uri(uri)?;
         self.documents.remove(&path);
+        self.prepared_renames.clear();
         Ok(())
     }
 
@@ -502,6 +508,67 @@ impl<C: KastRpcClient> LspServer<C> {
         Ok(Value::Array(mapped))
     }
 
+    fn prepare_rename(&mut self, params: Value) -> LspResult<Value> {
+        let position = self.file_position_from_text_document_params(&params)?;
+        let result = self.rpc_request("raw/resolve", json!({ "position": position.clone() }))?;
+        let symbol = result
+            .get("symbol")
+            .ok_or_else(|| LspError::backend_contract("raw/resolve missing symbol"))?;
+        validate_rename_symbol(symbol)?;
+        let location = symbol
+            .get("location")
+            .ok_or_else(|| LspError::backend_contract("resolved symbol missing location"))?;
+        let path = self.backend_path(string_field(location, "filePath")?)?;
+        if is_generated_path(&path) {
+            return Err(LspError::server_error(
+                "LSP_RENAME_GENERATED_PATH",
+                "rename is not allowed for generated or build output paths",
+            ));
+        }
+        self.prepared_renames.insert(rename_key(&position)?);
+        Ok(json!({
+            "range": self.range_value(location)?,
+            "placeholder": symbol_name(symbol)
+        }))
+    }
+
+    fn rename(&mut self, params: Value) -> LspResult<Value> {
+        let new_name = string_field(&params, "newName")?;
+        validate_new_name(new_name)?;
+        let position = self.file_position_from_text_document_params(&params)?;
+        let key = rename_key(&position)?;
+        if !self.prepared_renames.contains(&key) {
+            return Err(LspError::server_error(
+                "LSP_RENAME_NOT_PREPARED",
+                "textDocument/rename requires a successful textDocument/prepareRename for the same position",
+            ));
+        }
+        let result = self.rpc_request(
+            "raw/rename",
+            json!({
+                "position": position,
+                "newName": new_name,
+                "dryRun": true
+            }),
+        )?;
+        reject_non_exhaustive_rename(&result)?;
+        let edits = result
+            .get("edits")
+            .and_then(Value::as_array)
+            .ok_or_else(|| LspError::backend_contract("raw/rename missing edits"))?;
+        if edits.len() > MAX_LSP_RESULTS {
+            return Err(LspError::server_error(
+                "LSP_RENAME_TOO_LARGE",
+                format!(
+                    "rename produced {} edits, exceeding the LSP limit of {}",
+                    edits.len(),
+                    MAX_LSP_RESULTS
+                ),
+            ));
+        }
+        self.workspace_edit_value(edits)
+    }
+
     fn resolve_symbol(&mut self, params: Value) -> LspResult<Value> {
         let position = self.file_position_from_text_document_params(&params)?;
         let result = self.rpc_request("raw/resolve", json!({ "position": position }))?;
@@ -695,6 +762,34 @@ impl<C: KastRpcClient> LspServer<C> {
         }
         Ok(path)
     }
+
+    fn workspace_edit_value(&self, edits: &[Value]) -> LspResult<Value> {
+        let mut changes: Map<String, Value> = Map::new();
+        for edit in edits {
+            let path = self.backend_path(string_field(edit, "filePath")?)?;
+            if is_generated_path(&path) {
+                return Err(LspError::server_error(
+                    "LSP_RENAME_GENERATED_PATH",
+                    "rename edit would modify generated or build output",
+                ));
+            }
+            let uri = path_to_file_uri(&path.display().to_string());
+            let range = self.range_value(edit)?;
+            let text_edit = json!({
+                "range": range,
+                "newText": string_field(edit, "newText")?
+            });
+            changes
+                .entry(uri)
+                .or_insert_with(|| Value::Array(Vec::new()))
+                .as_array_mut()
+                .ok_or_else(|| {
+                    LspError::backend_contract("workspace edit bucket was not an array")
+                })?
+                .push(text_edit);
+        }
+        Ok(json!({ "changes": changes }))
+    }
 }
 
 #[derive(Debug)]
@@ -726,7 +821,12 @@ fn server_capabilities(backend_capabilities: &Value) -> Value {
         "workspaceSymbolProvider": supports_read(backend_capabilities, "WORKSPACE_SYMBOL_SEARCH"),
         "implementationProvider": supports_read(backend_capabilities, "IMPLEMENTATIONS"),
         "callHierarchyProvider": supports_read(backend_capabilities, "CALL_HIERARCHY"),
-        "typeHierarchyProvider": supports_read(backend_capabilities, "TYPE_HIERARCHY")
+        "typeHierarchyProvider": supports_read(backend_capabilities, "TYPE_HIERARCHY"),
+        "renameProvider": if supports_mutation(backend_capabilities, "RENAME") {
+            json!({ "prepareProvider": true })
+        } else {
+            Value::Bool(false)
+        }
     })
 }
 
@@ -739,6 +839,86 @@ fn supports_read(capabilities: &Value, capability: &str) -> bool {
                 .iter()
                 .any(|value| value.as_str() == Some(capability))
         })
+}
+
+fn supports_mutation(capabilities: &Value, capability: &str) -> bool {
+    capabilities
+        .get("mutationCapabilities")
+        .and_then(Value::as_array)
+        .is_some_and(|values| {
+            values
+                .iter()
+                .any(|value| value.as_str() == Some(capability))
+        })
+}
+
+fn validate_rename_symbol(symbol: &Value) -> LspResult<()> {
+    let kind = symbol
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or("UNKNOWN");
+    match kind {
+        "CLASS" | "INTERFACE" | "OBJECT" | "FUNCTION" | "PROPERTY" | "PARAMETER" => Ok(()),
+        _ => Err(LspError::server_error(
+            "LSP_RENAME_UNSUPPORTED_SYMBOL",
+            format!("rename is not supported for symbol kind `{kind}`"),
+        )),
+    }
+}
+
+fn validate_new_name(new_name: &str) -> LspResult<()> {
+    let mut chars = new_name.chars();
+    let Some(first) = chars.next() else {
+        return Err(LspError::invalid_params("newName must not be empty"));
+    };
+    if !(first == '_' || first.is_ascii_alphabetic()) {
+        return Err(LspError::invalid_params(
+            "newName must start with an ASCII letter or underscore",
+        ));
+    }
+    if !chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric()) {
+        return Err(LspError::invalid_params(
+            "newName must contain only ASCII letters, digits, or underscores",
+        ));
+    }
+    Ok(())
+}
+
+fn rename_key(position: &Value) -> LspResult<String> {
+    Ok(format!(
+        "{}:{}",
+        string_field(position, "filePath")?,
+        usize_field(position, "offset")?
+    ))
+}
+
+fn reject_non_exhaustive_rename(result: &Value) -> LspResult<()> {
+    if result
+        .get("searchScope")
+        .and_then(|scope| scope.get("exhaustive"))
+        .and_then(Value::as_bool)
+        .is_some_and(|exhaustive| !exhaustive)
+    {
+        return Err(LspError::server_error(
+            "LSP_RENAME_PARTIAL_REFERENCE_SET",
+            "rename was rejected because Kast reported a non-exhaustive reference set",
+        ));
+    }
+    Ok(())
+}
+
+fn is_generated_path(path: &Path) -> bool {
+    let value = path.to_string_lossy();
+    [
+        "/build/",
+        "/target/",
+        "/site/",
+        "/generated/",
+        "/.gradle/",
+        "/.agent-turn/",
+    ]
+    .iter()
+    .any(|segment| value.contains(segment))
 }
 
 fn root_from_initialize_params(params: &Value) -> LspResult<Option<PathBuf>> {
@@ -1143,6 +1323,9 @@ mod tests {
                         "IMPLEMENTATIONS",
                         "CALL_HIERARCHY",
                         "TYPE_HIERARCHY"
+                    ],
+                    "mutationCapabilities": [
+                        "RENAME"
                     ]
                 }),
                 calls: RefCell::new(Vec::new()),
@@ -1317,6 +1500,7 @@ mod tests {
         assert_eq!(caps["callHierarchyProvider"], true);
         assert_eq!(caps["referencesProvider"], false);
         assert_eq!(caps["typeHierarchyProvider"], false);
+        assert_eq!(caps["renameProvider"], false);
     }
 
     #[test]
@@ -1547,6 +1731,240 @@ mod tests {
         let calls = server.rpc.calls.borrow();
         assert_eq!(calls[0].0, "raw/implementations");
         assert_eq!(calls[0].1["maxResults"], MAX_LSP_RESULTS);
+    }
+
+    #[test]
+    fn initialize_advertises_prepare_rename_when_backend_supports_rename() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        let mut server = LspServer::new(rpc);
+        let result = server.initialize(json!({})).expect("initialize");
+        assert_eq!(
+            result["capabilities"]["renameProvider"],
+            json!({ "prepareProvider": true })
+        );
+    }
+
+    #[test]
+    fn prepare_rename_resolves_symbol_and_records_exact_target() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/resolve",
+            json!({
+                "symbol": sample_symbol(&file, 20, 25, "sample.greet", "FUNCTION")
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let result = server
+            .prepare_rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 }
+            }))
+            .expect("prepare rename");
+        assert_eq!(result["placeholder"], "greet");
+        assert_eq!(result["range"]["start"]["line"], 2);
+        assert_eq!(result["range"]["start"]["character"], 4);
+        assert!(
+            server
+                .prepared_renames
+                .contains(&format!("{}:20", file.display()))
+        );
+        assert_eq!(server.rpc.calls.borrow()[0].0, "raw/resolve");
+    }
+
+    #[test]
+    fn rename_requires_successful_prepare_for_same_position() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let error = server
+            .rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 },
+                "newName": "welcome"
+            }))
+            .expect_err("rename should require prepare");
+        assert_eq!(error.data_code, "LSP_RENAME_NOT_PREPARED");
+    }
+
+    #[test]
+    fn rename_maps_raw_rename_plan_to_workspace_edit() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        let source = "package sample\n\nfun greet() = Unit\nfun caller() = greet()\n";
+        fs::write(&file, source).expect("fixture");
+        let declaration_start = source.find("greet").expect("declaration");
+        let call_start = source.rfind("greet").expect("call");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/resolve",
+            json!({
+                "symbol": sample_symbol(
+                    &file,
+                    declaration_start,
+                    declaration_start + "greet".len(),
+                    "sample.greet",
+                    "FUNCTION"
+                )
+            }),
+        );
+        rpc.respond(
+            "raw/rename",
+            json!({
+                "edits": [
+                    {
+                        "filePath": file.display().to_string(),
+                        "startOffset": declaration_start,
+                        "endOffset": declaration_start + "greet".len(),
+                        "newText": "welcome"
+                    },
+                    {
+                        "filePath": file.display().to_string(),
+                        "startOffset": call_start,
+                        "endOffset": call_start + "greet".len(),
+                        "newText": "welcome"
+                    }
+                ],
+                "fileHashes": [],
+                "affectedFiles": [file.display().to_string()],
+                "searchScope": {
+                    "visibility": "PUBLIC",
+                    "scope": "DEPENDENT_MODULES",
+                    "exhaustive": true,
+                    "candidateFileCount": 1,
+                    "searchedFileCount": 1
+                },
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        server
+            .prepare_rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 }
+            }))
+            .expect("prepare rename");
+        let result = server
+            .rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 },
+                "newName": "welcome"
+            }))
+            .expect("rename");
+        let uri = path_to_file_uri(&file.display().to_string());
+        let edits = result["changes"][&uri].as_array().expect("edits");
+        assert_eq!(edits.len(), 2);
+        assert_eq!(edits[0]["newText"], "welcome");
+        assert_eq!(edits[0]["range"]["start"]["line"], 2);
+        assert_eq!(edits[1]["range"]["start"]["line"], 3);
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls[1].0, "raw/rename");
+        assert_eq!(calls[1].1["newName"], "welcome");
+        assert_eq!(calls[1].1["dryRun"], true);
+    }
+
+    #[test]
+    fn rename_rejects_invalid_new_name_before_backend_call() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let error = server
+            .rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 },
+                "newName": "not-valid"
+            }))
+            .expect_err("invalid newName should fail");
+        assert_eq!(error.data_code, "LSP_INVALID_PARAMS");
+        assert!(server.rpc.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn rename_rejects_non_exhaustive_reference_sets() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let file = workspace.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/resolve",
+            json!({
+                "symbol": sample_symbol(&file, 20, 25, "sample.greet", "FUNCTION")
+            }),
+        );
+        rpc.respond(
+            "raw/rename",
+            json!({
+                "edits": [],
+                "fileHashes": [],
+                "affectedFiles": [],
+                "searchScope": {
+                    "visibility": "PUBLIC",
+                    "scope": "DEPENDENT_MODULES",
+                    "exhaustive": false,
+                    "candidateFileCount": 10,
+                    "searchedFileCount": 2
+                },
+                "schemaVersion": 3
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        server
+            .prepare_rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 }
+            }))
+            .expect("prepare rename");
+        let error = server
+            .rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 },
+                "newName": "welcome"
+            }))
+            .expect_err("non-exhaustive rename should fail");
+        assert_eq!(error.data_code, "LSP_RENAME_PARTIAL_REFERENCE_SET");
+    }
+
+    #[test]
+    fn prepare_rename_rejects_generated_paths() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let generated_dir = workspace.join("build/generated");
+        fs::create_dir_all(&generated_dir).expect("generated dir");
+        let file = generated_dir.join("Sample.kt");
+        fs::write(&file, "package sample\n\nfun greet() = Unit\n").expect("fixture");
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond(
+            "raw/resolve",
+            json!({
+                "symbol": sample_symbol(&file, 20, 25, "sample.greet", "FUNCTION")
+            }),
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+        let error = server
+            .prepare_rename(json!({
+                "textDocument": { "uri": path_to_file_uri(&file.display().to_string()) },
+                "position": { "line": 2, "character": 4 }
+            }))
+            .expect_err("generated rename should fail");
+        assert_eq!(error.data_code, "LSP_RENAME_GENERATED_PATH");
     }
 
     #[test]
