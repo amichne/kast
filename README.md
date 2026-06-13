@@ -57,10 +57,7 @@ headless runtime:
 For mirrored artifacts and CI images, use the same script with the
 self-contained Linux headless tarball; the
 [install guide](https://kast.michne.com/getting-started/install/#linux-headless-tarball)
-shows the exact environment variables.
-
-The bundled compatibility entrypoint `scripts/install-ubuntu-debian.sh install`
-delegates to the same root installer.
+shows the exact `--from` flow and path overrides.
 
 After the Linux tarball installer has written the headless configuration, warm
 the backend before running analysis commands:

@@ -580,9 +580,6 @@ _linux_infer_version_from_context() {
   if [[ -n "${_KAST_INSTALL_FROM:-}" ]]; then
     _install_semver_from_asset "$(_install_basename "$_KAST_INSTALL_FROM")" && return
   fi
-  if [[ -n "${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}" ]]; then
-    _install_semver_from_asset "$(basename -- "$KAST_UBUNTU_DEBIAN_ARTIFACT_PATH")" && return
-  fi
   local bundle_source
   if bundle_source="$(_linux_bundle_source_dir)"; then
     _linux_read_bundle_manifest_value "${bundle_source}/manifest.json" "version" && return
@@ -593,11 +590,6 @@ _linux_infer_version_from_context() {
 _linux_infer_bundle_kind_from_context() {
   if [[ -n "${_KAST_INSTALL_FROM:-}" ]]; then
     case "$(_install_basename "$_KAST_INSTALL_FROM")" in
-      kast-ubuntu-debian-headless-x86_64-*) printf '%s\n' "headless"; return ;;
-    esac
-  fi
-  if [[ -n "${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}" ]]; then
-    case "$(basename -- "$KAST_UBUNTU_DEBIAN_ARTIFACT_PATH")" in
       kast-ubuntu-debian-headless-x86_64-*) printf '%s\n' "headless"; return ;;
     esac
   fi
@@ -737,7 +729,7 @@ _linux_source_from_artifact() {
 _linux_fetch_artifact() {
   local artifact_path="$1"
   local artifact_name="$2"
-  local source="${_KAST_INSTALL_FROM:-${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}}"
+  local source="${_KAST_INSTALL_FROM:-}"
   local expected_digest actual_digest
 
   if [[ -n "$source" ]]; then
@@ -766,14 +758,14 @@ _linux_fetch_artifact() {
 }
 
 _linux_configure_paths() {
-  _KAST_LINUX_VERSION="${_KAST_INSTALL_VERSION:-${KAST_UBUNTU_DEBIAN_VERSION:-}}"
+  _KAST_LINUX_VERSION="${_KAST_INSTALL_VERSION:-}"
   if [[ -z "$_KAST_LINUX_VERSION" ]]; then
     _KAST_LINUX_VERSION="$(_linux_infer_version_from_context || true)"
   fi
-  if [[ -z "$_KAST_LINUX_VERSION" && -z "${_KAST_INSTALL_FROM:-${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}}" ]]; then
+  if [[ -z "$_KAST_LINUX_VERSION" && -z "${_KAST_INSTALL_FROM:-}" ]]; then
     _KAST_LINUX_VERSION="$(_install_latest_release_tag)"
   fi
-  [[ -n "$_KAST_LINUX_VERSION" ]] || die "Set --version, KAST_UBUNTU_DEBIAN_VERSION, or --from"
+  [[ -n "$_KAST_LINUX_VERSION" ]] || die "Set --version or --from"
   _KAST_LINUX_VERSION="$(_install_tag_version "$_KAST_LINUX_VERSION")"
   _KAST_LINUX_NORMALIZED_VERSION="$(_install_normalize_version "$_KAST_LINUX_VERSION")"
   _KAST_LINUX_BUNDLE_KIND="$(_linux_infer_bundle_kind_from_context)"
@@ -786,7 +778,7 @@ _linux_configure_paths() {
   _KAST_LINUX_BIN_PATH="${_KAST_LINUX_BIN_DIR}/kast"
   _KAST_LINUX_CONFIG_HOME="${KAST_UBUNTU_DEBIAN_CONFIG_HOME:-${KAST_CONFIG_HOME:-${HOME}/.config/kast}}"
   _KAST_LINUX_CONFIG_FILE="${_KAST_LINUX_CONFIG_HOME}/config.toml"
-  _KAST_LINUX_BASE_URL="${KAST_UBUNTU_DEBIAN_BASE_URL:-https://github.com/amichne/kast/releases/download/${_KAST_LINUX_VERSION}}"
+  _KAST_LINUX_BASE_URL="https://github.com/amichne/kast/releases/download/${_KAST_LINUX_VERSION}"
   _KAST_LINUX_HEADLESS_ROOT="${_KAST_LINUX_INSTALL_HOME}/lib/backends/headless-${_KAST_LINUX_VERSION}"
   _KAST_LINUX_HEADLESS_RUNTIME_LIBS_DIR="${_KAST_LINUX_HEADLESS_ROOT}/runtime-libs"
   _KAST_LINUX_HEADLESS_IDEA_HOME="${_KAST_LINUX_HEADLESS_ROOT}/idea-home"
@@ -892,8 +884,6 @@ _linux_install_bundle() {
   mkdir -p "${_KAST_LINUX_INSTALL_HOME}/cache" "${_KAST_LINUX_INSTALL_HOME}/logs"
   chmod +x "${_KAST_LINUX_INSTALL_HOME}/bin/kast"
   [[ -f "${_KAST_LINUX_INSTALL_HOME}/kast.sh" ]] && chmod +x "${_KAST_LINUX_INSTALL_HOME}/kast.sh"
-  [[ -f "${_KAST_LINUX_INSTALL_HOME}/scripts/install-ubuntu-debian.sh" ]] \
-    && chmod +x "${_KAST_LINUX_INSTALL_HOME}/scripts/install-ubuntu-debian.sh"
   _linux_install_kast_entrypoint
 
   _linux_write_config
@@ -922,10 +912,9 @@ Options:
   --yes                Accepted for non-interactive curl-pipe usage.
   --help, -h           Show this help.
 
-Environment compatibility:
-  KAST_UBUNTU_DEBIAN_VERSION, KAST_UBUNTU_DEBIAN_ARTIFACT_PATH,
-  KAST_UBUNTU_DEBIAN_BASE_URL, KAST_UBUNTU_DEBIAN_ROOT,
-  KAST_UBUNTU_DEBIAN_BIN_DIR, KAST_UBUNTU_DEBIAN_CONFIG_HOME, KAST_JAVA_CMD.
+Linux environment overrides:
+  KAST_UBUNTU_DEBIAN_ROOT, KAST_UBUNTU_DEBIAN_BIN_DIR,
+  KAST_UBUNTU_DEBIAN_CONFIG_HOME, KAST_JAVA_CMD.
 USAGE
 }
 

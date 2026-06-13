@@ -132,13 +132,17 @@ esac
 FAKE_CURL
 chmod +x "${fake_bin}/curl"
 
-bash -n "$repo_root/kast.sh" "$repo_root/scripts/install-ubuntu-debian.sh"
+bash -n "$repo_root/kast.sh"
+[[ ! -e "$repo_root/scripts/install-ubuntu-debian.sh" ]] || die "Deprecated scripts/install-ubuntu-debian.sh wrapper must not exist"
 
 install_help="$("$repo_root/kast.sh" install --help 2>&1)"
 require_output_contains "$install_help" "curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/kast.sh | bash" "Install help must document curl-pipe usage"
 require_output_contains "$install_help" "--from PATH_OR_URL" "Install help must document explicit artifact sources"
 require_output_contains "$install_help" "macOS installs through Homebrew" "Install help must document macOS Homebrew ownership"
 require_output_contains "$install_help" "Ubuntu/Debian Linux x86_64" "Install help must document Linux support"
+if printf '%s\n' "$install_help" | grep -Eq 'KAST_UBUNTU_DEBIAN_(VERSION|ARTIFACT_PATH|BASE_URL)'; then
+  die "Install help must not expose deprecated Linux source-selection environment variables"
+fi
 
 BREW_LOG="$brew_log" \
 KAST_LOG="$kast_log" \
@@ -217,8 +221,5 @@ expect_failure_contains \
   KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
   KAST_JAVA_CMD=sh \
   "$repo_root/kast.sh" install --from "$cli_artifact"
-
-wrapper_help="$("$repo_root/scripts/install-ubuntu-debian.sh" --help 2>&1)"
-require_output_contains "$wrapper_help" "KAST_UBUNTU_DEBIAN_VERSION" "Compatibility wrapper help must expose Linux environment overrides"
 
 printf '%s\n' "Kast installer contract passed"

@@ -201,6 +201,9 @@ require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central ve
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
 require_contains "$ubuntu_debian_validator" "--accept-indexing=true" "Ubuntu/Debian validator must accept servable indexing state during cold startup"
+require_contains "$ubuntu_debian_validator" './kast.sh install --from "/workspace/${bundle_rel}"' "Ubuntu/Debian validator must use the root installer artifact path"
+require_not_contains "$ubuntu_debian_validator" "install-ubuntu-debian.sh" "Ubuntu/Debian validator must not use the deprecated wrapper"
+require_not_contains "$ubuntu_debian_validator" "KAST_UBUNTU_DEBIAN_ARTIFACT_PATH" "Ubuntu/Debian validator must pass artifacts with --from"
 require_contains "$ubuntu_debian_validator" 'kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --accept-indexing=true --no-auto-start=true' "Ubuntu/Debian validator capabilities smoke must accept servable indexing state"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 

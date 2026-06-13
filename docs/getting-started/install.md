@@ -105,9 +105,8 @@ headless deployment path.
 
 The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
 with a matching `.sha256` sidecar. Each bundle contains the
-Rust CLI, one backend portable runtime, root `kast.sh` installer,
-`scripts/install-ubuntu-debian.sh` compatibility entrypoint, bundle metadata,
-and the license notice.
+Rust CLI, one backend portable runtime, root `kast.sh` installer, bundle
+metadata, and the license notice.
 
 Linux headless tarballs are built, validated, and published by the normal
 release workflow. They are part of the release manifest and are verified before
@@ -125,9 +124,6 @@ local tarball:
 ./kast.sh install --from /artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
 ./kast.sh verify --version v1.2.3
 ```
-
-Released Linux bundles still include `scripts/install-ubuntu-debian.sh` for
-compatibility. That script delegates to the root `kast.sh` installer.
 
 The installer refuses non-Ubuntu/Debian hosts, installs to
 `$HOME/.local/share/kast/ubuntu-debian/<version>` by default, symlinks
@@ -209,16 +205,13 @@ not named by provenance.
     ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
     ```
 
-## Ubuntu/Debian installer environment overrides
+## Linux installer environment overrides
 
 Most users do not need environment overrides. They are useful for packaged
-images, private artifact stores, and CI-style setup scripts.
+images and CI-style setup scripts.
 
 | Variable | What it does |
 |----------|--------------|
-| `KAST_UBUNTU_DEBIAN_VERSION` | Selects the release tag to install |
-| `KAST_UBUNTU_DEBIAN_ARTIFACT_PATH` | Installs from an exact local bundle tarball |
-| `KAST_UBUNTU_DEBIAN_BASE_URL` | Downloads from a mirrored release directory |
 | `KAST_UBUNTU_DEBIAN_ROOT` | Overrides the managed install root |
 | `KAST_UBUNTU_DEBIAN_BIN_DIR` | Overrides the `kast` symlink directory |
 | `KAST_UBUNTU_DEBIAN_CONFIG_HOME` | Overrides the config directory |
