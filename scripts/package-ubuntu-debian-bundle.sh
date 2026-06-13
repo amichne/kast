@@ -107,6 +107,7 @@ done
 [[ -n "$version" ]] || { usage; die "--version is required"; }
 [[ -f "$cli_archive" ]] || die "CLI archive not found: $cli_archive"
 [[ -f "$backend_archive" ]] || die "Backend archive not found: $backend_archive"
+[[ -x "${repo_root}/kast.sh" ]] || die "Missing kast.sh"
 [[ -x "${repo_root}/scripts/install-ubuntu-debian.sh" ]] || die "Missing scripts/install-ubuntu-debian.sh"
 
 need_tool python3
@@ -154,6 +155,8 @@ cp "$cli_bin" "${staging_root}/bin/kast"
 chmod 755 "${staging_root}/bin/kast"
 mv "$backend_root" "${staging_root}/lib/backends/${backend_install_name}"
 chmod 755 "${staging_root}/lib/backends/${backend_install_name}/${backend_launcher}"
+cp "${repo_root}/kast.sh" "${staging_root}/kast.sh"
+chmod 755 "${staging_root}/kast.sh"
 cp "${repo_root}/scripts/install-ubuntu-debian.sh" "${staging_root}/scripts/install-ubuntu-debian.sh"
 chmod 755 "${staging_root}/scripts/install-ubuntu-debian.sh"
 if [[ -f "${repo_root}/LICENSE" ]]; then

@@ -40,17 +40,27 @@ brew install --cask kast-plugin
 kast setup
 ```
 
+Or use the platform installer, which delegates to Homebrew on macOS and to the
+Linux headless tarball on Ubuntu/Debian:
+
+```console
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/kast.sh | bash
+```
+
 Use the Linux headless tarball when the target host needs a self-contained
 headless runtime:
 
 ```console
-./scripts/install-ubuntu-debian.sh install
+./kast.sh install
 ```
 
 For mirrored artifacts and CI images, use the same script with the
 self-contained Linux headless tarball; the
 [install guide](https://kast.michne.com/getting-started/install/#linux-headless-tarball)
 shows the exact environment variables.
+
+The bundled compatibility entrypoint `scripts/install-ubuntu-debian.sh install`
+delegates to the same root installer.
 
 After the Linux tarball installer has written the headless configuration, warm
 the backend before running analysis commands:
