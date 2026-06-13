@@ -157,6 +157,11 @@ executable CLI binary:
 binaryPath = "/home/alex/.local/bin/kast"
 ```
 
+Applying Kast settings in IDEA reloads the workspace config and restarts the
+local Kast backend when the effective config changes. Installing or relinking
+the Homebrew-managed plugin still requires restarting the IDE so JetBrains can
+load the plugin from the profile link.
+
 To hydrate a remote SQLite source index before local indexing starts, add an
 `indexing.remote` block. `sourceIndexUrl` accepts `file://`, `http://`, and
 `https://` URLs that point to a `source-index.db` snapshot:
