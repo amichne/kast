@@ -25,6 +25,7 @@ fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf {
         format!(
             r#"#!/bin/sh
 set -eu
+state_file="${{HOME:-/tmp}}/.fake-brew-kast-plugin-version"
 if [ "$1" = "--prefix" ] && [ "$#" -eq 1 ]; then
   printf '%s\n' "/opt/homebrew"
 elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
@@ -38,12 +39,17 @@ elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
 elif [ "$1" = "--cache" ] && [ "$2" = "--cask" ]; then
   printf '%s\n' "${{HOME:-/tmp}}/000--kast-plugin.zip"
 elif [ "$1" = "install" ] && [ "$2" = "--cask" ]; then
+  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-9.8.7}}" > "$state_file"
   printf 'fake brew installed kast plugin\n' >&2
 elif [ "$1" = "reinstall" ] && [ "$2" = "--cask" ]; then
+  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-9.8.7}}" > "$state_file"
   printf 'fake brew reinstalled kast plugin\n' >&2
 elif [ "$1" = "list" ] && [ "$2" = "--cask" ]; then
   if [ "${{KAST_FAKE_BREW_CASK_VERSION:-}}" != "" ]; then
     printf 'kast-plugin %s\n' "$KAST_FAKE_BREW_CASK_VERSION"
+  elif [ -f "$state_file" ]; then
+    read -r installed_version < "$state_file"
+    printf 'kast-plugin %s\n' "$installed_version"
   else
     exit 1
   fi
@@ -1906,6 +1912,12 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
     );
     assert!(stdout.get("downloadDir").is_none(), "{stdout}");
     assert!(stdout.get("downloadedPath").is_none(), "{stdout}");
+    #[cfg(unix)]
+    assert_eq!(
+        std::fs::read_link(jetbrains_root.join("IntelliJIdea2026.1/plugins/kast"))
+            .expect("plugin symlink"),
+        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
+    );
 }
 
 #[test]
@@ -1934,6 +1946,53 @@ fn plugin_install_rejects_manual_download_directory() {
     assert!(
         stderr.contains("unexpected argument '--download-dir'"),
         "stderr should reject the retired manual download flag: {stderr}"
+    );
+}
+
+#[test]
+fn plugin_install_repairs_stale_homebrew_profile_link() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    let plugins_dir = jetbrains_root.join("IntelliJIdea2026.1/plugins");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&plugins_dir).expect("profile plugins");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        "/opt/homebrew/Caskroom/kast-plugin/0.7.35/backend-idea",
+        plugins_dir.join("kast"),
+    )
+    .expect("stale plugin symlink");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "plugin install should repair stale Homebrew links: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    #[cfg(unix)]
+    assert_eq!(
+        std::fs::read_link(plugins_dir.join("kast")).expect("plugin symlink after repair"),
+        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
     );
 }
 

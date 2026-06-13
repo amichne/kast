@@ -834,7 +834,7 @@ fn repair_affected_jetbrains_profiles(
             if let Some(parent) = plugin_link.parent() {
                 fs::create_dir_all(parent)?;
             }
-            create_plugin_link(&expected_plugin_target, &plugin_link, result)?;
+            create_plugin_link(&expected_plugin_target, &plugin_link, &mut result.warnings)?;
         }
     }
     Ok(())
@@ -1047,10 +1047,16 @@ fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
 }
 
 fn expected_homebrew_plugin_target(result: &mut InstallAffectedResult) -> Result<Option<PathBuf>> {
+    expected_homebrew_plugin_target_with_warnings(&mut result.warnings)
+}
+
+fn expected_homebrew_plugin_target_with_warnings(
+    warnings: &mut Vec<String>,
+) -> Result<Option<PathBuf>> {
     let brew_prefix = match homebrew_prefix(&["--prefix"]) {
         Ok(value) => value,
         Err(error) => {
-            result.warnings.push(format!(
+            warnings.push(format!(
                 "Could not resolve Homebrew prefix; skipping JetBrains plugin link repair: {}",
                 error.message
             ));
@@ -1058,7 +1064,7 @@ fn expected_homebrew_plugin_target(result: &mut InstallAffectedResult) -> Result
         }
     };
     let formula_tap = homebrew_formula_tap().unwrap_or_else(|error| {
-        result.warnings.push(format!(
+        warnings.push(format!(
             "Could not resolve the Homebrew tap for kast; using {DEFAULT_KAST_TAP}: {}",
             error.message
         ));
@@ -1066,8 +1072,16 @@ fn expected_homebrew_plugin_target(result: &mut InstallAffectedResult) -> Result
     });
     let cask_token = format!("{formula_tap}/{KAST_PLUGIN_CASK_NAME}");
     let cask_name = cask_name(&cask_token);
-    let Some(version) = homebrew_cask_version(&cask_name)? else {
-        result.warnings.push(format!(
+    expected_homebrew_plugin_target_for_cask(&cask_name, &brew_prefix, warnings)
+}
+
+fn expected_homebrew_plugin_target_for_cask(
+    cask_name: &str,
+    brew_prefix: &Path,
+    warnings: &mut Vec<String>,
+) -> Result<Option<PathBuf>> {
+    let Some(version) = homebrew_cask_version(cask_name)? else {
+        warnings.push(format!(
             "Homebrew cask {cask_name} is not installed; skipping JetBrains plugin link repair"
         ));
         return Ok(None);
@@ -1082,22 +1096,14 @@ fn expected_homebrew_plugin_target(result: &mut InstallAffectedResult) -> Result
 }
 
 #[cfg(unix)]
-fn create_plugin_link(
-    source: &Path,
-    target: &Path,
-    _result: &mut InstallAffectedResult,
-) -> Result<()> {
+fn create_plugin_link(source: &Path, target: &Path, _warnings: &mut Vec<String>) -> Result<()> {
     std::os::unix::fs::symlink(source, target)?;
     Ok(())
 }
 
 #[cfg(not(unix))]
-fn create_plugin_link(
-    _source: &Path,
-    target: &Path,
-    result: &mut InstallAffectedResult,
-) -> Result<()> {
-    result.warnings.push(format!(
+fn create_plugin_link(_source: &Path, target: &Path, warnings: &mut Vec<String>) -> Result<()> {
+    warnings.push(format!(
         "Cannot create JetBrains plugin symlink on this platform; left {} unchanged",
         target.display()
     ));
@@ -1368,7 +1374,7 @@ fn install_idea_plugin_into_jetbrains_profiles(
     args: IdeaPluginInstallArgs,
     homebrew: HomebrewContext,
     cask_token: String,
-    warnings: Vec<String>,
+    mut warnings: Vec<String>,
 ) -> Result<InstallIdeaPluginResult> {
     let jetbrains_config_root = args
         .jetbrains_config_root
@@ -1415,6 +1421,12 @@ fn install_idea_plugin_into_jetbrains_profiles(
                 &output,
             ));
         }
+        ensure_homebrew_plugin_profile_links(
+            &homebrew,
+            &cask_name,
+            &plugin_directories,
+            &mut warnings,
+        )?;
     }
 
     Ok(InstallIdeaPluginResult {
@@ -1435,6 +1447,68 @@ fn install_idea_plugin_into_jetbrains_profiles(
         warnings,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn ensure_homebrew_plugin_profile_links(
+    homebrew: &HomebrewContext,
+    cask_name: &str,
+    plugin_directories: &[PathBuf],
+    warnings: &mut Vec<String>,
+) -> Result<()> {
+    let Some(expected_plugin_target) =
+        expected_homebrew_plugin_target_for_cask(cask_name, &homebrew.brew_prefix, warnings)?
+    else {
+        return Ok(());
+    };
+    for plugin_dir in plugin_directories {
+        let plugin_link = plugin_dir.join("kast");
+        ensure_homebrew_plugin_profile_link(&expected_plugin_target, &plugin_link, warnings)?;
+    }
+    Ok(())
+}
+
+fn ensure_homebrew_plugin_profile_link(
+    expected_plugin_target: &Path,
+    plugin_link: &Path,
+    warnings: &mut Vec<String>,
+) -> Result<()> {
+    if fs::read_link(plugin_link)
+        .ok()
+        .is_some_and(|target| target == expected_plugin_target)
+    {
+        return Ok(());
+    }
+    if path_exists_or_symlink(plugin_link) {
+        let Some(current_target) = fs::read_link(plugin_link).ok() else {
+            warnings.push(format!(
+                "Not replacing existing JetBrains plugin path {}; run `kast install affected --apply` for backed-up repair",
+                plugin_link.display()
+            ));
+            return Ok(());
+        };
+        if !current_target
+            .display()
+            .to_string()
+            .contains("/Caskroom/kast-plugin/")
+            && !current_target
+                .display()
+                .to_string()
+                .contains("/kast-plugin/")
+        {
+            warnings.push(format!(
+                "Not replacing existing JetBrains plugin link {} -> {}; run `kast install affected --apply` for backed-up repair",
+                plugin_link.display(),
+                current_target.display()
+            ));
+            return Ok(());
+        }
+        remove_existing_path(plugin_link)?;
+    }
+    if let Some(parent) = plugin_link.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    create_plugin_link(expected_plugin_target, plugin_link, warnings)?;
+    Ok(())
 }
 
 fn install_archive(args: InstallArgs) -> Result<ArchiveInstallResult> {
