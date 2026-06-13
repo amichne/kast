@@ -104,6 +104,19 @@ class KastPluginServiceConfigTest {
     }
 
     @Test
+    fun `config reload restarts backend only when effective config changes`() {
+        val defaults = KastConfig.defaults()
+        val changed = defaults.copy(
+            server = defaults.server.copy(
+                maxResults = ServerMaxResults(42),
+            ),
+        )
+
+        assertEquals(KastConfigReloadDecision.UNCHANGED, configReloadDecision(defaults, defaults))
+        assertEquals(KastConfigReloadDecision.RESTART_BACKEND, configReloadDecision(defaults, changed))
+    }
+
+    @Test
     fun `idea telemetry uses config`() {
         val telemetry = IdeaBackendTelemetry.fromConfig(
             workspaceRoot = Path.of("/tmp/workspace"),
