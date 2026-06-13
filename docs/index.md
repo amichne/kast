@@ -24,7 +24,7 @@ Pick your entry point:
     A headless JVM daemon you start from a terminal. Works in CI, in a
     container, on a server with no editor in sight.
 
-    [:octicons-arrow-right-16: CLI install guide](getting-started/install.md#homebrew-install)
+    [:octicons-arrow-right-16: Install guide](getting-started/install.md#linux-headless-tarball)
 
 -   :octicons-plug-16:{ .lg .left } __Install the IDEA plugin__
 
@@ -33,7 +33,7 @@ Pick your entry point:
     Reuse the analysis session IDEA or Android Studio already has open. No second JVM,
     no second cold start, same JSON-RPC over a socket.
 
-    [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#install-the-idea-and-android-studio-plugin-manually)
+    [:octicons-arrow-right-16: Homebrew install guide](getting-started/install.md#homebrew-install)
 
 </div>
 
@@ -71,11 +71,8 @@ agents that need to answer "is this list complete?" with a yes or no.
 Three commands, run from the root of any Kotlin project. Requires Java 21+.
 
 ```console linenums="1" title="Install, start, query" hl_lines="1 2 3"
-# 1. Install the kast CLI
-brew tap amichne/kast
-brew install kast
-kast setup
-kast install headless
+# 1. Install the Linux headless tarball
+./scripts/install-ubuntu-debian.sh install
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
 kast up --backend=headless

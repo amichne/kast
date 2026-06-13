@@ -1,68 +1,46 @@
 ---
 title: Install
-description: Install the kast CLI, a backend component, or the IDEA plugin.
+description: Install Kast through Homebrew on macOS or the Linux headless tarball.
 icon: lucide/download
 ---
 
 # Install
 
-`kast` is two pieces: the **CLI** (the `kast` you type) and one optional
-**backend** (the analysis process that does the work). Install the small CLI
-first, then install exactly the backend you intend to run.
+Kast has two supported distribution paths:
+
+- **macOS developer installs use Homebrew.** Homebrew owns the CLI, IDEA
+  integration assets, local updates, and profile linking.
+- **Linux headless installs use one self-contained tarball.** The tarball owns
+  the CLI, packaged headless runtime, install scripts, metadata, and headless
+  configuration.
 
 ## Prerequisites
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run a packaged
-  JVM backend. The Homebrew CLI package is native and does not install a JDK.
-- **macOS, Linux, or Windows.** Homebrew is the preferred local CLI path on
-  supported platforms. Ubuntu/Debian x86_64 also has an offline bundle path for
-  hosted agents, mirrors, and prebuilt images.
+- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run the Linux
+  headless runtime. The Homebrew CLI package is native and does not install a
+  JDK.
+- **macOS for Homebrew developer installs** and **Linux for headless
+  tarballs**. Other local installation shapes are not supported distribution
+  paths.
 
 ## Homebrew install
 
-Homebrew is the default local developer path when your platform is supported by
-the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast`;
-`kast-plugin` installs the IDEA plugin bundle from this repository's releases.
+Homebrew is the macOS developer distribution. `kast` installs the Rust CLI from
+`amichne/kast`; `kast-plugin` installs the IDEA plugin bundle from the same
+release stream and links it into JetBrains profiles.
 
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
+brew install --cask kast-plugin
 kast setup
 ```
 
-Use Homebrew for ordinary local use when your platform is supported. `kast
-setup` installs shell integration, repairs managed resources, refreshes any
-already-installed headless backend, and on macOS installs or refreshes the IDEA
-plugin cask when JetBrains profile directories are present. Disable individual
-parts with `--skip-repair`, `--skip-shell`, `--skip-headless`,
-`--skip-plugin`, `--skip-skill`, or `--skip-copilot`.
-
-## Install a backend
-
-Install one backend component after the CLI is on `PATH`.
-
-```console title="Install the headless backend"
-kast install headless
-```
-
-Use the headless backend for terminal work, local automation, and CI jobs that
-do not need an IDE-hosted project model. Start it with:
-
-```console title="Warm the headless backend"
-kast up
-```
-
-Use the headless backend for hosted Linux agents that need a packaged
-IDEA-backed runtime:
-
-```console title="Install and warm the headless backend"
-kast install headless
-kast setup --skip-headless
-kast up --backend=headless
-```
-
-If `kast up` cannot find the selected headless backend, it installs the
-verified release asset before starting the daemon.
+Use Homebrew for ordinary macOS local use. `kast setup` installs shell
+integration, repairs managed resources, and on macOS installs or refreshes the
+IDEA plugin cask when JetBrains profile directories are present. Disable
+individual parts with `--skip-repair`, `--skip-shell`, `--skip-plugin`,
+`--skip-skill`, or `--skip-copilot`.
 
 ## Repair affected local installs
 
@@ -83,27 +61,24 @@ under `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
 kast install affected --apply
 ```
 
-Backend downloads stay explicit. If the repair removes stale backend metadata
-and you need the headless backend, run `kast install headless` afterwards.
+Headless deployment is not repaired by downloading a separate backend. If
+repair removes stale headless metadata, reinstall or refresh the Linux
+headless tarball that owns that runtime.
 
-## Ubuntu/Debian bundle
+## Linux headless tarball
 
-Use the Ubuntu/Debian bundle when a CI image, hosted agent snapshot, mirror, or
-air-gapped host should install Kast without Homebrew, Rust, Gradle, or network
-access to individual release assets. This is the offline bundle path; the normal
-interactive path is CLI first, `kast setup` for local integrations, and
-`kast install headless` only when you need the independent backend.
+Use the Linux headless tarball when a CI image, hosted agent snapshot, mirror,
+or air-gapped host should install Kast without Homebrew, Rust, Gradle, or
+network access to individual release assets. This is the only supported
+headless deployment path.
 
 The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
 with a matching `.sha256` sidecar. Each bundle contains the
 Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
 bundle metadata, and the license notice.
 
-Offline bundles are appended to a release by the manual **Offline Bundles**
-workflow after the core CLI, backend, plugin, `SHA256SUMS`, and
-`build-provenance.json` assets exist. Use that workflow with
-`publish_to_release=true` when the bundle should become part of the release
-contents.
+The tarball is built from the release CLI and headless runtime artifacts and is
+published with a matching `.sha256` sidecar.
 
 ```bash title="Install Kast on Ubuntu/Debian"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
@@ -277,20 +252,19 @@ Then use the IDE menu:
 3. To remove managed files later, choose
    **Tools → Kast → Uninstall Copilot Extension**.
 
-## Install the IDEA and Android Studio plugin manually
+## Install the IDEA and Android Studio plugin
 
-Download the plugin zip and install it from disk:
+Install the IDEA / Android Studio plugin through Homebrew with the rest of the
+macOS developer distribution:
 
-1. Download `kast-idea-<version>.zip` from the
-   [latest release](https://github.com/amichne/kast/releases/latest).
-2. In IDEA or Android Studio: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
-   pick the zip.
-3. Restart the IDE when prompted.
+```console title="Install the Homebrew-managed IDE plugin"
+brew install --cask kast-plugin
+kast setup
+```
 
-!!! note
-    The IDEA / Android Studio plugin doesn't need the headless CLI. It reuses the
-    IDE's K2 analysis session, project model, and indexes. Install the
-    CLI separately if you also want a terminal entry point.
+The plugin reuses the IDE's K2 analysis session, project model, and indexes.
+Do not install release zips by hand for supported macOS developer setups; the
+Homebrew cask owns plugin updates and profile links.
 
 ## Install a local development build
 
