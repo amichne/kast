@@ -258,16 +258,16 @@ pub struct RuntimeArgs {
     /// OTLP endpoint override while profiling is enabled.
     #[arg(long, hide = true)]
     pub profile_otlp_endpoint: Option<String>,
-    /// Release tag or version to use when auto-installing a missing headless backend.
+    /// Release tag or version for the retired headless auto-install fallback.
     #[arg(long, hide = true)]
     pub install_version: Option<String>,
-    /// Release directory URL to use when auto-installing a missing headless backend.
+    /// Release directory URL for the retired headless auto-install fallback.
     #[arg(long, hide = true)]
     pub install_base_url: Option<String>,
-    /// Disable TLS certificate verification for auto-install downloads.
+    /// Disable TLS certificate verification for the retired download fallback.
     #[arg(long, hide = true)]
     pub install_insecure_skip_tls_verify: bool,
-    #[arg(skip = true)]
+    #[arg(skip = false)]
     pub auto_install_headless: bool,
 }
 
@@ -437,7 +437,8 @@ pub struct InstallArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum InstallCommand {
-    /// Install the headless JVM backend.
+    /// Install the headless JVM backend from an internal archive.
+    #[command(hide = true)]
     Headless(HeadlessInstallArgs),
     /// Audit and repair stale Kast installs, resources, and profile links.
     Affected(AffectedInstallArgs),
@@ -477,17 +478,16 @@ pub struct CompletionArgs {
 
 #[derive(Debug, Args, Clone)]
 pub struct HeadlessInstallArgs {
-    /// Local backend zip archive. When omitted, kast downloads the release asset.
+    /// Local backend zip archive to refresh an existing Linux headless tarball install.
     #[arg(long)]
     pub archive: Option<PathBuf>,
-    /// Release tag or version. Defaults to this CLI version.
+    /// Version label to record for the local archive. Defaults to this CLI version.
     #[arg(long)]
     pub version: Option<String>,
-    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
-    /// Defaults to the matching GitHub release.
+    /// Retired standalone backend release URL option.
     #[arg(long)]
     pub base_url: Option<String>,
-    /// Disable TLS certificate verification for downloads; SHA256SUMS and provenance checks still run.
+    /// Retired standalone backend download TLS option.
     #[arg(long)]
     pub insecure_skip_tls_verify: bool,
     /// Replace an existing installed backend version.

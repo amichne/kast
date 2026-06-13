@@ -11,11 +11,10 @@ planned edit is safe to apply.
 
 `kast` has two independent runtime modes:
 
-- **Headless CLI + backend** — install the `kast` CLI, run
-  `kast setup` for local integrations, and add the packaged IDEA-backed
-  runtime with `kast install headless` when you need an independent backend.
-  Works in terminals, CI, hosted agents, and images that need the
-  self-contained Linux headless tarball.
+- **Headless CLI + backend** — install the Linux headless tarball when you
+  need an independent backend.
+  The tarball contains the CLI, packaged IDEA-backed runtime, scripts, and
+  metadata needed for terminals, CI, hosted agents, and offline images.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
   JetBrains IDE and reuses the IDE's already-open project model, indexes, and
   analysis session.
@@ -30,25 +29,19 @@ Pick the entry point you want first:
 | Runtime mode | Best when | Install |
 | --- | --- | --- |
 | **Headless CLI + backend** | You want an independent runtime for terminal work, CI, agents, or hosted Linux images | [Install guide](https://kast.michne.com/getting-started/install/) |
-| **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Plugin install guide](https://kast.michne.com/getting-started/install/#install-the-idea-and-android-studio-plugin-manually) · [Latest plugin zip](https://github.com/amichne/kast/releases/latest) |
+| **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Homebrew install guide](https://kast.michne.com/getting-started/install/#homebrew-install) |
 
-Install the Rust `kast` CLI with Homebrew when you can:
+Install the macOS developer distribution with Homebrew:
 
 ```console
 brew tap amichne/kast
 brew install kast
-```
-
-Set up standard local integrations, then add the headless backend when you
-want an independent runtime:
-
-```console
+brew install --cask kast-plugin
 kast setup
-kast install headless
 ```
 
-Use the Ubuntu/Debian installer when Homebrew is not available, or when the
-target host needs the self-contained Linux headless tarball:
+Use the Linux headless tarball when the target host needs a self-contained
+headless runtime:
 
 ```console
 ./scripts/install-ubuntu-debian.sh install
@@ -59,16 +52,10 @@ self-contained Linux headless tarball; the
 [install guide](https://kast.michne.com/getting-started/install/#linux-headless-tarball)
 shows the exact environment variables.
 
-Warm the configured backend before running analysis commands. Headless is the
-default non-IDE backend:
+After the Linux tarball installer has written the headless configuration, warm
+the backend before running analysis commands:
 
 ```console
-# First-time local setup
-kast setup
-
-# Install the independent headless backend when needed
-kast install headless
-
 # Start or warm the backend
 kast up --backend=headless
 

@@ -31,9 +31,9 @@ If your JetBrains config directory is somewhere else, point the cask at it:
 KAST_JETBRAINS_CONFIG_ROOT="$HOME/Library/Application Support/JetBrains" brew reinstall --cask kast-plugin
 ```
 
-The CLI formula does not install the headless JVM backend or a Homebrew-managed
-JDK; use Kast's backend installer flow when you explicitly need the headless
-backend.
+The Homebrew distribution is the macOS developer path. It does not install the
+Linux headless runtime or a Homebrew-managed JDK; use the Linux headless
+tarball when you explicitly need headless operation.
 
 ## Enterprise mirrors
 
