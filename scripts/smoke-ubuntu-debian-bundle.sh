@@ -188,7 +188,8 @@ mv "$extracted_bundle_root" "$bundle_root"
 [[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/lib/nio-fs.jar" ]] || die "Bundle missing headless IDEA home"
 [[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/modules/module-descriptors.dat" ]] || die "Bundle missing headless module descriptors"
 [[ -d "${bundle_root}/lib/backends/${backend_install_name}/idea-home/plugins/kast-headless" ]] || die "Bundle missing bundled kast-headless plugin"
-[[ -x "${bundle_root}/scripts/install-ubuntu-debian.sh" ]] || die "Bundle missing canonical installer"
+[[ -x "${bundle_root}/kast.sh" ]] || die "Bundle missing executable root installer"
+[[ ! -e "${bundle_root}/scripts/install-ubuntu-debian.sh" ]] || die "Bundle must not include the deprecated Ubuntu/Debian wrapper"
 [[ ! -e "${bundle_root}/scripts/install-kast-devin.sh" ]] || die "Bundle must not include Devin-specific installer"
 [[ ! -e "${bundle_root}/scripts/verify-kast-devin.sh" ]] || die "Bundle must not include a second verifier script"
 [[ -f "${bundle_root}/manifest.json" ]] || die "Bundle missing manifest"
@@ -208,7 +209,7 @@ assert payload["kind"] == "KAST_UBUNTU_DEBIAN_BUNDLE", payload
 assert payload["version"] == version, payload
 assert payload["platform"] == sys.argv[3], payload
 assert payload["backendKind"] == sys.argv[4], payload
-assert payload["entrypoint"] == "scripts/install-ubuntu-debian.sh", payload
+assert payload["entrypoint"] == "kast.sh", payload
 roles = {entry["role"] for entry in payload["artifacts"]}
 assert {"cli", sys.argv[5]}.issubset(roles), payload
 PY
@@ -225,7 +226,7 @@ KAST_UBUNTU_DEBIAN_ROOT="$manifest_install_root" \
 KAST_UBUNTU_DEBIAN_BIN_DIR="$manifest_bin_dir" \
 KAST_UBUNTU_DEBIAN_CONFIG_HOME="$manifest_config_home" \
 KAST_JAVA_CMD=sh \
-"${bundle_root}/scripts/install-ubuntu-debian.sh" install
+"${bundle_root}/kast.sh" install
 
 manifest_config_file="${manifest_config_home}/config.toml"
 manifest_installed_home="${manifest_install_root}/${version}"
@@ -236,12 +237,11 @@ grep -Fq "runtimeLibsDir = \"${manifest_installed_home}/lib/backends/headless-${
 HOME="$home_dir" \
 PATH="$bin_dir:$PATH" \
 KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
-KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="$bundle_path" \
 KAST_UBUNTU_DEBIAN_ROOT="$install_root" \
 KAST_UBUNTU_DEBIAN_BIN_DIR="$bin_dir" \
 KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
 KAST_JAVA_CMD=sh \
-"${repo_root}/scripts/install-ubuntu-debian.sh" install
+"${repo_root}/kast.sh" install --from "$bundle_path"
 
 installed_home="${install_root}/${version}"
 installed_kast="${bin_dir}/kast"
@@ -268,21 +268,19 @@ expect_failure_contains \
   HOME="$home_dir" \
   PATH="$bin_dir:$PATH" \
   KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
-  KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="$bundle_without_sidecar" \
   KAST_UBUNTU_DEBIAN_ROOT="$install_root" \
   KAST_UBUNTU_DEBIAN_BIN_DIR="$bin_dir" \
   KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
   KAST_JAVA_CMD=sh \
-  "${repo_root}/scripts/install-ubuntu-debian.sh" install
+  "${repo_root}/kast.sh" install --from "$bundle_without_sidecar"
 
 HOME="$home_dir" \
 PATH="$bin_dir:$PATH" \
-KAST_UBUNTU_DEBIAN_VERSION="$version" \
 KAST_UBUNTU_DEBIAN_ROOT="$install_root" \
 KAST_UBUNTU_DEBIAN_BIN_DIR="$bin_dir" \
 KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
 KAST_JAVA_CMD=sh \
-"${repo_root}/scripts/install-ubuntu-debian.sh" verify
+"${repo_root}/kast.sh" verify --version "$version"
 
 expected_digest="$(compute_sha256 "$bundle_path")"
 actual_digest="$(awk '{ print $1 }' "${bundle_path}.sha256")"

@@ -44,7 +44,7 @@ project and indexes Kotlin files. After that, you're hitting a warm
 session.
 
 ```console title="First-time local setup"
-./scripts/install-ubuntu-debian.sh install
+./kast.sh install
 ```
 
 ```console linenums="1" title="Start the daemon"
