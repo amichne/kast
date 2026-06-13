@@ -77,8 +77,9 @@ with a matching `.sha256` sidecar. Each bundle contains the
 Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
 bundle metadata, and the license notice.
 
-The tarball is built from the release CLI and headless runtime artifacts and is
-published with a matching `.sha256` sidecar.
+Linux headless tarballs are built, validated, and published by the normal
+release workflow. They are part of the release manifest and are verified before
+the release is published.
 
 ```bash title="Install Kast on Ubuntu/Debian"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
@@ -89,7 +90,7 @@ export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 For mirrored artifacts or image builds, point the same installer at an exact
 local tarball:
 
-```bash title="Install from a mirrored Ubuntu/Debian bundle"
+```bash title="Install from a mirrored Linux headless tarball"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz"
 ./scripts/install-ubuntu-debian.sh install
@@ -121,13 +122,11 @@ from local CLI and backend artifacts:
 
 ## Verify release assets
 
-Published releases from `amichne/kast` include CLI zips, the headless backend
-zip, IDEA plugin zip, `SHA256SUMS`, and
-`build-provenance.json`. Ubuntu/Debian tarballs are optional offline bundles
-with matching `.sha256` sidecars; they may appear after the core release when
-the manual offline-bundle workflow appends them. Mirror or promote the release
-directory as a unit, then run the same verifier used by CI before importing
-Kast artifacts into an internal artifact store:
+Published releases from `amichne/kast` include CLI zips, the IDEA plugin zip,
+the Linux headless tarball with its `.sha256` sidecar, `SHA256SUMS`, and
+`build-provenance.json`. Mirror or promote the release directory as a unit,
+then run the same verifier used by CI before importing Kast artifacts into an
+internal artifact store:
 
 ```bash title="Verify a downloaded release directory"
 gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
@@ -135,8 +134,8 @@ gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
 ```
 
 The verifier uses `build-provenance.json` as the release manifest, checks each
-SHA-256 digest, validates Ubuntu/Debian bundle sidecars when those optional
-bundles are present, and rejects assets not named by provenance.
+SHA-256 digest, requires the Linux headless tarball sidecar, and rejects assets
+not named by provenance.
 
 ??? info "Where kast stores configuration"
 

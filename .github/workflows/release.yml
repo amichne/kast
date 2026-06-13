@@ -529,7 +529,7 @@ jobs:
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -550,19 +550,62 @@ jobs:
       - name: Build headless backend
         run: ./kast.sh build headless -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
-      - name: Upload headless backend asset
+      - name: Upload headless backend artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: headless-backend-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: warn
+
+  build-linux-headless-tarball:
+    name: Build Linux headless tarball
+    needs:
+      - prepare-release
+      - build-cli
+      - build-headless-backend
+    if: always() && needs.prepare-release.result == 'success' && needs.build-cli.result == 'success' && needs.build-headless-backend.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Download headless backend artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: headless-backend-${{ github.run_id }}
+          path: headless-backend
+
+      - name: Download release inputs
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_name="kast-headless-${tag}.zip"
-          source_zip="dist/headless.zip"
-          [[ -f "$source_zip" ]] || { echo "Headless backend zip not found: $source_zip" >&2; exit 1; }
-          ln "$source_zip" "dist/${asset_name}"
-          gh release upload "$tag" "dist/${asset_name}" --clobber
-          python3 - "dist/${asset_name}" "dist/build-provenance-headless.json" <<'PY'
+          rm -rf release-assets dist
+          mkdir -p release-assets dist
+          gh release download "$tag" --dir release-assets --pattern "kast-${tag}-linux-x64.zip"
+
+      - name: Package Linux headless tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          cli_asset="release-assets/kast-${tag}-linux-x64.zip"
+          backend_asset="headless-backend/headless.zip"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+          [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
+          ./scripts/package-ubuntu-debian-bundle.sh \
+            --cli-archive "$cli_asset" \
+            --backend-archive "$backend_asset" \
+            --version "$tag" \
+            --output "$bundle_asset"
+          mkdir -p dist/provenance
+          python3 - "$bundle_asset" "dist/provenance/build-provenance-ubuntu-debian-headless.json" <<'PY'
           import hashlib, json, os, sys
           from pathlib import Path
           asset = Path(sys.argv[1])
@@ -574,19 +617,41 @@ jobs:
               "ref": os.environ["GITHUB_REF"],
               "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
               "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "headless",
+              "platformId": "ubuntu-debian-headless-x86_64",
               "assetName": asset.name,
               "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
-          rm -f "dist/${asset_name}"
 
-      - name: Upload headless backend artifact
+      - name: Validate Linux headless tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          for container_image in ubuntu:22.04 ubuntu:24.04; do
+            KAST_UBUNTU_DEBIAN_VERSION="$tag" \
+            KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
+            KAST_UBUNTU_DEBIAN_JAVA_VERSION=21 \
+            BUNDLE_PATH="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
+            ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+          done
+
+      - name: Upload Linux headless tarball
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+          gh release upload "$tag" "$bundle_asset" "${bundle_asset}.sha256" --clobber
+
+      - name: Upload Linux headless tarball artifact
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: headless-backend-${{ github.run_id }}
+          name: linux-headless-tarball-${{ github.run_id }}
           path: dist/
           if-no-files-found: warn
 
@@ -598,7 +663,8 @@ jobs:
       - build-cli
       - build-idea-plugin
       - build-headless-backend
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success'
+      - build-linux-headless-tarball
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -619,11 +685,11 @@ jobs:
           pattern: idea-plugin-*
           merge-multiple: true
 
-      - name: Download headless backend provenance
+      - name: Download Linux headless tarball provenance
         uses: actions/download-artifact@v7
         with:
-          path: provenance-headless
-          pattern: headless-backend-*
+          path: provenance-linux-headless
+          pattern: linux-headless-tarball-*
           merge-multiple: true
 
       - name: Assemble combined provenance
@@ -633,7 +699,7 @@ jobs:
           python3 scripts/assemble-release-provenance.py \
             --output dist/build-provenance.json \
             provenance-cli \
-            provenance-headless \
+            provenance-linux-headless \
             provenance-idea
 
       - name: Upload combined provenance

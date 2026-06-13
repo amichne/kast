@@ -10,13 +10,10 @@ REQUIRED_PLATFORMS = {
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
-    "headless",
     "idea",
-}
-OPTIONAL_PLATFORMS = {
-    "devin-headless-linux-x64",
     "ubuntu-debian-headless-x86_64",
 }
+OPTIONAL_PLATFORMS: set[str] = set()
 SUPPORTED_PLATFORMS = REQUIRED_PLATFORMS | OPTIONAL_PLATFORMS
 
 

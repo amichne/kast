@@ -58,13 +58,10 @@ required = {
     "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
     "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
-    "headless": f"kast-headless-{tag}.zip",
     "idea": f"kast-idea-{tag}.zip",
-}
-optional = {
-    "devin-headless-linux-x64": f"kast-devin-headless-runtime-linux-x64-{tag}.tar.gz",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
+optional = {}
 supported = required | optional
 
 def fail(message: str) -> None:

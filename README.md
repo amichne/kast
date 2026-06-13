@@ -48,7 +48,7 @@ headless runtime:
 ```
 
 For mirrored artifacts and CI images, use the same script with the
-self-contained Ubuntu/Debian bundle; the
+self-contained Linux headless tarball; the
 [install guide](https://kast.michne.com/getting-started/install/#linux-headless-tarball)
 shows the exact environment variables.
 

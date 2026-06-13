@@ -51,7 +51,7 @@ path and should not be used as a headless deployment substitute.
 |-------------------|--------------|--------------|-------------------------|
 | Local developer agent | Homebrew install plus `kast setup` with optional `--include-copilot`, or Linux headless tarball for independent headless work | Headless backend or IDEA backend | The packaged skill and native `kast_*` tools |
 | CI review agent | Linux headless tarball install | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
-| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the offline release bundle | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
+| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the Linux headless tarball | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 
 Use the Ubuntu/Debian path when the agent image cannot rely on a human shell
 profile, Homebrew tap state, network access to component assets, or an
