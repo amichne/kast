@@ -268,8 +268,6 @@ fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     if !result.brew_command.is_empty() {
         println!("- Brew command: `{}`", result.brew_command.join(" "));
     }
-    print_optional("Download directory", result.download_dir.as_deref());
-    print_optional("Downloaded path", result.downloaded_path.as_deref());
     print_optional(
         "JetBrains config root",
         result.jetbrains_config_root.as_deref(),

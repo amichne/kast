@@ -1,6 +1,7 @@
 # homebrew-kast
 
-Homebrew tap for [Kast](https://github.com/amichne/kast).
+Homebrew tap for the macOS developer distribution of
+[Kast](https://github.com/amichne/kast).
 
 ## Install
 
@@ -20,7 +21,7 @@ brew install kast
 brew install --cask kast-plugin
 ```
 
-`kast` installs the platform-specific Rust CLI asset from `amichne/kast`.
+`kast` installs the macOS Rust CLI asset from `amichne/kast`.
 `kast-plugin` installs the IDEA plugin bundle from `amichne/kast` as a cask and
 links it into every local JetBrains IDE profile it can find. Restart each IDE
 after installation or upgrade so the IDE reloads its plugins.
@@ -31,9 +32,9 @@ If your JetBrains config directory is somewhere else, point the cask at it:
 KAST_JETBRAINS_CONFIG_ROOT="$HOME/Library/Application Support/JetBrains" brew reinstall --cask kast-plugin
 ```
 
-The CLI formula does not install the headless JVM backend or a Homebrew-managed
-JDK; use Kast's backend installer flow when you explicitly need the headless
-backend.
+The Homebrew distribution is for macOS developer installs. It does not install
+the Linux headless runtime or a Homebrew-managed JDK; use the Linux headless
+tarball from the Kast release when you need headless operation.
 
 ## Enterprise mirrors
 

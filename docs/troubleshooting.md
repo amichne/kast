@@ -106,7 +106,7 @@ that matches what you're seeing.
     install or repair the profile link:
 
     ```console
-    kast install plugin --link-jetbrains-profiles
+    kast install plugin
     ```
 
 ??? question "Copilot extension files look stale"

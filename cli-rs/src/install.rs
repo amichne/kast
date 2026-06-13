@@ -63,10 +63,6 @@ pub struct InstallIdeaPluginResult {
     pub formula_prefix: String,
     pub cli_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub download_dir: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub downloaded_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub jetbrains_config_root: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub plugin_directories: Vec<String>,
@@ -252,7 +248,6 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
         Some(install_idea_plugin(IdeaPluginInstallArgs {
             jetbrains_config_root: args.jetbrains_config_root,
             link_jetbrains_profiles: true,
-            download_dir: None,
             cask_token: None,
             force: args.force,
             dry_run: false,
@@ -831,7 +826,7 @@ fn repair_affected_jetbrains_profiles(
                 "Back up and relink a stale IDEA or Android Studio profile plugin to {}.",
                 expected_plugin_target.display()
             ),
-            Some("kast install plugin --link-jetbrains-profiles --force".to_string()),
+            Some("kast install plugin --force".to_string()),
         );
         if args.apply {
             backup_existing_path(&plugin_link, backup_root, result)?;
@@ -1178,10 +1173,7 @@ pub fn install_idea_plugin(args: IdeaPluginInstallArgs) -> Result<InstallIdeaPlu
         .clone()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| format!("{formula_tap}/{KAST_PLUGIN_CASK_NAME}"));
-    if args.link_jetbrains_profiles {
-        return install_idea_plugin_into_jetbrains_profiles(args, homebrew, cask_token, warnings);
-    }
-    download_idea_plugin(args, homebrew, cask_token, warnings)
+    install_idea_plugin_into_jetbrains_profiles(args, homebrew, cask_token, warnings)
 }
 
 pub fn install_shell(args: ShellInstallArgs) -> Result<InstallShellResult> {
@@ -1372,62 +1364,6 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
-fn download_idea_plugin(
-    args: IdeaPluginInstallArgs,
-    homebrew: HomebrewContext,
-    cask_token: String,
-    warnings: Vec<String>,
-) -> Result<InstallIdeaPluginResult> {
-    let download_dir = args
-        .download_dir
-        .map(config::normalize)
-        .unwrap_or_else(default_download_dir);
-    let brew_args = vec![
-        "fetch".to_string(),
-        "--cask".to_string(),
-        "--force".to_string(),
-        "--retry".to_string(),
-        cask_token.clone(),
-    ];
-    let mut downloaded_path = None;
-    if !args.dry_run {
-        fs::create_dir_all(&download_dir)?;
-        eprintln!("Fetching Kast IDEA plugin cask {cask_token} with Homebrew...");
-        let output = run_brew_command(&brew_args)?;
-        if !output.status.success() {
-            return Err(command_error(
-                "HOMEBREW_CASK_FETCH_FAILED",
-                "Homebrew failed to fetch the Kast IDEA plugin cask",
-                &brew_args,
-                &output,
-            ));
-        }
-        let cache_path = homebrew_cask_cache_path(&cask_token)?;
-        let destination = download_destination(&cache_path, &download_dir)?;
-        fs::copy(&cache_path, &destination)?;
-        eprintln!("Downloaded Kast IDEA plugin to {}", destination.display());
-        downloaded_path = Some(destination.display().to_string());
-    }
-
-    Ok(InstallIdeaPluginResult {
-        cask_token,
-        brew_action: "fetch".to_string(),
-        brew_command: std::iter::once("brew".to_string())
-            .chain(brew_args)
-            .collect(),
-        brew_prefix: homebrew.brew_prefix.display().to_string(),
-        formula_prefix: homebrew.formula_prefix.display().to_string(),
-        cli_path: homebrew.cli_path.display().to_string(),
-        download_dir: Some(download_dir.display().to_string()),
-        downloaded_path,
-        jetbrains_config_root: None,
-        plugin_directories: vec![],
-        dry_run: args.dry_run,
-        warnings,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
 fn install_idea_plugin_into_jetbrains_profiles(
     args: IdeaPluginInstallArgs,
     homebrew: HomebrewContext,
@@ -1490,8 +1426,6 @@ fn install_idea_plugin_into_jetbrains_profiles(
         brew_prefix: homebrew.brew_prefix.display().to_string(),
         formula_prefix: homebrew.formula_prefix.display().to_string(),
         cli_path: homebrew.cli_path.display().to_string(),
-        download_dir: None,
-        downloaded_path: None,
         jetbrains_config_root: Some(jetbrains_config_root.display().to_string()),
         plugin_directories: plugin_directories
             .into_iter()
@@ -1851,44 +1785,7 @@ fn parse_homebrew_cask_version(output: &str, cask_name: &str) -> Option<String> 
     })
 }
 
-fn homebrew_cask_cache_path(cask_token: &str) -> Result<PathBuf> {
-    let args = vec![
-        "--cache".to_string(),
-        "--cask".to_string(),
-        cask_token.to_string(),
-    ];
-    let output = run_brew_command(&args)?;
-    if !output.status.success() {
-        return Err(command_error(
-            "HOMEBREW_CASK_CACHE_FAILED",
-            "Homebrew did not report the cask cache path",
-            &args,
-            &output,
-        ));
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let path = stdout.trim();
-    if path.is_empty() {
-        return Err(CliError::new(
-            "HOMEBREW_CASK_CACHE_FAILED",
-            "Homebrew returned an empty cask cache path",
-        ));
-    }
-    Ok(PathBuf::from(path))
-}
-
 fn run_brew(args: &[&str]) -> Result<Output> {
-    let mut command = ProcessCommand::new("brew");
-    command.args(args);
-    command.output().map_err(|error| {
-        CliError::new(
-            "HOMEBREW_NOT_FOUND",
-            format!("Unable to run `brew`: {error}"),
-        )
-    })
-}
-
-fn run_brew_command(args: &[String]) -> Result<Output> {
     let mut command = ProcessCommand::new("brew");
     command.args(args);
     command.output().map_err(|error| {
@@ -1937,31 +1834,6 @@ fn path_is_below_homebrew_formula(path: &Path, formula_prefix: &Path) -> bool {
 
 fn default_jetbrains_config_root() -> PathBuf {
     config::home_dir().join("Library/Application Support/JetBrains")
-}
-
-fn default_download_dir() -> PathBuf {
-    config::home_dir().join("Downloads")
-}
-
-fn download_destination(cache_path: &Path, download_dir: &Path) -> Result<PathBuf> {
-    let file_name = cache_path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .filter(|name| !name.is_empty())
-        .ok_or_else(|| {
-            CliError::new(
-                "HOMEBREW_CASK_CACHE_FAILED",
-                format!(
-                    "Homebrew cache path has no file name: {}",
-                    cache_path.display()
-                ),
-            )
-        })?;
-    let artifact_name = file_name
-        .split_once("--")
-        .map(|(_, artifact_name)| artifact_name)
-        .unwrap_or(file_name);
-    Ok(download_dir.join(artifact_name))
 }
 
 fn jetbrains_plugin_dirs(root: &Path) -> Result<Vec<PathBuf>> {
@@ -2124,22 +1996,6 @@ mod tests {
     fn cask_name_uses_last_token_segment() {
         assert_eq!(cask_name("amichne/kast/kast-plugin"), "kast-plugin");
         assert_eq!(cask_name("kast-plugin"), "kast-plugin");
-    }
-
-    #[test]
-    fn download_destination_strips_homebrew_cache_hash() {
-        let destination = download_destination(
-            Path::new(
-                "/Users/example/Library/Caches/Homebrew/downloads/hash--kast-idea-v0.7.26.zip",
-            ),
-            Path::new("/Users/example/Downloads"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            destination,
-            Path::new("/Users/example/Downloads/kast-idea-v0.7.26.zip")
-        );
     }
 
     #[test]

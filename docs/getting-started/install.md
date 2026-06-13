@@ -27,15 +27,16 @@ the `amichne/kast` tap. `kast` installs the Rust CLI from `amichne/kast`;
 ```console title="Install kast with Homebrew"
 brew tap amichne/kast
 brew install kast
+brew install --cask kast-plugin
 kast setup
 ```
 
-Use Homebrew for ordinary local use when your platform is supported. `kast
-setup` installs shell integration, repairs managed resources, refreshes any
-already-installed headless backend, and on macOS installs or refreshes the IDEA
-plugin cask when JetBrains profile directories are present. Disable individual
-parts with `--skip-repair`, `--skip-shell`, `--skip-headless`,
-`--skip-plugin`, `--skip-skill`, or `--skip-copilot`.
+Use Homebrew for ordinary macOS developer installs. `kast setup` installs shell
+integration, repairs managed resources, refreshes any already-installed
+headless backend, and installs or refreshes the IDEA plugin cask when JetBrains
+profile directories are present. Disable individual parts with `--skip-repair`,
+`--skip-shell`, `--skip-headless`, `--skip-plugin`, `--skip-skill`, or
+`--skip-copilot`.
 
 ## Install a backend
 
@@ -259,7 +260,7 @@ Before using the action, run the local plugin install once so the CLI path is
 written or repaired:
 
 ```console title="Install and link local IDE profiles"
-kast install plugin --link-jetbrains-profiles
+kast install plugin
 ```
 
 If you manage config by hand, keep the configured binary absolute and
@@ -277,20 +278,10 @@ Then use the IDE menu:
 3. To remove managed files later, choose
    **Tools → Kast → Uninstall Copilot Extension**.
 
-## Install the IDEA and Android Studio plugin manually
-
-Download the plugin zip and install it from disk:
-
-1. Download `kast-idea-<version>.zip` from the
-   [latest release](https://github.com/amichne/kast/releases/latest).
-2. In IDEA or Android Studio: **Settings → Plugins → ⚙️ → Install Plugin from Disk** →
-   pick the zip.
-3. Restart the IDE when prompted.
-
 !!! note
-    The IDEA / Android Studio plugin doesn't need the headless CLI. It reuses the
-    IDE's K2 analysis session, project model, and indexes. Install the
-    CLI separately if you also want a terminal entry point.
+    The IDEA / Android Studio plugin is installed through the Homebrew cask and
+    linked into JetBrains profile directories. It reuses the IDE's K2 analysis
+    session, project model, and indexes.
 
 ## Install a local development build
 

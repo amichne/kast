@@ -33,7 +33,7 @@ Pick your entry point:
     Reuse the analysis session IDEA or Android Studio already has open. No second JVM,
     no second cold start, same JSON-RPC over a socket.
 
-    [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#install-the-idea-and-android-studio-plugin-manually)
+    [:octicons-arrow-right-16: Plugin install guide](getting-started/install.md#homebrew-install)
 
 </div>
 

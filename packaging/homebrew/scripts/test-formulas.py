@@ -94,6 +94,7 @@ require("monorepo `amichne/kast` release workflow" in docs, "README must documen
 require("HOMEBREW_KAST_ARTIFACT_ROOT" in kast, "kast formula must support a shared artifact mirror root")
 require("HOMEBREW_KAST_CLI_RELEASE_ROOT" in kast, "kast formula must support a CLI-specific release root")
 require("kast/releases/download" in kast, "kast formula must default to monorepo release assets")
+require("on_linux" not in kast, "kast formula must not define a Linux Homebrew distribution")
 require('bin.install "kast"' in kast, "kast formula must install the single Rust binary directly")
 require('shell_output("#{bin}/kast version")' in kast, "kast formula test must use stable version output")
 require("strategy :github_releases" in kast, "kast formula livecheck must ignore unpublished draft tags")
@@ -122,8 +123,6 @@ with tempfile.TemporaryDirectory() as tmp:
         "VERSION": "v9.8.7",
         "SHA256_MACOS_X64": "1" * 64,
         "SHA256_MACOS_ARM64": "2" * 64,
-        "SHA256_LINUX_X64": "3" * 64,
-        "SHA256_LINUX_ARM64": "4" * 64,
         "SHA256_PLUGIN": "5" * 64,
     }
     subprocess.run([str(updater)], env=env, check=True)
@@ -143,8 +142,6 @@ with tempfile.TemporaryDirectory() as tmp:
     require("/v9.8.7/kast-idea-v9.8.7.zip" in updated_docs, "updater must set the README plugin mirror example")
     require('sha256 "' + ("1" * 64) + '"' in updated_kast, "updater must set macOS x64 sha")
     require('sha256 "' + ("2" * 64) + '"' in updated_kast, "updater must set macOS arm64 sha")
-    require('sha256 "' + ("3" * 64) + '"' in updated_kast, "updater must set Linux x64 sha")
-    require('sha256 "' + ("4" * 64) + '"' in updated_kast, "updater must set Linux arm64 sha")
     require('sha256 "' + ("5" * 64) + '"' in updated_plugin, "updater must set plugin sha")
 
 print("Homebrew package contract test passed")
