@@ -190,7 +190,11 @@ fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
     ) {
         return Ok(());
     }
-    install::repair_if_running_cli_version_changed().map(|_| ())
+    match install::repair_if_running_cli_version_changed() {
+        Ok(_) => Ok(()),
+        Err(error) if matches!(command, Command::Doctor) && error.code == "CONFIG_ERROR" => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 
 fn print_completion(args: cli::CompletionArgs) {

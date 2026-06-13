@@ -4,6 +4,7 @@ use crate::config;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -52,9 +53,47 @@ pub struct ManagedRepo {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DoctorConfigurationDiagnostic {
+    pub config_home: String,
+    pub config_path: String,
+    pub exists: bool,
+    pub valid: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorCanonicalDirectoryDiagnostic {
+    pub root: String,
+    pub bin_dir: String,
+    pub lib_dir: String,
+    pub cache_dir: String,
+    pub logs_dir: String,
+    pub descriptor_dir: String,
+    pub socket_dir: String,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorBinaryDiagnostic {
+    pub running_binary: String,
+    pub configured_binary: String,
+    pub configured_exists: bool,
+    pub configured_matches_running: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
     pub installed: bool,
     pub config_path: String,
+    pub configuration: DoctorConfigurationDiagnostic,
+    pub canonical_directory: DoctorCanonicalDirectoryDiagnostic,
+    pub binary: DoctorBinaryDiagnostic,
     pub minimum_backend_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallState>,
@@ -66,12 +105,46 @@ pub struct SelfDoctorResult {
 
 pub fn doctor() -> Result<SelfDoctorResult> {
     let config_path = config::global_config_path();
-    let install = read_install_state(&config_path)?;
-    let global_config = config::KastConfig::load_global()?;
-    let install_root = global_config.paths.install_root;
-    let minimum_backend_version = minimum_backend_version();
     let mut issues = vec![];
     let mut warnings = vec![];
+    let global_config = match config::KastConfig::load_global() {
+        Ok(global_config) => global_config,
+        Err(error) => {
+            issues.push(format!(
+                "Config is invalid at {}: {}",
+                config_path.display(),
+                error.message
+            ));
+            config::KastConfig::defaults()
+        }
+    };
+    let configuration = configuration_diagnostic(&config_path, issues.first().cloned());
+    let install = match read_install_state(&config_path) {
+        Ok(install) => install,
+        Err(error) => {
+            issues.push(format!(
+                "Install state could not be read from {}: {}",
+                config_path.display(),
+                error.message
+            ));
+            None
+        }
+    };
+    let install_root = global_config.paths.install_root.clone();
+    let canonical_directory = canonical_directory_diagnostic(&global_config.paths);
+    let binary = binary_diagnostic(&global_config.cli);
+    if !binary.configured_exists {
+        warnings.push(format!(
+            "Configured kast binary is missing: {}",
+            binary.configured_binary
+        ));
+    } else if !binary.configured_matches_running {
+        warnings.push(format!(
+            "Configured kast binary {} does not match the running binary {}",
+            binary.configured_binary, binary.running_binary
+        ));
+    }
+    let minimum_backend_version = minimum_backend_version();
     if let Some(install) = &install {
         for path in &install.managed_paths {
             let managed_path = managed_path(&install_root, path);
@@ -115,6 +188,9 @@ pub fn doctor() -> Result<SelfDoctorResult> {
     Ok(SelfDoctorResult {
         installed: install.is_some(),
         config_path: config_path.display().to_string(),
+        configuration,
+        canonical_directory,
+        binary,
         minimum_backend_version: minimum_backend_version.to_string(),
         install,
         ok: issues.is_empty(),
@@ -122,6 +198,49 @@ pub fn doctor() -> Result<SelfDoctorResult> {
         warnings,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn configuration_diagnostic(
+    config_path: &Path,
+    error: Option<String>,
+) -> DoctorConfigurationDiagnostic {
+    DoctorConfigurationDiagnostic {
+        config_home: config::kast_config_home().display().to_string(),
+        config_path: config_path.display().to_string(),
+        exists: config_path.is_file(),
+        valid: error.is_none(),
+        error,
+        schema_version: SCHEMA_VERSION,
+    }
+}
+
+fn canonical_directory_diagnostic(
+    paths: &config::PathsConfig,
+) -> DoctorCanonicalDirectoryDiagnostic {
+    DoctorCanonicalDirectoryDiagnostic {
+        root: paths.install_root.display().to_string(),
+        bin_dir: paths.bin_dir.display().to_string(),
+        lib_dir: paths.lib_dir.display().to_string(),
+        cache_dir: paths.cache_dir.display().to_string(),
+        logs_dir: paths.logs_dir.display().to_string(),
+        descriptor_dir: paths.descriptor_dir.display().to_string(),
+        socket_dir: paths.socket_dir.display().to_string(),
+        schema_version: SCHEMA_VERSION,
+    }
+}
+
+fn binary_diagnostic(cli: &config::CliConfig) -> DoctorBinaryDiagnostic {
+    let running_binary = env::current_exe().unwrap_or_else(|_| cli.binary_path.clone());
+    let configured_binary = cli.binary_path.clone();
+    let configured_exists = configured_binary.is_file();
+    DoctorBinaryDiagnostic {
+        running_binary: running_binary.display().to_string(),
+        configured_binary: configured_binary.display().to_string(),
+        configured_exists,
+        configured_matches_running: configured_exists
+            && config::normalize(configured_binary) == config::normalize(running_binary),
+        schema_version: SCHEMA_VERSION,
+    }
 }
 
 pub fn write_install_state(install: &InstallState) -> Result<PathBuf> {
