@@ -67,20 +67,18 @@ that matches what you're seeing.
     - If the binary lives somewhere else, set `[cli] binaryPath` in
       `$HOME/.config/kast/config.toml` to the executable path.
 
-??? question "IDEA or Android Studio can't install the Copilot extension"
+??? question "IDEA or Android Studio can't find the Kast plugin"
 
-    **Symptoms:** **Tools → Kast → Install Copilot Extension** fails with a
-    message about `config.toml`, `cli.binaryPath`, or a non-executable CLI.
+    **Symptoms:** IDEA or Android Studio starts without Kast diagnostics, or
+    `kast doctor` reports missing JetBrains profile links.
 
-    The IDE action reads the CLI path from `[cli] binaryPath`; it doesn't
-    search your shell `PATH`. Add an executable path to the user config:
+    Install or repair the Homebrew-managed plugin link from the CLI:
 
-    ```toml title="$HOME/.config/kast/config.toml"
-    [cli]
-    binaryPath = "/home/alex/.local/bin/kast"
+    ```console
+    kast install plugin
     ```
 
-    Then run **Tools → Kast → Install Copilot Extension** again.
+    Then restart the IDE so it reloads installed plugins.
 
 ??? question "Kast does not open IDEA for a Copilot session"
 

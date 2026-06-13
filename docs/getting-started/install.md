@@ -250,38 +250,20 @@ To refresh packaged files in place, reinstall with `--force`. This replaces the
 managed extension copy while preserving unrelated files that you created under
 `.github`.
 
-### Install Copilot extension from IDEA or Android Studio
+### IDEA and Android Studio plugin role
 
-The IDEA / Android Studio plugin exposes the same install and uninstall flow
-from the IDE. The action calls the CLI path from `[cli] binaryPath` in
-`config.toml`; it doesn't search `PATH`.
-
-Before using the action, run the local plugin install once so the CLI path is
-written or repaired:
+Install or refresh the IDEA / Android Studio plugin through Homebrew and the CLI
+profile-link command:
 
 ```console title="Install and link local IDE profiles"
 kast install plugin
 ```
 
-If you manage config by hand, keep the configured binary absolute and
-executable:
-
-```toml title="$HOME/.config/kast/config.toml"
-[cli]
-binaryPath = "/home/alex/.local/bin/kast"
-```
-
-Then use the IDE menu:
-
-1. Open the project in IDEA or Android Studio.
-2. Choose **Tools → Kast → Install Copilot Extension**.
-3. To remove managed files later, choose
-   **Tools → Kast → Uninstall Copilot Extension**.
-
 !!! note
     The IDEA / Android Studio plugin is installed through the Homebrew cask and
-    linked into JetBrains profile directories. It reuses the IDE's K2 analysis
-    session, project model, and indexes.
+    linked into JetBrains profile directories. Inside the IDE, Kast stays
+    focused on diagnostics and the IDE-hosted analysis backend; it does not
+    duplicate CLI install workflows.
 
 ## Install a local development build
 

@@ -145,11 +145,12 @@ For Copilot, set `KAST_COPILOT_IDEA_AUTOSTART=1` in the extension environment
 to pin startup and tool RPCs to `--backend=idea`. That flag does not launch an
 IDE by itself; `runtime.ideaLaunch.enabled` remains the launch opt-in.
 
-The plugin actions that shell out to `kast`, including
-**Tools → Kast → Install Copilot Extension** and
-**Tools → Kast → Uninstall Copilot Extension**, read the executable path from
-`[cli] binaryPath` in `config.toml`. They don't search `PATH`, so the value
-must point at an executable CLI binary:
+IDEA / Android Studio integration is installed through Homebrew and
+`kast install plugin`. Inside the IDE, Kast stays focused on diagnostics and
+the IDE-hosted backend instead of duplicating CLI install workflows. When IDE
+runtime launch is enabled, the configured CLI path comes from `[cli] binaryPath`
+in `config.toml`; it doesn't search `PATH`, so the value must point at an
+executable CLI binary:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [cli]
