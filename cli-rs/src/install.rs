@@ -197,16 +197,25 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     } else {
         setup_headless_present()?
     };
-    if !args.skip_headless
-        && !headless_present
-        && (args.headless_archive.is_some() || args.version.is_some() || args.base_url.is_some())
-    {
+    let headless_inputs_present =
+        args.headless_archive.is_some() || args.version.is_some() || args.base_url.is_some();
+    if !args.skip_headless && !headless_present && headless_inputs_present {
         return Err(CliError::new(
             "CLI_USAGE",
             "`kast setup` does not add a new headless backend. Install the Linux headless tarball for first-time headless use; setup can only refresh a headless backend that is already recorded by that distribution.",
         ));
     }
-    let headless = if args.skip_headless || !headless_present {
+    if !args.skip_headless
+        && headless_present
+        && args.headless_archive.is_none()
+        && (args.version.is_some() || args.base_url.is_some())
+    {
+        return Err(CliError::new(
+            "CLI_USAGE",
+            "`kast setup` cannot download a standalone headless backend. Pass --headless-archive to refresh an existing Linux headless tarball install.",
+        ));
+    }
+    let headless = if args.skip_headless || !headless_present || args.headless_archive.is_none() {
         None
     } else {
         Some(install_headless(HeadlessInstallArgs {
@@ -318,12 +327,24 @@ pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedR
 }
 
 pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
+    if args.archive.is_none() {
+        return Err(CliError::new(
+            "CLI_USAGE",
+            "`kast install headless` is an internal archive refresh path and requires --archive. Headless operation is delivered through the Linux headless tarball.",
+        ));
+    }
+    if args.base_url.is_some() || args.insecure_skip_tls_verify {
+        return Err(CliError::new(
+            "CLI_USAGE",
+            "`kast install headless` no longer downloads standalone backend release assets. Pass --archive from the Linux headless tarball build output.",
+        ));
+    }
     let backend_args = BackendInstallArgs {
         backend: BackendComponent::Headless,
         archive: args.archive,
         version: args.version,
-        base_url: args.base_url,
-        insecure_skip_tls_verify: args.insecure_skip_tls_verify,
+        base_url: None,
+        insecure_skip_tls_verify: false,
         force: args.force,
     };
     match backend::run(cli::BackendCommand::Install(backend_args))? {

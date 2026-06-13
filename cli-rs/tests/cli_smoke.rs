@@ -1,13 +1,6 @@
-use sha2::{Digest, Sha256};
-use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
-use std::time::Duration;
 
 fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
@@ -113,140 +106,6 @@ fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
     );
     assert!(archive.is_file(), "archive fixture for {backend} {version}");
     archive
-}
-
-struct TestHttpServer {
-    addr: SocketAddr,
-    stop: Arc<AtomicBool>,
-    handle: Option<thread::JoinHandle<()>>,
-}
-
-impl TestHttpServer {
-    fn base_url(&self) -> String {
-        format!("http://{}", self.addr)
-    }
-}
-
-impl Drop for TestHttpServer {
-    fn drop(&mut self) {
-        self.stop.store(true, Ordering::SeqCst);
-        let _ = TcpStream::connect(self.addr);
-        if let Some(handle) = self.handle.take() {
-            handle.join().expect("test http server join");
-        }
-    }
-}
-
-fn serve_directory(root: PathBuf) -> TestHttpServer {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test http server");
-    listener
-        .set_nonblocking(true)
-        .expect("nonblocking test http server");
-    let addr = listener.local_addr().expect("test http server addr");
-    let stop = Arc::new(AtomicBool::new(false));
-    let thread_stop = Arc::clone(&stop);
-    let handle = thread::spawn(move || {
-        while !thread_stop.load(Ordering::SeqCst) {
-            match listener.accept() {
-                Ok((stream, _)) => serve_http_file(stream, &root),
-                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                    thread::sleep(Duration::from_millis(10));
-                }
-                Err(error) => panic!("test http server accept failed: {error}"),
-            }
-        }
-    });
-    TestHttpServer {
-        addr,
-        stop,
-        handle: Some(handle),
-    }
-}
-
-fn serve_http_file(mut stream: TcpStream, root: &Path) {
-    stream
-        .set_nonblocking(false)
-        .expect("blocking test connection");
-    let mut buffer = [0_u8; 4096];
-    let read = stream.read(&mut buffer).expect("read test request");
-    let request = String::from_utf8_lossy(&buffer[..read]);
-    let path = request
-        .lines()
-        .next()
-        .and_then(|line| line.split_whitespace().nth(1))
-        .unwrap_or("/");
-    let path = path.trim_start_matches('/');
-    let file = root.join(path);
-    if file.is_file() {
-        let bytes = std::fs::read(file).expect("read served fixture");
-        let header = format!(
-            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-            bytes.len()
-        );
-        stream
-            .write_all(header.as_bytes())
-            .expect("write response header");
-        stream.write_all(&bytes).expect("write response body");
-    } else {
-        stream
-            .write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
-            .expect("write not found");
-    }
-}
-
-fn sha256_file(path: &Path) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(std::fs::read(path).expect("asset bytes"));
-    hex::encode(hasher.finalize())
-}
-
-fn write_backend_release_asset(root: &Path, backend: &str, tag: &str) -> String {
-    let archive = write_backend_archive(root, backend, tag);
-    let asset_name = format!("kast-{backend}-{tag}.zip");
-    std::fs::copy(&archive, root.join(&asset_name)).expect("copy release backend asset");
-    asset_name
-}
-
-fn write_backend_release_metadata(
-    root: &Path,
-    platform_id: &str,
-    asset_name: &str,
-    checksum_override: Option<&str>,
-    provenance_digest_override: Option<&str>,
-    include_sha256sums: bool,
-    include_provenance: bool,
-) {
-    let digest = sha256_file(&root.join(asset_name));
-    if include_sha256sums {
-        std::fs::write(
-            root.join("SHA256SUMS"),
-            format!(
-                "{}  {asset_name}\n",
-                checksum_override.unwrap_or(digest.as_str())
-            ),
-        )
-        .expect("write SHA256SUMS");
-    }
-    if include_provenance {
-        std::fs::write(root.join("build-provenance.json"), {
-            let provenance_digest = provenance_digest_override
-                .map(str::to_string)
-                .unwrap_or_else(|| format!("sha256:{digest}"));
-            format!(
-                r#"{{
-  "builds": [
-    {{
-      "platformId": "{platform_id}",
-      "assetName": "{asset_name}",
-      "assetDigest": "{provenance_digest}"
-    }}
-  ]
-}}
-"#
-            )
-        })
-        .expect("write build provenance");
-    }
 }
 
 #[test]
@@ -901,25 +760,11 @@ fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
 }
 
 #[test]
-fn backend_install_downloaded_archive_verifies_release_metadata() {
+fn install_headless_requires_local_archive() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
-    let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
-    write_backend_release_metadata(
-        &release_dir,
-        "headless",
-        &asset_name,
-        None,
-        None,
-        true,
-        true,
-    );
-    let server = serve_directory(release_dir);
-    let base_url = server.base_url();
 
     let install = kast(&home, &config_home)
         .args([
@@ -929,26 +774,30 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
             "headless",
             "--version",
             "v9.8.7",
-            "--base-url",
-            &base_url,
-            "--insecure-skip-tls-verify",
         ])
         .output()
         .expect("install headless");
 
     assert!(
-        install.status.success(),
-        "verified headless install should succeed: stdout={}, stderr={}",
+        !install.status.success(),
+        "install headless without archive should fail: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("install headless json");
-    assert_eq!(stdout["downloaded"], true);
+    let stderr = String::from_utf8_lossy(&install.stderr);
     assert!(
-        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
-            .is_file()
+        stderr.contains("\"code\": \"CLI_USAGE\""),
+        "stderr should report usage error: {stderr}"
     );
+    assert!(
+        stderr.contains("--archive"),
+        "stderr should tell callers to provide an archive: {stderr}"
+    );
+    assert!(
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported distribution: {stderr}"
+    );
+    assert!(!home.join(".kast/lib/backends/headless/current").exists());
 }
 
 #[test]
@@ -957,22 +806,8 @@ fn up_does_not_auto_install_missing_headless_backend() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let release_dir = temp.path().join("release");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
-    write_backend_release_metadata(
-        &release_dir,
-        "headless",
-        &asset_name,
-        None,
-        None,
-        true,
-        true,
-    );
-    let server = serve_directory(release_dir);
-    let base_url = server.base_url();
 
     let up = kast(&home, &config_home)
         .args([
@@ -982,8 +817,6 @@ fn up_does_not_auto_install_missing_headless_backend() {
             "--backend=headless",
             "--install-version",
             "v9.8.7",
-            "--install-base-url",
-            &base_url,
             "--wait-timeout-ms",
             "1",
         ])
@@ -1007,192 +840,10 @@ fn up_does_not_auto_install_missing_headless_backend() {
         stderr.contains("Linux headless tarball"),
         "stderr should point to the supported headless distribution: {stderr}"
     );
-}
-
-#[test]
-fn backend_install_downloaded_archive_rejects_checksum_mismatch_before_extract() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let release_dir = temp.path().join("release");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
-    write_backend_release_metadata(
-        &release_dir,
-        "headless",
-        &asset_name,
-        Some("0000000000000000000000000000000000000000000000000000000000000000"),
-        None,
-        true,
-        true,
-    );
-    let server = serve_directory(release_dir);
-    let base_url = server.base_url();
-
-    let install = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "install",
-            "headless",
-            "--version",
-            "v9.8.7",
-            "--base-url",
-            &base_url,
-        ])
-        .output()
-        .expect("install headless");
-
     assert!(
-        !install.status.success(),
-        "checksum mismatch should fail: stdout={}, stderr={}",
-        String::from_utf8_lossy(&install.stdout),
-        String::from_utf8_lossy(&install.stderr)
+        !stderr.contains("kast install headless"),
+        "stderr must not advertise the retired standalone install path: {stderr}"
     );
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(
-        stderr.contains("\"code\": \"BACKEND_RELEASE_VERIFY_FAILED\""),
-        "{stderr}"
-    );
-    assert!(!home.join(".kast/lib/backends/headless/current").exists());
-}
-
-#[test]
-fn backend_install_downloaded_archive_rejects_provenance_digest_mismatch() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let release_dir = temp.path().join("release");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
-    write_backend_release_metadata(
-        &release_dir,
-        "headless",
-        &asset_name,
-        None,
-        Some("sha256:0000000000000000000000000000000000000000000000000000000000000000"),
-        true,
-        true,
-    );
-    let server = serve_directory(release_dir);
-    let base_url = server.base_url();
-
-    let install = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "install",
-            "headless",
-            "--version",
-            "v9.8.7",
-            "--base-url",
-            &base_url,
-        ])
-        .output()
-        .expect("install headless");
-
-    assert!(
-        !install.status.success(),
-        "provenance mismatch should fail: stdout={}, stderr={}",
-        String::from_utf8_lossy(&install.stdout),
-        String::from_utf8_lossy(&install.stderr)
-    );
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(
-        stderr.contains("\"code\": \"BACKEND_RELEASE_VERIFY_FAILED\""),
-        "{stderr}"
-    );
-    assert!(!home.join(".kast/lib/backends/headless/current").exists());
-}
-
-#[test]
-fn backend_install_downloaded_archive_requires_sha256sums() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let release_dir = temp.path().join("release");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
-    write_backend_release_metadata(
-        &release_dir,
-        "headless",
-        &asset_name,
-        None,
-        None,
-        false,
-        true,
-    );
-    let server = serve_directory(release_dir);
-    let base_url = server.base_url();
-
-    let install = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "install",
-            "headless",
-            "--version",
-            "v9.8.7",
-            "--base-url",
-            &base_url,
-        ])
-        .output()
-        .expect("install headless");
-
-    assert!(!install.status.success());
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(
-        stderr.contains("\"code\": \"BACKEND_DOWNLOAD_FAILED\""),
-        "{stderr}"
-    );
-    assert!(!home.join(".kast/lib/backends/headless/current").exists());
-}
-
-#[test]
-fn backend_install_downloaded_archive_requires_provenance() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let release_dir = temp.path().join("release");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&release_dir).expect("release dir");
-    let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
-    write_backend_release_metadata(
-        &release_dir,
-        "headless",
-        &asset_name,
-        None,
-        None,
-        true,
-        false,
-    );
-    let server = serve_directory(release_dir);
-    let base_url = server.base_url();
-
-    let install = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "install",
-            "headless",
-            "--version",
-            "v9.8.7",
-            "--base-url",
-            &base_url,
-        ])
-        .output()
-        .expect("install headless");
-
-    assert!(!install.status.success());
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(
-        stderr.contains("\"code\": \"BACKEND_DOWNLOAD_FAILED\""),
-        "{stderr}"
-    );
-    assert!(!home.join(".kast/lib/backends/headless/current").exists());
 }
 
 #[test]

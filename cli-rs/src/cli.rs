@@ -478,17 +478,16 @@ pub struct CompletionArgs {
 
 #[derive(Debug, Args, Clone)]
 pub struct HeadlessInstallArgs {
-    /// Local backend zip archive. When omitted, kast downloads the release asset.
+    /// Local backend zip archive to refresh an existing Linux headless tarball install.
     #[arg(long)]
     pub archive: Option<PathBuf>,
-    /// Release tag or version. Defaults to this CLI version.
+    /// Version label to record for the local archive. Defaults to this CLI version.
     #[arg(long)]
     pub version: Option<String>,
-    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
-    /// Defaults to the matching GitHub release.
+    /// Retired standalone backend release URL option.
     #[arg(long)]
     pub base_url: Option<String>,
-    /// Disable TLS certificate verification for downloads; SHA256SUMS and provenance checks still run.
+    /// Retired standalone backend download TLS option.
     #[arg(long)]
     pub insecure_skip_tls_verify: bool,
     /// Replace an existing installed backend version.
