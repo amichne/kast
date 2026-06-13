@@ -70,34 +70,6 @@ fi
     brew
 }
 
-fn write_fake_java(home: &Path, log_file: &Path) -> PathBuf {
-    let java_home = home.join("fake-java-home");
-    let java = java_home.join("bin/java");
-    std::fs::create_dir_all(java.parent().expect("java bin")).expect("java bin");
-    std::fs::write(
-        &java,
-        format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$@\" > {}\nexit 0\n",
-            shell_quote(log_file)
-        ),
-    )
-    .expect("fake java");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = std::fs::metadata(&java)
-            .expect("java metadata")
-            .permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(&java, permissions).expect("java mode");
-    }
-    java_home
-}
-
-fn shell_quote(path: &Path) -> String {
-    format!("'{}'", path.display().to_string().replace('\'', "'\\''"))
-}
-
 fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
     assert_eq!(backend, "headless", "unsupported backend fixture");
     let staging = root.join(format!("{backend}-staging"));
@@ -306,20 +278,17 @@ fn smoke_core_cli_commands() {
         .expect("install help");
     assert!(install_help.status.success());
     let install_help_stdout = String::from_utf8_lossy(&install_help.stdout);
-    for command in [
-        "plugin",
-        "headless",
-        "skill",
-        "copilot",
-        "shell",
-        "completion",
-    ] {
+    for command in ["plugin", "skill", "copilot", "shell", "completion"] {
         assert!(
             install_help_stdout.contains(command),
             "install help should list {command}: {install_help_stdout}"
         );
     }
-    for command in ["plugin", "headless", "skill", "copilot"] {
+    assert!(
+        !install_help_stdout.contains("headless"),
+        "standalone headless install should not be listed as a supported install path: {install_help_stdout}"
+    );
+    for command in ["plugin", "skill", "copilot"] {
         let help = kast(&home, &config_home)
             .args(["install", command, "--help"])
             .output()
@@ -333,12 +302,6 @@ fn smoke_core_cli_commands() {
             stdout.contains("-f, --force"),
             "install {command} help should expose -f/--force: {stdout}"
         );
-        if command == "headless" {
-            assert!(
-                stdout.contains("--insecure-skip-tls-verify"),
-                "install headless help should expose the enterprise TLS escape hatch: {stdout}"
-            );
-        }
         assert!(
             !stdout.contains("--yes"),
             "install {command} help should not expose deprecated --yes: {stdout}"
@@ -813,7 +776,7 @@ fn help_topic_dumps_selected_command_help() {
     std::fs::create_dir_all(&home).expect("home");
 
     let help = kast(&home, &config_home)
-        .args(["help", "install", "headless"])
+        .args(["help", "install", "plugin"])
         .output()
         .expect("help topic");
 
@@ -825,11 +788,11 @@ fn help_topic_dumps_selected_command_help() {
     );
     let stdout = String::from_utf8_lossy(&help.stdout);
     assert!(
-        stdout.contains("Install the headless JVM backend"),
+        stdout.contains("Homebrew-managed IDEA plugin"),
         "selected help should include the command description: {stdout}"
     );
     assert!(
-        stdout.contains("--archive"),
+        stdout.contains("--link-jetbrains-profiles"),
         "selected help should include the command flags: {stdout}"
     );
     assert!(
@@ -989,17 +952,15 @@ fn backend_install_downloaded_archive_verifies_release_metadata() {
 }
 
 #[test]
-fn up_auto_installs_missing_headless_backend_before_startup() {
+fn up_does_not_auto_install_missing_headless_backend() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let release_dir = temp.path().join("release");
-    let java_log = temp.path().join("java.log");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::create_dir_all(&release_dir).expect("release dir");
-    let java_home = write_fake_java(temp.path(), &java_log);
     let asset_name = write_backend_release_asset(&release_dir, "headless", "v9.8.7");
     write_backend_release_metadata(
         &release_dir,
@@ -1014,7 +975,6 @@ fn up_auto_installs_missing_headless_backend_before_startup() {
     let base_url = server.base_url();
 
     let up = kast(&home, &config_home)
-        .env("JAVA_HOME", &java_home)
         .args([
             "up",
             "--workspace-root",
@@ -1032,22 +992,21 @@ fn up_auto_installs_missing_headless_backend_before_startup() {
 
     assert!(
         !up.status.success(),
-        "fake daemon should time out after auto-install: stdout={}, stderr={}",
+        "missing headless backend should fail without auto-install: stdout={}, stderr={}",
         String::from_utf8_lossy(&up.stdout),
         String::from_utf8_lossy(&up.stderr)
     );
     assert!(
-        home.join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
-            .is_file(),
-        "up should install the missing headless backend before startup"
+        !home
+            .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
+            .exists(),
+        "up must not install a missing headless backend"
     );
-    for _ in 0..100 {
-        if java_log.is_file() {
-            return;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
-    panic!("up should reach the Java spawn boundary after installing the backend");
+    let stderr = String::from_utf8_lossy(&up.stderr);
+    assert!(
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported headless distribution: {stderr}"
+    );
 }
 
 #[test]
@@ -1458,8 +1417,8 @@ fn setup_rejects_headless_inputs_when_headless_is_not_installed() {
     );
     let stderr = String::from_utf8_lossy(&setup.stderr);
     assert!(
-        stderr.contains("kast install headless"),
-        "error should point to the explicit install path: {stderr}"
+        stderr.contains("Linux headless tarball"),
+        "error should point to the supported headless distribution: {stderr}"
     );
     assert!(
         !home
@@ -1646,7 +1605,7 @@ fn setup_installs_plugin_for_detected_jetbrains_profiles_on_macos() {
 }
 
 #[test]
-fn up_without_installed_backend_reports_exact_backend_install_command_when_auto_start_disabled() {
+fn up_without_installed_backend_reports_supported_headless_distribution() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -1672,8 +1631,12 @@ fn up_without_installed_backend_reports_exact_backend_install_command_when_auto_
     let stderr = String::from_utf8_lossy(&up.stderr);
     assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
     assert!(
-        stderr.contains("kast install headless"),
-        "stderr should include exact install command: {stderr}"
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported headless distribution: {stderr}"
+    );
+    assert!(
+        !stderr.contains("kast install headless"),
+        "stderr must not advertise the retired standalone install path: {stderr}"
     );
 }
 
@@ -1708,8 +1671,8 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
     assert!(
-        stderr.contains("kast install headless"),
-        "stderr should include configured default install command: {stderr}"
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported headless distribution: {stderr}"
     );
 }
 
@@ -1745,8 +1708,8 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
     assert!(
-        stderr.contains("kast install headless"),
-        "stderr should include explicit backend install command: {stderr}"
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported headless distribution: {stderr}"
     );
 }
 
@@ -1781,8 +1744,8 @@ fn rpc_uses_configured_default_backend_when_auto_starting() {
     );
     let stderr = String::from_utf8_lossy(&rpc.stderr);
     assert!(
-        stderr.contains("kast install headless"),
-        "stderr should include configured default install command: {stderr}"
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported headless distribution: {stderr}"
     );
 }
 
@@ -1818,8 +1781,8 @@ fn rpc_backend_flag_overrides_configured_default_backend() {
     );
     let stderr = String::from_utf8_lossy(&rpc.stderr);
     assert!(
-        stderr.contains("kast install headless"),
-        "stderr should include explicit backend install command: {stderr}"
+        stderr.contains("Linux headless tarball"),
+        "stderr should point to the supported headless distribution: {stderr}"
     );
 }
 

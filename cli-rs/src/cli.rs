@@ -258,16 +258,16 @@ pub struct RuntimeArgs {
     /// OTLP endpoint override while profiling is enabled.
     #[arg(long, hide = true)]
     pub profile_otlp_endpoint: Option<String>,
-    /// Release tag or version to use when auto-installing a missing headless backend.
+    /// Release tag or version for the retired headless auto-install fallback.
     #[arg(long, hide = true)]
     pub install_version: Option<String>,
-    /// Release directory URL to use when auto-installing a missing headless backend.
+    /// Release directory URL for the retired headless auto-install fallback.
     #[arg(long, hide = true)]
     pub install_base_url: Option<String>,
-    /// Disable TLS certificate verification for auto-install downloads.
+    /// Disable TLS certificate verification for the retired download fallback.
     #[arg(long, hide = true)]
     pub install_insecure_skip_tls_verify: bool,
-    #[arg(skip = true)]
+    #[arg(skip = false)]
     pub auto_install_headless: bool,
 }
 
@@ -437,7 +437,8 @@ pub struct InstallArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum InstallCommand {
-    /// Install the headless JVM backend.
+    /// Install the headless JVM backend from an internal archive.
+    #[command(hide = true)]
     Headless(HeadlessInstallArgs),
     /// Audit and repair stale Kast installs, resources, and profile links.
     Affected(AffectedInstallArgs),

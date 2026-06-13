@@ -11,17 +11,19 @@ asked the daemon two compiler-backed questions: "what symbol is this?" and
 "who uses it?" The lifecycle commands print Markdown-style summaries by
 default; raw analysis requests still return JSON-RPC payloads.
 
-The walkthrough uses the headless backend because it works anywhere:
-your terminal, a CI runner, an agent loop. If IDEA or Android Studio is already
-open on the project with the plugin installed, swap `--backend=headless`
-for `--backend=idea` and skip the start/stop steps. The plugin
-reuses the IDE's analysis session — no second daemon to babysit.
+The walkthrough uses the headless backend because it works on Linux terminals,
+CI runners, and agent loops after the Linux headless tarball is installed. If
+IDEA or Android Studio is already open on the project with the plugin
+installed, swap `--backend=headless` for `--backend=idea` and skip the
+start/stop steps. The plugin reuses the IDE's analysis session — no second
+daemon to babysit.
 
 ## Before you begin
 
 You need:
 
-- The `kast` CLI installed (see [Install](install.md))
+- Kast installed through the Linux headless tarball, or through Homebrew plus
+  the IDEA plugin on macOS (see [Install](install.md))
 - A Kotlin workspace on your machine — Gradle or plain
 - The absolute path to that workspace root
 
@@ -42,8 +44,7 @@ project and indexes Kotlin files. After that, you're hitting a warm
 session.
 
 ```console title="First-time local setup"
-kast setup
-kast install headless
+./scripts/install-ubuntu-debian.sh install
 ```
 
 ```console linenums="1" title="Start the daemon"

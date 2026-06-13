@@ -14,15 +14,14 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Headless          | `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE machines | `kast install headless`, then `kast up` |
+| Headless          | Linux tarball with `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE Linux machines | Install the Linux headless tarball, then `kast up` |
 | IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project; optionally launched by `kast` |
 
 ## Headless backend
 
-A separate JVM process backed by packaged IDEA components. `kast up` is
-the high-level entry point. It reuses a running headless backend when one
-already serves the workspace, or auto-starts one from the configured runtime
-libraries when it doesn't.
+A separate JVM process backed by packaged IDEA components. The Linux headless
+tarball installs the CLI, backend runtime, scripts, and configuration together.
+`kast up` is the high-level entry point after that distribution is installed.
 
 Reach for it when:
 
@@ -30,19 +29,9 @@ Reach for it when:
 - IDEA or Android Studio isn't installed on this machine
 - You want to control the lifecycle yourself
 
-Install:
+Install the Linux headless tarball:
 
 ```console title="Install the headless backend"
-brew tap amichne/kast
-brew install kast
-kast setup
-kast install headless
-```
-
-On Ubuntu/Debian x86_64 hosts where Homebrew is not available, use the offline
-bundle installer. It installs the Rust CLI and one bundled backend:
-
-```console title="Install CLI and headless backend"
 ./scripts/install-ubuntu-debian.sh install
 ```
 
@@ -72,7 +61,8 @@ How a session unfolds:
 1. You run `kast up` somewhere inside the workspace. It
    starts or reuses the daemon, discovers the project, and waits until
    the analysis session is warm. If the backend is missing, `kast up`
-   installs the verified release asset before starting the daemon.
+   reports the missing Linux headless tarball installation instead of
+   downloading a separate backend.
 2. You run more `kast` commands against the same workspace. The CLI
    finds the running backend and reuses it.
 3. The daemon stays alive. No cold starts between commands.
@@ -182,7 +172,8 @@ Without `--backend`, the CLI uses these rules in order:
 3. Automatic selection.
 
 Automatic selection prefers a servable IDEA backend, then a servable headless
-backend. If neither is running, `kast up` starts the packaged headless backend.
+backend. If neither is running, `kast up` starts the configured packaged
+headless backend when the Linux headless tarball has installed one.
 When the selected backend is IDEA and no compatible descriptor is running,
 `kast` only opens the IDE if `runtime.ideaLaunch.enabled = true`; otherwise it
 reports that IDEA is not running.

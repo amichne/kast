@@ -69,7 +69,9 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         println!();
         println!("## Next steps");
         println!("- Start a backend: `kast up`");
-        println!("- Install the headless backend and local integrations if needed: `kast setup`");
+        println!(
+            "- For headless use, install the Linux headless tarball; for macOS IDE use, install Kast through Homebrew."
+        );
     }
     if result.selected.is_some() && result.candidates.len() > 1 {
         println!();

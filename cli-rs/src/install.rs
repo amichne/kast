@@ -203,7 +203,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     {
         return Err(CliError::new(
             "CLI_USAGE",
-            "`kast setup` does not add a new headless backend. Run `kast install headless` for first-time headless backend installation.",
+            "`kast setup` does not add a new headless backend. Install the Linux headless tarball for first-time headless use; setup can only refresh a headless backend that is already recorded by that distribution.",
         ));
     }
     let headless = if args.skip_headless || !headless_present {
@@ -531,7 +531,7 @@ fn repair_affected_config_state(
                 "remove-stale-backend-state",
                 Path::new(&backend.install_dir),
                 &reason,
-                Some("kast install headless".to_string()),
+                Some("Reinstall or refresh the Linux headless tarball.".to_string()),
             );
             if args.apply {
                 let install_dir = Path::new(&backend.install_dir);
@@ -561,7 +561,7 @@ fn repair_affected_config_state(
                 "remove-stale-component-state",
                 Path::new(&component),
                 "Remove install metadata for a backend component that is no longer present.",
-                Some("kast install headless".to_string()),
+                Some("Reinstall or refresh the Linux headless tarball.".to_string()),
             );
             install_changed = true;
         }
