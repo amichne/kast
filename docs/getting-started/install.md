@@ -78,6 +78,9 @@ kast install affected
 
 To apply the planned repair, rerun with `--apply`. The command creates backups
 under `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
+If `config.toml` is malformed, apply mode preserves the original file in that
+backup directory, writes safe default settings, and reports the recovery in the
+repair result.
 
 ```console title="Repair affected installs"
 kast install affected --apply

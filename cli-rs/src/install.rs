@@ -360,7 +360,11 @@ pub fn install_affected(args: AffectedInstallArgs) -> Result<InstallAffectedResu
         }
     }
 
-    let global_config = config::KastConfig::load_global()?;
+    let Some(global_config) =
+        load_global_config_for_repair(&args, &mut result, &backup_root, &mut config_backed_up)?
+    else {
+        return Ok(result);
+    };
     repair_affected_config_state(
         &args,
         &global_config,
@@ -405,17 +409,58 @@ fn repair_global_config_for_running_cli(apply: bool) -> Result<()> {
         }
     }
 
-    let global_config = config::KastConfig::load_global()?;
+    let args = AffectedInstallArgs {
+        apply,
+        jetbrains_config_root: None,
+    };
+    let Some(global_config) =
+        load_global_config_for_repair(&args, &mut result, &backup_root, &mut config_backed_up)?
+    else {
+        return Ok(());
+    };
     repair_affected_config_state(
-        &AffectedInstallArgs {
-            apply,
-            jetbrains_config_root: None,
-        },
+        &args,
         &global_config,
         &mut result,
         &backup_root,
         &mut config_backed_up,
     )
+}
+
+fn load_global_config_for_repair(
+    args: &AffectedInstallArgs,
+    result: &mut InstallAffectedResult,
+    backup_root: &Path,
+    config_backed_up: &mut bool,
+) -> Result<Option<config::KastConfig>> {
+    match config::KastConfig::load_global() {
+        Ok(global_config) => Ok(Some(global_config)),
+        Err(error) if error.code == "CONFIG_ERROR" => {
+            let config_path = config::global_config_path();
+            push_affected_action(
+                result,
+                "recover-invalid-config",
+                &config_path,
+                "Back up the invalid global Kast config and restore safe defaults.",
+                Some("kast install affected --apply".to_string()),
+            );
+            if !args.apply {
+                result.warnings.push(format!(
+                    "Global config is invalid at {}; rerun with --apply to back it up and restore safe defaults: {}",
+                    config_path.display(),
+                    error.message
+                ));
+                return Ok(None);
+            }
+            backup_config_once(result, backup_root, config_backed_up)?;
+            if let Some(parent) = config_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&config_path, config::default_config_template()?)?;
+            Ok(Some(config::KastConfig::load_global()?))
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn repair_affected_config_state(
