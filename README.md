@@ -14,8 +14,8 @@ planned edit is safe to apply.
 - **Headless CLI + backend** — install the `kast` CLI, run
   `kast setup` for local integrations, and add the packaged IDEA-backed
   runtime with `kast install headless` when you need an independent backend.
-  Works in terminals, CI, hosted agents, and images that need an offline,
-  self-contained Ubuntu/Debian bundle.
+  Works in terminals, CI, hosted agents, and images that need the
+  self-contained Linux headless tarball.
 - **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
   JetBrains IDE and reuses the IDE's already-open project model, indexes, and
   analysis session.
@@ -48,15 +48,15 @@ kast install headless
 ```
 
 Use the Ubuntu/Debian installer when Homebrew is not available, or when the
-target host needs a self-contained offline bundle:
+target host needs the self-contained Linux headless tarball:
 
 ```console
 ./scripts/install-ubuntu-debian.sh install
 ```
 
 For mirrored artifacts and CI images, use the same script with the
-self-contained Ubuntu/Debian bundle; the
-[install guide](https://kast.michne.com/getting-started/install/#ubuntudebian-bundle)
+self-contained Linux headless tarball; the
+[install guide](https://kast.michne.com/getting-started/install/#linux-headless-tarball)
 shows the exact environment variables.
 
 Warm the configured backend before running analysis commands. Headless is the
