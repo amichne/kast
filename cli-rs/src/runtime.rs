@@ -759,20 +759,40 @@ fn workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
 
 fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) -> CliError {
     let backend_name = backend_name.unwrap_or(BackendName::Headless);
-    let install_command = format!("kast install {}", backend_name.canonical());
-    let mut error = CliError::new(
-        "NO_BACKEND_AVAILABLE",
-        format!(
-            "No {} backend is installed or running for {}. Install it with: {}. Then start with: kast up --backend={}",
-            backend_name.canonical(),
-            workspace_root.display(),
-            install_command,
-            backend_name.canonical()
+    let mut error = match backend_name {
+        BackendName::Headless => CliError::new(
+            "NO_BACKEND_AVAILABLE",
+            format!(
+                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then start with: kast up --backend=headless",
+                workspace_root.display()
+            ),
         ),
-    );
-    error
-        .details
-        .insert("installCommand".to_string(), install_command);
+        BackendName::Idea => CliError::new(
+            "NO_BACKEND_AVAILABLE",
+            format!(
+                "No idea backend is installed or running for {}. Install the Kast IntelliJ plugin through Homebrew, open the project in IDEA or Android Studio, then start with: kast up --backend=idea",
+                workspace_root.display()
+            ),
+        ),
+    };
+    match backend_name {
+        BackendName::Headless => {
+            error.details.insert(
+                "supportedDistribution".to_string(),
+                "linux-headless-tarball".to_string(),
+            );
+            error.details.insert(
+                "installHint".to_string(),
+                "Install and extract the Linux headless tarball; standalone headless backend installation is not a supported distribution path.".to_string(),
+            );
+        }
+        BackendName::Idea => {
+            error.details.insert(
+                "installCommand".to_string(),
+                "brew install --cask amichne/kast/kast-plugin".to_string(),
+            );
+        }
+    }
     error
 }
 

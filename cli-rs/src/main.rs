@@ -95,8 +95,7 @@ fn run(cli: Cli) -> Result<i32> {
             println!("{response}");
             Ok(0)
         }
-        Command::Up(mut args) => {
-            args.auto_install_headless = true;
+        Command::Up(args) => {
             let result = runtime::workspace_ensure(args)?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
