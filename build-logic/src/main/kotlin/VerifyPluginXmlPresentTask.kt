@@ -51,9 +51,9 @@ abstract class VerifyPluginXmlPresentTask : DefaultTask() {
         check("KastStartupActivity" in content) { "plugin.xml is missing KastStartupActivity extension" }
         check("KastSettingsConfigurable" in content) { "plugin.xml is missing KastSettingsConfigurable" }
         check("KastSettingsState" in content) { "plugin.xml is missing KastSettingsState" }
-        check("InstallSkillAction" in content) { "plugin.xml is missing InstallSkillAction" }
-        check("InstallCopilotExtensionAction" in content) { "plugin.xml is missing InstallCopilotExtensionAction" }
-        check("UninstallCopilotExtensionAction" in content) { "plugin.xml is missing UninstallCopilotExtensionAction" }
+        check("InstallSkillAction" !in content) { "plugin.xml must not expose InstallSkillAction" }
+        check("InstallCopilotExtensionAction" !in content) { "plugin.xml must not expose InstallCopilotExtensionAction" }
+        check("UninstallCopilotExtensionAction" !in content) { "plugin.xml must not expose UninstallCopilotExtensionAction" }
         check("org.jetbrains.kotlin" in content) { "plugin.xml is missing Kotlin plugin dependency" }
         check(expectedIdTag in content) {
             "plugin.xml must keep production plugin ID ${expectedPluginId.get()}"

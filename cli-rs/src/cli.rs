@@ -410,7 +410,7 @@ pub struct SetupArgs {
     #[arg(long)]
     pub copilot_target_dir: Option<PathBuf>,
     /// Link the Homebrew cask into local JetBrains IDE profiles.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub link_jetbrains_profiles: bool,
     /// JetBrains config root containing IDE profile directories.
     #[arg(long)]
@@ -447,7 +447,7 @@ pub enum InstallCommand {
     /// Install the packaged Copilot agents and extensions.
     #[command(alias = "copilot-extension")]
     Copilot(ResourceInstallArgs),
-    /// Download the Homebrew-managed IDEA plugin cask.
+    /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
     #[command(alias = "idea-plugin", alias = "developer-plugin")]
     Plugin(IdeaPluginInstallArgs),
     /// Install shell PATH and completion integration.
@@ -500,12 +500,9 @@ pub struct IdeaPluginInstallArgs {
     /// JetBrains config root containing IDE profile directories when linking profiles.
     #[arg(long)]
     pub jetbrains_config_root: Option<PathBuf>,
-    /// Link the Homebrew cask into local JetBrains IDE profiles instead of downloading the zip.
-    #[arg(long)]
+    /// Link the Homebrew cask into local JetBrains IDE profiles.
+    #[arg(long, hide = true)]
     pub link_jetbrains_profiles: bool,
-    /// Directory for the downloaded IDEA plugin zip. Defaults to ~/Downloads.
-    #[arg(long)]
-    pub download_dir: Option<PathBuf>,
     /// Override the cask token. Defaults to <kast formula tap>/kast-plugin.
     #[arg(long)]
     pub cask_token: Option<String>,

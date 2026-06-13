@@ -18,6 +18,7 @@ fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf {
         format!(
             r#"#!/bin/sh
 set -eu
+state_file="${{HOME:-/tmp}}/.fake-brew-kast-plugin-version"
 if [ "$1" = "--prefix" ] && [ "$#" -eq 1 ]; then
   printf '%s\n' "/opt/homebrew"
 elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
@@ -31,12 +32,17 @@ elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
 elif [ "$1" = "--cache" ] && [ "$2" = "--cask" ]; then
   printf '%s\n' "${{HOME:-/tmp}}/000--kast-plugin.zip"
 elif [ "$1" = "install" ] && [ "$2" = "--cask" ]; then
+  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-9.8.7}}" > "$state_file"
   printf 'fake brew installed kast plugin\n' >&2
 elif [ "$1" = "reinstall" ] && [ "$2" = "--cask" ]; then
+  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-9.8.7}}" > "$state_file"
   printf 'fake brew reinstalled kast plugin\n' >&2
 elif [ "$1" = "list" ] && [ "$2" = "--cask" ]; then
   if [ "${{KAST_FAKE_BREW_CASK_VERSION:-}}" != "" ]; then
     printf 'kast-plugin %s\n' "$KAST_FAKE_BREW_CASK_VERSION"
+  elif [ -f "$state_file" ]; then
+    read -r installed_version < "$state_file"
+    printf 'kast-plugin %s\n' "$installed_version"
   else
     exit 1
   fi
@@ -651,7 +657,7 @@ fn help_topic_dumps_selected_command_help() {
         "selected help should include the command description: {stdout}"
     );
     assert!(
-        stdout.contains("--link-jetbrains-profiles"),
+        stdout.contains("--jetbrains-config-root"),
         "selected help should include the command flags: {stdout}"
     );
     assert!(
@@ -1438,7 +1444,7 @@ fn rpc_backend_flag_overrides_configured_default_backend() {
 }
 
 #[test]
-fn idea_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
+fn idea_plugin_install_requires_jetbrains_profiles_in_normalized_install_path() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -1456,31 +1462,28 @@ fn idea_plugin_install_defaults_to_downloads_without_jetbrains_profiles() {
         .expect("install idea plugin");
 
     assert!(
-        install.status.success(),
-        "default install should not require JetBrains profiles: stdout={}, stderr={}",
+        !install.status.success(),
+        "default install should require JetBrains profiles instead of downloading a zip: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr),
     );
-    let stdout: serde_json::Value = serde_json::from_slice(&install.stdout).expect("install json");
-    assert_eq!(stdout["brewAction"], "fetch");
-    assert_eq!(
-        stdout["downloadDir"],
-        home.join("Downloads").display().to_string()
+    let stderr = String::from_utf8_lossy(&install.stderr);
+    assert!(stderr.contains("JETBRAINS_CONFIG_NOT_FOUND"), "{stderr}");
+    assert!(
+        !home.join("Downloads/kast-plugin.zip").exists(),
+        "normalized plugin install must not create a manual plugin zip"
     );
-    assert_eq!(stdout["brewCommand"][1], "fetch");
-    assert_eq!(stdout["brewCommand"][2], "--cask");
-    assert_eq!(stdout["brewCommand"][5], "amichne/kast/kast-plugin");
-    assert!(stdout.get("jetbrainsConfigRoot").is_none(), "{stdout}");
 }
 
 #[test]
-fn plugin_install_gateway_downloads_with_progress_on_stderr() {
+fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let brew_bin = temp.path().join("bin");
-    let download_dir = temp.path().join("downloads");
+    let jetbrains_root = temp.path().join("jetbrains");
     std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
     let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
         .parent()
         .expect("binary parent");
@@ -1493,6 +1496,56 @@ fn plugin_install_gateway_downloads_with_progress_on_stderr() {
             "json",
             "install",
             "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "plugin gateway should install the Homebrew cask: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&install.stdout).expect("install json");
+    assert_eq!(stdout["brewAction"], "install");
+    assert_eq!(stdout["brewCommand"][1], "install");
+    assert_eq!(stdout["brewCommand"][2], "--cask");
+    assert_eq!(stdout["brewCommand"][3], "amichne/kast/kast-plugin");
+    assert_eq!(
+        stdout["jetbrainsConfigRoot"],
+        jetbrains_root.display().to_string()
+    );
+    assert_eq!(
+        stdout["pluginDirectories"][0],
+        jetbrains_root
+            .join("IntelliJIdea2026.1/plugins")
+            .display()
+            .to_string()
+    );
+    assert!(stdout.get("downloadDir").is_none(), "{stdout}");
+    assert!(stdout.get("downloadedPath").is_none(), "{stdout}");
+    #[cfg(unix)]
+    assert_eq!(
+        std::fs::read_link(jetbrains_root.join("IntelliJIdea2026.1/plugins/kast"))
+            .expect("plugin symlink"),
+        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
+    );
+}
+
+#[test]
+fn plugin_install_rejects_manual_download_directory() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let download_dir = temp.path().join("downloads");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let install = kast(&home, &config_home)
+        .args([
+            "install",
+            "plugin",
             "--download-dir",
             download_dir.to_str().expect("download dir"),
         ])
@@ -1500,27 +1553,61 @@ fn plugin_install_gateway_downloads_with_progress_on_stderr() {
         .expect("install plugin");
 
     assert!(
-        install.status.success(),
-        "plugin gateway should download cask: stdout={}, stderr={}",
-        String::from_utf8_lossy(&install.stdout),
-        String::from_utf8_lossy(&install.stderr),
+        !install.status.success(),
+        "manual plugin downloads should not be a supported path"
     );
     let stderr = String::from_utf8_lossy(&install.stderr);
     assert!(
-        stderr.contains("Fetching Kast IDEA plugin"),
-        "stderr should announce the download before JSON output: {stderr}"
+        stderr.contains("unexpected argument '--download-dir'"),
+        "stderr should reject the retired manual download flag: {stderr}"
     );
+}
+
+#[test]
+fn plugin_install_repairs_stale_homebrew_profile_link() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    let plugins_dir = jetbrains_root.join("IntelliJIdea2026.1/plugins");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&plugins_dir).expect("profile plugins");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        "/opt/homebrew/Caskroom/kast-plugin/0.7.35/backend-idea",
+        plugins_dir.join("kast"),
+    )
+    .expect("stale plugin symlink");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
     assert!(
-        stderr.contains("Downloaded Kast IDEA plugin"),
-        "stderr should confirm the downloaded artifact: {stderr}"
+        install.status.success(),
+        "plugin install should repair stale Homebrew links: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
     );
-    let stdout: serde_json::Value = serde_json::from_slice(&install.stdout).expect("install json");
-    assert_eq!(stdout["brewAction"], "fetch");
+    #[cfg(unix)]
     assert_eq!(
-        stdout["downloadedPath"],
-        download_dir.join("kast-plugin.zip").display().to_string()
+        std::fs::read_link(plugins_dir.join("kast")).expect("plugin symlink after repair"),
+        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
     );
-    assert!(download_dir.join("kast-plugin.zip").is_file());
 }
 
 #[test]
@@ -1952,7 +2039,7 @@ fn install_resource_gateways_support_force_and_current_versions() {
 }
 
 #[test]
-fn idea_plugin_link_flag_uses_profile_install_mode() {
+fn idea_plugin_install_uses_profile_install_mode() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -1972,7 +2059,6 @@ fn idea_plugin_link_flag_uses_profile_install_mode() {
             "json",
             "install",
             "idea-plugin",
-            "--link-jetbrains-profiles",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
             "--dry-run",
@@ -2061,7 +2147,6 @@ version = "v0.7.35"
             "json",
             "install",
             "plugin",
-            "--link-jetbrains-profiles",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
         ])

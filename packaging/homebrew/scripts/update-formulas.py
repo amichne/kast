@@ -109,8 +109,6 @@ def main() -> None:
         [
             required_sha("SHA256_MACOS_X64"),
             required_sha("SHA256_MACOS_ARM64"),
-            required_sha("SHA256_LINUX_X64"),
-            required_sha("SHA256_LINUX_ARM64"),
         ],
         "Formula/kast.rb",
     )

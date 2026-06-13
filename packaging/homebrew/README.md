@@ -1,6 +1,7 @@
 # homebrew-kast
 
-Homebrew tap for [Kast](https://github.com/amichne/kast).
+Homebrew tap for the macOS developer distribution of
+[Kast](https://github.com/amichne/kast).
 
 ## Install
 
@@ -20,7 +21,7 @@ brew install kast
 brew install --cask kast-plugin
 ```
 
-`kast` installs the platform-specific Rust CLI asset from `amichne/kast`.
+`kast` installs the macOS Rust CLI asset from `amichne/kast`.
 `kast-plugin` installs the IDEA plugin bundle from `amichne/kast` as a cask and
 links it into every local JetBrains IDE profile it can find. Restart each IDE
 after installation or upgrade so the IDE reloads its plugins.

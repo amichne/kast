@@ -135,16 +135,22 @@ For Copilot, set `KAST_COPILOT_IDEA_AUTOSTART=1` in the extension environment
 to pin startup and tool RPCs to `--backend=idea`. That flag does not launch an
 IDE by itself; `runtime.ideaLaunch.enabled` remains the launch opt-in.
 
-The plugin actions that shell out to `kast`, including
-**Tools → Kast → Install Copilot Extension** and
-**Tools → Kast → Uninstall Copilot Extension**, read the executable path from
-`[cli] binaryPath` in `config.toml`. They don't search `PATH`, so the value
-must point at an executable CLI binary:
+IDEA / Android Studio integration is installed through Homebrew and
+`kast install plugin`. Inside the IDE, Kast stays focused on diagnostics and
+the IDE-hosted backend instead of duplicating CLI install workflows. When IDE
+runtime launch is enabled, the configured CLI path comes from `[cli] binaryPath`
+in `config.toml`; it doesn't search `PATH`, so the value must point at an
+executable CLI binary:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [cli]
 binaryPath = "/home/alex/.local/bin/kast"
 ```
+
+Applying Kast settings in IDEA reloads the workspace config and restarts the
+local Kast backend when the effective config changes. Installing or relinking
+the Homebrew-managed plugin still requires restarting the IDE so JetBrains can
+load the plugin from the profile link.
 
 To hydrate a remote SQLite source index before local indexing starts, add an
 `indexing.remote` block. `sourceIndexUrl` accepts `file://`, `http://`, and

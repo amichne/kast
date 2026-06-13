@@ -24,22 +24,4 @@
         <notificationGroup id="Kast" displayType="BALLOON"/>
         <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
     </extensions>
-
-    <actions>
-        <group id="io.github.amichne.kast.actions" text="Kast" popup="true">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <action id="io.github.amichne.kast.installSkill"
-                    class="io.github.amichne.kast.idea.actions.InstallSkillAction"
-                    text="Install Kast Skill"
-                    description="Install the kast agent skill into this project"/>
-            <action id="io.github.amichne.kast.installCopilotExtension"
-                    class="io.github.amichne.kast.idea.actions.InstallCopilotExtensionAction"
-                    text="Install Copilot Extension"
-                    description="Install kast Copilot agents and hooks into this project"/>
-            <action id="io.github.amichne.kast.uninstallCopilotExtension"
-                    class="io.github.amichne.kast.idea.actions.UninstallCopilotExtensionAction"
-                    text="Uninstall Copilot Extension"
-                    description="Remove kast Copilot agents and hooks from this project"/>
-        </group>
-    </actions>
 </idea-plugin>
