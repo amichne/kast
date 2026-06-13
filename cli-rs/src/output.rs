@@ -156,7 +156,14 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
     println!();
     println!("- Healthy: {}", yes_no(result.ok));
     println!("- Installed: {}", yes_no(result.installed));
+    println!("- Config valid: {}", yes_no(result.configuration.valid));
     println!("- Config path: `{}`", result.config_path);
+    println!(
+        "- Canonical directory: `{}`",
+        result.canonical_directory.root
+    );
+    println!("- Running binary: `{}`", result.binary.running_binary);
+    println!("- Configured binary: `{}`", result.binary.configured_binary);
     println!(
         "- Minimum backend version: `{}`",
         result.minimum_backend_version

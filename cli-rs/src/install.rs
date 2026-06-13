@@ -307,6 +307,12 @@ fn setup_headless_present() -> Result<bool> {
         .is_some_and(|runtime_libs_dir| runtime_libs_dir.join("classpath.txt").is_file()))
 }
 
+#[derive(Clone, Copy)]
+enum InstallReconciliationScope {
+    ConfigOnly,
+    Full,
+}
+
 pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedResult>> {
     let Some(install) = self_mgmt::read_global_install_state()? else {
         return Ok(None);
@@ -314,10 +320,13 @@ pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedR
     if install.version.trim() == cli::version() {
         return Ok(None);
     }
-    install_affected(AffectedInstallArgs {
-        apply: true,
-        jetbrains_config_root: None,
-    })
+    reconcile_install_state(
+        AffectedInstallArgs {
+            apply: true,
+            jetbrains_config_root: None,
+        },
+        InstallReconciliationScope::Full,
+    )
     .map(Some)
 }
 
@@ -348,6 +357,24 @@ pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendIns
 }
 
 pub fn install_affected(args: AffectedInstallArgs) -> Result<InstallAffectedResult> {
+    reconcile_install_state(args, InstallReconciliationScope::Full)
+}
+
+fn repair_global_config_for_running_cli(apply: bool) -> Result<()> {
+    reconcile_install_state(
+        AffectedInstallArgs {
+            apply,
+            jetbrains_config_root: None,
+        },
+        InstallReconciliationScope::ConfigOnly,
+    )
+    .map(|_| ())
+}
+
+fn reconcile_install_state(
+    args: AffectedInstallArgs,
+    scope: InstallReconciliationScope,
+) -> Result<InstallAffectedResult> {
     let config_path = config::global_config_path();
     let backup_root = config::kast_config_home()
         .join("backups")
@@ -376,7 +403,11 @@ pub fn install_affected(args: AffectedInstallArgs) -> Result<InstallAffectedResu
         }
     }
 
-    let global_config = config::KastConfig::load_global()?;
+    let Some(global_config) =
+        load_global_config_for_repair(&args, &mut result, &backup_root, &mut config_backed_up)?
+    else {
+        return Ok(result);
+    };
     repair_affected_config_state(
         &args,
         &global_config,
@@ -384,6 +415,9 @@ pub fn install_affected(args: AffectedInstallArgs) -> Result<InstallAffectedResu
         &backup_root,
         &mut config_backed_up,
     )?;
+    if matches!(scope, InstallReconciliationScope::ConfigOnly) {
+        return Ok(result);
+    }
     repair_affected_skill_targets(&args, &mut result, &backup_root)?;
     repair_affected_copilot_repos(&args, &mut result, &backup_root)?;
     repair_affected_shell_sources(&args, &mut result, &backup_root)?;
@@ -392,46 +426,40 @@ pub fn install_affected(args: AffectedInstallArgs) -> Result<InstallAffectedResu
     Ok(result)
 }
 
-fn repair_global_config_for_running_cli(apply: bool) -> Result<()> {
-    let config_path = config::global_config_path();
-    let backup_root = config::kast_config_home()
-        .join("backups")
-        .join(format!("install-affected-{}", backup_timestamp()));
-    let mut result = InstallAffectedResult {
-        applied: apply,
-        config_path: config_path.display().to_string(),
-        apply_command: "kast install affected --apply".to_string(),
-        actions: vec![],
-        backups: vec![],
-        warnings: vec![],
-        schema_version: SCHEMA_VERSION,
-    };
-    let mut config_backed_up = false;
-
-    if !config_path.is_file() {
-        push_affected_action(
-            &mut result,
-            "provision-config",
-            &config_path,
-            "Create the global Kast config from current defaults.",
-            None,
-        );
-        if apply {
-            config::init_config()?;
+fn load_global_config_for_repair(
+    args: &AffectedInstallArgs,
+    result: &mut InstallAffectedResult,
+    backup_root: &Path,
+    config_backed_up: &mut bool,
+) -> Result<Option<config::KastConfig>> {
+    match config::KastConfig::load_global() {
+        Ok(global_config) => Ok(Some(global_config)),
+        Err(error) if error.code == "CONFIG_ERROR" => {
+            let config_path = config::global_config_path();
+            push_affected_action(
+                result,
+                "recover-invalid-config",
+                &config_path,
+                "Back up the invalid global Kast config and restore safe defaults.",
+                Some("kast install affected --apply".to_string()),
+            );
+            if !args.apply {
+                result.warnings.push(format!(
+                    "Global config is invalid at {}; rerun with --apply to back it up and restore safe defaults: {}",
+                    config_path.display(),
+                    error.message
+                ));
+                return Ok(None);
+            }
+            backup_config_once(result, backup_root, config_backed_up)?;
+            if let Some(parent) = config_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&config_path, config::default_config_template()?)?;
+            Ok(Some(config::KastConfig::load_global()?))
         }
+        Err(error) => Err(error),
     }
-
-    let global_config = config::KastConfig::load_global()?;
-    repair_affected_config_state(
-        &AffectedInstallArgs {
-            apply,
-            jetbrains_config_root: None,
-        },
-        &global_config,
-        &mut result,
-        &backup_root,
-        &mut config_backed_up,
-    )
 }
 
 fn repair_affected_config_state(

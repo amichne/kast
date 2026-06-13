@@ -12,6 +12,20 @@ that matches what you're seeing.
 
 ## Installation and startup
 
+??? question "I need to know which Kast install is active"
+
+    Run doctor in JSON mode first:
+
+    ```console
+    kast --output json doctor
+    ```
+
+    The payload reports `configuration.valid`, `canonicalDirectory`,
+    `binary.runningBinary`, `binary.configuredBinary`, install metadata,
+    issues, and warnings. `doctor` still emits this payload when
+    `config.toml` is malformed, so configuration failures can be diagnosed
+    without guessing which file or binary was active.
+
 ??? question "Daemon won't start"
 
     **Symptoms:** a `health` JSON-RPC request returns an error or

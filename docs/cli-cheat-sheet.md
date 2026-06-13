@@ -48,6 +48,7 @@ command.
 | `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
 | `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--output`                                         |
 | `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--output`                                         |
+| `kast doctor`           | Verify install metadata, config validity, canonical paths, and binary linkage. | `--output`                                      |
 | `kast lsp --stdio`      | Run the Language Server Protocol adapter over stdio.                          | `--workspace-root`, `--backend`                    |
 | `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 

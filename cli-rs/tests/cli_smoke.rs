@@ -1872,6 +1872,116 @@ version = "v0.7.35"
 }
 
 #[test]
+fn install_affected_recovers_malformed_global_config_with_backup() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::write(config_home.join("config.toml"), "[runtime\n").expect("malformed config");
+
+    let dry_run = kast(&home, &config_home)
+        .args(["--output", "json", "install", "affected"])
+        .output()
+        .expect("dry-run affected");
+
+    assert!(
+        dry_run.status.success(),
+        "dry-run repair should report malformed config without failing: stdout={}, stderr={}",
+        String::from_utf8_lossy(&dry_run.stdout),
+        String::from_utf8_lossy(&dry_run.stderr)
+    );
+    let dry_run_stdout: serde_json::Value =
+        serde_json::from_slice(&dry_run.stdout).expect("dry-run json");
+    assert_eq!(dry_run_stdout["applied"], false);
+    assert!(
+        dry_run_stdout["actions"]
+            .as_array()
+            .expect("actions")
+            .iter()
+            .any(|action| action["kind"] == "recover-invalid-config"),
+        "dry-run should plan config recovery: {dry_run_stdout}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(config_home.join("config.toml")).expect("config after dry-run"),
+        "[runtime\n"
+    );
+
+    let apply = kast(&home, &config_home)
+        .args(["--output", "json", "install", "affected", "--apply"])
+        .output()
+        .expect("apply affected");
+
+    assert!(
+        apply.status.success(),
+        "apply repair should recover malformed config: stdout={}, stderr={}",
+        String::from_utf8_lossy(&apply.stdout),
+        String::from_utf8_lossy(&apply.stderr)
+    );
+    let apply_stdout: serde_json::Value =
+        serde_json::from_slice(&apply.stdout).expect("apply json");
+    assert_eq!(apply_stdout["applied"], true);
+    assert!(
+        apply_stdout["actions"]
+            .as_array()
+            .expect("actions")
+            .iter()
+            .any(|action| action["kind"] == "recover-invalid-config"),
+        "apply should report config recovery: {apply_stdout}"
+    );
+    let backups = apply_stdout["backups"].as_array().expect("backups");
+    assert!(
+        !backups.is_empty(),
+        "apply should preserve the malformed config"
+    );
+    let backup =
+        std::fs::read_to_string(backups[0].as_str().expect("backup path")).expect("backup content");
+    assert_eq!(backup, "[runtime\n");
+    let recovered =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("recovered config");
+    assert!(recovered.contains("[server]"), "{recovered}");
+    recovered
+        .parse::<toml::Table>()
+        .expect("recovered config should be valid TOML");
+    assert!(!recovered.contains("[runtime\n"), "{recovered}");
+
+    std::fs::write(config_home.join("config.toml"), "[runtime\n")
+        .expect("malformed config before setup");
+    let setup = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--skip-shell",
+            "--skip-headless",
+            "--skip-plugin",
+        ])
+        .output()
+        .expect("setup after recovery");
+    assert!(
+        setup.status.success(),
+        "setup should accept recovered defaults: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let setup_stdout: serde_json::Value =
+        serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert!(
+        setup_stdout["repair"]["actions"]
+            .as_array()
+            .expect("setup repair actions")
+            .iter()
+            .any(|action| action["kind"] == "recover-invalid-config"),
+        "setup should report config recovery: {setup_stdout}"
+    );
+    let setup_recovered =
+        std::fs::read_to_string(config_home.join("config.toml")).expect("setup recovered config");
+    setup_recovered
+        .parse::<toml::Table>()
+        .expect("setup recovered config should be valid TOML");
+}
+
+#[test]
 fn ordinary_commands_repair_stale_install_version_once() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -2278,13 +2388,17 @@ fn doctor_resolves_relative_managed_paths_under_install_root() {
             r#"[paths]
 installRoot = "{}"
 
+[cli]
+binaryPath = "{}"
+
 [install]
 version = "0.1.0"
 components = []
 managedPaths = ["backends"]
 schemaVersion = 3
 "#,
-            install_root.display()
+            install_root.display(),
+            env!("CARGO_BIN_EXE_kast")
         ),
     )
     .expect("config");
@@ -2300,9 +2414,72 @@ schemaVersion = 3
         String::from_utf8_lossy(&doctor.stdout),
         String::from_utf8_lossy(&doctor.stderr),
     );
-    let stdout = String::from_utf8_lossy(&doctor.stdout);
-    assert!(stdout.contains("\"ok\": true"), "{stdout}");
-    assert!(!stdout.contains("Managed path is missing"), "{stdout}");
+    let stdout: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    assert_eq!(stdout["ok"], true, "{stdout}");
+    assert_eq!(stdout["configuration"]["valid"], true, "{stdout}");
+    assert_eq!(
+        stdout["canonicalDirectory"]["root"],
+        install_root.display().to_string(),
+        "{stdout}"
+    );
+    assert_eq!(stdout["binary"]["configuredExists"], true, "{stdout}");
+    assert_eq!(
+        stdout["binary"]["configuredMatchesRunning"], true,
+        "{stdout}"
+    );
+    assert!(
+        !stdout["warnings"]
+            .as_array()
+            .expect("warnings")
+            .iter()
+            .any(|warning| warning
+                .as_str()
+                .expect("warning")
+                .contains("Managed path is missing")),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn doctor_reports_invalid_config_without_crashing() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::write(config_home.join("config.toml"), "[paths\ninstallRoot =")
+        .expect("invalid config");
+
+    let doctor = kast(&home, &config_home)
+        .args(["--output", "json", "doctor"])
+        .output()
+        .expect("doctor");
+
+    assert!(
+        !doctor.status.success(),
+        "doctor should return unhealthy status for invalid config: stdout={}, stderr={}",
+        String::from_utf8_lossy(&doctor.stdout),
+        String::from_utf8_lossy(&doctor.stderr),
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["configuration"]["exists"], true, "{stdout}");
+    assert_eq!(stdout["configuration"]["valid"], false, "{stdout}");
+    assert!(
+        stdout["configuration"]["error"]
+            .as_str()
+            .expect("configuration error")
+            .contains("Config is invalid"),
+        "{stdout}"
+    );
+    assert!(
+        stdout["issues"]
+            .as_array()
+            .expect("issues")
+            .iter()
+            .any(|issue| issue.as_str().expect("issue").contains("Config is invalid")),
+        "{stdout}"
+    );
 }
 
 #[test]
