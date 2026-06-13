@@ -182,8 +182,15 @@ write_zip_asset "${release_dir}/kast-headless-${tag}.zip" headless
 write_sha256sums "$release_dir" "${core_assets[@]}"
 write_provenance
 
-"$verifier" --release-dir "$release_dir" --tag "$tag"
+if "$verifier" --release-dir "$release_dir" --tag "$tag" >"${scratch_dir}/missing-tarball.out" 2>"${scratch_dir}/missing-tarball.err"; then
+  die "release without Linux headless tarball unexpectedly verified"
+fi
+grep -Fq "missing provenance" "${scratch_dir}/missing-tarball.err" \
+  || die "missing Linux headless tarball failure did not mention missing provenance"
 
+write_expected_assets
+write_sha256sums "$release_dir" "${assets[@]}"
+write_provenance
 printf 'tampered\n' >> "${release_dir}/${assets[0]}"
 if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/checksum.err"; then
   die "tampered asset unexpectedly verified"

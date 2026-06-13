@@ -60,10 +60,10 @@ required = {
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
     "headless": f"kast-headless-{tag}.zip",
     "idea": f"kast-idea-{tag}.zip",
+    "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
 optional = {
     "devin-headless-linux-x64": f"kast-devin-headless-runtime-linux-x64-{tag}.tar.gz",
-    "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
 supported = required | optional
 

@@ -104,7 +104,7 @@ if platforms != expected:
     raise SystemExit(f"unexpected platform order: {platforms!r}")
 PY
 
-rm -rf "${scratch_dir}/provenance-devin-headless" "${scratch_dir}/provenance-ubuntu-debian-headless"
+rm -rf "${scratch_dir}/provenance-devin-headless"
 "$assembler" \
   --output "$output" \
   "${scratch_dir}/provenance-cli-linux-arm64" \
@@ -112,10 +112,11 @@ rm -rf "${scratch_dir}/provenance-devin-headless" "${scratch_dir}/provenance-ubu
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
   "${scratch_dir}/provenance-headless" \
-  "${scratch_dir}/provenance-idea"
+  "${scratch_dir}/provenance-idea" \
+  "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 rm "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json"
-if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-idea" \
+if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-headless" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-ubuntu-debian-headless" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing idea provenance"
 fi
