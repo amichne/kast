@@ -49,7 +49,6 @@ internal class KastSettingsConfigurable(
         ensurePanel()
         val workspaceRoot = workspaceRoot() ?: return
         val state = KastSettingsState.getInstance(project)
-        val previousBackends = state.toOverride().backends
         updateStateFromFields(state)
 
         val configPath = WorkspaceDirectoryResolver()
@@ -60,10 +59,7 @@ internal class KastSettingsConfigurable(
         Files.createDirectories(configPath.parent)
         Files.writeString(configPath, nextToml)
 
-        val nextBackends = state.toOverride().backends
-        if (previousBackends != nextBackends) {
-            KastPluginService.getInstance(project).restartServer()
-        }
+        KastPluginService.getInstance(project).reloadConfig()
     }
 
     override fun disposeUIResources() {
