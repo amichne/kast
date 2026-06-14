@@ -113,9 +113,9 @@ that matches what you're seeing.
     requireInstalledPlugin = true
     ```
 
-    Then set `KAST_COPILOT_IDEA_AUTOSTART=1` for the Copilot extension so its
-    startup and tool calls pass `--backend=idea`. If the plugin check fails,
-    install or repair the profile link:
+    Then configure Copilot to launch the packaged Kast LSP with
+    `--backend=idea` when you want IDE-hosted analysis. If the plugin check
+    fails, install or repair the profile link:
 
     ```console
     kast install plugin

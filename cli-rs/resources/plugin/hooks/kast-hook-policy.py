@@ -467,7 +467,8 @@ def is_public_api_path(path: Path, repo_root: Path) -> bool:
         "docs/openapi.yaml",
         "docs/reference/api-specification.md",
         "cli-rs/resources/kast-skill/references/commands.json",
-        ".github/extensions/kast/_shared/commands.json",
+        "cli-rs/resources/plugin/lsp.json",
+        "cli-rs/resources/plugin/hooks/hooks.json",
     }
 
 

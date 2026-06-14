@@ -47,8 +47,8 @@ individual parts with `--skip-repair`, `--skip-shell`, `--skip-plugin`,
 Use `kast install affected` after upgrading Kast, moving between install
 methods, or seeing `kast doctor` report stale managed paths. The default mode
 is a dry run: it audits global config, retired backend state, installed Kast
-skills, managed Copilot extension copies, managed shell source files, and
-existing JetBrains profile plugin links without changing files.
+skills, managed Copilot plugin copies, managed shell source files, and existing
+JetBrains profile plugin links without changing files.
 
 ```console title="Audit affected installs"
 kast install affected
@@ -224,10 +224,10 @@ kast install copilot --target-dir=/Users/alex/work/project/.github --force
 ```
 
 From this source checkout, the development script installs the same
-`kast-copilot-plugin/` package into a target repository root:
+`cli-rs/resources/plugin/` package into a target repository root:
 
 ```console title="Install Copilot LSP package from a checkout"
-kast-copilot-plugin/scripts/install-local.sh --target /Users/alex/work/project --force
+cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/project --force
 ```
 
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.

@@ -216,7 +216,7 @@ pub fn print_setup(result: &SetupResult) -> Result<()> {
         println!("- Skill: `{}`", skill.installed_at);
     }
     if let Some(copilot) = &result.copilot {
-        println!("- Copilot extension: `{}`", copilot.installed_at);
+        println!("- Copilot plugin: `{}`", copilot.installed_at);
     }
     if let Some(plugin) = &result.idea_plugin {
         println!("- IDEA plugin action: `{}`", plugin.brew_action);

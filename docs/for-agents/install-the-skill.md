@@ -113,7 +113,7 @@ Pass `--target-dir` to point at another workspace `.github` directory, and
 kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 ```
 
-From this source checkout, `kast-copilot-plugin/scripts/install-local.sh`
+From this source checkout, `cli-rs/resources/plugin/scripts/install-local.sh`
 installs the same package into a target repository root for local development.
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
 

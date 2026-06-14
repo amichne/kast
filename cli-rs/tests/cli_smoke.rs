@@ -265,12 +265,12 @@ fn smoke_core_cli_commands() {
     let copilot = kast(&home, &config_home)
         .args([
             "install",
-            "copilot-extension",
+            "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
         ])
         .output()
-        .expect("install copilot extension");
+        .expect("install copilot plugin");
     assert!(copilot.status.success());
     assert!(github_dir.join("lsp.json").is_file());
     assert!(github_dir.join("hooks/hooks.json").is_file());
@@ -2302,6 +2302,8 @@ fn copilot_extension_install_preserves_existing_github_content() {
     let instructions = github_dir.join("copilot-instructions.md");
     let legacy_hooks_dir = github_dir.join("hooks");
     let extension_customization = github_dir.join("extensions/kast/custom.json");
+    let retired_extension_entrypoint = github_dir.join("extensions/kast/extension.mjs");
+    let retired_extension_marker = github_dir.join("extensions/kast/.kast-copilot-version");
     std::fs::create_dir_all(workflow.parent().expect("workflow parent")).expect("workflow dir");
     std::fs::create_dir_all(&legacy_hooks_dir).expect("legacy hooks dir");
     std::fs::create_dir_all(extension_customization.parent().expect("extension parent"))
@@ -2315,18 +2317,24 @@ fn copilot_extension_install_preserves_existing_github_content() {
         b"#!/usr/bin/env bash\n",
     )
     .expect("legacy session hook");
+    std::fs::write(
+        &retired_extension_entrypoint,
+        b"// retired managed extension\n",
+    )
+    .expect("retired extension");
+    std::fs::write(&retired_extension_marker, b"0.8.2\n").expect("retired extension marker");
     std::fs::write(&extension_customization, b"{\"keep\":true}\n").expect("customization");
     std::fs::write(github_dir.join(".kast-copilot-version"), b"stale\n").expect("marker");
 
     let copilot = kast(&home, &config_home)
         .args([
             "install",
-            "copilot-extension",
+            "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
         ])
         .output()
-        .expect("install copilot extension");
+        .expect("install copilot plugin");
 
     assert!(
         copilot.status.success(),
@@ -2356,6 +2364,14 @@ fn copilot_extension_install_preserves_existing_github_content() {
     assert_eq!(
         std::fs::read_to_string(&extension_customization).expect("customization"),
         "{\"keep\":true}\n"
+    );
+    assert!(
+        !retired_extension_entrypoint.exists(),
+        "managed retired extension entrypoint should be removed"
+    );
+    assert!(
+        !retired_extension_marker.exists(),
+        "managed retired extension marker should be removed"
     );
     assert_eq!(
         std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("package marker"),
@@ -2640,11 +2656,7 @@ fn packaged_skill_targets_rust_kast_only() {
         "packaged skill should teach the Rust CLI, not host-specific kast_* tool names",
     );
 
-    for relative in [
-        "resources/kast-skill/scripts/resolve-kast.sh",
-        "resources/copilot-extension/extensions/kast/scripts/resolve-kast.sh",
-        "resources/copilot-extension/extensions/kast/extension.mjs",
-    ] {
+    for relative in ["resources/kast-skill/scripts/resolve-kast.sh"] {
         let content = std::fs::read_to_string(root.join(relative)).expect(relative);
         assert!(
             !content.contains("kast-cli"),
@@ -2652,42 +2664,27 @@ fn packaged_skill_targets_rust_kast_only() {
         );
     }
     assert!(
-        !root.join("resources/copilot-extension/hooks").exists(),
-        "packaged Copilot extension must not include command-hook integration"
+        !root.join("resources/copilot-extension").exists(),
+        "deprecated Copilot SDK extension source must not be packaged"
     );
-    let kast_extension = std::fs::read_to_string(
-        root.join("resources/copilot-extension/extensions/kast/extension.mjs"),
-    )
-    .expect("kast extension");
     assert!(
-        !kast_extension.contains("hooks:"),
-        "packaged Kast extension must not register Copilot SDK hooks"
+        root.join("resources/plugin/lsp.json").is_file(),
+        "packaged Copilot LSP plugin source must live under cli-rs/resources/plugin"
     );
 }
 
 #[test]
-fn repo_local_copilot_extension_is_installed_for_extension_only_use() {
+fn repo_local_copilot_plugin_content_is_generated_not_tracked() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("repo root");
-    let extension_root = root.join(".github/extensions/kast");
 
     assert!(
-        extension_root.join("extension.mjs").is_file(),
-        "repo-local Copilot extension entrypoint must exist for extension-only GitHub Copilot use"
+        root.join("cli-rs/resources/plugin/plugin.json").is_file(),
+        "repo-local plugin source must live under cli-rs/resources/plugin"
     );
     assert!(
-        extension_root.join("_shared/kast-tools.mjs").is_file(),
-        "repo-local Copilot extension must include its own tool loader"
-    );
-    assert!(
-        extension_root.join("_shared/commands.json").is_file(),
-        "repo-local Copilot extension must include its own command catalog"
-    );
-    assert!(
-        !root
-            .join(".github/extensions/_shared/commands.json")
-            .exists(),
-        "repo-local extension must not depend on the legacy shared catalog location"
+        !root.join("cli-rs/resources/copilot-extension").exists(),
+        "deprecated SDK extension source must not be checked into cli-rs/resources"
     );
 }

@@ -347,58 +347,44 @@ fn command_catalog_owns_copilot_tool_surface() {
     ]);
     assert_eq!(tool_names, expected);
 
-    let tools_source = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources/copilot-extension/extensions/kast/_shared/kast-tools.mjs"),
-    )
-    .expect("shared kast tools source");
-    assert!(tools_source.contains("loadCommandCatalog"));
-    assert!(tools_source.contains("commands.json"));
-    assert!(!tools_source.contains("const TOOL_SPECS = ["));
+    assert!(
+        !Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("resources/copilot-extension")
+            .exists(),
+        "deprecated Copilot SDK extension source must not be packaged"
+    );
 }
 
 #[test]
-fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
+fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let extension_path =
-        manifest_dir.join("resources/copilot-extension/extensions/kast/extension.mjs");
-    let extension_source = std::fs::read_to_string(&extension_path).expect("kast extension source");
-
-    assert!(extension_source.contains("from \"./_shared/kast-tools.mjs\""));
-    assert!(extension_source.contains("from \"./kotlin-gradle-loop/tools.mjs\""));
-    assert!(
-        extension_source.contains("const installedRoot = resolve(HERE, \"..\", \"..\", \"..\");")
+    let plugin_root = manifest_dir.join("resources/plugin");
+    let manifest: Value = serde_json::from_str(
+        &std::fs::read_to_string(plugin_root.join("plugin.json")).expect("plugin manifest"),
+    )
+    .expect("plugin manifest json");
+    assert_eq!(
+        manifest["name"],
+        Value::String("kast-copilot-lsp".to_string())
     );
     assert!(
-        extension_source
-            .contains("const sourceRoot = resolve(HERE, \"..\", \"..\", \"..\", \"..\", \"..\");")
-    );
-    assert!(extension_source.contains("join(REPO_ROOT, \".github\")"));
-    assert!(extension_source.contains("join(HERE, \".kast-copilot-version\")"));
-    assert!(extension_source.contains("KAST_COPILOT_IDEA_AUTOSTART"));
-    assert!(extension_source.contains("--backend=idea"));
-    assert!(!extension_source.contains("from \"../_shared/"));
-    assert!(!extension_source.contains("--yes=true"));
-    assert!(!extension_source.contains("--accept-indexing"));
-    assert!(!extension_source.contains("open -a"));
-    assert!(!extension_source.contains("join(REPO_ROOT, \".github\", \".kast-copilot-version\")"));
-    assert!(
-        extension_source.contains("help rpc"),
-        "resolver should validate the CLI command surface without requiring a backend"
+        plugin_root.join("lsp.json").is_file(),
+        "plugin source must own the LSP entrypoint"
     );
     assert!(
-        !extension_source.contains("\"method\":\"health\""),
-        "resolver must not reject a valid CLI just because the backend is unavailable"
+        plugin_root.join("hooks/hooks.json").is_file(),
+        "plugin source must own hook config"
     );
-
-    let repo_extension_source =
-        std::fs::read_to_string(manifest_dir.join("../.github/extensions/kast/extension.mjs"))
-            .expect("repo-local kast extension source");
-    assert!(repo_extension_source.contains("KAST_COPILOT_IDEA_AUTOSTART"));
-    assert!(repo_extension_source.contains("--backend=idea"));
-    assert!(!repo_extension_source.contains("--yes=true"));
-    assert!(!repo_extension_source.contains("--accept-indexing"));
-    assert!(!repo_extension_source.contains("open -a"));
+    assert!(
+        plugin_root.join("agents/kast-explorer.agent.md").is_file(),
+        "plugin source must own Copilot agents"
+    );
+    assert!(
+        plugin_root
+            .join("skills/kast-symbol-investigation/SKILL.md")
+            .is_file(),
+        "plugin source must own Copilot skills"
+    );
 }
 
 #[test]
@@ -414,12 +400,12 @@ fn copilot_install_receives_the_lsp_package_entrypoint() {
         .env("KAST_CONFIG_HOME", &config_home)
         .args([
             "install",
-            "copilot-extension",
+            "copilot",
             "--target-dir",
             target.to_str().expect("target path"),
         ])
         .output()
-        .expect("install copilot extension");
+        .expect("install copilot plugin");
     assert!(
         output.status.success(),
         "stdout={}, stderr={}",
@@ -428,7 +414,7 @@ fn copilot_install_receives_the_lsp_package_entrypoint() {
     );
 
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let source = std::fs::read_to_string(manifest_dir.join("../kast-copilot-plugin/lsp.json"))
+    let source = std::fs::read_to_string(manifest_dir.join("resources/plugin/lsp.json"))
         .expect("plugin lsp");
     let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
     assert_eq!(installed, source);

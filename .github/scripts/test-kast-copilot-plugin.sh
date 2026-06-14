@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
-plugin_root="${repo_root}/kast-copilot-plugin"
+plugin_root="${repo_root}/cli-rs/resources/plugin"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-plugin-test.XXXXXX")"
 trap 'rm -rf -- "$tmp_dir"' EXIT
 

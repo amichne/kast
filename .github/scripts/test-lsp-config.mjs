@@ -4,7 +4,8 @@ import { resolve } from "node:path";
 import process from "node:process";
 
 const repoRoot = resolve(import.meta.dirname, "..", "..");
-const configPath = resolve(repoRoot, ".github", "lsp.json");
+const configPath = process.env.KAST_LSP_CONFIG_PATH
+  ?? resolve(repoRoot, "cli-rs", "resources", "plugin", "lsp.json");
 const config = JSON.parse(await readFile(configPath, "utf8"));
 const server = config.lspServers?.["kast-kotlin"];
 const rpcCatalogPath = resolve(repoRoot, "cli-rs", "resources", "kast-skill", "references", "commands.json");

@@ -12,7 +12,7 @@ export KAST_HOOK_RUN_DIAGNOSTICS=0
 run_hook() {
   local event="$1"
   local input="$2"
-  python3 "$repo_root/.github/hooks/kast-hook-policy.py" "$event" <<<"$input"
+  python3 "$repo_root/cli-rs/resources/plugin/hooks/kast-hook-policy.py" "$event" <<<"$input"
 }
 
 expect_block() {
@@ -79,7 +79,7 @@ KAST_HOOK_ALLOW_UNVALIDATED=1 expect_allow "session end override" sessionEnd '{}
 python3 - <<PY
 import json
 from pathlib import Path
-manifest = json.loads(Path("$repo_root/.github/hooks/hooks.json").read_text())
+manifest = json.loads(Path("$repo_root/cli-rs/resources/plugin/hooks/hooks.json").read_text())
 assert manifest["version"] == 1
 for event in ["sessionStart", "preToolUse", "postToolUse", "sessionEnd"]:
     assert event in manifest["hooks"], event
@@ -92,7 +92,7 @@ import pathlib
 import sys
 
 root = pathlib.Path(sys.argv[1])
-module_path = root / "kast-copilot-plugin/hooks/kast-hook-policy.py"
+module_path = root / "cli-rs/resources/plugin/hooks/kast-hook-policy.py"
 spec = importlib.util.spec_from_file_location("kast_hook_policy", module_path)
 module = importlib.util.module_from_spec(spec)
 assert spec.loader is not None

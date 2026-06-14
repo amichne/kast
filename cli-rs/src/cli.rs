@@ -403,7 +403,7 @@ pub struct SetupArgs {
     /// Install the packaged Copilot LSP, hooks, agents, and skills.
     #[arg(long)]
     pub include_copilot: bool,
-    /// Skip packaged Copilot extension installation even when --include-copilot is present.
+    /// Skip packaged Copilot LSP plugin installation even when --include-copilot is present.
     #[arg(long)]
     pub skip_copilot: bool,
     /// Target .github directory for --include-copilot.
@@ -444,7 +444,7 @@ pub enum InstallCommand {
     Affected(AffectedInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
-    /// Install the packaged Copilot agents and extensions.
+    /// Install the packaged Copilot LSP plugin resources.
     #[command(alias = "copilot-extension")]
     Copilot(ResourceInstallArgs),
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
