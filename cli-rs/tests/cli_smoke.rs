@@ -176,6 +176,25 @@ fn smoke_core_cli_commands() {
             "install {command} help should not expose deprecated --link-name: {stdout}"
         );
     }
+    let copilot_help = kast(&home, &config_home)
+        .args(["install", "copilot", "--help"])
+        .output()
+        .expect("install copilot help");
+    assert!(copilot_help.status.success());
+    let copilot_help_stdout = String::from_utf8_lossy(&copilot_help.stdout);
+    for flag in [
+        "--exclude-extension",
+        "--exclude-lsp",
+        "--exclude-instructions",
+        "--exclude-agents",
+        "--exclude-hooks",
+        "--exclude-skills",
+    ] {
+        assert!(
+            copilot_help_stdout.contains(flag),
+            "install copilot help should expose {flag}: {copilot_help_stdout}"
+        );
+    }
     let shell_help = kast(&home, &config_home)
         .args(["install", "shell", "--help"])
         .output()
@@ -288,13 +307,23 @@ fn smoke_core_cli_commands() {
             .join("extensions/kast/_shared/commands.json")
             .is_file()
     );
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("instructions/kast-kotlin.md").is_file());
+    assert!(github_dir.join("agents/kast-explorer.agent.md").is_file());
+    assert!(github_dir.join("hooks/hooks.json").is_file());
+    assert!(
+        github_dir.join("hooks/kast-pre-tool-use.sh").is_file(),
+        "copilot install should write hook scripts"
+    );
+    assert!(
+        temp.path()
+            .join(".agents/skills/kast-safe-rename/SKILL.md")
+            .is_file(),
+        "copilot install should write packaged Copilot skills next to the target repo"
+    );
     assert!(!github_dir.join(".kast-copilot-version").exists());
     assert!(!github_dir.join("extensions/_shared").exists());
     assert!(!github_dir.join("extensions/kotlin-gradle-loop").exists());
-    assert!(
-        !github_dir.join("hooks").exists(),
-        "copilot extension install must not write .github/hooks integration"
-    );
 
     let status = kast(&home, &config_home)
         .args([
@@ -2361,15 +2390,73 @@ fn copilot_extension_install_preserves_existing_github_content() {
             .join("extensions/kast/kotlin-gradle-loop/tools.mjs")
             .is_file()
     );
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("instructions/kast-kotlin.md").is_file());
+    assert!(github_dir.join("agents/kast-explorer.agent.md").is_file());
+    assert!(
+        temp.path()
+            .join(".agents/skills/kast-symbol-investigation/SKILL.md")
+            .is_file()
+    );
     assert!(!github_dir.join("extensions/_shared").exists());
     assert!(!github_dir.join("extensions/kotlin-gradle-loop").exists());
-    assert!(!github_dir.join("agents").exists());
     let extension = std::fs::read_to_string(github_dir.join("extensions/kast/extension.mjs"))
         .expect("kast extension");
     assert!(
         !extension.contains("hooks:"),
         "kast extension must not register Copilot SDK hooks"
     );
+}
+
+#[test]
+fn copilot_install_exclusion_flags_leave_unwanted_primitives_absent() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let github_dir = temp.path().join(".github");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let copilot = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "copilot",
+            "--target-dir",
+            github_dir.to_str().expect("github path"),
+            "--exclude-hooks",
+            "--exclude-agents",
+            "--exclude-skills",
+        ])
+        .output()
+        .expect("install copilot with exclusions");
+
+    assert!(
+        copilot.status.success(),
+        "install should accept exclusion flags: stdout={}, stderr={}",
+        String::from_utf8_lossy(&copilot.stdout),
+        String::from_utf8_lossy(&copilot.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&copilot.stdout).expect("copilot install json");
+    let components = stdout["components"]
+        .as_array()
+        .expect("copilot components")
+        .iter()
+        .map(|value| value["name"].as_str().expect("component name"))
+        .collect::<Vec<_>>();
+    assert!(components.contains(&"extension"), "{stdout}");
+    assert!(components.contains(&"lsp"), "{stdout}");
+    assert!(components.contains(&"instructions"), "{stdout}");
+    assert!(!components.contains(&"hooks"), "{stdout}");
+    assert!(!components.contains(&"agents"), "{stdout}");
+    assert!(!components.contains(&"skills"), "{stdout}");
+    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("instructions/kast-kotlin.md").is_file());
+    assert!(!github_dir.join("hooks").exists());
+    assert!(!github_dir.join("agents").exists());
+    assert!(!temp.path().join(".agents/skills").exists());
 }
 
 #[test]
@@ -2650,10 +2737,19 @@ fn packaged_skill_targets_rust_kast_only() {
             "{relative} must not resolve or advertise the deleted JVM CLI",
         );
     }
-    assert!(
-        !root.join("resources/copilot-extension/hooks").exists(),
-        "packaged Copilot extension must not include command-hook integration"
-    );
+    for relative in [
+        "resources/copilot-primitives/hooks/hooks.json",
+        "resources/copilot-primitives/hooks/kast-pre-tool-use.sh",
+        "resources/copilot-primitives/agents/kast-explorer.agent.md",
+        "resources/copilot-primitives/instructions/kast-kotlin.md",
+        "resources/copilot-primitives/skills/kast-safe-rename/SKILL.md",
+        "resources/copilot-primitives/lsp.json",
+    ] {
+        assert!(
+            root.join(relative).is_file(),
+            "{relative} must be embedded for `kast install copilot`"
+        );
+    }
     let kast_extension = std::fs::read_to_string(
         root.join("resources/copilot-extension/extensions/kast/extension.mjs"),
     )

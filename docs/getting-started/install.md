@@ -221,9 +221,9 @@ images and CI-style setup scripts.
 
 Install the Copilot extension when you want the repository-local GitHub
 Copilot files that ship with `kast`. The command copies packaged agents,
-hooks, and native extensions into `.github`, marks scripts executable,
-writes `.github/.kast-copilot-version`, and records the managed repo in the
-CLI-managed inventory.
+hooks, skills, LSP configuration, concise instructions, and native extensions
+into the repository. `kast setup` does not install these files unless you pass
+`--include-copilot`.
 
 From the repository root, run:
 
@@ -231,11 +231,14 @@ From the repository root, run:
 kast install copilot
 ```
 
-The install writes these packaged trees:
+The install writes these packaged resources:
 
 - `.github/agents`
 - `.github/hooks`
 - `.github/extensions`
+- `.github/instructions`
+- `.github/lsp.json`
+- `.agents/skills`
 
 Pass `--target-dir` when you need to install into another workspace's
 `.github` directory. Pass `--force` to replace an older managed copy:
@@ -247,6 +250,16 @@ kast install copilot --target-dir=/Users/alex/work/project/.github --force
 To refresh packaged files in place, reinstall with `--force`. This replaces the
 managed extension copy while preserving unrelated files that you created under
 `.github`.
+
+Use exclusion flags when a repository only wants part of the bundle:
+
+```console title="Install without command hooks"
+kast install copilot --exclude-hooks
+```
+
+Available exclusions are `--exclude-extension`, `--exclude-lsp`,
+`--exclude-instructions`, `--exclude-agents`, `--exclude-hooks`, and
+`--exclude-skills`.
 
 ### IDEA and Android Studio plugin role
 

@@ -2,14 +2,14 @@ use crate::SCHEMA_VERSION;
 use crate::backend::{self, BackendResult};
 use crate::cli;
 use crate::cli::{
-    AffectedInstallArgs, BackendComponent, BackendInstallArgs, HeadlessInstallArgs,
-    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs, SetupArgs,
-    ShellInstallArgs, ShellKind,
+    AffectedInstallArgs, BackendComponent, BackendInstallArgs, CopilotInstallArgs,
+    HeadlessInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs,
+    SetupArgs, ShellInstallArgs, ShellKind,
 };
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::self_mgmt;
-use include_dir::{Dir, DirEntry, include_dir};
+use include_dir::{Dir, DirEntry, File, include_dir};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -21,6 +21,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
 static COPILOT_EXTENSION: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/copilot-extension");
+static COPILOT_PRIMITIVES: Dir<'_> =
+    include_dir!("$CARGO_MANIFEST_DIR/resources/copilot-primitives");
 static KAST_RPC_COMMANDS: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/resources/kast-skill/references/commands.json"
@@ -44,10 +46,20 @@ pub struct InstallSkillResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct InstallCopilotComponent {
+    pub name: String,
+    pub installed_at: String,
+    pub skipped: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstallCopilotExtensionResult {
     pub installed_at: String,
+    pub target_dir: String,
     pub version: String,
     pub skipped: bool,
+    pub components: Vec<InstallCopilotComponent>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
     pub schema_version: u32,
@@ -243,10 +255,15 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
         None
     };
     let copilot = if args.include_copilot && !args.skip_copilot {
-        Some(install_copilot_extension(ResourceInstallArgs {
+        Some(install_copilot_extension(CopilotInstallArgs {
             target_dir: args.copilot_target_dir,
-            name: None,
             force: args.force,
+            exclude_extension: false,
+            exclude_lsp: false,
+            exclude_instructions: false,
+            exclude_agents: false,
+            exclude_hooks: false,
+            exclude_skills: false,
         })?)
     } else {
         None
@@ -760,10 +777,15 @@ fn repair_affected_copilot_repos(
         if args.apply {
             backup_existing_path(&extension_target, backup_root, result)?;
             remove_existing_path(&extension_target)?;
-            install_copilot_extension(ResourceInstallArgs {
+            install_copilot_extension(CopilotInstallArgs {
                 target_dir: Some(github_dir),
-                name: None,
                 force: true,
+                exclude_extension: false,
+                exclude_lsp: true,
+                exclude_instructions: true,
+                exclude_agents: true,
+                exclude_hooks: true,
+                exclude_skills: true,
             })?;
         }
     }
@@ -1186,7 +1208,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
 }
 
 pub fn install_copilot_extension(
-    args: ResourceInstallArgs,
+    args: CopilotInstallArgs,
 ) -> Result<InstallCopilotExtensionResult> {
     let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
         config::normalize(
@@ -1195,15 +1217,63 @@ pub fn install_copilot_extension(
                 .join(".github"),
         )
     });
-    let extension_target = target.join(COPILOT_EXTENSION_DIR);
-    let skipped = install_copilot_extension_dir(&extension_target, args.force)?;
-    write_copilot_rpc_catalog(&extension_target)?;
-    self_mgmt::record_copilot_repo(&target, cli::version())?;
+    let repo_root = copilot_repo_root(&target)?;
+    let mut components = vec![];
+    let mut warnings = vec![];
+
+    if !args.exclude_extension {
+        let extension_target = target.join(COPILOT_EXTENSION_DIR);
+        let skipped = install_copilot_extension_dir(&extension_target, args.force)?;
+        if !skipped {
+            write_copilot_rpc_catalog(&extension_target)?;
+        }
+        self_mgmt::record_copilot_repo(&target, cli::version())?;
+        components.push(copilot_component("extension", &extension_target, skipped));
+    }
+    if !args.exclude_lsp {
+        let target_file = target.join("lsp.json");
+        let source = copilot_primitive_file("lsp.json")?;
+        let skipped = install_copilot_file(source, &target_file, args.force)?;
+        components.push(copilot_component("lsp", &target_file, skipped));
+    }
+    if !args.exclude_instructions {
+        let target_dir = target.join("instructions");
+        let source = copilot_primitive_dir("instructions")?;
+        let skipped = install_copilot_dir(source, &target_dir, args.force)?;
+        components.push(copilot_component("instructions", &target_dir, skipped));
+    }
+    if !args.exclude_agents {
+        let target_dir = target.join("agents");
+        let source = copilot_primitive_dir("agents")?;
+        let skipped = install_copilot_dir(source, &target_dir, args.force)?;
+        components.push(copilot_component("agents", &target_dir, skipped));
+    }
+    if !args.exclude_hooks {
+        let target_dir = target.join("hooks");
+        let source = copilot_primitive_dir("hooks")?;
+        let skipped = install_copilot_dir(source, &target_dir, args.force)?;
+        components.push(copilot_component("hooks", &target_dir, skipped));
+        if skipped {
+            warnings.push(format!(
+                "Skipped existing hook directory {}; pass --force to replace it",
+                target_dir.display()
+            ));
+        }
+    }
+    if !args.exclude_skills {
+        let target_dir = repo_root.join(".agents/skills");
+        let source = copilot_primitive_dir("skills")?;
+        let skipped = install_copilot_dir_children(source, &target_dir, args.force)?;
+        components.push(copilot_component("skills", &target_dir, skipped));
+    }
+    let skipped = !components.is_empty() && components.iter().all(|component| component.skipped);
     Ok(InstallCopilotExtensionResult {
-        installed_at: extension_target.display().to_string(),
+        installed_at: target.display().to_string(),
+        target_dir: target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
-        warnings: vec![],
+        components,
+        warnings,
         schema_version: SCHEMA_VERSION,
     })
 }
@@ -1634,6 +1704,9 @@ fn install_copilot_extension_dir(target: &Path, force: bool) -> Result<bool> {
             .is_file()
             .then(|| fs::read_to_string(&marker).unwrap_or_default())
             .is_some_and(|current| current.trim() == cli::version());
+    if skipped {
+        return Ok(true);
+    }
     let source = COPILOT_EXTENSION
         .get_dir(COPILOT_EXTENSION_DIR)
         .ok_or_else(|| {
@@ -1642,10 +1715,102 @@ fn install_copilot_extension_dir(target: &Path, force: bool) -> Result<bool> {
                 format!("Packaged Copilot extension directory {COPILOT_EXTENSION_DIR} is missing"),
             )
         })?;
+    if force && path_exists_or_symlink(target) {
+        remove_existing_path(target)?;
+    }
     fs::create_dir_all(target)?;
     copy_dir_entries_stripped(source, source.path(), target)?;
     fs::write(marker, format!("{}\n", cli::version()))?;
-    Ok(skipped)
+    Ok(false)
+}
+
+fn copilot_component(name: &str, path: &Path, skipped: bool) -> InstallCopilotComponent {
+    InstallCopilotComponent {
+        name: name.to_string(),
+        installed_at: path.display().to_string(),
+        skipped,
+    }
+}
+
+fn copilot_repo_root(github_dir: &Path) -> Result<PathBuf> {
+    github_dir.parent().map(Path::to_path_buf).ok_or_else(|| {
+        CliError::new(
+            "CLI_USAGE",
+            format!(
+                "Copilot target directory {} must be inside a repository root",
+                github_dir.display()
+            ),
+        )
+    })
+}
+
+fn copilot_primitive_file(relative: &str) -> Result<&'static File<'static>> {
+    COPILOT_PRIMITIVES.get_file(relative).ok_or_else(|| {
+        CliError::new(
+            "INSTALL_RESOURCE_MISSING",
+            format!("Packaged Copilot primitive file {relative} is missing"),
+        )
+    })
+}
+
+fn copilot_primitive_dir(relative: &str) -> Result<&'static Dir<'static>> {
+    COPILOT_PRIMITIVES.get_dir(relative).ok_or_else(|| {
+        CliError::new(
+            "INSTALL_RESOURCE_MISSING",
+            format!("Packaged Copilot primitive directory {relative} is missing"),
+        )
+    })
+}
+
+fn install_copilot_file(source: &File<'_>, target: &Path, force: bool) -> Result<bool> {
+    if path_exists_or_symlink(target) && !force {
+        return Ok(true);
+    }
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(target, source.contents())?;
+    set_executable_if_script(target)?;
+    Ok(false)
+}
+
+fn install_copilot_dir(source: &Dir<'_>, target: &Path, force: bool) -> Result<bool> {
+    if path_exists_or_symlink(target) {
+        if !force {
+            return Ok(true);
+        }
+        remove_existing_path(target)?;
+    }
+    fs::create_dir_all(target)?;
+    copy_dir_entries_stripped(source, source.path(), target)?;
+    Ok(false)
+}
+
+fn install_copilot_dir_children(source: &Dir<'_>, target: &Path, force: bool) -> Result<bool> {
+    fs::create_dir_all(target)?;
+    let mut copied_any = false;
+    let mut skipped_any = false;
+    for entry in source.entries() {
+        match entry {
+            DirEntry::Dir(dir) => {
+                let Some(name) = dir.path().file_name() else {
+                    continue;
+                };
+                let skipped = install_copilot_dir(dir, &target.join(name), force)?;
+                copied_any |= !skipped;
+                skipped_any |= skipped;
+            }
+            DirEntry::File(file) => {
+                let Some(name) = file.path().file_name() else {
+                    continue;
+                };
+                let skipped = install_copilot_file(file, &target.join(name), force)?;
+                copied_any |= !skipped;
+                skipped_any |= skipped;
+            }
+        }
+    }
+    Ok(!copied_any && skipped_any)
 }
 
 fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> Result<bool> {

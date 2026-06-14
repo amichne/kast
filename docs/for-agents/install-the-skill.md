@@ -93,17 +93,20 @@ portable Agent Skills bundle.
 
 ## Install the Copilot extension files
 
-Use `install copilot` when you want the packaged GitHub Copilot
-agent, hook, and native extension files in the current repository:
+Use `install copilot` when you want the packaged GitHub Copilot agent, hook,
+skill, LSP, instruction, and native extension files in the current repository.
+Plain `kast setup` excludes these files by default unless you pass
+`--include-copilot`.
 
 ```console title="Install Copilot agents, hooks, and extensions"
 kast install copilot
 ```
 
 The command writes into `<cwd>/.github` by default, including packaged
-`.github/agents`, `.github/hooks`, and self-contained native extension scripts
-under `.github/extensions`. Packaged scripts are installed executable, and the
-command records the installed CLI version in
+`.github/agents`, `.github/hooks`, `.github/instructions`, `.github/lsp.json`,
+and self-contained native extension scripts under `.github/extensions`. It also
+writes the packaged Copilot skills to `.agents/skills`. Packaged scripts are
+installed executable, and the command records the installed extension version in
 `.github/extensions/kast/.kast-copilot-version`.
 Pass `--target-dir` to point at another workspace `.github` directory, and
 `--force` to replace an older installed copy:
@@ -111,6 +114,16 @@ Pass `--target-dir` to point at another workspace `.github` directory, and
 ```console title="Force reinstall Copilot extension files"
 kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 ```
+
+Use exclusion flags when a repository does not want a primitive group:
+
+```console title="Install Copilot files without hooks"
+kast install copilot --exclude-hooks
+```
+
+Available exclusions are `--exclude-extension`, `--exclude-lsp`,
+`--exclude-instructions`, `--exclude-agents`, `--exclude-hooks`, and
+`--exclude-skills`.
 
 ## Next steps
 

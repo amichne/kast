@@ -216,7 +216,7 @@ pub fn print_setup(result: &SetupResult) -> Result<()> {
         println!("- Skill: `{}`", skill.installed_at);
     }
     if let Some(copilot) = &result.copilot {
-        println!("- Copilot extension: `{}`", copilot.installed_at);
+        println!("- Copilot resources: `{}`", copilot.installed_at);
     }
     if let Some(plugin) = &result.idea_plugin {
         println!("- IDEA plugin action: `{}`", plugin.brew_action);
@@ -261,9 +261,21 @@ fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
 fn print_copilot_install(title: &str, result: &InstallCopilotExtensionResult) -> Result<()> {
     println!("# {title}");
     println!();
-    println!("- Extension path: `{}`", result.installed_at);
+    println!("- Target .github directory: `{}`", result.target_dir);
     println!("- Version: `{}`", result.version);
     println!("- Reused existing install: {}", yes_no(result.skipped));
+    if !result.components.is_empty() {
+        println!();
+        println!("## Components");
+        for component in &result.components {
+            println!(
+                "- {}: `{}`{}",
+                component.name,
+                component.installed_at,
+                if component.skipped { " (skipped)" } else { "" }
+            );
+        }
+    }
     print_warnings(&result.warnings);
     Ok(())
 }

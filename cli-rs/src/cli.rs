@@ -400,7 +400,7 @@ pub struct SetupArgs {
     /// Target root directory for --include-skill.
     #[arg(long)]
     pub skill_target_dir: Option<PathBuf>,
-    /// Install the packaged Copilot agents and extensions.
+    /// Install the packaged Copilot agents, hooks, skills, LSP config, and extensions.
     #[arg(long)]
     pub include_copilot: bool,
     /// Skip packaged Copilot extension installation even when --include-copilot is present.
@@ -444,9 +444,9 @@ pub enum InstallCommand {
     Affected(AffectedInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
-    /// Install the packaged Copilot agents and extensions.
+    /// Install the packaged Copilot agents, hooks, skills, LSP config, and extensions.
     #[command(alias = "copilot-extension")]
-    Copilot(ResourceInstallArgs),
+    Copilot(CopilotInstallArgs),
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
     #[command(alias = "idea-plugin", alias = "developer-plugin")]
     Plugin(IdeaPluginInstallArgs),
@@ -544,6 +544,34 @@ pub struct ResourceInstallArgs {
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct CopilotInstallArgs {
+    /// Target .github directory. Defaults to <cwd>/.github.
+    #[arg(long)]
+    pub target_dir: Option<PathBuf>,
+    /// Overwrite existing managed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Do not install the native Copilot extension files under .github/extensions/kast.
+    #[arg(long)]
+    pub exclude_extension: bool,
+    /// Do not install .github/lsp.json.
+    #[arg(long)]
+    pub exclude_lsp: bool,
+    /// Do not install .github/instructions.
+    #[arg(long)]
+    pub exclude_instructions: bool,
+    /// Do not install .github/agents.
+    #[arg(long)]
+    pub exclude_agents: bool,
+    /// Do not install .github/hooks.
+    #[arg(long)]
+    pub exclude_hooks: bool,
+    /// Do not install .agents/skills from the Copilot primitive bundle.
+    #[arg(long)]
+    pub exclude_skills: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
