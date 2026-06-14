@@ -195,25 +195,26 @@ images, private artifact stores, and CI-style setup scripts.
 | `KAST_UBUNTU_DEBIAN_CONFIG_HOME` | Overrides the config directory |
 | `KAST_JAVA_CMD` | Selects the Java executable used for verification |
 
-## Install the Copilot extension
+## Install the Copilot LSP package
 
-Install the Copilot extension when you want the repository-local GitHub
-Copilot files that ship with `kast`. The command copies packaged agents,
-hooks, and native extensions into `.github`, marks scripts executable,
-writes `.github/.kast-copilot-version`, and records the managed repo in the
-CLI-managed inventory.
+Install the Copilot LSP package when you want repository-local GitHub
+Copilot files that use standard LSP, hooks, instructions, agents, and skills
+without depending on the deprecated Copilot SDK extension path.
 
-From the repository root, run:
+From an installed CLI, run:
 
-```console title="Install Copilot agents, hooks, and extensions"
+```console title="Install Copilot LSP package"
 kast install copilot
 ```
 
-The install writes these packaged trees:
+The CLI writes these packaged entries:
 
-- `.github/agents`
+- `.github/lsp.json`
 - `.github/hooks`
-- `.github/extensions`
+- `.github/instructions`
+- `.github/agents`
+- `.agents/skills`
+- `.github/.kast-copilot-version`
 
 Pass `--target-dir` when you need to install into another workspace's
 `.github` directory. Pass `--force` to replace an older managed copy:
@@ -222,9 +223,18 @@ Pass `--target-dir` when you need to install into another workspace's
 kast install copilot --target-dir=/Users/alex/work/project/.github --force
 ```
 
-To refresh packaged files in place, reinstall with `--force`. This replaces the
-managed extension copy while preserving unrelated files that you created under
-`.github`.
+From this source checkout, the development script installs the same
+`kast-copilot-plugin/` package into a target repository root:
+
+```console title="Install Copilot LSP package from a checkout"
+kast-copilot-plugin/scripts/install-local.sh --target /Users/alex/work/project --force
+```
+
+Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
+
+To refresh packaged files in place, reinstall with `--force`. This replaces
+managed LSP package files while preserving unrelated files that you created
+under `.github` or `.agents/skills`.
 
 ### IDEA and Android Studio plugin role
 

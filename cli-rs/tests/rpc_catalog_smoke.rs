@@ -402,7 +402,7 @@ fn copilot_extension_source_stays_inside_the_kast_extension_folder() {
 }
 
 #[test]
-fn copilot_install_receives_the_shared_command_catalog() {
+fn copilot_install_receives_the_lsp_package_entrypoint() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -427,9 +427,23 @@ fn copilot_install_receives_the_shared_command_catalog() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let source = include_str!("../resources/kast-skill/references/commands.json");
-    let installed = std::fs::read_to_string(target.join("extensions/kast/_shared/commands.json"))
-        .expect("catalog");
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let source = std::fs::read_to_string(manifest_dir.join("../kast-copilot-plugin/lsp.json"))
+        .expect("plugin lsp");
+    let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
     assert_eq!(installed, source);
-    assert!(!target.join("extensions/_shared").exists());
+    assert!(target.join("hooks/hooks.json").is_file());
+    assert!(target.join("instructions/kast-kotlin.md").is_file());
+    assert!(target.join("agents/kast-explorer.agent.md").is_file());
+    assert!(
+        temp.path()
+            .join(".agents/skills/kast-symbol-investigation/SKILL.md")
+            .is_file()
+    );
+    assert!(
+        !target
+            .join("extensions/kast/_shared/commands.json")
+            .exists()
+    );
+    assert!(!target.join("extensions/kast/extension.mjs").exists());
 }

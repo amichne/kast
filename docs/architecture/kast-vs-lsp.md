@@ -22,7 +22,9 @@ guarantees.
 Kast now also exposes an LSP adapter with
 `kast lsp --stdio`. That adapter does not replace the native Kast
 contract; it translates standard LSP navigation and prepared rename
-requests into the existing compiler-backed `raw/*` RPC methods.
+requests into the existing compiler-backed `raw/*` RPC methods and
+advertises experimental `kast/*` requests for the operator-level
+`symbol/*`, `database/*`, and system RPC methods.
 
 | Concern | LSP | Kast |
 |---------|-----|------|
@@ -52,7 +54,10 @@ navigation from Kast: definition, references, hover, document symbols,
 workspace symbols, implementations, call hierarchy, type hierarchy, and
 prepared rename. The adapter advertises only backend-supported
 capabilities; rename is planned through Kast's `raw/rename` dry-run
-flow before the LSP client applies the returned `WorkspaceEdit`.
+flow before the LSP client applies the returned `WorkspaceEdit`. LSP
+clients that understand Kast's experimental extension surface can also
+discover the full custom method list from
+`capabilities.experimental.kastMethods`.
 
 ## Where kast fits
 
@@ -116,7 +121,8 @@ editors for real-time editing, and `kast` in CI and agent workflows
 for automated analysis. They don't conflict — they solve different
 problems. `kast lsp --stdio` is the bridge for clients that can
 consume LSP but should still receive Kast's compiler-grounded facts and
-rename plans.
+rename plans, including custom Kast RPC operations when the client
+supports the experimental `kast/*` methods.
 
 ## Next steps
 

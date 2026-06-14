@@ -29,10 +29,11 @@ kast up
 ```
 
 Done. The skill teaches the workflow and the resolve-first pattern. The
-backend keeps Kotlin state warm. Agents should prefer native `kast_*`
-tools and fall back to `kast rpc` when they need the CLI directly;
-humans use `kast up`, `kast status`, and `kast stop` to manage the
-daemon. The rest of this page is what your agent picks up from that.
+backend keeps Kotlin state warm. Copilot agents should prefer the
+`kast-kotlin` LSP server and its advertised `kast/*` custom methods, then
+fall back to native `kast_*` tools or `kast rpc` when they need the CLI
+directly; humans use `kast up`, `kast status`, and `kast stop` to manage
+the daemon. The rest of this page is what your agent picks up from that.
 
 The agent talks to any runtime over the same JSON-RPC. Headless runs as an
 independent packaged IDEA-backed daemon for terminals, CI, and hosted
@@ -49,7 +50,7 @@ path and should not be used as a headless deployment substitute.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|
-| Local developer agent | Homebrew install plus `kast setup` with optional `--include-copilot`, or Linux headless tarball for independent headless work | Headless backend or IDEA backend | The packaged skill and native `kast_*` tools |
+| Local developer agent | Homebrew install plus `kast setup` with the Copilot LSP package, or Linux headless tarball for independent headless work | Headless backend or IDEA backend | The packaged skill, `kast-kotlin` LSP, and native `kast_*` fallback tools |
 | CI review agent | Linux headless tarball install | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
 | Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the Linux headless tarball | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
 

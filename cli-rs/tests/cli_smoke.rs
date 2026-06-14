@@ -272,28 +272,20 @@ fn smoke_core_cli_commands() {
         .output()
         .expect("install copilot extension");
     assert!(copilot.status.success());
-    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("hooks/hooks.json").is_file());
+    assert!(github_dir.join("hooks/kast-hook-policy.py").is_file());
+    assert!(github_dir.join("instructions/kast-kotlin.md").is_file());
+    assert!(github_dir.join("agents/kast-explorer.agent.md").is_file());
     assert!(
-        github_dir
-            .join("extensions/kast/kotlin-gradle-loop/tools.mjs")
+        temp.path()
+            .join(".agents/skills/kast-symbol-investigation/SKILL.md")
             .is_file()
     );
+    assert!(github_dir.join(".kast-copilot-version").is_file());
     assert!(
-        github_dir
-            .join("extensions/kast/.kast-copilot-version")
-            .is_file()
-    );
-    assert!(
-        github_dir
-            .join("extensions/kast/_shared/commands.json")
-            .is_file()
-    );
-    assert!(!github_dir.join(".kast-copilot-version").exists());
-    assert!(!github_dir.join("extensions/_shared").exists());
-    assert!(!github_dir.join("extensions/kotlin-gradle-loop").exists());
-    assert!(
-        !github_dir.join("hooks").exists(),
-        "copilot extension install must not write .github/hooks integration"
+        !github_dir.join("extensions/kast/extension.mjs").exists(),
+        "copilot install should use the LSP package, not the deprecated SDK extension"
     );
 
     let status = kast(&home, &config_home)
@@ -1002,7 +994,13 @@ fn setup_skip_headless_keeps_clean_machine_backend_free() {
     assert_eq!(stdout["skill"]["skipped"], false);
     assert_eq!(stdout["copilot"]["skipped"], false);
     assert!(skill_dir.join("kast/SKILL.md").is_file());
-    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("hooks/hooks.json").is_file());
+    assert!(
+        temp.path()
+            .join(".agents/skills/kast-symbol-investigation/SKILL.md")
+            .is_file()
+    );
     assert!(
         !home
             .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
@@ -1623,7 +1621,7 @@ fn install_affected_repairs_stale_local_setup_only_when_applied() {
     let stale_current = home.join(".kast/lib/backends/current");
     let stale_runtime_libs = stale_current.join("runtime-libs");
     let skill = home.join(".codex/skills/kast");
-    let copilot = repo.join(".github/extensions/kast");
+    let copilot = repo.join(".github");
     let shell_source = config_home.join("shell/kast.zsh");
     let old_bin = home.join(".kast/bin");
     std::fs::create_dir_all(&home).expect("home");
@@ -1785,7 +1783,13 @@ path = "{}"
             .expect("copilot after apply"),
         "old\n"
     );
-    assert!(!copilot.join("old.txt").exists());
+    assert!(copilot.join("lsp.json").is_file());
+    assert!(copilot.join("hooks/hooks.json").is_file());
+    assert!(
+        repo.join(".agents/skills/kast-safe-rename/SKILL.md")
+            .is_file()
+    );
+    assert!(copilot.join("old.txt").exists());
     let shell_after = std::fs::read_to_string(&shell_source).expect("shell after apply");
     assert!(!shell_after.contains(&old_bin.display().to_string()));
     #[cfg(unix)]
@@ -2140,11 +2144,21 @@ fn install_resource_gateways_support_force_and_current_versions() {
     );
     let copilot_stdout: serde_json::Value =
         serde_json::from_slice(&copilot.stdout).expect("copilot install json");
-    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert_eq!(
+        copilot_stdout["installedAt"],
+        github_dir.display().to_string()
+    );
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("hooks/hooks.json").is_file());
+    assert!(
+        temp.path()
+            .join(".agents/skills/kast-safe-rename/SKILL.md")
+            .is_file()
+    );
+    assert!(!github_dir.join("extensions/kast/extension.mjs").exists());
 
     let copilot_marker =
-        std::fs::read_to_string(github_dir.join("extensions/kast/.kast-copilot-version"))
-            .expect("copilot marker");
+        std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("copilot marker");
     assert_eq!(copilot_marker.trim(), copilot_stdout["version"]);
 }
 
@@ -2328,13 +2342,15 @@ fn copilot_extension_install_preserves_existing_github_content() {
         std::fs::read_to_string(&instructions).expect("instructions"),
         "repo guidance\n"
     );
-    assert_eq!(
-        std::fs::read_to_string(legacy_hooks_dir.join("hooks.json")).expect("legacy hooks"),
-        "{\"version\":1}\n"
+    let hooks = std::fs::read_to_string(legacy_hooks_dir.join("hooks.json")).expect("hooks");
+    assert!(hooks.contains("\"sessionStart\""), "{hooks}");
+    assert!(
+        legacy_hooks_dir.join("kast-session-start.sh").is_file(),
+        "managed hooks should be refreshed"
     );
     assert_eq!(
         std::fs::read_to_string(legacy_hooks_dir.join("session-start.sh"))
-            .expect("legacy session hook"),
+            .expect("legacy custom session hook"),
         "#!/usr/bin/env bash\n"
     );
     assert_eq!(
@@ -2342,33 +2358,18 @@ fn copilot_extension_install_preserves_existing_github_content() {
         "{\"keep\":true}\n"
     );
     assert_eq!(
-        std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("legacy marker"),
-        "stale\n"
+        std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("package marker"),
+        format!("{}\n", env!("CARGO_PKG_VERSION"))
     );
-    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("agents/kast-explorer.agent.md").is_file());
     assert!(
-        github_dir
-            .join("extensions/kast/.kast-copilot-version")
-            .is_file()
-    );
-    assert!(
-        github_dir
-            .join("extensions/kast/_shared/commands.json")
-            .is_file()
+        github_dir.join("extensions/kast/custom.json").is_file(),
+        "unrelated old extension customization should be preserved"
     );
     assert!(
-        github_dir
-            .join("extensions/kast/kotlin-gradle-loop/tools.mjs")
-            .is_file()
-    );
-    assert!(!github_dir.join("extensions/_shared").exists());
-    assert!(!github_dir.join("extensions/kotlin-gradle-loop").exists());
-    assert!(!github_dir.join("agents").exists());
-    let extension = std::fs::read_to_string(github_dir.join("extensions/kast/extension.mjs"))
-        .expect("kast extension");
-    assert!(
-        !extension.contains("hooks:"),
-        "kast extension must not register Copilot SDK hooks"
+        !github_dir.join("extensions/kast/extension.mjs").exists(),
+        "LSP package install should not create the deprecated SDK extension"
     );
 }
 

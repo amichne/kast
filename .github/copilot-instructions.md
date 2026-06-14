@@ -6,6 +6,10 @@
   `.github/lsp.json` before broad text search. Prefer LSP definition,
   references, hover, workspace symbols, document symbols, implementations, and
   call hierarchy for read-only discovery.
+- For Kast-specific operations that are not standard LSP methods, inspect
+  `capabilities.experimental.kastMethods` from the LSP `initialize` response
+  and use the advertised `kast/*` custom requests before falling back to
+  native tools or shell commands.
 - Treat stale, not-ready, missing, or ambiguous Kast/LSP results as blockers,
   not as permission to guess from grep or file dumps.
 - Do not perform Kotlin refactors until the symbol has been resolved and
@@ -15,10 +19,11 @@
   `kast_*` tools next. If a bash fallback is genuinely necessary, call
   `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell
   state across tool calls.
-- `.github/extensions/kast/extension.mjs` is the primary Copilot extension entrypoint. It resolves the `kast` CLI once
-  per session, exposes the native
-  `kast_*` tools, and soft-warns when generic tools target `.kt` or `.kts`
-  files.
+- `kast-copilot-plugin/` is the primary Copilot package for this repo. It
+  owns the normal LSP, hook, instruction, agent, and skill surfaces without
+  requiring the deprecated SDK extension path. The older
+  `.github/extensions/kast/extension.mjs` native-tool extension is a fallback
+  surface for environments that still load SDK extensions.
 - Read `AGENTS.md` at the repo root first, then any deeper `AGENTS.md` in the module you touch. The narrower file
   overrides the root guide.
 

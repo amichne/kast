@@ -121,11 +121,11 @@ that matches what you're seeing.
     kast install plugin
     ```
 
-??? question "Copilot extension files look stale"
+??? question "Copilot LSP package files look stale"
 
     Reinstall the packaged files with `--force`. This replaces the managed
-    extension copy under `.github/extensions/kast` and records the running CLI
-    version without touching unrelated `.github` content.
+    LSP package files under `.github` and `.agents/skills`, records the
+    running CLI version, and leaves unrelated repository content in place.
 
     ```console
     kast install copilot --force

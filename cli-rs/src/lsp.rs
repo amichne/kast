@@ -11,6 +11,15 @@ use std::path::{Path, PathBuf};
 const JSONRPC_VERSION: &str = "2.0";
 const MAX_LSP_RESULTS: usize = 100;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct KastCustomLspRoute {
+    lsp_method: &'static str,
+    rpc_method: &'static str,
+    inject_workspace_root: bool,
+}
+
+include!(concat!(env!("OUT_DIR"), "/lsp_custom_routes.rs"));
+
 pub fn run(args: LspArgs) -> Result<i32> {
     if !args.stdio {
         return Err(CliError::new(
@@ -79,6 +88,30 @@ impl RuntimeKastRpc {
             auto_install_headless: false,
         })
     }
+
+    fn direct_rpc_request(&self, method: &str, params: Value) -> Result<Value> {
+        let raw_request = serde_json::to_string(&json!({
+            "jsonrpc": JSONRPC_VERSION,
+            "method": method,
+            "params": params,
+            "id": 1
+        }))?;
+        let workspace_root = self.workspace_root.clone();
+        let response = match method {
+            "database/metrics" => crate::metrics::try_handle_raw_rpc(&raw_request, workspace_root)?,
+            "symbol/query" => {
+                crate::symbol_query::try_handle_raw_rpc(&raw_request, workspace_root)?
+            }
+            _ => unreachable!("direct RPC routing is limited to Rust-owned methods"),
+        };
+        let response = response.ok_or_else(|| {
+            CliError::new(
+                "DIRECT_RPC_UNHANDLED",
+                format!("Rust-owned RPC method `{method}` was not handled"),
+            )
+        })?;
+        json_rpc_result_from_response(&response)
+    }
 }
 
 impl KastRpcClient for RuntimeKastRpc {
@@ -95,6 +128,9 @@ impl KastRpcClient for RuntimeKastRpc {
     }
 
     fn request(&mut self, method: &str, params: Value) -> Result<Value> {
+        if matches!(method, "database/metrics" | "symbol/query") {
+            return self.direct_rpc_request(method, params);
+        }
         let ensure = runtime::workspace_ensure(self.runtime_args()?)?;
         rpc::request(
             Path::new(&ensure.selected.descriptor.socket_path),
@@ -202,9 +238,12 @@ impl<C: KastRpcClient> LspServer<C> {
             "typeHierarchy/subtypes" => self.type_hierarchy(params, "SUBTYPES"),
             "textDocument/prepareRename" => self.prepare_rename(params),
             "textDocument/rename" => self.rename(params),
-            _ => Err(LspError::method_not_found(format!(
-                "unsupported LSP method `{method}`"
-            ))),
+            _ => match custom_lsp_route(method) {
+                Some(route) => self.kast_custom_passthrough(route, params),
+                None => Err(LspError::method_not_found(format!(
+                    "unsupported LSP method `{method}`"
+                ))),
+            },
         }
     }
 
@@ -587,6 +626,45 @@ impl<C: KastRpcClient> LspServer<C> {
         self.rpc.request(method, params).map_err(LspError::from)
     }
 
+    fn kast_passthrough(&mut self, method: &str, params: Value) -> LspResult<Value> {
+        self.rpc_request(method, params)
+    }
+
+    fn kast_custom_passthrough(
+        &mut self,
+        route: &KastCustomLspRoute,
+        params: Value,
+    ) -> LspResult<Value> {
+        let params = if route.inject_workspace_root {
+            self.with_workspace_root(params)?
+        } else {
+            params
+        };
+        self.kast_passthrough(route.rpc_method, params)
+    }
+
+    fn with_workspace_root(&self, params: Value) -> LspResult<Value> {
+        let mut params = match params {
+            Value::Object(params) => params,
+            Value::Null => Map::new(),
+            _ => {
+                return Err(LspError::invalid_params(
+                    "kast symbol params must be an object",
+                ));
+            }
+        };
+        if !params.contains_key("workspaceRoot") {
+            let workspace_root = self.workspace_root.as_ref().ok_or_else(|| {
+                LspError::server_error("LSP_WORKSPACE_UNINITIALIZED", "workspace root is not set")
+            })?;
+            params.insert(
+                "workspaceRoot".to_string(),
+                Value::String(workspace_root.display().to_string()),
+            );
+        }
+        Ok(Value::Object(params))
+    }
+
     fn file_position_from_text_document_params(&self, params: &Value) -> LspResult<Value> {
         let document = params
             .get("textDocument")
@@ -904,7 +982,51 @@ fn server_capabilities(backend_capabilities: &Value) -> Value {
             json!({ "prepareProvider": true })
         } else {
             Value::Bool(false)
+        },
+        "experimental": {
+            "kastMethods": custom_lsp_methods()
         }
+    })
+}
+
+fn custom_lsp_route(method: &str) -> Option<&'static KastCustomLspRoute> {
+    KAST_CUSTOM_LSP_ROUTES
+        .iter()
+        .find(|route| route.lsp_method == method)
+}
+
+fn custom_lsp_methods() -> Vec<&'static str> {
+    KAST_CUSTOM_LSP_ROUTES
+        .iter()
+        .map(|route| route.lsp_method)
+        .collect()
+}
+
+fn json_rpc_result_from_response(response: &str) -> Result<Value> {
+    let value: Value = serde_json::from_str(response)?;
+    if let Some(error) = value.get("error") {
+        let code = error
+            .get("data")
+            .and_then(|data| data.get("code"))
+            .and_then(Value::as_str)
+            .unwrap_or("RPC_ERROR");
+        let message = error
+            .get("data")
+            .and_then(|data| data.get("message"))
+            .or_else(|| error.get("message"))
+            .and_then(Value::as_str)
+            .unwrap_or("JSON-RPC request failed");
+        let mut cli_error = CliError::new("RPC_ERROR", format!("{code}: {message}"));
+        cli_error
+            .details
+            .insert("backendCode".to_string(), code.to_string());
+        return Err(cli_error);
+    }
+    value.get("result").cloned().ok_or_else(|| {
+        CliError::new(
+            "RPC_RESPONSE_INVALID",
+            "JSON-RPC response did not include a result field",
+        )
     })
 }
 
@@ -1610,6 +1732,143 @@ mod tests {
             }))
             .expect_err("indexing runtime should fail closed");
         assert_eq!(error.data_code, "LSP_STALE_INDEX");
+    }
+
+    #[test]
+    fn custom_kast_methods_forward_to_matching_rpc_methods() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        let mappings = custom_method_mappings();
+        for (_, rpc_method) in &mappings {
+            rpc.respond(
+                rpc_method,
+                json!({
+                    "type": "TEST_SUCCESS",
+                    "method": rpc_method
+                }),
+            );
+        }
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+
+        for (lsp_method, rpc_method) in &mappings {
+            let result = server
+                .handle_request(lsp_method, json!({ "marker": lsp_method }))
+                .unwrap_or_else(|error| panic!("{lsp_method} failed: {}", error.message));
+            assert_eq!(result["method"], rpc_method.as_str());
+        }
+
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls.len(), mappings.len());
+        for ((lsp_method, rpc_method), (actual_method, params)) in mappings.iter().zip(calls.iter())
+        {
+            assert_eq!(actual_method, rpc_method, "{lsp_method} routed incorrectly");
+            assert_eq!(params["marker"], lsp_method.as_str());
+        }
+    }
+
+    #[test]
+    fn custom_symbol_methods_inject_workspace_root_when_missing() {
+        let temp = tempfile::tempdir().expect("temp");
+        let workspace = temp.path();
+        let rpc = FakeRpc::new(workspace.to_path_buf());
+        rpc.respond("symbol/references", json!({ "type": "REFERENCES_SUCCESS" }));
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+
+        server
+            .handle_request("kast/symbolReferences", json!({ "symbol": "greet" }))
+            .expect("symbol references");
+
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls[0].0, "symbol/references");
+        assert_eq!(calls[0].1["workspaceRoot"], workspace.display().to_string());
+    }
+
+    #[test]
+    fn custom_symbol_methods_preserve_explicit_workspace_root() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        rpc.respond("symbol/resolve", json!({ "type": "RESOLVE_SUCCESS" }));
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+
+        server
+            .handle_request(
+                "kast/symbolResolve",
+                json!({
+                    "workspaceRoot": "/explicit/workspace",
+                    "symbol": "greet"
+                }),
+            )
+            .expect("symbol resolve");
+
+        let calls = server.rpc.calls.borrow();
+        assert_eq!(calls[0].0, "symbol/resolve");
+        assert_eq!(calls[0].1["workspaceRoot"], "/explicit/workspace");
+    }
+
+    #[test]
+    fn initialize_advertises_custom_kast_methods_experimentally() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        let mut server = LspServer::new(rpc);
+        let result = server.initialize(json!({})).expect("initialize");
+        let methods = result["capabilities"]["experimental"]["kastMethods"]
+            .as_array()
+            .expect("kastMethods");
+        let methods = methods
+            .iter()
+            .map(|method| method.as_str().expect("method string"))
+            .collect::<Vec<_>>();
+        let mappings = custom_method_mappings();
+        let expected = mappings
+            .iter()
+            .map(|(lsp_method, _)| lsp_method.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(methods, expected);
+    }
+
+    #[test]
+    fn custom_lsp_routes_match_rpc_catalog() {
+        let catalog: Value = serde_json::from_str(include_str!(
+            "../resources/kast-skill/references/commands.json"
+        ))
+        .expect("commands catalog");
+        let expected = expected_custom_routes_from_catalog(&catalog);
+        assert_eq!(custom_method_mappings(), expected);
+    }
+
+    #[test]
+    fn custom_kast_backend_errors_are_wrapped_as_lsp_errors() {
+        let temp = tempfile::tempdir().expect("temp");
+        let rpc = FakeRpc::new(temp.path().to_path_buf());
+        rpc.fail_with_backend_code(
+            "symbol/resolve",
+            "AMBIGUOUS_ANCHOR",
+            "multiple declarations matched the requested anchor",
+        );
+        let mut server = LspServer::new(rpc);
+        server.initialize(json!({})).expect("initialize");
+
+        let response = server
+            .handle_message(json!({
+                "jsonrpc": "2.0",
+                "id": 99,
+                "method": "kast/symbolResolve",
+                "params": { "symbol": "greet" }
+            }))
+            .expect("response");
+
+        assert_eq!(response["id"], 99);
+        assert_eq!(response["error"]["code"], -32000);
+        assert_eq!(response["error"]["data"]["code"], "AMBIGUOUS_ANCHOR");
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .expect("message")
+                .contains("multiple declarations")
+        );
     }
 
     #[test]
@@ -2348,5 +2607,52 @@ mod tests {
             "startColumn": 1,
             "preview": "sample"
         })
+    }
+
+    fn custom_method_mappings() -> Vec<(String, String)> {
+        KAST_CUSTOM_LSP_ROUTES
+            .iter()
+            .map(|route| (route.lsp_method.to_string(), route.rpc_method.to_string()))
+            .collect()
+    }
+
+    fn expected_custom_routes_from_catalog(catalog: &Value) -> Vec<(String, String)> {
+        let categories = catalog["categories"].as_object().expect("categories");
+        let commands = catalog["commands"].as_object().expect("commands");
+        ["symbol", "database", "system"]
+            .into_iter()
+            .flat_map(|category| {
+                categories[category]
+                    .as_array()
+                    .unwrap_or_else(|| panic!("category {category} methods"))
+                    .iter()
+                    .map(|method| {
+                        let method = method.as_str().expect("method string");
+                        assert!(
+                            commands.contains_key(method),
+                            "category references missing method {method}"
+                        );
+                        let lsp_method = lsp_method_for_rpc_method(method);
+                        (lsp_method, method.to_string())
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    fn lsp_method_for_rpc_method(method: &str) -> String {
+        let mut parts = method.split('/');
+        let first = parts.next().expect("first method segment");
+        let mut lsp_method = format!("kast/{first}");
+        for part in parts {
+            for word in part.split('-') {
+                let mut chars = word.chars();
+                if let Some(first) = chars.next() {
+                    lsp_method.push(first.to_ascii_uppercase());
+                    lsp_method.extend(chars);
+                }
+            }
+        }
+        lsp_method
     }
 }

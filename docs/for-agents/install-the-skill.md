@@ -76,11 +76,11 @@ kast install skill --target-dir=/absolute/path/to/skills --force
 
 ??? info "How the agent finds the kast binary"
 
-    The packaged Copilot extension registers native `kast_*` tools that
-    resolve the CLI through the installed extension files. For portable
+    The Copilot LSP package starts `kast lsp --stdio` from `.github/lsp.json`,
+    so normal Copilot routing only needs `kast` on `PATH`. For portable
     skill-only installs, use `kast rpc` as the CLI fallback and set
-    `[cli] binaryPath` in `config.toml` when the default
-    configured CLI path doesn't match your machine:
+    `[cli] binaryPath` in `config.toml` when the default configured CLI path
+    doesn't match your machine:
 
     ```toml title="$HOME/.config/kast/config.toml"
     [cli]
@@ -91,26 +91,31 @@ GitHub Copilot custom agents are a separate surface. Personas and tool
 restrictions for Copilot belong in `.github/agents/*.md` — not in the
 portable Agent Skills bundle.
 
-## Install the Copilot extension files
+## Install the Copilot LSP package
 
-Use `install copilot` when you want the packaged GitHub Copilot
-agent, hook, and native extension files in the current repository:
+Use `kast install copilot` when you want Copilot to use the normal LSP, hook,
+instruction, agent, and skill surfaces. This package does not require the
+deprecated Copilot SDK extension path:
 
-```console title="Install Copilot agents, hooks, and extensions"
+```console title="Install the LSP-first Copilot package"
 kast install copilot
 ```
 
-The command writes into `<cwd>/.github` by default, including packaged
-`.github/agents`, `.github/hooks`, and self-contained native extension scripts
-under `.github/extensions`. Packaged scripts are installed executable, and the
-command records the installed CLI version in
-`.github/extensions/kast/.kast-copilot-version`.
+The command writes `.github/lsp.json`, `.github/hooks`, `.github/agents`,
+and `.github/instructions` into the target `.github` directory. It writes
+portable Copilot skills into the target repository's `.agents/skills`
+directory and records the installed version in `.github/.kast-copilot-version`.
+
 Pass `--target-dir` to point at another workspace `.github` directory, and
 `--force` to replace an older installed copy:
 
-```console title="Force reinstall Copilot extension files"
+```console title="Force reinstall Copilot LSP package"
 kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 ```
+
+From this source checkout, `kast-copilot-plugin/scripts/install-local.sh`
+installs the same package into a target repository root for local development.
+Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
 
 ## Next steps
 

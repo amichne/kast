@@ -42,7 +42,7 @@ pub enum Command {
     Stop(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
-    /// Run a read-only Language Server Protocol adapter over stdio.
+    /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
     /// Open the interactive source-index demo backed by source-index.db.
     Demo(DemoArgs),
@@ -400,7 +400,7 @@ pub struct SetupArgs {
     /// Target root directory for --include-skill.
     #[arg(long)]
     pub skill_target_dir: Option<PathBuf>,
-    /// Install the packaged Copilot agents and extensions.
+    /// Install the packaged Copilot LSP, hooks, agents, and skills.
     #[arg(long)]
     pub include_copilot: bool,
     /// Skip packaged Copilot extension installation even when --include-copilot is present.
