@@ -90,7 +90,7 @@ state `kast` planned against is the state `kast` writes to.
 
 ## Operator-level RPC methods
 
-The packaged skill and Copilot extension also use generated `symbol/*`
+The packaged skill and Copilot LSP plugin also use generated `symbol/*`
 and `database/*` methods. They live in the same `kast rpc` transport,
 but their exact request shapes come from
 `cli-rs/resources/kast-skill/references/commands.json`, not from the OpenAPI
@@ -114,6 +114,16 @@ RPC methods. It advertises only capabilities supported by the selected
 backend. Rename is planned through `raw/rename` with `dryRun=true`,
 then returned to the LSP client as a `WorkspaceEdit`.
 
+The LSP adapter also advertises experimental `kast/*` methods in
+`initialize` under `capabilities.experimental.kastMethods`. These
+custom requests expose the operator-level RPC surface to LSP clients
+without adding more top-level CLI commands. `symbol/*` custom requests
+receive the initialized `workspaceRoot` automatically when clients omit
+it. `symbol/query` and `database/metrics` keep their Rust CLI direct
+source-index handling instead of requiring a JVM backend handler.
+The custom method list is generated from the same RPC catalog that
+drives the packaged skill and Copilot tools.
+
 | LSP method | Backing Kast method |
 |------------|---------------------|
 | `textDocument/definition` | `raw/resolve` |
@@ -125,6 +135,21 @@ then returned to the LSP client as a `WorkspaceEdit`.
 | `textDocument/prepareCallHierarchy`, `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls` | `raw/resolve`, `raw/call-hierarchy` |
 | `textDocument/prepareTypeHierarchy`, `typeHierarchy/supertypes`, `typeHierarchy/subtypes` | `raw/resolve`, `raw/type-hierarchy` |
 | `textDocument/prepareRename`, `textDocument/rename` | `raw/resolve`, `raw/rename` |
+
+| Custom LSP method | Backing Kast method |
+|-------------------|---------------------|
+| `kast/symbolResolve` | `symbol/resolve` |
+| `kast/symbolReferences` | `symbol/references` |
+| `kast/symbolCallers` | `symbol/callers` |
+| `kast/symbolScaffold` | `symbol/scaffold` |
+| `kast/symbolDiscover` | `symbol/discover` |
+| `kast/symbolQuery` | `symbol/query` |
+| `kast/symbolRename` | `symbol/rename` |
+| `kast/symbolWriteAndValidate` | `symbol/write-and-validate` |
+| `kast/databaseMetrics` | `database/metrics` |
+| `kast/health` | `health` |
+| `kast/runtimeStatus` | `runtime/status` |
+| `kast/capabilities` | `capabilities` |
 
 ## Direct source-index commands
 

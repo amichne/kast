@@ -10,7 +10,7 @@ analysis backend as a JVM process and keeps CLI-owned work in Rust:
 - headless daemon launch via `java -cp <runtime-libs/classpath.txt>`
 - JSON-RPC passthrough over Unix domain sockets
 - descriptor-based `up`, `status`, and `stop`
-- embedded skill and Copilot extension installation
+- embedded skill and Copilot LSP plugin installation
 - Homebrew cask-backed IDEA plugin download and optional profile linking
 - install state recorded directly in `config.toml`
 - direct read-only `source-index.db` metrics through `rusqlite`

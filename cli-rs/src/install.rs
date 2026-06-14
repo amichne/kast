@@ -20,16 +20,62 @@ use std::process::{Command as ProcessCommand, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
-static COPILOT_EXTENSION: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/copilot-extension");
-static KAST_RPC_COMMANDS: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/resources/kast-skill/references/commands.json"
-));
+static COPILOT_PLUGIN_AGENTS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin/agents");
+static COPILOT_PLUGIN_SKILLS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin/skills");
+const COPILOT_PLUGIN_FILES: &[(&str, &[u8])] = &[
+    ("lsp.json", include_bytes!("../resources/plugin/lsp.json")),
+    (
+        "instructions/kast-kotlin.md",
+        include_bytes!("../resources/plugin/instructions/kast-kotlin.md"),
+    ),
+    (
+        "hooks/hooks.json",
+        include_bytes!("../resources/plugin/hooks/hooks.json"),
+    ),
+    (
+        "hooks/kast-agent-stop.sh",
+        include_bytes!("../resources/plugin/hooks/kast-agent-stop.sh"),
+    ),
+    (
+        "hooks/kast-hook-policy.py",
+        include_bytes!("../resources/plugin/hooks/kast-hook-policy.py"),
+    ),
+    (
+        "hooks/kast-post-tool-use.sh",
+        include_bytes!("../resources/plugin/hooks/kast-post-tool-use.sh"),
+    ),
+    (
+        "hooks/kast-pre-tool-use.sh",
+        include_bytes!("../resources/plugin/hooks/kast-pre-tool-use.sh"),
+    ),
+    (
+        "hooks/kast-session-start.sh",
+        include_bytes!("../resources/plugin/hooks/kast-session-start.sh"),
+    ),
+];
+const RETIRED_COPILOT_EXTENSION_FILES: &[&str] = &[
+    ".kast-copilot-version",
+    "_shared/commands.json",
+    "_shared/kast-tools.mjs",
+    "_shared/lib.mjs",
+    "agents/kast-orchestrator.md",
+    "extension.mjs",
+    "kotlin-gradle-loop/tools.mjs",
+    "kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh",
+    "kotlin-gradle-loop/scripts/gradle/run_task.sh",
+    "kotlin-gradle-loop/scripts/parse/jacoco_report.py",
+    "kotlin-gradle-loop/scripts/parse/junit_results.py",
+    "kotlin-gradle-loop/scripts/parse/kotlin_build_report.py",
+    "kotlin-gradle-loop/scripts/state/get_state.py",
+    "kotlin-gradle-loop/scripts/state/init_state.py",
+    "kotlin-gradle-loop/scripts/state/record_action.py",
+    "kotlin-gradle-loop/scripts/state/update_state.py",
+    "scripts/resolve-kast.sh",
+];
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
-const COPILOT_EXTENSION_DIR: &str = "extensions/kast";
-const COPILOT_EXTENSION_MARKER: &str = ".kast-copilot-version";
+const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
 
@@ -729,7 +775,7 @@ fn repair_affected_skill_targets(
 fn repair_affected_copilot_repos(
     args: &AffectedInstallArgs,
     result: &mut InstallAffectedResult,
-    backup_root: &Path,
+    _backup_root: &Path,
 ) -> Result<()> {
     let Some(install) = self_mgmt::read_global_install_state()? else {
         return Ok(());
@@ -741,25 +787,22 @@ fn repair_affected_copilot_repos(
             continue;
         }
         let github_dir = repo_root.join(".github");
-        let extension_target = github_dir.join(COPILOT_EXTENSION_DIR);
-        let marker = extension_target.join(COPILOT_EXTENSION_MARKER);
+        let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
         let installed_version = fs::read_to_string(&marker).unwrap_or_default();
         if installed_version.trim() == cli::version() {
             continue;
         }
         push_affected_action(
             result,
-            "refresh-copilot-extension",
-            &extension_target,
-            "Back up and refresh a stale managed Copilot extension install.",
+            "refresh-copilot-package",
+            &github_dir,
+            "Refresh a stale managed Copilot LSP package install.",
             Some(format!(
                 "kast install copilot --target-dir {} --force",
                 shell_quote_path(&github_dir)
             )),
         );
         if args.apply {
-            backup_existing_path(&extension_target, backup_root, result)?;
-            remove_existing_path(&extension_target)?;
             install_copilot_extension(ResourceInstallArgs {
                 target_dir: Some(github_dir),
                 name: None,
@@ -1195,12 +1238,10 @@ pub fn install_copilot_extension(
                 .join(".github"),
         )
     });
-    let extension_target = target.join(COPILOT_EXTENSION_DIR);
-    let skipped = install_copilot_extension_dir(&extension_target, args.force)?;
-    write_copilot_rpc_catalog(&extension_target)?;
+    let skipped = install_copilot_package(&target, args.force)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
     Ok(InstallCopilotExtensionResult {
-        installed_at: extension_target.display().to_string(),
+        installed_at: target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
         warnings: vec![],
@@ -1618,34 +1659,139 @@ fn current_timestamp() -> String {
     format!("unix:{seconds}")
 }
 
-fn write_copilot_rpc_catalog(target: &Path) -> Result<()> {
-    let shared_catalog = target.join("_shared/commands.json");
-    if let Some(parent) = shared_catalog.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(shared_catalog, KAST_RPC_COMMANDS)?;
-    Ok(())
-}
-
-fn install_copilot_extension_dir(target: &Path, force: bool) -> Result<bool> {
-    let marker = target.join(COPILOT_EXTENSION_MARKER);
+fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
+    let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
+    let retired_marker = github_dir.join("extensions/kast/.kast-copilot-version");
     let skipped = !force
+        && !retired_marker.is_file()
         && marker
             .is_file()
             .then(|| fs::read_to_string(&marker).unwrap_or_default())
             .is_some_and(|current| current.trim() == cli::version());
-    let source = COPILOT_EXTENSION
-        .get_dir(COPILOT_EXTENSION_DIR)
-        .ok_or_else(|| {
-            CliError::new(
-                "INSTALL_RESOURCE_MISSING",
-                format!("Packaged Copilot extension directory {COPILOT_EXTENSION_DIR} is missing"),
-            )
-        })?;
-    fs::create_dir_all(target)?;
-    copy_dir_entries_stripped(source, source.path(), target)?;
+    if skipped {
+        return Ok(true);
+    }
+    let replace_managed = force || marker.is_file();
+
+    let repo_root = github_dir.parent().ok_or_else(|| {
+        CliError::new(
+            "INSTALL_TARGET_INVALID",
+            format!(
+                "Copilot package target {} must be a .github directory with a parent repository",
+                github_dir.display()
+            ),
+        )
+    })?;
+
+    if force || marker.is_file() || retired_marker.is_file() {
+        remove_retired_copilot_extension(github_dir)?;
+    }
+    for (relative, contents) in COPILOT_PLUGIN_FILES {
+        write_copilot_package_file(github_dir, relative, contents, replace_managed)?;
+    }
+    install_copilot_package_entries(
+        &COPILOT_PLUGIN_AGENTS,
+        &github_dir.join("agents"),
+        replace_managed,
+    )?;
+    install_copilot_package_entries(
+        &COPILOT_PLUGIN_SKILLS,
+        &repo_root.join(".agents/skills"),
+        replace_managed,
+    )?;
     fs::write(marker, format!("{}\n", cli::version()))?;
-    Ok(skipped)
+    Ok(false)
+}
+
+fn remove_retired_copilot_extension(github_dir: &Path) -> Result<()> {
+    let extension_root = github_dir.join("extensions/kast");
+    for relative in RETIRED_COPILOT_EXTENSION_FILES {
+        let path = extension_root.join(relative);
+        if path.is_file() {
+            fs::remove_file(path)?;
+        }
+    }
+    for relative in [
+        "kotlin-gradle-loop/scripts/gradle",
+        "kotlin-gradle-loop/scripts/parse",
+        "kotlin-gradle-loop/scripts/state",
+        "kotlin-gradle-loop/scripts",
+        "kotlin-gradle-loop",
+        "scripts",
+        "agents",
+        "_shared",
+        "",
+    ] {
+        let path = extension_root.join(relative);
+        match fs::remove_dir(path) {
+            Ok(()) => {}
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::NotFound | std::io::ErrorKind::DirectoryNotEmpty
+                ) => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(())
+}
+
+fn write_copilot_package_file(
+    github_dir: &Path,
+    relative: &str,
+    contents: &[u8],
+    force: bool,
+) -> Result<()> {
+    let target = github_dir.join(relative);
+    if target.exists() && !force {
+        return Err(CliError::new(
+            "INSTALL_TARGET_EXISTS",
+            format!(
+                "{} already exists. Pass --force to replace it.",
+                target.display()
+            ),
+        ));
+    }
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&target, contents)?;
+    set_executable_if_script(&target)?;
+    Ok(())
+}
+
+fn install_copilot_package_entries(dir: &Dir<'_>, target_root: &Path, force: bool) -> Result<()> {
+    fs::create_dir_all(target_root)?;
+    for entry in dir.entries() {
+        install_copilot_package_entry(entry, target_root, force)?;
+    }
+    Ok(())
+}
+
+fn install_copilot_package_entry(
+    entry: &DirEntry<'_>,
+    target_root: &Path,
+    force: bool,
+) -> Result<()> {
+    let target = target_root.join(entry.path());
+    if target.exists() && !force {
+        return Err(CliError::new(
+            "INSTALL_TARGET_EXISTS",
+            format!(
+                "{} already exists. Pass --force to replace it.",
+                target.display()
+            ),
+        ));
+    }
+    if target.exists() {
+        if target.is_dir() {
+            fs::remove_dir_all(&target)?;
+        } else {
+            fs::remove_file(&target)?;
+        }
+    }
+    copy_entry(entry, target_root)?;
+    Ok(())
 }
 
 fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> Result<bool> {
@@ -1681,13 +1827,6 @@ fn copy_dir_entries(dir: &Dir<'_>, target: &Path) -> Result<()> {
     Ok(())
 }
 
-fn copy_dir_entries_stripped(dir: &Dir<'_>, strip_prefix: &Path, target: &Path) -> Result<()> {
-    for entry in dir.entries() {
-        copy_entry_stripped(entry, strip_prefix, target)?;
-    }
-    Ok(())
-}
-
 fn copy_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
     match entry {
         DirEntry::Dir(dir) => {
@@ -1699,51 +1838,6 @@ fn copy_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
         }
         DirEntry::File(file) => {
             let target = target_root.join(file.path());
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            fs::write(&target, file.contents())?;
-            set_executable_if_script(&target)?;
-        }
-    }
-    Ok(())
-}
-
-fn copy_entry_stripped(
-    entry: &DirEntry<'_>,
-    strip_prefix: &Path,
-    target_root: &Path,
-) -> Result<()> {
-    match entry {
-        DirEntry::Dir(dir) => {
-            let relative = dir.path().strip_prefix(strip_prefix).map_err(|error| {
-                CliError::new(
-                    "INSTALL_RESOURCE_PATH_INVALID",
-                    format!(
-                        "Packaged resource path {} is not under {}: {error}",
-                        dir.path().display(),
-                        strip_prefix.display()
-                    ),
-                )
-            })?;
-            let target = target_root.join(relative);
-            fs::create_dir_all(&target)?;
-            for child in dir.entries() {
-                copy_entry_stripped(child, strip_prefix, target_root)?;
-            }
-        }
-        DirEntry::File(file) => {
-            let relative = file.path().strip_prefix(strip_prefix).map_err(|error| {
-                CliError::new(
-                    "INSTALL_RESOURCE_PATH_INVALID",
-                    format!(
-                        "Packaged resource path {} is not under {}: {error}",
-                        file.path().display(),
-                        strip_prefix.display()
-                    ),
-                )
-            })?;
-            let target = target_root.join(relative);
             if let Some(parent) = target.parent() {
                 fs::create_dir_all(parent)?;
             }

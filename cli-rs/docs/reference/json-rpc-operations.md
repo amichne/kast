@@ -1,7 +1,7 @@
 ---
 title: JSON-RPC operations
 description: The schema-backed command catalog shared by docs, skills, and
-  Copilot extension tools.
+  LSP custom method generation.
 icon: lucide/file-json
 ---
 
@@ -15,21 +15,22 @@ by `resources/kast-skill/references/commands.schema.json`; the YAML and request
 sample tree are generated from the same source.
 
 The catalog is the single checked-in source for method names, request fields,
-nested object fields, variants, enum values, response types, and Copilot
-`kast_*` tool exposure. Walkable minimal and maximal request examples live under
+nested object fields, variants, enum values, response types, Copilot `kast_*`
+tool exposure, and generated `kast/*` LSP custom request routes. Walkable
+minimal and maximal request examples live under
 `resources/kast-skill/references/requests/`.
 
-The Copilot extension does not maintain a parallel tool schema. Its shared
-`kast-tools.mjs` module loads the same catalog, derives each tool's parameter
-schema from the command request model, and calls the catalog's JSON-RPC
-`method` value. During `kast install copilot`, the Rust installer
-copies the catalog into `extensions/_shared/commands.json` so installed
-extensions use the same operation definitions as the packaged skill.
+The Rust LSP adapter does not maintain a parallel custom-method list. Its build
+script reads the same catalog and generates the `kast/*` custom request routing
+table used by `kast lsp --stdio`. The deprecated Copilot SDK extension also
+loads the same catalog from its packaged `_shared/commands.json` copy for
+extension-only fallback use.
 
 Update the catalog first when adding or changing a JSON-RPC method. Docs,
-packaged skills, extension tool schemas, and installer smoke tests should then
-point back to that file instead of defining method-specific shapes by hand.
-Run `python3 resources/kast-skill/scripts/generate-rpc-contract.py --check` and
+packaged skills, LSP route generation, extension fallback schemas, and installer
+smoke tests should then point back to that file instead of defining
+method-specific shapes by hand. Run
+`python3 resources/kast-skill/scripts/generate-rpc-contract.py --check` and
 `python3 resources/kast-skill/scripts/validate-rpc-request.py --all-samples` to
 catch stale YAML/examples and invalid request fixtures before sending or
 publishing request payloads.

@@ -85,20 +85,19 @@ Use this map to choose the narrowest unit that owns a change.
 
 ## Mandatory tool routing
 
-Agents must use the native `kast_*` Copilot tools registered by the
-`.github/extensions/kast/` extension for Kotlin semantic operations.
-The extension also resolves the repo-local `kast` CLI at session start, so
-the same machine contract is available as a `kast rpc '<jsonrpc-request>'`
-bash fallback.
+Agents should use the native `kast_*` Copilot tools when they are available
+from an installed Kast Copilot plugin. The checked-in source of truth for that
+plugin is `cli-rs/resources/plugin/`; generated install copies under `.github`
+and `.agents` are local outputs. The same machine contract is always available
+as a `kast rpc '<jsonrpc-request>'` bash fallback.
 
 | Operation             | Native tool                      | Bash fallback                                            |
 |-----------------------|----------------------------------|----------------------------------------------------------|
 | Any analysis/mutation | `kast_<tool>` (native extension) | `kast rpc '{"method":"<method>","params":{...},"id":1}'` |
 
-The native `kast_*` tools registered by `.github/extensions/kast/extension.mjs`
-remain the preferred interface. The `kast rpc` CLI command is the universal
-fallback — it accepts any JSON-RPC method the daemon supports and auto-ensures
-the daemon.
+The native `kast_*` tools remain the preferred interface when the local host
+provides them. The `kast rpc` CLI command is the universal fallback — it
+accepts any JSON-RPC method the daemon supports and auto-ensures the daemon.
 
 The v1 RPC surface is split into three explicit method families plus system
 methods:
@@ -136,26 +135,28 @@ searching non-Kotlin files. For Kotlin source, use
 
 ## Agent hooks
 
-`.github/hooks/hooks.json` is the authoritative source for GitHub Copilot hook
-configuration in this repository. Use the standard Copilot hook schema:
+`cli-rs/resources/plugin/hooks/hooks.json` is the authoritative source for
+GitHub Copilot hook configuration shipped by Kast. Generated `.github/hooks`
+copies are install outputs and should not be hand-edited. Use the standard
+Copilot hook schema:
 `{"version":1,"hooks":{...}}` with command hooks only. The repo-level hooks
 use `sessionStart` plus `postToolUse` state capture to track session-owned file
 edits, then run final command-based validation from `sessionEnd`. Workflow
 guidance that depends on skills, such as `refresh-affected-agents` or docs
 refresh, belongs in agent instructions rather than in the hook manifest.
 
-## Copilot extension
+## Copilot plugin
 
-`.github/extensions/kast/extension.mjs` is the primary entry point for
-Copilot-assisted Kotlin work. It
+`cli-rs/resources/plugin/` is the primary source for Copilot-assisted Kotlin
+work. It
 
-- resolves the `kast` CLI path once at session start (no bootstrap turn),
-- registers the `kast_*` tools listed under **Mandatory tool routing**, and
-- soft-warns once per session when generic `view`/`grep`/`rg`/`edit`/`create`
-  targets a `.kt`/`.kts` path, suggesting the semantic equivalent.
+- provides the LSP server configuration that starts `kast lsp --stdio`,
+- provides command hooks, instructions, agents, and skills for Copilot hosts,
+  and
+- is embedded by the Rust CLI so `kast install copilot` can regenerate local
+  `.github` and `.agents` outputs.
 
-When the extension loads successfully, it shadows `cli-rs/resources/kast-skill/SKILL.md`
-for routine routing. Fall back to the skill doc only when the extension is
+Fall back to `cli-rs/resources/kast-skill/SKILL.md` when native host tooling is
 unavailable or when you need deeper command-shape or recovery guidance, and
 never use `grep`/`rg`/`ast-grep` for symbol operations.
 
@@ -206,8 +207,7 @@ any packaged artifact manifest,
 enumerate all consumers: `docs/openapi.yaml`, `cli-rs/resources/kast-skill/SKILL.md`,
 `cli-rs/resources/kast-skill/evals/**/*`,
 `cli-rs/resources/kast-skill/references/*`, `cli-rs/resources/kast-skill/scripts/*`,
-`evaluation/**/*`, `.github/extensions/kast/extension.mjs`,
-`.github/agents/**/*`, `.github/hooks/**/*`, `cli-rs/resources/**/*`, and
+`evaluation/**/*`, `cli-rs/resources/plugin/**/*`, `cli-rs/resources/**/*`, and
 `kast.sh`.
 These are contract surfaces — a change without updating all consumers silently
 breaks the distribution.

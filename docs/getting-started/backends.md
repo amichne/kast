@@ -70,8 +70,8 @@ How a session unfolds:
 Add `--output json` to lifecycle commands when automation needs the full
 descriptor payload instead of the readable summary.
 
-The packaged Copilot extension also runs `kast up` at session start, so agent
-sessions often find a warm backend without a separate manual bootstrap step.
+The packaged Copilot LSP configuration starts `kast lsp --stdio`, which
+auto-ensures the selected backend when the editor opens the language server.
 
 ??? info "How headless discovers your project"
 

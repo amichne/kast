@@ -64,7 +64,10 @@ The JSON-RPC contract stays stable. The runtime that holds
 semantic state is the part that swaps. All backends expose the
 same method surface, the same capability reporting, the same result
 shapes. The practical difference: where the warm Kotlin state
-lives.
+lives. `kast lsp --stdio` is another client adapter over that
+contract: it maps core LSP features to `raw/*` methods and exposes
+experimental `kast/*` methods for the operator-level `symbol/*`,
+`database/*`, and system methods.
 
 | Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
 |---|---|---|---|
@@ -121,6 +124,14 @@ In headless mode, "Backend runtime" is the headless daemon and
 its own analysis session. In IDEA mode, it's the plugin service
 inside the IDE — same transport, but answering from the IDE's
 warm project state.
+
+For clients that speak LSP, the CLI keeps the same center of gravity.
+Standard LSP requests become `raw/*` JSON-RPC calls. Custom
+`kast/*` LSP requests pass through to the matching Kast RPC method,
+with the initialized workspace root supplied for symbol requests when
+the client omits it. Rust-owned source-index methods such as
+`symbol/query` and `database/metrics` still run in the CLI before any
+daemon passthrough.
 
 ## Why a daemon?
 

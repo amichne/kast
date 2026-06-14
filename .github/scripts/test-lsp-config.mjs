@@ -4,9 +4,12 @@ import { resolve } from "node:path";
 import process from "node:process";
 
 const repoRoot = resolve(import.meta.dirname, "..", "..");
-const configPath = resolve(repoRoot, ".github", "lsp.json");
+const configPath = process.env.KAST_LSP_CONFIG_PATH
+  ?? resolve(repoRoot, "cli-rs", "resources", "plugin", "lsp.json");
 const config = JSON.parse(await readFile(configPath, "utf8"));
 const server = config.lspServers?.["kast-kotlin"];
+const rpcCatalogPath = resolve(repoRoot, "cli-rs", "resources", "kast-skill", "references", "commands.json");
+const rpcCatalog = JSON.parse(await readFile(rpcCatalogPath, "utf8"));
 
 assert(server, "lspServers.kast-kotlin is required");
 assert(server.command === "kast", "kast-kotlin.command must be kast");
@@ -87,9 +90,55 @@ if (initialize.error) {
   assert(capabilities.textDocumentSync?.openClose === true, "textDocumentSync.openClose must be true");
   assert(capabilities.workspaceSymbolProvider !== undefined, "workspaceSymbolProvider must be advertised");
   assert(capabilities.renameProvider?.prepareProvider === true, "Kast LSP must advertise prepared rename when supported");
+  assertArrayEquals(
+    capabilities.experimental?.kastMethods,
+    expectedCustomLspMethods(rpcCatalog),
+    "capabilities.experimental.kastMethods",
+  );
 }
 
 let workspaceSymbol = null;
+let customMethodSmoke = null;
+if (!initialize.error) {
+  writeMessage(child, {
+    jsonrpc: "2.0",
+    id: 4,
+    method: "kast/capabilities",
+    params: {},
+  });
+  const capabilitiesResponse = await readOneMessage(child, () => stdout, (value) => {
+    stdout = value;
+  });
+  assert(!capabilitiesResponse.error, `kast/capabilities failed: ${capabilitiesResponse.error?.message}`);
+  assert(
+    Array.isArray(capabilitiesResponse.result?.readCapabilities),
+    "kast/capabilities result must include readCapabilities",
+  );
+
+  writeMessage(child, {
+    jsonrpc: "2.0",
+    id: 5,
+    method: "kast/symbolQuery",
+    params: {
+      query: "__kast_lsp_smoke__",
+      limit: 1,
+    },
+  });
+  const symbolQueryResponse = await readOneMessage(child, () => stdout, (value) => {
+    stdout = value;
+  });
+  assert(!symbolQueryResponse.error, `kast/symbolQuery failed: ${symbolQueryResponse.error?.message}`);
+  assert(
+    typeof symbolQueryResponse.result?.type === "string"
+      && symbolQueryResponse.result.type.startsWith("SYMBOL_QUERY_"),
+    "kast/symbolQuery result must be a symbol-query response envelope",
+  );
+  customMethodSmoke = {
+    capabilities: capabilitiesResponse.result.readCapabilities.length,
+    symbolQueryType: symbolQueryResponse.result.type,
+  };
+}
+
 if (workspaceSymbolQuery) {
   assert(!initialize.error, "workspace symbol smoke requires successful initialize");
   writeMessage(child, {
@@ -139,6 +188,7 @@ console.log(JSON.stringify({
   args,
   initializeErrorCode: initializeErrorCode ?? null,
   serverInfo: initialize.result?.serverInfo ?? null,
+  customMethodSmoke,
   workspaceSymbol,
 }, null, 2));
 
@@ -154,6 +204,26 @@ function assertArrayEquals(actual, expected, label) {
   for (const [index, value] of expected.entries()) {
     assert(actual[index] === value, `${label}[${index}] must be ${value}`);
   }
+}
+
+function expectedCustomLspMethods(catalog) {
+  return ["symbol", "database", "system"].flatMap((category) => {
+    const methods = catalog.categories?.[category];
+    assert(Array.isArray(methods), `catalog category ${category} must be an array`);
+    return methods.map((method) => rpcMethodToLspMethod(method));
+  });
+}
+
+function rpcMethodToLspMethod(method) {
+  const [first, ...rest] = method.split("/");
+  return `kast/${first}${rest.map(pascalCaseSegment).join("")}`;
+}
+
+function pascalCaseSegment(segment) {
+  return segment
+    .split("-")
+    .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
+    .join("");
 }
 
 function pathToFileUri(path) {
