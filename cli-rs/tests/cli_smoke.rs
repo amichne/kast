@@ -2656,13 +2656,12 @@ fn packaged_skill_targets_rust_kast_only() {
         "packaged skill should teach the Rust CLI, not host-specific kast_* tool names",
     );
 
-    for relative in ["resources/kast-skill/scripts/resolve-kast.sh"] {
-        let content = std::fs::read_to_string(root.join(relative)).expect(relative);
-        assert!(
-            !content.contains("kast-cli"),
-            "{relative} must not resolve or advertise the deleted JVM CLI",
-        );
-    }
+    let relative = "resources/kast-skill/scripts/resolve-kast.sh";
+    let content = std::fs::read_to_string(root.join(relative)).expect(relative);
+    assert!(
+        !content.contains("kast-cli"),
+        "{relative} must not resolve or advertise the deleted JVM CLI",
+    );
     assert!(
         !root.join("resources/copilot-extension").exists(),
         "deprecated Copilot SDK extension source must not be packaged"
