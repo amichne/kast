@@ -341,7 +341,7 @@ internal class KastPluginBackend(
                 val key = "${edge.symbol.fqName}|${edge.symbol.location.filePath}:${edge.symbol.location.startOffset}"
                 if (!visited.add(key)) continue
                 queue += edge.target
-                if (isConcreteType(edge.target)) {
+                if (ideaReadAccess.run { isConcreteType(edge.target) }) {
                     implementations += edge.symbol
                     if (implementations.size >= limit) {
                         exhaustive = false

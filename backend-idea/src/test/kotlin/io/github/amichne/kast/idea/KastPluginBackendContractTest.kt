@@ -15,11 +15,12 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.query.ImplementationsQuery
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
@@ -293,6 +294,28 @@ class KastPluginBackendContractTest {
         assertTrue(
             childFqNames.any { it.contains("Circle") },
             "Expected Circle in subtypes but got: $childFqNames",
+        )
+    }
+
+    @Test
+    fun `implementations returns concrete subtypes for interface`() = runBlocking {
+        ensureProjectReady()
+
+        val (filePath, offset) = readAction {
+            hierarchyFile.virtualFile.path to hierarchyFile.text.indexOf("Shape")
+        }
+
+        val result = backend().implementations(
+            ImplementationsQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+            ),
+        )
+
+        assertEquals("demo.hierarchy.Shape", result.declaration.fqName)
+        val implementationFqNames = result.implementations.map { it.fqName }
+        assertTrue(
+            implementationFqNames.any { it == "demo.hierarchy.Circle" },
+            "Expected Circle in implementations but got: $implementationFqNames",
         )
     }
 
