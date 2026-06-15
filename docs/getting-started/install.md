@@ -210,10 +210,6 @@ kast install copilot
 The CLI writes these packaged entries:
 
 - `.github/lsp.json`
-- `.github/hooks`
-- `.github/instructions`
-- `.github/agents`
-- `.agents/skills`
 - `.github/.kast-copilot-version`
 
 Pass `--target-dir` when you need to install into another workspace's
@@ -233,8 +229,7 @@ cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/proje
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
 
 To refresh packaged files in place, reinstall with `--force`. This replaces
-managed LSP package files while preserving unrelated files that you created
-under `.github` or `.agents/skills`.
+the managed LSP package file.
 
 ### IDEA and Android Studio plugin role
 

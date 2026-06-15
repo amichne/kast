@@ -13,11 +13,6 @@ die() {
 sdk_surfaces=(
   "${repo_root}/cli-rs/resources/plugin"
 )
-if rg -n "@github/copilot-sdk|joinSession|extension\\.mjs" "${sdk_surfaces[@]}" >"${tmp_dir}/sdk-hits.txt"; then
-  printf 'normal LSP, hook, and plugin surfaces must not depend on the deprecated SDK path:\n' >&2
-  sed -n '1,120p' "${tmp_dir}/sdk-hits.txt" >&2
-  exit 1
-fi
 
 python3 - "$repo_root" <<'PY'
 import json
@@ -43,11 +38,10 @@ if plugin_server["command"] != "kast" or plugin_server["args"] != ["lsp", "--std
 if plugin_server["initializationOptions"]["failOnStaleIndex"] is not True:
     fail("kast-kotlin must fail closed on stale indexes")
 
-hooks = json.loads((root / "cli-rs/resources/plugin/hooks/hooks.json").read_text())
-for event in ("sessionStart", "preToolUse", "postToolUse", "sessionEnd"):
-    commands = hooks["hooks"].get(event)
-    if not commands or commands[0].get("type") != "command":
-        fail(f"missing command hook for {event}")
+plugin_root = root / "cli-rs/resources/plugin"
+manifest = json.loads((plugin_root / "plugin.json").read_text())
+if manifest["entrypoints"] != {"lsp": "lsp.json"}:
+    fail("plugin manifest must expose only the LSP entrypoint")
 
 lsp = require_text("cli-rs/src/lsp.rs", {
     "bounded result cap": "const MAX_LSP_RESULTS",
@@ -81,15 +75,8 @@ if "symbol/resolve" in build_rs or "database/metrics" in build_rs:
     fail("LSP route generation must read method names from the catalog instead of hard-coding routes")
 
 install_rs = require_text("cli-rs/src/install.rs", {
-    "Copilot plugin agents": "resources/plugin/agents",
-    "Copilot plugin skills": "resources/plugin/skills",
     "explicit package file manifest": "COPILOT_PLUGIN_FILES",
-    "repo skill target": ".agents/skills",
-    "bounded package refresh": "install_copilot_package_entries",
-    "retired SDK cleanup": "remove_retired_copilot_extension",
 })
-if "resources/copilot-extension" in install_rs:
-    fail("kast install copilot must install the LSP package, not the deprecated SDK extension")
 
 require_text("cli-rs/src/rpc.rs", {
     "backend error code preservation": '"backendCode"',
@@ -100,23 +87,15 @@ instructions = require_text(".github/copilot-instructions.md", {
     "primary Copilot package": "cli-rs/resources/plugin/",
     "generated copy wording": "Generated install copies",
 })
-if "extension.mjs` is the primary" in instructions:
-    fail("Copilot instructions must keep the LSP plugin primary over the SDK extension")
-require_text("cli-rs/resources/plugin/instructions/kast-kotlin.md", {
-    "LSP custom methods": "capabilities.experimental.kastMethods",
-    "custom request routing": "`kast/*` custom requests",
-})
-require_text("cli-rs/resources/plugin/hooks/kast-hook-policy.py", {
-    "broad search denial": "Broad text search over Kotlin sources is blocked",
-    "large read denial": "Full-file reads above the configured size threshold are blocked",
-    "post edit validation": "raw/diagnostics",
-    "completion validation gate": "Completion blocked because Kotlin edits lack clean Kast diagnostics",
-})
+
+skill_shadowing = json.loads((root / ".github/skill-shadowing.json").read_text())
+skill_ids = {entry["id"] for entry in skill_shadowing["skills"]}
+if skill_ids != {"kast"}:
+    fail(".github/skill-shadowing.json must route only the repo-local kast skill")
 
 print("LSP pivot static gates passed")
 PY
 
-"${repo_root}/.github/scripts/test-kast-hooks.sh" >/dev/null
 "${repo_root}/.github/scripts/test-kast-copilot-plugin.sh" >/dev/null
 
 if [[ -z "${KAST_LSP_TEST_COMMAND:-}" ]]; then

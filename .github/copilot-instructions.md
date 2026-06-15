@@ -20,10 +20,11 @@
   `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell
   state across tool calls.
 - `cli-rs/resources/plugin/` is the primary Copilot package source for this
-  repo. It owns the normal LSP, hook, instruction, agent, and skill surfaces
-  without requiring the deprecated SDK extension path. Generated install copies
-  under `.github` and `.agents` are local outputs, not checked-in sources of
-  truth.
+  repo. It owns only the `kast-kotlin` LSP configuration. Hooks, agents,
+  instructions, skills, and the deprecated SDK extension runtime are not shipped
+  by the package. Generated install copies
+  under `.github` are local outputs, not checked-in
+  sources of truth.
 - Read `AGENTS.md` at the repo root first, then any deeper `AGENTS.md` in the module you touch. The narrower file
   overrides the root guide.
 
@@ -87,10 +88,10 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
   `join(timeout)` in `close()` or shutdown paths; otherwise macOS `@TempDir` cleanup races show up in tests.
 - `docs/` plus `zensical.toml` are the documentation source of truth. `site/`
   and generated `docs/reference/*.md` output are build artifacts and should not be hand-edited.
-- `cli-rs/resources/plugin/hooks/hooks.json` is the authoritative hook manifest.
-  Packaged Copilot resources are embedded by the Rust CLI in `cli-rs/`.
-- Source `.github/hooks/skill-shadowing.json` intentionally keeps repo-local entries, while the packaged Copilot bundle
-  filters it down to portable entries backed by `shadowingExtensionId`.
+- Packaged Copilot resources are embedded by the Rust CLI in `cli-rs/`; the
+  package source is LSP-only.
+- Source `.github/skill-shadowing.json` intentionally keeps the repo-local
+  `kast` skill routing entry for the CLI/RPC contract.
 - Use `kast` terminology in commands, docs, and packaging targets.
 - CI runs on both ubuntu and macOS. IDEA path filtering should use
   `GlobalSearchScope.projectScope(project)` instead of `project.basePath`

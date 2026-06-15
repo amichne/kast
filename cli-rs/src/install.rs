@@ -20,58 +20,8 @@ use std::process::{Command as ProcessCommand, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
-static COPILOT_PLUGIN_AGENTS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin/agents");
-static COPILOT_PLUGIN_SKILLS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin/skills");
-const COPILOT_PLUGIN_FILES: &[(&str, &[u8])] = &[
-    ("lsp.json", include_bytes!("../resources/plugin/lsp.json")),
-    (
-        "instructions/kast-kotlin.md",
-        include_bytes!("../resources/plugin/instructions/kast-kotlin.md"),
-    ),
-    (
-        "hooks/hooks.json",
-        include_bytes!("../resources/plugin/hooks/hooks.json"),
-    ),
-    (
-        "hooks/kast-agent-stop.sh",
-        include_bytes!("../resources/plugin/hooks/kast-agent-stop.sh"),
-    ),
-    (
-        "hooks/kast-hook-policy.py",
-        include_bytes!("../resources/plugin/hooks/kast-hook-policy.py"),
-    ),
-    (
-        "hooks/kast-post-tool-use.sh",
-        include_bytes!("../resources/plugin/hooks/kast-post-tool-use.sh"),
-    ),
-    (
-        "hooks/kast-pre-tool-use.sh",
-        include_bytes!("../resources/plugin/hooks/kast-pre-tool-use.sh"),
-    ),
-    (
-        "hooks/kast-session-start.sh",
-        include_bytes!("../resources/plugin/hooks/kast-session-start.sh"),
-    ),
-];
-const RETIRED_COPILOT_EXTENSION_FILES: &[&str] = &[
-    ".kast-copilot-version",
-    "_shared/commands.json",
-    "_shared/kast-tools.mjs",
-    "_shared/lib.mjs",
-    "agents/kast-orchestrator.md",
-    "extension.mjs",
-    "kotlin-gradle-loop/tools.mjs",
-    "kotlin-gradle-loop/scripts/gradle/run_gradle_hook.sh",
-    "kotlin-gradle-loop/scripts/gradle/run_task.sh",
-    "kotlin-gradle-loop/scripts/parse/jacoco_report.py",
-    "kotlin-gradle-loop/scripts/parse/junit_results.py",
-    "kotlin-gradle-loop/scripts/parse/kotlin_build_report.py",
-    "kotlin-gradle-loop/scripts/state/get_state.py",
-    "kotlin-gradle-loop/scripts/state/init_state.py",
-    "kotlin-gradle-loop/scripts/state/record_action.py",
-    "kotlin-gradle-loop/scripts/state/update_state.py",
-    "scripts/resolve-kast.sh",
-];
+const COPILOT_PLUGIN_FILES: &[(&str, &[u8])] =
+    &[("lsp.json", include_bytes!("../resources/plugin/lsp.json"))];
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
@@ -1661,9 +1611,7 @@ fn current_timestamp() -> String {
 
 fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
     let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
-    let retired_marker = github_dir.join("extensions/kast/.kast-copilot-version");
     let skipped = !force
-        && !retired_marker.is_file()
         && marker
             .is_file()
             .then(|| fs::read_to_string(&marker).unwrap_or_default())
@@ -1672,68 +1620,11 @@ fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
         return Ok(true);
     }
     let replace_managed = force || marker.is_file();
-
-    let repo_root = github_dir.parent().ok_or_else(|| {
-        CliError::new(
-            "INSTALL_TARGET_INVALID",
-            format!(
-                "Copilot package target {} must be a .github directory with a parent repository",
-                github_dir.display()
-            ),
-        )
-    })?;
-
-    if force || marker.is_file() || retired_marker.is_file() {
-        remove_retired_copilot_extension(github_dir)?;
-    }
     for (relative, contents) in COPILOT_PLUGIN_FILES {
         write_copilot_package_file(github_dir, relative, contents, replace_managed)?;
     }
-    install_copilot_package_entries(
-        &COPILOT_PLUGIN_AGENTS,
-        &github_dir.join("agents"),
-        replace_managed,
-    )?;
-    install_copilot_package_entries(
-        &COPILOT_PLUGIN_SKILLS,
-        &repo_root.join(".agents/skills"),
-        replace_managed,
-    )?;
     fs::write(marker, format!("{}\n", cli::version()))?;
     Ok(false)
-}
-
-fn remove_retired_copilot_extension(github_dir: &Path) -> Result<()> {
-    let extension_root = github_dir.join("extensions/kast");
-    for relative in RETIRED_COPILOT_EXTENSION_FILES {
-        let path = extension_root.join(relative);
-        if path.is_file() {
-            fs::remove_file(path)?;
-        }
-    }
-    for relative in [
-        "kotlin-gradle-loop/scripts/gradle",
-        "kotlin-gradle-loop/scripts/parse",
-        "kotlin-gradle-loop/scripts/state",
-        "kotlin-gradle-loop/scripts",
-        "kotlin-gradle-loop",
-        "scripts",
-        "agents",
-        "_shared",
-        "",
-    ] {
-        let path = extension_root.join(relative);
-        match fs::remove_dir(path) {
-            Ok(()) => {}
-            Err(error)
-                if matches!(
-                    error.kind(),
-                    std::io::ErrorKind::NotFound | std::io::ErrorKind::DirectoryNotEmpty
-                ) => {}
-            Err(error) => return Err(error.into()),
-        }
-    }
-    Ok(())
 }
 
 fn write_copilot_package_file(
@@ -1757,40 +1648,6 @@ fn write_copilot_package_file(
     }
     fs::write(&target, contents)?;
     set_executable_if_script(&target)?;
-    Ok(())
-}
-
-fn install_copilot_package_entries(dir: &Dir<'_>, target_root: &Path, force: bool) -> Result<()> {
-    fs::create_dir_all(target_root)?;
-    for entry in dir.entries() {
-        install_copilot_package_entry(entry, target_root, force)?;
-    }
-    Ok(())
-}
-
-fn install_copilot_package_entry(
-    entry: &DirEntry<'_>,
-    target_root: &Path,
-    force: bool,
-) -> Result<()> {
-    let target = target_root.join(entry.path());
-    if target.exists() && !force {
-        return Err(CliError::new(
-            "INSTALL_TARGET_EXISTS",
-            format!(
-                "{} already exists. Pass --force to replace it.",
-                target.display()
-            ),
-        ));
-    }
-    if target.exists() {
-        if target.is_dir() {
-            fs::remove_dir_all(&target)?;
-        } else {
-            fs::remove_file(&target)?;
-        }
-    }
-    copy_entry(entry, target_root)?;
     Ok(())
 }
 

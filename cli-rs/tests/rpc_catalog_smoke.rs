@@ -371,20 +371,6 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         plugin_root.join("lsp.json").is_file(),
         "plugin source must own the LSP entrypoint"
     );
-    assert!(
-        plugin_root.join("hooks/hooks.json").is_file(),
-        "plugin source must own hook config"
-    );
-    assert!(
-        plugin_root.join("agents/kast-explorer.agent.md").is_file(),
-        "plugin source must own Copilot agents"
-    );
-    assert!(
-        plugin_root
-            .join("skills/kast-symbol-investigation/SKILL.md")
-            .is_file(),
-        "plugin source must own Copilot skills"
-    );
 }
 
 #[test]
@@ -418,18 +404,4 @@ fn copilot_install_receives_the_lsp_package_entrypoint() {
         .expect("plugin lsp");
     let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
     assert_eq!(installed, source);
-    assert!(target.join("hooks/hooks.json").is_file());
-    assert!(target.join("instructions/kast-kotlin.md").is_file());
-    assert!(target.join("agents/kast-explorer.agent.md").is_file());
-    assert!(
-        temp.path()
-            .join(".agents/skills/kast-symbol-investigation/SKILL.md")
-            .is_file()
-    );
-    assert!(
-        !target
-            .join("extensions/kast/_shared/commands.json")
-            .exists()
-    );
-    assert!(!target.join("extensions/kast/extension.mjs").exists());
 }

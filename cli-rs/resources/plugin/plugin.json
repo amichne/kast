@@ -2,34 +2,18 @@
   "schemaVersion": 1,
   "name": "kast-copilot-lsp",
   "version": "0.1.0",
-  "description": "Kast LSP, hook, skill, and agent package for compiler-backed Kotlin work in Copilot.",
+  "description": "Kast LSP package for compiler-backed Kotlin work in Copilot.",
   "requires": {
     "kast": ">=0.9.3",
     "copilotCli": ">=1.0.60"
   },
   "entrypoints": {
-    "lsp": "lsp.json",
-    "hooks": "hooks/hooks.json",
-    "instructions": [
-      "instructions/kast-kotlin.md"
-    ],
-    "agents": [
-      "agents/kast-explorer.agent.md",
-      "agents/kast-refactorer.agent.md",
-      "agents/kast-reviewer.agent.md",
-      "agents/kast-migration-planner.agent.md"
-    ],
-    "skills": [
-      "skills/kast-symbol-investigation/SKILL.md",
-      "skills/kast-safe-rename/SKILL.md",
-      "skills/kast-callgraph-review/SKILL.md",
-      "skills/kast-api-surface-change/SKILL.md"
-    ]
+    "lsp": "lsp.json"
   },
   "install": {
     "script": "scripts/install-local.sh"
   },
   "deprecatedSurfaces": [
-    "Copilot SDK extension is not required for LSP, hooks, agents, or skills in this package."
+    "Hooks, agents, instructions, skills, and the legacy .github/extensions/kast/extension.mjs runtime are not shipped by this package."
   ]
 }

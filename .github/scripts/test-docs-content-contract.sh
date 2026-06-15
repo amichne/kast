@@ -139,7 +139,7 @@ require_contains "$install_doc" 'kast-ubuntu-debian-headless-x86_64-<version>.ta
 require_contains "$install_doc" 'scripts/verify-release-assets.sh' "Install docs must document release asset verification"
 require_contains "$install_doc" '## Install the Copilot LSP package' "Install docs must document the Copilot LSP package"
 require_contains "$install_doc" 'kast install copilot' "Install docs must make the CLI Copilot install path primary"
-require_contains "$install_doc" '.agents/skills' "Install docs must document where Copilot package skills are installed"
+require_contains "$install_doc" '.github/lsp.json' "Install docs must document the LSP config output"
 require_not_contains "$install_doc" '## Install the legacy Copilot extension' "Install docs must not make the deprecated SDK extension an install path"
 require_not_contains "$install_doc" 'KAST_AGENT_CLI_URL' "Install docs must not mention retired headless agent variables"
 require_not_contains "$install_doc" 'KAST_AGENT_BACKEND_URL' "Install docs must not mention retired headless agent variables"

@@ -47,33 +47,6 @@ install_file() {
   cp -- "$source" "$target"
 }
 
-install_dir() {
-  local source="$1"
-  local target="$2"
-  if [[ -e "$target" && "$force" != true ]]; then
-    die "refusing to overwrite ${target}; pass --force"
-  fi
-  rm -rf -- "$target"
-  mkdir -p -- "$(dirname -- "$target")"
-  cp -R -- "$source" "$target"
-}
-
 install_file "${plugin_root}/lsp.json" "${target_root}/.github/lsp.json"
-install_file "${plugin_root}/instructions/kast-kotlin.md" "${target_root}/.github/instructions/kast-kotlin.md"
-install_dir "${plugin_root}/hooks" "${target_root}/.github/hooks"
-install_dir "${plugin_root}/agents" "${target_root}/.github/agents"
-
-mkdir -p -- "${target_root}/.agents/skills"
-for skill_dir in "${plugin_root}"/skills/*; do
-  [[ -d "$skill_dir" ]] || continue
-  install_dir "$skill_dir" "${target_root}/.agents/skills/$(basename "$skill_dir")"
-done
-
-chmod 755 \
-  "${target_root}/.github/hooks/kast-agent-stop.sh" \
-  "${target_root}/.github/hooks/kast-hook-policy.py" \
-  "${target_root}/.github/hooks/kast-post-tool-use.sh" \
-  "${target_root}/.github/hooks/kast-pre-tool-use.sh" \
-  "${target_root}/.github/hooks/kast-session-start.sh"
 
 printf '{"ok":true,"installedAt":"%s"}\n' "$target_root"

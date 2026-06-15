@@ -1,9 +1,8 @@
 # Kast Copilot LSP Plugin
 
-This package distributes Kast through standard LSP configuration, hooks, agents,
-skills, and concise instructions. It is the checked-in source for the packaged
-CLI resources and does not require the deprecated Copilot SDK extension path
-for normal use.
+This package distributes only the `kast-kotlin` LSP configuration. Hooks,
+agents, instructions, skills, and the previous SDK extension runtime are not
+part of the shipped package.
 
 Install into a repository:
 

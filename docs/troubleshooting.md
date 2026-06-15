@@ -124,8 +124,7 @@ that matches what you're seeing.
 ??? question "Copilot LSP package files look stale"
 
     Reinstall the packaged files with `--force`. This replaces the managed
-    LSP package files under `.github` and `.agents/skills`, records the
-    running CLI version, and leaves unrelated repository content in place.
+    LSP package file under `.github` and records the running CLI version.
 
     ```console
     kast install copilot --force

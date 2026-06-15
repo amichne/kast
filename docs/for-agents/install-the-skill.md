@@ -87,24 +87,20 @@ kast install skill --target-dir=/absolute/path/to/skills --force
     binaryPath = "/home/alex/.local/bin/kast"
     ```
 
-GitHub Copilot custom agents are a separate surface. Personas and tool
-restrictions for Copilot belong in `.github/agents/*.md` — not in the
-portable Agent Skills bundle.
+GitHub Copilot custom agents are a separate surface from the Kast Copilot LSP
+package.
 
 ## Install the Copilot LSP package
 
-Use `kast install copilot` when you want Copilot to use the normal LSP, hook,
-instruction, agent, and skill surfaces. This package does not require the
-deprecated Copilot SDK extension path:
+Use `kast install copilot` when you want Copilot to use the `kast-kotlin` LSP
+server:
 
 ```console title="Install the LSP-first Copilot package"
 kast install copilot
 ```
 
-The command writes `.github/lsp.json`, `.github/hooks`, `.github/agents`,
-and `.github/instructions` into the target `.github` directory. It writes
-portable Copilot skills into the target repository's `.agents/skills`
-directory and records the installed version in `.github/.kast-copilot-version`.
+The command writes `.github/lsp.json` into the target `.github` directory and
+records the installed version in `.github/.kast-copilot-version`.
 
 Pass `--target-dir` to point at another workspace `.github` directory, and
 `--force` to replace an older installed copy:
