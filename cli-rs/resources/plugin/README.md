@@ -1,8 +1,13 @@
 # Kast Copilot LSP Plugin
 
-This package distributes only the `kast-kotlin` LSP configuration. Hooks,
-agents, instructions, skills, and the previous SDK extension runtime are not
-part of the shipped package.
+This package distributes the minimal reliable Kast Copilot primitive set:
+
+- `kast-kotlin` LSP configuration
+- Kotlin-scoped instructions that route agents through LSP and Kast methods
+- a small SDK extension that exposes catalog-backed `kast_*` tools
+
+The package source is `primitive-manifest.json`; generated files under
+`.github` are install outputs.
 
 Install into a repository:
 

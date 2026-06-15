@@ -15,17 +15,17 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command as ProcessCommand, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
-const COPILOT_PLUGIN_FILES: &[(&str, &[u8])] =
-    &[("lsp.json", include_bytes!("../resources/plugin/lsp.json"))];
+static COPILOT_PLUGIN: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin");
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
 const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
+const COPILOT_PRIMITIVE_MANIFEST: &str = "primitive-manifest.json";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
 
@@ -1620,18 +1620,107 @@ fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
         return Ok(true);
     }
     let replace_managed = force || marker.is_file();
-    for (relative, contents) in COPILOT_PLUGIN_FILES {
-        write_copilot_package_file(github_dir, relative, contents, replace_managed)?;
+    for output in copilot_package_outputs()? {
+        write_copilot_package_file(
+            github_dir,
+            &output.target,
+            output.contents,
+            replace_managed,
+            output.executable,
+        )?;
     }
     fs::write(marker, format!("{}\n", cli::version()))?;
     Ok(false)
 }
 
+struct CopilotPackageOutput {
+    target: PathBuf,
+    contents: &'static [u8],
+    executable: bool,
+}
+
+fn copilot_package_outputs() -> Result<Vec<CopilotPackageOutput>> {
+    let manifest = embedded_file_contents(&COPILOT_PLUGIN, COPILOT_PRIMITIVE_MANIFEST)?;
+    let manifest: Value = serde_json::from_slice(manifest)?;
+    let outputs = manifest
+        .get("outputs")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            CliError::new(
+                "COPILOT_PACKAGE_MANIFEST_INVALID",
+                "Copilot primitive manifest must contain an outputs array.",
+            )
+        })?;
+    let mut resolved = Vec::with_capacity(outputs.len());
+    for output in outputs {
+        let output_type = manifest_string_field(output, "type")?;
+        let source = manifest_string_field(output, "source")?;
+        let target = validate_manifest_relative_path(manifest_string_field(output, "target")?)?;
+        let source = validate_manifest_relative_path(source)?;
+        let source_path = source.to_string_lossy();
+        let contents = match output_type {
+            "PACKAGE_FILE" => embedded_file_contents(&COPILOT_PLUGIN, &source_path)?,
+            "KAST_SKILL_FILE" => embedded_file_contents(&KAST_SKILL, &source_path)?,
+            other => {
+                return Err(CliError::new(
+                    "COPILOT_PACKAGE_MANIFEST_INVALID",
+                    format!("Unsupported Copilot package output type `{other}`."),
+                ));
+            }
+        };
+        resolved.push(CopilotPackageOutput {
+            target,
+            contents,
+            executable: output
+                .get("executable")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        });
+    }
+    Ok(resolved)
+}
+
+fn embedded_file_contents(dir: &'static Dir<'static>, relative: &str) -> Result<&'static [u8]> {
+    dir.get_file(relative)
+        .map(|file| file.contents())
+        .ok_or_else(|| {
+            CliError::new(
+                "COPILOT_PACKAGE_SOURCE_MISSING",
+                format!("Embedded Copilot package source `{relative}` was not found."),
+            )
+        })
+}
+
+fn manifest_string_field<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
+    value.get(field).and_then(Value::as_str).ok_or_else(|| {
+        CliError::new(
+            "COPILOT_PACKAGE_MANIFEST_INVALID",
+            format!("Copilot package output must contain string field `{field}`."),
+        )
+    })
+}
+
+fn validate_manifest_relative_path(value: &str) -> Result<PathBuf> {
+    let path = Path::new(value);
+    let safe = !value.trim().is_empty()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_) | Component::CurDir));
+    if safe && !path.is_absolute() {
+        return Ok(path.to_path_buf());
+    }
+    Err(CliError::new(
+        "COPILOT_PACKAGE_MANIFEST_INVALID",
+        format!("Manifest path `{value}` must be relative and must not contain `..`."),
+    ))
+}
+
 fn write_copilot_package_file(
     github_dir: &Path,
-    relative: &str,
+    relative: &Path,
     contents: &[u8],
     force: bool,
+    executable: bool,
 ) -> Result<()> {
     let target = github_dir.join(relative);
     if target.exists() && !force {
@@ -1647,7 +1736,11 @@ fn write_copilot_package_file(
         fs::create_dir_all(parent)?;
     }
     fs::write(&target, contents)?;
-    set_executable_if_script(&target)?;
+    if executable {
+        set_executable(&target)?;
+    } else {
+        set_executable_if_script(&target)?;
+    }
     Ok(())
 }
 
@@ -1704,6 +1797,20 @@ fn copy_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
     }
     Ok(())
 }
+#[cfg(unix)]
+fn set_executable(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut permissions = fs::metadata(path)?.permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions)?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn set_executable(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
 #[cfg(unix)]
 fn set_executable_if_script(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;

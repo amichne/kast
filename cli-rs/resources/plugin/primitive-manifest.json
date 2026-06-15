@@ -1,0 +1,37 @@
+{
+  "type": "KAST_COPILOT_PRIMITIVE_MANIFEST",
+  "schemaVersion": 1,
+  "packageName": "kast-copilot-lsp",
+  "outputs": [
+    {
+      "type": "PACKAGE_FILE",
+      "source": "lsp.json",
+      "target": "lsp.json",
+      "executable": false
+    },
+    {
+      "type": "PACKAGE_FILE",
+      "source": "instructions/kast-kotlin.instructions.md",
+      "target": "instructions/kast-kotlin.instructions.md",
+      "executable": false
+    },
+    {
+      "type": "PACKAGE_FILE",
+      "source": "extensions/kast/extension.mjs",
+      "target": "extensions/kast/extension.mjs",
+      "executable": true
+    },
+    {
+      "type": "PACKAGE_FILE",
+      "source": "extensions/kast/_shared/kast-tools.mjs",
+      "target": "extensions/kast/_shared/kast-tools.mjs",
+      "executable": false
+    },
+    {
+      "type": "KAST_SKILL_FILE",
+      "source": "references/commands.json",
+      "target": "extensions/kast/_shared/commands.json",
+      "executable": false
+    }
+  ]
+}

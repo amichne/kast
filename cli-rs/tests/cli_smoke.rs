@@ -2125,6 +2125,17 @@ fn install_resource_gateways_support_force_and_current_versions() {
         github_dir.display().to_string()
     );
     assert!(github_dir.join("lsp.json").is_file());
+    assert!(
+        github_dir
+            .join("instructions/kast-kotlin.instructions.md")
+            .is_file()
+    );
+    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(
+        github_dir
+            .join("extensions/kast/_shared/commands.json")
+            .is_file()
+    );
 
     let copilot_marker =
         std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("copilot marker");
@@ -2311,6 +2322,17 @@ fn copilot_extension_install_preserves_existing_github_content() {
         format!("{}\n", env!("CARGO_PKG_VERSION"))
     );
     assert!(github_dir.join("lsp.json").is_file());
+    assert!(
+        github_dir
+            .join("instructions/kast-kotlin.instructions.md")
+            .is_file()
+    );
+    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(
+        github_dir
+            .join("extensions/kast/_shared/commands.json")
+            .is_file()
+    );
     assert!(
         github_dir.join("extensions/kast/custom.json").is_file(),
         "unrelated old extension customization should be preserved"

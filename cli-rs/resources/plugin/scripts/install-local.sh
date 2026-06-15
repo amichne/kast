@@ -36,17 +36,47 @@ done
 [[ -n "$target_root" ]] || { usage; die "--target is required"; }
 plugin_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd)"
 target_root="$(cd -- "$target_root" >/dev/null 2>&1 && pwd)"
+python3 - "$plugin_root" "$target_root" "$force" <<'PY'
+import json
+import os
+import pathlib
+import shutil
+import stat
+import sys
 
-install_file() {
-  local source="$1"
-  local target="$2"
-  if [[ -e "$target" && "$force" != true ]]; then
-    die "refusing to overwrite ${target}; pass --force"
-  fi
-  mkdir -p -- "$(dirname -- "$target")"
-  cp -- "$source" "$target"
-}
+plugin_root = pathlib.Path(sys.argv[1])
+target_root = pathlib.Path(sys.argv[2])
+force = sys.argv[3] == "true"
+manifest = json.loads((plugin_root / "primitive-manifest.json").read_text())
+skill_root = plugin_root.parent / "kast-skill"
 
-install_file "${plugin_root}/lsp.json" "${target_root}/.github/lsp.json"
+def safe_relative(value):
+    path = pathlib.PurePosixPath(value)
+    if path.is_absolute() or ".." in path.parts:
+        raise SystemExit(f"error: unsafe manifest path: {value}")
+    return pathlib.Path(*path.parts)
 
-printf '{"ok":true,"installedAt":"%s"}\n' "$target_root"
+installed = []
+for output in manifest["outputs"]:
+    source = safe_relative(output["source"])
+    target = target_root / ".github" / safe_relative(output["target"])
+    if output["type"] == "PACKAGE_FILE":
+        source_root = plugin_root
+    elif output["type"] == "KAST_SKILL_FILE":
+        source_root = skill_root
+    else:
+        raise SystemExit(f"error: unsupported output type: {output['type']}")
+    source_path = source_root / source
+    if not source_path.is_file():
+        raise SystemExit(f"error: manifest source not found: {source_path}")
+    if target.exists() and not force:
+        raise SystemExit(f"error: refusing to overwrite {target}; pass --force")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source_path, target)
+    if output.get("executable") or target.suffix in {".sh", ".py", ".mjs"}:
+        mode = target.stat().st_mode
+        target.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    installed.append(str(target.relative_to(target_root)))
+
+print(json.dumps({"ok": True, "installedAt": str(target_root), "installedFiles": installed}))
+PY

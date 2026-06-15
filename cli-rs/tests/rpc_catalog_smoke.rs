@@ -371,10 +371,50 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         plugin_root.join("lsp.json").is_file(),
         "plugin source must own the LSP entrypoint"
     );
+
+    let primitive_schema: Value = serde_json::from_str(
+        &std::fs::read_to_string(plugin_root.join("primitive-manifest.schema.json"))
+            .expect("primitive manifest schema"),
+    )
+    .expect("primitive manifest schema json");
+    let primitive_manifest: Value = serde_json::from_str(
+        &std::fs::read_to_string(plugin_root.join("primitive-manifest.json"))
+            .expect("primitive manifest"),
+    )
+    .expect("primitive manifest json");
+    assert_valid(&primitive_schema, &primitive_manifest);
+
+    let outputs = primitive_manifest["outputs"]
+        .as_array()
+        .expect("primitive outputs");
+    let targets: BTreeSet<_> = outputs
+        .iter()
+        .map(|output| output["target"].as_str().expect("output target"))
+        .collect();
+    assert_eq!(
+        targets,
+        BTreeSet::from([
+            "extensions/kast/_shared/commands.json",
+            "extensions/kast/_shared/kast-tools.mjs",
+            "extensions/kast/extension.mjs",
+            "instructions/kast-kotlin.instructions.md",
+            "lsp.json",
+        ])
+    );
+    assert!(
+        plugin_root
+            .join("instructions/kast-kotlin.instructions.md")
+            .is_file(),
+        "plugin source must own the Kotlin instruction"
+    );
+    assert!(
+        plugin_root.join("extensions/kast/extension.mjs").is_file(),
+        "plugin source must own the Copilot SDK extension entrypoint"
+    );
 }
 
 #[test]
-fn copilot_install_receives_the_lsp_package_entrypoint() {
+fn copilot_install_receives_the_manifest_declared_package_outputs() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -404,4 +444,33 @@ fn copilot_install_receives_the_lsp_package_entrypoint() {
         .expect("plugin lsp");
     let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
     assert_eq!(installed, source);
+
+    let instruction_source = std::fs::read_to_string(
+        manifest_dir.join("resources/plugin/instructions/kast-kotlin.instructions.md"),
+    )
+    .expect("plugin instruction");
+    let installed_instruction =
+        std::fs::read_to_string(target.join("instructions/kast-kotlin.instructions.md"))
+            .expect("installed instruction");
+    assert_eq!(installed_instruction, instruction_source);
+    assert!(
+        installed_instruction.contains("start with the `kast-kotlin` LSP server"),
+        "Kotlin instruction must force the LSP route"
+    );
+
+    let extension_source = std::fs::read_to_string(
+        manifest_dir.join("resources/plugin/extensions/kast/extension.mjs"),
+    )
+    .expect("plugin extension");
+    let installed_extension = std::fs::read_to_string(target.join("extensions/kast/extension.mjs"))
+        .expect("installed extension");
+    assert_eq!(installed_extension, extension_source);
+
+    let catalog_source =
+        std::fs::read_to_string(manifest_dir.join("resources/kast-skill/references/commands.json"))
+            .expect("command catalog");
+    let installed_catalog =
+        std::fs::read_to_string(target.join("extensions/kast/_shared/commands.json"))
+            .expect("installed command catalog");
+    assert_eq!(installed_catalog, catalog_source);
 }

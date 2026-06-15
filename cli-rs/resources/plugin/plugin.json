@@ -2,18 +2,25 @@
   "schemaVersion": 1,
   "name": "kast-copilot-lsp",
   "version": "0.1.0",
-  "description": "Kast LSP package for compiler-backed Kotlin work in Copilot.",
+  "description": "Kast Copilot package for compiler-backed Kotlin work through LSP, instructions, and catalog-backed tools.",
   "requires": {
     "kast": ">=0.9.3",
     "copilotCli": ">=1.0.60"
   },
   "entrypoints": {
-    "lsp": "lsp.json"
+    "lsp": "lsp.json",
+    "instructions": [
+      "instructions/kast-kotlin.instructions.md"
+    ],
+    "extensions": [
+      "extensions/kast/extension.mjs"
+    ],
+    "manifest": "primitive-manifest.json"
   },
   "install": {
     "script": "scripts/install-local.sh"
   },
   "deprecatedSurfaces": [
-    "Hooks, agents, instructions, skills, and the legacy .github/extensions/kast/extension.mjs runtime are not shipped by this package."
+    "Hooks, agents, and standalone package skills are intentionally out of scope for the first rewritten primitive package."
   ]
 }

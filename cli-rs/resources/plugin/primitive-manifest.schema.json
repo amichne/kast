@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/schemas/copilot-primitive-manifest.schema.json",
+  "title": "Kast Copilot Primitive Manifest",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "KAST_COPILOT_PRIMITIVE_MANIFEST"
+      ],
+      "examples": [
+        "KAST_COPILOT_PRIMITIVE_MANIFEST"
+      ]
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "examples": [
+        1
+      ]
+    },
+    "packageName": {
+      "type": "string",
+      "minLength": 1,
+      "examples": [
+        "kast-copilot-lsp"
+      ]
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/packageFileOutput"
+          },
+          {
+            "$ref": "#/$defs/kastSkillFileOutput"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type"
+        }
+      },
+      "examples": [
+        [
+          {
+            "type": "PACKAGE_FILE",
+            "source": "lsp.json",
+            "target": "lsp.json",
+            "executable": false
+          }
+        ]
+      ]
+    }
+  },
+  "required": [
+    "type",
+    "schemaVersion",
+    "packageName",
+    "outputs"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+",
+      "examples": [
+        "extensions/kast/extension.mjs"
+      ]
+    },
+    "packageFileOutput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PACKAGE_FILE"
+          ],
+          "examples": [
+            "PACKAGE_FILE"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "target": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "executable": {
+          "type": "boolean",
+          "examples": [
+            false
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "source",
+        "target"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "type": "PACKAGE_FILE",
+          "source": "instructions/kast-kotlin.instructions.md",
+          "target": "instructions/kast-kotlin.instructions.md",
+          "executable": false
+        }
+      ]
+    },
+    "kastSkillFileOutput": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "KAST_SKILL_FILE"
+          ],
+          "examples": [
+            "KAST_SKILL_FILE"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "target": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "executable": {
+          "type": "boolean",
+          "examples": [
+            false
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "source",
+        "target"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "type": "KAST_SKILL_FILE",
+          "source": "references/commands.json",
+          "target": "extensions/kast/_shared/commands.json",
+          "executable": false
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "type": "KAST_COPILOT_PRIMITIVE_MANIFEST",
+      "schemaVersion": 1,
+      "packageName": "kast-copilot-lsp",
+      "outputs": [
+        {
+          "type": "PACKAGE_FILE",
+          "source": "lsp.json",
+          "target": "lsp.json",
+          "executable": false
+        }
+      ]
+    }
+  ]
+}
