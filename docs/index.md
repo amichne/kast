@@ -72,7 +72,7 @@ Three commands, run from the root of any Kotlin project. Requires Java 21+.
 
 ```console linenums="1" title="Install, start, query" hl_lines="1 2 3"
 # 1. Install the Linux headless tarball
-./scripts/install-ubuntu-debian.sh install
+./kast.sh install
 
 # 2. Start a backend for this workspace (waits until indexing is READY)
 kast up --backend=headless

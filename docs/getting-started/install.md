@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install Kast through Homebrew on macOS or the Linux headless tarball.
+description: Install Kast with the root shell installer, Homebrew on macOS, or the Linux headless tarball.
 icon: lucide/download
 ---
 
@@ -22,6 +22,34 @@ Kast has two supported distribution paths:
 - **macOS for Homebrew developer installs** and **Linux for headless
   tarballs**. Other local installation shapes are not supported distribution
   paths.
+
+## Shell installer
+
+The root `kast.sh` script is the cross-platform install entrypoint. On macOS it
+delegates to Homebrew, installs the `kast` formula and `kast-plugin` cask, then
+runs `kast setup`. On Ubuntu/Debian x86_64 it installs the Linux headless
+tarball and verifies the generated config.
+
+```console title="Install with curl-pipe"
+curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/kast.sh | bash
+```
+
+Use `--from` when you need an exact release artifact from a local path or
+HTTP(S) URL. Unsupported schemes and mismatched platform assets fail before any
+install work starts.
+
+```console title="Install from an exact artifact"
+./kast.sh install --from /artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
+```
+
+On macOS, `--from` points at the macOS CLI zip and expects the matching
+`kast-idea-v<version>.zip` beside it. The script generates temporary Homebrew
+package files for that exact artifact pair, so local development installs still
+exercise Homebrew ownership and IDEA plugin setup.
+
+```console title="Install local macOS release artifacts through Homebrew"
+./kast.sh install --from dist/kast-v1.2.3-macos-arm64.zip
+```
 
 ## Homebrew install
 
@@ -77,27 +105,24 @@ headless deployment path.
 
 The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
 with a matching `.sha256` sidecar. Each bundle contains the
-Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
-bundle metadata, and the license notice.
+Rust CLI, one backend portable runtime, root `kast.sh` installer, bundle
+metadata, and the license notice.
 
 Linux headless tarballs are built, validated, and published by the normal
 release workflow. They are part of the release manifest and are verified before
 the release is published.
 
 ```bash title="Install Kast on Ubuntu/Debian"
-export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
-./scripts/install-ubuntu-debian.sh install
-./scripts/install-ubuntu-debian.sh verify
+./kast.sh install --version v1.2.3
+./kast.sh verify --version v1.2.3
 ```
 
 For mirrored artifacts or image builds, point the same installer at an exact
 local tarball:
 
 ```bash title="Install from a mirrored Linux headless tarball"
-export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
-export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz"
-./scripts/install-ubuntu-debian.sh install
-./scripts/install-ubuntu-debian.sh verify
+./kast.sh install --from /artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
+./kast.sh verify --version v1.2.3
 ```
 
 The installer refuses non-Ubuntu/Debian hosts, installs to
@@ -180,16 +205,13 @@ not named by provenance.
     ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
     ```
 
-## Ubuntu/Debian installer environment overrides
+## Linux installer environment overrides
 
 Most users do not need environment overrides. They are useful for packaged
-images, private artifact stores, and CI-style setup scripts.
+images and CI-style setup scripts.
 
 | Variable | What it does |
 |----------|--------------|
-| `KAST_UBUNTU_DEBIAN_VERSION` | Selects the release tag to install |
-| `KAST_UBUNTU_DEBIAN_ARTIFACT_PATH` | Installs from an exact local bundle tarball |
-| `KAST_UBUNTU_DEBIAN_BASE_URL` | Downloads from a mirrored release directory |
 | `KAST_UBUNTU_DEBIAN_ROOT` | Overrides the managed install root |
 | `KAST_UBUNTU_DEBIAN_BIN_DIR` | Overrides the `kast` symlink directory |
 | `KAST_UBUNTU_DEBIAN_CONFIG_HOME` | Overrides the config directory |

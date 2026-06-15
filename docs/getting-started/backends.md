@@ -32,7 +32,7 @@ Reach for it when:
 Install the Linux headless tarball:
 
 ```console title="Install the headless backend"
-./scripts/install-ubuntu-debian.sh install
+./kast.sh install
 ```
 
 The Ubuntu/Debian installer writes `config.toml` with the installed headless

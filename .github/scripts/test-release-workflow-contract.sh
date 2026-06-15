@@ -60,6 +60,7 @@ maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
 ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-docker.sh"
 ci_gradle_retry="${repo_root}/scripts/ci-gradle-retry.sh"
 ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
+installer_contract_test="${repo_root}/.github/scripts/test-kast-installer-contract.sh"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -82,6 +83,7 @@ for path in \
   "$ubuntu_debian_validator" \
   "$ci_gradle_retry" \
   "$ci_gradle_retry_test" \
+  "$installer_contract_test" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -112,6 +114,7 @@ require_not_contains "${repo_root}/backend-idea/build.gradle.kts" "kastPublishin
 
 require_contains "$ci_workflow" "Maven publication metadata" "CI must validate Maven publication metadata"
 require_contains "$ci_workflow" "Rust CLI" "CI must validate the in-repo Rust CLI"
+require_contains "$ci_workflow" "Test Kast installer contract" "CI must validate the curl-pipe installer contract"
 require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must build on an Ubuntu 22.04 glibc baseline"
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
 require_contains "$ci_workflow" "cache-cleanup: always" "CI Gradle setup must keep persisted Gradle caches pruned"
@@ -198,6 +201,9 @@ require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central ve
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
 require_contains "$ubuntu_debian_validator" "--accept-indexing=true" "Ubuntu/Debian validator must accept servable indexing state during cold startup"
+require_contains "$ubuntu_debian_validator" './kast.sh install --from "/workspace/${bundle_rel}"' "Ubuntu/Debian validator must use the root installer artifact path"
+require_not_contains "$ubuntu_debian_validator" "install-ubuntu-debian.sh" "Ubuntu/Debian validator must not use the deprecated wrapper"
+require_not_contains "$ubuntu_debian_validator" "KAST_UBUNTU_DEBIAN_ARTIFACT_PATH" "Ubuntu/Debian validator must pass artifacts with --from"
 require_contains "$ubuntu_debian_validator" 'kast capabilities "${backend_args[@]}" --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" --accept-indexing=true --no-auto-start=true' "Ubuntu/Debian validator capabilities smoke must accept servable indexing state"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 

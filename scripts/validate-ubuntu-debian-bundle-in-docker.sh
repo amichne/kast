@@ -19,7 +19,7 @@ resolve_repo_root() {
 
 repo_root="$(resolve_repo_root)"
 bundle_path="${BUNDLE_PATH:-}"
-version="${KAST_UBUNTU_DEBIAN_VERSION:-}"
+version=""
 bundle_kind="${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-}"
 java_version="${KAST_UBUNTU_DEBIAN_JAVA_VERSION:-21}"
 container_image="${KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE:-ubuntu:24.04}"
@@ -74,9 +74,8 @@ need_tool docker
 docker run --rm \
   --platform linux/amd64 \
   -v "${repo_root}:/workspace" \
-  -e "KAST_UBUNTU_DEBIAN_VERSION=${version}" \
   -e "KAST_UBUNTU_DEBIAN_BUNDLE_KIND=${bundle_kind}" \
-  -e "KAST_UBUNTU_DEBIAN_ARTIFACT_PATH=/workspace/${bundle_rel}" \
+  -e "KAST_VALIDATION_VERSION=${version}" \
   -e "KAST_UBUNTU_DEBIAN_ROOT=/tmp/kast-ubuntu-debian-root" \
   -e "KAST_UBUNTU_DEBIAN_BIN_DIR=/tmp/kast-ubuntu-debian-bin" \
   -e "KAST_UBUNTU_DEBIAN_CONFIG_HOME=/tmp/kast-ubuntu-debian-config" \
@@ -93,8 +92,8 @@ docker run --rm \
     apt-get update
     apt-get install -y --no-install-recommends ca-certificates curl tar coreutils git openjdk-${java_version}-jdk-headless
 
-    ./scripts/install-ubuntu-debian.sh install
-    ./scripts/install-ubuntu-debian.sh verify
+    ./kast.sh install --from "/workspace/${bundle_rel}"
+    ./kast.sh verify --version "${KAST_VALIDATION_VERSION}"
 
     export PATH="${KAST_UBUNTU_DEBIAN_BIN_DIR}:${PATH}"
     export KAST_CONFIG_HOME="${KAST_UBUNTU_DEBIAN_CONFIG_HOME}"
