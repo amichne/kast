@@ -75,7 +75,10 @@ if "symbol/resolve" in build_rs or "database/metrics" in build_rs:
     fail("LSP route generation must read method names from the catalog instead of hard-coding routes")
 
 install_rs = require_text("cli-rs/src/install.rs", {
-    "explicit package file manifest": "COPILOT_PLUGIN_FILES",
+    "primitive manifest constant": "COPILOT_PRIMITIVE_MANIFEST",
+    "primitive manifest loader": "embedded_file_contents(&COPILOT_PLUGIN, COPILOT_PRIMITIVE_MANIFEST)",
+    "package file output handling": '"PACKAGE_FILE"',
+    "shared catalog output handling": '"KAST_SKILL_FILE"',
 })
 
 require_text("cli-rs/src/rpc.rs", {

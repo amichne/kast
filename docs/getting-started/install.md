@@ -37,36 +37,9 @@ kast setup
 ```
 
 Use Homebrew for ordinary macOS local use. `kast setup` installs shell
-integration, repairs managed resources, and on macOS installs or refreshes the
-IDEA plugin cask when JetBrains profile directories are present. Disable
-individual parts with `--skip-repair`, `--skip-shell`, `--skip-plugin`,
-`--skip-skill`, or `--skip-copilot`.
-
-## Repair affected local installs
-
-Use `kast install affected` after upgrading Kast, moving between install
-methods, or seeing `kast doctor` report stale managed paths. The default mode
-is a dry run: it audits global config, retired backend state, installed Kast
-skills, managed Copilot plugin copies, managed shell source files, and existing
-JetBrains profile plugin links without changing files.
-
-```console title="Audit affected installs"
-kast install affected
-```
-
-To apply the planned repair, rerun with `--apply`. The command creates backups
-under `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
-If `config.toml` is malformed, apply mode preserves the original file in that
-backup directory, writes safe default settings, and reports the recovery in the
-repair result.
-
-```console title="Repair affected installs"
-kast install affected --apply
-```
-
-Headless deployment is not repaired by downloading a separate backend. If
-repair removes stale headless metadata, reinstall or refresh the Linux
-headless tarball that owns that runtime.
+integration and on macOS installs or refreshes the IDEA plugin cask when
+JetBrains profile directories are present. Disable individual parts with
+`--skip-shell`, `--skip-plugin`, `--skip-skill`, or `--skip-copilot`.
 
 ## Linux headless tarball
 
@@ -198,8 +171,9 @@ images, private artifact stores, and CI-style setup scripts.
 ## Install the Copilot LSP package
 
 Install the Copilot LSP package when you want repository-local GitHub
-Copilot files that use standard LSP, hooks, instructions, agents, and skills
-without depending on the deprecated Copilot SDK extension path.
+Copilot files that use the `kast-kotlin` LSP server, Kotlin-scoped
+instructions, and catalog-backed `kast_*` tools from the current primitive
+package.
 
 From an installed CLI, run:
 
@@ -210,6 +184,10 @@ kast install copilot
 The CLI writes these packaged entries:
 
 - `.github/lsp.json`
+- `.github/instructions/kast-kotlin.instructions.md`
+- `.github/extensions/kast/extension.mjs`
+- `.github/extensions/kast/_shared/kast-tools.mjs`
+- `.github/extensions/kast/_shared/commands.json`
 - `.github/.kast-copilot-version`
 
 Pass `--target-dir` when you need to install into another workspace's
@@ -229,7 +207,7 @@ cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/proje
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
 
 To refresh packaged files in place, reinstall with `--force`. This replaces
-the managed LSP package file.
+the managed package files and records the running CLI version.
 
 ### IDEA and Android Studio plugin role
 

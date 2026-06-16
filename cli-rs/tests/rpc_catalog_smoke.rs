@@ -367,6 +367,10 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         manifest["name"],
         Value::String("kast-copilot-lsp".to_string())
     );
+    assert_eq!(
+        manifest["entrypoints"],
+        serde_json::json!({ "lsp": "lsp.json" })
+    );
     assert!(
         plugin_root.join("lsp.json").is_file(),
         "plugin source must own the LSP entrypoint"

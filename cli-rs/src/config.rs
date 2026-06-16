@@ -616,17 +616,6 @@ impl KastConfig {
     }
 }
 
-pub fn init_config() -> Result<PathBuf> {
-    let config_file = global_config_path();
-    if !config_file.exists() {
-        if let Some(parent) = config_file.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(&config_file, default_config_template()?)?;
-    }
-    Ok(config_file)
-}
-
 pub fn default_config_template() -> Result<String> {
     Ok(toml::to_string_pretty(&KastConfig::defaults())?)
 }
