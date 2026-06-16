@@ -1,10 +1,10 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/write-and-validate",
   "params": {
-    "type": "INSERT_AT_OFFSET_REQUEST",
     "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
-    "offset": 128
-  },
-  "id": 1
+    "offset": 128,
+    "type": "INSERT_AT_OFFSET_REQUEST"
+  }
 }

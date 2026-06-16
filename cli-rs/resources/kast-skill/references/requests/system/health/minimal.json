@@ -1,6 +1,6 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "health",
-  "params": {},
-  "id": 1
+  "params": {}
 }

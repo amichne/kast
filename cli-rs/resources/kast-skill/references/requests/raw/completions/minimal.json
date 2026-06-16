@@ -1,4 +1,5 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/completions",
   "params": {
@@ -6,6 +7,5 @@
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128
     }
-  },
-  "id": 1
+  }
 }

@@ -1,16 +1,16 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/call-hierarchy",
   "params": {
+    "depth": 2,
+    "direction": "OUTGOING",
+    "maxChildrenPerNode": 10,
+    "maxTotalCalls": 50,
     "position": {
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128
     },
-    "direction": "OUTGOING",
-    "depth": 2,
-    "maxTotalCalls": 50,
-    "maxChildrenPerNode": 10,
     "timeoutMillis": 5000
-  },
-  "id": 1
+  }
 }

@@ -1,14 +1,14 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/type-hierarchy",
   "params": {
+    "depth": 2,
+    "direction": "BOTH",
+    "maxResults": 25,
     "position": {
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128
-    },
-    "direction": "BOTH",
-    "depth": 2,
-    "maxResults": 25
-  },
-  "id": 1
+    }
+  }
 }

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/resolve"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "includeDeclarationScope": {
+          "type": "boolean"
+        },
+        "includeDocumentation": {
+          "type": "boolean"
+        },
+        "position": {
+          "additionalProperties": false,
+          "properties": {
+            "filePath": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "filePath",
+            "offset"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "position"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/resolve JSON-RPC request",
+  "type": "object"
+}

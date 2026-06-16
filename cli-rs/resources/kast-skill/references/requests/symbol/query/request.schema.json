@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "symbol/query"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "additionalProperties": false,
+          "properties": {
+            "filePath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fqName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "offset": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "filters": {
+          "additionalProperties": false,
+          "properties": {
+            "excludePatterns": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "fileGlob": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fqNamePrefix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "gradleProject": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kinds": {
+              "items": {
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "OBJECT",
+                  "FUNCTION",
+                  "PROPERTY",
+                  "TYPEALIAS",
+                  "ENUM_CLASS",
+                  "ENUM_ENTRY",
+                  "CONSTRUCTOR"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "modulePath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "packagePrefix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "productionOnly": {
+              "type": "boolean"
+            },
+            "relativePathPrefix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourceSet": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "usageFacets": {
+              "items": {
+                "enum": [
+                  "PUBLIC_API",
+                  "INTERNAL_API",
+                  "MODULE_PRIVATE",
+                  "BRIDGE",
+                  "BUILD_LOGIC"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "visibility": {
+              "items": {
+                "enum": [
+                  "PUBLIC",
+                  "INTERNAL",
+                  "PROTECTED",
+                  "PRIVATE",
+                  "LOCAL"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "graph": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "type": "integer"
+            },
+            "direction": {
+              "enum": [
+                "INCOMING",
+                "OUTGOING",
+                "BOTH"
+              ],
+              "type": "string"
+            },
+            "edgeKinds": {
+              "items": {
+                "enum": [
+                  "CALL",
+                  "TYPE_REF",
+                  "INHERITANCE",
+                  "OVERRIDE",
+                  "IMPORT",
+                  "ANNOTATION",
+                  "UNKNOWN"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "maxEdgesPerResult": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "includeEvidence": {
+          "type": "boolean"
+        },
+        "includeNextRequests": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "modes": {
+          "items": {
+            "enum": [
+              "exact",
+              "lexical",
+              "structural",
+              "graph",
+              "semantic"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "query": {
+          "type": "string"
+        },
+        "semantic": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "maxCandidates": {
+              "type": "integer"
+            },
+            "profile": {
+              "enum": [
+                "identity",
+                "behavior",
+                "api_usage"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "workspaceRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast symbol/query JSON-RPC request",
+  "type": "object"
+}

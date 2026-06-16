@@ -88,6 +88,36 @@ fn schema_value(relative_path: &str) -> Value {
         .unwrap_or_else(|error| panic!("parse schema {}: {error}", path.display()))
 }
 
+fn request_path(root: &Path, catalog: &Value, method: &str) -> std::path::PathBuf {
+    let category = catalog["commands"][method]["category"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{method} category"));
+    let mut parts = method.split('/');
+    match parts.next() {
+        Some(first) if first == category => {
+            parts.fold(root.join(category), |base, part| base.join(part))
+        }
+        _ => method
+            .split('/')
+            .fold(root.join(category), |base, part| base.join(part)),
+    }
+}
+
+fn collect_named_files(root: &Path, file_name: &str, paths: &mut Vec<std::path::PathBuf>) {
+    let entries = std::fs::read_dir(root)
+        .unwrap_or_else(|error| panic!("read directory {}: {error}", root.display()));
+    for entry in entries {
+        let entry =
+            entry.unwrap_or_else(|error| panic!("read entry in {}: {error}", root.display()));
+        let path = entry.path();
+        if path.is_dir() {
+            collect_named_files(&path, file_name, paths);
+        } else if path.file_name().and_then(|name| name.to_str()) == Some(file_name) {
+            paths.push(path);
+        }
+    }
+}
+
 fn assert_valid(schema: &Value, instance: &Value) {
     let validator = jsonschema::validator_for(schema).expect("schema compiles");
     if let Err(error) = validator.validate(instance) {
@@ -110,13 +140,14 @@ fn command_contract_yaml_and_request_samples_are_current() {
         root.join("resources/kast-skill/references/requests/symbol/rename/RENAME_BY_OFFSET_REQUEST/maximal.json")
             .is_file()
     );
+    assert!(
+        root.join("resources/kast-skill/references/requests/symbol/query/request.schema.json")
+            .is_file()
+    );
 
-    let generator = Command::new("python3")
+    let generator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args([
-            "resources/kast-skill/scripts/generate-rpc-contract.py",
-            "--check",
-        ])
+        .args(["generate", "contract", "--check"])
         .output()
         .expect("contract generator check");
     assert!(
@@ -126,12 +157,9 @@ fn command_contract_yaml_and_request_samples_are_current() {
         String::from_utf8_lossy(&generator.stderr)
     );
 
-    let validator = Command::new("python3")
+    let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args([
-            "resources/kast-skill/scripts/validate-rpc-request.py",
-            "--all-samples",
-        ])
+        .args(["validate", "--all-samples"])
         .output()
         .expect("request sample validation");
     assert!(
@@ -140,6 +168,50 @@ fn command_contract_yaml_and_request_samples_are_current() {
         String::from_utf8_lossy(&validator.stdout),
         String::from_utf8_lossy(&validator.stderr)
     );
+}
+
+#[test]
+fn generated_request_schemas_validate_every_catalog_sample() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let catalog = catalog();
+    let commands = catalog["commands"].as_object().expect("commands object");
+    let requests_root = root.join("resources/kast-skill/references/requests");
+    let mut schema_paths = Vec::new();
+    collect_named_files(&requests_root, "request.schema.json", &mut schema_paths);
+    assert_eq!(
+        schema_paths.len(),
+        commands.len(),
+        "each command should have exactly one generated request schema"
+    );
+
+    let mut sample_paths = Vec::new();
+    collect_named_files(&requests_root, "minimal.json", &mut sample_paths);
+    collect_named_files(&requests_root, "maximal.json", &mut sample_paths);
+    sample_paths.sort();
+    assert_eq!(
+        sample_paths.len(),
+        64,
+        "29 commands currently expand to 64 minimal/maximal sample payloads"
+    );
+
+    for path in sample_paths {
+        let request: Value = serde_json::from_str(
+            &std::fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("read sample {}: {error}", path.display())),
+        )
+        .unwrap_or_else(|error| panic!("parse sample {}: {error}", path.display()));
+        let method = request["method"]
+            .as_str()
+            .unwrap_or_else(|| panic!("sample {} should include method", path.display()));
+        let schema_path =
+            request_path(&requests_root, &catalog, method).join("request.schema.json");
+        let schema: Value = serde_json::from_str(
+            &std::fs::read_to_string(&schema_path)
+                .unwrap_or_else(|error| panic!("read schema {}: {error}", schema_path.display())),
+        )
+        .unwrap_or_else(|error| panic!("parse schema {}: {error}", schema_path.display()));
+        assert_valid(&schema, &request);
+    }
 }
 
 #[test]
@@ -260,6 +332,8 @@ fn symbol_query_catalog_samples_validate_against_shared_schema() {
     let request_schema = schema_value(
         "../analysis-api/src/main/resources/contracts/symbol-query/symbol-query-request.schema.json",
     );
+    let generated_request_schema =
+        schema_value("resources/kast-skill/references/requests/symbol/query/request.schema.json");
     let canonical_minimal: Value = serde_json::from_str(include_str!(
         "../../analysis-api/src/main/resources/contracts/symbol-query/examples/request-minimal.json"
     ))
@@ -281,6 +355,10 @@ fn symbol_query_catalog_samples_validate_against_shared_schema() {
     assert_valid(&request_schema, &canonical_maximal);
     assert_valid(&request_schema, &catalog_minimal);
     assert_valid(&request_schema, &catalog_maximal);
+    assert_valid(&generated_request_schema, &canonical_minimal);
+    assert_valid(&generated_request_schema, &canonical_maximal);
+    assert_valid(&generated_request_schema, &catalog_minimal);
+    assert_valid(&generated_request_schema, &catalog_maximal);
     assert_eq!(catalog_minimal, canonical_minimal);
     assert_eq!(catalog_maximal, canonical_maximal);
 }

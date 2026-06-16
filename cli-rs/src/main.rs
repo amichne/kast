@@ -1,6 +1,8 @@
 mod backend;
+mod catalog_schema;
 mod cli;
 mod config;
+mod contract_gen;
 mod daemon;
 mod demo;
 mod error;
@@ -16,11 +18,13 @@ mod source_index_db;
 mod source_index_schema;
 mod symbol_query;
 mod symbol_query_filters;
+mod validate;
 
 use clap::{CommandFactory, Parser};
-use cli::{Cli, Command, OutputFormat, ShellKind};
+use cli::{Cli, Command, GenerateCommand, OutputFormat, ShellKind};
 use error::{CliError, Result};
 use std::io;
+use std::path::Path;
 
 const SCHEMA_VERSION: u32 = 3;
 
@@ -95,6 +99,23 @@ fn run(cli: Cli) -> Result<i32> {
             println!("{response}");
             Ok(0)
         }
+        Command::Validate(args) => {
+            let result = validate::run(args)?;
+            output::print_json(&result)?;
+            Ok(if result.ok { 0 } else { 1 })
+        }
+        Command::Generate(args) => match args.command {
+            GenerateCommand::Contract(args) => {
+                let paths = contract_paths(&args);
+                let result = if args.check {
+                    contract_gen::check(&paths)?
+                } else {
+                    contract_gen::write(&paths)?
+                };
+                output::print_json(&result)?;
+                Ok(0)
+            }
+        },
         Command::Up(args) => {
             let result = runtime::workspace_ensure(args)?;
             if output_format == OutputFormat::Json {
@@ -178,6 +199,8 @@ fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
         command,
         Command::Help { .. }
             | Command::Version
+            | Command::Validate(_)
+            | Command::Generate(_)
             | Command::Lsp(_)
             | Command::Setup(_)
             | Command::Install(cli::InstallArgs {
@@ -194,6 +217,20 @@ fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
         Err(error) if matches!(command, Command::Doctor) && error.code == "CONFIG_ERROR" => Ok(()),
         Err(error) => Err(error),
     }
+}
+
+fn contract_paths(args: &cli::GenerateContractArgs) -> contract_gen::ContractPaths {
+    let mut paths = contract_gen::ContractPaths::defaults(Path::new(env!("CARGO_MANIFEST_DIR")));
+    if let Some(catalog) = &args.catalog {
+        paths.catalog = catalog.clone();
+    }
+    if let Some(yaml) = &args.yaml {
+        paths.yaml = yaml.clone();
+    }
+    if let Some(samples_root) = &args.samples_root {
+        paths.samples_root = samples_root.clone();
+    }
+    paths
 }
 
 fn print_completion(args: cli::CompletionArgs) {

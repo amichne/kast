@@ -1,12 +1,12 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/implementations",
   "params": {
+    "maxResults": 25,
     "position": {
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128
-    },
-    "maxResults": 25
-  },
-  "id": 1
+    }
+  }
 }

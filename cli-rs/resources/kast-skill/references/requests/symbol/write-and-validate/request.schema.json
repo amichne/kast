@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "symbol/write-and-validate"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contentFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "type": {
+              "const": "CREATE_FILE_REQUEST",
+              "type": "string"
+            },
+            "workspaceRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "filePath"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contentFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "type": {
+              "const": "INSERT_AT_OFFSET_REQUEST",
+              "type": "string"
+            },
+            "workspaceRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "filePath",
+            "offset"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contentFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "endOffset": {
+              "type": "integer"
+            },
+            "filePath": {
+              "type": "string"
+            },
+            "startOffset": {
+              "type": "integer"
+            },
+            "type": {
+              "const": "REPLACE_RANGE_REQUEST",
+              "type": "string"
+            },
+            "workspaceRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "filePath",
+            "startOffset",
+            "endOffset"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast symbol/write-and-validate JSON-RPC request",
+  "type": "object"
+}

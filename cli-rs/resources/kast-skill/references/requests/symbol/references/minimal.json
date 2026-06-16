@@ -1,8 +1,8 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/references",
   "params": {
     "symbol": "Widget"
-  },
-  "id": 1
+  }
 }

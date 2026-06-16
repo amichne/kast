@@ -1,13 +1,13 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/references",
   "params": {
-    "workspaceRoot": "/absolute/path/to/workspace",
-    "symbol": "Widget",
-    "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
-    "kind": "property",
     "containingType": "com.example.Widget",
-    "includeDeclaration": true
-  },
-  "id": 1
+    "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "includeDeclaration": true,
+    "kind": "property",
+    "symbol": "Widget",
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
 }

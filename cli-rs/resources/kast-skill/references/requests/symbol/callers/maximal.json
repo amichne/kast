@@ -1,17 +1,17 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/callers",
   "params": {
-    "workspaceRoot": "/absolute/path/to/workspace",
-    "symbol": "Widget",
+    "containingType": "com.example.Widget",
+    "depth": 2,
+    "direction": "outgoing",
     "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
     "kind": "property",
-    "containingType": "com.example.Widget",
-    "direction": "outgoing",
-    "depth": 2,
-    "maxTotalCalls": 50,
     "maxChildrenPerNode": 10,
-    "timeoutMillis": 5000
-  },
-  "id": 1
+    "maxTotalCalls": 50,
+    "symbol": "Widget",
+    "timeoutMillis": 5000,
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
 }

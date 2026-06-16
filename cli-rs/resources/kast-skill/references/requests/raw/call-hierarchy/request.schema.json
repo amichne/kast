@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/call-hierarchy"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "type": "integer"
+        },
+        "direction": {
+          "enum": [
+            "INCOMING",
+            "OUTGOING"
+          ],
+          "type": "string"
+        },
+        "maxChildrenPerNode": {
+          "type": "integer"
+        },
+        "maxTotalCalls": {
+          "type": "integer"
+        },
+        "position": {
+          "additionalProperties": false,
+          "properties": {
+            "filePath": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "filePath",
+            "offset"
+          ],
+          "type": "object"
+        },
+        "timeoutMillis": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "position",
+        "direction"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/call-hierarchy JSON-RPC request",
+  "type": "object"
+}

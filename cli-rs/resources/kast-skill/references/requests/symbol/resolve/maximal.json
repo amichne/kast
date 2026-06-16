@@ -1,16 +1,16 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/resolve",
   "params": {
-    "workspaceRoot": "/absolute/path/to/workspace",
-    "symbol": "Widget",
-    "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
-    "kind": "property",
     "containingType": "com.example.Widget",
+    "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
     "includeDeclarationScope": true,
     "includeDocumentation": true,
+    "includeSurroundingMembers": true,
+    "kind": "property",
     "surroundingLines": 42,
-    "includeSurroundingMembers": true
-  },
-  "id": 1
+    "symbol": "Widget",
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
 }

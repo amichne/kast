@@ -1,12 +1,12 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/workspace-symbol",
   "params": {
-    "pattern": "Widget",
+    "includeDeclarationScope": true,
     "kind": "UNKNOWN",
     "maxResults": 25,
-    "regex": true,
-    "includeDeclarationScope": true
-  },
-  "id": 1
+    "pattern": "Widget",
+    "regex": true
+  }
 }

@@ -1,8 +1,8 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "database/metrics",
   "params": {
     "metric": "fanIn"
-  },
-  "id": 1
+  }
 }

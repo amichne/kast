@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "symbol/callers"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "containingType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "direction": {
+          "enum": [
+            "incoming",
+            "outgoing"
+          ],
+          "type": "string"
+        },
+        "fileHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "class",
+            "interface",
+            "object",
+            "function",
+            "property",
+            null
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "maxChildrenPerNode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "maxTotalCalls": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "timeoutMillis": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "workspaceRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "symbol"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast symbol/callers JSON-RPC request",
+  "type": "object"
+}

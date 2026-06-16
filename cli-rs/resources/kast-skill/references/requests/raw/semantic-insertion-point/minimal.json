@@ -1,4 +1,5 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/semantic-insertion-point",
   "params": {
@@ -7,6 +8,5 @@
       "offset": 128
     },
     "target": "CLASS_BODY_START"
-  },
-  "id": 1
+  }
 }
