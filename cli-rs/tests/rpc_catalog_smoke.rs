@@ -513,6 +513,13 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         package_contract.contains("cargo build --manifest-path"),
         "copilot plugin package contract must supply a Rust-built kast binary"
     );
+    let lsp_pivot_contract =
+        std::fs::read_to_string(repo_root.join(".github/scripts/test-lsp-pivot-gates.sh"))
+            .expect("LSP pivot contract");
+    assert!(
+        !lsp_pivot_contract.contains("python3"),
+        "LSP pivot contract must not depend on Python"
+    );
 }
 
 #[test]
