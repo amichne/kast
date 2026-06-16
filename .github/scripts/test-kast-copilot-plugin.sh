@@ -6,50 +6,109 @@ plugin_root="${repo_root}/cli-rs/resources/plugin"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-plugin-test.XXXXXX")"
 trap 'rm -rf -- "$tmp_dir"' EXIT
 
-python3 - "$plugin_root" <<'PY'
-import json
-import pathlib
-import sys
+node --input-type=module - "$plugin_root" <<'NODE'
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
-root = pathlib.Path(sys.argv[1])
-manifest = json.loads((root / "plugin.json").read_text())
-assert manifest["schemaVersion"] == 1
-assert manifest["name"] == "kast-copilot-lsp"
-entrypoints = manifest["entrypoints"]
-assert entrypoints["lsp"] == "lsp.json"
-assert entrypoints["instructions"] == ["instructions/kast-kotlin.instructions.md"]
-assert entrypoints["extensions"] == ["extensions/kast/extension.mjs"]
-assert entrypoints["manifest"] == "primitive-manifest.json"
-assert (root / entrypoints["lsp"]).is_file()
-assert (root / entrypoints["instructions"][0]).is_file()
-assert (root / entrypoints["extensions"][0]).is_file()
+const root = process.argv[2];
 
-primitive = json.loads((root / "primitive-manifest.json").read_text())
-assert primitive["type"] == "KAST_COPILOT_PRIMITIVE_MANIFEST"
-targets = {output["target"] for output in primitive["outputs"]}
-assert targets == {
-    "lsp.json",
-    "instructions/kast-kotlin.instructions.md",
-    "extensions/kast/extension.mjs",
-    "extensions/kast/_shared/kast-tools.mjs",
-    "extensions/kast/_shared/commands.json",
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
 }
 
-lsp = json.loads((root / "lsp.json").read_text())
-server = lsp["lspServers"]["kast-kotlin"]
-assert server["args"] == ["lsp", "--stdio"]
-assert server["initializationTimeoutMs"] >= 120000
-assert server["initializationOptions"]["failOnStaleIndex"] is True
+function readJson(relativePath) {
+  return JSON.parse(readFileSync(join(root, relativePath), "utf8"));
+}
 
-instruction = (root / "instructions/kast-kotlin.instructions.md").read_text()
-assert "start with the `kast-kotlin` LSP server" in instruction
-assert "Treat stale, not-ready, missing, ambiguous, partial, or truncated compiler facts" in instruction
-assert "as blockers" in instruction
+function readText(relativePath) {
+  return readFileSync(join(root, relativePath), "utf8");
+}
 
-tools = (root / "extensions/kast/_shared/kast-tools.mjs").read_text()
-assert "Preferred Kotlin funnel tool" in tools
-assert "Bounded raw escape hatch" in tools
-PY
+function assertSameArray(actual, expected, label) {
+  assert(JSON.stringify(actual) === JSON.stringify(expected), `${label} mismatch`);
+}
+
+const manifest = readJson("plugin.json");
+assert(manifest.schemaVersion === 1, "schemaVersion must be 1");
+assert(manifest.name === "kast-copilot-lsp", "unexpected plugin name");
+
+const entrypoints = manifest.entrypoints;
+assert(entrypoints.lsp === "lsp.json", "unexpected LSP entrypoint");
+assertSameArray(
+  entrypoints.instructions,
+  ["instructions/kast-kotlin.instructions.md"],
+  "instructions entrypoint",
+);
+assertSameArray(
+  entrypoints.extensions,
+  ["extensions/kast/extension.mjs"],
+  "extensions entrypoint",
+);
+assert(entrypoints.manifest === "primitive-manifest.json", "unexpected primitive manifest");
+assert(existsSync(join(root, entrypoints.lsp)), "missing LSP entrypoint file");
+assert(existsSync(join(root, entrypoints.instructions[0])), "missing instructions file");
+assert(existsSync(join(root, entrypoints.extensions[0])), "missing extension file");
+
+const primitive = readJson("primitive-manifest.json");
+assert(
+  primitive.type === "KAST_COPILOT_PRIMITIVE_MANIFEST",
+  "unexpected primitive manifest type",
+);
+const targets = new Set(primitive.outputs.map((output) => output.target));
+const expectedTargets = new Set([
+  "lsp.json",
+  "instructions/kast-kotlin.instructions.md",
+  "extensions/kast/extension.mjs",
+  "extensions/kast/_shared/kast-tools.mjs",
+  "extensions/kast/_shared/commands.json",
+]);
+assert(
+  targets.size === expectedTargets.size &&
+    [...expectedTargets].every((target) => targets.has(target)),
+  "primitive manifest outputs mismatch",
+);
+
+const lsp = readJson("lsp.json");
+const server = lsp.lspServers["kast-kotlin"];
+assertSameArray(server.args, ["lsp", "--stdio"], "LSP args");
+assert(server.initializationTimeoutMs >= 120000, "LSP timeout must allow startup");
+assert(server.initializationOptions.failOnStaleIndex === true, "LSP must fail on stale indexes");
+
+const instruction = readText("instructions/kast-kotlin.instructions.md");
+assert(
+  instruction.includes("start with the `kast-kotlin` LSP server"),
+  "instructions must route through the LSP",
+);
+assert(
+  instruction.includes(
+    "Treat stale, not-ready, missing, ambiguous, partial, or truncated compiler facts",
+  ),
+  "instructions must identify blocked compiler facts",
+);
+assert(instruction.includes("as blockers"), "instructions must fail closed on blockers");
+
+const tools = readText("extensions/kast/_shared/kast-tools.mjs");
+assert(tools.includes("Preferred Kotlin funnel tool"), "tool guidance must prefer funnel tools");
+assert(tools.includes("Bounded raw escape hatch"), "tool guidance must bound raw escape hatches");
+NODE
+
+ensure_kast_bin() {
+  if [[ -n "${KAST_BIN:-}" ]]; then
+    export KAST_BIN
+    return
+  fi
+  if [[ -x "${repo_root}/cli-rs/target/debug/kast" ]]; then
+    KAST_BIN="${repo_root}/cli-rs/target/debug/kast"
+  elif [[ -x "${repo_root}/cli-rs/target/release/kast" ]]; then
+    KAST_BIN="${repo_root}/cli-rs/target/release/kast"
+  else
+    cargo build --manifest-path "${repo_root}/cli-rs/Cargo.toml" --bin kast --locked
+    KAST_BIN="${repo_root}/cli-rs/target/debug/kast"
+  fi
+  export KAST_BIN
+}
+
+ensure_kast_bin
 
 "${plugin_root}/scripts/install-local.sh" --target "$tmp_dir" --force >"${tmp_dir}/install.json"
 
@@ -59,18 +118,24 @@ test -f "$tmp_dir/.github/extensions/kast/extension.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/commands.json"
 
-python3 - "$repo_root" "$tmp_dir" <<'PY'
-import pathlib
-import sys
+node --input-type=module - "$repo_root" "$tmp_dir" <<'NODE'
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-repo = pathlib.Path(sys.argv[1])
-target = pathlib.Path(sys.argv[2])
-assert (
-    target / ".github/extensions/kast/_shared/commands.json"
-).read_text() == (
-    repo / "cli-rs/resources/kast-skill/references/commands.json"
-).read_text()
-PY
+const repo = process.argv[2];
+const target = process.argv[3];
+const installed = readFileSync(
+  join(target, ".github/extensions/kast/_shared/commands.json"),
+  "utf8",
+);
+const source = readFileSync(
+  join(repo, "cli-rs/resources/kast-skill/references/commands.json"),
+  "utf8",
+);
+if (installed !== source) {
+  throw new Error("installed commands.json must match the checked-in RPC catalog");
+}
+NODE
 
 node --input-type=module - "$tmp_dir" <<'NODE'
 const target = process.argv[2];

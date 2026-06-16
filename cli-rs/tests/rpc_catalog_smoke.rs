@@ -501,6 +501,18 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         !install_local.contains("python3"),
         "local plugin installer must delegate to Rust instead of inline Python"
     );
+    let repo_root = manifest_dir.parent().expect("repo root");
+    let package_contract =
+        std::fs::read_to_string(repo_root.join(".github/scripts/test-kast-copilot-plugin.sh"))
+            .expect("copilot plugin package contract");
+    assert!(
+        !package_contract.contains("python3"),
+        "copilot plugin package contract must not depend on Python"
+    );
+    assert!(
+        package_contract.contains("cargo build --manifest-path"),
+        "copilot plugin package contract must supply a Rust-built kast binary"
+    );
 }
 
 #[test]
