@@ -146,6 +146,7 @@ kast-copilot-plugin/
 .github/hooks/
 .github/agents/
 .github/instructions/kast-kotlin.md
+.github/instructions/kast-kotlin.instructions.md
 .github/extensions/kast/
 .agents/skills/kast-api-surface-change/
 .agents/skills/kast-callgraph-review/

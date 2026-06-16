@@ -20,11 +20,11 @@
   `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell
   state across tool calls.
 - `cli-rs/resources/plugin/` is the primary Copilot package source for this
-  repo. It owns only the `kast-kotlin` LSP configuration. Hooks, agents,
-  instructions, skills, and the deprecated SDK extension runtime are not shipped
-  by the package. Generated install copies
-  under `.github` are local outputs, not checked-in
-  sources of truth.
+  repo. It owns the `kast-kotlin` LSP configuration, Kotlin instructions,
+  `kast-reader` and `kast-writer` agent profiles, and the SDK extension that
+  exposes catalog-backed `kast_*` tools. Hooks and standalone package skills
+  are not shipped by the package. Generated install copies under `.github` are
+  local outputs, not checked-in sources of truth.
 - Read `AGENTS.md` at the repo root first, then any deeper `AGENTS.md` in the module you touch. The narrower file
   overrides the root guide.
 

@@ -87,20 +87,24 @@ kast install skill --target-dir=/absolute/path/to/skills --force
     binaryPath = "/home/alex/.local/bin/kast"
     ```
 
-GitHub Copilot custom agents are a separate surface from the Kast Copilot LSP
-package.
-
 ## Install the Copilot LSP package
 
 Use `kast install copilot` when you want Copilot to use the `kast-kotlin` LSP
-server:
+server, Kotlin-scoped instructions, the `kast-reader` and `kast-writer` custom
+agents, and the catalog-backed `kast_*` extension source:
 
 ```console title="Install the LSP-first Copilot package"
 kast install copilot
 ```
 
-The command writes `.github/lsp.json` into the target `.github` directory and
-records the installed version in `.github/.kast-copilot-version`.
+The command writes these managed files into the target `.github` directory:
+
+- `lsp.json`
+- `instructions/kast-kotlin.instructions.md`
+- `agents/kast-reader.agent.md`
+- `agents/kast-writer.agent.md`
+- `extensions/kast/extension.mjs`
+- `.kast-copilot-version`
 
 Pass `--target-dir` to point at another workspace `.github` directory, and
 `--force` to replace an older installed copy:
@@ -112,6 +116,11 @@ kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 From this source checkout, `cli-rs/resources/plugin/scripts/install-local.sh`
 installs the same package into a target repository root for local development.
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
+For live Copilot CLI validation of the SDK extension tools, load the source
+package explicitly with `--plugin-dir cli-rs/resources/plugin`. Project
+installs expose the agents as `kast-reader` and `kast-writer`; source-plugin
+validation exposes them under the plugin namespace, such as
+`kast-copilot-lsp:kast-reader`.
 
 ## Next steps
 

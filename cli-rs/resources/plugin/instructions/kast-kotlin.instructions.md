@@ -9,6 +9,11 @@ For every Kotlin file, start with the `kast-kotlin` LSP server from
 workspace symbols, implementations, call hierarchy, type hierarchy, prepare
 rename, and rename before broad text search or manual file inspection.
 
+When delegating, use `kast-reader` for read-only analysis and `kast-writer` for
+edits. Both subagents must keep using `kast-kotlin` LSP and the catalog-backed
+`kast_*` tools; do not delegate Kotlin work to a general-purpose subagent that
+lacks those tools.
+
 For Kast-specific work outside standard LSP, inspect
 `capabilities.experimental.kastMethods` from the LSP `initialize` response and
 use the advertised `kast/*` methods before native tools or shell fallbacks.

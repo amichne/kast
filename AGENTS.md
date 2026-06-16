@@ -133,28 +133,17 @@ searching non-Kotlin files. For Kotlin source, use
 `kast_workspace_symbol` for symbol-name searches and
 `kast_workspace_search` for string, comment, and arbitrary content searches.
 
-## Agent hooks
-
-`cli-rs/resources/plugin/hooks/hooks.json` is the authoritative source for
-GitHub Copilot hook configuration shipped by Kast. Generated `.github/hooks`
-copies are install outputs and should not be hand-edited. Use the standard
-Copilot hook schema:
-`{"version":1,"hooks":{...}}` with command hooks only. The repo-level hooks
-use `sessionStart` plus `postToolUse` state capture to track session-owned file
-edits, then run final command-based validation from `sessionEnd`. Workflow
-guidance that depends on skills, such as `refresh-affected-agents` or docs
-refresh, belongs in agent instructions rather than in the hook manifest.
-
 ## Copilot plugin
 
 `cli-rs/resources/plugin/` is the primary source for Copilot-assisted Kotlin
 work. It
 
 - provides the LSP server configuration that starts `kast lsp --stdio`,
-- provides command hooks, instructions, agents, and skills for Copilot hosts,
-  and
+- provides Kotlin instructions plus `kast-reader` and `kast-writer` agent
+  profiles for Copilot hosts,
+- provides the SDK extension that exposes catalog-backed `kast_*` tools, and
 - is embedded by the Rust CLI so `kast install copilot` can regenerate local
-  `.github` and `.agents` outputs.
+  `.github` outputs.
 
 Fall back to `cli-rs/resources/kast-skill/SKILL.md` when native host tooling is
 unavailable or when you need deeper command-shape or recovery guidance, and

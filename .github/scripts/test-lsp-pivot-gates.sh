@@ -10,10 +10,6 @@ die() {
   exit 1
 }
 
-sdk_surfaces=(
-  "${repo_root}/cli-rs/resources/plugin"
-)
-
 node --input-type=module - "$repo_root" <<'NODE'
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -61,6 +57,7 @@ assertSameJson(
   {
     lsp: "lsp.json",
     instructions: ["instructions/kast-kotlin.instructions.md"],
+    agents: ["agents/kast-reader.agent.md", "agents/kast-writer.agent.md"],
     extensions: ["extensions/kast/extension.mjs"],
     manifest: "primitive-manifest.json",
   },
@@ -114,6 +111,8 @@ requireText(".github/copilot-instructions.md", {
   "LSP custom methods": "capabilities.experimental.kastMethods",
   "primary Copilot package": "cli-rs/resources/plugin/",
   "generated copy wording": "Generated install copies",
+  "reader agent": "kast-reader",
+  "writer agent": "kast-writer",
 });
 
 const skillShadowing = readJson(".github/skill-shadowing.json");

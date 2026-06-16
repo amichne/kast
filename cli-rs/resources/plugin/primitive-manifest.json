@@ -17,6 +17,18 @@
     },
     {
       "type": "PACKAGE_FILE",
+      "source": "agents/kast-reader.agent.md",
+      "target": "agents/kast-reader.agent.md",
+      "executable": false
+    },
+    {
+      "type": "PACKAGE_FILE",
+      "source": "agents/kast-writer.agent.md",
+      "target": "agents/kast-writer.agent.md",
+      "executable": false
+    },
+    {
+      "type": "PACKAGE_FILE",
       "source": "extensions/kast/extension.mjs",
       "target": "extensions/kast/extension.mjs",
       "executable": true
@@ -25,6 +37,12 @@
       "type": "PACKAGE_FILE",
       "source": "extensions/kast/_shared/kast-tools.mjs",
       "target": "extensions/kast/_shared/kast-tools.mjs",
+      "executable": false
+    },
+    {
+      "type": "PACKAGE_FILE",
+      "source": "extensions/kast/_shared/kast-agents.mjs",
+      "target": "extensions/kast/_shared/kast-agents.mjs",
       "executable": false
     },
     {

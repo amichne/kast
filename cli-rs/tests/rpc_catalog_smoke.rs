@@ -472,6 +472,9 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert_eq!(
         targets,
         BTreeSet::from([
+            "agents/kast-reader.agent.md",
+            "agents/kast-writer.agent.md",
+            "extensions/kast/_shared/kast-agents.mjs",
             "extensions/kast/_shared/commands.json",
             "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
@@ -488,6 +491,14 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
         "plugin source must own the Copilot SDK extension entrypoint"
+    );
+    assert!(
+        plugin_root.join("agents/kast-reader.agent.md").is_file(),
+        "plugin source must own the reader agent"
+    );
+    assert!(
+        plugin_root.join("agents/kast-writer.agent.md").is_file(),
+        "plugin source must own the writer agent"
     );
     let extension = std::fs::read_to_string(plugin_root.join("extensions/kast/extension.mjs"))
         .expect("extension source");
@@ -566,6 +577,18 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         installed_instruction.contains("start with the `kast-kotlin` LSP server"),
         "Kotlin instruction must force the LSP route"
     );
+
+    let installed_reader = std::fs::read_to_string(target.join("agents/kast-reader.agent.md"))
+        .expect("installed reader agent");
+    assert!(installed_reader.contains("name: Kast Reader"));
+    assert!(!installed_reader.contains("kast_write_and_validate"));
+    assert!(!installed_reader.contains("  - edit"));
+
+    let installed_writer = std::fs::read_to_string(target.join("agents/kast-writer.agent.md"))
+        .expect("installed writer agent");
+    assert!(installed_writer.contains("name: Kast Writer"));
+    assert!(installed_writer.contains("kast_write_and_validate"));
+    assert!(installed_writer.contains("  - edit"));
 
     let extension_source = std::fs::read_to_string(
         manifest_dir.join("resources/plugin/extensions/kast/extension.mjs"),
