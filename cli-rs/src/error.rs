@@ -64,6 +64,12 @@ impl From<serde_json::Error> for CliError {
     }
 }
 
+impl From<serde_yaml::Error> for CliError {
+    fn from(value: serde_yaml::Error) -> Self {
+        Self::new("YAML_ERROR", value.to_string())
+    }
+}
+
 impl From<toml::de::Error> for CliError {
     fn from(value: toml::de::Error) -> Self {
         Self::new("CONFIG_ERROR", value.to_string())

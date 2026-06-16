@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "symbol/discover"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "codeSnippet": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "containingType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fileHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "includeDeclarationScope": {
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "class",
+            "interface",
+            "object",
+            "function",
+            "property",
+            null
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "maxResults": {
+          "type": "integer"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "symbol"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast symbol/discover JSON-RPC request",
+  "type": "object"
+}

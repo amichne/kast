@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/semantic-insertion-point"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "additionalProperties": false,
+          "properties": {
+            "filePath": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "filePath",
+            "offset"
+          ],
+          "type": "object"
+        },
+        "target": {
+          "enum": [
+            "CLASS_BODY_START",
+            "CLASS_BODY_END",
+            "FILE_TOP",
+            "FILE_BOTTOM",
+            "AFTER_IMPORTS"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "position",
+        "target"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/semantic-insertion-point JSON-RPC request",
+  "type": "object"
+}

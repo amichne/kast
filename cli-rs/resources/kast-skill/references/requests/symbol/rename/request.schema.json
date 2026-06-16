@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "symbol/rename"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "filePath": {
+              "type": "string"
+            },
+            "newName": {
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "type": {
+              "const": "RENAME_BY_OFFSET_REQUEST",
+              "type": "string"
+            },
+            "workspaceRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "filePath",
+            "offset",
+            "newName"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "containingType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fileHint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "enum": [
+                "class",
+                "interface",
+                "object",
+                "function",
+                "property",
+                null
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "newName": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": "string"
+            },
+            "type": {
+              "const": "RENAME_BY_SYMBOL_REQUEST",
+              "type": "string"
+            },
+            "workspaceRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "symbol",
+            "newName"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast symbol/rename JSON-RPC request",
+  "type": "object"
+}

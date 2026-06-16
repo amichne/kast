@@ -1,14 +1,14 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/rename",
   "params": {
-    "type": "RENAME_BY_SYMBOL_REQUEST",
-    "workspaceRoot": "/absolute/path/to/workspace",
-    "symbol": "Widget",
-    "newName": "RenamedWidget",
+    "containingType": "com.example.Widget",
     "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
     "kind": "property",
-    "containingType": "com.example.Widget"
-  },
-  "id": 1
+    "newName": "RenamedWidget",
+    "symbol": "Widget",
+    "type": "RENAME_BY_SYMBOL_REQUEST",
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
 }

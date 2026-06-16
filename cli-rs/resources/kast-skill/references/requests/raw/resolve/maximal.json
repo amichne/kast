@@ -1,13 +1,13 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/resolve",
   "params": {
+    "includeDeclarationScope": true,
+    "includeDocumentation": true,
     "position": {
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128
-    },
-    "includeDeclarationScope": true,
-    "includeDocumentation": true
-  },
-  "id": 1
+    }
+  }
 }

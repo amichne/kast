@@ -20,9 +20,8 @@ or focused Gradle validation.
 ## First Move
 
 Run `command -v kast` and `kast --help` before project exploration. If `kast`
-is missing, run `eval "$(bash "$SKILL_DIR/scripts/kast-session-start.sh")"`
-with `SKILL_DIR` set to this skill directory, then retry. Stop if setup still
-fails or reports a skill/CLI version mismatch.
+is missing, stop and report the setup blocker instead of switching to
+non-semantic Kotlin search.
 
 ## Gradle File Routing
 
@@ -52,10 +51,11 @@ fails or reports a skill/CLI version mismatch.
 
 For nontrivial RPC calls, write request, result, and stderr to temp files; see
 `references/quickstart.md` for the harness. Validate payloads with
-`scripts/validate-rpc-request.py`, then run `kast rpc --request-file
-"$KAST_REQUEST" --workspace-root "$PWD"`. Use camelCase fields, absolute paths,
-and check `ok` plus `type`; validation errors, `ok=false`, dirty diagnostics,
-hash mismatches, and failed Gradle tasks fail the operation.
+`kast validate --request-file "$KAST_REQUEST"`, then run
+`kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD"`. Use
+camelCase fields, absolute paths, and check `ok` plus `type`; validation
+errors, `ok=false`, dirty diagnostics, hash mismatches, and failed Gradle tasks
+fail the operation.
 Load `references/commands.yaml`, `references/commands.json`, or
 `references/requests/` only for exact fields, variants, enum values, or samples.
 

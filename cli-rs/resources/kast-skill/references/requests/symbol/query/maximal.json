@@ -1,56 +1,56 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/query",
   "params": {
-    "workspaceRoot": "/absolute/path/to/workspace",
-    "query": "Widget",
-    "modes": [
-      "semantic"
-    ],
+    "anchor": {
+      "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+      "fqName": "com.example.Widget",
+      "offset": 128,
+      "symbol": "Widget"
+    },
     "filters": {
-      "kinds": [
-        "CONSTRUCTOR"
-      ],
-      "visibility": [
-        "LOCAL"
-      ],
-      "modulePath": ":app",
-      "sourceSet": "main",
-      "fileGlob": "**/*.kt",
-      "packagePrefix": "com.example",
-      "fqNamePrefix": "com.example.Widget",
-      "gradleProject": "example-gradleProject",
-      "relativePathPrefix": "example-relativePathPrefix",
-      "productionOnly": true,
       "excludePatterns": [
         "example-excludePattern"
       ],
+      "fileGlob": "**/*.kt",
+      "fqNamePrefix": "com.example.Widget",
+      "gradleProject": "example-gradleProject",
+      "kinds": [
+        "CONSTRUCTOR"
+      ],
+      "modulePath": ":app",
+      "packagePrefix": "com.example",
+      "productionOnly": true,
+      "relativePathPrefix": "example-relativePathPrefix",
+      "sourceSet": "main",
       "usageFacets": [
         "BUILD_LOGIC"
+      ],
+      "visibility": [
+        "LOCAL"
       ]
     },
-    "anchor": {
-      "fqName": "com.example.Widget",
-      "symbol": "Widget",
-      "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
-      "offset": 128
-    },
     "graph": {
+      "depth": 2,
       "direction": "BOTH",
       "edgeKinds": [
         "UNKNOWN"
       ],
-      "depth": 2,
       "maxEdgesPerResult": 25
     },
+    "includeEvidence": true,
+    "includeNextRequests": true,
+    "limit": 25,
+    "modes": [
+      "semantic"
+    ],
+    "query": "Widget",
     "semantic": {
       "enabled": true,
-      "profile": "api_usage",
-      "maxCandidates": 25
+      "maxCandidates": 25,
+      "profile": "api_usage"
     },
-    "limit": 25,
-    "includeEvidence": true,
-    "includeNextRequests": true
-  },
-  "id": 1
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
 }

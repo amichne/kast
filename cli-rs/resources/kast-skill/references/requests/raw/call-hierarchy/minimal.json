@@ -1,12 +1,12 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "raw/call-hierarchy",
   "params": {
+    "direction": "INCOMING",
     "position": {
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128
-    },
-    "direction": "INCOMING"
-  },
-  "id": 1
+    }
+  }
 }

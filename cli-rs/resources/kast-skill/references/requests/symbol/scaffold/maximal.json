@@ -1,12 +1,12 @@
 {
+  "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/scaffold",
   "params": {
-    "workspaceRoot": "/absolute/path/to/workspace",
+    "kind": "property",
+    "mode": "extract",
     "targetFile": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
     "targetSymbol": "Widget",
-    "mode": "extract",
-    "kind": "property"
-  },
-  "id": 1
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
 }

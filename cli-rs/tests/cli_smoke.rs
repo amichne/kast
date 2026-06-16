@@ -10,6 +10,26 @@ fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Command {
     command
 }
 
+fn assert_no_script_files(root: &Path) {
+    let entries = std::fs::read_dir(root)
+        .unwrap_or_else(|error| panic!("read directory {}: {error}", root.display()));
+    for entry in entries {
+        let entry =
+            entry.unwrap_or_else(|error| panic!("read entry in {}: {error}", root.display()));
+        let path = entry.path();
+        if path.is_dir() {
+            assert_no_script_files(&path);
+            continue;
+        }
+        let extension = path.extension().and_then(|value| value.to_str());
+        assert!(
+            !matches!(extension, Some("py" | "sh")),
+            "installed skill must not ship executable script payloads: {}",
+            path.display()
+        );
+    }
+}
+
 fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf {
     let brew = bin_dir.join("brew");
     std::fs::create_dir_all(bin_dir).expect("brew bin");
@@ -256,10 +276,11 @@ fn smoke_core_cli_commands() {
     assert!(skill_dir.join("kast/references/quickstart.md").is_file());
     assert!(
         skill_dir
-            .join("kast/scripts/validate-rpc-request.py")
+            .join("kast/references/requests/symbol/query/request.schema.json")
             .is_file()
     );
-    assert!(skill_dir.join("kast/scripts/resolve-kast.sh").is_file());
+    assert!(!skill_dir.join("kast/scripts").exists());
+    assert_no_script_files(&skill_dir.join("kast"));
 
     let github_dir = temp.path().join(".github");
     let copilot = kast(&home, &config_home)
@@ -2560,10 +2581,6 @@ fn packaged_skill_targets_rust_kast_only() {
         root.join("resources/kast-skill/references/routing-improvement.md"),
     )
     .expect("routing reference");
-    let routing_builder = std::fs::read_to_string(
-        root.join("resources/kast-skill/fixtures/maintenance/scripts/build-routing-corpus.py"),
-    )
-    .expect("routing builder");
 
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
@@ -2583,17 +2600,22 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("raw/completions"));
     assert!(skill.contains("raw/apply-edits"));
     assert!(quickstart.contains("command -v kast"));
+    assert!(quickstart.contains("kast validate --request-file"));
     assert!(quickstart.contains("kast rpc"));
     assert!(quickstart.contains("kast metrics impact"));
     assert!(quickstart.contains("kast demo"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(!routing_reference.contains("evals/"));
-    assert!(routing_builder.contains("\"expected_route\": \"rust-kast-cli\""));
-    assert!(routing_builder.contains("kast demo --view symbol --json"));
     assert!(!skill.contains("JVM CLI"));
     assert!(!skill.contains("Kotlin serialization models"));
     assert!(!skill.contains("KAST_CLI_PATH"));
     assert!(!quickstart.contains("KAST_CLI_PATH"));
+    assert!(!skill.contains("python3"));
+    assert!(!quickstart.contains("python3"));
+    assert!(!skill.contains("validate-rpc-request.py"));
+    assert!(!quickstart.contains("validate-rpc-request.py"));
+    assert!(!skill.contains("kast-session-start.sh"));
+    assert!(!quickstart.contains("kast-session-start.sh"));
     assert!(
         !skill.contains("kast_workspace_")
             && !skill.contains("kast_resolve")
@@ -2606,12 +2628,13 @@ fn packaged_skill_targets_rust_kast_only() {
         "packaged skill should teach the Rust CLI, not host-specific kast_* tool names",
     );
 
-    let relative = "resources/kast-skill/scripts/resolve-kast.sh";
-    let content = std::fs::read_to_string(root.join(relative)).expect(relative);
+    assert!(!root.join("resources/kast-skill/scripts").exists());
     assert!(
-        !content.contains("kast-cli"),
-        "{relative} must not resolve or advertise the deleted JVM CLI",
+        !root
+            .join("resources/kast-skill/fixtures/maintenance/scripts")
+            .exists()
     );
+    assert_no_script_files(&root.join("resources/kast-skill"));
     assert!(
         !root.join("resources/copilot-extension").exists(),
         "deprecated Copilot SDK extension source must not be packaged"
