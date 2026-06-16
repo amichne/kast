@@ -16,13 +16,8 @@ manifest = json.loads((root / "plugin.json").read_text())
 assert manifest["schemaVersion"] == 1
 assert manifest["name"] == "kast-copilot-lsp"
 entrypoints = manifest["entrypoints"]
-assert entrypoints["lsp"] == "lsp.json"
-assert entrypoints["instructions"] == ["instructions/kast-kotlin.instructions.md"]
-assert entrypoints["extensions"] == ["extensions/kast/extension.mjs"]
-assert entrypoints["manifest"] == "primitive-manifest.json"
+assert entrypoints == {"lsp": "lsp.json"}
 assert (root / entrypoints["lsp"]).is_file()
-assert (root / entrypoints["instructions"][0]).is_file()
-assert (root / entrypoints["extensions"][0]).is_file()
 
 primitive = json.loads((root / "primitive-manifest.json").read_text())
 assert primitive["type"] == "KAST_COPILOT_PRIMITIVE_MANIFEST"
@@ -34,6 +29,8 @@ assert targets == {
     "extensions/kast/_shared/kast-tools.mjs",
     "extensions/kast/_shared/commands.json",
 }
+assert (root / "instructions/kast-kotlin.instructions.md").is_file()
+assert (root / "extensions/kast/extension.mjs").is_file()
 
 lsp = json.loads((root / "lsp.json").read_text())
 server = lsp["lspServers"]["kast-kotlin"]
