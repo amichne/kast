@@ -2,8 +2,8 @@ use crate::backend::BackendInstallResult;
 use crate::cli::OutputFormat;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ArchiveInstallResult, InstallAffectedResult, InstallCopilotExtensionResult,
-    InstallIdeaPluginResult, InstallResult, InstallShellResult, InstallSkillResult, SetupResult,
+    ArchiveInstallResult, InstallCopilotExtensionResult, InstallIdeaPluginResult, InstallResult,
+    InstallShellResult, InstallSkillResult, SetupResult,
 };
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -49,7 +49,6 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
-        InstallResult::Affected(result) => print_affected_install(result),
         InstallResult::Headless(result) => print_backend_install(result),
         InstallResult::Archive(result) => print_archive_install(result),
     }
@@ -200,9 +199,6 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
 pub fn print_setup(result: &SetupResult) -> Result<()> {
     println!("# Kast setup");
     println!();
-    if let Some(repair) = &result.repair {
-        println!("- Repair applied: {}", yes_no(repair.applied));
-    }
     if let Some(headless) = &result.headless {
         println!("- Headless backend: `{}`", headless.version);
     }
@@ -315,34 +311,6 @@ fn print_archive_install(result: &ArchiveInstallResult) -> Result<()> {
     println!("- Installed at: `{}`", result.installed_at);
     println!("- Instance: `{}`", result.instance);
     println!("- Reused existing install: {}", yes_no(result.skipped));
-    Ok(())
-}
-
-fn print_affected_install(result: &InstallAffectedResult) -> Result<()> {
-    println!("# Kast affected install repair");
-    println!();
-    println!("- Applied changes: {}", yes_no(result.applied));
-    println!("- Config path: `{}`", result.config_path);
-    if !result.applied {
-        println!("- Default: no files were changed");
-        println!("- Apply command: `{}`", result.apply_command);
-    }
-    if result.actions.is_empty() {
-        println!();
-        println!("No affected installs or stale paths were found.");
-    } else {
-        println!();
-        println!("## Actions");
-        for action in &result.actions {
-            println!("- `{}` `{}`: {}", action.status, action.kind, action.target);
-            println!("  {}", action.message);
-            if let Some(command) = &action.command {
-                println!("  Command: `{command}`");
-            }
-        }
-    }
-    print_messages("Backups", &result.backups);
-    print_warnings(&result.warnings);
     Ok(())
 }
 

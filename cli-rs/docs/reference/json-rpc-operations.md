@@ -22,13 +22,13 @@ minimal and maximal request examples live under
 
 The Rust LSP adapter does not maintain a parallel custom-method list. Its build
 script reads the same catalog and generates the `kast/*` custom request routing
-table used by `kast lsp --stdio`. The deprecated Copilot SDK extension also
-loads the same catalog from its packaged `_shared/commands.json` copy for
-extension-only fallback use.
+table used by `kast lsp --stdio`. The packaged Copilot extension uses the
+manifest-managed `_shared/commands.json` copy so `kast_*` tools and custom LSP
+routes stay aligned with the same catalog.
 
 Update the catalog first when adding or changing a JSON-RPC method. Docs,
-packaged skills, LSP route generation, extension fallback schemas, and installer
-smoke tests should then point back to that file instead of defining
+packaged skills, LSP route generation, packaged extension schemas, and
+installer smoke tests should then point back to that file instead of defining
 method-specific shapes by hand. Run
 `python3 resources/kast-skill/scripts/generate-rpc-contract.py --check` and
 `python3 resources/kast-skill/scripts/validate-rpc-request.py --all-samples` to

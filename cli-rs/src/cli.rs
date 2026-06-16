@@ -51,9 +51,9 @@ pub enum Command {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Install or update local integrations and managed assets.
+    /// Install or update local integrations and selected packaged resources.
     Setup(SetupArgs),
-    /// Install or repair Kast resources.
+    /// Install Kast resources.
     Install(InstallArgs),
     /// Verify the global Kast install is still healthy.
     Doctor,
@@ -367,9 +367,6 @@ pub struct SetupArgs {
     /// Replace existing installed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
-    /// Skip global config and managed asset repair.
-    #[arg(long)]
-    pub skip_repair: bool,
     /// Shell to install integration for. Defaults to the current SHELL.
     #[arg(long, value_enum)]
     pub shell: Option<ShellKind>,
@@ -440,8 +437,6 @@ pub enum InstallCommand {
     /// Install the headless JVM backend from an internal archive.
     #[command(hide = true)]
     Headless(HeadlessInstallArgs),
-    /// Audit and repair stale Kast installs, resources, and profile links.
-    Affected(AffectedInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
     /// Install the packaged Copilot LSP plugin resources.
@@ -454,16 +449,6 @@ pub enum InstallCommand {
     Shell(ShellInstallArgs),
     /// Print shell completion scripts.
     Completion(CompletionArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AffectedInstallArgs {
-    /// Apply the planned repairs. Without this flag, no files are changed.
-    #[arg(long)]
-    pub apply: bool,
-    /// JetBrains config root containing IDE profile directories to audit.
-    #[arg(long)]
-    pub jetbrains_config_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

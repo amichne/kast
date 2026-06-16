@@ -43,10 +43,10 @@ project, reusing the IDE's project model, indexes, and analysis session.
 ## Local and hosted agent setup
 
 Local agents usually inherit a developer's installed CLI and workspace, then
-run `kast setup` for local integrations and managed-asset repair. When an
-agent needs an independent headless runtime, install the Linux headless
-tarball before the session starts. Homebrew is the macOS developer install
-path and should not be used as a headless deployment substitute.
+run `kast setup` for local integrations. When an agent needs an independent
+headless runtime, install the Linux headless tarball before the session starts.
+Homebrew is the macOS developer install path and should not be used as a
+headless deployment substitute.
 
 | Agent environment | Install path | Runtime path | What to hand the agent |
 |-------------------|--------------|--------------|-------------------------|

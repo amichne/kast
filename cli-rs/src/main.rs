@@ -75,7 +75,6 @@ fn requested_output_format() -> OutputFormat {
 fn run(cli: Cli) -> Result<i32> {
     let output_format = cli.output;
     let command = cli.command.unwrap_or(Command::Help { topic: vec![] });
-    maybe_repair_after_cli_upgrade(&command)?;
     match command {
         Command::Help { topic } => {
             if topic.is_empty() {
@@ -170,29 +169,6 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(if result.ok { 0 } else { 1 })
         }
-    }
-}
-
-fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
-    if matches!(
-        command,
-        Command::Help { .. }
-            | Command::Version
-            | Command::Lsp(_)
-            | Command::Setup(_)
-            | Command::Install(cli::InstallArgs {
-                command: Some(
-                    cli::InstallCommand::Affected(_) | cli::InstallCommand::Completion(_)
-                ),
-                ..
-            })
-    ) {
-        return Ok(());
-    }
-    match install::repair_if_running_cli_version_changed() {
-        Ok(_) => Ok(()),
-        Err(error) if matches!(command, Command::Doctor) && error.code == "CONFIG_ERROR" => Ok(()),
-        Err(error) => Err(error),
     }
 }
 

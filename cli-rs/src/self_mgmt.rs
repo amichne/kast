@@ -315,24 +315,6 @@ pub fn update_global_config(
     Ok(path)
 }
 
-pub fn remove_global_install_state() -> Result<bool> {
-    remove_install_state(&config::global_config_path())
-}
-
-fn remove_install_state(path: &Path) -> Result<bool> {
-    let mut document = read_config_document(path)?;
-    let removed = document.remove("install").is_some();
-    if !removed {
-        return Ok(false);
-    }
-    if document.is_empty() {
-        fs::remove_file(path)?;
-    } else {
-        write_config_document(path, &document)?;
-    }
-    Ok(true)
-}
-
 fn read_config_document(path: &Path) -> Result<toml::Table> {
     if !path.is_file() {
         return Ok(toml::Table::new());
