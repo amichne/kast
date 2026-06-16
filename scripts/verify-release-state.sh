@@ -167,13 +167,26 @@ for raw_line in sha_file.read_text(encoding="utf-8").splitlines():
     if len(parts) == 2:
         sha_entries[parts[1]] = parts[0]
 
-formula_assets = [
-    f"kast-{tag}-linux-arm64.zip",
-    f"kast-{tag}-linux-x64.zip",
-    f"kast-{tag}-macos-arm64.zip",
-    f"kast-{tag}-macos-x64.zip",
-]
-cask_assets = [f"kast-idea-{tag}.zip"]
+def referenced_cli_assets(content: str) -> list[str]:
+    assets = []
+    for platform in ("linux-arm64", "linux-x64", "macos-arm64", "macos-x64"):
+        templated = f"kast-v#{{ARTIFACT_VERSION}}-{platform}.zip"
+        literal = f"kast-{tag}-{platform}.zip"
+        if templated in content or literal in content:
+            assets.append(literal)
+    if not assets:
+        fail("Formula/kast.rb does not reference any Kast CLI release assets")
+    return assets
+
+def referenced_cask_assets(content: str) -> list[str]:
+    templated = "kast-idea-v#{version}.zip"
+    literal = f"kast-idea-{tag}.zip"
+    if templated in content or literal in content:
+        return [literal]
+    fail("Casks/kast-plugin.rb does not reference the Kast IDEA release asset")
+
+formula_assets = referenced_cli_assets(formula)
+cask_assets = referenced_cask_assets(cask)
 
 for asset_name in formula_assets:
     digest = sha_entries.get(asset_name)

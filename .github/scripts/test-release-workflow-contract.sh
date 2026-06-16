@@ -194,6 +194,8 @@ require_contains "$release_state_verifier" "scripts/verify-release-assets.sh" "R
 require_contains "$release_state_verifier" "scripts/verify-maven-central.sh" "Release state verifier must verify Maven Central"
 require_contains "$release_state_verifier" "releases/latest" "Release state verifier must prove stable releases are latest"
 require_contains "$release_state_verifier" "homebrew-kast" "Release state verifier must prove stable Homebrew state"
+require_contains "$release_state_verifier" "referenced_cli_assets" "Release state verifier must derive formula assets from the rendered tap"
+require_not_contains "$release_state_verifier" "formula_assets = [" "Release state verifier must not require release assets that the rendered formula does not reference"
 require_contains "$maven_central_verifier" "kast-analysis-api" "Maven Central verifier must check analysis-api"
 require_contains "$maven_central_verifier" "kast-analysis-server" "Maven Central verifier must check analysis-server"
 require_contains "$maven_central_verifier" "kast-index-store" "Maven Central verifier must check index-store"
