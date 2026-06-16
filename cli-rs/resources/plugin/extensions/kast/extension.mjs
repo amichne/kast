@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { joinSession } from "@github/copilot-sdk/extension";
+import { makeKastCustomAgents } from "./_shared/kast-agents.mjs";
 import { KAST_TOOL_NAMES, makeKastTools } from "./_shared/kast-tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -197,6 +198,7 @@ async function callKast(method, params) {
 
 const session = await joinSession({
   tools: makeKastTools((method, args) => callKast(method, args)),
+  customAgents: makeKastCustomAgents(),
   disabledSkills: ["kast"],
 });
 

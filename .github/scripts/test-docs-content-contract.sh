@@ -140,6 +140,9 @@ require_contains "$install_doc" 'scripts/verify-release-assets.sh' "Install docs
 require_contains "$install_doc" '## Install the Copilot LSP package' "Install docs must document the Copilot LSP package"
 require_contains "$install_doc" 'kast install copilot' "Install docs must make the CLI Copilot install path primary"
 require_contains "$install_doc" '.github/lsp.json' "Install docs must document the LSP config output"
+require_contains "$install_doc" '.github/agents/kast-reader.agent.md' "Install docs must document the reader agent output"
+require_contains "$install_doc" '.github/agents/kast-writer.agent.md' "Install docs must document the writer agent output"
+require_contains "$install_doc" '--plugin-dir cli-rs/resources/plugin' "Install docs must document the Copilot CLI source-plugin validation path"
 require_not_contains "$install_doc" '## Install the legacy Copilot extension' "Install docs must not make the deprecated SDK extension an install path"
 require_not_contains "$install_doc" 'KAST_AGENT_CLI_URL' "Install docs must not mention retired headless agent variables"
 require_not_contains "$install_doc" 'KAST_AGENT_BACKEND_URL' "Install docs must not mention retired headless agent variables"
@@ -162,6 +165,7 @@ require_not_contains "$agents_doc" "amichne/kast-action@v1" "Agent docs must not
 require_not_contains "$agents_doc" 'scripts/headless-agent-install.sh' "Agent docs must not document the retired headless agent installer"
 require_not_contains "$agents_doc" 'KAST_AGENT_INSTALL_ROOT' "Agent docs must not mention retired headless agent variables"
 require_contains "$agents_doc" "Ubuntu/Debian hosted agent" "Agent docs must document hosted setup through the canonical Ubuntu/Debian installer"
+require_contains "${docs_root}/for-agents/install-the-skill.md" '--plugin-dir cli-rs/resources/plugin' "Agent install docs must document the Copilot CLI source-plugin validation path"
 require_embedded_markdown_links
 python3 "${repo_root}/.github/scripts/render-rpc-contract-summary.py" --check
 

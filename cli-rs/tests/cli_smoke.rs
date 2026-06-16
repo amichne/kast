@@ -294,6 +294,8 @@ fn smoke_core_cli_commands() {
         .expect("install copilot plugin");
     assert!(copilot.status.success());
     assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
+    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
     assert!(github_dir.join(".kast-copilot-version").is_file());
 
     let status = kast(&home, &config_home)
@@ -1003,6 +1005,8 @@ fn setup_skip_headless_keeps_clean_machine_backend_free() {
     assert_eq!(stdout["copilot"]["skipped"], false);
     assert!(skill_dir.join("kast/SKILL.md").is_file());
     assert!(github_dir.join("lsp.json").is_file());
+    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
+    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
     assert!(
         !home
             .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
@@ -2154,9 +2158,16 @@ fn install_resource_gateways_support_force_and_current_versions() {
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
     assert!(
         github_dir
+            .join("extensions/kast/_shared/kast-agents.mjs")
+            .is_file()
+    );
+    assert!(
+        github_dir
             .join("extensions/kast/_shared/commands.json")
             .is_file()
     );
+    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
+    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
 
     let copilot_marker =
         std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("copilot marker");
@@ -2349,6 +2360,8 @@ fn copilot_extension_install_preserves_existing_github_content() {
             .is_file()
     );
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
+    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
     assert!(
         github_dir
             .join("extensions/kast/_shared/commands.json")

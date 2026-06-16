@@ -198,8 +198,8 @@ images, private artifact stores, and CI-style setup scripts.
 ## Install the Copilot LSP package
 
 Install the Copilot LSP package when you want repository-local GitHub
-Copilot files that use standard LSP, hooks, instructions, agents, and skills
-without depending on the deprecated Copilot SDK extension path.
+Copilot files that use standard LSP, Kotlin instructions, two Kast-routed
+custom agents, and the catalog-backed `kast_*` extension source.
 
 From an installed CLI, run:
 
@@ -210,6 +210,10 @@ kast install copilot
 The CLI writes these packaged entries:
 
 - `.github/lsp.json`
+- `.github/instructions/kast-kotlin.instructions.md`
+- `.github/agents/kast-reader.agent.md`
+- `.github/agents/kast-writer.agent.md`
+- `.github/extensions/kast/extension.mjs`
 - `.github/.kast-copilot-version`
 
 Pass `--target-dir` when you need to install into another workspace's
@@ -227,6 +231,11 @@ cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/proje
 ```
 
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
+For live Copilot CLI validation of the SDK extension tools, load the source
+package explicitly with `--plugin-dir cli-rs/resources/plugin`. Project
+installs expose the agents as `kast-reader` and `kast-writer`; source-plugin
+validation exposes them under the plugin namespace, such as
+`kast-copilot-lsp:kast-reader`.
 
 To refresh packaged files in place, reinstall with `--force`. This replaces
 the managed LSP package file.

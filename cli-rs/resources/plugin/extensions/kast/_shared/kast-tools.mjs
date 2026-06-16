@@ -4,12 +4,26 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const COMMAND_CATALOG_PATH = join(HERE, "commands.json");
+const SOURCE_TREE_COMMAND_CATALOG_PATH = join(
+  HERE,
+  "..",
+  "..",
+  "..",
+  "..",
+  "kast-skill",
+  "references",
+  "commands.json",
+);
 
 function loadCommandCatalog() {
-  if (!existsSync(COMMAND_CATALOG_PATH)) {
-    throw new Error(`Kast command catalog not found at ${COMMAND_CATALOG_PATH}`);
+  for (const path of [COMMAND_CATALOG_PATH, SOURCE_TREE_COMMAND_CATALOG_PATH]) {
+    if (existsSync(path)) {
+      return JSON.parse(readFileSync(path, "utf8"));
+    }
   }
-  return JSON.parse(readFileSync(COMMAND_CATALOG_PATH, "utf8"));
+  throw new Error(
+    `Kast command catalog not found at ${COMMAND_CATALOG_PATH} or ${SOURCE_TREE_COMMAND_CATALOG_PATH}`,
+  );
 }
 
 const COMMAND_CATALOG = loadCommandCatalog();
@@ -189,6 +203,13 @@ function buildToolSpecs(catalog) {
 const TOOL_SPECS = buildToolSpecs(COMMAND_CATALOG);
 
 export const KAST_TOOL_NAMES = Object.freeze(new Set(TOOL_SPECS.map((spec) => spec.name)));
+export const KAST_WRITE_TOOL_NAMES = Object.freeze(new Set([
+  "kast_rename",
+  "kast_write_and_validate",
+]));
+export const KAST_READ_TOOL_NAMES = Object.freeze(new Set(
+  Array.from(KAST_TOOL_NAMES).filter((name) => !KAST_WRITE_TOOL_NAMES.has(name)),
+));
 
 function normalizeArgs(spec, args) {
   const normalized = { ...(args ?? {}) };
