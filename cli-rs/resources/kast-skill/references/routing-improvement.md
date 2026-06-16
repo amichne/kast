@@ -7,8 +7,6 @@ skill. Keep maintenance routing cases centered on the Rust CLI:
 subcommands or `kast rpc` methods, and `forbidden_ops` should cover generic
 Kotlin tools such as `grep`, `rg`, and `view`.
 
-Use `scripts/build-routing-corpus.py` to regenerate or extend routing
-candidates from maintenance inputs when evaluating the skill locally. Keep
-session exports, benchmark runs, and generated candidate corpora outside the
-installed skill tree unless a release intentionally promotes them to a shipped
-reference.
+Keep session exports, benchmark runs, generated candidate corpora, and any
+local routing-analysis tools outside the installed skill tree unless a release
+intentionally promotes sanitized outputs to a shipped reference.

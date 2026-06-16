@@ -29,8 +29,6 @@ extension-only fallback use.
 Update the catalog first when adding or changing a JSON-RPC method. Docs,
 packaged skills, LSP route generation, extension fallback schemas, and installer
 smoke tests should then point back to that file instead of defining
-method-specific shapes by hand. Run
-`python3 resources/kast-skill/scripts/generate-rpc-contract.py --check` and
-`python3 resources/kast-skill/scripts/validate-rpc-request.py --all-samples` to
-catch stale YAML/examples and invalid request fixtures before sending or
-publishing request payloads.
+method-specific shapes by hand. Run `kast generate contract --check` and
+`kast validate --all-samples` to catch stale YAML, examples, schemas, and
+invalid request fixtures before sending or publishing request payloads.

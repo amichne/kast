@@ -489,6 +489,18 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
         "plugin source must own the Copilot SDK extension entrypoint"
     );
+    let extension = std::fs::read_to_string(plugin_root.join("extensions/kast/extension.mjs"))
+        .expect("extension source");
+    assert!(
+        !extension.contains("\"bash\""),
+        "extension must resolve kast without shelling through bash"
+    );
+    let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
+        .expect("local plugin installer");
+    assert!(
+        !install_local.contains("python3"),
+        "local plugin installer must delegate to Rust instead of inline Python"
+    );
 }
 
 #[test]

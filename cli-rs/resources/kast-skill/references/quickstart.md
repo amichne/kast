@@ -6,26 +6,15 @@ The ideal setup is boring: `command -v kast` succeeds and agents run `kast`
 directly. Prefer a durable PATH install such as Homebrew or the managed
 `~/.kast/bin/kast` launcher over per-command absolute paths.
 
-```bash
+```console
 command -v kast
 kast --help
 ```
 
-If `kast` is missing in an installed skill session, use the bootstrap helper as
-a temporary recovery path:
-
-1. Try the kast command you need.
-2. If the shell reports `kast: command not found`, run:
-
-   ```bash
-   eval "$(bash .agents/skills/kast/scripts/kast-session-start.sh)"
-   ```
-
-3. Retry the same command.
-4. After the session, fix PATH so future turns can call `kast` directly.
-
-If the helper cannot resolve a binary, stop and report that setup blocker
-instead of switching to non-semantic Kotlin search.
+If `kast` is missing in an installed skill session, stop and report that setup
+blocker instead of switching to non-semantic Kotlin search. The installed skill
+does not ship bootstrap scripts; `kast setup` and `kast install affected` own
+durable repair.
 
 ## Contract reference
 
@@ -42,22 +31,21 @@ Rust CLI help.
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use
 `references/requests/<category>/<method>/minimal.json` and `maximal.json` for
-walkable sample payloads. Validate hand-authored requests with
-`scripts/validate-rpc-request.py` before sending them.
+walkable sample payloads. Validate hand-authored requests with `kast validate`
+before sending them.
 
 ## Common patterns
 
-```bash
+```sh
 KAST_TMP="$(mktemp -d)"
 trap 'rm -rf "$KAST_TMP"' EXIT
-SKILL_DIR=".agents/skills/kast"
 KAST_REQUEST="$KAST_TMP/request.json"
 KAST_RESULT="$KAST_TMP/kast.json"
 KAST_STDERR="$KAST_TMP/kast.stderr"
 
 run_kast_rpc() {
   printf '%s\n' "$1" >"$KAST_REQUEST"
-  python3 "$SKILL_DIR/scripts/validate-rpc-request.py" --request-file "$KAST_REQUEST" >/dev/null
+  kast validate --request-file "$KAST_REQUEST" >/dev/null
   kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 }
 

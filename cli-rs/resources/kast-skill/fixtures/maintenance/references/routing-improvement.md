@@ -32,27 +32,21 @@ user prompts, loaded skills, and tool usage.
 
 ## Build a routing corpus
 
-Run the corpus builder on one or more directories of exports and logs:
+Build routing corpora outside the installed skill tree and commit only
+sanitized, durable outputs. The installed skill intentionally ships no corpus
+builder or runtime scripts; local analysis tools should write to ignored
+`build/skill-routing/` paths or another scratch directory.
 
-```console title="Build routing cases"
-python3 .agents/skills/kast/fixtures/maintenance/scripts/build-routing-corpus.py \
-  --session-dir=/absolute/path/to/session-exports \
-  --logs-dir=/absolute/path/to/copilot/logs \
-  --output-jsonl=build/skill-routing/routing-cases.jsonl \
-  --output-markdown=build/skill-routing/routing-summary.md \
-  --output-promotions=build/skill-routing/promotion-candidates.json
-```
+Useful derived artifacts are:
 
-The script:
+- `routing-cases.jsonl` with one sanitized case per prompt or agent turn
+- `routing-summary.md` with high-level counts and systemic misses
+- `promotion-candidates.json` shaped like the checked-in eval corpus
 
-- prefers Markdown exports over sibling HTML files
-- extracts visible prompts, skill loads, and tool traces from HTML-only exports
-- redacts absolute paths and session identifiers
-- classifies cases such as `trigger-miss`, `loaded-but-bypassed`,
-  `semantic-abandonment`, `schema-friction`,
-  `mutation-validation-friction`, `initialization-friction`,
-  `maintenance-thrash`, `route-via-subagent`, and `config-drift`
-- emits promotion candidates in the same shape as the checked-in eval corpus
+Classifications should remain stable and concrete, such as `trigger-miss`,
+`loaded-but-bypassed`, `semantic-abandonment`, `schema-friction`,
+`mutation-validation-friction`, `initialization-friction`,
+`maintenance-thrash`, `route-via-subagent`, and `config-drift`.
 
 ## Review the output
 

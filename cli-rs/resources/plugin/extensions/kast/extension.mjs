@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { joinSession } from "@github/copilot-sdk/extension";
 import { KAST_TOOL_NAMES, makeKastTools } from "./_shared/kast-tools.mjs";
@@ -93,6 +93,21 @@ async function supportsKastCli(path) {
   return help.ok && /\brpc\b/i.test(`${help.stdout}\n${help.stderr}`);
 }
 
+function findOnPath(commandName) {
+  const pathValue = process.env.PATH ?? "";
+  const extensions = process.platform === "win32"
+    ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";")
+    : [""];
+  for (const directory of pathValue.split(delimiter)) {
+    if (!directory) continue;
+    for (const extension of extensions) {
+      const candidate = join(directory, `${commandName}${extension}`);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
 async function resolveKastBinary() {
   if (kastBinary) return kastBinary;
 
@@ -104,9 +119,7 @@ async function resolveKastBinary() {
   const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
   addCandidate(readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath"));
   addCandidate(join(homedir(), ".kast", "bin", "kast"));
-
-  const pathResult = await execCommand("bash", ["-lc", "command -v kast 2>/dev/null || true"]);
-  if (pathResult.ok) addCandidate(pathResult.stdout.trim());
+  addCandidate(findOnPath("kast"));
 
   addCandidate(join(REPO_ROOT, "cli-rs", "target", "debug", "kast"));
   addCandidate(join(REPO_ROOT, "cli-rs", "target", "release", "kast"));
