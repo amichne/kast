@@ -25,13 +25,12 @@ mixing several scopes into one install story.
 
 The current product story separates install scope from runtime detail:
 
-- The `kast` binary is installed once at the machine level.
+- The `kast` binary and IDEA or Android Studio plugin are installed once at
+  the macOS developer-machine level through Homebrew.
 - Copilot integrations are installed separately into each repository that
   should use Kast.
 - Headless Linux installs are a second lane for hosted agents, CI runners, and
   servers that need their own binary and backend runtime.
-- IDEA or Android Studio plugin setup is optional and exists to reuse an
-  already-open IDE project model and indexes.
 
 ## Decision
 
@@ -40,17 +39,20 @@ The documentation will lead with an agent-first install model:
 ```console
 brew tap amichne/kast
 brew install kast
+brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
-This is the primary developer-machine path. The reader should understand three
-scopes before seeing detailed runtime material:
+This is the primary macOS developer-machine path. The reader should understand
+the macOS machine layer, the repository layer, and the separate Linux
+headless-server lane before seeing detailed runtime material:
 
 | Scope | Owner | Current command | Documentation role |
 |-------|-------|-----------------|--------------------|
-| Machine | Global `kast` binary | `brew install kast` | First step for developer machines |
+| Machine CLI | Global `kast` binary | `brew install kast` | First step for developer machines |
+| Machine IDE plugin | Homebrew-managed JetBrains plugin links | `brew install --cask kast-plugin` | Required macOS developer-machine component |
 | Repository | Copilot/LSP package files under `.github` | `kast install copilot` | First step per repository |
 | Headless server | Linux bundle with binary, config, and runtime | `scripts/install-ubuntu-debian.sh install` | Second lane for hosted agents |
 
@@ -67,6 +69,7 @@ conversation summaries.
 |---------|-----------------|------------|
 | Published site nav | `zensical.toml` and `docs/docs.json` | `.github/scripts/test-docs-navigation-contract.sh` |
 | First reader path | `docs/index.md`, `docs/getting-started/install.md`, `docs/for-agents/index.md` | `.github/scripts/test-docs-content-contract.sh` |
+| Headless server path | `docs/getting-started/headless-linux.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Use-case framing | `docs/supported-use-cases.md` | `zensical build --clean` |
 | Copilot package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
@@ -93,11 +96,11 @@ Use this update matrix when the answer changes:
 
 | Change trigger | Required updates |
 |----------------|------------------|
-| Global binary install changes | README, `docs/index.md`, install guide, docs content contract |
+| Global binary or IDE plugin install changes | README, `docs/index.md`, install guide, docs content contract |
 | Repository Copilot package changes | `cli-rs/resources/plugin/`, generated `.github` outputs, install guide, agent docs, package tests |
 | RPC or tool catalog changes | `commands.json`, generated contract artifacts, API summary block, Copilot extension shared catalog |
 | Primary reader path changes | New or superseding ADR, docs nav, landing page, install guide, agent overview, content/navigation contracts |
-| Runtime support changes | Backends docs, install guide, troubleshooting, README runtime table |
+| Runtime support changes | Backends docs, install guides, troubleshooting, README runtime table |
 | New optional complexity | Collapsible detail or reference page first; promote only after it becomes part of the golden path |
 
 ## Staleness rules
@@ -120,7 +123,8 @@ conversation.
 A docs iteration that changes the agent-first story is complete only when:
 
 - The machine vs repository vs headless-server scope split is still explicit.
-- The primary path remains shorter than the optional detail around it.
+- The primary developer-machine path stays separate from the headless server
+  path.
 - `README.md`, `docs/index.md`, install docs, and agent docs agree.
 - Source package files and installed `.github` outputs have a clear owner.
 - Generated reference pages are regenerated or explicitly left untouched.

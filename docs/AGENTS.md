@@ -10,9 +10,12 @@ The documentation is organized around the shortest user path first:
 
 - `docs/index.md` — landing page for the two-scope install model:
   machine-level global binary plus repository-local Copilot integration.
-- `docs/getting-started/install.md` — primary install guide for developer
-  machines and headless Linux servers. Keep optional setup, repair, plugin,
-  shell, release, and development details behind collapsible sections.
+- `docs/getting-started/install.md` — primary install guide for macOS
+  developer machines. Keep repair, plugin repair, shell, and development
+  details behind collapsible sections.
+- `docs/getting-started/headless-linux.md` — separate install guide for Linux
+  CI runners, hosted agents, server images, mirrors, and headless release
+  artifact verification.
 - `docs/for-agents/` — agent-facing content. The overview explains the
   global binary vs repository integration split, `install-the-skill.md`
   documents Copilot integrations first and skill-only fallback second,
