@@ -3,93 +3,82 @@
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/amichne/kast)
 
-`kast` gives you compiler-backed Kotlin answers in your terminal, CI, or
-agent.
-Use it when text search can show you where a name appears, but you need to
-know which declaration it resolves to, which callers are real, or whether a
-planned edit is safe to apply.
-
-`kast` has two independent runtime modes:
-
-- **Headless CLI + backend** — install the Linux headless tarball when you
-  need an independent backend.
-  The tarball contains the CLI, packaged IDEA-backed runtime, scripts, and
-  metadata needed for terminals, CI, hosted agents, and offline images.
-- **IDEA / Android Studio plugin-backed runtime** — runs inside a supported
-  JetBrains IDE and reuses the IDE's already-open project model, indexes, and
-  analysis session.
-
-All runtime modes expose the same JSON-RPC contract, so the calling workflow
-does not change when you switch between them.
+`kast` gives Copilot, terminal workflows, CI jobs, and hosted agents
+compiler-backed Kotlin answers. Use it when text search can show where a name
+appears, but you need to know which declaration it resolves to, which callers
+are real, or whether a planned edit is safe to apply.
 
 ## Install
 
-Pick the entry point you want first:
+Keep the install scopes separate:
 
-| Runtime mode | Best when | Install |
-| --- | --- | --- |
-| **Headless CLI + backend** | You want an independent runtime for terminal work, CI, agents, or hosted Linux images | [Install guide](https://kast.michne.com/getting-started/install/) |
-| **IDEA / Android Studio plugin-backed runtime** | IDEA or Android Studio is already open and you want to reuse its already-open project model and indexes | [Homebrew install guide](https://kast.michne.com/getting-started/install/#homebrew-install) |
+- **Machine install:** put the global `kast` binary on the machine once.
+- **Repository install:** add Copilot integration files to each repository
+  where agents should use Kast.
 
-Install the macOS developer distribution with Homebrew:
+Install the macOS developer distribution with Homebrew, then add the Copilot
+package to a repository:
 
 ```console
 brew tap amichne/kast
 brew install kast
 brew install --cask kast-plugin
-kast setup
+
+cd /path/to/your/repository
+kast install copilot
 ```
 
-Use the Linux headless tarball when the target host needs a self-contained
-headless runtime:
+Restart IDEA or Android Studio after Homebrew links or refreshes the plugin.
+The repository install writes managed files under `.github`, including the LSP
+config, Kotlin instructions, `kast-reader`, `kast-writer`, and
+catalog-backed extension tools.
+
+Use the Linux headless bundle when a CI runner, hosted agent, server image, or
+air-gapped host needs its own binary and backend runtime:
 
 ```console
+export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
-```
-
-For mirrored artifacts and CI images, use the same script with the
-self-contained Linux headless tarball; the
-[install guide](https://kast.michne.com/getting-started/install/#linux-headless-tarball)
-shows the exact environment variables.
-
-After the Linux tarball installer has written the headless configuration, warm
-the backend before running analysis commands:
-
-```console
-# Start or warm the backend
+./scripts/install-ubuntu-debian.sh verify
 kast up --backend=headless
-
-# Once READY, send JSON-RPC requests through the CLI
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/path/to/your/workspace/src/App.kt","offset":42}}}'
 ```
 
-If IDEA or Android Studio with the plugin is already open on the project, skip
-`kast up` — the CLI connects to the IDE's backend automatically.
+The [install guide](https://kast.michne.com/getting-started/install/) covers
+the Homebrew CLI and IDEA plugin, repository Copilot files, and repair
+commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+covers server and hosted-agent installs.
 
-## Why `kast` instead of text search?
+## Why Kast instead of text search?
 
-`kast` answers questions that `grep` and `rg` cannot answer reliably on their
+Kast answers questions that `grep` and `rg` cannot answer reliably on their
 own:
 
-- **Resolve the exact symbol, not just the spelling.** `kast` asks the Kotlin
+- **Resolve the exact symbol, not just the spelling.** Kast asks the Kotlin
   analysis engine which declaration a position refers to.
 - **Trace usage with semantic context.** Reference and caller queries follow
   compiler-backed relationships instead of matching strings.
-- **Plan edits before applying them.** Rename and edit flows are designed to
-  surface conflicts before they touch files.
+- **Plan edits before applying them.** Rename and edit flows surface conflicts
+  before they touch files.
+- **Report completeness and bounds.** Reference and hierarchy responses tell
+  agents whether evidence was exhaustive, truncated, or limited.
 
-## Choose the runtime that fits your workflow
+## Runtime choices
 
-Use the headless path when you need a fully independent process or when no IDE
-is running. Use the IDEA / Android Studio plugin-backed path when the IDE
-already has the project open and you want `kast` to piggyback on the IDE's
-existing project model and index.
+Kast has two runtime modes behind the same JSON-RPC contract:
 
-For the full comparison, see
-[Backends](https://kast.michne.com/getting-started/backends/).
+| Runtime mode | Best when | Install path |
+| --- | --- | --- |
+| **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew formula plus `kast-plugin` cask |
+| **Headless CLI + backend** | A CI runner, server, or hosted Linux image needs its own runtime | Linux headless bundle |
+
+The repository Copilot package can use either runtime because it starts the
+same global `kast` binary and speaks the same protocol. The Linux headless
+bundle is a server/hosted-agent distribution, not the local macOS developer
+fallback.
 
 ## Documentation
 
 - Read the [documentation site](https://kast.michne.com/).
 - Follow the [install guide](https://kast.michne.com/getting-started/install/).
+- Review [supported use cases](https://kast.michne.com/supported-use-cases/).
 - Compare runtime modes in [Backends](https://kast.michne.com/getting-started/backends/).

@@ -22,8 +22,8 @@ daemon to babysit.
 
 You need:
 
-- Kast installed through the Linux headless tarball, or through Homebrew plus
-  the IDEA plugin on macOS (see [Install](install.md))
+- Kast installed through the [Linux headless bundle](headless-linux.md), or
+  through Homebrew plus the IDEA plugin on macOS (see [Install](install.md))
 - A Kotlin workspace on your machine — Gradle or plain
 - The absolute path to that workspace root
 

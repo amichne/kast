@@ -1,253 +1,148 @@
 ---
 title: Install
-description: Install Kast through Homebrew on macOS or the Linux headless tarball.
+description: Install the macOS Homebrew CLI and IDEA plugin, then add
+  repository-local Copilot integrations where agents should use it.
 icon: lucide/download
 ---
 
-# Install
+# Developer Machine Install
 
-Kast has two supported distribution paths:
+This page is the macOS developer-machine path. Homebrew owns the developer
+machine's CLI and IDEA or Android Studio plugin, while Copilot integration
+files belong to each repository.
 
-- **macOS developer installs use Homebrew.** Homebrew owns the CLI, IDEA
-  integration assets, local updates, and profile linking.
-- **Linux headless installs use one self-contained tarball.** The tarball owns
-  the CLI, packaged headless runtime, install scripts, metadata, and headless
-  configuration.
+| Scope | Command | Writes to | Repeat when |
+|-------|---------|-----------|-------------|
+| Machine CLI | `brew install kast` | Homebrew-managed global binary on `PATH` | A macOS developer machine needs Kast |
+| Machine IDE plugin | `brew install --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | A macOS developer machine uses Kast |
+| Repository | `kast install copilot` | The current repository's `.github` directory | A repository should expose Kast to Copilot |
 
-## Prerequisites
+Linux CI, hosted agents, and server images use the separate
+[Headless Linux server](headless-linux.md) install path.
 
-- **Java 21 or newer** on your `PATH` or `JAVA_HOME` when you run the Linux
-  headless runtime. The Homebrew CLI package is native and does not install a
-  JDK.
-- **macOS for Homebrew developer installs** and **Linux for headless
-  tarballs**. Other local installation shapes are not supported distribution
-  paths.
+## Developer machine
 
-## Homebrew install
+Use this path on a macOS developer machine. A functional Homebrew install
+includes the global `kast` binary and the Homebrew-managed IDEA or Android
+Studio plugin, then the repository install adds Copilot package files to one
+repository.
 
-Homebrew is the macOS developer distribution. `kast` installs the Rust CLI from
-`amichne/kast`; `kast-plugin` installs the IDEA plugin bundle from the same
-release stream and links it into JetBrains profiles.
-
-```console title="Install kast with Homebrew"
+```console title="Global binary, then repository Copilot files"
 brew tap amichne/kast
 brew install kast
 brew install --cask kast-plugin
-kast setup
-```
 
-Use Homebrew for ordinary macOS local use. `kast setup` installs shell
-integration, repairs managed resources, and on macOS installs or refreshes the
-IDEA plugin cask when JetBrains profile directories are present. Disable
-individual parts with `--skip-repair`, `--skip-shell`, `--skip-plugin`,
-`--skip-skill`, or `--skip-copilot`.
-
-In an interactive terminal, setup can also ask whether IDEA should install the
-repository Copilot/LSP profile automatically when opening Gradle projects. Use
-flags when the answer should be explicit or scripted:
-
-```console title="Enable project-open Copilot/LSP profile installs"
-kast setup --project-open-profile-auto-init --project-open-profile copilot-lsp
-```
-
-```console title="Disable project-open Copilot/LSP profile installs"
-kast setup --no-project-open-profile-auto-init
-```
-
-The policy is stored in the global config:
-
-```toml title="$HOME/.config/kast/config.toml"
-[projectOpen]
-profileAutoInit = true
-profile = "copilot-lsp"
-autoExcludeGit = true
-```
-
-When the Homebrew-managed IDEA plugin is installed through setup or
-`kast install plugin`, human output shows the cask token, resolved plugin
-version, JetBrains profile destinations, download cache path, and current
-downloaded bytes while `brew fetch --cask` runs.
-
-## Repair affected local installs
-
-Use `kast install affected` after upgrading Kast, moving between install
-methods, or seeing `kast doctor` report stale managed paths. The default mode
-is a dry run: it audits global config, retired backend state, installed Kast
-skills, managed Copilot plugin copies, managed shell source files, and existing
-JetBrains profile plugin links without changing files.
-
-```console title="Audit affected installs"
-kast install affected
-```
-
-To apply the planned repair, rerun with `--apply`. The command creates backups
-under `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
-If `config.toml` is malformed, apply mode preserves the original file in that
-backup directory, writes safe default settings, and reports the recovery in the
-repair result.
-
-```console title="Repair affected installs"
-kast install affected --apply
-```
-
-Headless deployment is not repaired by downloading a separate backend. If
-repair removes stale headless metadata, reinstall or refresh the Linux
-headless tarball that owns that runtime.
-
-## Linux headless tarball
-
-Use the Linux headless tarball when a CI image, hosted agent snapshot, mirror,
-or air-gapped host should install Kast without Homebrew, Rust, Gradle, or
-network access to individual release assets. This is the only supported
-headless deployment path.
-
-The release asset is `kast-ubuntu-debian-headless-x86_64-<version>.tar.gz`
-with a matching `.sha256` sidecar. Each bundle contains the
-Rust CLI, one backend portable runtime, `scripts/install-ubuntu-debian.sh`,
-bundle metadata, and the license notice.
-
-Linux headless tarballs are built, validated, and published by the normal
-release workflow. They are part of the release manifest and are verified before
-the release is published.
-
-```bash title="Install Kast on Ubuntu/Debian"
-export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
-./scripts/install-ubuntu-debian.sh install
-./scripts/install-ubuntu-debian.sh verify
-```
-
-For mirrored artifacts or image builds, point the same installer at an exact
-local tarball:
-
-```bash title="Install from a mirrored Linux headless tarball"
-export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
-export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz"
-./scripts/install-ubuntu-debian.sh install
-./scripts/install-ubuntu-debian.sh verify
-```
-
-The installer refuses non-Ubuntu/Debian hosts, installs to
-`$HOME/.local/share/kast/ubuntu-debian/<version>` by default, symlinks
-`$HOME/.local/bin/kast`, and writes `config.toml` so the CLI points at
-`lib/backends/headless-<version>/runtime-libs` and the bundled headless
-`idea-home`.
-
-Start the bundled backend explicitly as headless:
-
-```bash title="Warm the Ubuntu/Debian headless backend"
-kast up --backend=headless
-```
-
-Use `scripts/package-ubuntu-debian-bundle.sh` when building the release bundle
-from local CLI and backend artifacts:
-
-```bash title="Package the Ubuntu/Debian bundle"
-./scripts/package-ubuntu-debian-bundle.sh \
-  --cli-archive dist/kast-v1.2.3-linux-x64.zip \
-  --backend-archive dist/headless.zip \
-  --version v1.2.3 \
-  --output dist/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
-```
-
-## Verify release assets
-
-Published releases from `amichne/kast` include CLI zips, the IDEA plugin zip,
-the Linux headless tarball with its `.sha256` sidecar, `SHA256SUMS`, and
-`build-provenance.json`. Mirror or promote the release directory as a unit,
-then run the same verifier used by CI before importing Kast artifacts into an
-internal artifact store:
-
-```bash title="Verify a downloaded release directory"
-gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
-./scripts/verify-release-assets.sh --release-dir kast-release-v1.2.3 --tag v1.2.3
-```
-
-The verifier uses `build-provenance.json` as the release manifest, checks each
-SHA-256 digest, requires the Linux headless tarball sidecar, and rejects assets
-not named by provenance.
-
-??? info "Where kast stores configuration"
-
-    By default, `kast` reads user configuration from
-    `$HOME/.config/kast/config.toml`. The Ubuntu/Debian installer writes that
-    file and keeps managed runtime files under
-    `$HOME/.local/share/kast/ubuntu-debian/<version>`:
-
-    - `$HOME/.local/bin/kast` — symlink to the installed CLI
-    - `$HOME/.local/share/kast/ubuntu-debian/<version>/bin` — installed CLI
-    - `$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends` —
-      headless backend runtime files
-    - `$HOME/.local/share/kast/ubuntu-debian/<version>/cache` and `logs` —
-      daemon caches and logs
-
-    Set `KAST_CONFIG_HOME` only when you need to move the directory that
-    contains `config.toml`:
-
-    ```bash title="Use a non-default config directory"
-    export KAST_CONFIG_HOME="$HOME/.config/kast-dev"
-    ```
-
-    Most installs don't need a custom config file because the installer writes
-    absolute paths. When you override paths, keep them absolute:
-
-    ```toml title="$HOME/.config/kast/config.toml"
-    [paths]
-    installRoot = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3"
-    binDir = "/home/alex/.local/bin"
-    libDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib"
-    cacheDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/cache"
-    logsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/logs"
-
-    [cli]
-    binaryPath = "/home/alex/.local/bin/kast"
-
-    [backends.headless]
-    runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/runtime-libs"
-    ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
-    ```
-
-## Ubuntu/Debian installer environment overrides
-
-Most users do not need environment overrides. They are useful for packaged
-images, private artifact stores, and CI-style setup scripts.
-
-| Variable | What it does |
-|----------|--------------|
-| `KAST_UBUNTU_DEBIAN_VERSION` | Selects the release tag to install |
-| `KAST_UBUNTU_DEBIAN_ARTIFACT_PATH` | Installs from an exact local bundle tarball |
-| `KAST_UBUNTU_DEBIAN_BASE_URL` | Downloads from a mirrored release directory |
-| `KAST_UBUNTU_DEBIAN_ROOT` | Overrides the managed install root |
-| `KAST_UBUNTU_DEBIAN_BIN_DIR` | Overrides the `kast` symlink directory |
-| `KAST_UBUNTU_DEBIAN_CONFIG_HOME` | Overrides the config directory |
-| `KAST_JAVA_CMD` | Selects the Java executable used for verification |
-
-## Install the Copilot LSP package
-
-Install the Copilot LSP package when you want repository-local GitHub
-Copilot files that use standard LSP, Kotlin instructions, two Kast-routed
-custom agents, and the catalog-backed `kast_*` extension source.
-
-From an installed CLI, run:
-
-```console title="Install Copilot LSP package"
+cd /path/to/your/repository
 kast install copilot
 ```
 
-The CLI writes these packaged entries:
+Restart IDEA or Android Studio after Homebrew links or refreshes the plugin,
+then restart after installing repository files so Copilot and IDE-hosted
+tooling discover `.github/lsp.json`, repository instructions, and custom
+agents at startup.
 
-- `.github/lsp.json`
-- `.github/instructions/kast-kotlin.instructions.md`
-- `.github/agents/kast-reader.agent.md`
-- `.github/agents/kast-writer.agent.md`
-- `.github/extensions/kast/extension.mjs`
-- `.github/.kast-copilot-version`
+??? success "Homebrew machine install"
+    `brew install kast` and `brew install --cask kast-plugin` are
+    machine-level. They install one `kast` executable that can serve many
+    repositories and link the Kast plugin into local JetBrains IDE profiles.
+    Confirm the binary and managed plugin state before debugging repository
+    files:
 
-Pass `--target-dir` when you need to install into another workspace's
-`.github` directory. Pass `--force` to replace an older managed copy:
+    ```console
+    kast --version
+    kast doctor
+    ```
 
-```console title="Install into another workspace"
-kast install copilot --target-dir=/Users/alex/work/project/.github --force
-```
+??? tip "Repository Copilot integration"
+    `kast install copilot` is repository-level. By default, it targets the
+    current working directory's `.github` directory. Run it from the repository
+    root, or pass an explicit `.github` target:
+
+    ```console title="Install into another repository"
+    kast install copilot --target-dir=/Users/alex/work/project/.github --force
+    ```
+
+    The command writes managed files for the running CLI version:
+
+    - `.github/lsp.json`
+    - `.github/instructions/kast-kotlin.instructions.md`
+    - `.github/agents/kast-reader.agent.md`
+    - `.github/agents/kast-writer.agent.md`
+    - `.github/extensions/kast/extension.mjs`
+    - `.github/extensions/kast/_shared/kast-tools.mjs`
+    - `.github/extensions/kast/_shared/kast-agents.mjs`
+    - `.github/extensions/kast/_shared/commands.json`
+    - `.github/.kast-copilot-version`
+
+    Rerun with `--force` after upgrading the global binary or when the
+    repository files look stale.
+
+??? info "Homebrew-managed IDE plugin"
+    The IDEA or Android Studio plugin is part of the macOS developer install.
+    The `kast-plugin` cask stages the plugin and links it into local
+    JetBrains profiles. Use the CLI command when profile links need repair or
+    when a Homebrew cask refresh needs to be applied through Kast:
+
+    ```console title="Install or repair local IDE profiles"
+    brew install --cask kast-plugin
+    kast install plugin
+    ```
+
+    Restart the IDE after replacing or linking the plugin.
+
+## Repair and setup commands
+
+Most readers do not need these commands on the first pass. Use them when an
+existing install is stale, a shell profile needs to be updated, or a local IDE
+profile needs repair.
+
+??? question "Repair stale managed files"
+    Use `kast install affected` after upgrading Kast, moving between install
+    methods, or seeing `kast doctor` report stale managed paths. The default
+    mode is a dry run:
+
+    ```console title="Audit affected installs"
+    kast install affected
+    ```
+
+    Apply the planned repair with `--apply`. The command creates backups under
+    `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
+
+    ```console title="Repair affected installs"
+    kast install affected --apply
+    ```
+
+??? info "One-command local setup"
+    `kast setup` installs or refreshes local integrations and managed assets
+    from the installed CLI. It is useful for local repair, but it is not the
+    clearest first-run story because it crosses several scopes at once.
+
+    ```console title="Refresh local integrations"
+    kast setup
+    ```
+
+    Narrow the refresh with `--skip-repair`, `--skip-shell`, `--skip-skill`,
+    or `--skip-copilot` when a specific non-IDE integration should be left
+    untouched.
+
+??? info "Shell integration"
+    Use `kast install shell` to add the directory that contains the active
+    `kast` binary to your `PATH`, export the active `KAST_CONFIG_HOME`, and
+    source completions from a managed file under `KAST_CONFIG_HOME/shell`.
+
+    === "Bash"
+
+        ```console title="Install Bash integration"
+        kast install shell --shell bash
+        ```
+
+    === "Zsh"
+
+        ```console title="Install Zsh integration"
+        kast install shell --shell zsh
+        ```
+
+## Source checkout development
 
 When the target directory is inside a Git repository, `kast install copilot`
 adds an idempotent managed block to `.git/info/exclude` for the generated
@@ -259,9 +154,10 @@ kast install copilot --no-auto-exclude-git
 ```
 
 From this source checkout, the development script installs the same
-`cli-rs/resources/plugin/` package into a target repository root:
+`cli-rs/resources/plugin/` Copilot package into another repository root. This
+is for validating unreleased package changes, not for ordinary users.
 
-```console title="Install Copilot LSP package from a checkout"
+```console title="Install Copilot package from this checkout"
 cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/project --force
 ```
 
@@ -272,94 +168,22 @@ installs expose the agents as `kast-reader` and `kast-writer`; source-plugin
 validation exposes them under the plugin namespace, such as
 `kast-copilot-lsp:kast-reader`.
 
-To refresh packaged files in place, reinstall with `--force`. This replaces
-the managed LSP package file.
-
-### IDEA and Android Studio plugin role
-
-Install or refresh the IDEA / Android Studio plugin through Homebrew and the CLI
-profile-link command:
-
-```console title="Install and link local IDE profiles"
-kast install plugin
-```
-
-!!! note
-    The IDEA / Android Studio plugin is installed through the Homebrew cask and
-    linked into JetBrains profile directories. Inside the IDE, Kast stays
-    focused on diagnostics and the IDE-hosted analysis backend; it does not
-    duplicate CLI install workflows.
-
-## Install a local development build
-
-From a repository checkout, use the development install task to build the
-debug Rust CLI, install it as `kast-dev`, wire shell integration for that
-binary, build the IDEA plugin, and replace the plugin in your newest local
-IntelliJ IDEA profile:
+Use the development Gradle task when you need a local debug CLI and IDEA plugin
+from the checkout:
 
 ```console title="Install local development CLI and plugin"
 ./gradlew installDevelopmentLocal
 ```
 
-Use properties when Gradle should target a specific shell profile or IDE
-profile:
-
-```console title="Install into explicit local targets"
-./gradlew installDevelopmentLocal \
-  -PkastDevShell=zsh \
-  -PkastDevShellProfile="$HOME/.zshrc" \
-  -PkastDevJetBrainsProfile=IntelliJIdea2025.3
-```
-
-If auto-detection is not enough, pass the plugins directory directly with
-`-PkastDevJetBrainsPluginsDir="<profile>/plugins"`. Restart the IDE after
-replacing the plugin.
-
-## Install shell integration
-
-Use `kast install shell` to add the directory that contains the active `kast`
-binary to your `PATH`, export the active `KAST_CONFIG_HOME`, and source
-completions from a managed file under `KAST_CONFIG_HOME/shell`. When the command
-name cannot be resolved, Kast falls back to the configured `binDir`.
-
-=== "Bash"
-
-    ```console title="Install Bash integration"
-    kast install shell --shell bash
-    ```
-
-=== "Zsh"
-
-    ```console title="Install Zsh integration"
-    kast install shell --shell zsh
-    ```
-
-For only a local development CLI, use `installDevelopmentShell` so the
-generated profile block targets `kast-dev`:
-
-```console title="Install kast-dev shell integration"
-./gradlew installDevelopmentShell -PkastDevShell=zsh
-```
-
-If you only need completion code for packaging or manual sourcing, print it
-directly:
-
-```console title="Print completion code"
-kast install completion zsh
-```
-
-## Verify the install
-
-Open a fresh shell so the updated `PATH` takes effect, then:
-
-```console title="Verify kast is on PATH"
-kast --help
-```
-
-You should see the grouped help page. If not, the binary isn't on your
-`PATH` — see [troubleshooting](../troubleshooting.md).
-
 ## Next steps
 
-- [Quickstart](quickstart.md) — start a backend, run your first query
-- [Backends](backends.md) — headless and IDEA, when each one wins
+After installation, choose the path that matches your workflow.
+
+- [Use Kast with agents](../for-agents/index.md) explains what the Copilot
+  package gives an agent.
+- [Headless Linux server](headless-linux.md) covers CI runners, hosted
+  agents, and server images.
+- [Supported use cases](../supported-use-cases.md) describes where Kast is
+  meant to help.
+- [Troubleshooting](../troubleshooting.md) covers stale repository files,
+  missing binaries, and backend startup issues.

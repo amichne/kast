@@ -14,8 +14,8 @@ your scripts and prompts don't change when you switch.
 
 | Runtime           | What runs                            | Best for                              | How it starts                        |
 |-------------------|--------------------------------------|---------------------------------------|--------------------------------------|
-| Headless          | Linux tarball with `kast` CLI plus a packaged IDEA backend | Terminals, CI, agents, no-IDE Linux machines | Install the Linux headless tarball, then `kast up` |
-| IDEA plugin       | A `kast` server inside an open IDE   | Local work with IDEA or Android Studio already open | Boots when the IDE opens the project; optionally launched by `kast` |
+| IDEA plugin       | A `kast` server inside an open IDE   | macOS developer machines with IDEA or Android Studio | Homebrew installs the cask; the plugin boots when the IDE opens the project |
+| Headless          | Linux tarball with `kast` CLI plus a packaged IDEA backend | CI, hosted agents, servers, and no-IDE Linux images | Install the Linux headless tarball, then `kast up` |
 
 ## Headless backend
 
@@ -25,9 +25,9 @@ tarball installs the CLI, backend runtime, scripts, and configuration together.
 
 Reach for it when:
 
-- You're in a terminal, a CI runner, or an agent loop
-- IDEA or Android Studio isn't installed on this machine
-- You want to control the lifecycle yourself
+- You're building a CI runner, hosted-agent image, or server snapshot
+- The machine is Linux and should own its backend runtime
+- You need a non-Homebrew distribution with explicit lifecycle control
 
 Install the Linux headless tarball:
 
@@ -85,8 +85,9 @@ auto-ensures the selected backend when the editor opens the language server.
 ## IDEA / Android Studio plugin backend
 
 The same plugin ZIP runs inside a running IDEA 2025.3 or Android
-Studio 2025.3.1+ instance. It reuses the IDE's K2 analysis session, project
-model, and indexes — no second JVM, no second indexing pass.
+Studio 2025.3.1+ instance. On macOS developer machines, this plugin is part of
+the functional Homebrew install. It reuses the IDE's K2 analysis session,
+project model, and indexes — no second JVM, no second indexing pass.
 
 Reach for it when:
 
@@ -104,15 +105,12 @@ How a session unfolds:
 6. It drops a descriptor file so other tools can find the socket.
 7. External tools connect and speak the same JSON-RPC.
 
-!!! tip
-    Set `backends.idea.enabled = false` in `config.toml` to disable
-    the plugin without uninstalling it.
+### Configure IDE self-start
 
-### Opt in to IDE self-start
-
-By default, `kast` never opens a GUI IDE for you. To let `kast up
---backend=idea` or a pinned Copilot session start IDEA when the plugin is
-already installed, opt in with runtime config:
+By default, `kast` never opens a GUI IDE for you. The plugin remains part of
+the macOS developer install; this setting only controls whether `kast up
+--backend=idea` or a pinned Copilot session may start IDEA when no compatible
+IDE descriptor is already running:
 
 ```toml title="$HOME/.config/kast/config.toml"
 [runtime]
@@ -133,11 +131,12 @@ linked.
 
 For Copilot, set `KAST_COPILOT_IDEA_AUTOSTART=1` in the extension environment
 to pin startup and tool RPCs to `--backend=idea`. That flag does not launch an
-IDE by itself; `runtime.ideaLaunch.enabled` remains the launch opt-in.
+IDE by itself; `runtime.ideaLaunch.enabled` must also allow GUI launch.
 
-IDEA / Android Studio integration is installed through Homebrew and
-`kast install plugin`. Inside the IDE, Kast stays focused on diagnostics and
-the IDE-hosted backend instead of duplicating CLI install workflows. When IDE
+IDEA / Android Studio integration is installed through the Homebrew
+`kast-plugin` cask. Use `kast install plugin` to repair Homebrew-managed
+profile links. Inside the IDE, Kast stays focused on diagnostics and the
+IDE-hosted backend instead of duplicating CLI install workflows. When IDE
 runtime launch is enabled, the configured CLI path comes from `[cli] binaryPath`
 in `config.toml`; it doesn't search `PATH`, so the value must point at an
 executable CLI binary:
@@ -211,9 +210,10 @@ next steps when no daemon is available.
 
 ## Running multiple runtimes
 
-Nothing stops you from using both runtimes. The practical setup is headless for
-terminal, CI, and hosted-agent work, and IDEA or Android Studio when the IDE is
-already open.
+Some environments have both runtimes available, especially when testing release
+artifacts or comparing server behavior with developer-machine behavior. The
+developer-machine path is IDEA or Android Studio through Homebrew; the Linux
+headless bundle is for CI, hosted agents, and server images.
 
 When multiple runtimes are running, pin a command with `--backend=headless`
 or `--backend=idea` to be explicit. The

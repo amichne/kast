@@ -1,137 +1,109 @@
 ---
 title: Kast for agents
-description: What Kast gives your LLM agent that grep, ripgrep, and text
-  search can't.
+description: How Copilot and other agents use a global Kast binary plus
+  repository-local integrations.
 icon: lucide/bot
 ---
 
-# What your agent gets
+# Kast for agents
 
-Your agent already knows how to grep a repo and rewrite text. What it
-can't do alone is read Kotlin the way the compiler does. `kast` plugs
-that hole. Four things text search will never give you: stable symbol
-identity, exhaustive evidence, conflict-safe edits, workspace-aware
-results.
+Agents on macOS developer machines need the Homebrew-managed Kast machine
+install, which includes the `kast` binary and IDEA or Android Studio plugin,
+plus repository-local integration files in the repository they are working on.
+Keep machine and repository scopes separate.
 
-## Zero to agent in three commands
+## Agent setup in two scopes
 
-```console title="Set up Kast for your agent"
-# 1. Install the Kast skill source into this repo (writes to .agents/skills/kast)
-kast install skill
+On a developer machine, install the Homebrew formula and cask once, then
+install Copilot files in each repository where the agent should use Kast.
 
-# 2. Install the backend and standard integrations this agent will use
-kast setup
+```console title="Developer-machine agent setup"
+brew tap amichne/kast
+brew install kast
+brew install --cask kast-plugin
 
-# 3. Warm the workspace daemon for this repo
-kast up
-
-# 4. Hand off — your agent now has the Kast skill loaded
+cd /path/to/your/repository
+kast install copilot
 ```
 
-Done. The skill teaches the workflow and the resolve-first pattern. The
-backend keeps Kotlin state warm. Copilot agents should prefer the
-`kast-kotlin` LSP server and its advertised `kast/*` custom methods, then
-fall back to native `kast_*` tools or `kast rpc` when they need the CLI
-directly; humans use `kast up`, `kast status`, and `kast stop` to manage
-the daemon. The rest of this page is what your agent picks up from that.
+Restart IDEA or Android Studio after Homebrew links or refreshes the plugin
+and after installing repository files. The Copilot package starts
+`kast lsp --stdio`, loads Kotlin-specific instructions, exposes `kast-reader`
+and `kast-writer`, and provides catalog-backed `kast_*` tools.
 
-The agent talks to any runtime over the same JSON-RPC. Headless runs as an
-independent packaged IDEA-backed daemon for terminals, CI, and hosted
-agents. The IDEA plugin exposes the same protocol from inside an open IDE
-project, reusing the IDE's project model, indexes, and analysis session.
+??? success "Machine-level responsibility"
+    The global `kast` binary owns CLI commands, LSP startup, direct JSON-RPC,
+    install repair, and backend lifecycle commands. The Homebrew cask owns the
+    IDE plugin links into local JetBrains profiles. A single machine install
+    can serve many repositories.
 
-## Local and hosted agent setup
+??? tip "Repository-level responsibility"
+    `kast install copilot` writes managed files under the current repository's
+    `.github` directory. Run it once per repository. Rerun with `--force`
+    after upgrading the binary or when the package files look stale.
 
-Local agents usually inherit a developer's installed CLI and workspace, then
-run `kast setup` for local integrations and managed-asset repair. When an
-agent needs an independent headless runtime, install the Linux headless
-tarball before the session starts. Homebrew is the macOS developer install
-path and should not be used as a headless deployment substitute.
+## Local and hosted agents
 
-| Agent environment | Install path | Runtime path | What to hand the agent |
-|-------------------|--------------|--------------|-------------------------|
-| Local developer agent | Homebrew install plus `kast setup` with the Copilot LSP package, or Linux headless tarball for independent headless work | Headless backend or IDEA backend | The packaged skill, `kast-kotlin` LSP, and native `kast_*` fallback tools |
-| CI review agent | Linux headless tarball install | Headless backend warmed with `kast up --backend=headless` | `kast rpc` commands and structured JSON outputs |
-| Ubuntu/Debian hosted agent | `scripts/install-ubuntu-debian.sh install` from the Linux headless tarball | Contained CLI and headless backend under `KAST_UBUNTU_DEBIAN_ROOT` | `kast` on `PATH` plus `KAST_CONFIG_HOME` when a custom config root is used |
+The right runtime depends on where the agent is running. The command surface
+stays the same; the backend that provides Kotlin state changes.
 
-Use the Ubuntu/Debian path when the agent image cannot rely on a human shell
-profile, Homebrew tap state, network access to component assets, or an
-already-open IDE. The installer verifies the CLI, backend runtime libraries,
-generated config, and `kast doctor` before it exits.
+| Agent environment | Install path | Runtime path | What the agent gets |
+|-------------------|--------------|--------------|---------------------|
+| Local Copilot in a developer repo | Homebrew global binary, `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
+| Local agent with an open IDE | Homebrew machine install plus repository Copilot files | IDEA backend reusing the open project | Warm IDE project model and the same Kast protocol |
+| CI or hosted Linux agent | Ubuntu/Debian headless bundle | Headless backend warmed with `kast up --backend=headless` | `kast` on `PATH`, structured JSON-RPC, and bundled runtime libraries |
 
-| What it gets         | What `kast` returns                                                                       | Why your agent cares                                                            |
-|----------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| Semantic identity    | Exact declaration, fully qualified name, kind, location                                   | Talks about one symbol, not "anything matching this string"                     |
-| Exhaustive evidence  | References with `searchScope.exhaustive`, hierarchies with truncation metadata            | Says what's complete, what's bounded, where evidence stops                      |
-| Safe edits           | Plan-then-apply mutations with SHA-256 conflict detection                                 | Reviews changes before applying; rejects stale plans instead of corrupting code |
-| Workspace awareness  | Analysis scoped to one Gradle workspace, with module boundaries and visibility            | Answers reflect the project, not file-by-file guesses                           |
+Use the Linux headless path when the agent image cannot rely on Homebrew, a
+human shell profile, or an already-open IDE. Do not present it as the local
+macOS developer-machine equivalent.
 
-## Symbol identity, not string matching
+## What your agent gets
 
-`kast` resolves the declaration at a position. Your agent gets a fully
-qualified name it can keep using for the rest of the conversation
-without ambiguity.
-[Understand symbols →](../what-can-kast-do/understand-symbols.md)
+Kast gives an agent evidence it can quote. It should use that evidence before
+summarizing, refactoring, or claiming that a result is complete.
 
-## Exhaustive evidence, not line matches
-
-References come back with `searchScope.exhaustive`. Hierarchies come
-back with explicit depth, fan-out, and truncation metadata. The agent
-can quote both.
-[Trace usage →](../what-can-kast-do/trace-usage.md)
-
-## Safe edits, not find-and-replace
-
-Plan→apply with SHA-256 file hashes. The agent shows the plan, then
-applies it. If anything drifted between the two, the apply fails — no
-silent corruption.
-[Refactor safely →](../what-can-kast-do/refactor-safely.md)
-
-## Workspace awareness, not file-by-file
-
-`kast` analyzes the whole Gradle workspace as one session. Module
-boundaries and visibility shape the results — your agent doesn't need
-to reason about them itself.
-[Manage workspaces →](../what-can-kast-do/manage-workspaces.md)
+| What it gets | What Kast returns | Why the agent cares |
+|--------------|-------------------|---------------------|
+| Semantic identity | Exact declaration, fully qualified name, kind, location | Talks about one symbol, not a matching string |
+| Exhaustive evidence | References with `searchScope.exhaustive` and hierarchies with truncation metadata | Says what is complete and where evidence stops |
+| Safe edits | Plan-then-apply mutations with SHA-256 conflict detection | Rejects stale plans instead of corrupting files |
+| Workspace awareness | Analysis scoped to the Gradle workspace | Answers reflect module boundaries and visibility |
 
 ## Same protocol, two runtimes
 
-The contract is identical. What changes is where the analysis state
-lives and who keeps it warm.
+The headless backend and IDEA plugin backend expose the same JSON-RPC
+contract. Agents do not need a different prompt or command shape when the
+runtime changes.
 
-| Runtime         | Where semantic state lives                       | Best fit                                              |
-|-----------------|--------------------------------------------------|-------------------------------------------------------|
-| Headless        | A packaged IDEA backend outside any IDE      | Terminals, CI, remote machines, cloud agents          |
-| IDEA plugin     | Inside a running IDEA or Android Studio project  | Local agents when the IDE is already open and warm    |
+| Runtime | Where semantic state lives | Best fit |
+|---------|----------------------------|----------|
+| Headless | A packaged IDEA-backed daemon outside any IDE | Terminals, CI, remote machines, cloud agents |
+| IDEA plugin | Inside a running IDEA or Android Studio project | Local agents when the IDE is already open and warm |
 
-If IDEA or Android Studio is open, agents can connect to the plugin and ride
-the IDE's warmth. If not, the headless backend exposes the same surface on its
-own.
+On developer machines, agents reuse IDEA or Android Studio through the
+Homebrew-managed plugin. The headless backend exposes the same surface for
+CI runners, hosted Linux agents, and server images that install the Linux
+bundle.
 
-## What your agent can actually do
+## What your agent can do
 
-Once `kast` is wired in, these stop being approximations:
+Once Kast is wired in, these workflows stop being text-search guesses.
 
-- **Resolve a symbol** before summarizing usage — no ambiguity about
-  which declaration is in play.
-- **Find all references** and report whether the search was exhaustive
-  — no guessing.
-- **Walk a call graph** with explicit bounds — and say where it was
-  truncated and why.
-- **Plan a rename** with conflict detection — verify the plan, then
-  apply.
-- **Find implementations** of an interface — concrete subclasses, not
-  string matches.
-- **Check diagnostics** to confirm code still compiles — without
-  running the full build.
+- Resolve a symbol before summarizing usage.
+- Find references and report whether the search was exhaustive.
+- Walk a call graph with explicit bounds and truncation metadata.
+- Plan a rename with conflict detection before applying it.
+- Find implementations of an interface or abstract type.
+- Check diagnostics to validate changed files.
 
 ## Next steps
 
-- [Understand the backends](../getting-started/backends.md) — same
-  protocol, two daemons
-- [Talk to your agent](talk-to-your-agent.md) — prompts that get the
-  most out of `kast`
-- [Install the skill](install-the-skill.md) — drop the packaged skill
-  into your workspace
-- [Direct CLI usage](direct-cli.md) — when the agent calls `kast rpc`
-  itself
+The first page explains the repository package. The prompt page explains how
+to ask for useful evidence.
+
+- [Copilot integrations](install-the-skill.md) explains the repository files
+  and the skill-only fallback.
+- [Talk to your agent](talk-to-your-agent.md) gives prompt shapes that make
+  agents resolve first.
+- [Direct CLI usage](direct-cli.md) covers `kast rpc` when an agent needs a
+  raw fallback.

@@ -15,33 +15,34 @@ Copyright &copy; 2026 amichne
 """
 nav = [
   { "Overview" = "index.md" },
-  { "Getting started" = [
-    { "Install" = "getting-started/install.md" },
-    { "Quickstart" = "getting-started/quickstart.md" },
-    { "Backends" = "getting-started/backends.md" },
+  { "Install" = [
+    { "Developer machine" = "getting-started/install.md" },
+    { "Headless Linux server" = "getting-started/headless-linux.md" },
   ]},
-  { "What can Kast do?" = [
+  { "Use with agents" = [
+    { "Overview" = "for-agents/index.md" },
+    { "Copilot integrations" = "for-agents/install-the-skill.md" },
+    { "Talk to your agent" = "for-agents/talk-to-your-agent.md" },
+    { "Direct CLI usage" = "for-agents/direct-cli.md" },
+  ]},
+  { "Supported use cases" = "supported-use-cases.md" },
+  { "Troubleshooting" = "troubleshooting.md" },
+  { "Reference" = [
+    { "Quickstart" = "getting-started/quickstart.md" },
+    { "Recipes" = "recipes.md" },
+    { "CLI cheat sheet" = "cli-cheat-sheet.md" },
+    { "Backends" = "getting-started/backends.md" },
     { "Understand symbols" = "what-can-kast-do/understand-symbols.md" },
     { "Trace usage" = "what-can-kast-do/trace-usage.md" },
     { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
     { "Validate code" = "what-can-kast-do/validate-code.md" },
     { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
-  ]},
-  { "For agents" = [
-    { "Overview" = "for-agents/index.md" },
-    { "Talk to your agent" = "for-agents/talk-to-your-agent.md" },
-    { "Install the skill" = "for-agents/install-the-skill.md" },
-    { "Direct CLI usage" = "for-agents/direct-cli.md" },
-  ]},
-  { "Recipes" = "recipes.md" },
-  { "Reference" = [
     { "API reference" = "reference/api-reference.md" },
     { "API specification" = "reference/api-specification.md" },
-    { "CLI cheat sheet" = "cli-cheat-sheet.md" },
     { "Error codes" = "reference/error-codes.md" },
   ]},
-  { "Troubleshooting" = "troubleshooting.md" },
   { "Architecture" = [
+    { "Agent-first docs ADR" = "adr/0001-agent-first-install-and-docs-operating-model.md" },
     { "How Kast works" = "architecture/how-it-works.md" },
     { "Limits and boundaries" = "architecture/behavioral-model.md" },
     { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },

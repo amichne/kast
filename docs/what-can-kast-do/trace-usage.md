@@ -387,5 +387,5 @@ is partial — raise `depth` or `maxResults` and re-run.
 
 - [Refactor safely](refactor-safely.md) — plan and apply renames
   with conflict detection
-- [For agents](../for-agents/index.md) — wire these operations into
+- [Use with agents](../for-agents/index.md) — wire these operations into
   LLM agent workflows
