@@ -113,6 +113,15 @@ Pass `--target-dir` to point at another workspace `.github` directory, and
 kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 ```
 
+By default, installs inside Git repositories also write a managed block to
+`.git/info/exclude` for the generated package files. Use
+`--no-auto-exclude-git` when the repository should decide how to track or
+ignore those files:
+
+```console title="Install without local Git excludes"
+kast install copilot --no-auto-exclude-git
+```
+
 From this source checkout, `cli-rs/resources/plugin/scripts/install-local.sh`
 installs the same package into a target repository root for local development.
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.

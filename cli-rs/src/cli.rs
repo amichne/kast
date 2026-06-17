@@ -456,6 +456,18 @@ pub struct SetupArgs {
     /// Target .github directory for --include-copilot.
     #[arg(long)]
     pub copilot_target_dir: Option<PathBuf>,
+    /// Enable repository Copilot/LSP profile installation when IDEA opens Gradle projects.
+    #[arg(long, conflicts_with = "no_project_open_profile_auto_init")]
+    pub project_open_profile_auto_init: bool,
+    /// Disable repository Copilot/LSP profile installation when IDEA opens Gradle projects.
+    #[arg(long)]
+    pub no_project_open_profile_auto_init: bool,
+    /// Project-open profile to install. Currently only copilot-lsp is supported.
+    #[arg(long, value_enum)]
+    pub project_open_profile: Option<ProjectOpenProfileArg>,
+    /// Do not add managed Copilot/LSP package paths to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
     /// Link the Homebrew cask into local JetBrains IDE profiles.
     #[arg(long, hide = true)]
     pub link_jetbrains_profiles: bool,
@@ -493,7 +505,7 @@ pub enum InstallCommand {
     Skill(ResourceInstallArgs),
     /// Install the packaged Copilot LSP, instructions, agents, and extension tools.
     #[command(alias = "copilot-extension")]
-    Copilot(ResourceInstallArgs),
+    Copilot(CopilotInstallArgs),
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
     #[command(alias = "idea-plugin", alias = "developer-plugin")]
     Plugin(IdeaPluginInstallArgs),
@@ -591,6 +603,24 @@ pub struct ResourceInstallArgs {
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct CopilotInstallArgs {
+    /// Target .github directory.
+    #[arg(long)]
+    pub target_dir: Option<PathBuf>,
+    /// Overwrite existing managed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Do not add managed package paths to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum ProjectOpenProfileArg {
+    CopilotLsp,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]

@@ -42,6 +42,32 @@ IDEA plugin cask when JetBrains profile directories are present. Disable
 individual parts with `--skip-repair`, `--skip-shell`, `--skip-plugin`,
 `--skip-skill`, or `--skip-copilot`.
 
+In an interactive terminal, setup can also ask whether IDEA should install the
+repository Copilot/LSP profile automatically when opening Gradle projects. Use
+flags when the answer should be explicit or scripted:
+
+```console title="Enable project-open Copilot/LSP profile installs"
+kast setup --project-open-profile-auto-init --project-open-profile copilot-lsp
+```
+
+```console title="Disable project-open Copilot/LSP profile installs"
+kast setup --no-project-open-profile-auto-init
+```
+
+The policy is stored in the global config:
+
+```toml title="$HOME/.config/kast/config.toml"
+[projectOpen]
+profileAutoInit = true
+profile = "copilot-lsp"
+autoExcludeGit = true
+```
+
+When the Homebrew-managed IDEA plugin is installed through setup or
+`kast install plugin`, human output shows the cask token, resolved plugin
+version, JetBrains profile destinations, download cache path, and current
+downloaded bytes while `brew fetch --cask` runs.
+
 ## Repair affected local installs
 
 Use `kast install affected` after upgrading Kast, moving between install
@@ -221,6 +247,15 @@ Pass `--target-dir` when you need to install into another workspace's
 
 ```console title="Install into another workspace"
 kast install copilot --target-dir=/Users/alex/work/project/.github --force
+```
+
+When the target directory is inside a Git repository, `kast install copilot`
+adds an idempotent managed block to `.git/info/exclude` for the generated
+package files. Keep those generated files visible to Git with
+`--no-auto-exclude-git`:
+
+```console title="Install without updating .git/info/exclude"
+kast install copilot --no-auto-exclude-git
 ```
 
 From this source checkout, the development script installs the same

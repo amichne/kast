@@ -41,7 +41,7 @@ command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
-| `kast setup`            | Install or update local integrations and refresh existing managed assets.    | `--force`, `--skip-shell`, `--skip-headless`, `--skip-plugin`, `--include-copilot` |
+| `kast setup`            | Install or update local integrations and refresh existing managed assets.    | `--force`, `--skip-shell`, `--skip-headless`, `--skip-plugin`, `--include-copilot`, `--project-open-profile-auto-init` |
 | `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--backend`, `--output`                            |
 | `kast status`           | Report whether a backend is running and what state it is in.                 | `--output`                                         |
 | `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |

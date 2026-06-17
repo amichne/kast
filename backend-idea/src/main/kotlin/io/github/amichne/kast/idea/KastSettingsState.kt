@@ -12,9 +12,13 @@ import io.github.amichne.kast.api.client.CliConfigOverride
 import io.github.amichne.kast.api.client.IdeaBackendConfigOverride
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.KastConfigOverride
+import io.github.amichne.kast.api.client.ProjectOpenConfigOverride
 import io.github.amichne.kast.api.client.RuntimeConfigOverride
 import io.github.amichne.kast.api.client.fields.CliBinaryPath
 import io.github.amichne.kast.api.client.fields.IdeaBackendEnabled
+import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
+import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
+import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import io.github.amichne.kast.api.client.fields.RuntimeDefaultBackend
 
 @State(name = "KastSettings", storages = [Storage("kast.xml")])
@@ -45,6 +49,9 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var backendsHeadlessRuntimeLibsDir: String? = null
     var backendsHeadlessIdeaHome: String? = null
     var backendsIdeaEnabled: Boolean? = null
+    var projectOpenProfileAutoInit: Boolean? = null
+    var projectOpenProfile: String? = null
+    var projectOpenAutoExcludeGit: Boolean? = null
 
     override fun getState(): KastSettingsState = this
 
@@ -54,11 +61,19 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         runtimeDefaultBackend = config.runtime.defaultBackend.value
         backendsIdeaEnabled = config.backends.idea.enabled.value
         cliBinaryPath = config.cli.binaryPath.value
+        projectOpenProfileAutoInit = config.projectOpen.profileAutoInit.value
+        projectOpenProfile = config.projectOpen.profile.value
+        projectOpenAutoExcludeGit = config.projectOpen.autoExcludeGit.value
     }
 
     fun toOverride(): KastConfigOverride = KastConfigOverride(
         runtime = RuntimeConfigOverride(
             defaultBackend = runtimeDefaultBackend?.takeIf(String::isNotBlank)?.let(::RuntimeDefaultBackend),
+        ).takeIfAny(),
+        projectOpen = ProjectOpenConfigOverride(
+            profileAutoInit = projectOpenProfileAutoInit?.let(::ProjectOpenProfileAutoInit),
+            profile = projectOpenProfile?.takeIf(String::isNotBlank)?.let(::ProjectOpenProfile),
+            autoExcludeGit = projectOpenAutoExcludeGit?.let(::ProjectOpenAutoExcludeGit),
         ).takeIfAny(),
         backends = BackendsConfigOverride(
             idea = IdeaBackendConfigOverride(enabled = backendsIdeaEnabled?.let(::IdeaBackendEnabled)).takeIfAny(),
@@ -73,6 +88,9 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
 
 private fun RuntimeConfigOverride.takeIfAny(): RuntimeConfigOverride? =
     takeIf { defaultBackend != null || ideaLaunch != null }
+
+private fun ProjectOpenConfigOverride.takeIfAny(): ProjectOpenConfigOverride? =
+    takeIf { profileAutoInit != null || profile != null || autoExcludeGit != null }
 
 private fun BackendsConfigOverride.takeIfAny(): BackendsConfigOverride? =
     takeIf { headless != null || idea != null }

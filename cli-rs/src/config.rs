@@ -13,6 +13,8 @@ pub struct KastConfig {
     pub server: ServerConfig,
     #[serde(skip_serializing_if = "RuntimeConfig::is_default")]
     pub runtime: RuntimeConfig,
+    #[serde(skip_serializing_if = "ProjectOpenConfig::is_default")]
+    pub project_open: ProjectOpenConfig,
     pub indexing: IndexingConfig,
     pub cache: CacheConfig,
     pub watcher: WatcherConfig,
@@ -103,6 +105,46 @@ impl Default for IdeaLaunchConfig {
             command: PathBuf::from("idea"),
             wait_timeout_millis: NonZeroU64::new(90_000).expect("default IDEA launch timeout"),
             require_installed_plugin: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectOpenConfig {
+    pub profile_auto_init: bool,
+    pub profile: ProjectOpenProfile,
+    pub auto_exclude_git: bool,
+}
+
+impl ProjectOpenConfig {
+    fn is_default(&self) -> bool {
+        !self.profile_auto_init
+            && self.profile == ProjectOpenProfile::CopilotLsp
+            && self.auto_exclude_git
+    }
+}
+
+impl Default for ProjectOpenConfig {
+    fn default() -> Self {
+        Self {
+            profile_auto_init: false,
+            profile: ProjectOpenProfile::CopilotLsp,
+            auto_exclude_git: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProjectOpenProfile {
+    CopilotLsp,
+}
+
+impl ProjectOpenProfile {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::CopilotLsp => "copilot-lsp",
         }
     }
 }
@@ -209,6 +251,7 @@ pub struct CliConfig {
 struct PartialConfig {
     server: Option<PartialServer>,
     runtime: Option<PartialRuntime>,
+    project_open: Option<PartialProjectOpen>,
     indexing: Option<PartialIndexing>,
     cache: Option<PartialCache>,
     watcher: Option<PartialWatcher>,
@@ -242,6 +285,14 @@ struct PartialIdeaLaunch {
     command: Option<PathBuf>,
     wait_timeout_millis: Option<NonZeroU64>,
     require_installed_plugin: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialProjectOpen {
+    profile_auto_init: Option<bool>,
+    profile: Option<ProjectOpenProfile>,
+    auto_exclude_git: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -357,6 +408,7 @@ impl KastConfig {
                 max_concurrent_requests: 4,
             },
             runtime: RuntimeConfig::default(),
+            project_open: ProjectOpenConfig::default(),
             indexing: IndexingConfig {
                 phase2_enabled: true,
                 phase2_batch_size: 50,
@@ -505,6 +557,17 @@ impl KastConfig {
                 if let Some(value) = idea_launch.require_installed_plugin {
                     self.runtime.idea_launch.require_installed_plugin = value;
                 }
+            }
+        }
+        if let Some(project_open) = partial.project_open {
+            if let Some(value) = project_open.profile_auto_init {
+                self.project_open.profile_auto_init = value;
+            }
+            if let Some(value) = project_open.profile {
+                self.project_open.profile = value;
+            }
+            if let Some(value) = project_open.auto_exclude_git {
+                self.project_open.auto_exclude_git = value;
             }
         }
         if let Some(indexing) = partial.indexing {
@@ -1115,6 +1178,37 @@ requireInstalledPlugin = false
     }
 
     #[test]
+    fn project_open_defaults_to_disabled_copilot_profile_with_git_excludes() {
+        let config = KastConfig::defaults();
+
+        assert!(!config.project_open.profile_auto_init);
+        assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
+        assert!(config.project_open.auto_exclude_git);
+    }
+
+    #[test]
+    fn parses_project_open_auto_init_policy() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[projectOpen]
+profileAutoInit = true
+profile = "copilot-lsp"
+autoExcludeGit = false
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert!(config.project_open.profile_auto_init);
+        assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
+        assert!(!config.project_open.auto_exclude_git);
+    }
+
+    #[test]
     fn rejects_invalid_runtime_default_backend() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
@@ -1131,5 +1225,24 @@ defaultBackend = "sidecar"
         assert_eq!(error.code, "CONFIG_ERROR");
         assert!(error.message.contains("sidecar"), "{}", error.message);
         assert!(error.message.contains("headless"), "{}", error.message);
+    }
+
+    #[test]
+    fn rejects_invalid_project_open_profile() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[projectOpen]
+profile = "unknown"
+"#,
+        )
+        .unwrap();
+
+        let error = read_partial_config(&config_file).unwrap_err();
+
+        assert_eq!(error.code, "CONFIG_ERROR");
+        assert!(error.message.contains("unknown"), "{}", error.message);
+        assert!(error.message.contains("copilot-lsp"), "{}", error.message);
     }
 }

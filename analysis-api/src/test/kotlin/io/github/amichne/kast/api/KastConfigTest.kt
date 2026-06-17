@@ -75,6 +75,18 @@ class KastConfigTest {
     }
 
     @Test
+    fun `defaults expose project open field defaults`() {
+        val config = KastConfig.defaults()
+
+        assertEquals("projectOpen", config.projectOpen.profileAutoInit.section)
+        assertEquals("profileAutoInit", config.projectOpen.profileAutoInit.key)
+        assertEquals(ConfigurationDefault(false), config.projectOpen.profileAutoInit.default)
+        assertEquals(false, config.projectOpen.profileAutoInit.value)
+        assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals(true, config.projectOpen.autoExcludeGit.value)
+    }
+
+    @Test
     fun `defaults expose path and cli field defaults`() {
         val config = KastConfig.defaults()
         val installRoot = Path.of(System.getProperty("user.home")).resolve(".kast")
@@ -153,6 +165,9 @@ class KastConfigTest {
             "runtime.ideaLaunch" to "command",
             "runtime.ideaLaunch" to "waitTimeoutMillis",
             "runtime.ideaLaunch" to "requireInstalledPlugin",
+            "projectOpen" to "profileAutoInit",
+            "projectOpen" to "profile",
+            "projectOpen" to "autoExcludeGit",
             "backends.headless" to "enabled",
             "backends.headless" to "runtimeLibsDir",
             "backends.headless" to "ideaHome",
@@ -285,6 +300,11 @@ class KastConfigTest {
                 wait-timeout-millis = 12345
                 require-installed-plugin = false
 
+                [project-open]
+                profile-auto-init = true
+                profile = "copilot-lsp"
+                auto-exclude-git = false
+
                 [cache]
                 enabled = false
 
@@ -310,6 +330,9 @@ class KastConfigTest {
         assertEquals("/Applications/IntelliJ IDEA.app/Contents/MacOS/idea", config.runtime.ideaLaunch.command.value)
         assertEquals(12_345L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
         assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
+        assertEquals(true, config.projectOpen.profileAutoInit.value)
+        assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals(45_000L, config.server.requestTimeoutMillis.value)
         assertEquals(
             KastConfig.defaults().server.maxConcurrentRequests.value,
@@ -447,6 +470,11 @@ class KastConfigTest {
                       "requireInstalledPlugin": false
                     }
                   },
+                  "projectOpen": {
+                    "profileAutoInit": true,
+                    "profile": "copilot-lsp",
+                    "autoExcludeGit": false
+                  },
                   "backends": {
                     "headless": {
                       "enabled": true,
@@ -513,6 +541,9 @@ class KastConfigTest {
         assertEquals("/usr/local/bin/idea", config.runtime.ideaLaunch.command.value)
         assertEquals(45_678L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
         assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
+        assertEquals(true, config.projectOpen.profileAutoInit.value)
+        assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals("/opt/kast/runtime-libs", config.backends.headless.runtimeLibsDir.value.orNull)
         assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)
         assertEquals(false, config.backends.idea.enabled.value)
@@ -539,6 +570,11 @@ class KastConfigTest {
                 command = "$installRoot/bin/idea"
                 waitTimeoutMillis = 67890
                 requireInstalledPlugin = false
+
+                [projectOpen]
+                profileAutoInit = true
+                profile = "copilot-lsp"
+                autoExcludeGit = false
 
                 [indexing]
                 phase2PriorityDepth = 3
@@ -573,6 +609,9 @@ class KastConfigTest {
         val decodedIdeaLaunchCommand: Any? = loaded.runtime?.ideaLaunch?.command
         val decodedIdeaLaunchWaitTimeoutMillis: Any? = loaded.runtime?.ideaLaunch?.waitTimeoutMillis
         val decodedIdeaLaunchRequireInstalledPlugin: Any? = loaded.runtime?.ideaLaunch?.requireInstalledPlugin
+        val decodedProjectOpenProfileAutoInit: Any? = loaded.projectOpen?.profileAutoInit
+        val decodedProjectOpenProfile: Any? = loaded.projectOpen?.profile
+        val decodedProjectOpenAutoExcludeGit: Any? = loaded.projectOpen?.autoExcludeGit
         val decodedPriorityDepth: Any? = loaded.indexing?.phase2PriorityDepth
         val decodedInstallRoot: Any? = loaded.paths?.installRoot
         val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
@@ -592,6 +631,9 @@ class KastConfigTest {
         assertEquals(IdeaLaunchCommand("$installRoot/bin/idea"), decodedIdeaLaunchCommand)
         assertEquals(IdeaLaunchWaitTimeoutMillis(67_890L), decodedIdeaLaunchWaitTimeoutMillis)
         assertEquals(IdeaLaunchRequireInstalledPlugin(false), decodedIdeaLaunchRequireInstalledPlugin)
+        assertEquals(ProjectOpenProfileAutoInit(true), decodedProjectOpenProfileAutoInit)
+        assertEquals(ProjectOpenProfile("copilot-lsp"), decodedProjectOpenProfile)
+        assertEquals(ProjectOpenAutoExcludeGit(false), decodedProjectOpenAutoExcludeGit)
 
         assertTrue(
             decodedPriorityDepth is IndexingPhase2PriorityDepth,
