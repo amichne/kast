@@ -52,19 +52,24 @@ object KastIdeaBackendRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
     ): RunningKastIdeaBackend {
+        val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
-        val backend = KastPluginBackend(
-            project = project,
-            workspaceRoot = workspaceRoot,
-            limits = limits,
-            telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
-            backendName = backendName,
+        val backend = ObservedAnalysisBackend(
+            delegate = KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits,
+                telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
+                backendName = backendName,
+            ),
+            diagnostics = diagnostics,
         )
         val server = AnalysisServer(
             backend = backend,
             config = ideaAnalysisServerConfig(transport, limits, config),
         ).start()
-        val projectIndexing = KastIdeaProjectIndexing(project, workspaceRoot, config).also { it.start() }
+        diagnostics.recordBackendStarted(transport)
+        val projectIndexing = KastIdeaProjectIndexing(project, workspaceRoot, config, diagnostics).also { it.start() }
         return RunningKastIdeaBackend(
             backend = backend,
             server = server,
@@ -77,6 +82,7 @@ internal class KastIdeaProjectIndexing(
     private val project: Project,
     private val workspaceRoot: Path,
     private val config: KastConfig,
+    private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
 ) {
     private val cancelled = AtomicBoolean(false)
 
@@ -89,6 +95,7 @@ internal class KastIdeaProjectIndexing(
     fun start() {
         if (indexingThread != null) return
         cancelled.set(false)
+        diagnostics.recordIndexWaitingForIde()
         DumbService.getInstance(project).runWhenSmart {
             if (cancelled.get() || project.isDisposed) return@runWhenSmart
             indexingThread = thread(
@@ -97,6 +104,7 @@ internal class KastIdeaProjectIndexing(
                 name = "kast-idea-project-indexer",
             ) {
                 runCatching {
+                    diagnostics.recordIndexHydrating()
                     runCatching {
                         SourceIndexHydrator().hydrate(workspaceRoot, config.indexing.remote)
                     }.onFailure { error ->
@@ -104,18 +112,22 @@ internal class KastIdeaProjectIndexing(
                     }
                     val store = SqliteSourceIndexStore(workspaceRoot)
                     indexStore = store
+                    diagnostics.recordIndexingStarted()
                     IdeaProjectIndexer(
                         project = project,
                         workspaceRoot = workspaceRoot,
                         store = store,
                         cancelled = { cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
                     ).indexProject(config)
-                }.onSuccess {
+                    store.loadKastSourceIndexSummary()
+                }.onSuccess { summary ->
                     if (!cancelled.get()) {
+                        diagnostics.recordIndexCompleted(summary)
                         LOG.info("Kast IDEA project index completed")
                     }
                 }.onFailure { error ->
                     if (!cancelled.get()) {
+                        diagnostics.recordIndexFailed(error)
                         LOG.warn("Kast IDEA project index failed", error)
                     }
                 }
@@ -124,6 +136,7 @@ internal class KastIdeaProjectIndexing(
     }
 
     fun cancel() {
+        val wasRunning = indexingThread != null
         cancelled.set(true)
         indexingThread?.interrupt()
         if (!ApplicationManager.getApplication().isDispatchThread) {
@@ -135,9 +148,17 @@ internal class KastIdeaProjectIndexing(
                 .onFailure { LOG.warn("Error closing kast project index store", it) }
         }
         indexStore = null
+        if (wasRunning) {
+            diagnostics.recordIndexCancelled()
+        }
     }
 
     companion object {
         private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)
     }
+}
+
+private fun SqliteSourceIndexStore.loadKastSourceIndexSummary(): KastSourceIndexSummary {
+    loadSourceIndexSnapshot()
+    return KastSourceIndexSummary(state = KastIndexState.READY)
 }

@@ -26,7 +26,7 @@ internal class KastPluginService(
     fun startServer() {
         if (runningBackend != null) return
         val workspaceRoot = workspaceRoot() ?: return
-        startServer(workspaceRoot, loadIdeaKastConfig(workspaceRoot))
+        startServer(workspaceRoot, loadConfig(workspaceRoot))
     }
 
     override fun dispose() {
@@ -35,12 +35,12 @@ internal class KastPluginService(
 
     fun restartServer() {
         val workspaceRoot = workspaceRoot() ?: return
-        restartServer(workspaceRoot, loadIdeaKastConfig(workspaceRoot))
+        restartServer(workspaceRoot, loadConfig(workspaceRoot))
     }
 
     fun reloadConfig(): KastConfigReloadDecision {
         val workspaceRoot = workspaceRoot() ?: return KastConfigReloadDecision.UNCHANGED
-        val nextConfig = loadIdeaKastConfig(workspaceRoot)
+        val nextConfig = loadConfig(workspaceRoot)
         return when (configReloadDecision(runningConfig, nextConfig)) {
             KastConfigReloadDecision.UNCHANGED -> KastConfigReloadDecision.UNCHANGED
             KastConfigReloadDecision.RESTART_BACKEND -> {
@@ -57,17 +57,26 @@ internal class KastPluginService(
 
     private fun startServer(workspaceRoot: Path, config: KastConfig) {
         LOG.info("Starting kast idea backend for workspace: $workspaceRoot")
+        val diagnostics = KastDiagnosticsService.getInstance(project)
+        diagnostics.recordBackendStarting(workspaceRoot)
 
         val socketPath = defaultSocketPath(workspaceRoot)
-        runningBackend = KastIdeaBackendRuntime.start(
-            project = project,
-            workspaceRoot = workspaceRoot,
-            socketPath = socketPath,
-            config = config,
-        )
-        runningConfig = config
+        runCatching {
+            KastIdeaBackendRuntime.start(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                socketPath = socketPath,
+                config = config,
+            )
+        }.onSuccess { backend ->
+            runningBackend = backend
+            runningConfig = config
 
-        LOG.info("Kast idea backend started on socket: $socketPath")
+            LOG.info("Kast idea backend started on socket: $socketPath")
+        }.onFailure { error ->
+            diagnostics.recordBackendFailed(error)
+            throw error
+        }
     }
 
     private fun stopServer() {
@@ -76,9 +85,18 @@ internal class KastPluginService(
             runCatching { backend.close() }
                 .onFailure { LOG.warn("Error closing kast server", it) }
             runningBackend = null
+            KastDiagnosticsService.getInstance(project).recordBackendStopped()
         }
         runningConfig = null
     }
+
+    private fun loadConfig(workspaceRoot: Path): KastConfig = loadIdeaKastConfig(
+        workspaceRoot = workspaceRoot,
+        reportFailure = { path, error ->
+            LOG.warn("Failed to load Kast config for workspace $path; starting IDEA backend with defaults.", error)
+            KastDiagnosticsService.getInstance(project).recordConfigFallback(path, error)
+        },
+    )
 
     private fun workspaceRoot(): Path? = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
 

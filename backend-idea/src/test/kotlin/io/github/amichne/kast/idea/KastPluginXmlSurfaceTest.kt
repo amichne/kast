@@ -12,6 +12,11 @@ class KastPluginXmlSurfaceTest {
         val pluginXml = Files.readString(Path.of("src/main/resources/META-INF/plugin.xml"))
 
         assertTrue(pluginXml.contains("KastSettingsConfigurable"))
+        assertTrue(pluginXml.contains("KastDiagnosticsService"))
+        assertTrue(pluginXml.contains("KastStatusBarWidgetFactory"))
+        assertTrue(pluginXml.contains("KastToolWindowFactory"))
+        assertTrue(pluginXml.contains("""<toolWindow id="Kast""""))
+        assertTrue(pluginXml.contains("""<notificationGroup id="Kast Activity" displayType="TOOL_WINDOW""""))
         assertFalse(pluginXml.contains("InstallSkillAction"))
         assertFalse(pluginXml.contains("InstallCopilotExtensionAction"))
         assertFalse(pluginXml.contains("UninstallCopilotExtensionAction"))
