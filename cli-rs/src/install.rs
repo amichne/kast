@@ -2,11 +2,12 @@ use crate::SCHEMA_VERSION;
 use crate::backend::{self, BackendResult};
 use crate::cli;
 use crate::cli::{
-    AffectedInstallArgs, BackendComponent, BackendInstallArgs, HeadlessInstallArgs,
-    IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs, SetupArgs,
-    ShellInstallArgs, ShellKind,
+    AffectedInstallArgs, BackendComponent, BackendInstallArgs, CopilotInstallArgs,
+    HeadlessInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs,
+    SetupArgs, ShellInstallArgs, ShellKind,
 };
 use crate::config;
+use crate::config::ProjectOpenProfile;
 use crate::error::{CliError, Result};
 use crate::self_mgmt;
 use include_dir::{Dir, DirEntry, include_dir};
@@ -15,8 +16,11 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
+use std::io::{self, IsTerminal, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command as ProcessCommand, Output};
+use std::process::{Command as ProcessCommand, Output, Stdio};
+use std::thread;
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
@@ -28,6 +32,167 @@ const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
 const COPILOT_PRIMITIVE_MANIFEST: &str = "primitive-manifest.json";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
+const COPILOT_GIT_EXCLUDE_BLOCK_START: &str = "# >>> kast copilot package >>>";
+const COPILOT_GIT_EXCLUDE_BLOCK_END: &str = "# <<< kast copilot package <<<";
+
+pub trait InstallReporter {
+    fn prompt_project_open_auto_init(
+        &mut self,
+        current: &config::ProjectOpenConfig,
+    ) -> Result<Option<bool>>;
+    fn idea_plugin_plan(&mut self, _plan: &IdeaPluginDownloadPlan) -> Result<()> {
+        Ok(())
+    }
+    fn idea_plugin_download_progress(&mut self, _downloaded_bytes: u64) -> Result<()> {
+        Ok(())
+    }
+    fn idea_plugin_download_finished(&mut self, _downloaded_bytes: u64) -> Result<()> {
+        Ok(())
+    }
+}
+
+pub struct NoopInstallReporter;
+
+impl InstallReporter for NoopInstallReporter {
+    fn prompt_project_open_auto_init(
+        &mut self,
+        _current: &config::ProjectOpenConfig,
+    ) -> Result<Option<bool>> {
+        Ok(None)
+    }
+}
+
+pub struct HumanInstallReporter {
+    interactive: bool,
+    last_downloaded_bytes: Option<u64>,
+    download_frame: usize,
+}
+
+impl HumanInstallReporter {
+    pub fn new() -> Self {
+        Self {
+            interactive: io::stdin().is_terminal() && io::stderr().is_terminal(),
+            last_downloaded_bytes: None,
+            download_frame: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IdeaPluginDownloadPlan {
+    pub cask_token: String,
+    pub plugin_version: String,
+    pub download_cache: PathBuf,
+    pub plugin_directories: Vec<PathBuf>,
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KIB: u64 = 1024;
+    const MIB: u64 = KIB * 1024;
+    if bytes >= MIB {
+        format!("{:.1} MiB", bytes as f64 / MIB as f64)
+    } else if bytes >= KIB {
+        format!("{:.1} KiB", bytes as f64 / KIB as f64)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
+fn indeterminate_progress_bar(frame: usize) -> String {
+    const WIDTH: usize = 16;
+    const SEGMENT: usize = 5;
+    let max_start = WIDTH.saturating_sub(SEGMENT);
+    let start = frame % (max_start + 1);
+    let mut bar = String::with_capacity(WIDTH + 2);
+    bar.push('[');
+    for index in 0..WIDTH {
+        bar.push(if index >= start && index < start + SEGMENT {
+            '#'
+        } else {
+            ' '
+        });
+    }
+    bar.push(']');
+    bar
+}
+
+impl InstallReporter for HumanInstallReporter {
+    fn prompt_project_open_auto_init(
+        &mut self,
+        current: &config::ProjectOpenConfig,
+    ) -> Result<Option<bool>> {
+        if !self.interactive {
+            return Ok(None);
+        }
+        eprintln!();
+        eprintln!("## Project-open Copilot/LSP profile");
+        eprintln!(
+            "Enable automatic `{}` install for Gradle projects opened in IDEA? [{}]",
+            current.profile.canonical(),
+            if current.profile_auto_init {
+                "Y/n"
+            } else {
+                "y/N"
+            }
+        );
+        eprint!("> ");
+        io::stderr().flush()?;
+        let mut answer = String::new();
+        io::stdin().read_line(&mut answer)?;
+        let answer = answer.trim().to_ascii_lowercase();
+        if answer.is_empty() {
+            return Ok(None);
+        }
+        match answer.as_str() {
+            "y" | "yes" => Ok(Some(true)),
+            "n" | "no" => Ok(Some(false)),
+            _ => {
+                eprintln!("Keeping current setting; expected yes or no.");
+                Ok(None)
+            }
+        }
+    }
+
+    fn idea_plugin_plan(&mut self, plan: &IdeaPluginDownloadPlan) -> Result<()> {
+        eprintln!();
+        eprintln!("## Installing Kast IDEA plugin");
+        eprintln!("- Cask token: `{}`", plan.cask_token);
+        eprintln!("- Plugin version: `{}`", plan.plugin_version);
+        eprintln!("- Download cache: `{}`", plan.download_cache.display());
+        if !plan.plugin_directories.is_empty() {
+            eprintln!("- JetBrains profile destinations:");
+            for directory in &plan.plugin_directories {
+                eprintln!("  - `{}`", directory.display());
+            }
+        }
+        Ok(())
+    }
+
+    fn idea_plugin_download_progress(&mut self, downloaded_bytes: u64) -> Result<()> {
+        self.last_downloaded_bytes = Some(downloaded_bytes);
+        let bar = indeterminate_progress_bar(self.download_frame);
+        self.download_frame = self.download_frame.wrapping_add(1);
+        eprint!(
+            "\r[download] {} pending Homebrew cask fetch: {}",
+            bar,
+            format_bytes(downloaded_bytes)
+        );
+        io::stderr().flush()?;
+        Ok(())
+    }
+
+    fn idea_plugin_download_finished(&mut self, downloaded_bytes: u64) -> Result<()> {
+        if self.last_downloaded_bytes.is_some() {
+            eprintln!(
+                "\r[download] [################] Homebrew cask fetch complete: {}",
+                format_bytes(downloaded_bytes)
+            );
+        }
+        self.last_downloaded_bytes = None;
+        self.download_frame = 0;
+        Ok(())
+    }
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,8 +209,21 @@ pub struct InstallCopilotExtensionResult {
     pub installed_at: String,
     pub version: String,
     pub skipped: bool,
+    pub git_exclude: GitExcludeResult,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitExcludeResult {
+    pub attempted: bool,
+    pub updated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
     pub schema_version: u32,
 }
 
@@ -53,6 +231,9 @@ pub struct InstallCopilotExtensionResult {
 #[serde(rename_all = "camelCase")]
 pub struct InstallIdeaPluginResult {
     pub cask_token: String,
+    pub plugin_version: String,
+    pub download_cache: String,
+    pub downloaded_bytes: u64,
     pub brew_action: String,
     pub brew_command: Vec<String>,
     pub brew_prefix: String,
@@ -121,8 +302,22 @@ pub struct SetupResult {
     pub copilot: Option<InstallCopilotExtensionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idea_plugin: Option<InstallIdeaPluginResult>,
+    pub project_open: ProjectOpenSetupResult,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectOpenSetupResult {
+    pub profile_auto_init: bool,
+    pub profile: String,
+    pub auto_exclude_git: bool,
+    pub prompted: bool,
+    pub updated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_path: Option<String>,
     pub schema_version: u32,
 }
 
@@ -147,7 +342,7 @@ pub struct ArchiveInstallResult {
     pub schema_version: u32,
 }
 
-pub fn install(args: InstallArgs) -> Result<InstallResult> {
+pub fn install(args: InstallArgs, reporter: &mut dyn InstallReporter) -> Result<InstallResult> {
     match args.command {
         Some(InstallCommand::Headless(headless_args)) => {
             install_headless(headless_args).map(InstallResult::Headless)
@@ -162,7 +357,7 @@ pub fn install(args: InstallArgs) -> Result<InstallResult> {
             install_copilot_extension(resource_args).map(InstallResult::Copilot)
         }
         Some(InstallCommand::Plugin(resource_args)) => {
-            install_idea_plugin(resource_args).map(InstallResult::IdeaPlugin)
+            install_idea_plugin(resource_args, reporter).map(InstallResult::IdeaPlugin)
         }
         Some(InstallCommand::Shell(shell_args)) => {
             install_shell(shell_args).map(InstallResult::Shell)
@@ -175,7 +370,7 @@ pub fn install(args: InstallArgs) -> Result<InstallResult> {
     }
 }
 
-pub fn setup(args: SetupArgs) -> Result<SetupResult> {
+pub fn setup(args: SetupArgs, reporter: &mut dyn InstallReporter) -> Result<SetupResult> {
     let repair = if args.skip_repair {
         None
     } else {
@@ -184,6 +379,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
             jetbrains_config_root: args.jetbrains_config_root.clone(),
         })?)
     };
+    let project_open = configure_project_open_policy(&args, reporter)?;
     let headless_present = if args.skip_headless {
         false
     } else {
@@ -239,10 +435,10 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
         None
     };
     let copilot = if args.include_copilot && !args.skip_copilot {
-        Some(install_copilot_extension(ResourceInstallArgs {
+        Some(install_copilot_extension(CopilotInstallArgs {
             target_dir: args.copilot_target_dir,
-            name: None,
             force: args.force,
+            no_auto_exclude_git: args.no_auto_exclude_git,
         })?)
     } else {
         None
@@ -250,13 +446,16 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     let link_jetbrains_profiles = args.link_jetbrains_profiles
         || setup_detected_jetbrains_profiles(&args.jetbrains_config_root)?;
     let idea_plugin = if link_jetbrains_profiles && !args.skip_plugin {
-        Some(install_idea_plugin(IdeaPluginInstallArgs {
-            jetbrains_config_root: args.jetbrains_config_root,
-            link_jetbrains_profiles: true,
-            cask_token: None,
-            force: args.force,
-            dry_run: false,
-        })?)
+        Some(install_idea_plugin(
+            IdeaPluginInstallArgs {
+                jetbrains_config_root: args.jetbrains_config_root,
+                link_jetbrains_profiles: true,
+                cask_token: None,
+                force: args.force,
+                dry_run: false,
+            },
+            reporter,
+        )?)
     } else {
         None
     };
@@ -267,6 +466,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
         skill,
         copilot,
         idea_plugin,
+        project_open,
         warnings: vec![],
         schema_version: SCHEMA_VERSION,
     })
@@ -301,6 +501,96 @@ fn setup_headless_present() -> Result<bool> {
         .headless
         .runtime_libs_dir
         .is_some_and(|runtime_libs_dir| runtime_libs_dir.join("classpath.txt").is_file()))
+}
+
+fn configure_project_open_policy(
+    args: &SetupArgs,
+    reporter: &mut dyn InstallReporter,
+) -> Result<ProjectOpenSetupResult> {
+    if args.project_open_profile_auto_init && args.no_project_open_profile_auto_init {
+        return Err(CliError::new(
+            "CLI_USAGE",
+            "Pass only one of --project-open-profile-auto-init or --no-project-open-profile-auto-init.",
+        ));
+    }
+    let mut policy = config::KastConfig::load_global()?.project_open;
+    let mut prompted = false;
+    let mut changed = false;
+
+    if let Some(profile) = args.project_open_profile {
+        let next = match profile {
+            crate::cli::ProjectOpenProfileArg::CopilotLsp => ProjectOpenProfile::CopilotLsp,
+        };
+        if policy.profile != next {
+            policy.profile = next;
+            changed = true;
+        }
+    }
+    if args.no_auto_exclude_git && policy.auto_exclude_git {
+        policy.auto_exclude_git = false;
+        changed = true;
+    }
+    if args.project_open_profile_auto_init && !policy.profile_auto_init {
+        policy.profile_auto_init = true;
+        changed = true;
+    }
+    if args.no_project_open_profile_auto_init && policy.profile_auto_init {
+        policy.profile_auto_init = false;
+        changed = true;
+    }
+    if !args.project_open_profile_auto_init
+        && !args.no_project_open_profile_auto_init
+        && let Some(answer) = reporter.prompt_project_open_auto_init(&policy)?
+    {
+        prompted = true;
+        if policy.profile_auto_init != answer {
+            policy.profile_auto_init = answer;
+            changed = true;
+        }
+    }
+
+    let config_path = if changed {
+        Some(write_project_open_policy(&policy)?.display().to_string())
+    } else {
+        None
+    };
+
+    Ok(ProjectOpenSetupResult {
+        profile_auto_init: policy.profile_auto_init,
+        profile: policy.profile.canonical().to_string(),
+        auto_exclude_git: policy.auto_exclude_git,
+        prompted,
+        updated: changed,
+        config_path,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn write_project_open_policy(policy: &config::ProjectOpenConfig) -> Result<PathBuf> {
+    self_mgmt::update_global_config(|document| {
+        let project_open = document
+            .entry("projectOpen".to_string())
+            .or_insert_with(|| toml::Value::Table(toml::Table::new()));
+        let toml::Value::Table(project_open) = project_open else {
+            return Err(CliError::new(
+                "CONFIG_ERROR",
+                "Global config key `projectOpen` must be a table.",
+            ));
+        };
+        project_open.insert(
+            "profileAutoInit".to_string(),
+            toml::Value::Boolean(policy.profile_auto_init),
+        );
+        project_open.insert(
+            "profile".to_string(),
+            toml::Value::String(policy.profile.canonical().to_string()),
+        );
+        project_open.insert(
+            "autoExcludeGit".to_string(),
+            toml::Value::Boolean(policy.auto_exclude_git),
+        );
+        Ok(())
+    })
 }
 
 #[derive(Clone, Copy)]
@@ -753,10 +1043,10 @@ fn repair_affected_copilot_repos(
             )),
         );
         if args.apply {
-            install_copilot_extension(ResourceInstallArgs {
+            install_copilot_extension(CopilotInstallArgs {
                 target_dir: Some(github_dir),
-                name: None,
                 force: true,
+                no_auto_exclude_git: false,
             })?;
         }
     }
@@ -1179,7 +1469,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
 }
 
 pub fn install_copilot_extension(
-    args: ResourceInstallArgs,
+    args: CopilotInstallArgs,
 ) -> Result<InstallCopilotExtensionResult> {
     let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
         config::normalize(
@@ -1190,16 +1480,21 @@ pub fn install_copilot_extension(
     });
     let skipped = install_copilot_package(&target, args.force)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
+    let git_exclude = update_copilot_git_exclude(&target, args.no_auto_exclude_git)?;
     Ok(InstallCopilotExtensionResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
+        git_exclude,
         warnings: vec![],
         schema_version: SCHEMA_VERSION,
     })
 }
 
-pub fn install_idea_plugin(args: IdeaPluginInstallArgs) -> Result<InstallIdeaPluginResult> {
+pub fn install_idea_plugin(
+    args: IdeaPluginInstallArgs,
+    reporter: &mut dyn InstallReporter,
+) -> Result<InstallIdeaPluginResult> {
     let homebrew = discover_homebrew_context()?;
     verify_homebrew_cli(&homebrew)?;
     repair_global_config_for_running_cli(!args.dry_run)?;
@@ -1219,7 +1514,7 @@ pub fn install_idea_plugin(args: IdeaPluginInstallArgs) -> Result<InstallIdeaPlu
         .clone()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| format!("{formula_tap}/{KAST_PLUGIN_CASK_NAME}"));
-    install_idea_plugin_into_jetbrains_profiles(args, homebrew, cask_token, warnings)
+    install_idea_plugin_into_jetbrains_profiles(args, homebrew, cask_token, warnings, reporter)
 }
 
 pub fn install_shell(args: ShellInstallArgs) -> Result<InstallShellResult> {
@@ -1381,10 +1676,19 @@ fn patch_shell_profile(profile: &Path, source_line: &str, dry_run: bool) -> Resu
 }
 
 fn replace_managed_block(original: &str, block: &str) -> String {
-    if let Some(start) = original.find(SHELL_BLOCK_START)
-        && let Some(end_offset) = original[start..].find(SHELL_BLOCK_END)
+    replace_managed_block_with_markers(original, block, SHELL_BLOCK_START, SHELL_BLOCK_END)
+}
+
+fn replace_managed_block_with_markers(
+    original: &str,
+    block: &str,
+    start_marker: &str,
+    end_marker: &str,
+) -> String {
+    if let Some(start) = original.find(start_marker)
+        && let Some(end_offset) = original[start..].find(end_marker)
     {
-        let end = start + end_offset + SHELL_BLOCK_END.len();
+        let end = start + end_offset + end_marker.len();
         let mut updated = String::new();
         updated.push_str(&original[..start]);
         updated.push_str(block);
@@ -1415,6 +1719,7 @@ fn install_idea_plugin_into_jetbrains_profiles(
     homebrew: HomebrewContext,
     cask_token: String,
     mut warnings: Vec<String>,
+    reporter: &mut dyn InstallReporter,
 ) -> Result<InstallIdeaPluginResult> {
     let jetbrains_config_root = args
         .jetbrains_config_root
@@ -1451,6 +1756,18 @@ fn install_idea_plugin_into_jetbrains_profiles(
     if args.force {
         brew_args.insert(2, "--force".to_string());
     }
+    let download_plan = homebrew_cask_download_plan(&cask_token, &plugin_directories)?;
+    reporter.idea_plugin_plan(&download_plan)?;
+    let downloaded_bytes = if args.dry_run {
+        file_size(&download_plan.download_cache).unwrap_or(0)
+    } else {
+        prefetch_homebrew_cask(
+            &download_plan.cask_token,
+            args.force,
+            &download_plan.download_cache,
+            reporter,
+        )?
+    };
     if !args.dry_run {
         let output = run_brew_with_jetbrains_root(&brew_args, &jetbrains_config_root)?;
         if !output.status.success() {
@@ -1471,6 +1788,9 @@ fn install_idea_plugin_into_jetbrains_profiles(
 
     Ok(InstallIdeaPluginResult {
         cask_token,
+        plugin_version: download_plan.plugin_version,
+        download_cache: download_plan.download_cache.display().to_string(),
+        downloaded_bytes,
         brew_action: brew_action.to_string(),
         brew_command: std::iter::once("brew".to_string())
             .chain(brew_args)
@@ -1631,6 +1951,111 @@ fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
     }
     fs::write(marker, format!("{}\n", cli::version()))?;
     Ok(false)
+}
+
+fn update_copilot_git_exclude(github_dir: &Path, disabled: bool) -> Result<GitExcludeResult> {
+    if disabled {
+        return Ok(GitExcludeResult {
+            attempted: false,
+            updated: false,
+            exclude_file: None,
+            reason: Some("disabled".to_string()),
+            schema_version: SCHEMA_VERSION,
+        });
+    }
+    let repo_root = github_dir.parent().unwrap_or(github_dir);
+    let Some(exclude_file) = git_info_exclude_path(repo_root) else {
+        return Ok(GitExcludeResult {
+            attempted: false,
+            updated: false,
+            exclude_file: None,
+            reason: Some("not a git repository".to_string()),
+            schema_version: SCHEMA_VERSION,
+        });
+    };
+    let entries = copilot_git_exclude_entries(repo_root, github_dir)?;
+    let block = format!(
+        "{COPILOT_GIT_EXCLUDE_BLOCK_START}\n{}\n{COPILOT_GIT_EXCLUDE_BLOCK_END}\n",
+        entries.join("\n")
+    );
+    let original = match fs::read_to_string(&exclude_file) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
+    let updated_content = replace_managed_block_with_markers(
+        &original,
+        &block,
+        COPILOT_GIT_EXCLUDE_BLOCK_START,
+        COPILOT_GIT_EXCLUDE_BLOCK_END,
+    );
+    let updated = updated_content != original;
+    if updated {
+        if let Some(parent) = exclude_file.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&exclude_file, updated_content)?;
+    }
+    Ok(GitExcludeResult {
+        attempted: true,
+        updated,
+        exclude_file: Some(exclude_file.display().to_string()),
+        reason: None,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn git_info_exclude_path(repo_root: &Path) -> Option<PathBuf> {
+    let output = ProcessCommand::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .args(["rev-parse", "--git-path", "info/exclude"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8(output.stdout).ok()?;
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(raw);
+    Some(if path.is_absolute() {
+        path
+    } else {
+        repo_root.join(path)
+    })
+}
+
+fn copilot_git_exclude_entries(repo_root: &Path, github_dir: &Path) -> Result<Vec<String>> {
+    let mut entries = copilot_package_outputs()?
+        .into_iter()
+        .map(|output| github_dir.join(output.target))
+        .chain(std::iter::once(github_dir.join(COPILOT_PACKAGE_MARKER)))
+        .map(|path| path_to_git_exclude_entry(repo_root, &path))
+        .collect::<Result<Vec<_>>>()?;
+    entries.sort();
+    entries.dedup();
+    Ok(entries)
+}
+
+fn path_to_git_exclude_entry(repo_root: &Path, path: &Path) -> Result<String> {
+    let relative = path.strip_prefix(repo_root).map_err(|_| {
+        CliError::new(
+            "INSTALL_TARGET_OUTSIDE_GIT_REPO",
+            format!(
+                "Managed Copilot package path {} is not under Git repository {}",
+                path.display(),
+                repo_root.display()
+            ),
+        )
+    })?;
+    Ok(relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/"))
 }
 
 struct CopilotPackageOutput {
@@ -1940,6 +2365,134 @@ fn parse_homebrew_formula_tap(json: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+fn homebrew_cask_download_plan(
+    cask_token: &str,
+    plugin_directories: &[PathBuf],
+) -> Result<IdeaPluginDownloadPlan> {
+    Ok(IdeaPluginDownloadPlan {
+        cask_token: cask_token.to_string(),
+        plugin_version: homebrew_cask_metadata(cask_token)?.plugin_version,
+        download_cache: homebrew_cask_cache_path(cask_token)?,
+        plugin_directories: plugin_directories.to_vec(),
+    })
+}
+
+struct HomebrewCaskMetadata {
+    plugin_version: String,
+}
+
+fn homebrew_cask_metadata(cask_token: &str) -> Result<HomebrewCaskMetadata> {
+    let args = ["info", "--json=v2", "--cask", cask_token];
+    let output = run_brew(&args)?;
+    if !output.status.success() {
+        return Err(command_error(
+            "HOMEBREW_CASK_METADATA_FAILED",
+            "Homebrew did not report metadata for the Kast IDEA plugin cask",
+            &args
+                .iter()
+                .map(|value| value.to_string())
+                .collect::<Vec<_>>(),
+            &output,
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_homebrew_cask_metadata(&stdout).ok_or_else(|| {
+        CliError::new(
+            "HOMEBREW_CASK_METADATA_FAILED",
+            "Homebrew cask metadata did not include a plugin version.",
+        )
+    })
+}
+
+fn parse_homebrew_cask_metadata(json: &str) -> Option<HomebrewCaskMetadata> {
+    let value: Value = serde_json::from_str(json).ok()?;
+    let version = value
+        .get("casks")?
+        .as_array()?
+        .first()?
+        .get("version")?
+        .as_str()?
+        .trim();
+    (!version.is_empty()).then(|| HomebrewCaskMetadata {
+        plugin_version: version.to_string(),
+    })
+}
+
+fn homebrew_cask_cache_path(cask_token: &str) -> Result<PathBuf> {
+    let args = ["--cache", "--cask", cask_token];
+    let output = run_brew(&args)?;
+    if !output.status.success() {
+        return Err(command_error(
+            "HOMEBREW_CASK_CACHE_FAILED",
+            "Homebrew did not report the Kast IDEA plugin cask cache path",
+            &args
+                .iter()
+                .map(|value| value.to_string())
+                .collect::<Vec<_>>(),
+            &output,
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let path = stdout.trim();
+    if path.is_empty() {
+        return Err(CliError::new(
+            "HOMEBREW_CASK_CACHE_FAILED",
+            "Homebrew returned an empty cask cache path.",
+        ));
+    }
+    Ok(PathBuf::from(path))
+}
+
+fn prefetch_homebrew_cask(
+    cask_token: &str,
+    force: bool,
+    download_cache: &Path,
+    reporter: &mut dyn InstallReporter,
+) -> Result<u64> {
+    let mut args = vec!["fetch".to_string(), "--cask".to_string()];
+    if force {
+        args.push("--force".to_string());
+    }
+    args.push(cask_token.to_string());
+
+    let mut child = ProcessCommand::new("brew")
+        .args(&args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| {
+            CliError::new(
+                "HOMEBREW_NOT_FOUND",
+                format!("Unable to run `brew`: {error}"),
+            )
+        })?;
+
+    loop {
+        if let Some(status) = child.try_wait()? {
+            let downloaded_bytes = file_size(download_cache).unwrap_or(0);
+            reporter.idea_plugin_download_progress(downloaded_bytes)?;
+            reporter.idea_plugin_download_finished(downloaded_bytes)?;
+            if !status.success() {
+                let mut error = CliError::new(
+                    "HOMEBREW_CASK_FETCH_FAILED",
+                    "Homebrew failed to fetch the Kast IDEA plugin cask.",
+                );
+                error
+                    .details
+                    .insert("command".to_string(), format!("brew {}", args.join(" ")));
+                return Err(error);
+            }
+            return Ok(downloaded_bytes);
+        }
+        reporter.idea_plugin_download_progress(file_size(download_cache).unwrap_or(0))?;
+        thread::sleep(Duration::from_millis(100));
+    }
+}
+
+fn file_size(path: &Path) -> Option<u64> {
+    fs::metadata(path).ok().map(|metadata| metadata.len())
+}
+
 fn homebrew_cask_installed(cask_name: &str) -> Result<bool> {
     let output = run_brew(&["list", "--cask", cask_name])?;
     Ok(output.status.success())
@@ -2171,6 +2724,30 @@ mod tests {
             parse_homebrew_formula_tap(json).as_deref(),
             Some("amichne/kast")
         );
+    }
+
+    #[test]
+    fn parses_homebrew_cask_metadata_version() {
+        let json = r#"{"formulae":[],"casks":[{"token":"kast-plugin","version":"9.8.7"}]}"#;
+
+        let metadata = parse_homebrew_cask_metadata(json).unwrap();
+
+        assert_eq!(metadata.plugin_version, "9.8.7");
+    }
+
+    #[test]
+    fn human_reporter_does_not_prompt_when_not_interactive() {
+        let mut reporter = HumanInstallReporter {
+            interactive: false,
+            last_downloaded_bytes: None,
+            download_frame: 0,
+        };
+
+        let answer = reporter
+            .prompt_project_open_auto_init(&config::ProjectOpenConfig::default())
+            .unwrap();
+
+        assert_eq!(answer, None);
     }
 
     #[test]

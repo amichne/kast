@@ -144,6 +144,15 @@ profile needs repair.
 
 ## Source checkout development
 
+When the target directory is inside a Git repository, `kast install copilot`
+adds an idempotent managed block to `.git/info/exclude` for the generated
+package files. Keep those generated files visible to Git with
+`--no-auto-exclude-git`:
+
+```console title="Install without updating .git/info/exclude"
+kast install copilot --no-auto-exclude-git
+```
+
 From this source checkout, the development script installs the same
 `cli-rs/resources/plugin/` Copilot package into another repository root. This
 is for validating unreleased package changes, not for ordinary users.

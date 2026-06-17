@@ -156,7 +156,8 @@ fn run(cli: Cli) -> Result<i32> {
         Command::Demo(args) => demo::run(args),
         Command::Metrics { command } => metrics::run(command, output_format),
         Command::Setup(args) => {
-            let result = install::setup(args)?;
+            let mut reporter = install_reporter(output_format);
+            let result = install::setup(args, reporter.as_mut())?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
             } else {
@@ -174,7 +175,8 @@ fn run(cli: Cli) -> Result<i32> {
             Ok(0)
         }
         Command::Install(args) => {
-            let result = install::install(args)?;
+            let mut reporter = install_reporter(output_format);
+            let result = install::install(args, reporter.as_mut())?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
             } else {
@@ -191,6 +193,14 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(if result.ok { 0 } else { 1 })
         }
+    }
+}
+
+fn install_reporter(output_format: OutputFormat) -> Box<dyn install::InstallReporter> {
+    if output_format == OutputFormat::Human {
+        Box::new(install::HumanInstallReporter::new())
+    } else {
+        Box::new(install::NoopInstallReporter)
     }
 }
 

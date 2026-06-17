@@ -10,6 +10,14 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
                 "defaultBackend" to runtimeDefaultBackend.changedFrom(defaults.runtime.defaultBackend.value),
             ),
         )
+        add(
+            tomlSection(
+                "projectOpen",
+                "profileAutoInit" to projectOpenProfileAutoInit.changedFrom(defaults.projectOpen.profileAutoInit.value),
+                "profile" to projectOpenProfile.changedFrom(defaults.projectOpen.profile.value),
+                "autoExcludeGit" to projectOpenAutoExcludeGit.changedFrom(defaults.projectOpen.autoExcludeGit.value),
+            ),
+        )
         add(tomlSection("backends.idea", "enabled" to backendsIdeaEnabled.changedFrom(defaults.backends.idea.enabled.value)))
         add(tomlSection("cli", "binaryPath" to cliBinaryPath.changedFrom(defaults.cli.binaryPath.value)))
     }.filter(String::isNotBlank)
@@ -56,6 +64,9 @@ private fun tomlValue(value: Any): String = when (value) {
 
 private val managedPublicKeys = setOf(
     "runtime.defaultbackend",
+    "projectopen.profileautoinit",
+    "projectopen.profile",
+    "projectopen.autoexcludegit",
     "backends.idea.enabled",
     "cli.binarypath",
 )

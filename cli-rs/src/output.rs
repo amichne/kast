@@ -221,6 +221,15 @@ pub fn print_setup(result: &SetupResult) -> Result<()> {
     if let Some(plugin) = &result.idea_plugin {
         println!("- IDEA plugin action: `{}`", plugin.brew_action);
     }
+    println!(
+        "- Project-open profile auto-init: {}",
+        yes_no(result.project_open.profile_auto_init)
+    );
+    println!("- Project-open profile: `{}`", result.project_open.profile);
+    println!(
+        "- Auto-exclude generated package files: {}",
+        yes_no(result.project_open.auto_exclude_git)
+    );
     print_warnings(&result.warnings);
     Ok(())
 }
@@ -264,6 +273,18 @@ fn print_copilot_install(title: &str, result: &InstallCopilotExtensionResult) ->
     println!("- Extension path: `{}`", result.installed_at);
     println!("- Version: `{}`", result.version);
     println!("- Reused existing install: {}", yes_no(result.skipped));
+    if result.git_exclude.attempted {
+        println!(
+            "- Git info/exclude updated: {}",
+            yes_no(result.git_exclude.updated)
+        );
+        print_optional(
+            "Git info/exclude",
+            result.git_exclude.exclude_file.as_deref(),
+        );
+    } else if let Some(reason) = &result.git_exclude.reason {
+        println!("- Git info/exclude: {reason}");
+    }
     print_warnings(&result.warnings);
     Ok(())
 }
@@ -272,6 +293,9 @@ fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     println!("# Kast IDEA plugin install");
     println!();
     println!("- Cask token: `{}`", result.cask_token);
+    println!("- Plugin version: `{}`", result.plugin_version);
+    println!("- Download cache: `{}`", result.download_cache);
+    println!("- Downloaded bytes: {}", result.downloaded_bytes);
     println!("- Homebrew action: `{}`", result.brew_action);
     println!("- Dry run: {}", yes_no(result.dry_run));
     if !result.brew_command.is_empty() {

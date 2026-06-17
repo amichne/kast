@@ -23,6 +23,8 @@ internal class KastSettingsConfigurable(
 
     private lateinit var runtimeDefaultBackend: ComboBox<KastRuntimeDefaultBackendOption>
     private lateinit var backendsIdeaEnabled: JBCheckBox
+    private lateinit var projectOpenProfileAutoInit: JBCheckBox
+    private lateinit var projectOpenAutoExcludeGit: JBCheckBox
     private lateinit var cliBinaryPath: TextFieldWithBrowseButton
 
     override fun getDisplayName(): String = "Kast"
@@ -34,6 +36,8 @@ internal class KastSettingsConfigurable(
         val state = KastSettingsState.getInstance(project)
         return selectedRuntimeDefaultBackend().configValue != state.runtimeDefaultBackend ||
             backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false) ||
+            projectOpenProfileAutoInit.isSelected != (state.projectOpenProfileAutoInit ?: false) ||
+            projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true) ||
             cliBinaryPath.text != state.cliBinaryPath.orEmpty()
     }
 
@@ -78,6 +82,15 @@ internal class KastSettingsConfigurable(
             }
         }
 
+        group("Project Open") {
+            row {
+                projectOpenProfileAutoInit = checkBox("Install Copilot/LSP profile for Gradle projects").component
+            }
+            row {
+                projectOpenAutoExcludeGit = checkBox("Exclude generated package files from Git").component
+            }
+        }
+
         group("CLI") {
             row("Binary path:") {
                 cliBinaryPath = textFieldWithBrowseButton(
@@ -94,12 +107,17 @@ internal class KastSettingsConfigurable(
         runtimeDefaultBackend.selectedItem =
             KastRuntimeDefaultBackendOption.fromConfigValue(state.runtimeDefaultBackend)
         backendsIdeaEnabled.isSelected = state.backendsIdeaEnabled ?: false
+        projectOpenProfileAutoInit.isSelected = state.projectOpenProfileAutoInit ?: false
+        projectOpenAutoExcludeGit.isSelected = state.projectOpenAutoExcludeGit ?: true
         cliBinaryPath.text = state.cliBinaryPath.orEmpty()
     }
 
     private fun updateStateFromFields(state: KastSettingsState) {
         state.runtimeDefaultBackend = selectedRuntimeDefaultBackend().configValue
         state.backendsIdeaEnabled = backendsIdeaEnabled.isSelected
+        state.projectOpenProfileAutoInit = projectOpenProfileAutoInit.isSelected
+        state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.COPILOT_LSP
+        state.projectOpenAutoExcludeGit = projectOpenAutoExcludeGit.isSelected
         state.cliBinaryPath = cliBinaryPath.text.takeIf(String::isNotBlank)
     }
 

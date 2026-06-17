@@ -146,6 +146,28 @@ executable CLI binary:
 binaryPath = "/home/alex/.local/bin/kast"
 ```
 
+### Opt in to project-open profile installs
+
+IDEA can install the repository Copilot/LSP package automatically before
+backend startup when a Gradle project opens. This is disabled by default and
+limited to the packaged `copilot-lsp` profile:
+
+```toml title="$HOME/.config/kast/config.toml"
+[projectOpen]
+profileAutoInit = true
+profile = "copilot-lsp"
+autoExcludeGit = true
+```
+
+With this policy enabled, the plugin runs the configured CLI as:
+
+```console
+kast install copilot --target-dir <project>/.github
+```
+
+Set `autoExcludeGit = false` to add `--no-auto-exclude-git` to that command.
+Failures are reported in IDEA but do not block the backend from starting.
+
 Applying Kast settings in IDEA reloads the workspace config and restarts the
 local Kast backend when the effective config changes. Installing or relinking
 the Homebrew-managed plugin still requires restarting the IDE so JetBrains can

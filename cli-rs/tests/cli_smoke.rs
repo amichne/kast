@@ -45,6 +45,8 @@ elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
   printf '%s\n' "{}"
 elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "kast" ]; then
   printf '%s\n' '{{"formulae":[{{"name":"kast","tap":"amichne/kast"}}],"casks":[]}}'
+elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "--cask" ]; then
+  printf '%s\n' '{{"formulae":[],"casks":[{{"token":"kast-plugin","full_token":"amichne/kast/kast-plugin","version":"9.8.7"}}]}}'
 elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
   cache="${{HOME:-/tmp}}/000--kast-plugin.zip"
   printf 'fake plugin zip\n' > "$cache"
@@ -996,6 +998,9 @@ fn setup_skip_headless_keeps_clean_machine_backend_free() {
     let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
     assert_eq!(stdout["schemaVersion"], 3);
     assert_eq!(stdout["repair"]["applied"], true);
+    assert_eq!(stdout["projectOpen"]["profileAutoInit"], false);
+    assert_eq!(stdout["projectOpen"]["profile"], "copilot-lsp");
+    assert_eq!(stdout["projectOpen"]["autoExcludeGit"], true);
     assert!(stdout.get("headless").is_none(), "{stdout}");
     assert!(
         stdout.get("shell").is_none(),
@@ -1012,6 +1017,47 @@ fn setup_skip_headless_keeps_clean_machine_backend_free() {
             .join(".kast/lib/backends/headless/current/runtime-libs/classpath.txt")
             .exists()
     );
+}
+
+#[test]
+fn setup_project_open_flags_persist_global_policy() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let setup = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--skip-shell",
+            "--skip-headless",
+            "--project-open-profile-auto-init",
+            "--project-open-profile",
+            "copilot-lsp",
+            "--no-auto-exclude-git",
+        ])
+        .output()
+        .expect("setup");
+
+    assert!(
+        setup.status.success(),
+        "setup should persist project-open policy: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert_eq!(stdout["projectOpen"]["profileAutoInit"], true);
+    assert_eq!(stdout["projectOpen"]["profile"], "copilot-lsp");
+    assert_eq!(stdout["projectOpen"]["autoExcludeGit"], false);
+    assert_eq!(stdout["projectOpen"]["updated"], true);
+
+    let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
+    assert!(config.contains("[projectOpen]"), "{config}");
+    assert!(config.contains("profileAutoInit = true"), "{config}");
+    assert!(config.contains("profile = \"copilot-lsp\""), "{config}");
+    assert!(config.contains("autoExcludeGit = false"), "{config}");
 }
 
 #[test]
@@ -2212,6 +2258,12 @@ fn idea_plugin_install_uses_profile_install_mode() {
     assert_eq!(stdout["brewAction"], "install");
     assert_eq!(stdout["brewCommand"][1], "install");
     assert_eq!(stdout["brewCommand"][2], "--cask");
+    assert_eq!(stdout["pluginVersion"], "9.8.7");
+    assert_eq!(
+        stdout["downloadCache"],
+        home.join("000--kast-plugin.zip").display().to_string()
+    );
+    assert_eq!(stdout["downloadedBytes"], 0);
     assert_eq!(
         stdout["jetbrainsConfigRoot"],
         jetbrains_root.display().to_string()
@@ -2371,6 +2423,138 @@ fn copilot_extension_install_preserves_existing_github_content() {
         github_dir.join("extensions/kast/custom.json").is_file(),
         "unrelated old extension customization should be preserved"
     );
+}
+
+#[test]
+fn copilot_extension_install_adds_managed_git_info_exclude_block() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo");
+    let github_dir = repo.join(".github");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+
+    let copilot = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "copilot",
+            "--target-dir",
+            github_dir.to_str().expect("github path"),
+        ])
+        .output()
+        .expect("install copilot plugin");
+
+    assert!(
+        copilot.status.success(),
+        "install should write git exclude block: stdout={}, stderr={}",
+        String::from_utf8_lossy(&copilot.stdout),
+        String::from_utf8_lossy(&copilot.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&copilot.stdout).expect("copilot install json");
+    assert_eq!(stdout["gitExclude"]["attempted"], true);
+    assert_eq!(stdout["gitExclude"]["updated"], true);
+    assert_eq!(
+        stdout["gitExclude"]["excludeFile"],
+        repo.join(".git/info/exclude").display().to_string()
+    );
+
+    let exclude =
+        std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
+    assert!(exclude.contains("# >>> kast copilot package >>>"));
+    assert!(exclude.contains(".github/.kast-copilot-version"));
+    assert!(exclude.contains(".github/lsp.json"));
+    assert!(exclude.contains("# <<< kast copilot package <<<"));
+
+    let rerun = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "copilot",
+            "--target-dir",
+            github_dir.to_str().expect("github path"),
+        ])
+        .output()
+        .expect("reinstall copilot plugin");
+    assert!(
+        rerun.status.success(),
+        "reinstall should be idempotent: stdout={}, stderr={}",
+        String::from_utf8_lossy(&rerun.stdout),
+        String::from_utf8_lossy(&rerun.stderr),
+    );
+    let rerun_stdout: serde_json::Value =
+        serde_json::from_slice(&rerun.stdout).expect("copilot reinstall json");
+    assert_eq!(rerun_stdout["gitExclude"]["attempted"], true);
+    assert_eq!(rerun_stdout["gitExclude"]["updated"], false);
+}
+
+#[test]
+fn copilot_extension_install_can_skip_git_info_exclude() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo");
+    let github_dir = repo.join(".github");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+
+    let copilot = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "copilot",
+            "--target-dir",
+            github_dir.to_str().expect("github path"),
+            "--no-auto-exclude-git",
+        ])
+        .output()
+        .expect("install copilot plugin");
+
+    assert!(
+        copilot.status.success(),
+        "install should support git exclude opt-out: stdout={}, stderr={}",
+        String::from_utf8_lossy(&copilot.stdout),
+        String::from_utf8_lossy(&copilot.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&copilot.stdout).expect("copilot install json");
+    assert_eq!(stdout["gitExclude"]["attempted"], false);
+    assert_eq!(stdout["gitExclude"]["updated"], false);
+    assert_eq!(stdout["gitExclude"]["reason"], "disabled");
+
+    let exclude =
+        std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
+    assert!(!exclude.contains("# >>> kast copilot package >>>"));
+    assert!(!exclude.contains(".github/lsp.json"));
 }
 
 #[test]

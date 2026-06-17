@@ -10,6 +10,7 @@ import java.nio.file.Path
 data class KastConfig(
     val server: ServerConfig,
     val runtime: RuntimeConfig,
+    val projectOpen: ProjectOpenConfig,
     val indexing: IndexingConfig,
     val cache: CacheConfig,
     val watcher: WatcherConfig,
@@ -57,6 +58,11 @@ data class KastConfig(
                         waitTimeoutMillis = IdeaLaunchWaitTimeoutMillis(90_000L),
                         requireInstalledPlugin = IdeaLaunchRequireInstalledPlugin(true),
                     ),
+                ),
+                projectOpen = ProjectOpenConfig(
+                    profileAutoInit = ProjectOpenProfileAutoInit(false),
+                    profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
+                    autoExcludeGit = ProjectOpenAutoExcludeGit(true),
                 ),
                 indexing = IndexingConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
@@ -150,6 +156,7 @@ private val runtimeConfigJson = Json {
 private data class RuntimeConfigDocument(
     val server: RuntimeServerConfig? = null,
     val runtime: RuntimeRuntimeConfig? = null,
+    val projectOpen: RuntimeProjectOpenConfig? = null,
     val indexing: RuntimeIndexingConfig? = null,
     val cache: RuntimeCacheConfig? = null,
     val watcher: RuntimeWatcherConfig? = null,
@@ -163,6 +170,7 @@ private data class RuntimeConfigDocument(
     fun toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
         server = server?.toOverride(),
         runtime = runtime?.toOverride(),
+        projectOpen = projectOpen?.toOverride(),
         indexing = indexing?.toOverride(),
         cache = cache?.toOverride(),
         watcher = watcher?.toOverride(),
@@ -198,6 +206,19 @@ private data class RuntimeIdeaLaunchConfig(
         command = command?.let(::IdeaLaunchCommand),
         waitTimeoutMillis = waitTimeoutMillis?.let(::IdeaLaunchWaitTimeoutMillis),
         requireInstalledPlugin = requireInstalledPlugin?.let(::IdeaLaunchRequireInstalledPlugin),
+    )
+}
+
+@Serializable
+private data class RuntimeProjectOpenConfig(
+    val profileAutoInit: Boolean? = null,
+    val profile: String? = null,
+    val autoExcludeGit: Boolean? = null,
+) {
+    fun toOverride(): ProjectOpenConfigOverride = ProjectOpenConfigOverride(
+        profileAutoInit = profileAutoInit?.let(::ProjectOpenProfileAutoInit),
+        profile = profile?.let(::ProjectOpenProfile),
+        autoExcludeGit = autoExcludeGit?.let(::ProjectOpenAutoExcludeGit),
     )
 }
 
@@ -446,6 +467,7 @@ private fun normalizeConfigPath(path: String): String =
 private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
     server = serverOverride(),
     runtime = runtimeOverride(),
+    projectOpen = projectOpenOverride(),
     indexing = indexingOverride(),
     cache = cacheOverride(),
     watcher = watcherOverride(),
@@ -473,6 +495,15 @@ private fun Map<String, String>.ideaLaunchOverride(): IdeaLaunchConfigOverride? 
         booleanValue("runtime.idealaunch.requireinstalledplugin")?.let(::IdeaLaunchRequireInstalledPlugin)
     return takeIfAny(enabled, command, waitTimeoutMillis, requireInstalledPlugin) {
         IdeaLaunchConfigOverride(enabled, command, waitTimeoutMillis, requireInstalledPlugin)
+    }
+}
+
+private fun Map<String, String>.projectOpenOverride(): ProjectOpenConfigOverride? {
+    val profileAutoInit = booleanValue("projectopen.profileautoinit")?.let(::ProjectOpenProfileAutoInit)
+    val profile = stringValue("projectopen.profile")?.let(::ProjectOpenProfile)
+    val autoExcludeGit = booleanValue("projectopen.autoexcludegit")?.let(::ProjectOpenAutoExcludeGit)
+    return takeIfAny(profileAutoInit, profile, autoExcludeGit) {
+        ProjectOpenConfigOverride(profileAutoInit, profile, autoExcludeGit)
     }
 }
 
@@ -621,6 +652,12 @@ data class RuntimeConfig(
     val ideaLaunch: IdeaLaunchConfig,
 )
 
+data class ProjectOpenConfig(
+    val profileAutoInit: ProjectOpenProfileAutoInit,
+    val profile: ProjectOpenProfile,
+    val autoExcludeGit: ProjectOpenAutoExcludeGit,
+)
+
 data class IdeaLaunchConfig(
     val enabled: IdeaLaunchEnabled,
     val command: IdeaLaunchCommand,
@@ -705,6 +742,7 @@ data class CliConfig(
 data class KastConfigOverride(
     val server: ServerConfigOverride? = null,
     val runtime: RuntimeConfigOverride? = null,
+    val projectOpen: ProjectOpenConfigOverride? = null,
     val indexing: IndexingConfigOverride? = null,
     val cache: CacheConfigOverride? = null,
     val watcher: WatcherConfigOverride? = null,
@@ -714,6 +752,12 @@ data class KastConfigOverride(
     val backends: BackendsConfigOverride? = null,
     val paths: PathsConfigOverride? = null,
     val cli: CliConfigOverride? = null,
+)
+
+data class ProjectOpenConfigOverride(
+    val profileAutoInit: ProjectOpenProfileAutoInit? = null,
+    val profile: ProjectOpenProfile? = null,
+    val autoExcludeGit: ProjectOpenAutoExcludeGit? = null,
 )
 
 data class RuntimeConfigOverride(
@@ -813,6 +857,7 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
     return copy(
         server = server.merge(override.server),
         runtime = runtime.merge(override.runtime),
+        projectOpen = projectOpen.merge(override.projectOpen),
         indexing = indexing.merge(override.indexing),
         cache = cache.merge(override.cache),
         watcher = watcher.merge(override.watcher),
@@ -834,6 +879,12 @@ private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = 
 private fun RuntimeConfig.merge(override: RuntimeConfigOverride?): RuntimeConfig = copy(
     defaultBackend = override?.defaultBackend ?: defaultBackend,
     ideaLaunch = ideaLaunch.merge(override?.ideaLaunch),
+)
+
+private fun ProjectOpenConfig.merge(override: ProjectOpenConfigOverride?): ProjectOpenConfig = copy(
+    profileAutoInit = override?.profileAutoInit ?: profileAutoInit,
+    profile = override?.profile ?: profile,
+    autoExcludeGit = override?.autoExcludeGit ?: autoExcludeGit,
 )
 
 private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLaunchConfig = copy(
