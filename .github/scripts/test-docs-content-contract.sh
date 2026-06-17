@@ -92,6 +92,7 @@ agents_doc="${docs_root}/for-agents/index.md"
 index_doc="${docs_root}/index.md"
 agent_install_doc="${docs_root}/for-agents/install-the-skill.md"
 use_cases_doc="${docs_root}/supported-use-cases.md"
+adr_doc="${docs_root}/adr/0001-agent-first-install-and-docs-operating-model.md"
 
 require_not_contains "$docs_root" '$HOME/.kast/lib/backends' "Docs must use the installer-managed backend path"
 require_not_contains "$docs_root" '$HOME/.kast/bin/kast' "Docs must not document the retired kast.sh binary path"
@@ -122,7 +123,7 @@ require_not_contains "$readme" "curl -fsSL https://raw.githubusercontent.com/ami
 require_not_contains "$readme" "amichne/kast-action@v1" "README must not document a separate hosted-agent installer"
 require_contains "$readme" "scripts/install-ubuntu-debian.sh" "README must point non-Brew users to the canonical Ubuntu/Debian installer"
 require_contains "$index_doc" "scripts/install-ubuntu-debian.sh install" "Docs overview must show the Linux headless tarball install example"
-require_contains "$index_doc" "install the `kast` binary once on the machine" "Docs overview must distinguish the global binary scope"
+require_contains "$index_doc" 'install the `kast` binary once on the machine' "Docs overview must distinguish the global binary scope"
 require_contains "$index_doc" "add Copilot integration" "Docs overview must distinguish the repository integration scope"
 require_contains "$index_doc" "kast install copilot" "Docs overview must show the repository Copilot install command"
 
@@ -182,6 +183,10 @@ require_contains "$agent_install_doc" '## Install into this repository' "Agent i
 require_contains "$agent_install_doc" '--plugin-dir cli-rs/resources/plugin' "Agent install docs must document the Copilot CLI source-plugin validation path"
 require_contains "$use_cases_doc" 'Global binary' "Use case docs must reinforce the global binary scope"
 require_contains "$use_cases_doc" 'Repository Copilot files' "Use case docs must reinforce the repository integration scope"
+require_contains "$adr_doc" 'Status: Accepted' "ADR must record the accepted current documentation operating model"
+require_contains "$adr_doc" 'brew install kast' "ADR must preserve the current global binary install command"
+require_contains "$adr_doc" 'kast install copilot' "ADR must preserve the current repository Copilot install command"
+require_contains "$adr_doc" 'Iteration framework' "ADR must define how future documentation changes iterate"
 require_embedded_markdown_links
 python3 "${repo_root}/.github/scripts/render-rpc-contract-summary.py" --check
 

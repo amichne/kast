@@ -20,6 +20,10 @@ The documentation is organized around the shortest user path first:
   raw CLI fallback.
 - `docs/supported-use-cases.md` — concise value and fit page for supported
   agent workflows.
+- `docs/adr/` — durable ADR/specification records for the current product
+  story and documentation operating model. Add a superseding ADR when the
+  first reader path, install posture, or agent-facing delivery contract
+  changes.
 - `docs/troubleshooting.md` — task-oriented support page that stays visible
   as a top-level sidebar entry.
 - `docs/reference/` plus reference-nav pages — detailed API, CLI, backend,
@@ -45,6 +49,9 @@ CLI workflow.
 
 - Keep docs aligned with the code that exists today. Mark planned or
   missing behavior explicitly instead of implying it already works.
+- Keep broad product-story changes aligned with
+  `docs/adr/0001-agent-first-install-and-docs-operating-model.md` or a
+  superseding ADR.
 - Treat `zensical.toml` as the live source of truth for navigation.
   Add new source pages and nav entries together.
 - Keep `README.md` and the published docs consistent when public CLI

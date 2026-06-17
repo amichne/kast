@@ -69,6 +69,7 @@
       {
         "group": "Architecture",
         "pages": [
+          "adr/0001-agent-first-install-and-docs-operating-model",
           "architecture/how-it-works",
           "architecture/behavioral-model",
           "architecture/kast-vs-lsp",

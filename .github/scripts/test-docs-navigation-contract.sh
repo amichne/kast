@@ -84,6 +84,7 @@ placement_checks = [
     ("Supported use cases", "supported-use-cases"),
     ("Reference", "cli-cheat-sheet"),
     ("Reference", "getting-started/backends"),
+    ("Architecture", "adr/0001-agent-first-install-and-docs-operating-model"),
     ("Architecture", "architecture/kast-vs-lsp"),
 ]
 for group_name, page in placement_checks:
