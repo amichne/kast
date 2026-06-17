@@ -6,26 +6,28 @@ defining navigation, extensions, and theme configuration.
 
 ## Site structure
 
-The documentation is organized into reader-oriented areas:
+The documentation is organized around the shortest user path first:
 
-- `docs/index.md` — focused landing page: differentiators, a 60-second
-  quickstart, and navigation cards. No inline capability walkthroughs —
-  those live under `what-can-kast-do/`.
-- `docs/getting-started/` — install, quickstart, backends
-- `docs/what-can-kast-do/` — intent-organized capability pages
-  (understand-symbols, trace-usage, refactor-safely, validate-code,
-  manage-workspaces). These are the canonical home for CLI/JSON-RPC
-  examples.
-- `docs/for-agents/` — agent-facing content (overview, talk-to-agent,
-  install-skill, direct-cli)
-- `docs/recipes.md` and `docs/troubleshooting.md` — task-oriented support
-  pages that stay visible as top-level sidebar entries.
-- `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp
-- `docs/reference/` — generated pages plus the operator-facing CLI cheat
-  sheet. `api-reference`, `api-specification`, `cli-cheat-sheet`, and
-  `error-codes` appear in the nav. `capabilities.md` is generated but
+- `docs/index.md` — landing page for the two-scope install model:
+  machine-level global binary plus repository-local Copilot integration.
+- `docs/getting-started/install.md` — primary install guide for developer
+  machines and headless Linux servers. Keep optional setup, repair, plugin,
+  shell, release, and development details behind collapsible sections.
+- `docs/for-agents/` — agent-facing content. The overview explains the
+  global binary vs repository integration split, `install-the-skill.md`
+  documents Copilot integrations first and skill-only fallback second,
+  `talk-to-your-agent.md` covers prompting, and `direct-cli.md` covers
+  raw CLI fallback.
+- `docs/supported-use-cases.md` — concise value and fit page for supported
+  agent workflows.
+- `docs/troubleshooting.md` — task-oriented support page that stays visible
+  as a top-level sidebar entry.
+- `docs/reference/` plus reference-nav pages — detailed API, CLI, backend,
+  recipe, and capability material. `capabilities.md` is generated but
   intentionally excluded from the nav to avoid duplicating
   `api-reference.md`.
+- `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp,
+  and ADT boundaries.
 
 Generated reference pages under `docs/reference/` are produced by
 `./gradlew :analysis-api:generateDocPages` and drift-tested by

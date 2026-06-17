@@ -23,51 +23,47 @@
         "pages": ["index"]
       },
       {
-        "group": "Getting started",
+        "group": "Install",
         "pages": [
-          "getting-started/install",
-          "getting-started/quickstart",
-          "getting-started/backends"
+          "getting-started/install"
         ]
       },
       {
-        "group": "What can Kast do?",
-        "pages": [
-          "what-can-kast-do/understand-symbols",
-          "what-can-kast-do/trace-usage",
-          "what-can-kast-do/refactor-safely",
-          "what-can-kast-do/validate-code",
-          "what-can-kast-do/manage-workspaces"
-        ]
-      },
-      {
-        "group": "For agents",
+        "group": "Use with agents",
         "pages": [
           "for-agents/index",
-          "for-agents/talk-to-your-agent",
           "for-agents/install-the-skill",
+          "for-agents/talk-to-your-agent",
           "for-agents/direct-cli"
         ]
       },
       {
-        "group": "Recipes",
+        "group": "Supported use cases",
         "pages": [
-          "recipes"
-        ]
-      },
-      {
-        "group": "Reference",
-        "pages": [
-          "reference/api-reference",
-          "reference/api-specification",
-          "cli-cheat-sheet",
-          "reference/error-codes"
+          "supported-use-cases"
         ]
       },
       {
         "group": "Troubleshooting",
         "pages": [
           "troubleshooting"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "getting-started/quickstart",
+          "recipes",
+          "cli-cheat-sheet",
+          "getting-started/backends",
+          "what-can-kast-do/understand-symbols",
+          "what-can-kast-do/trace-usage",
+          "what-can-kast-do/refactor-safely",
+          "what-can-kast-do/validate-code",
+          "what-can-kast-do/manage-workspaces",
+          "reference/api-reference",
+          "reference/api-specification",
+          "reference/error-codes"
         ]
       },
       {
