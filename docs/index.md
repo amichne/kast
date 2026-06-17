@@ -16,23 +16,26 @@ files to each repository where you want agents to use Kast.
 
 ## The golden path
 
-Run these commands on a developer machine, then restart the IDE so Copilot
-and the IDE host pick up the repository-local files.
+Run these commands on a developer machine, then restart IDEA or Android Studio
+so the IDE host loads the Homebrew-managed plugin and Copilot picks up the
+repository-local files.
 
 ```console title="Install Kast globally, then add it to one repository"
 brew tap amichne/kast
 brew install kast
+brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
 !!! success "Two scopes, one setup"
-    `brew install kast` is a machine-level install. It puts the global
-    `kast` binary on `PATH`. `kast install copilot` is a repository-level
-    install. It writes managed files under this repository's `.github`
-    directory so Copilot can start `kast lsp --stdio`, load Kotlin
-    instructions, and expose Kast tools.
+    `brew install kast` and `brew install --cask kast-plugin` are the
+    macOS machine-level install. They put the global `kast` binary on `PATH`
+    and link the IDEA or Android Studio plugin into local JetBrains profiles.
+    `kast install copilot` is a repository-level install. It writes managed
+    files under this repository's `.github` directory so Copilot can start
+    `kast lsp --stdio`, load Kotlin instructions, and expose Kast tools.
 
 ??? tip "When to rerun `kast install copilot`"
     Run it once in every repository where Copilot should use Kast. Rerun it
@@ -40,10 +43,10 @@ kast install copilot
     files look stale.
 
 ??? info "Where the IDEA plugin fits"
-    The global binary and repository-local Copilot files are enough for the
-    first path. Install the IDEA or Android Studio plugin when you want Kast
-    to reuse an already-open IDE project model and indexes instead of using a
-    headless backend.
+    The IDEA or Android Studio plugin is part of the macOS Homebrew developer
+    install, not a per-repository choice. Homebrew manages the cask and links
+    it into local JetBrains profiles so Kast can reuse the IDE project model
+    and indexes on developer machines.
 
 ## What this gives your agent
 
@@ -74,9 +77,10 @@ kast up --backend=headless
 
 ??? info "Why this is separate from Homebrew"
     Homebrew is the developer-machine path. The Ubuntu/Debian bundle is the
-    headless-server path. Use it when the agent needs its own binary, config,
-    runtime libraries, and backend without relying on a human shell profile or
-    an already-open IDE.
+    [headless-server path](getting-started/headless-linux.md). Use it when the
+    agent needs its own binary, config, runtime libraries, and backend without
+    relying on a human shell profile or an already-open IDE. It is not the
+    local macOS developer-machine fallback.
 
 ## Where to go next
 
@@ -89,8 +93,8 @@ the main path; reference material stays available after that.
 
     ---
 
-    Install the global binary, add repository-local Copilot files, or set up
-    a headless Linux server.
+    Install the macOS developer-machine binary and plugin, then add
+    repository-local Copilot files.
 
     [:octicons-arrow-right-24: Install](getting-started/install.md)
 

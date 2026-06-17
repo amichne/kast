@@ -15,7 +15,10 @@ Copyright &copy; 2026 amichne
 """
 nav = [
   { "Overview" = "index.md" },
-  { "Install" = "getting-started/install.md" },
+  { "Install" = [
+    { "Developer machine" = "getting-started/install.md" },
+    { "Headless Linux server" = "getting-started/headless-linux.md" },
+  ]},
   { "Use with agents" = [
     { "Overview" = "for-agents/index.md" },
     { "Copilot integrations" = "for-agents/install-the-skill.md" },

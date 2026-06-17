@@ -71,12 +71,13 @@ experimental `kast/*` methods for the operator-level `symbol/*`,
 
 | Runtime mode | Where semantic state lives | Who keeps it warm | Best fit |
 |---|---|---|---|
-| Headless | A packaged IDEA backend outside any open IDE | `kast` workspace lifecycle | Terminals, CI, remote machines, cloud agents |
-| IDEA plugin | An already-open IDEA or Android Studio project, reusing the IDE's project model, PSI, and indexes | IDE project lifecycle | Local tools when the IDE is already open |
+| IDEA plugin | An already-open IDEA or Android Studio project, reusing the IDE's project model, PSI, and indexes | IDE project lifecycle | Local developer-machine tools |
+| Headless | A packaged IDEA backend outside any open IDE | `kast` workspace lifecycle | CI, hosted Linux agents, server images |
 
 If IDEA or Android Studio is warm, external tools connect to the plugin backend
-and inherit that state for free. If no IDE is running, the headless backend
-exposes the same surface independently.
+and inherit that state for free. If a Linux CI runner, hosted agent, or server
+image needs its own runtime, the headless bundle exposes the same surface
+independently.
 
 ## Module ownership
 
@@ -155,12 +156,11 @@ indexes, and analysis session instead of bringing up a second warm session.
 
 Same protocol, two operating environments.
 
-- **Headless favors independence** — works without any IDE, so
-  the same semantic operations run in terminals, CI jobs, remote
-  machines, and cloud agents; the Ubuntu/Debian bundle carries the required
-  runtime without requiring a desktop IDE process
-- **IDEA plugin favors reuse** — lets external tools tap into
+- **IDEA plugin favors developer machines** — lets external tools tap into
   an IDE session that's already open, indexed, and ready
+- **Headless favors server independence** — lets the same semantic operations
+  run in CI jobs, hosted Linux agents, and server images; the Ubuntu/Debian
+  bundle carries the required runtime without requiring a desktop IDE process
 
 The split keeps the contract stable for clients while letting the
 semantic state live wherever the workflow already keeps it.

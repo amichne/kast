@@ -16,21 +16,22 @@ Keep the install scopes separate:
 - **Repository install:** add Copilot integration files to each repository
   where agents should use Kast.
 
-Install the macOS developer binary with Homebrew, then add the Copilot package
-to a repository:
+Install the macOS developer distribution with Homebrew, then add the Copilot
+package to a repository:
 
 ```console
 brew tap amichne/kast
 brew install kast
+brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
-Restart the IDE after installing or refreshing repository files. The repository
-install writes managed files under `.github`, including the LSP config,
-Kotlin instructions, `kast-reader`, `kast-writer`, and catalog-backed
-extension tools.
+Restart IDEA or Android Studio after Homebrew links or refreshes the plugin.
+The repository install writes managed files under `.github`, including the LSP
+config, Kotlin instructions, `kast-reader`, `kast-writer`, and
+catalog-backed extension tools.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
@@ -43,8 +44,9 @@ kast up --backend=headless
 ```
 
 The [install guide](https://kast.michne.com/getting-started/install/) covers
-Homebrew, repository Copilot files, optional IDEA plugin setup, repair
-commands, and mirrored Linux artifacts.
+the Homebrew CLI and IDEA plugin, repository Copilot files, and repair
+commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+covers server and hosted-agent installs.
 
 ## Why Kast instead of text search?
 
@@ -66,11 +68,13 @@ Kast has two runtime modes behind the same JSON-RPC contract:
 
 | Runtime mode | Best when | Install path |
 | --- | --- | --- |
-| **Headless CLI + backend** | The agent needs an independent runtime for terminal work, CI, servers, or hosted Linux images | Linux headless bundle |
-| **IDEA / Android Studio plugin backend** | IDEA or Android Studio is already open and you want to reuse its project model and indexes | Optional Homebrew cask plus `kast install plugin` |
+| **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew formula plus `kast-plugin` cask |
+| **Headless CLI + backend** | A CI runner, server, or hosted Linux image needs its own runtime | Linux headless bundle |
 
 The repository Copilot package can use either runtime because it starts the
-same global `kast` binary and speaks the same protocol.
+same global `kast` binary and speaks the same protocol. The Linux headless
+bundle is a server/hosted-agent distribution, not the local macOS developer
+fallback.
 
 ## Documentation
 

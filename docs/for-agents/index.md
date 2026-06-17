@@ -7,31 +7,35 @@ icon: lucide/bot
 
 # Kast for agents
 
-Agents need two things before they can use Kast: a `kast` binary on the
-machine, and repository-local integration files in the repository they are
-working on. Keep those scopes separate.
+Agents on macOS developer machines need the Homebrew-managed Kast machine
+install, which includes the `kast` binary and IDEA or Android Studio plugin,
+plus repository-local integration files in the repository they are working on.
+Keep machine and repository scopes separate.
 
 ## Agent setup in two scopes
 
-On a developer machine, install the binary once and install Copilot files in
-each repository where the agent should use Kast.
+On a developer machine, install the Homebrew formula and cask once, then
+install Copilot files in each repository where the agent should use Kast.
 
 ```console title="Developer-machine agent setup"
 brew tap amichne/kast
 brew install kast
+brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
-Restart the IDE after installing the repository files. The Copilot package
-starts `kast lsp --stdio`, loads Kotlin-specific instructions, exposes
-`kast-reader` and `kast-writer`, and provides catalog-backed `kast_*` tools.
+Restart IDEA or Android Studio after Homebrew links or refreshes the plugin
+and after installing repository files. The Copilot package starts
+`kast lsp --stdio`, loads Kotlin-specific instructions, exposes `kast-reader`
+and `kast-writer`, and provides catalog-backed `kast_*` tools.
 
 ??? success "Machine-level responsibility"
     The global `kast` binary owns CLI commands, LSP startup, direct JSON-RPC,
-    install repair, and backend lifecycle commands. A single binary can serve
-    many repositories.
+    install repair, and backend lifecycle commands. The Homebrew cask owns the
+    IDE plugin links into local JetBrains profiles. A single machine install
+    can serve many repositories.
 
 ??? tip "Repository-level responsibility"
     `kast install copilot` writes managed files under the current repository's
@@ -45,12 +49,13 @@ stays the same; the backend that provides Kotlin state changes.
 
 | Agent environment | Install path | Runtime path | What the agent gets |
 |-------------------|--------------|--------------|---------------------|
-| Local Copilot in a developer repo | Homebrew global binary plus `kast install copilot` in that repo | LSP through the global binary, then headless or IDEA backend | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
-| Local agent with an open IDE | Homebrew global binary, repository Copilot files, optional IDEA plugin | IDEA backend reusing the open project | Warm IDE project model and the same Kast protocol |
+| Local Copilot in a developer repo | Homebrew global binary, `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
+| Local agent with an open IDE | Homebrew machine install plus repository Copilot files | IDEA backend reusing the open project | Warm IDE project model and the same Kast protocol |
 | CI or hosted Linux agent | Ubuntu/Debian headless bundle | Headless backend warmed with `kast up --backend=headless` | `kast` on `PATH`, structured JSON-RPC, and bundled runtime libraries |
 
 Use the Linux headless path when the agent image cannot rely on Homebrew, a
-human shell profile, or an already-open IDE.
+human shell profile, or an already-open IDE. Do not present it as the local
+macOS developer-machine equivalent.
 
 ## What your agent gets
 
@@ -75,9 +80,10 @@ runtime changes.
 | Headless | A packaged IDEA-backed daemon outside any IDE | Terminals, CI, remote machines, cloud agents |
 | IDEA plugin | Inside a running IDEA or Android Studio project | Local agents when the IDE is already open and warm |
 
-If IDEA or Android Studio is open and the plugin is installed, agents can reuse
-that IDE state. Otherwise, the headless backend exposes the same surface on
-its own.
+On developer machines, agents reuse IDEA or Android Studio through the
+Homebrew-managed plugin. The headless backend exposes the same surface for
+CI runners, hosted Linux agents, and server images that install the Linux
+bundle.
 
 ## What your agent can do
 

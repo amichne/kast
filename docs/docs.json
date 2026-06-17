@@ -25,7 +25,8 @@
       {
         "group": "Install",
         "pages": [
-          "getting-started/install"
+          "getting-started/install",
+          "getting-started/headless-linux"
         ]
       },
       {

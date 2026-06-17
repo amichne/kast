@@ -80,6 +80,7 @@ if actual_group_order != required_group_order:
 
 placement_checks = [
     ("Install", "getting-started/install"),
+    ("Install", "getting-started/headless-linux"),
     ("Use with agents", "for-agents/install-the-skill"),
     ("Supported use cases", "supported-use-cases"),
     ("Reference", "cli-cheat-sheet"),

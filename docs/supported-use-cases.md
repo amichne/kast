@@ -15,19 +15,22 @@ cannot prove.
 ## Install scope decides the workflow
 
 Most confusion comes from mixing machine setup with repository setup. Treat
-them as separate choices.
+developer machines, repository files, and Linux servers as separate concerns.
 
-??? success "Global binary: one machine, many repositories"
-    Install the `kast` binary once on the machine. On macOS developer
-    machines, that is the Homebrew formula:
+??? success "Global binary and IDE plugin: one macOS machine"
+    Install the `kast` binary and IDEA or Android Studio plugin once on the
+    machine. On macOS developer machines, the Homebrew formula and cask are
+    the developer distribution:
 
     ```console
     brew tap amichne/kast
     brew install kast
+    brew install --cask kast-plugin
     ```
 
     The binary owns CLI commands, `kast lsp --stdio`, `kast rpc`, install
-    repair, and backend lifecycle commands.
+    repair, and backend lifecycle commands. The cask links the Kast plugin
+    into local JetBrains IDE profiles.
 
 ??? tip "Repository Copilot files: one repository at a time"
     Run `kast install copilot` inside every repository where Copilot should
@@ -42,20 +45,24 @@ them as separate choices.
     instructions, reader and writer agents, and catalog-backed extension
     tools. Restart the IDE after installing or refreshing them.
 
-??? info "IDEA plugin: reuse an open IDE when that is useful"
-    The IDEA or Android Studio plugin is for workflows that should reuse an
-    already-open IDE project model and indexes. Install it when that is the
-    desired backend, not as a prerequisite for every repository.
+??? info "IDEA backend: developer machines use the IDE"
+    On macOS developer machines, Kast expects IDEA or Android Studio with the
+    Homebrew-managed plugin. The IDE backend reuses the open project model and
+    indexes instead of asking local agents to run a Linux-style headless
+    runtime.
 
     ```console
-    brew install --cask kast-plugin
     kast install plugin
     ```
+
+    Use `kast install plugin` to repair Homebrew-managed profile links after
+    moving, upgrading, or replacing a JetBrains IDE profile.
 
 ??? question "Headless server: give hosted agents their own runtime"
     Use the Ubuntu/Debian headless bundle for CI images, hosted agents, and
     servers with no developer IDE. It installs the binary, config, and bundled
-    headless runtime on that Linux machine.
+    headless runtime on that Linux machine. It is a server path, not a local
+    macOS developer-machine substitute.
 
 ## Where Kast excels
 
