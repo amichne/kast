@@ -7,6 +7,7 @@ use crate::cli::{
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::metrics_database::{DirectMetricsError, DirectResult, FileFilter, MetricsDatabase};
+use crate::output;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io;
@@ -201,59 +202,87 @@ fn print_json_value(value: &Value) -> Result<i32> {
 }
 
 fn print_human_metrics_response(request: &MetricsRequest, response: &Value) -> Result<i32> {
-    println!("# Kast metrics {}", metric_display_name(request.metric));
-    println!();
-    println!("- Workspace: `{}`", request.workspace_root.display());
-    println!("- Database: `{}`", request.database.display());
-    println!("- Limit: {}", request.limit);
+    let mut markdown = String::new();
+    push_markdown_line(
+        &mut markdown,
+        format_args!("# Kast metrics {}", metric_display_name(request.metric)),
+    );
+    markdown.push('\n');
+    push_markdown_line(
+        &mut markdown,
+        format_args!("- Workspace: `{}`", request.workspace_root.display()),
+    );
+    push_markdown_line(
+        &mut markdown,
+        format_args!("- Database: `{}`", request.database.display()),
+    );
+    push_markdown_line(&mut markdown, format_args!("- Limit: {}", request.limit));
     if let Some(symbol) = &request.symbol {
-        println!("- Symbol/query: `{symbol}`");
+        push_markdown_line(&mut markdown, format_args!("- Symbol/query: `{symbol}`"));
     }
     if request.depth != 3 || request.metric == "impact" {
-        println!("- Depth: {}", request.depth);
+        push_markdown_line(&mut markdown, format_args!("- Depth: {}", request.depth));
     }
     if let Some(file_glob) = request.filter.file_glob() {
-        println!("- File glob: `{file_glob}`");
+        push_markdown_line(&mut markdown, format_args!("- File glob: `{file_glob}`"));
     }
     if let Some(folder_filter) = request.filter.folder_filter() {
-        println!("- Folder filter: `{folder_filter}`");
+        push_markdown_line(
+            &mut markdown,
+            format_args!("- Folder filter: `{folder_filter}`"),
+        );
     }
-    println!();
-    println!("## Results");
+    markdown.push('\n');
+    push_markdown_line(&mut markdown, format_args!("## Results"));
     let results = response.get("results").unwrap_or(&Value::Null);
-    print_metric_results(results);
-    println!();
-    println!("Use `kast --output json metrics ...` for the structured metrics payload.");
+    push_metric_results(&mut markdown, results);
+    markdown.push('\n');
+    push_markdown_line(
+        &mut markdown,
+        format_args!("Use `kast --output json metrics ...` for the structured metrics payload."),
+    );
+    output::print_markdown(&markdown)?;
     Ok(0)
 }
 
-fn print_metric_results(results: &Value) {
+fn push_markdown_line(markdown: &mut String, args: std::fmt::Arguments<'_>) {
+    use std::fmt::Write as _;
+    markdown
+        .write_fmt(args)
+        .expect("writing to a String cannot fail");
+    markdown.push('\n');
+}
+
+fn push_metric_results(markdown: &mut String, results: &Value) {
     match results {
         Value::Array(items) if items.is_empty() => {
-            println!("No rows matched.");
+            push_markdown_line(markdown, format_args!("No rows matched."));
         }
         Value::Array(items) => {
             for item in items.iter().take(20) {
-                println!("- {}", summarize_value(item));
+                push_markdown_line(markdown, format_args!("- {}", summarize_value(item)));
             }
             if items.len() > 20 {
-                println!("- ... {} more rows", items.len() - 20);
+                push_markdown_line(
+                    markdown,
+                    format_args!("- ... {} more rows", items.len() - 20),
+                );
             }
         }
         Value::Object(object) => {
             if let Some(nodes) = object.get("nodes").and_then(Value::as_array) {
-                println!("- Nodes: {}", nodes.len());
+                push_markdown_line(markdown, format_args!("- Nodes: {}", nodes.len()));
             }
             if let Some(edges) = object.get("edges").and_then(Value::as_array) {
-                println!("- Edges: {}", edges.len());
+                push_markdown_line(markdown, format_args!("- Edges: {}", edges.len()));
             }
             let summary = summarize_value(results);
             if summary != "object" {
-                println!("- {summary}");
+                push_markdown_line(markdown, format_args!("- {summary}"));
             }
         }
-        Value::Null => println!("No results were returned."),
-        other => println!("- {}", summarize_value(other)),
+        Value::Null => push_markdown_line(markdown, format_args!("No results were returned.")),
+        other => push_markdown_line(markdown, format_args!("- {}", summarize_value(other))),
     }
 }
 

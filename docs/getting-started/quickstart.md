@@ -8,8 +8,8 @@ icon: lucide/zap
 
 By the end of this page you'll have started a readable CLI session, then
 asked the daemon two compiler-backed questions: "what symbol is this?" and
-"who uses it?" The lifecycle commands print Markdown-style summaries by
-default; raw analysis requests still return JSON-RPC payloads.
+"who uses it?" The lifecycle commands render readable summaries by default;
+raw analysis requests still return JSON-RPC payloads.
 
 The walkthrough uses the headless backend because it works on Linux terminals,
 CI runners, and agent loops after the Linux headless tarball is installed. If
@@ -63,24 +63,28 @@ sequenceDiagram
     Daemon->>K2: Bootstrap session
     K2-->>Daemon: Indexing complete
     Daemon-->>CLI: READY
-    CLI-->>You: Markdown status summary
+    CLI-->>You: Rendered status summary
 ```
 
 The first start indexes every Kotlin file. Later commands reuse the warm
 state — the cost you pay here buys you fast lookups for the rest of the
 session.
 
-The default output is meant to be read:
+The default output is meant to be read. In an interactive terminal, headings
+and inline code are styled; in logs and captured output, the same summary is
+rendered as plain text:
 
-```markdown title="Example output"
-# Kast up
+```text title="Example output"
+  Kast up
+  =======
 
-- Workspace: `/workspace`
-- Started new daemon: yes
+  - Workspace: /workspace
+  - Started new daemon: yes
 
-## Selected runtime
-- Backend: `headless`
-- Runtime state: `READY`
+  Selected runtime
+  ----------------
+  - Backend: headless
+  - Runtime state: READY
 ```
 
 Use `--output json` on lifecycle and install commands when a script needs

@@ -105,8 +105,11 @@ profile needs repair.
     kast install affected
     ```
 
-    Apply the planned repair with `--apply`. The command creates backups under
-    `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
+    In an interactive human terminal, Kast shows the planned repair and asks
+    whether to apply it. Non-interactive runs never prompt; rerun with
+    `--apply` to apply the planned repair from scripts, CI, or captured
+    shells. Apply mode creates backups under `KAST_CONFIG_HOME/backups` before
+    replacing or removing managed files.
 
     ```console title="Repair affected installs"
     kast install affected --apply
