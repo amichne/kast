@@ -1,92 +1,87 @@
 ---
 title: Kast
-description: Compiler-backed Kotlin analysis for your terminal, CI, agent,
-  or IDEA-backed workflow.
+description: Install Kast once on a machine, then add repository-local
+  Copilot integrations where agents should use it.
 icon: lucide/network
 hide:
   - toc
 ---
 
-# Compiler-backed Kotlin answers — outside the IDE
+# Kast
 
-`grep` finds where a name appears. `kast` tells you which declaration it
-resolves to, who actually calls it, and whether the rename you're about to
-apply still matches what's on disk. Same K2 engine your IDE uses, exposed
-as a daemon you can drive from a shell, a CI job, or an LLM agent.
+Kast gives Copilot and other agents compiler-backed Kotlin answers without
+asking them to guess from text search. The install model has two scopes:
+install the `kast` binary once on the machine, then add Copilot integration
+files to each repository where you want agents to use Kast.
 
-Pick your entry point:
-<div class="grid cards" markdown>
+## The golden path
 
--   :material-console:{ .lg .bottom } __Install the CLI__
+Run these commands on a developer machine, then restart the IDE so Copilot
+and the IDE host pick up the repository-local files.
 
-    ---
+```console title="Install Kast globally, then add it to one repository"
+brew tap amichne/kast
+brew install kast
 
-    A headless JVM daemon you start from a terminal. Works in CI, in a
-    container, on a server with no editor in sight.
-
-    [:octicons-arrow-right-16: Install guide](getting-started/install.md#linux-headless-tarball)
-
--   :octicons-plug-16:{ .lg .left } __Install the IDEA plugin__
-
-    ---
-
-    Reuse the analysis session IDEA or Android Studio already has open. No second JVM,
-    no second cold start, same JSON-RPC over a socket.
-
-    [:octicons-arrow-right-16: Homebrew install guide](getting-started/install.md#homebrew-install)
-
-</div>
-
-## Two runtimes, one wire format
-
-The headless daemon and IDEA plugin speak the same JSON-RPC.
-Switch backends without changing a single script or prompt.
-[Compare backends →](getting-started/backends.md)
-
-## What `kast` does that text search can't
-
-- **Resolves the symbol, not the string.** Two functions named `process`
-  in different classes are two different `fqName`s. Overloaded calls
-  resolve to the right overload because the compiler picked it.
-  [How resolve works →](what-can-kast-do/understand-symbols.md)
-- **Proves the reference list is complete.** Every `references` response
-  carries `searchScope.exhaustive`. When it's `true`, every candidate
-  file in the workspace was actually searched — not sampled, not
-  truncated. [Trace usage →](what-can-kast-do/trace-usage.md)
-- **Tells you where the call tree stopped, and why.** Depth, fan-out,
-  total edges, timeout — all configurable, all reported back. No silent
-  truncation. [Bounded hierarchies →](what-can-kast-do/trace-usage.md#expand-the-call-hierarchy)
-- **Refuses to apply a stale edit.** Rename returns SHA-256 hashes of
-  every file it read. If anything drifted before you apply, the daemon
-  rejects the write instead of corrupting your tree.
-  [Plan-then-apply →](what-can-kast-do/refactor-safely.md)
-
-Your editor's LSP is still better for keystroke feedback. `kast` is for
-the work that happens outside the editor — CI gates, scripted refactors,
-agents that need to answer "is this list complete?" with a yes or no.
-[Full comparison →](architecture/kast-vs-lsp.md)
-
-## 60 seconds to a real answer
-
-Three commands, run from the root of any Kotlin project. Requires Java 21+.
-
-```console linenums="1" title="Install, start, query" hl_lines="1 2 3"
-# 1. Install the Linux headless tarball
-./scripts/install-ubuntu-debian.sh install
-
-# 2. Start a backend for this workspace (waits until indexing is READY)
-kast up --backend=headless
-
-# 3. Resolve a symbol — point at any .kt file and any byte offset on a name
-kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/App.kt","offset":42}}}'
+cd /path/to/your/repository
+kast install copilot
 ```
 
-The first `up` is the slow command — the daemon discovers
-your project and indexes it. Everything after that hits a warm session.
-Already running IDEA or Android Studio with the plugin? Skip step 2; `kast` finds the
-IDE's backend on its own.
+!!! success "Two scopes, one setup"
+    `brew install kast` is a machine-level install. It puts the global
+    `kast` binary on `PATH`. `kast install copilot` is a repository-level
+    install. It writes managed files under this repository's `.github`
+    directory so Copilot can start `kast lsp --stdio`, load Kotlin
+    instructions, and expose Kast tools.
 
-## Next steps
+??? tip "When to rerun `kast install copilot`"
+    Run it once in every repository where Copilot should use Kast. Rerun it
+    with `--force` after upgrading the global binary or when the repository
+    files look stale.
+
+??? info "Where the IDEA plugin fits"
+    The global binary and repository-local Copilot files are enough for the
+    first path. Install the IDEA or Android Studio plugin when you want Kast
+    to reuse an already-open IDE project model and indexes instead of using a
+    headless backend.
+
+## What this gives your agent
+
+Kast is for the work that happens after a prompt asks for real Kotlin
+understanding: find the exact declaration, prove a usage list, inspect a call
+tree, or plan a safe rename.
+
+- **Symbol identity:** resolve the declaration the compiler sees, not every
+  line that happens to match a string.
+- **Bounded evidence:** report whether reference and hierarchy results are
+  complete, truncated, or limited by a configured bound.
+- **Safe edits:** plan rename and edit operations with file hashes before
+  writing anything.
+- **Workspace awareness:** answer from the Gradle workspace instead of a pile
+  of unrelated files.
+
+## Headless Linux servers
+
+Use the Linux headless bundle when the machine is a CI runner, hosted agent,
+server snapshot, or image build with no developer IDE. That path installs its
+own `kast` binary and bundled headless runtime on the server.
+
+```console title="Install on Ubuntu or Debian from the headless bundle"
+export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
+./scripts/install-ubuntu-debian.sh install
+kast up --backend=headless
+```
+
+??? info "Why this is separate from Homebrew"
+    Homebrew is the developer-machine path. The Ubuntu/Debian bundle is the
+    headless-server path. Use it when the agent needs its own binary, config,
+    runtime libraries, and backend without relying on a human shell profile or
+    an already-open IDE.
+
+## Where to go next
+
+Choose the page that matches the job in front of you. The first two pages are
+the main path; reference material stays available after that.
 
 <div class="grid cards" markdown>
 
@@ -94,35 +89,36 @@ IDE's backend on its own.
 
     ---
 
-    Pick a backend, get the binary on your `PATH`, verify it answers.
+    Install the global binary, add repository-local Copilot files, or set up
+    a headless Linux server.
 
     [:octicons-arrow-right-24: Install](getting-started/install.md)
 
--   :octicons-zap-24:{ .lg .middle } **What `kast` actually does**
+-   :octicons-copilot-24:{ .lg .middle } **Use with agents**
 
     ---
 
-    Every capability with real CLI calls, real JSON, and the gotchas
-    that bite first-time users.
+    Understand what the Copilot package gives an agent and when to use the
+    direct CLI fallback.
 
-    [:octicons-arrow-right-24: Understand symbols](what-can-kast-do/understand-symbols.md)
+    [:octicons-arrow-right-24: Agent setup](for-agents/index.md)
 
--   :octicons-copilot-24:{ .lg .middle } **From an agent**
-
-    ---
-
-    Give your LLM something stronger than `grep` and a file system —
-    bounded answers it can quote with proof.
-
-    [:octicons-arrow-right-24: For agents](for-agents/index.md)
-
--   :octicons-rocket-24:{ .lg .middle } **Recipes**
+-   :octicons-checklist-24:{ .lg .middle } **Supported use cases**
 
     ---
 
-    Copy-paste workflows for the things you actually do: find callers,
-    rename a symbol, gate CI on diagnostics.
+    See where Kast is meant to help, where it excels, and which complexity can
+    stay out of the first install.
 
-    [:octicons-arrow-right-24: Recipes](recipes.md)
+    [:octicons-arrow-right-24: Use cases](supported-use-cases.md)
+
+-   :octicons-terminal-24:{ .lg .middle } **Reference**
+
+    ---
+
+    Keep the detailed API, CLI, backend, and architecture material available
+    when you need exact behavior.
+
+    [:octicons-arrow-right-24: CLI reference](cli-cheat-sheet.md)
 
 </div>

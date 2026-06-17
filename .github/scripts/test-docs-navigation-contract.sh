@@ -64,12 +64,11 @@ groups_by_name = {group["group"]: group["pages"] for group in expected}
 
 required_group_order = [
     "Overview",
-    "Getting started",
-    "What can Kast do?",
-    "For agents",
-    "Recipes",
-    "Reference",
+    "Install",
+    "Use with agents",
+    "Supported use cases",
     "Troubleshooting",
+    "Reference",
     "Architecture",
 ]
 actual_group_order = [group["group"] for group in expected]
@@ -79,12 +78,16 @@ if actual_group_order != required_group_order:
     print("actual:", actual_group_order, file=sys.stderr)
     sys.exit(1)
 
-placement_checks = {
-    "Getting started": "getting-started/backends",
-    "Reference": "cli-cheat-sheet",
-    "Architecture": "architecture/kast-vs-lsp",
-}
-for group_name, page in placement_checks.items():
+placement_checks = [
+    ("Install", "getting-started/install"),
+    ("Use with agents", "for-agents/install-the-skill"),
+    ("Supported use cases", "supported-use-cases"),
+    ("Reference", "cli-cheat-sheet"),
+    ("Reference", "getting-started/backends"),
+    ("Architecture", "adr/0001-agent-first-install-and-docs-operating-model"),
+    ("Architecture", "architecture/kast-vs-lsp"),
+]
+for group_name, page in placement_checks:
     if page not in groups_by_name.get(group_name, []):
         print(f"{page} must appear under {group_name} in the sidebar", file=sys.stderr)
         sys.exit(1)

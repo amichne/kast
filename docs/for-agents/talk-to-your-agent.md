@@ -124,7 +124,7 @@ When your request is clear, the skill:
 
 ## Next steps
 
-- [Install the skill](install-the-skill.md) — drop the packaged skill
-  into your workspace
+- [Copilot integrations](install-the-skill.md) — add repository-local
+  Copilot files or use the skill fallback
 - [Direct CLI usage](direct-cli.md) — when the agent skips the skill
   and calls `kast` itself
