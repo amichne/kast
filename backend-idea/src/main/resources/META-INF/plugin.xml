@@ -13,14 +13,22 @@
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="io.github.amichne.kast.idea.KastDiagnosticsService"/>
         <projectService serviceImplementation="io.github.amichne.kast.idea.KastPluginService"/>
         <projectService serviceImplementation="io.github.amichne.kast.idea.KastSettingsState"/>
         <postStartupActivity implementation="io.github.amichne.kast.idea.KastStartupActivity"/>
+        <statusBarWidgetFactory implementation="io.github.amichne.kast.idea.KastStatusBarWidgetFactory"
+                                id="io.github.amichne.kast.status"/>
+        <toolWindow id="Kast"
+                    anchor="bottom"
+                    icon="/icons/kast.svg"
+                    factoryClass="io.github.amichne.kast.idea.KastToolWindowFactory"/>
         <projectConfigurable
                 instance="io.github.amichne.kast.idea.KastSettingsConfigurable"
                 id="io.github.amichne.kast.settings"
                 displayName="Kast"
                 parentId="tools"/>
+        <notificationGroup id="Kast Activity" displayType="TOOL_WINDOW" toolWindowId="Kast"/>
         <notificationGroup id="Kast" displayType="BALLOON"/>
         <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
     </extensions>
