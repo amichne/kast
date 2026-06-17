@@ -696,12 +696,20 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
     );
     let stdout = String::from_utf8_lossy(&human.stdout);
     assert!(
-        stdout.starts_with("# Kast status\n"),
-        "status should default to a readable Markdown-style summary: {stdout}"
+        stdout.starts_with("Kast status\n===========\n"),
+        "status should default to a rendered readable summary: {stdout}"
     );
     assert!(
         stdout.contains("No runtime candidates were found."),
         "status should include an actionable empty-state message: {stdout}"
+    );
+    assert!(
+        stdout.contains("Next steps\n----------"),
+        "status should render Markdown section headings: {stdout}"
+    );
+    assert!(
+        !stdout.contains("# Kast status") && !stdout.contains("`kast up`"),
+        "status should not dump raw Markdown control tokens: {stdout}"
     );
     assert!(
         serde_json::from_slice::<serde_json::Value>(&human.stdout).is_err(),
@@ -729,6 +737,44 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
     assert_eq!(
         stdout["candidates"].as_array().expect("candidates").len(),
         0
+    );
+}
+
+#[test]
+fn install_affected_human_dry_run_renders_without_prompt_when_not_tty() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let dry_run = kast(&home, &config_home)
+        .args(["install", "affected"])
+        .output()
+        .expect("install affected");
+
+    assert!(
+        dry_run.status.success(),
+        "dry run should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&dry_run.stdout),
+        String::from_utf8_lossy(&dry_run.stderr)
+    );
+    assert!(
+        dry_run.stderr.is_empty(),
+        "captured dry run should not prompt on stderr: {}",
+        String::from_utf8_lossy(&dry_run.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&dry_run.stdout);
+    assert!(
+        stdout.starts_with("Kast affected install repair\n============================"),
+        "dry run should render the affected-install summary: {stdout}"
+    );
+    assert!(
+        stdout.contains("Apply command: kast install affected --apply"),
+        "non-interactive dry run should keep the explicit apply command: {stdout}"
+    );
+    assert!(
+        !stdout.contains("Apply 1 planned Kast install repair now?"),
+        "non-interactive dry run should not prompt on stdout: {stdout}"
     );
 }
 

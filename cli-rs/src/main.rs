@@ -7,6 +7,7 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
+mod interaction;
 mod lsp;
 mod metrics;
 mod metrics_database;
@@ -166,6 +167,11 @@ fn run(cli: Cli) -> Result<i32> {
             Ok(0)
         }
         Command::Install(args)
+            if should_prompt_for_affected_install_apply(&args, output_format) =>
+        {
+            run_interactive_affected_install(args)
+        }
+        Command::Install(args)
             if matches!(args.command, Some(cli::InstallCommand::Completion(_))) =>
         {
             let Some(cli::InstallCommand::Completion(completion_args)) = args.command else {
@@ -202,6 +208,46 @@ fn install_reporter(output_format: OutputFormat) -> Box<dyn install::InstallRepo
     } else {
         Box::new(install::NoopInstallReporter)
     }
+}
+
+fn should_prompt_for_affected_install_apply(
+    args: &cli::InstallArgs,
+    output_format: OutputFormat,
+) -> bool {
+    interaction::PromptPolicy::current(output_format).is_enabled()
+        && matches!(
+            &args.command,
+            Some(cli::InstallCommand::Affected(cli::AffectedInstallArgs {
+                apply: false,
+                ..
+            }))
+        )
+}
+
+fn run_interactive_affected_install(args: cli::InstallArgs) -> Result<i32> {
+    let mut reporter = install_reporter(OutputFormat::Human);
+    let planned = install::install(args.clone(), reporter.as_mut())?;
+    let action_count = match &planned {
+        install::InstallResult::Affected(result) => result.actions.len(),
+        _ => 0,
+    };
+    output::print_install_result(&planned)?;
+    if action_count == 0 {
+        return Ok(0);
+    }
+
+    if interaction::confirm_affected_install_apply(action_count)?
+        == interaction::Confirmation::Accepted
+    {
+        let mut apply_args = args;
+        let Some(cli::InstallCommand::Affected(affected_args)) = &mut apply_args.command else {
+            unreachable!("interactive affected install only handles affected install arguments")
+        };
+        affected_args.apply = true;
+        let applied = install::install(apply_args, reporter.as_mut())?;
+        output::print_install_result(&applied)?;
+    }
+    Ok(0)
 }
 
 fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {

@@ -10,9 +10,20 @@ use crate::runtime::{
     WorkspaceStatusResult,
 };
 use crate::self_mgmt::SelfDoctorResult;
+use crossterm::style::{Stylize, style};
 use serde::Serialize;
 use serde_json::Value;
-use std::io;
+use std::fmt::{self, Write as FmtWrite};
+use std::io::{self, IsTerminal, Write as IoWrite};
+
+macro_rules! mdln {
+    ($document:expr) => {
+        $document.blank()
+    };
+    ($document:expr, $($arg:tt)*) => {
+        $document.line(format_args!($($arg)*))
+    };
+}
 
 pub fn print_json(value: &impl Serialize) -> Result<()> {
     serde_json::to_writer_pretty(io::stdout(), value)?;
@@ -27,20 +38,147 @@ pub fn print_error(error: &CliError, output: OutputFormat) -> Result<()> {
         return Ok(());
     }
 
-    eprintln!("# Kast error");
-    eprintln!();
-    eprintln!("- Code: {}", error.code);
-    eprintln!("- Message: {}", error.message);
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast error");
+    mdln!(document);
+    mdln!(document, "- Code: {}", error.code);
+    mdln!(document, "- Message: {}", error.message);
     if !error.details.is_empty() {
-        eprintln!();
-        eprintln!("## Details");
+        mdln!(document);
+        mdln!(document, "## Details");
         for (key, value) in &error.details {
-            eprintln!("- {key}: `{value}`");
+            mdln!(document, "- {key}: `{value}`");
         }
     }
-    eprintln!();
-    eprintln!("Use `kast --output json ...` for the machine-readable error payload.");
+    mdln!(document);
+    mdln!(
+        document,
+        "Use `kast --output json ...` for the machine-readable error payload."
+    );
+    print_markdown_stderr(&document.into_string())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RenderStyle {
+    Plain,
+    Ansi,
+}
+
+#[derive(Default)]
+struct MarkdownDocument {
+    text: String,
+}
+
+impl MarkdownDocument {
+    fn line(&mut self, args: fmt::Arguments<'_>) {
+        self.text
+            .write_fmt(args)
+            .expect("writing to a String cannot fail");
+        self.text.push('\n');
+    }
+
+    fn blank(&mut self) {
+        self.text.push('\n');
+    }
+
+    fn into_string(self) -> String {
+        self.text
+    }
+}
+
+pub(crate) fn print_markdown(markdown: &str) -> Result<()> {
+    write_rendered_markdown(io::stdout().lock(), markdown, stdout_render_style())
+}
+
+fn print_markdown_stderr(markdown: &str) -> Result<()> {
+    write_rendered_markdown(io::stderr().lock(), markdown, stderr_render_style())
+}
+
+fn write_rendered_markdown(
+    mut writer: impl IoWrite,
+    markdown: &str,
+    style: RenderStyle,
+) -> Result<()> {
+    writer.write_all(render_markdown(markdown, style).as_bytes())?;
     Ok(())
+}
+
+fn stdout_render_style() -> RenderStyle {
+    terminal_render_style(io::stdout().is_terminal())
+}
+
+fn stderr_render_style() -> RenderStyle {
+    terminal_render_style(io::stderr().is_terminal())
+}
+
+fn terminal_render_style(is_terminal: bool) -> RenderStyle {
+    let color_disabled = std::env::var_os("NO_COLOR").is_some()
+        || std::env::var("TERM").is_ok_and(|terminal| terminal.eq_ignore_ascii_case("dumb"));
+    if is_terminal && !color_disabled {
+        RenderStyle::Ansi
+    } else {
+        RenderStyle::Plain
+    }
+}
+
+fn render_markdown(markdown: &str, style: RenderStyle) -> String {
+    let mut rendered = String::new();
+    for line in markdown.lines() {
+        if let Some(heading) = line.strip_prefix("# ") {
+            push_heading(&mut rendered, heading, '=', style);
+        } else if let Some(heading) = line.strip_prefix("## ") {
+            push_heading(&mut rendered, heading, '-', style);
+        } else if let Some(item) = line.strip_prefix("- ") {
+            rendered.push_str("- ");
+            rendered.push_str(&render_inline(item, style));
+            rendered.push('\n');
+        } else {
+            rendered.push_str(&render_inline(line, style));
+            rendered.push('\n');
+        }
+    }
+    if markdown.is_empty() {
+        rendered.push('\n');
+    }
+    rendered
+}
+
+fn push_heading(rendered: &mut String, heading: &str, underline: char, style: RenderStyle) {
+    rendered.push_str(&style_heading(heading, style));
+    rendered.push('\n');
+    rendered.push_str(&underline.to_string().repeat(heading.chars().count().max(1)));
+    rendered.push('\n');
+}
+
+fn render_inline(line: &str, render_style: RenderStyle) -> String {
+    let mut rendered = String::new();
+    for (index, segment) in line.split('`').enumerate() {
+        if index % 2 == 0 {
+            rendered.push_str(segment);
+        } else {
+            rendered.push_str(&style_code(segment, render_style));
+        }
+    }
+    rendered
+}
+
+fn style_heading(text: &str, render_style: RenderStyle) -> String {
+    match render_style {
+        RenderStyle::Plain => text.to_string(),
+        RenderStyle::Ansi => style(text).bold().to_string(),
+    }
+}
+
+fn style_code(text: &str, render_style: RenderStyle) -> String {
+    match render_style {
+        RenderStyle::Plain => text.to_string(),
+        RenderStyle::Ansi => style(text).cyan().to_string(),
+    }
+}
+
+#[cfg(test)]
+fn render_markdown_for_test(markdown: &str, style: RenderStyle) -> String {
+    render_markdown(markdown, style)
 }
 
 pub fn print_install_result(result: &InstallResult) -> Result<()> {
@@ -56,28 +194,35 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
 }
 
 pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
-    println!("# Kast status");
-    println!();
-    println!("- Workspace: `{}`", result.workspace_root);
-    println!("- Descriptor directory: `{}`", result.descriptor_directory);
-    println!("- Candidates: {}", result.candidates.len());
-    println!();
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast status");
+    mdln!(document);
+    mdln!(document, "- Workspace: `{}`", result.workspace_root);
+    mdln!(
+        document,
+        "- Descriptor directory: `{}`",
+        result.descriptor_directory
+    );
+    mdln!(document, "- Candidates: {}", result.candidates.len());
+    mdln!(document);
     if let Some(selected) = &result.selected {
-        print_candidate("Selected runtime", selected);
+        print_candidate(&mut document, "Selected runtime", selected);
     } else {
-        println!("No runtime candidates were found.");
-        println!();
-        println!("## Next steps");
-        println!("- Start a backend: `kast up`");
-        println!(
+        mdln!(document, "No runtime candidates were found.");
+        mdln!(document);
+        mdln!(document, "## Next steps");
+        mdln!(document, "- Start a backend: `kast up`");
+        mdln!(
+            document,
             "- For headless use, install the Linux headless tarball; for macOS IDE use, install Kast through Homebrew."
         );
     }
     if result.selected.is_some() && result.candidates.len() > 1 {
-        println!();
-        println!("## Other candidates");
+        mdln!(document);
+        mdln!(document, "## Other candidates");
         for candidate in &result.candidates {
-            println!(
+            mdln!(
+                document,
                 "- {} pid {} ready {}",
                 candidate.descriptor.backend_name,
                 candidate.descriptor.pid,
@@ -85,321 +230,428 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
             );
         }
     }
-    Ok(())
+    print_markdown(&document.into_string())
 }
 
 pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
-    println!("# Kast up");
-    println!();
-    println!("- Workspace: `{}`", result.workspace_root);
-    println!("- Started new daemon: {}", yes_no(result.started));
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast up");
+    mdln!(document);
+    mdln!(document, "- Workspace: `{}`", result.workspace_root);
+    mdln!(document, "- Started new daemon: {}", yes_no(result.started));
     if let Some(log_file) = &result.log_file {
-        println!("- Log file: `{log_file}`");
+        mdln!(document, "- Log file: `{log_file}`");
     }
     if let Some(note) = &result.note {
-        println!("- Note: {note}");
+        mdln!(document, "- Note: {note}");
     }
-    println!();
-    print_candidate("Selected runtime", &result.selected);
-    println!();
-    println!("## Next steps");
-    println!("- Check state again: `kast status`");
-    println!("- Send analysis requests with `kast rpc`");
-    Ok(())
+    mdln!(document);
+    print_candidate(&mut document, "Selected runtime", &result.selected);
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    mdln!(document, "- Check state again: `kast status`");
+    mdln!(document, "- Send analysis requests with `kast rpc`");
+    print_markdown(&document.into_string())
 }
 
 pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
-    println!("# Kast stop");
-    println!();
-    println!("- Workspace: `{}`", result.workspace_root);
-    println!("- Stopped daemon: {}", yes_no(result.stopped));
-    println!("- Forced termination: {}", yes_no(result.forced));
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast stop");
+    mdln!(document);
+    mdln!(document, "- Workspace: `{}`", result.workspace_root);
+    mdln!(document, "- Stopped daemon: {}", yes_no(result.stopped));
+    mdln!(document, "- Forced termination: {}", yes_no(result.forced));
     if let Some(pid) = result.pid {
-        println!("- PID: {pid}");
+        mdln!(document, "- PID: {pid}");
     }
     if let Some(descriptor_path) = &result.descriptor_path {
-        println!("- Descriptor: `{descriptor_path}`");
+        mdln!(document, "- Descriptor: `{descriptor_path}`");
     }
     if !result.stopped {
-        println!();
-        println!("No matching daemon was running.");
+        mdln!(document);
+        mdln!(document, "No matching daemon was running.");
     }
-    Ok(())
+    print_markdown(&document.into_string())
 }
 
 pub fn print_capabilities(value: &Value) -> Result<()> {
-    println!("# Kast capabilities");
-    println!();
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast capabilities");
+    mdln!(document);
     if let Some(methods) = value.get("methods").and_then(Value::as_array) {
-        println!("- Methods advertised: {}", methods.len());
+        mdln!(document, "- Methods advertised: {}", methods.len());
         for method in methods.iter().filter_map(Value::as_str).take(30) {
-            println!("- `{method}`");
+            mdln!(document, "- `{method}`");
         }
         if methods.len() > 30 {
-            println!("- ... {} more", methods.len() - 30);
+            mdln!(document, "- ... {} more", methods.len() - 30);
         }
     } else if let Some(object) = value.as_object() {
-        println!(
+        mdln!(
+            document,
             "- Top-level fields: {}",
             object.keys().cloned().collect::<Vec<_>>().join(", ")
         );
     } else {
-        println!("- Capabilities payload is available.");
+        mdln!(document, "- Capabilities payload is available.");
     }
-    println!();
-    println!("Use `kast --output json capabilities ...` for the full payload.");
-    Ok(())
+    mdln!(document);
+    mdln!(
+        document,
+        "Use `kast --output json capabilities ...` for the full payload."
+    );
+    print_markdown(&document.into_string())
 }
 
 pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
-    println!("# Kast doctor");
-    println!();
-    println!("- Healthy: {}", yes_no(result.ok));
-    println!("- Installed: {}", yes_no(result.installed));
-    println!("- Config valid: {}", yes_no(result.configuration.valid));
-    println!("- Config path: `{}`", result.config_path);
-    println!(
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast doctor");
+    mdln!(document);
+    mdln!(document, "- Healthy: {}", yes_no(result.ok));
+    mdln!(document, "- Installed: {}", yes_no(result.installed));
+    mdln!(
+        document,
+        "- Config valid: {}",
+        yes_no(result.configuration.valid)
+    );
+    mdln!(document, "- Config path: `{}`", result.config_path);
+    mdln!(
+        document,
         "- Canonical directory: `{}`",
         result.canonical_directory.root
     );
-    println!("- Running binary: `{}`", result.binary.running_binary);
-    println!("- Configured binary: `{}`", result.binary.configured_binary);
-    println!(
+    mdln!(
+        document,
+        "- Running binary: `{}`",
+        result.binary.running_binary
+    );
+    mdln!(
+        document,
+        "- Configured binary: `{}`",
+        result.binary.configured_binary
+    );
+    mdln!(
+        document,
         "- Minimum backend version: `{}`",
         result.minimum_backend_version
     );
-    print_messages("Issues", &result.issues);
-    print_warnings(&result.warnings);
+    print_messages(&mut document, "Issues", &result.issues);
+    print_warnings(&mut document, &result.warnings);
     if let Some(install) = &result.install {
-        println!();
-        println!("## Installed versions");
-        println!("- CLI: `{}`", value_or_dash(&install.version));
+        mdln!(document);
+        mdln!(document, "## Installed versions");
+        mdln!(document, "- CLI: `{}`", value_or_dash(&install.version));
         if !install.components.is_empty() {
-            println!("- Components: {}", install.components.join(", "));
+            mdln!(document, "- Components: {}", install.components.join(", "));
         }
         for backend in &install.backends {
-            println!(
+            mdln!(
+                document,
                 "- Backend {}: `{}` runtime `{}`",
-                backend.name, backend.version, backend.runtime_libs_dir
+                backend.name,
+                backend.version,
+                backend.runtime_libs_dir
             );
         }
         for repo in &install.repos {
-            println!(
+            mdln!(
+                document,
                 "- Copilot repo `{}`: `{}`",
-                repo.path, repo.copilot_extension_version
+                repo.path,
+                repo.copilot_extension_version
             );
         }
     }
     if result.ok {
-        println!();
-        println!("No blocking issues were found.");
+        mdln!(document);
+        mdln!(document, "No blocking issues were found.");
     }
-    Ok(())
+    print_markdown(&document.into_string())
 }
 
 pub fn print_setup(result: &SetupResult) -> Result<()> {
-    println!("# Kast setup");
-    println!();
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast setup");
+    mdln!(document);
     if let Some(repair) = &result.repair {
-        println!("- Repair applied: {}", yes_no(repair.applied));
+        mdln!(document, "- Repair applied: {}", yes_no(repair.applied));
     }
     if let Some(headless) = &result.headless {
-        println!("- Headless backend: `{}`", headless.version);
+        mdln!(document, "- Headless backend: `{}`", headless.version);
     }
     if let Some(shell) = &result.shell {
-        println!(
+        mdln!(
+            document,
             "- Shell integration: `{}` profile `{}`",
-            shell.shell, shell.profile
+            shell.shell,
+            shell.profile
         );
     }
     if let Some(skill) = &result.skill {
-        println!("- Skill: `{}`", skill.installed_at);
+        mdln!(document, "- Skill: `{}`", skill.installed_at);
     }
     if let Some(copilot) = &result.copilot {
-        println!("- Copilot plugin: `{}`", copilot.installed_at);
+        mdln!(document, "- Copilot plugin: `{}`", copilot.installed_at);
     }
     if let Some(plugin) = &result.idea_plugin {
-        println!("- IDEA plugin action: `{}`", plugin.brew_action);
+        mdln!(document, "- IDEA plugin action: `{}`", plugin.brew_action);
     }
-    println!(
+    mdln!(
+        document,
         "- Project-open profile auto-init: {}",
         yes_no(result.project_open.profile_auto_init)
     );
-    println!("- Project-open profile: `{}`", result.project_open.profile);
-    println!(
+    mdln!(
+        document,
+        "- Project-open profile: `{}`",
+        result.project_open.profile
+    );
+    mdln!(
+        document,
         "- Auto-exclude generated package files: {}",
         yes_no(result.project_open.auto_exclude_git)
     );
-    print_warnings(&result.warnings);
-    Ok(())
+    print_warnings(&mut document, &result.warnings);
+    print_markdown(&document.into_string())
 }
 
 fn print_backend_install(result: &BackendInstallResult) -> Result<()> {
-    println!("# Kast backend install");
-    println!();
-    println!("- Backend: `{}`", result.backend_name);
-    println!("- Version: `{}`", result.version);
-    println!("- Installed directory: `{}`", result.install_dir);
-    println!("- Runtime libraries: `{}`", result.runtime_libs_dir);
-    print_optional("IDEA home", result.idea_home.as_deref());
-    println!("- Source archive: `{}`", result.source_archive);
-    println!("- Downloaded release asset: {}", yes_no(result.downloaded));
-    println!("- Reused existing install: {}", yes_no(result.skipped));
-    println!();
-    println!("## Next steps");
-    println!("- Start it: `kast up --backend={}`", result.backend_name);
-    println!("- Inspect it: `kast status`");
-    Ok(())
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast backend install");
+    mdln!(document);
+    mdln!(document, "- Backend: `{}`", result.backend_name);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(document, "- Installed directory: `{}`", result.install_dir);
+    mdln!(
+        document,
+        "- Runtime libraries: `{}`",
+        result.runtime_libs_dir
+    );
+    print_optional(&mut document, "IDEA home", result.idea_home.as_deref());
+    mdln!(document, "- Source archive: `{}`", result.source_archive);
+    mdln!(
+        document,
+        "- Downloaded release asset: {}",
+        yes_no(result.downloaded)
+    );
+    mdln!(
+        document,
+        "- Reused existing install: {}",
+        yes_no(result.skipped)
+    );
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    mdln!(
+        document,
+        "- Start it: `kast up --backend={}`",
+        result.backend_name
+    );
+    mdln!(document, "- Inspect it: `kast status`");
+    print_markdown(&document.into_string())
 }
 
 fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
-    println!("# Kast skill install");
-    println!();
-    println!("- Installed at: `{}`", result.installed_at);
-    println!("- Version: `{}`", result.version);
-    println!("- Reused existing install: {}", yes_no(result.skipped));
-    println!();
-    println!("## Next steps");
-    println!(
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast skill install");
+    mdln!(document);
+    mdln!(document, "- Installed at: `{}`", result.installed_at);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(
+        document,
+        "- Reused existing install: {}",
+        yes_no(result.skipped)
+    );
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    mdln!(
+        document,
         "- Read the installed quickstart: `{}/references/quickstart.md`",
         result.installed_at
     );
-    Ok(())
+    print_markdown(&document.into_string())
 }
 
 fn print_copilot_install(title: &str, result: &InstallCopilotExtensionResult) -> Result<()> {
-    println!("# {title}");
-    println!();
-    println!("- Extension path: `{}`", result.installed_at);
-    println!("- Version: `{}`", result.version);
-    println!("- Reused existing install: {}", yes_no(result.skipped));
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# {title}");
+    mdln!(document);
+    mdln!(document, "- Extension path: `{}`", result.installed_at);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(
+        document,
+        "- Reused existing install: {}",
+        yes_no(result.skipped)
+    );
     if result.git_exclude.attempted {
-        println!(
+        mdln!(
+            document,
             "- Git info/exclude updated: {}",
             yes_no(result.git_exclude.updated)
         );
         print_optional(
+            &mut document,
             "Git info/exclude",
             result.git_exclude.exclude_file.as_deref(),
         );
     } else if let Some(reason) = &result.git_exclude.reason {
-        println!("- Git info/exclude: {reason}");
+        mdln!(document, "- Git info/exclude: {reason}");
     }
-    print_warnings(&result.warnings);
-    Ok(())
+    print_warnings(&mut document, &result.warnings);
+    print_markdown(&document.into_string())
 }
 
 fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
-    println!("# Kast IDEA plugin install");
-    println!();
-    println!("- Cask token: `{}`", result.cask_token);
-    println!("- Plugin version: `{}`", result.plugin_version);
-    println!("- Download cache: `{}`", result.download_cache);
-    println!("- Downloaded bytes: {}", result.downloaded_bytes);
-    println!("- Homebrew action: `{}`", result.brew_action);
-    println!("- Dry run: {}", yes_no(result.dry_run));
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast IDEA plugin install");
+    mdln!(document);
+    mdln!(document, "- Cask token: `{}`", result.cask_token);
+    mdln!(document, "- Plugin version: `{}`", result.plugin_version);
+    mdln!(document, "- Download cache: `{}`", result.download_cache);
+    mdln!(document, "- Downloaded bytes: {}", result.downloaded_bytes);
+    mdln!(document, "- Homebrew action: `{}`", result.brew_action);
+    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
     if !result.brew_command.is_empty() {
-        println!("- Brew command: `{}`", result.brew_command.join(" "));
+        mdln!(
+            document,
+            "- Brew command: `{}`",
+            result.brew_command.join(" ")
+        );
     }
     print_optional(
+        &mut document,
         "JetBrains config root",
         result.jetbrains_config_root.as_deref(),
     );
     if !result.plugin_directories.is_empty() {
-        println!();
-        println!("## Plugin directories");
+        mdln!(document);
+        mdln!(document, "## Plugin directories");
         for path in &result.plugin_directories {
-            println!("- `{path}`");
+            mdln!(document, "- `{path}`");
         }
     }
-    print_warnings(&result.warnings);
-    Ok(())
+    print_warnings(&mut document, &result.warnings);
+    print_markdown(&document.into_string())
 }
 
 fn print_shell_install(result: &InstallShellResult) -> Result<()> {
-    println!("# Kast shell install");
-    println!();
-    println!("- Shell: `{}`", result.shell);
-    println!("- Command name: `{}`", result.command_name);
-    println!("- Bin directory: `{}`", result.bin_dir);
-    println!("- Config home: `{}`", result.config_home);
-    println!("- Source file: `{}`", result.source_file);
-    println!("- Profile: `{}`", result.profile);
-    println!("- Profile updated: {}", yes_no(result.profile_updated));
-    println!("- Dry run: {}", yes_no(result.dry_run));
-    println!();
-    println!("## Next steps");
-    println!("- Open a fresh shell or run `{}`.", result.source_line);
-    Ok(())
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast shell install");
+    mdln!(document);
+    mdln!(document, "- Shell: `{}`", result.shell);
+    mdln!(document, "- Command name: `{}`", result.command_name);
+    mdln!(document, "- Bin directory: `{}`", result.bin_dir);
+    mdln!(document, "- Config home: `{}`", result.config_home);
+    mdln!(document, "- Source file: `{}`", result.source_file);
+    mdln!(document, "- Profile: `{}`", result.profile);
+    mdln!(
+        document,
+        "- Profile updated: {}",
+        yes_no(result.profile_updated)
+    );
+    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    mdln!(
+        document,
+        "- Open a fresh shell or run `{}`.",
+        result.source_line
+    );
+    print_markdown(&document.into_string())
 }
 
 fn print_archive_install(result: &ArchiveInstallResult) -> Result<()> {
-    println!("# Kast install");
-    println!();
-    println!("- Installed at: `{}`", result.installed_at);
-    println!("- Instance: `{}`", result.instance);
-    println!("- Reused existing install: {}", yes_no(result.skipped));
-    Ok(())
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast install");
+    mdln!(document);
+    mdln!(document, "- Installed at: `{}`", result.installed_at);
+    mdln!(document, "- Instance: `{}`", result.instance);
+    mdln!(
+        document,
+        "- Reused existing install: {}",
+        yes_no(result.skipped)
+    );
+    print_markdown(&document.into_string())
 }
 
 fn print_affected_install(result: &InstallAffectedResult) -> Result<()> {
-    println!("# Kast affected install repair");
-    println!();
-    println!("- Applied changes: {}", yes_no(result.applied));
-    println!("- Config path: `{}`", result.config_path);
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast affected install repair");
+    mdln!(document);
+    mdln!(document, "- Applied changes: {}", yes_no(result.applied));
+    mdln!(document, "- Config path: `{}`", result.config_path);
     if !result.applied {
-        println!("- Default: no files were changed");
-        println!("- Apply command: `{}`", result.apply_command);
+        mdln!(document, "- Default: no files were changed");
+        mdln!(document, "- Apply command: `{}`", result.apply_command);
     }
     if result.actions.is_empty() {
-        println!();
-        println!("No affected installs or stale paths were found.");
+        mdln!(document);
+        mdln!(document, "No affected installs or stale paths were found.");
     } else {
-        println!();
-        println!("## Actions");
+        mdln!(document);
+        mdln!(document, "## Actions");
         for action in &result.actions {
-            println!("- `{}` `{}`: {}", action.status, action.kind, action.target);
-            println!("  {}", action.message);
+            mdln!(
+                document,
+                "- `{}` `{}`: {}",
+                action.status,
+                action.kind,
+                action.target
+            );
+            mdln!(document, "  {}", action.message);
             if let Some(command) = &action.command {
-                println!("  Command: `{command}`");
+                mdln!(document, "  Command: `{command}`");
             }
         }
     }
-    print_messages("Backups", &result.backups);
-    print_warnings(&result.warnings);
-    Ok(())
+    print_messages(&mut document, "Backups", &result.backups);
+    print_warnings(&mut document, &result.warnings);
+    print_markdown(&document.into_string())
 }
 
-fn print_candidate(title: &str, candidate: &RuntimeCandidateStatus) {
-    println!("## {title}");
-    println!("- Backend: `{}`", candidate.descriptor.backend_name);
-    println!(
+fn print_candidate(
+    document: &mut MarkdownDocument,
+    title: &str,
+    candidate: &RuntimeCandidateStatus,
+) {
+    mdln!(document, "## {title}");
+    mdln!(
+        document,
+        "- Backend: `{}`",
+        candidate.descriptor.backend_name
+    );
+    mdln!(
+        document,
         "- Backend version: `{}`",
         candidate.descriptor.backend_version
     );
-    println!("- PID: {}", candidate.descriptor.pid);
-    println!("- PID alive: {}", yes_no(candidate.pid_alive));
-    println!("- Reachable: {}", yes_no(candidate.reachable));
-    println!("- Ready: {}", yes_no(candidate.ready));
-    println!("- Socket: `{}`", candidate.descriptor.socket_path);
+    mdln!(document, "- PID: {}", candidate.descriptor.pid);
+    mdln!(document, "- PID alive: {}", yes_no(candidate.pid_alive));
+    mdln!(document, "- Reachable: {}", yes_no(candidate.reachable));
+    mdln!(document, "- Ready: {}", yes_no(candidate.ready));
+    mdln!(document, "- Socket: `{}`", candidate.descriptor.socket_path);
     if let Some(status) = &candidate.runtime_status {
-        println!("- Runtime state: `{}`", runtime_state(status.state.clone()));
-        println!("- Active: {}", yes_no(status.active));
-        println!("- Healthy: {}", yes_no(status.healthy));
-        println!("- Indexing: {}", yes_no(status.indexing));
+        mdln!(
+            document,
+            "- Runtime state: `{}`",
+            runtime_state(status.state.clone())
+        );
+        mdln!(document, "- Active: {}", yes_no(status.active));
+        mdln!(document, "- Healthy: {}", yes_no(status.healthy));
+        mdln!(document, "- Indexing: {}", yes_no(status.indexing));
         if !status.source_module_names.is_empty() {
-            println!(
+            mdln!(
+                document,
                 "- Source modules: {}",
                 status.source_module_names.join(", ")
             );
         }
         if let Some(message) = &status.message {
-            println!("- Message: {message}");
+            mdln!(document, "- Message: {message}");
         }
-        print_warnings(&status.warnings);
+        print_warnings(document, &status.warnings);
     }
     if let Some(error_message) = &candidate.error_message {
-        println!("- Error: {error_message}");
+        mdln!(document, "- Error: {error_message}");
     }
 }
 
@@ -412,24 +664,24 @@ fn runtime_state(state: RuntimeState) -> &'static str {
     }
 }
 
-fn print_optional(label: &str, value: Option<&str>) {
+fn print_optional(document: &mut MarkdownDocument, label: &str, value: Option<&str>) {
     if let Some(value) = value.filter(|value| !value.trim().is_empty()) {
-        println!("- {label}: `{value}`");
+        mdln!(document, "- {label}: `{value}`");
     }
 }
 
-fn print_warnings(warnings: &[String]) {
-    print_messages("Warnings", warnings);
+fn print_warnings(document: &mut MarkdownDocument, warnings: &[String]) {
+    print_messages(document, "Warnings", warnings);
 }
 
-fn print_messages(title: &str, messages: &[String]) {
+fn print_messages(document: &mut MarkdownDocument, title: &str, messages: &[String]) {
     if messages.is_empty() {
         return;
     }
-    println!();
-    println!("## {title}");
+    mdln!(document);
+    mdln!(document, "## {title}");
     for message in messages {
-        println!("- {message}");
+        mdln!(document, "- {message}");
     }
 }
 
@@ -439,4 +691,51 @@ fn yes_no(value: bool) -> &'static str {
 
 fn value_or_dash(value: &str) -> &str {
     if value.trim().is_empty() { "-" } else { value }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rendered_human_output_plain_text_does_not_dump_raw_markdown_tokens() {
+        let rendered = render_markdown_for_test(
+            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast up`\n",
+            RenderStyle::Plain,
+        );
+
+        assert!(
+            rendered.starts_with("Kast status\n==========="),
+            "primary heading should be rendered as text with an underline: {rendered}"
+        );
+        assert!(
+            rendered.contains("Workspace: /tmp/kast"),
+            "inline code markers should be rendered away: {rendered}"
+        );
+        assert!(
+            rendered.contains("Next steps\n----------"),
+            "secondary headings should be rendered as sections: {rendered}"
+        );
+        assert!(
+            !rendered.contains("# Kast status") && !rendered.contains("`/tmp/kast`"),
+            "raw Markdown control tokens should not leak into rendered output: {rendered}"
+        );
+    }
+
+    #[test]
+    fn rendered_human_output_ansi_styles_headings_and_inline_code() {
+        let rendered = render_markdown_for_test(
+            "# Kast status\n- Workspace: `/tmp/kast`\n",
+            RenderStyle::Ansi,
+        );
+
+        assert!(
+            rendered.contains("\x1b["),
+            "ANSI rendering should style headings or inline code: {rendered:?}"
+        );
+        assert!(
+            !rendered.contains("# Kast status") && !rendered.contains("`/tmp/kast`"),
+            "ANSI rendering should still remove raw Markdown control tokens: {rendered:?}"
+        );
+    }
 }

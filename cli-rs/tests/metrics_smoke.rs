@@ -52,8 +52,9 @@ fn reads_metrics_directly_from_source_index_db() {
         String::from_utf8_lossy(&fan_in.stderr)
     );
     let fan_in_stdout = String::from_utf8_lossy(&fan_in.stdout);
-    assert!(fan_in_stdout.starts_with("# Kast metrics fan-in\n"));
-    assert!(fan_in_stdout.contains("targetFqName=`lib.Foo`"));
+    assert!(fan_in_stdout.starts_with("Kast metrics fan-in\n==================="));
+    assert!(!fan_in_stdout.contains("# Kast metrics fan-in"));
+    assert!(fan_in_stdout.contains("targetFqName=lib.Foo"));
     assert!(fan_in_stdout.contains("occurrenceCount=3"));
     assert!(serde_json::from_slice::<Value>(&fan_in.stdout).is_err());
 

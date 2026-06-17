@@ -21,9 +21,11 @@ supports it.
 
 ## Output modes
 
-Operator commands default to readable Markdown-style summaries so humans can
-see status, next steps, paths, and warnings without parsing JSON. Add
-`--output json` when automation needs the structured payload:
+Operator commands default to rendered readable summaries so humans can see
+status, next steps, paths, and warnings without parsing JSON. Interactive
+terminals receive styled headings and inline code; logs and captured output
+receive plain rendered text. Add `--output json` when automation needs the
+structured payload:
 
 ```console title="Machine-readable status"
 kast --output json status
