@@ -898,7 +898,7 @@ pub fn workspace_hash(workspace_root: &Path) -> String {
 }
 
 fn socket_path_too_long(path: &Path) -> bool {
-    path.to_string_lossy().as_bytes().len() > MAX_UNIX_SOCKET_PATH_BYTES
+    path.to_string_lossy().len() > MAX_UNIX_SOCKET_PATH_BYTES
 }
 
 fn read_partial_config(path: &Path) -> Result<PartialConfig> {
