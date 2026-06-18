@@ -146,7 +146,7 @@ class HeadlessServerOptionsTest {
         var waitCount = 0
         val moduleSnapshots = ArrayDeque(listOf(emptyList<String>(), listOf(":app")))
         val bootstrap = HeadlessGradleProjectBootstrap(
-            waitForSmartMode = {
+            waitForProjectModel = {
                 waitCount += 1
             },
             moduleNames = {
@@ -172,7 +172,7 @@ class HeadlessServerOptionsTest {
     fun `Gradle bootstrap fails when sync still reports no modules`() {
         val workspace = tempDir.resolve("workspace")
         val bootstrap = HeadlessGradleProjectBootstrap(
-            waitForSmartMode = {},
+            waitForProjectModel = {},
             moduleNames = { emptyList() },
             canLinkGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, _ -> },

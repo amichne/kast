@@ -2,7 +2,6 @@ package io.github.amichne.kast.headless
 
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import java.nio.file.Files
@@ -56,8 +55,8 @@ enum class HeadlessWorkspaceKind {
 }
 
 class HeadlessGradleProjectBootstrap(
-    private val waitForSmartMode: (Project) -> Unit = { project ->
-        DumbService.getInstance(project).waitForSmartMode()
+    private val waitForProjectModel: (Project) -> Unit = { project ->
+        HeadlessGradleProjectImportBridge.awaitSmartMode(project)
     },
     private val moduleNames: (Project) -> List<String> = { project ->
         ModuleManager.getInstance(project).modules.map { module -> module.name }.sorted()
@@ -93,7 +92,7 @@ class HeadlessGradleProjectBootstrap(
         }
 
         linkAndImportGradleProject(project, externalProjectPath)
-        waitForSmartMode(project)
+        waitForProjectModel(project)
         val importedModuleNames = moduleNames(project)
         if (importedModuleNames.isEmpty()) {
             throw HeadlessGradleModelUnavailableException(

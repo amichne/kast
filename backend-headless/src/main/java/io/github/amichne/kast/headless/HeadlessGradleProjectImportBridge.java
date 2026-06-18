@@ -3,6 +3,7 @@ package io.github.amichne.kast.headless;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
+import com.intellij.openapi.project.DumbService;
 import org.jetbrains.plugins.gradle.service.project.open.GradleProjectImportUtil;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
@@ -39,5 +40,9 @@ public final class HeadlessGradleProjectImportBridge {
         } catch (TimeoutException error) {
             throw new IllegalStateException("Timed out importing Gradle project: " + externalProjectPath, error);
         }
+    }
+
+    public static void awaitSmartMode(Project project) {
+        DumbService.getInstance(project).waitForSmartMode();
     }
 }
