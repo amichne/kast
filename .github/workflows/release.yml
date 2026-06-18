@@ -550,6 +550,55 @@ jobs:
       - name: Build headless backend
         run: ./kast.sh build headless -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
+      - name: Ensure zstd is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Package Gradle read-only dependency cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_dir="dist/gradle-ro-cache"
+          gradle_user_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
+          rm -rf "$cache_dir"
+          mkdir -p "$cache_dir"
+          ./scripts/package-gradle-ro-cache.sh \
+            --gradle-user-home "$gradle_user_home" \
+            --output "${cache_dir}/gradle-ro-dep-cache.tar.zst"
+          (cd "$cache_dir" && sha256sum -c gradle-ro-dep-cache.sha256)
+          check_dir="$RUNNER_TEMP/gradle-ro-release-check"
+          rm -rf "$check_dir"
+          mkdir -p "$check_dir"
+          tar --zstd -xf "${cache_dir}/gradle-ro-dep-cache.tar.zst" -C "$check_dir"
+          test -d "$check_dir/gradle-ro/modules-2"
+          if find "$check_dir/gradle-ro" \( -name '*.lock' -o -name 'gc.properties' \) -print -quit | grep -q .; then
+            echo "Gradle read-only cache artifact contains lock or GC metadata" >&2
+            exit 1
+          fi
+          python3 - "${cache_dir}/gradle-ro-dep-cache.tar.zst" "${cache_dir}/build-provenance-gradle-ro-cache.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "gradle-ro-cache",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
+          }
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+
       - name: Upload headless backend artifact
         if: always()
         uses: actions/upload-artifact@v6
@@ -621,6 +670,17 @@ jobs:
             --output "dist/kast-headless-linux-x64.tar.zst" \
             --manifest-output "dist/kast-runtime-manifest.json"
           mkdir -p dist/provenance
+          gradle_cache_dir="headless-backend/gradle-ro-cache"
+          gradle_cache_asset="${gradle_cache_dir}/gradle-ro-dep-cache.tar.zst"
+          gradle_cache_sidecar="${gradle_cache_dir}/gradle-ro-dep-cache.sha256"
+          gradle_cache_provenance="${gradle_cache_dir}/build-provenance-gradle-ro-cache.json"
+          [[ -f "$gradle_cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${gradle_cache_asset}" >&2; exit 1; }
+          [[ -f "$gradle_cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${gradle_cache_sidecar}" >&2; exit 1; }
+          [[ -f "$gradle_cache_provenance" ]] || { echo "Missing Gradle read-only cache provenance: ${gradle_cache_provenance}" >&2; exit 1; }
+          cp "$gradle_cache_asset" dist/gradle-ro-dep-cache.tar.zst
+          cp "$gradle_cache_sidecar" dist/gradle-ro-dep-cache.sha256
+          cp "$gradle_cache_provenance" dist/provenance/build-provenance-gradle-ro-cache.json
+          (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
           python3 - "$bundle_asset" "dist/provenance/build-provenance-ubuntu-debian-headless.json" <<'PY'
           import hashlib, json, os, sys
           from pathlib import Path
@@ -689,7 +749,16 @@ jobs:
             ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
           done
           (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
+          (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
           tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast'
+          rm -rf "$RUNNER_TEMP/gradle-ro-release-check"
+          mkdir -p "$RUNNER_TEMP/gradle-ro-release-check"
+          tar --zstd -xf dist/gradle-ro-dep-cache.tar.zst -C "$RUNNER_TEMP/gradle-ro-release-check"
+          test -d "$RUNNER_TEMP/gradle-ro-release-check/gradle-ro/modules-2"
+          if find "$RUNNER_TEMP/gradle-ro-release-check/gradle-ro" \( -name '*.lock' -o -name 'gc.properties' \) -print -quit | grep -q .; then
+            echo "Gradle read-only cache artifact contains lock or GC metadata" >&2
+            exit 1
+          fi
           python3 - dist/kast-runtime-manifest.json dist/kast-headless-linux-x64.tar.zst <<'PY'
           import hashlib, json, sys
           from pathlib import Path
@@ -759,6 +828,23 @@ jobs:
           path: provenance-linux-headless
           pattern: linux-headless-tarball-*
           merge-multiple: true
+
+      - name: Upload Gradle read-only cache release asset
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          cache_asset="provenance-linux-headless/gradle-ro-dep-cache.tar.zst"
+          cache_sidecar="provenance-linux-headless/gradle-ro-dep-cache.sha256"
+          [[ -f "$cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${cache_asset}" >&2; exit 1; }
+          [[ -f "$cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${cache_sidecar}" >&2; exit 1; }
+          (cd provenance-linux-headless && sha256sum -c gradle-ro-dep-cache.sha256)
+          gh release upload "$tag" \
+            "$cache_asset" \
+            "$cache_sidecar" \
+            --clobber
 
       - name: Assemble combined provenance
         shell: bash

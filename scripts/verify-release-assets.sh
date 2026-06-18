@@ -59,6 +59,7 @@ required = {
     "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
     "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
+    "gradle-ro-cache": "gradle-ro-dep-cache.tar.zst",
     "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
     "idea": f"kast-idea-{tag}.zip",
     "runtime-manifest": "kast-runtime-manifest.json",

@@ -10,6 +10,7 @@ REQUIRED_PLATFORMS = {
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
+    "gradle-ro-cache",
     "headless-linux-x64",
     "idea",
     "runtime-manifest",

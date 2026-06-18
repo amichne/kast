@@ -57,7 +57,8 @@ managed install path.
 ## Optional Gradle cache inputs
 
 Use the Gradle read-only cache when a snapshot should boot with dependencies
-already available. The cache is independent from the Kast runtime version.
+already available. The cache is installed separately from the Kast runtime,
+even when both artifacts come from the same release tag.
 
 | Input | Required | Purpose |
 |-------|----------|---------|
@@ -69,11 +70,30 @@ The cache archive must contain `gradle-ro/modules-2` at the archive root. The
 action rejects lock files, Gradle GC metadata, unsafe archive paths, symbolic
 links, and unsupported archive member types before publishing the cache.
 
+## Public release assets
+
+For published Kast releases, use the public GitHub release assets directly.
+These URLs do not require an ACloud token, authorization header, signed URL, or
+other artifact-store credential.
+
+```text
+https://github.com/amichne/kast/releases/download/v1.0.0/kast-headless-linux-x64.tar.zst
+https://github.com/amichne/kast/releases/download/v1.0.0/kast-runtime-manifest.json
+https://github.com/amichne/kast/releases/download/v1.0.0/gradle-ro-dep-cache.tar.zst
+https://github.com/amichne/kast/releases/download/v1.0.0/gradle-ro-dep-cache.sha256
+https://github.com/amichne/kast/releases/download/v1.0.0/SHA256SUMS
+```
+
+Read `artifact-sha256` and `gradle-ro-cache-sha256` from `SHA256SUMS` or the
+matching `.sha256` sidecars for the same tag.
+
 ## Private artifacts and retries
 
 HTTP artifacts are streamed to disk and checksummed from disk. That keeps large
 runtime archives out of Node.js memory and gives checksum failures a single
 clear boundary.
+Public GitHub release assets do not need the authorization inputs below; use
+them only for private artifact stores or mirrors.
 
 | Input | Purpose |
 |-------|---------|
@@ -143,13 +163,11 @@ initialize:
     uses: github.com/amichne/kast-action@v1
     with:
       version: "1.0.0"
-      artifact-url: "$KAST_HEADLESS_URL"
+      artifact-url: "https://github.com/amichne/kast/releases/download/v1.0.0/kast-headless-linux-x64.tar.zst"
       artifact-sha256: "$KAST_HEADLESS_SHA256"
-      manifest-url: "$KAST_RUNTIME_MANIFEST_URL"
-      authorization-header: "$KAST_ARTIFACT_AUTHORIZATION_HEADER"
-      gradle-ro-cache-url: "$KAST_GRADLE_RO_CACHE_URL"
+      manifest-url: "https://github.com/amichne/kast/releases/download/v1.0.0/kast-runtime-manifest.json"
+      gradle-ro-cache-url: "https://github.com/amichne/kast/releases/download/v1.0.0/gradle-ro-dep-cache.tar.zst"
       gradle-ro-cache-sha256: "$KAST_GRADLE_RO_CACHE_SHA256"
-      gradle-ro-cache-authorization-header: "$KAST_GRADLE_CACHE_AUTHORIZATION_HEADER"
       fail-on-cache-miss: "true"
       install-dir: "/opt/kast"
 

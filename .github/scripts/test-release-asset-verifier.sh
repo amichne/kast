@@ -89,6 +89,11 @@ PY
     "$(compute_sha256 "${release_dir}/kast-headless-linux-x64.tar.zst")" \
     "kast-headless-linux-x64.tar.zst" \
     > "${release_dir}/kast-headless-linux-x64.sha256"
+  write_text_asset "${release_dir}/gradle-ro-dep-cache.tar.zst"
+  printf '%s  %s\n' \
+    "$(compute_sha256 "${release_dir}/gradle-ro-dep-cache.tar.zst")" \
+    "gradle-ro-dep-cache.tar.zst" \
+    > "${release_dir}/gradle-ro-dep-cache.sha256"
   write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz")" \
@@ -121,6 +126,7 @@ entries = [
     ("cli-linux-arm64", f"kast-{tag}-linux-arm64.zip"),
     ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
     ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
+    ("gradle-ro-cache", "gradle-ro-dep-cache.tar.zst"),
     ("headless-linux-x64", "kast-headless-linux-x64.tar.zst"),
     ("runtime-manifest", "kast-runtime-manifest.json"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
@@ -160,6 +166,7 @@ assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
+  "gradle-ro-dep-cache.tar.zst"
   "kast-headless-linux-x64.tar.zst"
   "kast-runtime-manifest.json"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
@@ -179,6 +186,7 @@ core_assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
+  "gradle-ro-dep-cache.tar.zst"
   "kast-headless-linux-x64.tar.zst"
   "kast-runtime-manifest.json"
   "kast-idea-${tag}.zip"

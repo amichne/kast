@@ -18,9 +18,11 @@ artifact shape that release jobs, cache jobs, and setup clients must agree on.
 
 ## Artifact set
 
-Release and cache workflows publish these files as the Phase 1 setup surface.
-The runtime and Gradle cache are separate because the runtime is versioned with
-Kast, while the dependency cache can refresh independently.
+Release workflows publish these files as public, version-locked GitHub release
+assets. The scheduled cache seed workflow may publish the same cache shape as a
+temporary Actions artifact for intermediate snapshots, but published releases
+carry the cache beside the runtime so setup clients can use public URLs without
+artifact-store credentials.
 
 ```text
 kast-headless-linux-x64.tar.zst
