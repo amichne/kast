@@ -1,6 +1,7 @@
 package io.github.amichne.kast.headless
 
 import com.intellij.openapi.application.ApplicationStarter
+import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
@@ -13,11 +14,14 @@ class HeadlessApplicationStarter : ApplicationStarter {
     override val isHeadless: Boolean = true
 
     override fun main(args: List<String>) {
-        runCatching {
-            HeadlessRuntime.run(HeadlessServerOptions.parseStarterArgs(args))
-        }.onFailure { error ->
-            error.printStackTrace(System.err)
-            exitProcess(1)
+        val options = HeadlessServerOptions.parseStarterArgs(args)
+        thread(start = true, isDaemon = false, name = "kast-headless-runtime") {
+            runCatching {
+                HeadlessRuntime.run(options)
+            }.onFailure { error ->
+                error.printStackTrace(System.err)
+                exitProcess(1)
+            }
         }
     }
 

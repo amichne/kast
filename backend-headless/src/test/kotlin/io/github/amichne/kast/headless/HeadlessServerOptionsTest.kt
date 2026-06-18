@@ -1,12 +1,16 @@
 package io.github.amichne.kast.headless
 
 import com.intellij.openapi.application.ApplicationStarter
+import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.lang.reflect.Proxy
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
 
@@ -106,7 +110,7 @@ class HeadlessServerOptionsTest {
 
     @Test
     @Suppress("DEPRECATION")
-    fun `project open task skips IDE startup work before server registration`() {
+    fun `plain project open task skips external model import work before server registration`() {
         val task = HeadlessProjectOpener.openProjectTask()
 
         assertEquals(false, task.isRefreshVfsNeeded)
@@ -114,6 +118,85 @@ class HeadlessServerOptionsTest {
         assertEquals(false, task.runConversionBeforeOpen)
         assertEquals(false, task.preloadServices)
     }
+
+    @Test
+    @Suppress("DEPRECATION")
+    fun `Gradle project open task defers external model import to bootstrap`() {
+        val task = HeadlessProjectOpener.openProjectTask()
+
+        assertEquals(false, task.isRefreshVfsNeeded)
+        assertEquals(false, task.runConfigurators)
+        assertEquals(false, task.runConversionBeforeOpen)
+        assertEquals(false, task.preloadServices)
+    }
+
+    @Test
+    fun `workspace kind detects Gradle marker files`() {
+        val workspace = tempDir.resolve("workspace")
+        Files.createDirectories(workspace)
+        workspace.resolve("settings.gradle.kts").writeText("")
+
+        assertEquals(HeadlessWorkspaceKind.GRADLE, HeadlessWorkspaceKind.detect(workspace))
+    }
+
+    @Test
+    fun `Gradle bootstrap links checkout when IDEA model starts without modules`() {
+        val workspace = tempDir.resolve("workspace")
+        val observedPaths = mutableListOf<String>()
+        var waitCount = 0
+        val moduleSnapshots = ArrayDeque(listOf(emptyList<String>(), listOf(":app")))
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            waitForSmartMode = {
+                waitCount += 1
+            },
+            moduleNames = {
+                moduleSnapshots.removeFirst()
+            },
+            canLinkGradleProject = { _, _ -> true },
+            linkAndImportGradleProject = { _, externalProjectPath ->
+                observedPaths += externalProjectPath
+            },
+        )
+
+        val result = bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+
+        assertEquals(
+            HeadlessProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
+            result,
+        )
+        assertEquals(listOf(workspace.toAbsolutePath().normalize().toString()), observedPaths)
+        assertEquals(1, waitCount)
+    }
+
+    @Test
+    fun `Gradle bootstrap fails when sync still reports no modules`() {
+        val workspace = tempDir.resolve("workspace")
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            waitForSmartMode = {},
+            moduleNames = { emptyList() },
+            canLinkGradleProject = { _, _ -> true },
+            linkAndImportGradleProject = { _, _ -> },
+        )
+
+        assertThrows(HeadlessGradleModelUnavailableException::class.java) {
+            bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+        }
+    }
+
+    private fun projectStub(): Project =
+        Proxy.newProxyInstance(
+            Project::class.java.classLoader,
+            arrayOf(Project::class.java),
+        ) { _, method, _ ->
+            when (method.name) {
+                "getName" -> "stub"
+                "isDisposed" -> false
+                "hashCode" -> 0
+                "equals" -> false
+                "toString" -> "ProjectStub"
+                else -> null
+            }
+        } as Project
 
     private fun withSystemProperties(
         vararg values: Pair<String, String>,
