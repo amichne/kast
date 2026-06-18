@@ -59,6 +59,13 @@ val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
 }
 
+val gradlePluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("plugins/gradle/lib/*.jar")
+    include("plugins/gradle/lib/**/*.jar")
+    include("plugins/gradle-java/lib/*.jar")
+    include("plugins/gradle-java/lib/**/*.jar")
+}
+
 val headlessIdeaHomeProfile = providers.gradleProperty("kastHeadlessIdeaHomeProfile")
     .orElse("full")
     .map { it.lowercase() }
@@ -91,6 +98,8 @@ val minimalPackagedIdeaHomeEntries = listOf(
     "lib/jna/**",
     "lib/pty4j/**",
     "modules/module-descriptors.dat",
+    "plugins/gradle/**",
+    "plugins/gradle-java/**",
     "plugins/java/**",
     "plugins/Kotlin/**",
 )
@@ -214,6 +223,7 @@ dependencies {
     implementation(ideaLibs)
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)
+    compileOnly(gradlePluginLibs)
     compileOnly(libs.coroutines.core)
 
     headlessPluginRuntime(project(":analysis-api"))
@@ -227,6 +237,7 @@ dependencies {
 
     testImplementation(project(":analysis-api"))
     testImplementation(project(":backend-idea"))
+    testImplementation(gradlePluginLibs)
 }
 
 tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
