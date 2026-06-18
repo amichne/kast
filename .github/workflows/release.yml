@@ -10,7 +10,7 @@ run-name: >-
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       release_type:
@@ -901,12 +901,48 @@ jobs:
           git -C homebrew-tap commit -m "kast ${tag}"
           git -C homebrew-tap push
 
+  publish-setup-kast-action:
+    name: Publish setup-kast action tag
+    needs:
+      - prepare-release
+      - publish-release
+    if: always() && needs.prepare-release.result == 'success' && needs.publish-release.result == 'success' && !contains(needs.prepare-release.outputs.release_tag, '-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - name: Publish setup-kast major tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="${{ needs.prepare-release.outputs.release_tag }}"
+          action_tag="v1"
+          test -f setup-kast/action.yml
+          test -f setup-kast/dist/index.js
+          release_sha="$(git rev-parse "${release_tag}^{commit}")"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$action_tag" "$release_sha"
+          git push origin "refs/tags/${action_tag}:refs/tags/${action_tag}" --force
+          remote_sha="$(git ls-remote --tags origin "$action_tag" | awk '{ print $1 }')"
+          [[ "$remote_sha" == "$release_sha" ]] || {
+            echo "setup-kast action tag ${action_tag} points at ${remote_sha}, expected ${release_sha}" >&2
+            exit 1
+          }
+
   verify-release-state:
     name: Verify published release state
     needs:
       - prepare-release
       - publish-maven-central
       - publish-release
+      - publish-setup-kast-action
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -924,7 +960,12 @@ jobs:
             echo "::error::Publish release finished with result ${{ needs.publish-release.result }}."
             exit 1
           fi
+          if [[ "${{ needs.prepare-release.outputs.release_tag }}" != *-* && "${{ needs.publish-setup-kast-action.result }}" != "success" ]]; then
+            echo "::error::setup-kast action publication finished with result ${{ needs.publish-setup-kast-action.result }}."
+            exit 1
+          fi
           echo "Maven Central job result: ${{ needs.publish-maven-central.result }}"
+          echo "setup-kast action publication job result: ${{ needs.publish-setup-kast-action.result }}"
           scripts/verify-release-state.sh \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             --repository "${{ github.repository }}" \

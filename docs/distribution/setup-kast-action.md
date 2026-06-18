@@ -95,6 +95,10 @@ Devin blueprints use the GitHub Action subpath form
 `github.com/<owner>/<repo>/<subpath>@<ref>`. Pin the reference to a tag that
 contains `setup-kast/action.yml` and `setup-kast/dist/index.js`; use a full
 commit SHA only for temporary test snapshots before a tag exists.
+Stable Kast releases publish the `v1` action tag after release assets pass
+publication, so `github.com/amichne/kast/setup-kast@v1` is the stable action
+reference. Product release tags remain available for exact pinning when a
+blueprint needs one immutable Kast runtime/action pair.
 The action requires `tar` and `zstd` on `PATH`; install `zstd` before invoking
 the action when the runner image does not already provide it.
 
