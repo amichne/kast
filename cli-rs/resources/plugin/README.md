@@ -2,7 +2,7 @@
 
 This package distributes the minimal reliable Kast Copilot primitive set:
 
-- `kast-kotlin` LSP configuration
+- `kotlin` LSP configuration
 - Kotlin-scoped instructions that route agents through LSP and Kast methods
 - a small SDK extension that exposes catalog-backed `kast_*` tools
 - two custom agents: `kast-reader` for read-only analysis and `kast-writer` for

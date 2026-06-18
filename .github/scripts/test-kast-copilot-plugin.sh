@@ -79,14 +79,14 @@ assert(
 );
 
 const lsp = readJson("lsp.json");
-const server = lsp.lspServers["kast-kotlin"];
+const server = lsp.lspServers["kotlin"];
 assertSameArray(server.args, ["lsp", "--stdio"], "LSP args");
 assert(server.initializationTimeoutMs >= 120000, "LSP timeout must allow startup");
 assert(server.initializationOptions.failOnStaleIndex === true, "LSP must fail on stale indexes");
 
 const instruction = readText("instructions/kast-kotlin.instructions.md");
 assert(
-  instruction.includes("start with the `kast-kotlin` LSP server"),
+  instruction.includes("start with the `kotlin` LSP server"),
   "instructions must route through the LSP",
 );
 assert(

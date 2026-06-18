@@ -4,13 +4,13 @@ applyTo: "**/*.{kt,kts}"
 
 # Kast Kotlin Routing
 
-For every Kotlin file, start with the `kast-kotlin` LSP server from
+For every Kotlin file, start with the `kotlin` LSP server from
 `.github/lsp.json`. Use LSP definition, references, hover, document symbols,
 workspace symbols, implementations, call hierarchy, type hierarchy, prepare
 rename, and rename before broad text search or manual file inspection.
 
 When delegating, use `kast-reader` for read-only analysis and `kast-writer` for
-edits. Both subagents must keep using `kast-kotlin` LSP and the catalog-backed
+edits. Both subagents must keep using `kotlin` LSP and the catalog-backed
 `kast_*` tools; do not delegate Kotlin work to a general-purpose subagent that
 lacks those tools.
 
