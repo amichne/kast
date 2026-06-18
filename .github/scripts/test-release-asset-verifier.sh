@@ -62,6 +62,33 @@ write_expected_assets() {
   write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
   write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
   write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
+  write_text_asset "${release_dir}/kast-headless-linux-x64.tar.zst"
+  python3 - "${release_dir}/kast-runtime-manifest.json" "${release_dir}/kast-headless-linux-x64.tar.zst" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+runtime_asset = Path(sys.argv[2])
+payload = {
+    "schemaVersion": 1,
+    "kastVersion": "9.8.7",
+    "kastGitSha": "0123456789abcdef",
+    "os": "linux",
+    "arch": "x64",
+    "javaVersion": "21",
+    "intellijBuild": "2025.3",
+    "kotlinPluginVersion": "2.3.21",
+    "kastIndexSchemaVersion": "7",
+    "artifactSha256": hashlib.sha256(runtime_asset.read_bytes()).hexdigest(),
+}
+manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+  printf '%s  %s\n' \
+    "$(compute_sha256 "${release_dir}/kast-headless-linux-x64.tar.zst")" \
+    "kast-headless-linux-x64.tar.zst" \
+    > "${release_dir}/kast-headless-linux-x64.sha256"
   write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz")" \
@@ -94,6 +121,8 @@ entries = [
     ("cli-linux-arm64", f"kast-{tag}-linux-arm64.zip"),
     ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
     ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
+    ("headless-linux-x64", "kast-headless-linux-x64.tar.zst"),
+    ("runtime-manifest", "kast-runtime-manifest.json"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
     ("idea", f"kast-idea-{tag}.zip"),
 ]
@@ -131,6 +160,8 @@ assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
+  "kast-headless-linux-x64.tar.zst"
+  "kast-runtime-manifest.json"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   "kast-idea-${tag}.zip"
 )
@@ -148,13 +179,16 @@ core_assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
+  "kast-headless-linux-x64.tar.zst"
+  "kast-runtime-manifest.json"
   "kast-idea-${tag}.zip"
 )
-write_text_asset "${release_dir}/kast-${tag}-linux-x64.zip"
-write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
-write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
-write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
-write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
+write_expected_assets
+rm -f \
+  "${release_dir}/kast-ubuntu-debian-headless_x86_64-${tag}.tar.gz" \
+  "${release_dir}/kast-ubuntu-debian-headless_x86_64-${tag}.tar.gz.sha256" \
+  "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
+  "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz.sha256"
 write_sha256sums "$release_dir" "${core_assets[@]}"
 write_provenance
 
@@ -194,6 +228,24 @@ if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch
   die "missing provenance unexpectedly verified"
 fi
 grep -Fq "missing provenance" "${scratch_dir}/provenance.err" || die "missing provenance failure did not mention missing provenance"
+
+write_expected_assets
+python3 - "${release_dir}/kast-runtime-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+payload = json.loads(path.read_text(encoding="utf-8"))
+payload["kastVersion"] = "9.8.8"
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+write_sha256sums "$release_dir" "${assets[@]}"
+write_provenance
+if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/manifest-version.err"; then
+  die "wrong runtime manifest version unexpectedly verified"
+fi
+grep -Fq "kastVersion" "${scratch_dir}/manifest-version.err" || die "wrong manifest version failure did not mention kastVersion"
 
 write_expected_assets
 write_sha256sums "$release_dir" "${assets[@]}"

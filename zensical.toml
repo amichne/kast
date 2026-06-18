@@ -37,6 +37,7 @@ nav = [
     { "Refactor safely" = "what-can-kast-do/refactor-safely.md" },
     { "Validate code" = "what-can-kast-do/validate-code.md" },
     { "Manage workspaces" = "what-can-kast-do/manage-workspaces.md" },
+    { "Runtime artifacts" = "distribution/runtime-artifact-contract.md" },
     { "API reference" = "reference/api-reference.md" },
     { "API specification" = "reference/api-specification.md" },
     { "Error codes" = "reference/error-codes.md" },

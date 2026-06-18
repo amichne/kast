@@ -54,6 +54,31 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
 
+      - name: Ensure zstd is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Test Devin artifact packagers
+        shell: bash
+        run: ./.github/scripts/test-devin-artifact-packagers.sh
+
+      - name: Test setup-kast action
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix setup-kast ci
+          npm --prefix setup-kast test
+          ./.github/scripts/test-setup-kast-action.sh
+
+      - name: Test Devin snapshot build verifier
+        shell: bash
+        run: ./.github/scripts/test-devin-snapshot-build-verifier.sh
+
       - name: Test CI Gradle retry helper
         shell: bash
         run: ./.github/scripts/test-ci-gradle-retry.sh
@@ -283,6 +308,101 @@ jobs:
           KAST_UBUNTU_DEBIAN_JAVA_VERSION: ${{ matrix.java-version }}
         shell: bash
         run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_BUNDLE" ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+
+  setup-kast-runtime:
+    name: setup-kast runtime artifact
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-test
+      - rust-cli
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
+      - name: Ensure zstd is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Download headless backend distribution
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-headless-ubuntu-latest
+          path: backend-headless/build/distributions
+
+      - name: Download Rust CLI CI asset
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-rust-cli-linux-x64
+          path: dist
+
+      - name: Package setup-kast runtime inputs
+        id: package-runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
+          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
+          [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
+          [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
+
+          ./scripts/package-devin-runtime.sh \
+            --cli-archive "$cli_asset" \
+            --backend-archive "$backend_asset" \
+            --version "$runtime_version" \
+            --output "dist/kast-headless-linux-x64.tar.zst" \
+            --manifest-output "dist/kast-runtime-manifest.json"
+
+          gradle_seed="${RUNNER_TEMP}/gradle-ro-seed"
+          rm -rf "$gradle_seed"
+          mkdir -p "$gradle_seed/caches/modules-2/files-2.1/devin/smoke"
+          printf '%s\n' "fixture" > "$gradle_seed/caches/modules-2/files-2.1/devin/smoke/artifact.pom"
+          ./scripts/package-gradle-ro-cache.sh \
+            --gradle-user-home "$gradle_seed" \
+            --output "dist/gradle-ro-dep-cache.tar.zst"
+
+          (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
+          (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
+          printf 'runtime_version=%s\n' "$runtime_version" >> "$GITHUB_OUTPUT"
+          printf 'runtime_sha=%s\n' "$(awk '{ print $1 }' dist/kast-headless-linux-x64.sha256)" >> "$GITHUB_OUTPUT"
+          printf 'gradle_cache_sha=%s\n' "$(awk '{ print $1 }' dist/gradle-ro-dep-cache.sha256)" >> "$GITHUB_OUTPUT"
+
+      - name: Install packaged runtime with setup-kast
+        uses: ./setup-kast
+        with:
+          version: ${{ steps.package-runtime.outputs.runtime_version }}
+          artifact-url: file://${{ github.workspace }}/dist/kast-headless-linux-x64.tar.zst
+          artifact-sha256: ${{ steps.package-runtime.outputs.runtime_sha }}
+          manifest-url: file://${{ github.workspace }}/dist/kast-runtime-manifest.json
+          gradle-ro-cache-url: file://${{ github.workspace }}/dist/gradle-ro-dep-cache.tar.zst
+          gradle-ro-cache-sha256: ${{ steps.package-runtime.outputs.gradle_cache_sha }}
+          install-dir: ${{ runner.temp }}/kast-install
+          fail-on-cache-miss: "true"
+          strict: "true"
+
+      - name: Validate setup-kast installed runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -L "${RUNNER_TEMP}/kast-install/current"
+          scripts/verify-setup-kast-install.sh \
+            --install-dir "${RUNNER_TEMP}/kast-install/current" \
+            --workspace-id setup-kast-ci-smoke \
+            --module-name setup-kast-smoke \
+            --gradle-root "$GITHUB_WORKSPACE"
 
   analysis-server-transport:
     name: Analysis server transport

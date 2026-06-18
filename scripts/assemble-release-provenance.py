@@ -10,7 +10,9 @@ REQUIRED_PLATFORMS = {
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
+    "headless-linux-x64",
     "idea",
+    "runtime-manifest",
     "ubuntu-debian-headless-x86_64",
 }
 OPTIONAL_PLATFORMS: set[str] = set()
@@ -75,7 +77,10 @@ def validate(entries: list[dict]) -> None:
         asset_name = entry.get("assetName")
         asset_digest = entry.get("assetDigest")
         if not isinstance(asset_name, str) or not (
-            asset_name.endswith(".zip") or asset_name.endswith(".tar.gz")
+            asset_name.endswith(".zip")
+            or asset_name.endswith(".tar.gz")
+            or asset_name.endswith(".tar.zst")
+            or asset_name.endswith(".json")
         ):
             fail(f"provenance entry for {platform} has no supported assetName")
         if (

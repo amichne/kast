@@ -62,6 +62,7 @@
           "what-can-kast-do/refactor-safely",
           "what-can-kast-do/validate-code",
           "what-can-kast-do/manage-workspaces",
+          "distribution/runtime-artifact-contract",
           "reference/api-reference",
           "reference/api-specification",
           "reference/error-codes"

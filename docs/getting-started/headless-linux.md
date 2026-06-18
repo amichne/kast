@@ -84,6 +84,17 @@ gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
 Use `scripts/package-ubuntu-debian-bundle.sh` only when building the release
 bundle from local CLI and backend artifacts.
 
+## Devin and ephemeral agents
+
+Devin blueprints and other short-lived Linux x64 workspaces can use the
+prebuilt runtime action instead of running the Ubuntu/Debian installer directly.
+That path installs `kast` under `/opt/kast/current`, writes the headless runtime
+config, and seeds an optional read-only Gradle dependency cache.
+
+See the [runtime artifact contract](../distribution/runtime-artifact-contract.md)
+for the exact artifact names, manifest schema, blueprint snippet, and local
+feedback loop.
+
 ## Next steps
 
 After installing the bundle, use the backend and troubleshooting pages for

@@ -47,6 +47,7 @@ done
 python3 - "$release_dir" "$tag" <<'PY'
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -58,7 +59,9 @@ required = {
     "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
     "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
+    "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
     "idea": f"kast-idea-{tag}.zip",
+    "runtime-manifest": "kast-runtime-manifest.json",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
 optional = {}
@@ -70,8 +73,14 @@ def fail(message: str) -> None:
 actual_assets = {
     path.name for path in release_dir.iterdir()
     if path.is_file()
-    and (path.name.endswith(".zip") or path.name.endswith(".tar.gz"))
+    and (
+        path.name.endswith(".zip")
+        or path.name.endswith(".tar.gz")
+        or path.name.endswith(".tar.zst")
+        or path.name == "kast-runtime-manifest.json"
+    )
     and not path.name.endswith(".tar.gz.sha256")
+    and not path.name.endswith(".tar.zst.sha256")
 }
 
 payload = json.loads((release_dir / "build-provenance.json").read_text(encoding="utf-8"))
@@ -138,17 +147,21 @@ for asset_name in expected_assets:
     if actual_digest != expected_digest:
         fail(f"checksum mismatch for {asset_name}: expected {expected_digest}, got {actual_digest}")
 
-actual_sidecars = {path.name for path in release_dir.glob("*.tar.gz.sha256")}
-expected_sidecars = {f"{asset_name}.sha256" for asset_name in expected_assets if asset_name.endswith(".tar.gz")}
-missing_sidecars = sorted(expected_sidecars - actual_sidecars)
+actual_sidecars = {path.name for path in release_dir.glob("*.sha256")}
+expected_sidecars = {}
+for asset_name in expected_assets:
+    if asset_name.endswith(".tar.gz"):
+        expected_sidecars[f"{asset_name}.sha256"] = asset_name
+    elif asset_name.endswith(".tar.zst"):
+        expected_sidecars[f"{asset_name.removesuffix('.tar.zst')}.sha256"] = asset_name
+missing_sidecars = sorted(set(expected_sidecars) - actual_sidecars)
 if missing_sidecars:
     fail(f"missing checksum sidecar: {missing_sidecars}")
-unexpected_sidecars = sorted(actual_sidecars - expected_sidecars)
+unexpected_sidecars = sorted(actual_sidecars - set(expected_sidecars))
 if unexpected_sidecars:
     fail(f"unexpected checksum sidecar: {unexpected_sidecars}")
 
-for sidecar_name in expected_sidecars:
-    asset_name = sidecar_name.removesuffix(".sha256")
+for sidecar_name, asset_name in expected_sidecars.items():
     sidecar_path = release_dir / sidecar_name
     sidecar_lines = [
         line.strip() for line in sidecar_path.read_text(encoding="utf-8").splitlines()
@@ -170,6 +183,50 @@ for platform_id, asset_name in supported.items():
     expected_digest = "sha256:" + sha_entries[asset_name]
     if provenance_digest != expected_digest:
         fail(f"provenance digest mismatch for {platform_id}: expected {expected_digest}, got {provenance_digest}")
+
+manifest_path = release_dir / "kast-runtime-manifest.json"
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+if not isinstance(manifest, dict):
+    fail("runtime manifest must be a JSON object")
+required_manifest_keys = [
+    "schemaVersion",
+    "kastVersion",
+    "kastGitSha",
+    "os",
+    "arch",
+    "javaVersion",
+    "intellijBuild",
+    "kotlinPluginVersion",
+    "kastIndexSchemaVersion",
+    "artifactSha256",
+]
+unexpected_manifest_keys = sorted(set(manifest) - set(required_manifest_keys))
+if unexpected_manifest_keys:
+    fail(f"runtime manifest contains unsupported field: {unexpected_manifest_keys}")
+for key in required_manifest_keys:
+    if key not in manifest:
+        fail(f"runtime manifest missing {key}")
+if type(manifest["schemaVersion"]) is not int or manifest["schemaVersion"] != 1:
+    fail("runtime manifest schemaVersion must be 1")
+if not isinstance(manifest["kastVersion"], str) or manifest["kastVersion"].removeprefix("v") != tag.removeprefix("v"):
+    fail("runtime manifest kastVersion must match release tag")
+if not isinstance(manifest["kastGitSha"], str) or not re.fullmatch(r"[0-9a-f]{7,40}", manifest["kastGitSha"]):
+    fail("runtime manifest kastGitSha must be 7 to 40 lowercase hexadecimal characters")
+if manifest["os"] != "linux" or manifest["arch"] != "x64":
+    fail("runtime manifest must describe linux/x64")
+if not isinstance(manifest["javaVersion"], str) or not re.fullmatch(r"[0-9]+", manifest["javaVersion"]):
+    fail("runtime manifest javaVersion must be numeric text")
+if not isinstance(manifest["intellijBuild"], str) or not manifest["intellijBuild"].strip():
+    fail("runtime manifest intellijBuild must be non-empty text")
+if not isinstance(manifest["kotlinPluginVersion"], str) or not manifest["kotlinPluginVersion"].strip():
+    fail("runtime manifest kotlinPluginVersion must be non-empty text")
+if not isinstance(manifest["kastIndexSchemaVersion"], str) or not re.fullmatch(r"[0-9]+", manifest["kastIndexSchemaVersion"]):
+    fail("runtime manifest kastIndexSchemaVersion must be numeric text")
+if not isinstance(manifest["artifactSha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", manifest["artifactSha256"]):
+    fail("runtime manifest artifactSha256 must be a lowercase SHA-256 digest")
+runtime_asset = "kast-headless-linux-x64.tar.zst"
+if manifest["artifactSha256"] != sha_entries.get(runtime_asset):
+    fail("runtime manifest artifactSha256 must match kast-headless-linux-x64.tar.zst")
 
 print(f"Verified Kast release assets for {tag} in {release_dir}")
 PY

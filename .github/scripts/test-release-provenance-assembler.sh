@@ -59,6 +59,14 @@ write_provenance \
   "idea" \
   "kast-idea-${tag}.zip"
 write_provenance \
+  "${scratch_dir}/provenance-headless-linux-x64/dist/build-provenance-headless-linux-x64.json" \
+  "headless-linux-x64" \
+  "kast-headless-linux-x64.tar.zst"
+write_provenance \
+  "${scratch_dir}/provenance-runtime-manifest/dist/build-provenance-runtime-manifest.json" \
+  "runtime-manifest" \
+  "kast-runtime-manifest.json"
+write_provenance \
   "${scratch_dir}/provenance-ubuntu-debian-headless/dist/build-provenance-ubuntu-debian-headless.json" \
   "ubuntu-debian-headless-x86_64" \
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
@@ -70,7 +78,9 @@ output="${scratch_dir}/dist/build-provenance.json"
   "${scratch_dir}/provenance-cli-linux-x64" \
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
+  "${scratch_dir}/provenance-headless-linux-x64" \
   "${scratch_dir}/provenance-idea" \
+  "${scratch_dir}/provenance-runtime-manifest" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 python3 - "$output" <<'PY'
@@ -85,7 +95,9 @@ expected = [
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
+    "headless-linux-x64",
     "idea",
+    "runtime-manifest",
     "ubuntu-debian-headless-x86_64",
 ]
 if platforms != expected:
@@ -98,11 +110,13 @@ PY
   "${scratch_dir}/provenance-cli-linux-x64" \
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
+  "${scratch_dir}/provenance-headless-linux-x64" \
   "${scratch_dir}/provenance-idea" \
+  "${scratch_dir}/provenance-runtime-manifest" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 rm "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json"
-if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-ubuntu-debian-headless" \
+if "$assembler" --output "$output" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-ubuntu-debian-headless" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing idea provenance"
 fi
