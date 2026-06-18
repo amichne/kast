@@ -63,6 +63,7 @@
           "what-can-kast-do/validate-code",
           "what-can-kast-do/manage-workspaces",
           "distribution/runtime-artifact-contract",
+          "distribution/setup-kast-action",
           "reference/api-reference",
           "reference/api-specification",
           "reference/error-codes"

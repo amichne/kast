@@ -12,6 +12,10 @@ blueprints and other short-lived agent workspaces. The goal is to install Kast
 from immutable artifacts and validate the install locally before spending a full
 release cycle on a remote snapshot.
 
+Use the [setup-kast action](setup-kast-action.md) page for blueprint snippets,
+action inputs, credentials, and operator verification. This page owns the
+artifact shape that release jobs, cache jobs, and setup clients must agree on.
+
 ## Artifact set
 
 Release and cache workflows publish these files as the Phase 1 setup surface.
@@ -84,109 +88,16 @@ platforms, and digest mismatches are installation failures.
 }
 ```
 
-## Setup action
+## Setup clients
 
-`setup-kast` is a Node action because Devin blueprints currently run Node
-actions and propagate `GITHUB_ENV` and `GITHUB_PATH` writes to later blueprint
-steps. Docker and composite actions are not part of this setup path.
+`setup-kast` is the supported setup client for this artifact set. It is a
+Node 20 action under `setup-kast/` because Devin blueprints run GitHub Action
+steps and carry `GITHUB_ENV` and `GITHUB_PATH` writes into later steps.
 
-```yaml
-initialize:
-  - name: Install JDK 21
-    uses: github.com/actions/setup-java@v4
-    with:
-      java-version: "21"
-      distribution: "temurin"
-
-  - name: Install Gradle support
-    uses: github.com/gradle/actions/setup-gradle@v4
-
-  - name: Install artifact decompression tools
-    run: |
-      if ! command -v zstd >/dev/null 2>&1; then
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends zstd
-      fi
-
-  - name: Install Kast headless runtime
-    uses: github.com/amichne/kast/setup-kast@v1
-    with:
-      version: "1.0.0"
-      artifact-url: "$KAST_HEADLESS_URL"
-      artifact-sha256: "$KAST_HEADLESS_SHA256"
-      manifest-url: "$KAST_RUNTIME_MANIFEST_URL"
-      authorization-header: "$KAST_ARTIFACT_AUTHORIZATION_HEADER"
-      gradle-ro-cache-url: "$KAST_GRADLE_RO_CACHE_URL"
-      gradle-ro-cache-sha256: "$KAST_GRADLE_RO_CACHE_SHA256"
-      gradle-ro-cache-authorization-header: "$KAST_GRADLE_CACHE_AUTHORIZATION_HEADER"
-      install-dir: "/opt/kast"
-      download-attempts: "3"
-      download-retry-delay-ms: "1000"
-
-  - name: Persist Kast environment
-    run: |
-      export KAST_HOME=/opt/kast/current
-      export PATH=/opt/kast/current/bin:$PATH
-      export KAST_CACHE_HOME=$HOME/.cache/kast
-      export KAST_CONFIG_HOME=$HOME/.config/kast
-      export GRADLE_RO_DEP_CACHE=/opt/kast/cache/gradle-ro
-      export GRADLE_USER_HOME=$HOME/.gradle
-
-      {
-        echo 'export KAST_HOME=/opt/kast/current'
-        echo 'export PATH=/opt/kast/current/bin:$PATH'
-        echo 'export KAST_CACHE_HOME=$HOME/.cache/kast'
-        echo 'export KAST_CONFIG_HOME=$HOME/.config/kast'
-        echo 'export GRADLE_RO_DEP_CACHE=/opt/kast/cache/gradle-ro'
-        echo 'export GRADLE_USER_HOME=$HOME/.gradle'
-      } >> "$ENVRC"
-
-      command -v kast
-      kast --version
-      kast doctor
-      test -L /opt/kast/current
-      test -f /opt/kast/current/kast-runtime-manifest.json
-      test -d /opt/kast/cache/gradle-ro/modules-2
-      test -n "${GRADLE_RO_DEP_CACHE:-}"
-      test -n "${GRADLE_USER_HOME:-}"
-```
-
-The `uses` reference follows Devin's GitHub Action format:
-`github.com/<owner>/<repo>/<subpath>@<ref>`. Pin it to a tag that contains
-`setup-kast/action.yml` and `setup-kast/dist/index.js`; use a full commit SHA
-only for temporary test snapshots before the tag exists.
-
-`manifest-url` is the deliberate addition to the initial plan. It makes the
-runtime digest verifiable without inventing a self-referential tarball digest.
-`version` must be a semver path segment such as `1.2.3`, `v1.2.3`, or
-`1.2.3-beta.1`; the action rejects path-like values before computing an install
-target.
-`strict` defaults to `true`; set `strict: "false"` only when a snapshot should
-continue after `kast doctor` reports a non-terminal environment issue.
-The action requires `tar` and `zstd` on `PATH` because runtime and cache
-artifacts use `.tar.zst`; it preflights those tools before downloading or
-mutating the install directory.
-Artifact downloads retry bounded transient failures by default. Increase
-`download-attempts`, `download-retry-delay-ms`, or `download-timeout-ms` only
-for slower internal artifact stores.
-HTTP artifacts are streamed to disk and checksummed from disk, so installing the
-runtime does not require buffering the full archive in Node.js memory.
-Use `authorization-header` for private artifact stores that require an HTTP
-`Authorization` header. `artifact-authorization-header`,
-`manifest-authorization-header`, and `gradle-ro-cache-authorization-header`
-override that default when different stores use different credentials. The
-action never prints full HTTP artifact URLs in retry or failure messages, so
-signed URL query strings are not exposed in logs. Prefer header-based
-credentials where the artifact store supports them; signed URLs still work, but
-they should be short-lived.
-
-Set `KAST_WORKSPACE_ID` in repo-level maintenance only when the organization
-has a stable workspace identifier. Without it, the CLI derives a workspace hash
-from the resolved workspace root and stores descriptors, sockets, and logs
-under `KAST_CACHE_HOME/workspaces/<hash>`.
-If the resulting socket path would be too long for the operating system, only
-the socket moves to the short temp fallback; descriptors and logs remain
-workspace-local under `KAST_CACHE_HOME`.
+The action page owns invocation details, input defaults, credential handling,
+and verification commands. Any new setup client must preserve the same manifest
+validation, checksum validation, archive-safety checks, config layout, and
+workspace-local daemon-state boundary before it is treated as equivalent.
 
 ## Gradle cache
 
@@ -213,104 +124,30 @@ different binary than `<install-dir>/bin/kast`. Keep `/opt/kast/current/bin`
 ahead of any global Kast install in blueprint `PATH` setup so snapshots do not
 silently exercise a stale machine-level binary.
 
-## Local feedback loop
+## Contract verification
 
-Run these checks before changing release workflows or Devin blueprint inputs.
-They build fixture artifacts locally and exercise the installer failure paths
-without uploading anything.
+Artifact changes need proof at three boundaries: packaging, action install, and
+external snapshot build. Keep fast fixture checks close to `setup-kast`, then
+prove the real runtime path before publication.
 
 ```bash
-npm --prefix setup-kast ci
-npm --prefix setup-kast test
 .github/scripts/test-devin-artifact-packagers.sh
 .github/scripts/test-setup-kast-action.sh
-scripts/verify-setup-kast-install.sh \
-  --skip-daemon \
-  --allow-missing-gradle-cache \
-  --install-dir "$KAST_HOME"
-```
-
-The setup contract covers successful install, transient HTTP retry, runtime
-checksum mismatch, unsafe archive members, unsafe symbolic links, missing
-manifest, manifest schema mismatch, unsupported manifest fields, unsupported
-archive member types such as hardlinks, unsupported architecture, invalid
-multiline inputs, optional cache miss, strict cache miss, non-strict
-`kast doctor` behavior, read-only Gradle cache permissions, reinstall over an
-existing read-only cache, and sudo fallback for `/opt`-style install roots.
-
-Run the heavier real-artifact smoke when you need local confidence in the
-current repo outputs rather than only fixture artifacts:
-
-```bash
 .github/scripts/test-setup-kast-real-artifacts.sh
-```
-
-That command builds the host-compatible CLI and headless backend, packages the
-runtime, installs it through `setup-kast`, starts the headless backend on a tiny
-workspace through `scripts/verify-setup-kast-install.sh`, and checks
-daemon-state isolation. On non-Linux developer machines it uses a
-host-compatible CLI binary so the action can run locally; the CI job below is
-the Linux artifact proof. Set `KAST_SETUP_KAST_SMOKE_BUILD=false` only when you
-intentionally want to reuse existing local build outputs. The smoke also runs a
-repo-level Gradle warm check by default through
-`scripts/verify-setup-kast-install.sh --gradle-root "$PWD"`: `./gradlew
---version`, `./gradlew dependencies`, and `./gradlew buildEnvironment` run with
-`GRADLE_RO_DEP_CACHE` pointed at the installed read-only cache and
-`GRADLE_USER_HOME` pointed at the writable session cache. Set
-`KAST_SETUP_KAST_SMOKE_GRADLE_WARM=false` only when diagnosing a narrower
-runtime issue.
-
-CI also has a `setup-kast runtime artifact` job that consumes the real Linux CLI
-and headless backend artifacts from earlier CI jobs, packages the Devin runtime,
-invokes `setup-kast` as a local GitHub Action, runs
-`scripts/verify-setup-kast-install.sh`, starts the installed headless backend on
-a tiny Kotlin workspace, and verifies that daemon state stays out of the install
-tree. The same verifier call passes `--gradle-root "$GITHUB_WORKSPACE"` so the
-job also proves a repo-level Gradle warm step after setup, without rebuilding
-the Kast runtime. Treat that job as the pre-release proof for the real artifact
-path; the local fixture tests are the fast regression loop for edge cases.
-
-## Devin snapshot proof
-
-The GitHub CI loop proves the action/runtime contract before publication, but a
-real Devin snapshot is still an external async build. Devin's
-[GitHub Actions blueprint support](https://docs.devin.ai/onboard-devin/environment/github-actions)
-is the reason this contract uses a Node action subpath, and Devin's
-[snapshot build API](https://docs.devin.ai/api-reference/v3/snapshot-setup/post-organizations-builds)
-is the final build-status boundary for the snapshot itself.
-
-Use `scripts/verify-devin-snapshot-build.sh` when a service-user credential is
-available. The token must be supplied through `DEVIN_SERVICE_USER_TOKEN`, with
-`DEVIN_API_TOKEN` accepted as a fallback, so it does not appear in shell history
-or process listings. Triggering a build requires `ManageOrgSnapshots`; polling
-build status requires `ManageRepoBlueprints`.
-
-```bash
-DEVIN_SERVICE_USER_TOKEN=cog_... \
-  scripts/verify-devin-snapshot-build.sh \
-    --org-id <org-id> \
-    --trigger
-```
-
-For a build that was already started through the Devin UI or another automation
-path, poll the existing build id instead of triggering a new one.
-
-```bash
-DEVIN_SERVICE_USER_TOKEN=cog_... \
-  scripts/verify-devin-snapshot-build.sh \
-    --org-id <org-id> \
-    --build-id <build-id>
-```
-
-The local contract test for that script uses a fake Devin API server and covers
-dry-run behavior, missing credentials, trigger-and-poll success, terminal
-failure, and token-safe logging:
-
-```bash
 .github/scripts/test-devin-snapshot-build-verifier.sh
 ```
 
-This proves the snapshot build reaches Devin's `succeeded` status. It does not
-replace the Phase 1 final acceptance commands inside a fresh Devin session,
+CI also has a `setup-kast runtime artifact` job. It consumes the real Linux CLI
+and headless backend artifacts from earlier CI jobs, packages the runtime,
+invokes `setup-kast` as a local GitHub Action, runs
+`scripts/verify-setup-kast-install.sh`, starts the installed headless backend on
+a tiny Kotlin workspace, and verifies that daemon state stays out of the install
+tree. The verifier also passes `--gradle-root "$GITHUB_WORKSPACE"` so CI proves
+a repo-level Gradle warm step against the installed read-only cache.
+
+The GitHub CI loop proves the action/runtime contract before publication, but a
+real Devin snapshot is still an external async build. Use
+`scripts/verify-devin-snapshot-build.sh` when a service-user credential is
+available, then run the final acceptance commands in a fresh Devin session
 because only that session can prove the installed `kast`, Gradle cache, and
 workspace-local daemon state from the booted snapshot.
