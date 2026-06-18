@@ -89,18 +89,37 @@ Prefer header-based credentials when the artifact store supports them. The
 action never prints full HTTP artifact URLs. Keep signed URLs short-lived;
 retry and failure messages stay secret-safe.
 
-## Devin blueprint step
+## Action reference
 
-Devin blueprints use the GitHub Action subpath form
-`github.com/<owner>/<repo>/<subpath>@<ref>`. Pin the reference to a tag that
-contains `setup-kast/action.yml` and `setup-kast/dist/index.js`; use a full
-commit SHA only for temporary test snapshots before a tag exists.
-Stable Kast releases publish the `v1` action tag after release assets pass
-publication, so `github.com/amichne/kast/setup-kast@v1` is the stable action
-reference. Product release tags remain available for exact pinning when a
-blueprint needs one immutable Kast runtime/action pair.
+The setup action is published from the
+[`amichne/kast-action`](https://github.com/amichne/kast-action) repository and
+listed for normal GitHub Actions resolution as `amichne/kast-action@v1`. Devin
+blueprints use the URL form `github.com/amichne/kast-action@v1`.
+The action ref pins the installer implementation; the `version`,
+`artifact-url`, `artifact-sha256`, and `manifest-url` inputs pin the Kast
+runtime artifacts that the installer consumes.
+
 The action requires `tar` and `zstd` on `PATH`; install `zstd` before invoking
 the action when the runner image does not already provide it.
+
+In GitHub Actions, call the Marketplace action directly.
+
+```yaml
+steps:
+  - uses: amichne/kast-action@v1
+    with:
+      version: "1.0.0"
+      artifact-url: file://${{ github.workspace }}/dist/kast-headless-linux-x64.tar.zst
+      artifact-sha256: ${{ steps.package-runtime.outputs.runtime_sha }}
+      manifest-url: file://${{ github.workspace }}/dist/kast-runtime-manifest.json
+      install-dir: ${{ runner.temp }}/kast-install
+      strict: "true"
+```
+
+## Devin blueprint step
+
+Use the same published action through the Devin action URL form when a
+blueprint or mirrored marketplace needs a resolvable action reference.
 
 ```yaml
 initialize:
@@ -121,7 +140,7 @@ initialize:
       fi
 
   - name: Install Kast headless runtime
-    uses: github.com/amichne/kast/setup-kast@v1
+    uses: github.com/amichne/kast-action@v1
     with:
       version: "1.0.0"
       artifact-url: "$KAST_HEADLESS_URL"
@@ -213,16 +232,19 @@ installed read-only cache and writable session cache.
 
 ## Local feedback loop
 
-Run the local loop before changing action inputs, runtime artifact layout, or
-Devin blueprint wiring. These commands cover both fixture-based failure paths
-and current repo outputs.
+Run the action loop in the `amichne/kast-action` repository before changing
+action inputs or installer behavior. Run the Kast artifact loop in this
+repository before changing runtime artifact layout or Devin blueprint wiring.
 
 ```bash
-npm --prefix setup-kast ci
-npm --prefix setup-kast test
+cd ../kast-action
+npm ci
+npm run lint
+npm test
+npm run test:fixtures
+
+cd ../kast
 .github/scripts/test-devin-artifact-packagers.sh
-.github/scripts/test-setup-kast-action.sh
-.github/scripts/test-setup-kast-real-artifacts.sh
 ```
 
 The fixture action test covers successful install, download retry, checksum

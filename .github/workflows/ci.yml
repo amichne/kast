@@ -67,14 +67,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-devin-artifact-packagers.sh
 
-      - name: Test setup-kast action
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm --prefix setup-kast ci
-          npm --prefix setup-kast test
-          ./.github/scripts/test-setup-kast-action.sh
-
       - name: Test Devin snapshot build verifier
         shell: bash
         run: ./.github/scripts/test-devin-snapshot-build-verifier.sh
@@ -381,7 +373,7 @@ jobs:
           printf 'gradle_cache_sha=%s\n' "$(awk '{ print $1 }' dist/gradle-ro-dep-cache.sha256)" >> "$GITHUB_OUTPUT"
 
       - name: Install packaged runtime with setup-kast
-        uses: ./setup-kast
+        uses: amichne/kast-action@v1
         with:
           version: ${{ steps.package-runtime.outputs.runtime_version }}
           artifact-url: file://${{ github.workspace }}/dist/kast-headless-linux-x64.tar.zst

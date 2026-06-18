@@ -14,7 +14,7 @@ Verify that a Kast release is fully published:
   - GitHub release exists, is not draft, and has the expected stable/prerelease state.
   - Release assets, SHA256SUMS, and build-provenance.json pass verification.
   - Public Maven Central modules are available.
-  - Stable releases are the GitHub latest release, publish setup-kast@v1, and are reflected in Homebrew.
+  - Stable releases are the GitHub latest release and are reflected in Homebrew.
 
 Options:
   --repository <owner/repo>           GitHub repository to verify. Defaults to GITHUB_REPOSITORY or amichne/kast.
@@ -104,7 +104,7 @@ require_true() {
   [[ "$value" == true ]] || die "$message"
 }
 
-tag_commit_sha() {
+release_tag_commit_sha() {
   local ref_name="$1"
   local object_type
   local object_sha
@@ -124,14 +124,6 @@ tag_commit_sha() {
   esac
 }
 
-require_github_file_at_ref() {
-  local ref_name="$1"
-  local file_path="$2"
-  local object_type
-  object_type="$(gh api "repos/${repository}/contents/${file_path}?ref=${ref_name}" --jq .type)"
-  [[ "$object_type" == "file" ]] || die "${file_path} is not a file at ${ref_name}"
-}
-
 is_draft="$(gh release view "$tag" --repo "$repository" --json isDraft --jq .isDraft)"
 is_prerelease="$(gh release view "$tag" --repo "$repository" --json isPrerelease --jq .isPrerelease)"
 require_false "$is_draft" "GitHub release ${tag} is still a draft"
@@ -139,12 +131,7 @@ if [[ "$stable" == true ]]; then
   require_false "$is_prerelease" "Stable release ${tag} is marked prerelease"
   latest_tag="$(gh api "repos/${repository}/releases/latest" --jq .tag_name)"
   [[ "$latest_tag" == "$tag" ]] || die "Stable release ${tag} is not latest; latest is ${latest_tag}"
-  release_sha="$(tag_commit_sha "$tag")"
-  setup_kast_action_sha="$(tag_commit_sha "v1")"
-  [[ "$setup_kast_action_sha" == "$release_sha" ]] \
-    || die "setup-kast action tag v1 points at ${setup_kast_action_sha}, expected ${release_sha} from ${tag}"
-  require_github_file_at_ref "v1" "setup-kast/action.yml"
-  require_github_file_at_ref "v1" "setup-kast/dist/index.js"
+  release_tag_commit_sha "$tag" >/dev/null
 else
   require_true "$is_prerelease" "Prerelease ${tag} is not marked prerelease"
 fi
