@@ -91,9 +91,11 @@ prebuilt runtime action instead of running the Ubuntu/Debian installer directly.
 That path installs `kast` under `/opt/kast/current`, writes the headless runtime
 config, and seeds an optional read-only Gradle dependency cache.
 
-See the [runtime artifact contract](../distribution/runtime-artifact-contract.md)
-for the exact artifact names, manifest schema, blueprint snippet, and local
-feedback loop.
+Use the [setup-kast action](../distribution/setup-kast-action.md) page for the
+blueprint snippet, inputs, credentials, and verification loop. The
+[runtime artifact contract](../distribution/runtime-artifact-contract.md)
+defines the artifact names, manifest schema, and cache layout that the action
+validates.
 
 ## Next steps
 
