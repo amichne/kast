@@ -269,3 +269,48 @@ tree. The same verifier call passes `--gradle-root "$GITHUB_WORKSPACE"` so the
 job also proves a repo-level Gradle warm step after setup, without rebuilding
 the Kast runtime. Treat that job as the pre-release proof for the real artifact
 path; the local fixture tests are the fast regression loop for edge cases.
+
+## Devin snapshot proof
+
+The GitHub CI loop proves the action/runtime contract before publication, but a
+real Devin snapshot is still an external async build. Devin's
+[GitHub Actions blueprint support](https://docs.devin.ai/onboard-devin/environment/github-actions)
+is the reason this contract uses a Node action subpath, and Devin's
+[snapshot build API](https://docs.devin.ai/api-reference/v3/snapshot-setup/post-organizations-builds)
+is the final build-status boundary for the snapshot itself.
+
+Use `scripts/verify-devin-snapshot-build.sh` when a service-user credential is
+available. The token must be supplied through `DEVIN_SERVICE_USER_TOKEN`, with
+`DEVIN_API_TOKEN` accepted as a fallback, so it does not appear in shell history
+or process listings. Triggering a build requires `ManageOrgSnapshots`; polling
+build status requires `ManageRepoBlueprints`.
+
+```bash
+DEVIN_SERVICE_USER_TOKEN=cog_... \
+  scripts/verify-devin-snapshot-build.sh \
+    --org-id <org-id> \
+    --trigger
+```
+
+For a build that was already started through the Devin UI or another automation
+path, poll the existing build id instead of triggering a new one.
+
+```bash
+DEVIN_SERVICE_USER_TOKEN=cog_... \
+  scripts/verify-devin-snapshot-build.sh \
+    --org-id <org-id> \
+    --build-id <build-id>
+```
+
+The local contract test for that script uses a fake Devin API server and covers
+dry-run behavior, missing credentials, trigger-and-poll success, terminal
+failure, and token-safe logging:
+
+```bash
+.github/scripts/test-devin-snapshot-build-verifier.sh
+```
+
+This proves the snapshot build reaches Devin's `succeeded` status. It does not
+replace the Phase 1 final acceptance commands inside a fresh Devin session,
+because only that session can prove the installed `kast`, Gradle cache, and
+workspace-local daemon state from the booted snapshot.

@@ -75,6 +75,10 @@ jobs:
           npm --prefix setup-kast test
           ./.github/scripts/test-setup-kast-action.sh
 
+      - name: Test Devin snapshot build verifier
+        shell: bash
+        run: ./.github/scripts/test-devin-snapshot-build-verifier.sh
+
       - name: Test CI Gradle retry helper
         shell: bash
         run: ./.github/scripts/test-ci-gradle-retry.sh
