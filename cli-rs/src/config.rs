@@ -484,7 +484,31 @@ impl KastConfig {
         if workspace_config.is_file() {
             config.apply(read_partial_config(&workspace_config)?);
         }
+        config.apply_workspace_cache_environment(workspace_root);
         Ok(config)
+    }
+
+    fn apply_workspace_cache_environment(&mut self, workspace_root: &Path) {
+        let Some(cache_home) = env_path("KAST_CACHE_HOME") else {
+            return;
+        };
+        let workspace_id = env::var("KAST_WORKSPACE_ID")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
+        self.apply_workspace_cache_home(&cache_home, workspace_root, workspace_id.as_deref());
+    }
+
+    fn apply_workspace_cache_home(
+        &mut self,
+        cache_home: &Path,
+        workspace_root: &Path,
+        workspace_id: Option<&str>,
+    ) {
+        let workspace_dir = workspace_cache_directory(cache_home, workspace_root, workspace_id);
+        self.paths.cache_dir = cache_home.to_path_buf();
+        self.paths.logs_dir = workspace_dir.join("logs");
+        self.paths.descriptor_dir = workspace_dir.clone();
+        self.paths.socket_dir = workspace_dir;
     }
 
     fn apply(&mut self, partial: PartialConfig) {
@@ -722,7 +746,7 @@ pub fn server_launch_args(args: &DaemonStartArgs, config: &KastConfig) -> Result
         .socket_path
         .clone()
         .map(normalize)
-        .unwrap_or_else(|| default_socket_path(&workspace_root));
+        .unwrap_or_else(|| default_socket_path_for_config(config, &workspace_root));
     let mut result = vec![format!("--workspace-root={}", workspace_root.display())];
     if args.stdio {
         result.push("--stdio".to_string());
@@ -829,6 +853,7 @@ const WORKSPACE_MARKERS: &[&str] = &[
     "build.gradle",
     ".kast",
 ];
+const MAX_UNIX_SOCKET_PATH_BYTES: usize = 100;
 
 pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
     let root = normalize(workspace_root.to_path_buf());
@@ -853,10 +878,27 @@ pub fn default_socket_path(workspace_root: &Path) -> PathBuf {
     env::temp_dir().join(format!("kast-{}.sock", workspace_hash(workspace_root)))
 }
 
+fn default_socket_path_for_config(config: &KastConfig, workspace_root: &Path) -> PathBuf {
+    let configured = if config.paths.socket_dir == env::temp_dir() {
+        default_socket_path(workspace_root)
+    } else {
+        config.paths.socket_dir.join("kast.sock")
+    };
+    if socket_path_too_long(&configured) {
+        default_socket_path(workspace_root)
+    } else {
+        configured
+    }
+}
+
 pub fn workspace_hash(workspace_root: &Path) -> String {
     let normalized = normalize(workspace_root.to_path_buf());
     let digest = Sha256::digest(normalized.to_string_lossy().as_bytes());
     hex::encode(digest)[0..12].to_string()
+}
+
+fn socket_path_too_long(path: &Path) -> bool {
+    path.to_string_lossy().as_bytes().len() > MAX_UNIX_SOCKET_PATH_BYTES
 }
 
 fn read_partial_config(path: &Path) -> Result<PartialConfig> {
@@ -997,6 +1039,24 @@ fn sanitized_path(workspace_root: &Path) -> String {
     sanitized_segment(&workspace_root.to_string_lossy())
 }
 
+fn env_path(name: &str) -> Option<PathBuf> {
+    env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .map(normalize)
+}
+
+fn workspace_cache_directory(
+    cache_home: &Path,
+    workspace_root: &Path,
+    workspace_id: Option<&str>,
+) -> PathBuf {
+    let id = workspace_id
+        .map(sanitized_segment)
+        .unwrap_or_else(|| workspace_hash(workspace_root));
+    cache_home.join("workspaces").join(id)
+}
+
 fn workspace_slug(workspace_root: &Path) -> String {
     workspace_root
         .file_name()
@@ -1031,6 +1091,86 @@ mod tests {
         let path = PathBuf::from("/tmp/kast-workspace");
         let digest = Sha256::digest(path.to_string_lossy().as_bytes());
         assert_eq!(workspace_hash(&path), hex::encode(digest)[0..12]);
+    }
+
+    #[test]
+    fn workspace_cache_directory_uses_explicit_workspace_id() {
+        let cache_home = PathBuf::from("/home/devin/.cache/kast");
+        let workspace_root = PathBuf::from("/workspace/kast");
+
+        assert_eq!(
+            workspace_cache_directory(&cache_home, &workspace_root, Some("org/repo main")),
+            PathBuf::from("/home/devin/.cache/kast/workspaces/org-repo-main"),
+        );
+    }
+
+    #[test]
+    fn workspace_cache_directory_defaults_to_workspace_hash() {
+        let cache_home = PathBuf::from("/home/devin/.cache/kast");
+        let workspace_root = PathBuf::from("/workspace/kast");
+
+        assert_eq!(
+            workspace_cache_directory(&cache_home, &workspace_root, None),
+            cache_home
+                .join("workspaces")
+                .join(workspace_hash(&workspace_root)),
+        );
+    }
+
+    #[test]
+    fn workspace_cache_environment_moves_runtime_state_out_of_install_root() {
+        let workspace_root = PathBuf::from("/workspace/kast");
+        let cache_home = PathBuf::from("/home/devin/.cache/kast");
+        let mut config = KastConfig::defaults();
+        config.paths.install_root = PathBuf::from("/opt/kast/current");
+        config.apply_workspace_cache_home(&cache_home, &workspace_root, Some("kast-main"));
+
+        assert_eq!(config.paths.cache_dir, cache_home);
+        let workspace_dir = PathBuf::from("/home/devin/.cache/kast/workspaces/kast-main");
+        assert_eq!(config.paths.logs_dir, workspace_dir.join("logs"));
+        assert_eq!(config.paths.descriptor_dir, workspace_dir);
+        assert!(!config.paths.descriptor_dir.starts_with("/opt/kast"));
+    }
+
+    #[test]
+    fn configured_socket_dir_uses_workspace_local_socket_name() {
+        let workspace_root = PathBuf::from("/workspace/kast");
+        let mut config = KastConfig::defaults();
+        config.paths.socket_dir = PathBuf::from("/home/devin/.cache/kast/workspaces/kast-main");
+
+        assert_eq!(
+            default_socket_path_for_config(&config, &workspace_root),
+            PathBuf::from("/home/devin/.cache/kast/workspaces/kast-main/kast.sock"),
+        );
+    }
+
+    #[test]
+    fn long_configured_socket_dir_falls_back_to_short_temp_socket() {
+        let workspace_root = PathBuf::from("/workspace/kast");
+        let mut config = KastConfig::defaults();
+        config.paths.socket_dir = PathBuf::from("/very")
+            .join("long".repeat(25))
+            .join("workspaces")
+            .join("kast-main");
+
+        assert!(socket_path_too_long(
+            &config.paths.socket_dir.join("kast.sock")
+        ));
+        assert_eq!(
+            default_socket_path_for_config(&config, &workspace_root),
+            default_socket_path(&workspace_root),
+        );
+    }
+
+    #[test]
+    fn default_socket_dir_keeps_legacy_temp_hash() {
+        let workspace_root = PathBuf::from("/workspace/kast");
+        let config = KastConfig::defaults();
+
+        assert_eq!(
+            default_socket_path_for_config(&config, &workspace_root),
+            default_socket_path(&workspace_root),
+        );
     }
 
     #[test]

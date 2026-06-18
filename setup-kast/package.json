@@ -1,0 +1,15 @@
+{
+  "name": "setup-kast",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitHub Action for installing a prebuilt Kast headless runtime.",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --check dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

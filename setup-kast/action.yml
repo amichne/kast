@@ -1,0 +1,60 @@
+name: setup-kast
+description: Install a prebuilt Kast headless runtime and optional Gradle dependency cache.
+inputs:
+  version:
+    description: Kast semver version to install. Must be a path-safe version segment such as 1.2.3 or v1.2.3.
+    required: true
+  artifact-url:
+    description: URL or file URL for kast-headless-linux-x64.tar.zst.
+    required: true
+  artifact-sha256:
+    description: Expected SHA-256 digest for the runtime artifact.
+    required: true
+  manifest-url:
+    description: URL or file URL for kast-runtime-manifest.json. Required unless the runtime artifact already contains the manifest.
+    required: false
+  authorization-header:
+    description: Optional HTTP Authorization header applied to all HTTP artifact downloads.
+    required: false
+  artifact-authorization-header:
+    description: Optional HTTP Authorization header for the runtime artifact download. Overrides authorization-header.
+    required: false
+  manifest-authorization-header:
+    description: Optional HTTP Authorization header for the runtime manifest download. Overrides authorization-header.
+    required: false
+  install-dir:
+    description: Root directory for managed Kast installs.
+    required: false
+    default: /opt/kast
+  gradle-ro-cache-url:
+    description: Optional URL or file URL for gradle-ro-dep-cache.tar.zst.
+    required: false
+  gradle-ro-cache-sha256:
+    description: Optional SHA-256 digest for the Gradle read-only dependency cache artifact.
+    required: false
+  gradle-ro-cache-authorization-header:
+    description: Optional HTTP Authorization header for the Gradle read-only cache download. Overrides authorization-header.
+    required: false
+  fail-on-cache-miss:
+    description: Fail when the optional Gradle read-only cache cannot be installed.
+    required: false
+    default: "false"
+  strict:
+    description: Fail when kast doctor exits non-zero.
+    required: false
+    default: "true"
+  download-attempts:
+    description: Number of attempts for artifact downloads.
+    required: false
+    default: "3"
+  download-retry-delay-ms:
+    description: Delay between artifact download attempts in milliseconds.
+    required: false
+    default: "1000"
+  download-timeout-ms:
+    description: Timeout for each HTTP artifact download attempt in milliseconds.
+    required: false
+    default: "120000"
+runs:
+  using: node20
+  main: dist/index.js

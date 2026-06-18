@@ -120,7 +120,9 @@ rm -rf "$release_dir"
 mkdir -p "$release_dir"
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.zip'
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.gz' || true
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.gz.sha256' || true
+gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.zst' || true
+gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.sha256' || true
+gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'kast-runtime-manifest.json'
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'build-provenance.json'
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'SHA256SUMS'
 "${repo_root}/scripts/verify-release-assets.sh" --release-dir "$release_dir" --tag "$tag"

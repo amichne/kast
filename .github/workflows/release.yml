@@ -590,11 +590,21 @@ jobs:
           mkdir -p release-assets dist
           gh release download "$tag" --dir release-assets --pattern "kast-${tag}-linux-x64.zip"
 
+      - name: Ensure zstd is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
       - name: Package Linux headless tarball
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
+          version="${{ needs.prepare-release.outputs.release_version }}"
           cli_asset="release-assets/kast-${tag}-linux-x64.zip"
           backend_asset="headless-backend/headless.zip"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
@@ -604,6 +614,12 @@ jobs:
             --backend-archive "$backend_asset" \
             --version "$tag" \
             --output "$bundle_asset"
+          ./scripts/package-devin-runtime.sh \
+            --cli-archive "$cli_asset" \
+            --backend-archive "$backend_asset" \
+            --version "$version" \
+            --output "dist/kast-headless-linux-x64.tar.zst" \
+            --manifest-output "dist/kast-runtime-manifest.json"
           mkdir -p dist/provenance
           python3 - "$bundle_asset" "dist/provenance/build-provenance-ubuntu-debian-headless.json" <<'PY'
           import hashlib, json, os, sys
@@ -623,6 +639,42 @@ jobs:
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
+          python3 - "dist/kast-headless-linux-x64.tar.zst" "dist/provenance/build-provenance-headless-linux-x64.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "headless-linux-x64",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
+          }
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+          python3 - "dist/kast-runtime-manifest.json" "dist/provenance/build-provenance-runtime-manifest.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "runtime-manifest",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
+          }
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Validate Linux headless tarball
         shell: bash
@@ -636,6 +688,16 @@ jobs:
             BUNDLE_PATH="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
             ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
           done
+          (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
+          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast'
+          python3 - dist/kast-runtime-manifest.json dist/kast-headless-linux-x64.tar.zst <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          artifact_sha = hashlib.sha256(Path(sys.argv[2]).read_bytes()).hexdigest()
+          if manifest.get("artifactSha256") != artifact_sha:
+              raise SystemExit("runtime manifest artifactSha256 does not match tarball")
+          PY
 
       - name: Upload Linux headless tarball
         env:
@@ -645,7 +707,13 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-          gh release upload "$tag" "$bundle_asset" "${bundle_asset}.sha256" --clobber
+          gh release upload "$tag" \
+            "$bundle_asset" \
+            "${bundle_asset}.sha256" \
+            dist/kast-headless-linux-x64.tar.zst \
+            dist/kast-headless-linux-x64.sha256 \
+            dist/kast-runtime-manifest.json \
+            --clobber
 
       - name: Upload Linux headless tarball artifact
         if: always()
@@ -722,7 +790,9 @@ jobs:
           mkdir -p release-assets
           gh release download "$tag" --dir release-assets --pattern '*.zip'
           gh release download "$tag" --dir release-assets --pattern '*.tar.gz' || true
-          gh release download "$tag" --dir release-assets --pattern '*.tar.gz.sha256' || true
+          gh release download "$tag" --dir release-assets --pattern '*.tar.zst' || true
+          gh release download "$tag" --dir release-assets --pattern '*.sha256' || true
+          gh release download "$tag" --dir release-assets --pattern 'kast-runtime-manifest.json'
           gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
           mapfile -t expected_assets < <(python3 - release-assets/build-provenance.json <<'PY'
           import json
@@ -739,6 +809,8 @@ jobs:
           for asset in "${expected_assets[@]}"; do
             if [[ "$asset" == *.tar.gz ]]; then
               expected_sidecars+=("${asset}.sha256")
+            elif [[ "$asset" == *.tar.zst ]]; then
+              expected_sidecars+=("${asset%.tar.zst}.sha256")
             fi
           done
           for asset in "${expected_assets[@]}"; do
