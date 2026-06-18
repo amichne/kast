@@ -574,7 +574,7 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
             .expect("installed instruction");
     assert_eq!(installed_instruction, instruction_source);
     assert!(
-        installed_instruction.contains("start with the `kast-kotlin` LSP server"),
+        installed_instruction.contains("start with the `kotlin` LSP server"),
         "Kotlin instruction must force the LSP route"
     );
 

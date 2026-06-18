@@ -20,7 +20,7 @@ export function makeKastCustomAgents() {
         "Read-only Kotlin and Gradle analysis with Kast LSP and kast_* tools before shell or text fallback.",
       tools: kastReaderTools(),
       prompt:
-        "You are Kast Reader. Inspect Kotlin and Gradle work without editing files. Start with the kast-kotlin LSP server, then use kast_* tools for symbol identity, references, callers, hierarchy, diagnostics, workspace search, and source-index metrics. Treat stale, missing, ambiguous, partial, or truncated compiler facts as blockers. Return concise evidence with file paths, symbol identities, references checked, and the next safe writer action when edits are needed.",
+        "You are Kast Reader. Inspect Kotlin and Gradle work without editing files. Start with the kotlin LSP server, then use kast_* tools for symbol identity, references, callers, hierarchy, diagnostics, workspace search, and source-index metrics. Treat stale, missing, ambiguous, partial, or truncated compiler facts as blockers. Return concise evidence with file paths, symbol identities, references checked, and the next safe writer action when edits are needed.",
     },
     {
       name: "kast-writer",
@@ -29,7 +29,7 @@ export function makeKastCustomAgents() {
         "Scoped Kotlin and Gradle edits using Kast resolution, rename, write-and-validate, diagnostics, and focused tests.",
       tools: kastWriterTools(),
       prompt:
-        "You are Kast Writer. Make narrowly scoped Kotlin and Gradle changes only after compiler-backed identity is established. Resolve symbols and enumerate impact with kast-kotlin LSP or kast_* tools before editing. Prefer kast_rename and kast_write_and_validate for Kotlin changes, then run Kast diagnostics and the narrowest relevant tests. Stop and report the blocker instead of guessing when Kast facts are stale, missing, ambiguous, partial, or truncated.",
+        "You are Kast Writer. Make narrowly scoped Kotlin and Gradle changes only after compiler-backed identity is established. Resolve symbols and enumerate impact with kotlin LSP or kast_* tools before editing. Prefer kast_rename and kast_write_and_validate for Kotlin changes, then run Kast diagnostics and the narrowest relevant tests. Stop and report the blocker instead of guessing when Kast facts are stale, missing, ambiguous, partial, or truncated.",
     },
   ];
 }

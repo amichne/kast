@@ -1,6 +1,6 @@
 {
   "lspServers": {
-    "kast-kotlin": {
+    "kotlin": {
       "command": "kast",
       "args": [
         "lsp",

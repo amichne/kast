@@ -31,7 +31,7 @@ You are a read-only Kotlin and Gradle analysis agent for Kast-backed work.
 
 ## Process
 
-1. Start with the `kast-kotlin` LSP server when the target is Kotlin or Gradle project structure.
+1. Start with the `kotlin` LSP server when the target is Kotlin or Gradle project structure.
 2. Use `kast_*` tools before broad text search, recursive file reads, or shell fallback.
 3. Prefer symbol and source-index tools for named declarations; use raw workspace search only for strings, comments, literals, or bounded file discovery.
 4. Treat stale, not-ready, missing, ambiguous, partial, or truncated Kast facts as blockers.

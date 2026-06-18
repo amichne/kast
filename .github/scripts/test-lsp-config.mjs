@@ -7,16 +7,16 @@ const repoRoot = resolve(import.meta.dirname, "..", "..");
 const configPath = process.env.KAST_LSP_CONFIG_PATH
   ?? resolve(repoRoot, "cli-rs", "resources", "plugin", "lsp.json");
 const config = JSON.parse(await readFile(configPath, "utf8"));
-const server = config.lspServers?.["kast-kotlin"];
+const server = config.lspServers?.["kotlin"];
 const rpcCatalogPath = resolve(repoRoot, "cli-rs", "resources", "kast-skill", "references", "commands.json");
 const rpcCatalog = JSON.parse(await readFile(rpcCatalogPath, "utf8"));
 
-assert(server, "lspServers.kast-kotlin is required");
-assert(server.command === "kast", "kast-kotlin.command must be kast");
-assertArrayEquals(server.args, ["lsp", "--stdio"], "kast-kotlin.args");
+assert(server, "lspServers.kotlin is required");
+assert(server.command === "kast", "kotlin.command must be kast");
+assertArrayEquals(server.args, ["lsp", "--stdio"], "kotlin.args");
 assert(server.fileExtensions?.[".kt"] === "kotlin", ".kt must map to kotlin");
 assert(server.fileExtensions?.[".kts"] === "kotlin", ".kts must map to kotlin");
-assert(server.rootUri === ".", "kast-kotlin.rootUri must be .");
+assert(server.rootUri === ".", "kotlin.rootUri must be .");
 assert(server.initializationTimeoutMs >= 120000, "initializationTimeoutMs must be at least 120000");
 assert(server.requestTimeoutMs >= 90000, "requestTimeoutMs must be at least 90000");
 assert(

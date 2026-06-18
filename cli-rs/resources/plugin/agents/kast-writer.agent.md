@@ -36,7 +36,7 @@ You are a Kotlin and Gradle implementation agent for scoped Kast-backed changes.
 
 ## Process
 
-1. Start by resolving the target through `kast-kotlin` LSP or `kast_*` tools.
+1. Start by resolving the target through `kotlin` LSP or `kast_*` tools.
 2. Enumerate references, callers, hierarchy, or diagnostics before changing Kotlin behavior.
 3. Prefer `kast_rename` and `kast_write_and_validate` over manual text edits for Kotlin source.
 4. Use shell execution only for validation, package checks, or narrowly scoped commands that Kast cannot perform directly.
