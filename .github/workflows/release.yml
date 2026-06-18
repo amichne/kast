@@ -564,13 +564,22 @@ jobs:
         run: |
           set -euo pipefail
           cache_dir="dist/gradle-ro-cache"
-          gradle_user_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
+          gradle_user_home="$RUNNER_TEMP/gradle-ro-release-seed"
           rm -rf "$cache_dir"
           mkdir -p "$cache_dir"
+          rm -rf "$gradle_user_home"
+          mkdir -p "$gradle_user_home"
+          GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew dependencies --no-daemon
+          GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew buildEnvironment --no-daemon
           ./scripts/package-gradle-ro-cache.sh \
             --gradle-user-home "$gradle_user_home" \
             --output "${cache_dir}/gradle-ro-dep-cache.tar.zst"
           (cd "$cache_dir" && sha256sum -c gradle-ro-dep-cache.sha256)
+          cache_size="$(wc -c < "${cache_dir}/gradle-ro-dep-cache.tar.zst" | tr -d '[:space:]')"
+          if [[ "$cache_size" -gt 2147483647 ]]; then
+            echo "Gradle read-only cache artifact is too large for GitHub Releases: ${cache_size} bytes" >&2
+            exit 1
+          fi
           check_dir="$RUNNER_TEMP/gradle-ro-release-check"
           rm -rf "$check_dir"
           mkdir -p "$check_dir"
