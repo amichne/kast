@@ -125,15 +125,36 @@ initialize:
 
   - name: Persist Kast environment
     run: |
-      echo 'export KAST_HOME=/opt/kast/current' >> "$ENVRC"
-      echo 'export PATH=/opt/kast/current/bin:$PATH' >> "$ENVRC"
-      echo 'export KAST_CACHE_HOME=$HOME/.cache/kast' >> "$ENVRC"
-      echo 'export KAST_CONFIG_HOME=$HOME/.config/kast' >> "$ENVRC"
-      echo 'export GRADLE_RO_DEP_CACHE=/opt/kast/cache/gradle-ro' >> "$ENVRC"
-      echo 'export GRADLE_USER_HOME=$HOME/.gradle' >> "$ENVRC"
+      export KAST_HOME=/opt/kast/current
+      export PATH=/opt/kast/current/bin:$PATH
+      export KAST_CACHE_HOME=$HOME/.cache/kast
+      export KAST_CONFIG_HOME=$HOME/.config/kast
+      export GRADLE_RO_DEP_CACHE=/opt/kast/cache/gradle-ro
+      export GRADLE_USER_HOME=$HOME/.gradle
 
-      scripts/verify-setup-kast-install.sh --install-dir /opt/kast/current
+      {
+        echo 'export KAST_HOME=/opt/kast/current'
+        echo 'export PATH=/opt/kast/current/bin:$PATH'
+        echo 'export KAST_CACHE_HOME=$HOME/.cache/kast'
+        echo 'export KAST_CONFIG_HOME=$HOME/.config/kast'
+        echo 'export GRADLE_RO_DEP_CACHE=/opt/kast/cache/gradle-ro'
+        echo 'export GRADLE_USER_HOME=$HOME/.gradle'
+      } >> "$ENVRC"
+
+      command -v kast
+      kast --version
+      kast doctor
+      test -L /opt/kast/current
+      test -f /opt/kast/current/kast-runtime-manifest.json
+      test -d /opt/kast/cache/gradle-ro/modules-2
+      test -n "${GRADLE_RO_DEP_CACHE:-}"
+      test -n "${GRADLE_USER_HOME:-}"
 ```
+
+The `uses` reference follows Devin's GitHub Action format:
+`github.com/<owner>/<repo>/<subpath>@<ref>`. Pin it to a tag that contains
+`setup-kast/action.yml` and `setup-kast/dist/index.js`; use a full commit SHA
+only for temporary test snapshots before the tag exists.
 
 `manifest-url` is the deliberate addition to the initial plan. It makes the
 runtime digest verifiable without inventing a self-referential tarball digest.
