@@ -23,6 +23,18 @@ Run `command -v kast` and `kast --help` before project exploration. If `kast`
 is missing, stop and report the setup blocker instead of switching to
 non-semantic Kotlin search.
 
+If `kast` is present but no backend or source index is available, try to warm
+the IDE-hosted backend before falling back:
+
+```console
+kast up --workspace-root "$PWD" --backend idea
+```
+
+This may open IDEA or Android Studio only when `runtime.ideaLaunch.enabled` is
+set in Kast config; otherwise it reports that the project must be opened in the
+IDE. Treat the failure as a blocker only after this dynamic IDE warmup path has
+failed.
+
 ## Gradle File Routing
 
 - Use for Gradle project file work, not only direct Kotlin edits.

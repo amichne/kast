@@ -2842,11 +2842,14 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("raw/semantic-insertion-point"));
     assert!(skill.contains("raw/completions"));
     assert!(skill.contains("raw/apply-edits"));
+    assert!(skill.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("command -v kast"));
     assert!(quickstart.contains("kast validate --request-file"));
     assert!(quickstart.contains("kast rpc"));
     assert!(quickstart.contains("kast metrics impact"));
     assert!(quickstart.contains("kast demo"));
+    assert!(quickstart.contains("INDEX_UNAVAILABLE"));
+    assert!(quickstart.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(!routing_reference.contains("evals/"));
     assert!(!skill.contains("JVM CLI"));

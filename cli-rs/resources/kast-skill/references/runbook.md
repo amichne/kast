@@ -18,6 +18,13 @@ run_kast_rpc() {
     >"$KAST_RESULT" 2>"$KAST_STDERR"
 }
 
+warm_idea_backend_if_needed() {
+  # Use this when kast is installed but RPC/source-index output reports
+  # NO_BACKEND_AVAILABLE, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or a
+  # missing source-index database.
+  kast up --workspace-root "$PWD" --backend idea
+}
+
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/query","params":{"query":"EventBean","modes":["exact","lexical"],"filters":{"relativePathPrefix":"src/"},"limit":10},"id":1}'
 run_kast_rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25},"id":1}'
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'

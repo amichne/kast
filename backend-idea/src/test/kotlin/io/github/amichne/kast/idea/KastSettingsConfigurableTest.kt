@@ -36,8 +36,8 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("[projectOpen]"))
         assertTrue(toml.contains("profileAutoInit = true"))
         assertTrue(toml.contains("autoExcludeGit = false"))
-        assertTrue(toml.contains("[cli]"))
-        assertTrue(toml.contains("binaryPath = \"/tmp/kast\""))
+        assertFalse(toml.contains("[cli]"))
+        assertFalse(toml.contains("binaryPath = \"/tmp/kast\""))
         assertTrue(toml.contains("[backends.idea]"))
         assertTrue(toml.contains("enabled = false"))
         assertFalse(toml.contains("maxResults"))
@@ -60,7 +60,7 @@ class KastSettingsConfigurableTest {
     }
 
     @Test
-    fun `public settings merge preserves unrelated advanced toml`() {
+    fun `public settings merge preserves cli binary path as manually edited toml`() {
         val existingToml = """
             [server]
             maxResults = 1000
@@ -106,11 +106,11 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("profileAutoInit = true"))
         assertTrue(toml.contains("autoExcludeGit = false"))
         assertTrue(toml.contains("[cli]"))
-        assertTrue(toml.contains("binaryPath = \"/new/kast\""))
+        assertTrue(toml.contains("binaryPath = \"/old/kast\""))
         assertFalse(toml.contains("defaultBackend = \"headless\""))
         assertFalse(toml.contains("profileAutoInit = false"))
         assertFalse(toml.contains("autoExcludeGit = true"))
-        assertFalse(toml.contains("binaryPath = \"/old/kast\""))
+        assertFalse(toml.contains("binaryPath = \"/new/kast\""))
     }
 
     @Test
@@ -130,7 +130,7 @@ class KastSettingsConfigurableTest {
         assertEquals("copilot-lsp", override.projectOpen?.profile?.value)
         assertEquals(false, override.projectOpen?.autoExcludeGit?.value)
         assertEquals(false, override.backends?.idea?.enabled?.value)
-        assertEquals("/tmp/kast", override.cli?.binaryPath?.value)
+        assertEquals(null, override.cli)
         assertEquals(null, override.server)
         assertEquals(null, override.indexing)
         assertEquals(null, override.telemetry)

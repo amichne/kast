@@ -8,13 +8,11 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.XmlSerializerUtil
 import io.github.amichne.kast.api.client.BackendsConfigOverride
-import io.github.amichne.kast.api.client.CliConfigOverride
 import io.github.amichne.kast.api.client.IdeaBackendConfigOverride
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.KastConfigOverride
 import io.github.amichne.kast.api.client.ProjectOpenConfigOverride
 import io.github.amichne.kast.api.client.RuntimeConfigOverride
-import io.github.amichne.kast.api.client.fields.CliBinaryPath
 import io.github.amichne.kast.api.client.fields.IdeaBackendEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
@@ -78,7 +76,6 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         backends = BackendsConfigOverride(
             idea = IdeaBackendConfigOverride(enabled = backendsIdeaEnabled?.let(::IdeaBackendEnabled)).takeIfAny(),
         ).takeIfAny(),
-        cli = CliConfigOverride(binaryPath = cliBinaryPath?.takeIf(String::isNotBlank)?.let(::CliBinaryPath)).takeIfAny(),
     )
 
     companion object {
@@ -97,6 +94,3 @@ private fun BackendsConfigOverride.takeIfAny(): BackendsConfigOverride? =
 
 private fun IdeaBackendConfigOverride.takeIfAny(): IdeaBackendConfigOverride? =
     takeIf { enabled != null }
-
-private fun CliConfigOverride.takeIfAny(): CliConfigOverride? =
-    takeIf { binaryPath != null }

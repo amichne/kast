@@ -10,6 +10,13 @@ import { KAST_TOOL_NAMES, makeKastTools } from "./_shared/kast-tools.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT_MARKER = "workspace.repos.toml";
 const COPILOT_IDEA_AUTOSTART_ENV = "KAST_COPILOT_IDEA_AUTOSTART";
+const RECOVERABLE_WARMUP_CODES = new Set([
+  "INDEX_UNAVAILABLE",
+  "METRICS_DB_UNAVAILABLE",
+  "DEMO_SOURCE_INDEX_MISSING",
+  "DEMO_SOURCE_INDEX_STALE",
+  "NO_BACKEND_AVAILABLE",
+]);
 
 let kastBinary = null;
 let resolveError = null;
@@ -145,6 +152,80 @@ function backendArgs() {
   return ["1", "true", "yes", "on"].includes(value) ? ["--backend", "idea"] : [];
 }
 
+function parseJsonOrNull(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function resultCode(value) {
+  if (!value || typeof value !== "object") return null;
+  if (typeof value.code === "string") return value.code;
+  if (typeof value.error?.data?.code === "string") return value.error.data.code;
+  const result = value.result;
+  if (result && typeof result === "object") {
+    if (typeof result.reason === "string") return result.reason;
+    if (typeof result.code === "string") return result.code;
+  }
+  return null;
+}
+
+function needsIdeaWarmup(value) {
+  return RECOVERABLE_WARMUP_CODES.has(resultCode(value));
+}
+
+function rpcArgs(request, args = backendArgs()) {
+  return [
+    "--output",
+    "json",
+    "rpc",
+    request,
+    "--workspace-root",
+    REPO_ROOT,
+    ...args,
+  ];
+}
+
+async function warmIdeaBackend(bin) {
+  return execCommand(bin, [
+    "--output",
+    "json",
+    "up",
+    "--workspace-root",
+    REPO_ROOT,
+    "--backend",
+    "idea",
+  ]);
+}
+
+function formattedRpcResult(method, result, warmup = null) {
+  const out = result.stdout.trim();
+  if (!out) {
+    return JSON.stringify({
+      ok: false,
+      stage: "extension.exec",
+      method,
+      message: `kast rpc ${method} produced no output`,
+      exitCode: result.code,
+      errorText: result.stderr.trim() || null,
+      ideaWarmup: warmup,
+    });
+  }
+  if (parseJsonOrNull(out)) return out;
+  return JSON.stringify({
+    ok: false,
+    stage: "extension.parse",
+    method,
+    message: `kast rpc ${method} returned non-JSON`,
+    exitCode: result.code,
+    raw: out,
+    errorText: result.stderr.trim() || null,
+    ideaWarmup: warmup,
+  });
+}
+
 async function callKast(method, params) {
   const bin = await resolveKastBinary();
   if (!bin) {
@@ -162,38 +243,23 @@ async function callKast(method, params) {
     params: params ?? {},
     id: 1,
   });
-  const result = await execCommand(bin, [
-    "rpc",
-    request,
-    "--workspace-root",
-    REPO_ROOT,
-    ...backendArgs(),
-  ]);
-  const out = result.stdout.trim();
-  if (!out) {
-    return JSON.stringify({
+  const first = await execCommand(bin, rpcArgs(request));
+  const firstJson = parseJsonOrNull(first.stdout.trim());
+  if (needsIdeaWarmup(firstJson)) {
+    const warmup = await warmIdeaBackend(bin);
+    const warmupJson = parseJsonOrNull(warmup.stdout.trim());
+    if (warmup.ok) {
+      return formattedRpcResult(method, await execCommand(bin, rpcArgs(request, ["--backend", "idea"])));
+    }
+    return formattedRpcResult(method, first, {
+      attempted: true,
       ok: false,
-      stage: "extension.exec",
-      method,
-      message: `kast rpc ${method} produced no output`,
-      exitCode: result.code,
-      errorText: result.stderr.trim() || null,
+      exitCode: warmup.code,
+      error: warmupJson,
+      errorText: warmup.stderr.trim() || null,
     });
   }
-  try {
-    JSON.parse(out);
-    return out;
-  } catch {
-    return JSON.stringify({
-      ok: false,
-      stage: "extension.parse",
-      method,
-      message: `kast rpc ${method} returned non-JSON`,
-      exitCode: result.code,
-      raw: out,
-      errorText: result.stderr.trim() || null,
-    });
-  }
+  return formattedRpcResult(method, first);
 }
 
 const session = await joinSession({

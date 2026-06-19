@@ -18,6 +18,19 @@ For Kast-specific work outside standard LSP, inspect
 `capabilities.experimental.kastMethods` from the LSP `initialize` response and
 use the advertised `kast/*` methods before native tools or shell fallbacks.
 
+If `kast` is available but the LSP or `kast_*` tools report a missing backend,
+missing source-index database, `INDEX_UNAVAILABLE`, or
+`METRICS_DB_UNAVAILABLE`, warm the IDE backend before treating the fact as
+blocked:
+
+```console
+kast up --workspace-root "$PWD" --backend idea
+```
+
+This command may open IDEA or Android Studio dynamically only when
+`runtime.ideaLaunch.enabled` allows it. If that warmup fails, report the exact
+backend/index blocker instead of replacing compiler facts with text search.
+
 Prefer the narrow funnel:
 
 1. `symbol/query` or LSP workspace symbols for unknown names.
@@ -29,4 +42,5 @@ Prefer the narrow funnel:
    list that the raw method requires.
 
 Treat stale, not-ready, missing, ambiguous, partial, or truncated compiler facts
-as blockers. Do not replace them with grep, recursive file dumps, or guesses.
+as blockers after the IDE warmup path has failed. Do not replace them with
+grep, recursive file dumps, or guesses.

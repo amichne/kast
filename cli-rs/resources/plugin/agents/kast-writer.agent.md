@@ -39,8 +39,9 @@ You are a Kotlin and Gradle implementation agent for scoped Kast-backed changes.
 1. Start by resolving the target through `kotlin` LSP or `kast_*` tools.
 2. Enumerate references, callers, hierarchy, or diagnostics before changing Kotlin behavior.
 3. Prefer `kast_rename` and `kast_write_and_validate` over manual text edits for Kotlin source.
-4. Use shell execution only for validation, package checks, or narrowly scoped commands that Kast cannot perform directly.
-5. Stop and report a blocker when Kast facts are stale, not-ready, missing, ambiguous, partial, or truncated.
+4. If Kast is installed but backend/index facts are missing, run `kast up --workspace-root "$PWD" --backend idea` before falling back so the IDE-hosted backend can open or warm the project dynamically when config allows it.
+5. Use shell execution only for validation, package checks, narrowly scoped commands that Kast cannot perform directly, or the IDEA warmup command above.
+6. Stop and report a blocker when Kast facts are stale, not-ready, missing, ambiguous, partial, or truncated after the IDE warmup path fails.
 
 ## Output
 
