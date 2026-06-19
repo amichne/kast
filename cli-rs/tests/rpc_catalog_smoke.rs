@@ -506,6 +506,12 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         !extension.contains("\"bash\""),
         "extension must resolve kast without shelling through bash"
     );
+    assert!(
+        extension.contains("RECOVERABLE_WARMUP_CODES")
+            && extension.contains("\"INDEX_UNAVAILABLE\"")
+            && extension.contains("\"up\""),
+        "extension must warm the IDEA backend for missing backend/index results"
+    );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
         .expect("local plugin installer");
     assert!(
@@ -577,16 +583,22 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         installed_instruction.contains("start with the `kotlin` LSP server"),
         "Kotlin instruction must force the LSP route"
     );
+    assert!(
+        installed_instruction.contains("kast up --workspace-root \"$PWD\" --backend idea"),
+        "Kotlin instruction must warm the IDEA backend before missing-index fallback"
+    );
 
     let installed_reader = std::fs::read_to_string(target.join("agents/kast-reader.agent.md"))
         .expect("installed reader agent");
     assert!(installed_reader.contains("name: Kast Reader"));
+    assert!(installed_reader.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(!installed_reader.contains("kast_write_and_validate"));
     assert!(!installed_reader.contains("  - edit"));
 
     let installed_writer = std::fs::read_to_string(target.join("agents/kast-writer.agent.md"))
         .expect("installed writer agent");
     assert!(installed_writer.contains("name: Kast Writer"));
+    assert!(installed_writer.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(installed_writer.contains("kast_write_and_validate"));
     assert!(installed_writer.contains("  - edit"));
 

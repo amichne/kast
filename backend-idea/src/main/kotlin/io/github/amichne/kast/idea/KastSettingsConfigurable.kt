@@ -2,13 +2,14 @@
 
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
-import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.panel
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
@@ -25,7 +26,7 @@ internal class KastSettingsConfigurable(
     private lateinit var backendsIdeaEnabled: JBCheckBox
     private lateinit var projectOpenProfileAutoInit: JBCheckBox
     private lateinit var projectOpenAutoExcludeGit: JBCheckBox
-    private lateinit var cliBinaryPath: TextFieldWithBrowseButton
+    private lateinit var cliBinaryPath: JBTextField
 
     override fun getDisplayName(): String = "Kast"
 
@@ -37,8 +38,7 @@ internal class KastSettingsConfigurable(
         return selectedRuntimeDefaultBackend().configValue != state.runtimeDefaultBackend ||
             backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false) ||
             projectOpenProfileAutoInit.isSelected != (state.projectOpenProfileAutoInit ?: false) ||
-            projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true) ||
-            cliBinaryPath.text != state.cliBinaryPath.orEmpty()
+            projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true)
     }
 
     override fun reset() {
@@ -55,9 +55,7 @@ internal class KastSettingsConfigurable(
         val state = KastSettingsState.getInstance(project)
         updateStateFromFields(state)
 
-        val configPath = WorkspaceDirectoryResolver()
-            .workspaceDataDirectory(workspaceRoot)
-            .resolve("config.toml")
+        val configPath = workspaceConfigPath(workspaceRoot)
         val existingToml = if (Files.isRegularFile(configPath)) Files.readString(configPath) else ""
         val nextToml = mergePublicWorkspaceToml(existingToml, state)
         Files.createDirectories(configPath.parent)
@@ -93,11 +91,11 @@ internal class KastSettingsConfigurable(
 
         group("CLI") {
             row("Binary path:") {
-                cliBinaryPath = textFieldWithBrowseButton(
-                    FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
-                        .withTitle("Select Kast CLI Binary"),
-                    project,
-                ) { it.path }.component
+                cliBinaryPath = textField().component.apply {
+                    isEditable = false
+                    emptyText.text = "Resolved from Kast config"
+                }
+                button("Open config") { openWorkspaceConfig() }
             }
         }
     }
@@ -118,14 +116,28 @@ internal class KastSettingsConfigurable(
         state.projectOpenProfileAutoInit = projectOpenProfileAutoInit.isSelected
         state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.COPILOT_LSP
         state.projectOpenAutoExcludeGit = projectOpenAutoExcludeGit.isSelected
-        state.cliBinaryPath = cliBinaryPath.text.takeIf(String::isNotBlank)
     }
 
     private fun selectedRuntimeDefaultBackend(): KastRuntimeDefaultBackendOption =
         runtimeDefaultBackend.selectedItem as? KastRuntimeDefaultBackendOption
             ?: KastRuntimeDefaultBackendOption.AUTO
 
+    private fun openWorkspaceConfig() {
+        val workspaceRoot = workspaceRoot() ?: return
+        val configPath = workspaceConfigPath(workspaceRoot)
+        Files.createDirectories(configPath.parent)
+        if (Files.notExists(configPath)) {
+            Files.writeString(configPath, "")
+        }
+        val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(configPath) ?: return
+        FileEditorManager.getInstance(project).openFile(virtualFile, true)
+    }
+
     private fun workspaceRoot(): Path? = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
+
+    private fun workspaceConfigPath(workspaceRoot: Path): Path = WorkspaceDirectoryResolver()
+        .workspaceDataDirectory(workspaceRoot)
+        .resolve("config.toml")
 }
 
 private enum class KastRuntimeDefaultBackendOption(

@@ -10,11 +10,14 @@ use crate::runtime::{
     WorkspaceStatusResult,
 };
 use crate::self_mgmt::SelfDoctorResult;
-use crossterm::style::{Stylize, style};
+use glamour::{Renderer, Style};
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, IsTerminal, Write as IoWrite};
+
+const SOURCE_MODULE_DISPLAY_LIMIT: usize = 30;
 
 macro_rules! mdln {
     ($document:expr) => {
@@ -122,18 +125,25 @@ fn terminal_render_style(is_terminal: bool) -> RenderStyle {
 }
 
 fn render_markdown(markdown: &str, style: RenderStyle) -> String {
+    match style {
+        RenderStyle::Plain => render_plain_markdown(markdown),
+        RenderStyle::Ansi => Renderer::new().with_style(Style::Dark).render(markdown),
+    }
+}
+
+fn render_plain_markdown(markdown: &str) -> String {
     let mut rendered = String::new();
     for line in markdown.lines() {
         if let Some(heading) = line.strip_prefix("# ") {
-            push_heading(&mut rendered, heading, '=', style);
+            push_heading(&mut rendered, heading, '=');
         } else if let Some(heading) = line.strip_prefix("## ") {
-            push_heading(&mut rendered, heading, '-', style);
+            push_heading(&mut rendered, heading, '-');
         } else if let Some(item) = line.strip_prefix("- ") {
             rendered.push_str("- ");
-            rendered.push_str(&render_inline(item, style));
+            rendered.push_str(&render_inline_plain(item));
             rendered.push('\n');
         } else {
-            rendered.push_str(&render_inline(line, style));
+            rendered.push_str(&render_inline_plain(line));
             rendered.push('\n');
         }
     }
@@ -143,37 +153,19 @@ fn render_markdown(markdown: &str, style: RenderStyle) -> String {
     rendered
 }
 
-fn push_heading(rendered: &mut String, heading: &str, underline: char, style: RenderStyle) {
-    rendered.push_str(&style_heading(heading, style));
+fn push_heading(rendered: &mut String, heading: &str, underline: char) {
+    rendered.push_str(heading);
     rendered.push('\n');
     rendered.push_str(&underline.to_string().repeat(heading.chars().count().max(1)));
     rendered.push('\n');
 }
 
-fn render_inline(line: &str, render_style: RenderStyle) -> String {
+fn render_inline_plain(line: &str) -> String {
     let mut rendered = String::new();
-    for (index, segment) in line.split('`').enumerate() {
-        if index % 2 == 0 {
-            rendered.push_str(segment);
-        } else {
-            rendered.push_str(&style_code(segment, render_style));
-        }
+    for segment in line.split('`') {
+        rendered.push_str(segment);
     }
     rendered
-}
-
-fn style_heading(text: &str, render_style: RenderStyle) -> String {
-    match render_style {
-        RenderStyle::Plain => text.to_string(),
-        RenderStyle::Ansi => style(text).bold().to_string(),
-    }
-}
-
-fn style_code(text: &str, render_style: RenderStyle) -> String {
-    match render_style {
-        RenderStyle::Plain => text.to_string(),
-        RenderStyle::Ansi => style(text).cyan().to_string(),
-    }
 }
 
 #[cfg(test)]
@@ -638,13 +630,7 @@ fn print_candidate(
         mdln!(document, "- Active: {}", yes_no(status.active));
         mdln!(document, "- Healthy: {}", yes_no(status.healthy));
         mdln!(document, "- Indexing: {}", yes_no(status.indexing));
-        if !status.source_module_names.is_empty() {
-            mdln!(
-                document,
-                "- Source modules: {}",
-                status.source_module_names.join(", ")
-            );
-        }
+        print_source_modules(document, &status.source_module_names);
         if let Some(message) = &status.message {
             mdln!(document, "- Message: {message}");
         }
@@ -652,6 +638,87 @@ fn print_candidate(
     }
     if let Some(error_message) = &candidate.error_message {
         mdln!(document, "- Error: {error_message}");
+    }
+}
+
+fn print_source_modules(document: &mut MarkdownDocument, module_names: &[String]) {
+    let modules = normalized_modules(module_names);
+    if modules.is_empty() {
+        return;
+    }
+
+    let displayed = modules
+        .iter()
+        .take(SOURCE_MODULE_DISPLAY_LIMIT)
+        .cloned()
+        .collect::<Vec<_>>();
+    let remaining = modules.len().saturating_sub(displayed.len());
+
+    let mut tree = ModuleTree::default();
+    for module in displayed {
+        tree.insert(&module);
+    }
+
+    mdln!(document);
+    mdln!(document, "## Source modules");
+    tree.print(document);
+    if remaining > 0 {
+        mdln!(document, "- ... {remaining} more modules");
+    }
+}
+
+fn normalized_modules(module_names: &[String]) -> Vec<Vec<String>> {
+    module_names
+        .iter()
+        .filter_map(|module_name| normalize_module_name(module_name))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn normalize_module_name(module_name: &str) -> Option<Vec<String>> {
+    let trimmed = module_name.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let without_root = trimmed.trim_start_matches(':');
+    let parts = without_root
+        .split(':')
+        .filter(|part| !part.is_empty())
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+
+    if parts.is_empty() {
+        Some(vec![trimmed.to_string()])
+    } else {
+        Some(parts)
+    }
+}
+
+#[derive(Default)]
+struct ModuleTree {
+    children: BTreeMap<String, ModuleTree>,
+}
+
+impl ModuleTree {
+    fn insert(&mut self, path: &[String]) {
+        let Some((first, rest)) = path.split_first() else {
+            return;
+        };
+        self.children.entry(first.clone()).or_default().insert(rest);
+    }
+
+    fn print(&self, document: &mut MarkdownDocument) {
+        self.print_at_depth(document, 0);
+    }
+
+    fn print_at_depth(&self, document: &mut MarkdownDocument, depth: usize) {
+        let indent = "  ".repeat(depth);
+        for (name, child) in &self.children {
+            mdln!(document, "{indent}- `{name}`");
+            child.print_at_depth(document, depth + 1);
+        }
     }
 }
 
@@ -737,5 +804,61 @@ mod tests {
             !rendered.contains("# Kast status") && !rendered.contains("`/tmp/kast`"),
             "ANSI rendering should still remove raw Markdown control tokens: {rendered:?}"
         );
+    }
+
+    #[test]
+    fn source_modules_render_as_plain_text_tree() {
+        let rendered = render_source_modules_for_test(&[
+            ":backend:idea",
+            ":analysis-api",
+            ":backend:headless",
+            "secondary",
+        ]);
+
+        assert!(
+            rendered.contains(
+                "Source modules\n--------------\n- analysis-api\n- backend\n  - headless\n  - idea\n- secondary\n"
+            ),
+            "source modules should render as a sorted tree: {rendered}"
+        );
+        assert!(
+            !rendered.contains("Source modules:"),
+            "source modules should not render as a comma-separated list: {rendered}"
+        );
+    }
+
+    #[test]
+    fn source_modules_truncate_after_display_limit() {
+        let modules = (0..32)
+            .map(|index| format!(":module-{index:02}"))
+            .collect::<Vec<_>>();
+        let rendered = render_source_modules_for_owned_test(&modules);
+
+        assert!(
+            rendered.contains("- module-29"),
+            "the thirtieth module should still render: {rendered}"
+        );
+        assert!(
+            !rendered.contains("- module-30"),
+            "modules after the display limit should be omitted: {rendered}"
+        );
+        assert!(
+            rendered.contains("- ... 2 more modules"),
+            "truncation summary should report hidden modules: {rendered}"
+        );
+    }
+
+    fn render_source_modules_for_test(module_names: &[&str]) -> String {
+        let module_names = module_names
+            .iter()
+            .map(|module_name| module_name.to_string())
+            .collect::<Vec<_>>();
+        render_source_modules_for_owned_test(&module_names)
+    }
+
+    fn render_source_modules_for_owned_test(module_names: &[String]) -> String {
+        let mut document = MarkdownDocument::default();
+        print_source_modules(&mut document, module_names);
+        render_markdown_for_test(&document.into_string(), RenderStyle::Plain)
     }
 }

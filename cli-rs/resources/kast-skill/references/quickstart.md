@@ -13,8 +13,20 @@ kast --help
 
 If `kast` is missing in an installed skill session, stop and report that setup
 blocker instead of switching to non-semantic Kotlin search. The installed skill
-does not ship bootstrap scripts; `kast setup` and `kast install affected` own
-durable repair.
+does not ship bootstrap scripts; `kast setup` owns durable repair.
+
+If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
+`INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index
+database, warm the IDEA backend before using text fallback:
+
+```console
+kast up --workspace-root "$PWD" --backend idea
+```
+
+Kast opens IDEA or Android Studio dynamically only when
+`runtime.ideaLaunch.enabled` allows it. If launch is not enabled, the command
+reports that the project must be opened in the IDE with the Kast plugin
+installed. That is the blocker; do not stop at the first missing-index result.
 
 ## Contract reference
 

@@ -100,15 +100,31 @@ assert(
   "instructions must identify blocked compiler facts",
 );
 assert(instruction.includes("as blockers"), "instructions must fail closed on blockers");
+assert(
+  instruction.includes('kast up --workspace-root "$PWD" --backend idea'),
+  "instructions must warm the IDEA backend before missing-index fallback",
+);
 
 const tools = readText("extensions/kast/_shared/kast-tools.mjs");
 assert(tools.includes("Preferred Kotlin funnel tool"), "tool guidance must prefer funnel tools");
 assert(tools.includes("Bounded raw escape hatch"), "tool guidance must bound raw escape hatches");
+const extension = readText("extensions/kast/extension.mjs");
+assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
+assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
+assert(extension.includes('"up"'), "extension must invoke kast up for warmup");
 
 const reader = readText("agents/kast-reader.agent.md");
 const writer = readText("agents/kast-writer.agent.md");
 assert(reader.includes("name: Kast Reader"), "reader agent must be named");
 assert(writer.includes("name: Kast Writer"), "writer agent must be named");
+assert(
+  reader.includes('kast up --workspace-root "$PWD" --backend idea'),
+  "reader agent must warm the IDEA backend before fallback",
+);
+assert(
+  writer.includes('kast up --workspace-root "$PWD" --backend idea'),
+  "writer agent must warm the IDEA backend before fallback",
+);
 assert(!reader.includes("kast_write_and_validate"), "reader must not expose write-and-validate");
 assert(!reader.includes("kast_rename"), "reader must not expose rename");
 assert(!reader.includes("  - edit"), "reader must not expose edit");
@@ -153,6 +169,12 @@ const reader = agents.find((agent) => agent.name === "kast-reader");
 const writer = agents.find((agent) => agent.name === "kast-writer");
 if (!reader) throw new Error("source plugin import missing kast-reader");
 if (!writer) throw new Error("source plugin import missing kast-writer");
+if (!reader.prompt.includes('kast up --workspace-root "$PWD" --backend idea')) {
+  throw new Error("source reader prompt must warm the IDEA backend before fallback");
+}
+if (!writer.prompt.includes('kast up --workspace-root "$PWD" --backend idea')) {
+  throw new Error("source writer prompt must warm the IDEA backend before fallback");
+}
 for (const writeTool of ["kast_rename", "kast_write_and_validate", "edit", "execute"]) {
   if (reader.tools.includes(writeTool)) throw new Error(`source reader must not include ${writeTool}`);
   if (!writer.tools.includes(writeTool)) throw new Error(`source writer must include ${writeTool}`);
@@ -215,6 +237,12 @@ for (const required of ["kast-reader", "kast-writer"]) {
 }
 const reader = agents.find((agent) => agent.name === "kast-reader");
 const writer = agents.find((agent) => agent.name === "kast-writer");
+if (!reader.prompt.includes('kast up --workspace-root "$PWD" --backend idea')) {
+  throw new Error("installed reader prompt must warm the IDEA backend before fallback");
+}
+if (!writer.prompt.includes('kast up --workspace-root "$PWD" --backend idea')) {
+  throw new Error("installed writer prompt must warm the IDEA backend before fallback");
+}
 for (const writeTool of ["kast_rename", "kast_write_and_validate", "edit", "execute"]) {
   if (reader.tools.includes(writeTool)) throw new Error(`reader must not include ${writeTool}`);
   if (!writer.tools.includes(writeTool)) throw new Error(`writer must include ${writeTool}`);

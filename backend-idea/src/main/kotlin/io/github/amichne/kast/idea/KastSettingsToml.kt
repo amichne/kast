@@ -19,7 +19,6 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
             ),
         )
         add(tomlSection("backends.idea", "enabled" to backendsIdeaEnabled.changedFrom(defaults.backends.idea.enabled.value)))
-        add(tomlSection("cli", "binaryPath" to cliBinaryPath.changedFrom(defaults.cli.binaryPath.value)))
     }.filter(String::isNotBlank)
 
     if (sections.isEmpty()) return ""
@@ -68,7 +67,6 @@ private val managedPublicKeys = setOf(
     "projectopen.profile",
     "projectopen.autoexcludegit",
     "backends.idea.enabled",
-    "cli.binarypath",
 )
 
 private fun removeManagedPublicSettings(toml: String): String {
