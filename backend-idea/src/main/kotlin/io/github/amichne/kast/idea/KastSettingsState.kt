@@ -23,29 +23,6 @@ import io.github.amichne.kast.api.client.fields.RuntimeDefaultBackend
 @Service(Service.Level.PROJECT)
 internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var runtimeDefaultBackend: String? = null
-    var cliBinaryPath: String? = null
-    var serverMaxResults: Int? = null
-    var serverRequestTimeoutMillis: Long? = null
-    var serverMaxConcurrentRequests: Int? = null
-    var indexingPhase2Enabled: Boolean? = null
-    var indexingPhase2BatchSize: Int? = null
-    var indexingPhase2PriorityDepth: Int? = null
-    var indexingIdentifierIndexWaitMillis: Long? = null
-    var indexingReferenceBatchSize: Int? = null
-    var indexingRemoteEnabled: Boolean? = null
-    var indexingRemoteSourceIndexUrl: String? = null
-    var cacheEnabled: Boolean? = null
-    var cacheWriteDelayMillis: Long? = null
-    var cacheSourceIndexSaveDelayMillis: Long? = null
-    var watcherDebounceMillis: Long? = null
-    var gradleToolingApiTimeoutMillis: Long? = null
-    var telemetryEnabled: Boolean? = null
-    var telemetryScopes: String? = null
-    var telemetryDetail: String? = null
-    var telemetryOutputFile: String? = null
-    var backendsHeadlessEnabled: Boolean? = null
-    var backendsHeadlessRuntimeLibsDir: String? = null
-    var backendsHeadlessIdeaHome: String? = null
     var backendsIdeaEnabled: Boolean? = null
     var projectOpenProfileAutoInit: Boolean? = null
     var projectOpenProfile: String? = null
@@ -58,7 +35,6 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     fun loadFromConfig(config: KastConfig) {
         runtimeDefaultBackend = config.runtime.defaultBackend.value
         backendsIdeaEnabled = config.backends.idea.enabled.value
-        cliBinaryPath = config.cli.binaryPath.value
         projectOpenProfileAutoInit = config.projectOpen.profileAutoInit.value
         projectOpenProfile = config.projectOpen.profile.value
         projectOpenAutoExcludeGit = config.projectOpen.autoExcludeGit.value

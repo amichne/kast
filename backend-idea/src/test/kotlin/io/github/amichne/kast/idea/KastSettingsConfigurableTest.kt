@@ -23,7 +23,6 @@ class KastSettingsConfigurableTest {
         val state = KastSettingsState().apply {
             loadFromConfig(KastConfig.defaults())
             runtimeDefaultBackend = "idea"
-            cliBinaryPath = "/tmp/kast"
             backendsIdeaEnabled = false
             projectOpenProfileAutoInit = true
             projectOpenAutoExcludeGit = false
@@ -37,7 +36,6 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("profileAutoInit = true"))
         assertTrue(toml.contains("autoExcludeGit = false"))
         assertFalse(toml.contains("[cli]"))
-        assertFalse(toml.contains("binaryPath = \"/tmp/kast\""))
         assertTrue(toml.contains("[backends.idea]"))
         assertTrue(toml.contains("enabled = false"))
         assertFalse(toml.contains("maxResults"))
@@ -49,9 +47,6 @@ class KastSettingsConfigurableTest {
     fun `legacy tuning fields are not emitted from plugin settings`() {
         val state = KastSettingsState().apply {
             loadFromConfig(KastConfig.defaults())
-            serverMaxResults = 42
-            backendsHeadlessRuntimeLibsDir = "/tmp/runtime-libs"
-            telemetryEnabled = true
         }
 
         val toml = state.toWorkspaceToml()
@@ -89,7 +84,6 @@ class KastSettingsConfigurableTest {
             runtimeDefaultBackend = "idea"
             projectOpenProfileAutoInit = true
             projectOpenAutoExcludeGit = false
-            cliBinaryPath = "/new/kast"
         }
 
         val toml = mergePublicWorkspaceToml(existingToml, state)
@@ -121,7 +115,6 @@ class KastSettingsConfigurableTest {
             projectOpenProfileAutoInit = true
             projectOpenProfile = "copilot-lsp"
             projectOpenAutoExcludeGit = false
-            cliBinaryPath = "/tmp/kast"
         }
         val override = state.toOverride()
 

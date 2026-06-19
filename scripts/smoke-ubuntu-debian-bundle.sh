@@ -232,6 +232,9 @@ manifest_installed_home="${manifest_install_root}/${version}"
 [[ -f "$manifest_config_file" ]] || die "Manifest-based install did not write config.toml"
 grep -Fq "runtimeLibsDir = \"${manifest_installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$manifest_config_file" \
   || die "Manifest-based install did not infer bundle version from manifest.json"
+if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$manifest_config_file"; then
+  die "Manifest-based config.toml should derive install-root-owned paths"
+fi
 
 HOME="$home_dir" \
 PATH="$bin_dir:$PATH" \
@@ -259,6 +262,9 @@ grep -Fq "runtimeLibsDir = \"${installed_home}/lib/backends/headless-${version}/
 grep -Fq "ideaHome = \"${installed_home}/lib/backends/headless-${version}/idea-home\"" "$config_file" \
   || die "config.toml does not point at bundled headless IDEA home"
 grep -Fq "backendVersion = \"9.8.7\"" "$config_file" || die "config.toml does not record normalized backend version"
+if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$config_file"; then
+  die "config.toml should derive install-root-owned paths"
+fi
 
 bundle_without_sidecar="${artifact_dir}/kast-${platform}-v9.8.6.tar.gz"
 cp "$bundle_path" "$bundle_without_sidecar"

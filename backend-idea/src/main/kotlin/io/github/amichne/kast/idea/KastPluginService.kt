@@ -109,7 +109,7 @@ internal class KastPluginService(
 
 internal fun loadIdeaKastConfig(
     workspaceRoot: Path,
-    loader: (Path) -> KastConfig = KastConfig::load,
+    loader: (Path) -> KastConfig = KastConfig::loadIdea,
     reportFailure: (Path, Exception) -> Unit = { path, error ->
         Logger.getInstance(KastPluginService::class.java).warn(
             "Failed to load Kast config for workspace $path; starting IDEA backend with defaults.",

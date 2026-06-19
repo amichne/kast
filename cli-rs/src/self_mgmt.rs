@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
-use crate::config;
+use crate::config::{self, PathResolutionReport};
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -94,6 +94,7 @@ pub struct SelfDoctorResult {
     pub configuration: DoctorConfigurationDiagnostic,
     pub canonical_directory: DoctorCanonicalDirectoryDiagnostic,
     pub binary: DoctorBinaryDiagnostic,
+    pub path_resolution: PathResolutionReport,
     pub minimum_backend_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallState>,
@@ -133,6 +134,8 @@ pub fn doctor() -> Result<SelfDoctorResult> {
     let install_root = global_config.paths.install_root.clone();
     let canonical_directory = canonical_directory_diagnostic(&global_config.paths);
     let binary = binary_diagnostic(&global_config.cli);
+    let path_resolution =
+        config::path_resolution_report(&global_config, None, config::PathResolutionMode::Cli)?;
     if !binary.configured_exists {
         warnings.push(format!(
             "Configured kast binary is missing: {}",
@@ -191,6 +194,7 @@ pub fn doctor() -> Result<SelfDoctorResult> {
         configuration,
         canonical_directory,
         binary,
+        path_resolution,
         minimum_backend_version: minimum_backend_version.to_string(),
         install,
         ok: issues.is_empty(),

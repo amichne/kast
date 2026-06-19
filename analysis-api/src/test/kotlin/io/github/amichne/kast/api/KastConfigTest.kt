@@ -349,6 +349,86 @@ class KastConfigTest {
     }
 
     @Test
+    fun `idea config loader ignores workspace path and binary overrides`() {
+        val configHome = tempDir.resolve("config-home")
+        val globalRoot = tempDir.resolve("global-root")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            configHome = { configHome },
+            installRoot = { globalRoot },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = tempDir.resolve("main.git"),
+                    gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace"),
+                    remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
+                )
+            },
+        )
+        configHome.resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(
+                """
+                [paths]
+                installRoot = "$globalRoot"
+
+                [cli]
+                binaryPath = "$globalRoot/bin/kast"
+                """.trimIndent(),
+            )
+        }
+        resolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml").apply {
+            parent.toFile().mkdirs()
+            writeText(
+                """
+                [paths]
+                installRoot = "/workspace/should-not-win"
+                cacheDir = "/workspace/cache"
+                descriptorDir = "/workspace/descriptors"
+
+                [cli]
+                binaryPath = "/workspace/bin/kast"
+
+                [backends.headless]
+                runtimeLibsDir = "/workspace/runtime-libs"
+                ideaHome = "/workspace/idea-home"
+
+                [runtime]
+                defaultBackend = "idea"
+
+                [projectOpen]
+                profileAutoInit = true
+                profile = "copilot-lsp"
+                autoExcludeGit = false
+
+                [backends.idea]
+                enabled = false
+                """.trimIndent(),
+            )
+        }
+
+        val config = KastConfig.loadIdea(
+            workspaceRoot = workspaceRoot,
+            configHome = { configHome },
+            workspaceDirectoryResolver = resolver,
+        )
+
+        assertEquals(globalRoot.toString(), config.paths.installRoot.value)
+        assertEquals(globalRoot.resolve("cache").toString(), config.paths.cacheDir.value)
+        assertEquals(globalRoot.resolve("cache/daemons").toString(), config.paths.descriptorDir.value)
+        assertEquals(globalRoot.resolve("bin/kast").toString(), config.cli.binaryPath.value)
+        assertEquals(
+            globalRoot.resolve("lib/backends/headless/current/runtime-libs").toString(),
+            config.backends.headless.runtimeLibsDir.value.orNull,
+        )
+        assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
+        assertEquals("idea", config.runtime.defaultBackend.value)
+        assertEquals(true, config.projectOpen.profileAutoInit.value)
+        assertEquals(false, config.projectOpen.autoExcludeGit.value)
+        assertEquals(false, config.backends.idea.enabled.value)
+    }
+
+    @Test
     fun `config loader uses Kast classloader instead of thread context loader for default Hoplite services`() {
         val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
