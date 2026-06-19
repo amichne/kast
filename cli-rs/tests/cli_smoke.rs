@@ -2036,7 +2036,10 @@ fn install_affected_recovers_malformed_global_config_with_backup() {
     assert_eq!(backup, "[runtime\n");
     let recovered =
         std::fs::read_to_string(config_home.join("config.toml")).expect("recovered config");
-    assert!(recovered.contains("[server]"), "{recovered}");
+    assert!(recovered.contains("[paths]"), "{recovered}");
+    assert!(recovered.contains("installRoot = "), "{recovered}");
+    assert!(!recovered.contains("binDir = "), "{recovered}");
+    assert!(!recovered.contains("binaryPath = "), "{recovered}");
     recovered
         .parse::<toml::Table>()
         .expect("recovered config should be valid TOML");
@@ -2796,8 +2799,10 @@ fn archive_install_writes_config_owned_install_state() {
     assert!(config.contains("[install]"), "{config}");
     assert!(config.contains("\"cli\""), "{config}");
     assert!(config.contains("\"config\""), "{config}");
-    assert!(config.contains("[cli]"), "{config}");
-    assert!(config.contains("binaryPath = "), "{config}");
+    assert!(config.contains("[paths]"), "{config}");
+    assert!(config.contains("installRoot = "), "{config}");
+    assert!(!config.contains("[cli]"), "{config}");
+    assert!(!config.contains("binaryPath = "), "{config}");
     assert!(!home.join(".kast/.manifest.json").exists());
 
     let doctor = kast(&home, &config_home)

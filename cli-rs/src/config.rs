@@ -1,8 +1,9 @@
+use crate::SCHEMA_VERSION;
 use crate::cli::{BackendName, DaemonStartArgs};
 use crate::error::{CliError, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::num::NonZeroU64;
@@ -246,6 +247,44 @@ pub struct CliConfig {
     pub binary_path: PathBuf,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathResolutionReport {
+    pub root: String,
+    pub config_files: Vec<PathResolutionConfigFile>,
+    pub entries: Vec<PathResolutionEntry>,
+    pub warnings: Vec<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathResolutionConfigFile {
+    pub scope: String,
+    pub path: String,
+    pub exists: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PathResolutionEntry {
+    pub key: String,
+    pub value: String,
+    pub source: String,
+    pub owner: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub derived_from: Option<String>,
+    pub exists: bool,
+    pub expected_kind: String,
+    pub used_by_idea: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathResolutionMode {
+    Cli,
+    Idea,
+}
+
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialConfig {
@@ -464,7 +503,7 @@ impl KastConfig {
                 idea: IdeaBackendConfig { enabled: true },
             },
             cli: CliConfig {
-                binary_path: env::current_exe().unwrap_or_else(|_| bin_dir.join("kast")),
+                binary_path: bin_dir.join("kast"),
             },
         }
     }
@@ -514,34 +553,58 @@ impl KastConfig {
     fn apply(&mut self, partial: PartialConfig) {
         if let Some(paths) = partial.paths {
             if let Some(value) = paths.install_root {
+                let bin_was_derived = self.bin_dir_is_derived();
+                let lib_was_derived = self.lib_dir_is_derived();
+                let cache_was_derived = self.cache_dir_is_derived();
+                let logs_was_derived = self.logs_dir_is_derived();
+                let descriptor_was_derived = self.descriptor_dir_is_derived();
+                let binary_was_derived = self.cli_binary_path_is_derived();
+                let runtime_libs_was_derived = self.headless_runtime_libs_dir_is_derived();
                 self.paths.install_root = normalize(value);
-                self.paths.bin_dir = self.paths.install_root.join("bin");
-                self.paths.lib_dir = self.paths.install_root.join("lib");
-                self.paths.cache_dir = self.paths.install_root.join("cache");
-                self.paths.logs_dir = self.paths.install_root.join("logs");
-                self.paths.descriptor_dir = self.paths.cache_dir.join("daemons");
-                self.cli.binary_path = self.paths.bin_dir.join("kast");
-                self.backends.headless.runtime_libs_dir = Some(
-                    self.paths
-                        .lib_dir
-                        .join("backends/headless/current/runtime-libs"),
-                );
+                if bin_was_derived {
+                    self.paths.bin_dir = default_bin_dir(&self.paths.install_root);
+                }
+                if lib_was_derived {
+                    self.paths.lib_dir = default_lib_dir(&self.paths.install_root);
+                }
+                if cache_was_derived {
+                    self.paths.cache_dir = default_cache_dir(&self.paths.install_root);
+                }
+                if logs_was_derived {
+                    self.paths.logs_dir = default_logs_dir(&self.paths.install_root);
+                }
+                if descriptor_was_derived {
+                    self.paths.descriptor_dir = default_descriptor_dir(&self.paths.cache_dir);
+                }
+                if binary_was_derived {
+                    self.cli.binary_path = default_cli_binary_path(&self.paths.bin_dir);
+                }
+                if runtime_libs_was_derived {
+                    self.backends.headless.runtime_libs_dir =
+                        Some(default_headless_runtime_libs_dir(&self.paths.lib_dir));
+                }
             }
             if let Some(value) = paths.bin_dir {
+                let binary_was_derived = self.cli_binary_path_is_derived();
                 self.paths.bin_dir = normalize(value);
-                self.cli.binary_path = self.paths.bin_dir.join("kast");
+                if binary_was_derived {
+                    self.cli.binary_path = default_cli_binary_path(&self.paths.bin_dir);
+                }
             }
             if let Some(value) = paths.lib_dir {
+                let runtime_libs_was_derived = self.headless_runtime_libs_dir_is_derived();
                 self.paths.lib_dir = normalize(value);
-                self.backends.headless.runtime_libs_dir = Some(
-                    self.paths
-                        .lib_dir
-                        .join("backends/headless/current/runtime-libs"),
-                );
+                if runtime_libs_was_derived {
+                    self.backends.headless.runtime_libs_dir =
+                        Some(default_headless_runtime_libs_dir(&self.paths.lib_dir));
+                }
             }
             if let Some(value) = paths.cache_dir {
+                let descriptor_was_derived = self.descriptor_dir_is_derived();
                 self.paths.cache_dir = normalize(value);
-                self.paths.descriptor_dir = self.paths.cache_dir.join("daemons");
+                if descriptor_was_derived {
+                    self.paths.descriptor_dir = default_descriptor_dir(&self.paths.cache_dir);
+                }
             }
             if let Some(value) = paths.logs_dir {
                 self.paths.logs_dir = normalize(value);
@@ -701,6 +764,63 @@ impl KastConfig {
             self.cli.binary_path = normalize(value);
         }
     }
+
+    fn bin_dir_is_derived(&self) -> bool {
+        self.paths.bin_dir == default_bin_dir(&self.paths.install_root)
+    }
+
+    fn lib_dir_is_derived(&self) -> bool {
+        self.paths.lib_dir == default_lib_dir(&self.paths.install_root)
+    }
+
+    fn cache_dir_is_derived(&self) -> bool {
+        self.paths.cache_dir == default_cache_dir(&self.paths.install_root)
+    }
+
+    fn logs_dir_is_derived(&self) -> bool {
+        self.paths.logs_dir == default_logs_dir(&self.paths.install_root)
+    }
+
+    fn descriptor_dir_is_derived(&self) -> bool {
+        self.paths.descriptor_dir == default_descriptor_dir(&self.paths.cache_dir)
+    }
+
+    fn cli_binary_path_is_derived(&self) -> bool {
+        self.cli.binary_path == default_cli_binary_path(&self.paths.bin_dir)
+    }
+
+    fn headless_runtime_libs_dir_is_derived(&self) -> bool {
+        self.backends.headless.runtime_libs_dir.as_deref()
+            == Some(default_headless_runtime_libs_dir(&self.paths.lib_dir).as_path())
+    }
+}
+
+fn default_bin_dir(install_root: &Path) -> PathBuf {
+    install_root.join("bin")
+}
+
+fn default_lib_dir(install_root: &Path) -> PathBuf {
+    install_root.join("lib")
+}
+
+fn default_cache_dir(install_root: &Path) -> PathBuf {
+    install_root.join("cache")
+}
+
+fn default_logs_dir(install_root: &Path) -> PathBuf {
+    install_root.join("logs")
+}
+
+fn default_descriptor_dir(cache_dir: &Path) -> PathBuf {
+    cache_dir.join("daemons")
+}
+
+fn default_cli_binary_path(bin_dir: &Path) -> PathBuf {
+    bin_dir.join("kast")
+}
+
+fn default_headless_runtime_libs_dir(lib_dir: &Path) -> PathBuf {
+    lib_dir.join("backends/headless/current/runtime-libs")
 }
 
 pub fn init_config() -> Result<PathBuf> {
@@ -715,7 +835,324 @@ pub fn init_config() -> Result<PathBuf> {
 }
 
 pub fn default_config_template() -> Result<String> {
-    Ok(toml::to_string_pretty(&KastConfig::defaults())?)
+    let defaults = KastConfig::defaults();
+    let mut root = toml::Table::new();
+    let mut paths = toml::Table::new();
+    paths.insert(
+        "installRoot".to_string(),
+        toml::Value::String(defaults.paths.install_root.display().to_string()),
+    );
+    root.insert("paths".to_string(), toml::Value::Table(paths));
+    Ok(toml::to_string_pretty(&toml::Value::Table(root))?)
+}
+
+pub fn path_resolution_report(
+    config: &KastConfig,
+    workspace_root: Option<&Path>,
+    mode: PathResolutionMode,
+) -> Result<PathResolutionReport> {
+    let global_config = global_config_path();
+    let workspace_config = workspace_root
+        .map(workspace_data_directory)
+        .transpose()?
+        .map(|workspace_dir| workspace_dir.join("config.toml"));
+    let global_keys = config_keys(&global_config)?;
+    let workspace_keys = workspace_config
+        .as_deref()
+        .map(config_keys)
+        .transpose()?
+        .unwrap_or_default();
+    let mut warnings = vec![];
+    if mode == PathResolutionMode::Idea {
+        for key in workspace_keys
+            .iter()
+            .filter(|key| idea_ignored_workspace_key(key))
+        {
+            warnings.push(format!(
+                "workspace {key} is ignored by IDEA; global/default path resolution is used"
+            ));
+        }
+    }
+    let mut entries = vec![
+        path_entry(
+            "paths.installRoot",
+            &config.paths.install_root,
+            "directory",
+            None,
+            source_for_key("paths.installRoot", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "paths.binDir",
+            &config.paths.bin_dir,
+            "directory",
+            Some("paths.installRoot"),
+            source_for_derived_key("paths.binDir", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "paths.libDir",
+            &config.paths.lib_dir,
+            "directory",
+            Some("paths.installRoot"),
+            source_for_derived_key("paths.libDir", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "paths.cacheDir",
+            &config.paths.cache_dir,
+            "directory",
+            Some("paths.installRoot"),
+            source_for_derived_key("paths.cacheDir", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "paths.logsDir",
+            &config.paths.logs_dir,
+            "directory",
+            Some("paths.installRoot"),
+            source_for_derived_key("paths.logsDir", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "paths.descriptorDir",
+            &config.paths.descriptor_dir,
+            "directory",
+            Some("paths.cacheDir"),
+            source_for_derived_key("paths.descriptorDir", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "paths.socketDir",
+            &config.paths.socket_dir,
+            "directory",
+            None,
+            source_for_key("paths.socketDir", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+        path_entry(
+            "cli.binaryPath",
+            &config.cli.binary_path,
+            "file",
+            Some("paths.binDir"),
+            source_for_derived_key("cli.binaryPath", &global_keys, &workspace_keys, mode),
+            mode,
+        ),
+    ];
+    if let Some(runtime_libs_dir) = &config.backends.headless.runtime_libs_dir {
+        entries.push(path_entry(
+            "backends.headless.runtimeLibsDir",
+            runtime_libs_dir,
+            "directory",
+            Some("paths.libDir"),
+            source_for_derived_key(
+                "backends.headless.runtimeLibsDir",
+                &global_keys,
+                &workspace_keys,
+                mode,
+            ),
+            mode,
+        ));
+        entries.push(path_entry(
+            "backends.headless.runtimeLibsClasspath",
+            &runtime_libs_dir.join("classpath.txt"),
+            "file",
+            Some("backends.headless.runtimeLibsDir"),
+            source_for_derived_key(
+                "backends.headless.runtimeLibsDir",
+                &global_keys,
+                &workspace_keys,
+                mode,
+            ),
+            mode,
+        ));
+    }
+    if let Some(idea_home) = &config.backends.headless.idea_home {
+        entries.push(path_entry(
+            "backends.headless.ideaHome",
+            idea_home,
+            "directory",
+            None,
+            source_for_key(
+                "backends.headless.ideaHome",
+                &global_keys,
+                &workspace_keys,
+                mode,
+            ),
+            mode,
+        ));
+    }
+    Ok(PathResolutionReport {
+        root: config.paths.install_root.display().to_string(),
+        config_files: config_files(global_config, workspace_config),
+        entries,
+        warnings,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn path_entry(
+    key: &str,
+    path: &Path,
+    expected_kind: &str,
+    derived_from: Option<&str>,
+    source: String,
+    _mode: PathResolutionMode,
+) -> PathResolutionEntry {
+    PathResolutionEntry {
+        key: key.to_string(),
+        value: path.display().to_string(),
+        source,
+        owner: path_owner(key).to_string(),
+        derived_from: derived_from.map(str::to_string),
+        exists: match expected_kind {
+            "file" => path.is_file(),
+            "directory" => path.is_dir(),
+            _ => path.exists(),
+        },
+        expected_kind: expected_kind.to_string(),
+        used_by_idea: idea_uses_path(key),
+    }
+}
+
+fn config_files(
+    global_config: PathBuf,
+    workspace_config: Option<PathBuf>,
+) -> Vec<PathResolutionConfigFile> {
+    let mut files = vec![PathResolutionConfigFile {
+        scope: "global".to_string(),
+        exists: global_config.is_file(),
+        path: global_config.display().to_string(),
+    }];
+    if let Some(workspace_config) = workspace_config {
+        files.push(PathResolutionConfigFile {
+            scope: "workspace".to_string(),
+            exists: workspace_config.is_file(),
+            path: workspace_config.display().to_string(),
+        });
+    }
+    files
+}
+
+fn source_for_derived_key(
+    key: &str,
+    global_keys: &BTreeSet<String>,
+    workspace_keys: &BTreeSet<String>,
+    mode: PathResolutionMode,
+) -> String {
+    if key_explicit(key, global_keys, workspace_keys, mode) {
+        "explicit".to_string()
+    } else {
+        "derived".to_string()
+    }
+}
+
+fn source_for_key(
+    key: &str,
+    global_keys: &BTreeSet<String>,
+    workspace_keys: &BTreeSet<String>,
+    mode: PathResolutionMode,
+) -> String {
+    if key_explicit(key, global_keys, workspace_keys, mode) {
+        "explicit".to_string()
+    } else if env_override_key(key) {
+        "env".to_string()
+    } else {
+        "default".to_string()
+    }
+}
+
+fn key_explicit(
+    key: &str,
+    global_keys: &BTreeSet<String>,
+    workspace_keys: &BTreeSet<String>,
+    mode: PathResolutionMode,
+) -> bool {
+    let normalized = normalize_config_key(key);
+    global_keys.contains(&normalized)
+        || (mode == PathResolutionMode::Cli && workspace_keys.contains(&normalized))
+}
+
+fn env_override_key(key: &str) -> bool {
+    match key {
+        "paths.cacheDir" | "paths.logsDir" | "paths.descriptorDir" | "paths.socketDir" => {
+            env::var_os("KAST_CACHE_HOME").is_some()
+        }
+        _ => false,
+    }
+}
+
+fn path_owner(key: &str) -> &'static str {
+    match key {
+        "cli.binaryPath" => "global",
+        key if key.starts_with("paths.") => "global",
+        key if key.starts_with("backends.headless.") => "global",
+        _ => "runtime",
+    }
+}
+
+fn idea_uses_path(key: &str) -> bool {
+    matches!(
+        key,
+        "paths.installRoot"
+            | "paths.binDir"
+            | "paths.cacheDir"
+            | "paths.logsDir"
+            | "paths.descriptorDir"
+            | "cli.binaryPath"
+    )
+}
+
+fn idea_ignored_workspace_key(key: &str) -> bool {
+    let key = normalize_config_key(key);
+    key.starts_with("paths.")
+        || key.starts_with("cli.")
+        || key == "backends.headless.runtimelibsdir"
+        || key == "backends.headless.ideahome"
+}
+
+fn config_keys(path: &Path) -> Result<BTreeSet<String>> {
+    if !path.is_file() {
+        return Ok(BTreeSet::new());
+    }
+    let value: toml::Value = match toml::from_str(&fs::read_to_string(path)?) {
+        Ok(value) => value,
+        Err(_) => return Ok(BTreeSet::new()),
+    };
+    let mut keys = BTreeSet::new();
+    collect_config_keys("", &value, &mut keys);
+    Ok(keys)
+}
+
+fn collect_config_keys(prefix: &str, value: &toml::Value, keys: &mut BTreeSet<String>) {
+    match value {
+        toml::Value::Table(table) => {
+            for (key, value) in table {
+                let next_prefix = if prefix.is_empty() {
+                    key.to_string()
+                } else {
+                    format!("{prefix}.{key}")
+                };
+                collect_config_keys(&next_prefix, value, keys);
+            }
+        }
+        _ => {
+            keys.insert(normalize_config_key(prefix));
+        }
+    }
+}
+
+fn normalize_config_key(key: &str) -> String {
+    key.split('.')
+        .map(|segment| {
+            segment
+                .chars()
+                .filter(|char| *char != '-' && *char != '_')
+                .collect::<String>()
+                .to_ascii_lowercase()
+        })
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 pub fn backend_runtime_libs_dir(
@@ -1284,6 +1721,181 @@ defaultBackend = "auto"
         config.apply(read_partial_config(&config_file).unwrap());
 
         assert_eq!(config.runtime.default_backend, RuntimeDefaultBackend::Auto);
+    }
+
+    #[test]
+    fn install_root_recomposes_default_derived_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        let install_root = temp.path().join("portable-kast");
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            format!(
+                r#"[paths]
+installRoot = "{}"
+"#,
+                install_root.display()
+            ),
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert_eq!(config.paths.install_root, install_root);
+        assert_eq!(config.paths.bin_dir, config.paths.install_root.join("bin"));
+        assert_eq!(config.paths.lib_dir, config.paths.install_root.join("lib"));
+        assert_eq!(
+            config.paths.cache_dir,
+            config.paths.install_root.join("cache")
+        );
+        assert_eq!(
+            config.paths.logs_dir,
+            config.paths.install_root.join("logs")
+        );
+        assert_eq!(
+            config.paths.descriptor_dir,
+            config.paths.install_root.join("cache/daemons")
+        );
+        assert_eq!(config.cli.binary_path, config.paths.bin_dir.join("kast"));
+        assert_eq!(
+            config.backends.headless.runtime_libs_dir,
+            Some(
+                config
+                    .paths
+                    .lib_dir
+                    .join("backends/headless/current/runtime-libs")
+            )
+        );
+    }
+
+    #[test]
+    fn install_root_preserves_explicit_prior_path_overrides() {
+        let temp = tempfile::tempdir().unwrap();
+        let first_root = temp.path().join("first-root");
+        let second_root = temp.path().join("second-root");
+        let explicit_bin = temp.path().join("tools/bin");
+        let explicit_lib = temp.path().join("runtime/lib");
+        let explicit_cache = temp.path().join("runtime/cache");
+        let explicit_logs = temp.path().join("runtime/logs");
+        let explicit_descriptor = temp.path().join("runtime/descriptors");
+        let explicit_binary = temp.path().join("custom/kast");
+        let explicit_runtime_libs = temp.path().join("custom/runtime-libs");
+        let first_config = temp.path().join("first.toml");
+        let second_config = temp.path().join("second.toml");
+        fs::write(
+            &first_config,
+            format!(
+                r#"[paths]
+installRoot = "{}"
+binDir = "{}"
+libDir = "{}"
+cacheDir = "{}"
+logsDir = "{}"
+descriptorDir = "{}"
+
+[backends.headless]
+runtimeLibsDir = "{}"
+
+[cli]
+binaryPath = "{}"
+"#,
+                first_root.display(),
+                explicit_bin.display(),
+                explicit_lib.display(),
+                explicit_cache.display(),
+                explicit_logs.display(),
+                explicit_descriptor.display(),
+                explicit_runtime_libs.display(),
+                explicit_binary.display()
+            ),
+        )
+        .unwrap();
+        fs::write(
+            &second_config,
+            format!(
+                r#"[paths]
+installRoot = "{}"
+"#,
+                second_root.display()
+            ),
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&first_config).unwrap());
+        config.apply(read_partial_config(&second_config).unwrap());
+
+        assert_eq!(config.paths.install_root, second_root);
+        assert_eq!(config.paths.bin_dir, explicit_bin);
+        assert_eq!(config.paths.lib_dir, explicit_lib);
+        assert_eq!(config.paths.cache_dir, explicit_cache);
+        assert_eq!(config.paths.logs_dir, explicit_logs);
+        assert_eq!(config.paths.descriptor_dir, explicit_descriptor);
+        assert_eq!(config.cli.binary_path, explicit_binary);
+        assert_eq!(
+            config.backends.headless.runtime_libs_dir,
+            Some(explicit_runtime_libs)
+        );
+    }
+
+    #[test]
+    fn default_config_template_is_root_only() {
+        let template = default_config_template().unwrap();
+        let document = template.parse::<toml::Table>().unwrap();
+        let paths = document
+            .get("paths")
+            .and_then(toml::Value::as_table)
+            .expect("paths table");
+
+        assert!(paths.contains_key("installRoot"), "{template}");
+        assert_eq!(paths.len(), 1, "{template}");
+        assert!(!document.contains_key("cli"), "{template}");
+        assert!(!template.contains("binaryPath"), "{template}");
+        assert!(!template.contains("runtimeLibsDir"), "{template}");
+    }
+
+    #[test]
+    fn path_resolution_report_marks_root_derived_defaults() {
+        let temp = tempfile::tempdir().unwrap();
+        let install_root = temp.path().join("portable-kast");
+        let mut config = KastConfig::defaults();
+        config.paths.install_root = install_root.clone();
+        config.paths.bin_dir = install_root.join("bin");
+        config.paths.lib_dir = install_root.join("lib");
+        config.paths.cache_dir = install_root.join("cache");
+        config.paths.logs_dir = install_root.join("logs");
+        config.paths.descriptor_dir = install_root.join("cache/daemons");
+        config.cli.binary_path = install_root.join("bin/kast");
+        config.backends.headless.runtime_libs_dir =
+            Some(install_root.join("lib/backends/headless/current/runtime-libs"));
+
+        let report = path_resolution_report(&config, None, PathResolutionMode::Cli).unwrap();
+        let entry = |key: &str| {
+            report
+                .entries
+                .iter()
+                .find(|entry| entry.key == key)
+                .unwrap_or_else(|| panic!("missing entry {key}: {report:#?}"))
+        };
+
+        assert_eq!(report.root, install_root.display().to_string());
+        assert_eq!(
+            entry("paths.binDir").derived_from.as_deref(),
+            Some("paths.installRoot")
+        );
+        assert_eq!(
+            entry("cli.binaryPath").derived_from.as_deref(),
+            Some("paths.binDir")
+        );
+        assert_eq!(
+            entry("backends.headless.runtimeLibsDir")
+                .derived_from
+                .as_deref(),
+            Some("paths.libDir")
+        );
+        assert!(entry("cli.binaryPath").used_by_idea);
+        assert!(!entry("backends.headless.runtimeLibsDir").used_by_idea);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::cli::{BackendName, DaemonStartArgs, RpcArgs, RuntimeArgs};
-use crate::config::{self, KastConfig};
+use crate::config::{self, KastConfig, PathResolutionReport};
 use crate::daemon;
 use crate::error::{CliError, Result};
 use crate::install;
@@ -83,6 +83,7 @@ pub struct RuntimeCandidateStatus {
 pub struct WorkspaceStatusResult {
     pub workspace_root: String,
     pub descriptor_directory: String,
+    pub path_resolution: PathResolutionReport,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub selected: Option<RuntimeCandidateStatus>,
     pub candidates: Vec<RuntimeCandidateStatus>,
@@ -94,6 +95,7 @@ pub struct WorkspaceStatusResult {
 pub struct WorkspaceEnsureResult {
     pub workspace_root: String,
     pub descriptor_directory: String,
+    pub path_resolution: PathResolutionReport,
     pub started: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_file: Option<String>,
@@ -153,11 +155,17 @@ impl RuntimeBackendPreference {
 pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
+    let path_resolution = config::path_resolution_report(
+        &config,
+        Some(&workspace_root),
+        config::PathResolutionMode::Cli,
+    )?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, false)?;
     Ok(WorkspaceStatusResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
+        path_resolution,
         selected: inspection.selected,
         candidates: inspection.candidates,
         schema_version: SCHEMA_VERSION,
@@ -167,6 +175,11 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
     let mut config = KastConfig::load(&workspace_root)?;
+    let mut path_resolution = config::path_resolution_report(
+        &config,
+        Some(&workspace_root),
+        config::PathResolutionMode::Cli,
+    )?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, true)?;
     if let Some(selected) = select_servable(
@@ -177,6 +190,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         return Ok(WorkspaceEnsureResult {
             workspace_root: workspace_root.display().to_string(),
             descriptor_directory: inspection.descriptor_directory.display().to_string(),
+            path_resolution,
             started: false,
             log_file: None,
             selected,
@@ -196,6 +210,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         return Ok(WorkspaceEnsureResult {
             workspace_root: workspace_root.display().to_string(),
             descriptor_directory: inspection.descriptor_directory.display().to_string(),
+            path_resolution,
             started: true,
             log_file: None,
             selected,
@@ -238,6 +253,11 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
                 force: false,
             })?;
             config = KastConfig::load(&workspace_root)?;
+            path_resolution = config::path_resolution_report(
+                &config,
+                Some(&workspace_root),
+                config::PathResolutionMode::Cli,
+            )?;
             config
                 .backends
                 .headless
@@ -265,6 +285,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     Ok(WorkspaceEnsureResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
+        path_resolution,
         started: true,
         log_file: Some(log_file.display().to_string()),
         selected,

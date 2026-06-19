@@ -1,5 +1,6 @@
 use crate::backend::BackendInstallResult;
 use crate::cli::OutputFormat;
+use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
     ArchiveInstallResult, InstallAffectedResult, InstallCopilotExtensionResult,
@@ -196,6 +197,7 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         result.descriptor_directory
     );
     mdln!(document, "- Candidates: {}", result.candidates.len());
+    print_path_resolution(&mut document, &result.path_resolution);
     mdln!(document);
     if let Some(selected) = &result.selected {
         print_candidate(&mut document, "Selected runtime", selected);
@@ -237,6 +239,7 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     if let Some(note) = &result.note {
         mdln!(document, "- Note: {note}");
     }
+    print_path_resolution(&mut document, &result.path_resolution);
     mdln!(document);
     print_candidate(&mut document, "Selected runtime", &result.selected);
     mdln!(document);
@@ -327,6 +330,7 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
         "- Minimum backend version: `{}`",
         result.minimum_backend_version
     );
+    print_path_resolution(&mut document, &result.path_resolution);
     print_messages(&mut document, "Issues", &result.issues);
     print_warnings(&mut document, &result.warnings);
     if let Some(install) = &result.install {
@@ -359,6 +363,43 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
         mdln!(document, "No blocking issues were found.");
     }
     print_markdown(&document.into_string())
+}
+
+fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutionReport) {
+    mdln!(document);
+    mdln!(document, "## Path resolution");
+    mdln!(document, "- Root: `{}`", report.root);
+    for config_file in &report.config_files {
+        mdln!(
+            document,
+            "- Config {}: `{}` ({})",
+            config_file.scope,
+            config_file.path,
+            if config_file.exists {
+                "exists"
+            } else {
+                "missing"
+            }
+        );
+    }
+    for entry in &report.entries {
+        let derived = entry
+            .derived_from
+            .as_deref()
+            .map(|parent| format!(", from {parent}"))
+            .unwrap_or_default();
+        mdln!(
+            document,
+            "- {} -> `{}` ({}, {}{}; {})",
+            entry.key,
+            entry.value,
+            entry.source,
+            entry.expected_kind,
+            derived,
+            if entry.exists { "exists" } else { "missing" }
+        );
+    }
+    print_messages(document, "Path warnings", &report.warnings);
 }
 
 pub fn print_setup(result: &SetupResult) -> Result<()> {

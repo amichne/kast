@@ -238,11 +238,6 @@ maxConcurrentRequests = 4
 [paths]
 installRoot = "$(toml_escape "$install_home")"
 binDir = "$(toml_escape "$(dirname -- "$bin_path")")"
-libDir = "$(toml_escape "${install_home}/lib")"
-cacheDir = "$(toml_escape "${install_home}/cache")"
-logsDir = "$(toml_escape "${install_home}/logs")"
-descriptorDir = "$(toml_escape "${install_home}/cache/daemons")"
-socketDir = "$(toml_escape "${TMPDIR:-/tmp}")"
 
 ${backend_config}
 
@@ -408,6 +403,9 @@ verify_install() {
     || die "config.toml does not point at ${headless_idea_home}"
   grep -Fq "binaryPath = \"${bin_path}\"" "$config_file" \
     || die "config.toml does not point at ${bin_path}"
+  if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$config_file"; then
+    die "config.toml should derive install-root-owned paths instead of writing expanded path defaults"
+  fi
 
   "$bin_path" doctor >/dev/null
   printf '%s\n' "Kast Ubuntu/Debian bundle ${version} verified"

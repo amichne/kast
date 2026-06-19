@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.panel
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
@@ -26,7 +25,6 @@ internal class KastSettingsConfigurable(
     private lateinit var backendsIdeaEnabled: JBCheckBox
     private lateinit var projectOpenProfileAutoInit: JBCheckBox
     private lateinit var projectOpenAutoExcludeGit: JBCheckBox
-    private lateinit var cliBinaryPath: JBTextField
 
     override fun getDisplayName(): String = "Kast"
 
@@ -44,7 +42,7 @@ internal class KastSettingsConfigurable(
     override fun reset() {
         ensurePanel()
         val workspaceRoot = workspaceRoot()
-        val config = workspaceRoot?.let(KastConfig::load) ?: KastConfig.defaults()
+        val config = workspaceRoot?.let(KastConfig::loadIdea) ?: KastConfig.defaults()
         KastSettingsState.getInstance(project).loadFromConfig(config)
         loadFieldsFromState()
     }
@@ -89,13 +87,9 @@ internal class KastSettingsConfigurable(
             }
         }
 
-        group("CLI") {
-            row("Binary path:") {
-                cliBinaryPath = textField().component.apply {
-                    isEditable = false
-                    emptyText.text = "Resolved from Kast config"
-                }
-                button("Open config") { openWorkspaceConfig() }
+        group("Configuration") {
+            row {
+                button("Open workspace config") { openWorkspaceConfig() }
             }
         }
     }
@@ -107,7 +101,6 @@ internal class KastSettingsConfigurable(
         backendsIdeaEnabled.isSelected = state.backendsIdeaEnabled ?: false
         projectOpenProfileAutoInit.isSelected = state.projectOpenProfileAutoInit ?: false
         projectOpenAutoExcludeGit.isSelected = state.projectOpenAutoExcludeGit ?: true
-        cliBinaryPath.text = state.cliBinaryPath.orEmpty()
     }
 
     private fun updateStateFromFields(state: KastSettingsState) {
