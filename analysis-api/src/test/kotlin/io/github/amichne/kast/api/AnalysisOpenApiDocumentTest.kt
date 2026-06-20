@@ -21,6 +21,8 @@ class AnalysisOpenApiDocumentTest {
         val expectedMethods = listOf(
             "health",
             "runtime/status",
+            "runtime/shutdown",
+            "runtime/restart",
             "capabilities",
             "raw/resolve",
             "raw/references",
@@ -91,7 +93,13 @@ class AnalysisOpenApiDocumentTest {
         val lines = yaml.lines()
 
         // Find lines with system tag and verify no capability extension follows before next path
-        val systemPaths = listOf("/rpc/health", "/rpc/runtime-status", "/rpc/capabilities")
+        val systemPaths = listOf(
+            "/rpc/health",
+            "/rpc/runtime-status",
+            "/rpc/runtime-shutdown",
+            "/rpc/runtime-restart",
+            "/rpc/capabilities",
+        )
         systemPaths.forEach { path ->
             val pathIndex = lines.indexOfFirst { it.contains("\"$path\"") || it.contains("$path:") }
             assertTrue(pathIndex >= 0, "System path $path not found")

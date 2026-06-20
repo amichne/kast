@@ -3,6 +3,7 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.serialization.json.Json
@@ -109,6 +110,38 @@ class AnalysisServerSocketTest {
         assertEquals(2, lines.size)
         assertTrue(lines.first().contains("\"state\":\"READY\""))
         assertTrue(lines.last().contains("\"backendName\":\"fake\""))
+    }
+
+    @Test
+    fun `stdio transport flushes lifecycle response before running lifecycle action`() {
+        val input = ByteArrayInputStream(
+            json.encodeToString(
+                JsonRpcRequest.serializer(),
+                JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/shutdown"),
+            ).plus('\n').toByteArray(),
+        )
+        val output = ByteArrayOutputStream()
+        val outputSizeWhenActionRan = mutableListOf<Int>()
+        val server = StdioRpcServer(
+            dispatcher = RpcAnalysisDispatcher(
+                backend = FakeAnalysisBackend.sample(tempDir),
+                config = AnalysisServerConfig(transport = AnalysisTransport.Stdio),
+                lifecycleController = RuntimeLifecycleController { action ->
+                    {
+                        assertEquals(RuntimeLifecycleAction.SHUTDOWN, action)
+                        outputSizeWhenActionRan += output.size()
+                    }
+                },
+            ),
+            input = input,
+            output = output,
+        ).start()
+
+        server.await()
+
+        assertTrue(output.toString(StandardCharsets.UTF_8).contains("\"action\":\"SHUTDOWN\""))
+        assertEquals(1, outputSizeWhenActionRan.size)
+        assertTrue(outputSizeWhenActionRan.single() > 0, "Lifecycle action ran before response bytes were flushed")
     }
 
     @Test

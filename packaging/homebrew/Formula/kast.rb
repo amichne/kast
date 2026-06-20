@@ -3,6 +3,7 @@
 class Kast < Formula
   ARTIFACT_VERSION = "0.7.29"
   DEFAULT_ARTIFACT_ROOT = "https://github.com/amichne"
+  PLUGIN_CASK = "amichne/kast/kast-plugin"
 
   def self.artifact_root
     ENV.fetch("HOMEBREW_KAST_ARTIFACT_ROOT", DEFAULT_ARTIFACT_ROOT).chomp("/")
@@ -35,6 +36,12 @@ class Kast < Formula
   end
   def install
     bin.install "kast"
+  end
+
+  def post_install
+    cask_action = quiet_system("brew", "list", "--cask", "kast-plugin") ? "reinstall" : "install"
+    ohai "#{cask_action.capitalize}ing version-coupled Kast IDEA plugin cask"
+    system "brew", cask_action, "--cask", PLUGIN_CASK
   end
 
   test do

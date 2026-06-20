@@ -1,11 +1,28 @@
 use crate::error::{CliError, Result};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
+use std::time::Duration;
 
 pub fn raw(socket_path: &Path, request: &str) -> Result<String> {
+    raw_with_close_wait(socket_path, request, None)
+}
+
+pub fn raw_wait_for_close(
+    socket_path: &Path,
+    request: &str,
+    close_wait_timeout: Duration,
+) -> Result<String> {
+    raw_with_close_wait(socket_path, request, Some(close_wait_timeout))
+}
+
+fn raw_with_close_wait(
+    socket_path: &Path,
+    request: &str,
+    close_wait_timeout: Option<Duration>,
+) -> Result<String> {
     let mut stream = UnixStream::connect(socket_path).map_err(|error| {
         CliError::new(
             "DAEMON_UNREACHABLE",
@@ -15,6 +32,9 @@ pub fn raw(socket_path: &Path, request: &str) -> Result<String> {
             ),
         )
     })?;
+    if let Some(timeout) = close_wait_timeout {
+        stream.set_read_timeout(Some(timeout))?;
+    }
     stream.write_all(request.as_bytes())?;
     stream.write_all(b"\n")?;
     stream.flush()?;
@@ -27,6 +47,18 @@ pub fn raw(socket_path: &Path, request: &str) -> Result<String> {
             "The daemon closed the socket without returning a response",
         ));
     }
+    if close_wait_timeout.is_some() {
+        let mut ignored = Vec::new();
+        match reader.read_to_end(&mut ignored) {
+            Ok(_) => {}
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
     Ok(response.trim_end_matches(['\r', '\n']).to_string())
 }
 
@@ -38,6 +70,30 @@ pub fn request<T: DeserializeOwned>(socket_path: &Path, method: &str, params: Va
         "id": 1
     });
     let response = raw(socket_path, &serde_json::to_string(&request)?)?;
+    parse_response(response)
+}
+
+pub fn request_wait_for_close<T: DeserializeOwned>(
+    socket_path: &Path,
+    method: &str,
+    params: Value,
+    close_wait_timeout: Duration,
+) -> Result<T> {
+    let request = json!({
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": 1
+    });
+    let response = raw_wait_for_close(
+        socket_path,
+        &serde_json::to_string(&request)?,
+        close_wait_timeout,
+    )?;
+    parse_response(response)
+}
+
+fn parse_response<T: DeserializeOwned>(response: String) -> Result<T> {
     let value: Value = serde_json::from_str(&response)?;
     if let Some(error) = value.get("error") {
         let code = error

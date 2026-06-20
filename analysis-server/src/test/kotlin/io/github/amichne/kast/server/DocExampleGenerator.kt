@@ -49,7 +49,11 @@ object DocExampleGenerator {
         val tempDir = Files.createTempDirectory("kast-doc-examples")
         try {
             val backend = FakeAnalysisBackend.sample(tempDir)
-            val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
+            val dispatcher = RpcAnalysisDispatcher(
+                backend = backend,
+                config = AnalysisServerConfig(),
+                lifecycleController = RuntimeLifecycleController { {} },
+            )
 
             val sampleFile = tempDir.resolve("src/Sample.kt").toString()
             val typeFile = tempDir.resolve("src/Types.kt").toString()
@@ -103,6 +107,8 @@ object DocExampleGenerator {
         // System operations (no params)
         ops += "health" to request("health")
         ops += "runtimeStatus" to request("runtime/status")
+        ops += "runtimeShutdown" to request("runtime/shutdown")
+        ops += "runtimeRestart" to request("runtime/restart")
         ops += "capabilities" to request("capabilities")
 
         // Read operations

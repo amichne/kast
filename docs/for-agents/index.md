@@ -14,13 +14,13 @@ Keep machine and repository scopes separate.
 
 ## Agent setup in two scopes
 
-On a developer machine, install the Homebrew formula and cask once, then
-install Copilot files in each repository where the agent should use Kast.
+On a developer machine, install the Homebrew formula once. The formula installs
+or refreshes the matching `kast-plugin` cask, then you install Copilot files in
+each repository where the agent should use Kast.
 
 ```console title="Developer-machine agent setup"
 brew tap amichne/kast
 brew install kast
-brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
@@ -33,9 +33,11 @@ and `kast-writer`, and provides catalog-backed `kast_*` tools.
 
 ??? success "Machine-level responsibility"
     The global `kast` binary owns CLI commands, LSP startup, direct JSON-RPC,
-    install repair, and backend lifecycle commands. The Homebrew cask owns the
-    IDE plugin links into local JetBrains profiles. A single machine install
-    can serve many repositories.
+    install repair, and backend lifecycle commands. The Homebrew formula keeps
+    the `kast-plugin` cask version-coupled, and the cask owns the IDE plugin
+    links into local JetBrains profiles. A single machine install can serve
+    many repositories. Use `brew install --cask kast-plugin` or
+    `brew reinstall --cask kast-plugin` only when repairing the cask directly.
 
 ??? tip "Repository-level responsibility"
     `kast install copilot` writes managed files under the current repository's
@@ -49,7 +51,7 @@ stays the same; the backend that provides Kotlin state changes.
 
 | Agent environment | Install path | Runtime path | What the agent gets |
 |-------------------|--------------|--------------|---------------------|
-| Local Copilot in a developer repo | Homebrew global binary, `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
+| Local Copilot in a developer repo | Homebrew global binary with version-coupled `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
 | Local agent with an open IDE | Homebrew machine install plus repository Copilot files | IDEA backend reusing the open project | Warm IDE project model and the same Kast protocol |
 | CI or hosted Linux agent | Ubuntu/Debian headless bundle | Headless backend warmed with `kast up --backend=headless` | `kast` on `PATH`, structured JSON-RPC, and bundled runtime libraries |
 

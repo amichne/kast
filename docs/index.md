@@ -23,16 +23,17 @@ repository-local files.
 ```console title="Install Kast globally, then add it to one repository"
 brew tap amichne/kast
 brew install kast
-brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
 !!! success "Two scopes, one setup"
-    `brew install kast` and `brew install --cask kast-plugin` are the
-    macOS machine-level install. They put the global `kast` binary on `PATH`
-    and link the IDEA or Android Studio plugin into local JetBrains profiles.
+    `brew install kast` is the macOS machine-level install. It puts the global
+    `kast` binary on `PATH` and installs or refreshes the matching
+    `kast-plugin` cask, the same plugin path exposed by
+    `brew install --cask kast-plugin`, so local JetBrains profiles link to a
+    version-coupled IDE backend.
     `kast install copilot` is a repository-level install. It writes managed
     files under this repository's `.github` directory so Copilot can start
     `kast lsp --stdio`, load Kotlin instructions, and expose Kast tools.
@@ -46,7 +47,8 @@ kast install copilot
     The IDEA or Android Studio plugin is part of the macOS Homebrew developer
     install, not a per-repository choice. Homebrew manages the cask and links
     it into local JetBrains profiles so Kast can reuse the IDE project model
-    and indexes on developer machines.
+    and indexes on developer machines. Use `brew reinstall --cask kast-plugin`
+    only when profile links need direct repair.
 
 ## What this gives your agent
 

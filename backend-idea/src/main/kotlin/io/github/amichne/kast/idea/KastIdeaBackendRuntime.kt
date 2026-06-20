@@ -10,6 +10,7 @@ import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.server.AnalysisServer
+import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -37,12 +38,14 @@ object KastIdeaBackendRuntime {
         socketPath: Path = defaultSocketPath(workspaceRoot),
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
+        lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
     ): RunningKastIdeaBackend = start(
         project = project,
         workspaceRoot = workspaceRoot,
         transport = AnalysisTransport.UnixDomainSocket(socketPath),
         config = config,
         backendName = backendName,
+        lifecycleController = lifecycleController,
     )
 
     fun start(
@@ -51,6 +54,7 @@ object KastIdeaBackendRuntime {
         transport: AnalysisTransport,
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
+        lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
     ): RunningKastIdeaBackend {
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
             project = project,
@@ -83,6 +87,7 @@ object KastIdeaBackendRuntime {
         val server = AnalysisServer(
             backend = backend,
             config = ideaAnalysisServerConfig(transport, limits, config),
+            lifecycleController = lifecycleController,
         ).start()
         KastStructuredTrace.event(
             eventName = "idea.runtime.server_started",

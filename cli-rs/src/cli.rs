@@ -44,6 +44,8 @@ pub enum Command {
     Status(RuntimeArgs),
     /// Stop the workspace daemon.
     Stop(RuntimeArgs),
+    /// Stop every matching runtime and start it again.
+    Restart(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
     /// Run the Language Server Protocol adapter over stdio.

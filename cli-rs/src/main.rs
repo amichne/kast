@@ -144,6 +144,15 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(0)
         }
+        Command::Restart(args) => {
+            let result = runtime::workspace_restart(args)?;
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_restart_result(&result)?;
+            }
+            Ok(0)
+        }
         Command::Capabilities(args) => {
             let result = runtime::capabilities(args)?;
             if output_format == OutputFormat::Json {
