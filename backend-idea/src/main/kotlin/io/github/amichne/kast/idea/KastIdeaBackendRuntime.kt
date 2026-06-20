@@ -52,6 +52,16 @@ object KastIdeaBackendRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
     ): RunningKastIdeaBackend {
+        KastStructuredTrace.event(
+            eventName = "idea.runtime.start_requested",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
+            detail = mapOf(
+                "transport" to transport.toString(),
+                "backendName" to backendName,
+            ),
+        )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
         val backend = ObservedAnalysisBackend(
@@ -68,6 +78,14 @@ object KastIdeaBackendRuntime {
             backend = backend,
             config = ideaAnalysisServerConfig(transport, limits, config),
         ).start()
+        KastStructuredTrace.event(
+            eventName = "idea.runtime.server_started",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
+            outcome = "completed",
+            detail = mapOf("transport" to transport.toString()),
+        )
         diagnostics.recordBackendStarted(transport)
         val projectIndexing = KastIdeaProjectIndexing(project, workspaceRoot, config, diagnostics).also { it.start() }
         return RunningKastIdeaBackend(
@@ -95,15 +113,33 @@ internal class KastIdeaProjectIndexing(
     fun start() {
         if (indexingThread != null) return
         cancelled.set(false)
+        KastStructuredTrace.event(
+            eventName = "idea.index.waiting_for_smart_mode",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+        )
         diagnostics.recordIndexWaitingForIde()
         DumbService.getInstance(project).runWhenSmart {
             if (cancelled.get() || project.isDisposed) return@runWhenSmart
+            KastStructuredTrace.event(
+                eventName = "idea.index.smart_mode_ready",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+            )
             indexingThread = thread(
                 start = true,
                 isDaemon = true,
                 name = "kast-idea-project-indexer",
             ) {
                 runCatching {
+                    KastStructuredTrace.event(
+                        eventName = "idea.index.hydrating",
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                    )
                     diagnostics.recordIndexHydrating()
                     runCatching {
                         SourceIndexHydrator().hydrate(workspaceRoot, config.indexing.remote)
@@ -112,6 +148,12 @@ internal class KastIdeaProjectIndexing(
                     }
                     val store = SqliteSourceIndexStore(workspaceRoot)
                     indexStore = store
+                    KastStructuredTrace.event(
+                        eventName = "idea.index.started",
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                    )
                     diagnostics.recordIndexingStarted()
                     IdeaProjectIndexer(
                         project = project,
@@ -122,11 +164,35 @@ internal class KastIdeaProjectIndexing(
                     store.loadKastSourceIndexSummary()
                 }.onSuccess { summary ->
                     if (!cancelled.get()) {
+                        KastStructuredTrace.event(
+                            eventName = "idea.index.completed",
+                            project = project,
+                            workspaceRoot = workspaceRoot,
+                            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                            outcome = "completed",
+                            detail = mapOf(
+                                "fileCount" to summary.fileCount,
+                                "identifierCount" to summary.identifierCount,
+                                "moduleCount" to summary.moduleCount,
+                                "importCount" to summary.importCount,
+                            ),
+                        )
                         diagnostics.recordIndexCompleted(summary)
                         LOG.info("Kast IDEA project index completed")
                     }
                 }.onFailure { error ->
                     if (!cancelled.get()) {
+                        KastStructuredTrace.event(
+                            eventName = "idea.index.failed",
+                            project = project,
+                            workspaceRoot = workspaceRoot,
+                            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                            outcome = "failed",
+                            detail = mapOf(
+                                "errorClass" to error::class.qualifiedName,
+                                "message" to error.message,
+                            ),
+                        )
                         diagnostics.recordIndexFailed(error)
                         LOG.warn("Kast IDEA project index failed", error)
                     }
@@ -149,6 +215,13 @@ internal class KastIdeaProjectIndexing(
         }
         indexStore = null
         if (wasRunning) {
+            KastStructuredTrace.event(
+                eventName = "idea.index.cancelled",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                outcome = "cancelled",
+            )
             diagnostics.recordIndexCancelled()
         }
     }

@@ -3,8 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import { joinSession } from "@github/copilot-sdk/extension";
 import { makeKastCustomAgents } from "./_shared/kast-agents.mjs";
+import { createTraceEmitter, traceFieldsFromParams } from "./_shared/kast-trace.mjs";
 import { KAST_TOOL_NAMES, makeKastTools } from "./_shared/kast-tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +46,15 @@ const REPO_ROOT = (() => {
   if (hasRepoMarker(installedRoot)) return installedRoot;
   return installedRoot;
 })();
+
+const trace = createTraceEmitter({ repoRoot: REPO_ROOT });
+trace.emit("copilot.extension.bootstrap", {
+  sdkRegistrationScope: "extension-session",
+  detail: {
+    repoRoot: REPO_ROOT,
+    traceEnabled: trace.enabled,
+  },
+});
 
 function readTomlKey(filePath, section, key) {
   try {
@@ -136,6 +147,13 @@ async function resolveKastBinary() {
   for (const candidate of candidates) {
     if (await supportsKastCli(candidate)) {
       kastBinary = candidate;
+      trace.emit("copilot.kast_binary.resolved", {
+        sdkRegistrationScope: "extension-session",
+        detail: {
+          candidate,
+          rejected,
+        },
+      });
       return candidate;
     }
     rejected.push(candidate);
@@ -144,6 +162,14 @@ async function resolveKastBinary() {
   resolveError = rejected.length
     ? `no resolved Rust kast CLI exposes kast rpc; rejected: ${rejected.join(", ")}`
     : "no Rust kast CLI candidate found on PATH, in KAST_CONFIG_HOME, or under cli-rs/target";
+  trace.emit("copilot.kast_binary.resolve_failed", {
+    sdkRegistrationScope: "extension-session",
+    outcome: "failed",
+    detail: {
+      rejected,
+      resolveError,
+    },
+  });
   return null;
 }
 
@@ -227,8 +253,32 @@ function formattedRpcResult(method, result, warmup = null) {
 }
 
 async function callKast(method, params) {
+  const invocationId = randomUUID();
+  const paramTraceFields = traceFieldsFromParams(params ?? {});
+  trace.emit("copilot.tool.invocation_started", {
+    invocationId,
+    agentRole: "kast-tool",
+    sdkRegistrationScope: "extension-session",
+    ...paramTraceFields,
+    detail: {
+      method,
+    },
+  });
+
   const bin = await resolveKastBinary();
   if (!bin) {
+    trace.emit("copilot.tool.invocation_failed", {
+      invocationId,
+      agentRole: "kast-tool",
+      sdkRegistrationScope: "extension-session",
+      ...paramTraceFields,
+      outcome: "failed",
+      detail: {
+        method,
+        stage: "extension.resolve",
+        resolveError,
+      },
+    });
     return JSON.stringify({
       ok: false,
       stage: "extension.resolve",
@@ -245,11 +295,59 @@ async function callKast(method, params) {
   });
   const first = await execCommand(bin, rpcArgs(request));
   const firstJson = parseJsonOrNull(first.stdout.trim());
+  trace.emit("copilot.tool.rpc_completed", {
+    invocationId,
+    agentRole: "kast-tool",
+    sdkRegistrationScope: "extension-session",
+    ...paramTraceFields,
+    outcome: first.ok ? "completed" : "failed",
+    detail: {
+      method,
+      exitCode: first.code,
+      resultCode: resultCode(firstJson),
+    },
+  });
   if (needsIdeaWarmup(firstJson)) {
+    trace.emit("copilot.tool.idea_warmup_started", {
+      invocationId,
+      agentRole: "kast-tool",
+      sdkRegistrationScope: "extension-session",
+      ...paramTraceFields,
+      detail: {
+        method,
+        resultCode: resultCode(firstJson),
+      },
+    });
     const warmup = await warmIdeaBackend(bin);
     const warmupJson = parseJsonOrNull(warmup.stdout.trim());
+    trace.emit("copilot.tool.idea_warmup_completed", {
+      invocationId,
+      agentRole: "kast-tool",
+      sdkRegistrationScope: "extension-session",
+      ...paramTraceFields,
+      outcome: warmup.ok ? "completed" : "failed",
+      detail: {
+        method,
+        exitCode: warmup.code,
+        resultCode: resultCode(warmupJson),
+      },
+    });
     if (warmup.ok) {
-      return formattedRpcResult(method, await execCommand(bin, rpcArgs(request, ["--backend", "idea"])));
+      const retried = await execCommand(bin, rpcArgs(request, ["--backend", "idea"]));
+      const retriedJson = parseJsonOrNull(retried.stdout.trim());
+      trace.emit("copilot.tool.idea_retry_completed", {
+        invocationId,
+        agentRole: "kast-tool",
+        sdkRegistrationScope: "extension-session",
+        ...paramTraceFields,
+        outcome: retried.ok ? "completed" : "failed",
+        detail: {
+          method,
+          exitCode: retried.code,
+          resultCode: resultCode(retriedJson),
+        },
+      });
+      return formattedRpcResult(method, retried);
     }
     return formattedRpcResult(method, first, {
       attempted: true,
@@ -259,13 +357,48 @@ async function callKast(method, params) {
       errorText: warmup.stderr.trim() || null,
     });
   }
+  trace.emit("copilot.tool.invocation_completed", {
+    invocationId,
+    agentRole: "kast-tool",
+    sdkRegistrationScope: "extension-session",
+    ...paramTraceFields,
+    outcome: "completed",
+    detail: {
+      method,
+    },
+  });
   return formattedRpcResult(method, first);
 }
 
+const tools = makeKastTools((method, args) => callKast(method, args));
+const customAgents = makeKastCustomAgents((eventName, fields) => {
+  trace.emit(eventName, {
+    sdkRegistrationScope: "extension-session",
+    ...fields,
+  });
+});
+
+trace.emit("copilot.session.join_requested", {
+  sdkRegistrationScope: "extension-session",
+  detail: {
+    tools: tools.map((tool) => tool.name),
+    customAgents: customAgents.map((agent) => agent.name),
+  },
+});
+
 const session = await joinSession({
-  tools: makeKastTools((method, args) => callKast(method, args)),
-  customAgents: makeKastCustomAgents(),
+  tools,
+  customAgents,
   disabledSkills: ["kast"],
+});
+trace.attachSession(session);
+trace.emit("copilot.session.joined", {
+  sdkRegistrationScope: "extension-session",
+  outcome: "completed",
+  detail: {
+    tools: tools.map((tool) => tool.name),
+    customAgents: customAgents.map((agent) => agent.name),
+  },
 });
 
 const bin = await resolveKastBinary();

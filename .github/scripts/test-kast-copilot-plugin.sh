@@ -5,6 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && 
 plugin_root="${repo_root}/cli-rs/resources/plugin"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-plugin-test.XXXXXX")"
 trap 'rm -rf -- "$tmp_dir"' EXIT
+export KAST_CONFIG_HOME="${tmp_dir}/kast-config"
 
 node --input-type=module - "$plugin_root" <<'NODE'
 import { existsSync, readFileSync } from "node:fs";
@@ -69,6 +70,7 @@ const expectedTargets = new Set([
   "instructions/kast-kotlin.instructions.md",
   "extensions/kast/extension.mjs",
   "extensions/kast/_shared/kast-agents.mjs",
+  "extensions/kast/_shared/kast-trace.mjs",
   "extensions/kast/_shared/kast-tools.mjs",
   "extensions/kast/_shared/commands.json",
 ]);
@@ -112,6 +114,7 @@ const extension = readText("extensions/kast/extension.mjs");
 assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
 assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
 assert(extension.includes('"up"'), "extension must invoke kast up for warmup");
+assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
 
 const reader = readText("agents/kast-reader.agent.md");
 const writer = readText("agents/kast-writer.agent.md");
@@ -140,14 +143,8 @@ ensure_kast_bin() {
     export KAST_BIN
     return
   fi
-  if [[ -x "${repo_root}/cli-rs/target/debug/kast" ]]; then
-    KAST_BIN="${repo_root}/cli-rs/target/debug/kast"
-  elif [[ -x "${repo_root}/cli-rs/target/release/kast" ]]; then
-    KAST_BIN="${repo_root}/cli-rs/target/release/kast"
-  else
-    cargo build --manifest-path "${repo_root}/cli-rs/Cargo.toml" --bin kast --locked
-    KAST_BIN="${repo_root}/cli-rs/target/debug/kast"
-  fi
+  cargo build --manifest-path "${repo_root}/cli-rs/Cargo.toml" --bin kast --locked
+  KAST_BIN="${repo_root}/cli-rs/target/debug/kast"
   export KAST_BIN
 }
 
@@ -157,6 +154,7 @@ node --input-type=module - "$plugin_root" <<'NODE'
 const pluginRoot = process.argv[2];
 const toolsModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-tools.mjs`);
 const agentsModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-agents.mjs`);
+const traceModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-trace.mjs`);
 const tools = toolsModule.makeKastTools((method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
 );
@@ -179,6 +177,29 @@ for (const writeTool of ["kast_rename", "kast_write_and_validate", "edit", "exec
   if (reader.tools.includes(writeTool)) throw new Error(`source reader must not include ${writeTool}`);
   if (!writer.tools.includes(writeTool)) throw new Error(`source writer must include ${writeTool}`);
 }
+const trace = traceModule.createTraceEmitter({
+  env: { KAST_COPILOT_TRACE: "1" },
+  repoRoot: pluginRoot,
+  processId: 123,
+  now: () => "2026-06-20T00:00:00.000Z",
+  idFactory: () => "agent-instance-test",
+});
+const record = trace.emit("copilot.test", {
+  invocationId: "invocation-test",
+  agentRole: "kast-reader",
+  sdkRegistrationScope: "extension-session",
+  ...traceModule.traceFieldsFromParams({ filePath: `${pluginRoot}/agents/kast-reader.agent.md`, moduleName: "plugin" }),
+  detail: { method: "raw/file-outline" },
+});
+if (record.type !== "kast.copilot.trace") throw new Error("trace record type mismatch");
+if (record.schemaVersion !== 1) throw new Error("trace schema version mismatch");
+if (record.invocationId !== "invocation-test") throw new Error("trace invocation id missing");
+if (record.agentRole !== "kast-reader") throw new Error("trace agent role missing");
+if (record.sdkRegistrationScope !== "extension-session") throw new Error("trace registration scope missing");
+if (!record.canonicalWorkspaceRoot) throw new Error("trace canonical workspace root missing");
+if (!record.canonicalTargetFilePath?.endsWith("agents/kast-reader.agent.md")) {
+  throw new Error("trace canonical target file path missing");
+}
 NODE
 
 "${plugin_root}/scripts/install-local.sh" --target "$tmp_dir" --force >"${tmp_dir}/install.json"
@@ -189,6 +210,7 @@ test -f "$tmp_dir/.github/agents/kast-reader.agent.md"
 test -f "$tmp_dir/.github/agents/kast-writer.agent.md"
 test -f "$tmp_dir/.github/extensions/kast/extension.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-agents.mjs"
+test -f "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/commands.json"
 
