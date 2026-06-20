@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore.store
 
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.index.SourceIndexSnapshot
@@ -10,7 +11,6 @@ import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
-import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import io.github.amichne.kast.indexstore.store.codec.StringInterningCodec
 import io.github.amichne.kast.indexstore.store.jdbc.SqliteJdbcDriverBootstrap
@@ -27,9 +27,11 @@ import java.sql.DriverManager
  * All data lives in a single `source-index.db` database under the kast cache
  * directory. WAL journal mode is enabled so readers never block writers.
  */
-class SqliteSourceIndexStore(workspaceRoot: Path) : AutoCloseable, SourceIndexWriter {
-    private val workspaceRoot: Path = workspaceRoot
-    private val dbPath: Path = sourceIndexDatabasePath(workspaceRoot)
+class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseable, SourceIndexWriter {
+    constructor(workspaceRoot: Path) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot))
+
+    private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+    private val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
     private val pathCodec = PathInterningCodec(workspaceRoot)
     private val fqCodec = StringInterningCodec(
         tableName = "fq_names",

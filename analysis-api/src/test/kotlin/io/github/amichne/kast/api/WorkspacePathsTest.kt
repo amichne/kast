@@ -1,10 +1,12 @@
 package io.github.amichne.kast.api.client
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -288,6 +290,48 @@ class WorkspacePathsTest {
                 !databasePath.startsWith(userConfigHome),
                 "databasePath=$databasePath userConfigHome=$userConfigHome",
             )
+        }
+    }
+
+    @Nested
+    inner class WorkspaceIdentityTest {
+        @Test
+        fun `workspace identity keeps index and socket paths isolated by workspace root`() {
+            val resolver = WorkspaceDirectoryResolver(
+                installRoot = { tempDir.resolve("install-root") },
+                gitWorkspaceResolver = { null },
+                gitRemoteResolver = { null },
+            )
+            val first = resolver.workspaceIdentity(tempDir.resolve("first-workspace"))
+            val second = resolver.workspaceIdentity(tempDir.resolve("second-workspace"))
+
+            assertNotEquals(first.workspaceId, second.workspaceId)
+            assertNotEquals(first.sourceIndexDatabasePath, second.sourceIndexDatabasePath)
+            assertNotEquals(first.defaultSocketPath, second.defaultSocketPath)
+        }
+
+        @Test
+        fun `workspace identity containment rejects sibling prefix paths`() {
+            val workspaceRoot = Files.createDirectories(tempDir.resolve("repo"))
+            val siblingRoot = Files.createDirectories(tempDir.resolve("repo-other"))
+            val identity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot)
+
+            assertTrue(identity.contains(workspaceRoot.resolve("src/main/kotlin/App.kt")))
+            assertTrue(!identity.contains(siblingRoot.resolve("src/main/kotlin/App.kt")))
+        }
+
+        @Test
+        fun `workspace identity records nearest Gradle settings root`() {
+            val repoRoot = Files.createDirectories(tempDir.resolve("repo"))
+            val moduleRoot = Files.createDirectories(repoRoot.resolve("module"))
+            val settingsFile = repoRoot.resolve("settings.gradle.kts")
+            Files.writeString(settingsFile, "rootProject.name = \"demo\"\ninclude(\":module\")\n")
+
+            val identity = WorkspaceIdentity.fromWorkspaceRoot(moduleRoot)
+
+            assertEquals(repoRoot.toRealPath(), identity.gradleRoot?.root?.toJavaPath())
+            assertEquals(settingsFile.toRealPath(), identity.gradleRoot?.settingsFile?.toJavaPath())
+            assertTrue(identity.gradleRoot?.settingsFileHash?.value.orEmpty().isNotBlank())
         }
     }
 

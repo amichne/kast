@@ -5,8 +5,10 @@ import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiManager
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -19,6 +21,7 @@ import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.ValidatedFileEdits
 import io.github.amichne.kast.api.validation.ValidatedFileOperation
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 
 /**
@@ -30,6 +33,7 @@ import java.nio.file.Path
 internal class IdeaEditApplier(
     private val project: Project,
     private val workspaceRoot: Path,
+    private val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
 ) {
     /**
      * Applies text edits and file operations through IDEA APIs.
@@ -48,7 +52,6 @@ internal class IdeaEditApplier(
             throw ValidationException("At least one text edit or file operation is required")
         }
         val invocationId = KastStructuredTrace.newInvocationId()
-        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
         val normalizedWorkspaceRoot = workspaceIdentity.workspaceRootPath
         KastStructuredTrace.event(
             eventName = "idea.apply_edits.started",
@@ -61,7 +64,7 @@ internal class IdeaEditApplier(
             detail = mapOf(
                 "textEditCount" to query.edits.size,
                 "fileOperationCount" to query.fileOperations.size,
-            ),
+            ) + workspaceIdentity.traceDetails(),
         )
 
         val fileDocumentManager = FileDocumentManager.getInstance()
@@ -199,7 +202,7 @@ internal class IdeaEditApplier(
                 "affectedFiles" to result.affectedFiles,
                 "createdFiles" to result.createdFiles,
                 "deletedFiles" to result.deletedFiles,
-            ),
+            ) + workspaceIdentity.traceDetails(),
         )
         return result
     }
@@ -244,6 +247,14 @@ internal class IdeaEditApplier(
                             val newFile = parentFile.createChildData(this, fileName)
                             newFile.setBinaryContent(operation.content.toByteArray(StandardCharsets.UTF_8))
                         }
+                        verifyPostWrite(
+                            filePath = operation.filePath,
+                            mutation = IdeaWorkspaceMutation.CREATE_FILE,
+                            expectedExists = true,
+                            expectedContent = operation.content,
+                            invocationId = invocationId,
+                            workspaceRoot = workspaceRoot,
+                        )
                         createdFiles += operation.filePath
                         KastStructuredTrace.event(
                             eventName = "idea.apply_edits.file_create_completed",
@@ -269,7 +280,7 @@ internal class IdeaEditApplier(
                                 targetFilePath = operation.filePath,
                             ),
                         )
-                        val virtualFile = vfsManager.findFileByUrl("file://${operation.filePath}")
+                        val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
                             ?: throw NotFoundException(
                                 message = "The requested file does not exist",
                                 details = mapOf("filePath" to operation.filePath),
@@ -309,6 +320,14 @@ internal class IdeaEditApplier(
                         writeAction {
                             virtualFile.delete(this)
                         }
+                        verifyPostWrite(
+                            filePath = operation.filePath,
+                            mutation = IdeaWorkspaceMutation.DELETE_FILE,
+                            expectedExists = false,
+                            expectedContent = null,
+                            invocationId = invocationId,
+                            workspaceRoot = workspaceRoot,
+                        )
                         deletedFiles += operation.filePath
                         KastStructuredTrace.event(
                             eventName = "idea.apply_edits.file_delete_completed",
@@ -391,7 +410,7 @@ internal class IdeaEditApplier(
                 targetFilePath = filePath,
             ),
             outcome = "failed",
-            detail = exception.details,
+            detail = exception.details + workspaceIdentity.traceDetails(),
         )
         throw exception
     }
@@ -448,6 +467,14 @@ internal class IdeaEditApplier(
             // Save to VFS
             fileDocumentManager.saveDocument(document)
         }
+        verifyPostWrite(
+            filePath = plan.filePath,
+            mutation = IdeaWorkspaceMutation.TEXT_EDIT,
+            expectedExists = true,
+            expectedContent = document.text,
+            invocationId = invocationId,
+            workspaceRoot = workspaceRoot,
+        )
         KastStructuredTrace.event(
             eventName = "idea.apply_edits.text_edit_completed",
             project = project,
@@ -460,4 +487,83 @@ internal class IdeaEditApplier(
             outcome = "completed",
         )
     }
+
+    private fun verifyPostWrite(
+        filePath: String,
+        mutation: IdeaWorkspaceMutation,
+        expectedExists: Boolean,
+        expectedContent: String?,
+        invocationId: String,
+        workspaceRoot: Path,
+    ) {
+        val path = Path.of(filePath).toAbsolutePath().normalize()
+        val workspaceFile = workspaceIdentity.workspaceIdentity.contains(path)
+        val diskExists = Files.exists(path)
+        if (!workspaceFile || diskExists != expectedExists) {
+            throw ValidationException(
+                message = "Kast IDEA post-write verification failed",
+                details = mapOf(
+                    "filePath" to filePath,
+                    "mutation" to mutation.wireName,
+                    "workspaceContained" to workspaceFile.toString(),
+                    "expectedExists" to expectedExists.toString(),
+                    "diskExists" to diskExists.toString(),
+                ) + workspaceIdentity.stringTraceDetails(),
+            )
+        }
+        if (expectedExists && expectedContent != null) {
+            val diskContent = Files.readString(path)
+            if (diskContent != expectedContent) {
+                throw ConflictException(
+                    message = "Kast IDEA post-write content verification failed",
+                    details = mapOf(
+                        "filePath" to filePath,
+                        "mutation" to mutation.wireName,
+                        "expectedHash" to FileHashing.sha256(expectedContent),
+                        "actualHash" to FileHashing.sha256(diskContent),
+                    ),
+                )
+            }
+        }
+
+        val refreshedFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+        val vfsExists = refreshedFile?.isValid == true
+        if (vfsExists != expectedExists) {
+            throw ValidationException(
+                message = "Kast IDEA VFS post-write verification failed",
+                details = mapOf(
+                    "filePath" to filePath,
+                    "mutation" to mutation.wireName,
+                    "expectedExists" to expectedExists.toString(),
+                    "vfsExists" to vfsExists.toString(),
+                ),
+            )
+        }
+        val psiFileResolved = if (expectedExists && refreshedFile != null && !refreshedFile.isDirectory) {
+            runIdeaReadAction { PsiManager.getInstance(project).findFile(refreshedFile) != null }
+        } else {
+            false
+        }
+        KastStructuredTrace.event(
+            eventName = "idea.apply_edits.post_write_verified",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(
+                invocationId = invocationId,
+                agentRole = "idea-edit-applier",
+                targetFilePath = filePath,
+            ),
+            outcome = "completed",
+            detail = mapOf(
+                "mutation" to mutation.wireName,
+                "workspaceContained" to workspaceFile,
+                "diskExists" to diskExists,
+                "vfsExists" to vfsExists,
+                "psiFileResolved" to psiFileResolved,
+            ) + workspaceIdentity.traceDetails(),
+        )
+    }
+
+    private fun IdeaWorkspaceIdentity.stringTraceDetails(): Map<String, String> =
+        traceDetails().mapValues { (_, value) -> value?.toString().orEmpty() }
 }

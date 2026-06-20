@@ -52,25 +52,31 @@ object KastIdeaBackendRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
     ): RunningKastIdeaBackend {
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            descriptorDirectory = config.paths.descriptorDir.toPath(),
+        )
         KastStructuredTrace.event(
             eventName = "idea.runtime.start_requested",
             project = project,
-            workspaceRoot = workspaceRoot,
+            workspaceRoot = workspaceIdentity.workspaceRootPath,
             fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
             detail = mapOf(
                 "transport" to transport.toString(),
                 "backendName" to backendName,
-            ),
+            ) + workspaceIdentity.traceDetails(),
         )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
         val backend = ObservedAnalysisBackend(
             delegate = KastPluginBackend(
                 project = project,
-                workspaceRoot = workspaceRoot,
+                workspaceRoot = workspaceIdentity.workspaceRootPath,
                 limits = limits,
                 telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
                 backendName = backendName,
+                workspaceIdentity = workspaceIdentity,
             ),
             diagnostics = diagnostics,
         )
@@ -81,13 +87,13 @@ object KastIdeaBackendRuntime {
         KastStructuredTrace.event(
             eventName = "idea.runtime.server_started",
             project = project,
-            workspaceRoot = workspaceRoot,
+            workspaceRoot = workspaceIdentity.workspaceRootPath,
             fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
             outcome = "completed",
-            detail = mapOf("transport" to transport.toString()),
+            detail = mapOf("transport" to transport.toString()) + workspaceIdentity.traceDetails(),
         )
         diagnostics.recordBackendStarted(transport)
-        val projectIndexing = KastIdeaProjectIndexing(project, workspaceRoot, config, diagnostics).also { it.start() }
+        val projectIndexing = KastIdeaProjectIndexing(project, workspaceIdentity, config, diagnostics).also { it.start() }
         return RunningKastIdeaBackend(
             backend = backend,
             server = server,
@@ -98,10 +104,19 @@ object KastIdeaBackendRuntime {
 
 internal class KastIdeaProjectIndexing(
     private val project: Project,
-    private val workspaceRoot: Path,
+    private val workspaceIdentity: IdeaWorkspaceIdentity,
     private val config: KastConfig,
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
 ) {
+    constructor(
+        project: Project,
+        workspaceRoot: Path,
+        config: KastConfig,
+        diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
+    ) : this(project, IdeaWorkspaceIdentity.fromProject(project, workspaceRoot, config.paths.descriptorDir.toPath()), config, diagnostics)
+
+    private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+
     private val cancelled = AtomicBoolean(false)
 
     @Volatile
@@ -118,6 +133,7 @@ internal class KastIdeaProjectIndexing(
             project = project,
             workspaceRoot = workspaceRoot,
             fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+            detail = workspaceIdentity.traceDetails(),
         )
         diagnostics.recordIndexWaitingForIde()
         DumbService.getInstance(project).runWhenSmart {
@@ -127,6 +143,7 @@ internal class KastIdeaProjectIndexing(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                detail = workspaceIdentity.traceDetails(),
             )
             indexingThread = thread(
                 start = true,
@@ -139,6 +156,7 @@ internal class KastIdeaProjectIndexing(
                         project = project,
                         workspaceRoot = workspaceRoot,
                         fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                        detail = workspaceIdentity.traceDetails(),
                     )
                     diagnostics.recordIndexHydrating()
                     runCatching {
@@ -146,13 +164,14 @@ internal class KastIdeaProjectIndexing(
                     }.onFailure { error ->
                         LOG.warn("Kast IDEA remote source index hydration failed", error)
                     }
-                    val store = SqliteSourceIndexStore(workspaceRoot)
+                    val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
                     indexStore = store
                     KastStructuredTrace.event(
                         eventName = "idea.index.started",
                         project = project,
                         workspaceRoot = workspaceRoot,
                         fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                        detail = workspaceIdentity.traceDetails(),
                     )
                     diagnostics.recordIndexingStarted()
                     IdeaProjectIndexer(
@@ -160,6 +179,7 @@ internal class KastIdeaProjectIndexing(
                         workspaceRoot = workspaceRoot,
                         store = store,
                         cancelled = { cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
+                        workspaceIdentity = workspaceIdentity.workspaceIdentity,
                     ).indexProject(config)
                     store.loadKastSourceIndexSummary()
                 }.onSuccess { summary ->
@@ -175,7 +195,7 @@ internal class KastIdeaProjectIndexing(
                                 "identifierCount" to summary.identifierCount,
                                 "moduleCount" to summary.moduleCount,
                                 "importCount" to summary.importCount,
-                            ),
+                            ) + workspaceIdentity.traceDetails(),
                         )
                         diagnostics.recordIndexCompleted(summary)
                         LOG.info("Kast IDEA project index completed")
@@ -191,7 +211,7 @@ internal class KastIdeaProjectIndexing(
                             detail = mapOf(
                                 "errorClass" to error::class.qualifiedName,
                                 "message" to error.message,
-                            ),
+                            ) + workspaceIdentity.traceDetails(),
                         )
                         diagnostics.recordIndexFailed(error)
                         LOG.warn("Kast IDEA project index failed", error)
@@ -221,6 +241,7 @@ internal class KastIdeaProjectIndexing(
                 workspaceRoot = workspaceRoot,
                 fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
                 outcome = "cancelled",
+                detail = workspaceIdentity.traceDetails(),
             )
             diagnostics.recordIndexCancelled()
         }

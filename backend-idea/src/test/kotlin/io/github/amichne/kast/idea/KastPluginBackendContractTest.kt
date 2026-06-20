@@ -166,6 +166,26 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `workspace files exclude project module files outside canonical workspace root`() = runBlocking {
+        ensureInternalVisibilityProjectReady()
+        val workspaceRoot = readAction {
+            Path.of(sampleFile.virtualFile.path).parent.toAbsolutePath().normalize()
+        }
+
+        val result = backend(workspaceRoot).workspaceFiles(
+            WorkspaceFilesQuery(
+                includeFiles = true,
+            ),
+        )
+
+        val mainModule = result.modules.single { it.name == "main" }
+        val secondaryModule = result.modules.single { it.name == "secondary" }
+        assertTrue(mainModule.fileCount > 0)
+        assertEquals(0, secondaryModule.fileCount)
+        assertTrue(result.modules.flatMap { it.files }.all { filePath -> Path.of(filePath).startsWith(workspaceRoot) })
+    }
+
+    @Test
     fun `workspace search returns content matches from project files`() = runBlocking {
         ensureProjectReady()
         val workspaceRoot = readAction {
@@ -190,7 +210,7 @@ class KastPluginBackendContractTest {
         val (filePath, offset) = readAction {
             sampleFile.virtualFile.path to sampleFile.text.indexOf("greet")
         }
-        val result = backend().resolveSymbol(
+        val result = backend(Path.of(filePath).parent).resolveSymbol(
             SymbolQuery(
                 position = FilePosition(
                     filePath = filePath,
@@ -280,7 +300,7 @@ class KastPluginBackendContractTest {
             hierarchyFile.virtualFile.path to hierarchyFile.text.indexOf("Shape")
         }
 
-        val result = backend().typeHierarchy(
+        val result = backend(Path.of(filePath).parent).typeHierarchy(
             TypeHierarchyQuery(
                 position = FilePosition(filePath = filePath, offset = offset),
                 direction = TypeHierarchyDirection.SUBTYPES,
@@ -305,7 +325,7 @@ class KastPluginBackendContractTest {
             hierarchyFile.virtualFile.path to hierarchyFile.text.indexOf("Shape")
         }
 
-        val result = backend().implementations(
+        val result = backend(Path.of(filePath).parent).implementations(
             ImplementationsQuery(
                 position = FilePosition(filePath = filePath, offset = offset),
             ),

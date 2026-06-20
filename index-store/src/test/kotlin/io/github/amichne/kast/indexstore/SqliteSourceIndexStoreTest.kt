@@ -7,6 +7,7 @@ import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -29,6 +30,21 @@ class SqliteSourceIndexStoreTest {
 
         assertTrue(Files.isRegularFile(sourceIndexDatabasePath(normalized)))
         assertTrue(sourceIndexDatabasePath(normalized).startsWith(kastCacheDirectory(normalized)))
+    }
+
+    @Test
+    fun `different workspace roots use different source index databases`() {
+        val firstRoot = Files.createDirectories(workspaceRoot.resolve("first")).toAbsolutePath().normalize()
+        val secondRoot = Files.createDirectories(workspaceRoot.resolve("second")).toAbsolutePath().normalize()
+
+        SqliteSourceIndexStore(firstRoot).use { store -> store.ensureSchema() }
+        SqliteSourceIndexStore(secondRoot).use { store -> store.ensureSchema() }
+
+        val firstDatabase = sourceIndexDatabasePath(firstRoot)
+        val secondDatabase = sourceIndexDatabasePath(secondRoot)
+        assertNotEquals(firstDatabase, secondDatabase)
+        assertTrue(Files.isRegularFile(firstDatabase), "first database missing at $firstDatabase")
+        assertTrue(Files.isRegularFile(secondDatabase), "second database missing at $secondDatabase")
     }
 
     @Test
