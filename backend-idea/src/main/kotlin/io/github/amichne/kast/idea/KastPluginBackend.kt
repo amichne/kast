@@ -587,7 +587,7 @@ internal class KastPluginBackend(
 
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
         return telemetry.inSpan(IdeaTelemetryScope.APPLY_EDITS, "kast.idea.applyEdits") {
-            val applier = IdeaEditApplier(project)
+            val applier = IdeaEditApplier(project, workspaceRoot)
             applier.apply(query.toWire())
             // No asyncRefresh needed - IDEA APIs handle VFS updates automatically
         }

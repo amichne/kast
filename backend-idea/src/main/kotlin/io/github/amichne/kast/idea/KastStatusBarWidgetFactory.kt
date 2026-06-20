@@ -8,6 +8,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.impl.status.EditorBasedWidget
 import com.intellij.util.Consumer
 import java.awt.event.MouseEvent
+import java.nio.file.Path
 
 internal class KastStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun getId(): String = KAST_STATUS_WIDGET_ID
@@ -30,7 +31,21 @@ private class KastStatusBarWidget(
 
     override fun install(statusBar: StatusBar) {
         super.install(statusBar)
-        diagnostics.addListener(this) {
+        diagnostics.addListener(this) { snapshot ->
+            KastStructuredTrace.event(
+                eventName = "idea.status_widget.snapshot",
+                project = kastProject,
+                workspaceRoot = snapshot.workspaceRoot?.let(Path::of),
+                fields = KastStructuredTraceFields(agentRole = "idea-status-widget"),
+                detail = mapOf(
+                    "backendState" to snapshot.backendState.name,
+                    "indexState" to snapshot.indexSummary.state.name,
+                    "activeRequests" to snapshot.activeRequests,
+                    "completedRequests" to snapshot.completedRequests,
+                    "failedRequests" to snapshot.failedRequests,
+                    "statusText" to snapshot.statusText(),
+                ),
+            )
             statusBar.updateWidget(ID())
         }
     }

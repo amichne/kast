@@ -15,12 +15,16 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.protocol.ValidationException
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.nio.file.Files
 import java.nio.file.Path
 
 @TestApplication
@@ -51,9 +55,11 @@ class IdeaEditApplicationTest {
     private val testFile: PsiFile
         get() = testFileFixture.get()
 
-    private fun backend(): KastPluginBackend = KastPluginBackend(
+    private fun backend(
+        workspaceRoot: Path = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize(),
+    ): KastPluginBackend = KastPluginBackend(
         project = project,
-        workspaceRoot = Path.of(project.basePath!!),
+        workspaceRoot = workspaceRoot,
         limits = defaultLimits,
     )
 
@@ -61,6 +67,17 @@ class IdeaEditApplicationTest {
         moduleFixture.get()
         testFileFixture.get()
         waitUntilIndexesAreReady(project)
+    }
+
+    private suspend fun expectValidationFailure(query: ApplyEditsQuery): ValidationException {
+        val failure = runCatching {
+            backend().applyEdits(query)
+        }.exceptionOrNull()
+        assertTrue(
+            failure is ValidationException,
+            "Expected ValidationException, got ${failure?.let { it::class.qualifiedName } ?: "success"}",
+        )
+        return failure as ValidationException
     }
 
     @Test
@@ -146,5 +163,85 @@ class IdeaEditApplicationTest {
 
         assert(documentText.contains("newName")) { "Document should contain 'newName' after applyEdits" }
         assert(!documentText.contains("oldName")) { "Document should NOT contain 'oldName' after applyEdits" }
+    }
+
+    @Test
+    fun `applyEdits rejects text edits outside active IDEA workspace`() = runBlocking {
+        ensureProjectReady()
+
+        val outsideFile = Files.createTempDirectory("kast-outside-text-edit").resolve("Outside.kt")
+        val originalText = "package outside\n\nfun value(): Int = 1\n"
+        Files.writeString(outsideFile, originalText)
+
+        val exception = expectValidationFailure(
+            ApplyEditsQuery(
+                edits = listOf(
+                    TextEdit(
+                        filePath = outsideFile.toString(),
+                        startOffset = originalText.indexOf("1"),
+                        endOffset = originalText.indexOf("1") + 1,
+                        newText = "2",
+                    ),
+                ),
+                fileHashes = listOf(
+                    FileHash(
+                        filePath = outsideFile.toString(),
+                        hash = io.github.amichne.kast.api.validation.FileHashing.sha256(originalText),
+                    ),
+                ),
+                fileOperations = emptyList(),
+            ),
+        )
+
+        assertEquals("text_edit", exception.details["mutation"])
+        assertEquals(originalText, Files.readString(outsideFile))
+    }
+
+    @Test
+    fun `applyEdits rejects create file operations outside active IDEA workspace`() = runBlocking {
+        ensureProjectReady()
+
+        val outsideFile = Files.createTempDirectory("kast-outside-create").resolve("Created.kt")
+
+        val exception = expectValidationFailure(
+            ApplyEditsQuery(
+                edits = emptyList(),
+                fileHashes = emptyList(),
+                fileOperations = listOf(
+                    FileOperation.CreateFile(
+                        filePath = outsideFile.toString(),
+                        content = "class Created\n",
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("create_file", exception.details["mutation"])
+        assertTrue(Files.notExists(outsideFile), "Outside workspace create target should remain absent")
+    }
+
+    @Test
+    fun `applyEdits rejects delete file operations outside active IDEA workspace`() = runBlocking {
+        ensureProjectReady()
+
+        val outsideFile = Files.createTempDirectory("kast-outside-delete").resolve("DeleteMe.kt")
+        val originalText = "class DeleteMe\n"
+        Files.writeString(outsideFile, originalText)
+
+        val exception = expectValidationFailure(
+            ApplyEditsQuery(
+                edits = emptyList(),
+                fileHashes = emptyList(),
+                fileOperations = listOf(
+                    FileOperation.DeleteFile(
+                        filePath = outsideFile.toString(),
+                        expectedHash = io.github.amichne.kast.api.validation.FileHashing.sha256(originalText),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("delete_file", exception.details["mutation"])
+        assertEquals(originalText, Files.readString(outsideFile))
     }
 }

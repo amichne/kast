@@ -2337,6 +2337,11 @@ fn install_resource_gateways_support_force_and_current_versions() {
     );
     assert!(
         github_dir
+            .join("extensions/kast/_shared/kast-trace.mjs")
+            .is_file()
+    );
+    assert!(
+        github_dir
             .join("extensions/kast/_shared/commands.json")
             .is_file()
     );
@@ -2545,6 +2550,11 @@ fn copilot_extension_install_preserves_existing_github_content() {
     assert!(
         github_dir
             .join("extensions/kast/_shared/commands.json")
+            .is_file()
+    );
+    assert!(
+        github_dir
+            .join("extensions/kast/_shared/kast-trace.mjs")
             .is_file()
     );
     assert!(
