@@ -48,6 +48,11 @@ class WorkspaceDirectoryResolver(
 
     fun workspaceDatabasePath(workspaceRoot: Path): Path = workspaceCacheDirectory(workspaceRoot).resolve("source-index.db")
 
+    fun workspaceIdentity(
+        workspaceRoot: Path,
+        descriptorDirectory: Path = defaultDescriptorDirectory(),
+    ): WorkspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot, this, descriptorDirectory)
+
     fun workspaceHash(workspaceRoot: Path): String = FileHashing.sha256(
         workspaceRoot.toAbsolutePath().normalize().toString(),
     ).take(12)

@@ -2,7 +2,7 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import java.nio.file.Path
 import java.util.UUID
 
@@ -20,7 +20,6 @@ internal data class KastStructuredTraceFields(
 
 internal object KastStructuredTrace {
     private val LOG = Logger.getInstance(KastStructuredTrace::class.java)
-    private val resolver = WorkspaceDirectoryResolver()
 
     fun newInvocationId(): String = UUID.randomUUID().toString()
 
@@ -61,6 +60,9 @@ internal object KastStructuredTrace {
         threadName: String = Thread.currentThread().name,
     ): String {
         val canonicalWorkspaceRoot = workspaceRoot?.canonicalPathString()
+        val workspaceIdentity = workspaceRoot?.let { root ->
+            runCatching { WorkspaceIdentity.fromWorkspaceRoot(root) }.getOrNull()
+        }
         val canonicalTargetFilePath = fields.targetFilePath?.let(::canonicalPathStringOrFallback)
         val record = linkedMapOf<String, Any?>(
             "type" to "kast.idea.trace",
@@ -71,9 +73,17 @@ internal object KastStructuredTrace {
             "agentRole" to fields.agentRole,
             "agentInstanceId" to fields.agentInstanceId,
             "reviewInvocationId" to fields.reviewInvocationId,
-            "workspaceId" to workspaceRoot?.let { resolver.workspaceHash(it) },
+            "workspaceId" to workspaceIdentity?.workspaceId?.value,
+            "canonicalWorkspaceId" to workspaceIdentity?.canonicalWorkspaceId?.value,
             "workspaceRoot" to workspaceRoot?.toAbsolutePath()?.normalize()?.toString(),
             "canonicalWorkspaceRoot" to canonicalWorkspaceRoot,
+            "workspaceDataDirectory" to workspaceIdentity?.workspaceDataDirectory?.value,
+            "workspaceCacheDirectory" to workspaceIdentity?.workspaceCacheDirectory?.value,
+            "sourceIndexDatabasePath" to workspaceIdentity?.sourceIndexDatabasePath?.value,
+            "defaultSocketPath" to workspaceIdentity?.defaultSocketPath?.value,
+            "gradleRoot" to workspaceIdentity?.gradleRoot?.root?.value,
+            "gradleSettingsFile" to workspaceIdentity?.gradleRoot?.settingsFile?.value,
+            "gradleSettingsFileHash" to workspaceIdentity?.gradleRoot?.settingsFileHash?.value,
             "ideaProjectName" to ideaProjectName,
             "ideaProjectBasePath" to ideaProjectBasePath,
             "processId" to processId,

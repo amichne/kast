@@ -55,7 +55,7 @@ fun kastLogDirectory(
     configPath(KastConfig.defaults().paths.logsDir.value)
 
 fun defaultSocketPath(workspaceRoot: Path): Path =
-    socketPathForWorkspace(workspaceRoot)
+    WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).defaultSocketFile
 
 fun workspaceMetadataDirectory(workspaceRoot: Path): Path =
     workspaceDataDirectory(workspaceRoot)
@@ -66,8 +66,3 @@ fun workspaceMetadataDirectory(
 ): Path = workspaceDataDirectory(workspaceRoot, envLookup)
 
 private fun configPath(value: String): Path = Path(value).toAbsolutePath().normalize()
-
-private fun socketPathForWorkspace(workspaceRoot: Path): Path = Path(
-    System.getProperty("java.io.tmpdir"),
-    "kast-${WorkspaceDirectoryResolver().workspaceHash(workspaceRoot)}.sock",
-).toAbsolutePath().normalize()

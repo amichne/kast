@@ -166,6 +166,52 @@ class IdeaEditApplicationTest {
     }
 
     @Test
+    fun `applyEdits creates files inside active workspace and verifies disk state`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val newFile = workspaceRoot.resolve("CreatedInside.kt")
+        val content = "package demo\n\nfun createdInside(): Int = 1\n"
+
+        val result = backend(workspaceRoot).applyEdits(
+            ApplyEditsQuery(
+                edits = emptyList(),
+                fileHashes = emptyList(),
+                fileOperations = listOf(FileOperation.CreateFile(newFile.toString(), content)),
+            ),
+        )
+
+        assertEquals(listOf(newFile.toString()), result.createdFiles)
+        assertEquals(content, Files.readString(newFile))
+    }
+
+    @Test
+    fun `applyEdits deletes files inside active workspace and verifies disk state`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val deleteFile = workspaceRoot.resolve("DeleteInside.kt")
+        val content = "package demo\n\nfun deleteInside(): Int = 1\n"
+        Files.writeString(deleteFile, content)
+
+        val result = backend(workspaceRoot).applyEdits(
+            ApplyEditsQuery(
+                edits = emptyList(),
+                fileHashes = emptyList(),
+                fileOperations = listOf(
+                    FileOperation.DeleteFile(
+                        filePath = deleteFile.toString(),
+                        expectedHash = io.github.amichne.kast.api.validation.FileHashing.sha256(content),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(deleteFile.toString()), result.deletedFiles)
+        assertTrue(Files.notExists(deleteFile), "Inside workspace delete target should be absent after apply")
+    }
+
+    @Test
     fun `applyEdits rejects text edits outside active IDEA workspace`() = runBlocking {
         ensureProjectReady()
 
