@@ -165,7 +165,14 @@ fn smoke_core_cli_commands() {
         .expect("install help");
     assert!(install_help.status.success());
     let install_help_stdout = String::from_utf8_lossy(&install_help.stdout);
-    for command in ["plugin", "skill", "copilot", "shell", "completion"] {
+    for command in [
+        "plugin",
+        "skill",
+        "instructions",
+        "copilot",
+        "shell",
+        "completion",
+    ] {
         assert!(
             install_help_stdout.contains(command),
             "install help should list {command}: {install_help_stdout}"
@@ -175,7 +182,7 @@ fn smoke_core_cli_commands() {
         !install_help_stdout.contains("headless"),
         "standalone headless install should not be listed as a supported install path: {install_help_stdout}"
     );
-    for command in ["plugin", "skill", "copilot"] {
+    for command in ["plugin", "skill", "instructions", "copilot"] {
         let help = kast(&home, &config_home)
             .args(["install", command, "--help"])
             .output()
@@ -283,6 +290,23 @@ fn smoke_core_cli_commands() {
     );
     assert!(!skill_dir.join("kast/scripts").exists());
     assert_no_script_files(&skill_dir.join("kast"));
+
+    let instructions_dir = temp.path().join("instructions");
+    let instructions = kast(&home, &config_home)
+        .args([
+            "install",
+            "instructions",
+            "--target-dir",
+            instructions_dir.to_str().expect("instructions path"),
+            "--force",
+        ])
+        .output()
+        .expect("install instructions");
+    assert!(instructions.status.success());
+    assert!(instructions_dir.join("kast/README.md").is_file());
+    assert!(instructions_dir.join("kast/cli.md").is_file());
+    assert!(instructions_dir.join("kast/rpc.md").is_file());
+    assert!(instructions_dir.join("kast/lsp.md").is_file());
 
     let github_dir = temp.path().join(".github");
     let copilot = kast(&home, &config_home)
@@ -1719,6 +1743,7 @@ fn install_affected_repairs_stale_local_setup_only_when_applied() {
     let stale_current = home.join(".kast/lib/backends/current");
     let stale_runtime_libs = stale_current.join("runtime-libs");
     let skill = home.join(".codex/skills/kast");
+    let instructions = home.join(".codex/instructions/kast");
     let copilot = repo.join(".github");
     let shell_source = config_home.join("shell/kast.zsh");
     let old_bin = home.join(".kast/bin");
@@ -1726,6 +1751,7 @@ fn install_affected_repairs_stale_local_setup_only_when_applied() {
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&repo).expect("repo");
     std::fs::create_dir_all(&skill).expect("skill");
+    std::fs::create_dir_all(&instructions).expect("instructions");
     std::fs::create_dir_all(&copilot).expect("copilot");
     std::fs::create_dir_all(&old_bin).expect("old bin");
     std::fs::create_dir_all(&profile_plugins).expect("profile plugins");
@@ -1734,6 +1760,8 @@ fn install_affected_repairs_stale_local_setup_only_when_applied() {
     std::fs::write(old_bin.join("kast"), b"old binary\n").expect("old binary");
     std::fs::write(skill.join(".kast-version"), b"old\n").expect("skill marker");
     std::fs::write(skill.join("old.txt"), b"stale\n").expect("skill stale file");
+    std::fs::write(instructions.join(".kast-version"), b"old\n").expect("instructions marker");
+    std::fs::write(instructions.join("old.txt"), b"stale\n").expect("instructions stale file");
     std::fs::write(copilot.join(".kast-copilot-version"), b"old\n").expect("copilot marker");
     std::fs::write(copilot.join("old.txt"), b"stale\n").expect("copilot stale file");
     std::fs::write(
@@ -1834,6 +1862,11 @@ path = "{}"
         std::fs::read_to_string(skill.join(".kast-version")).expect("skill after dry run"),
         "old\n"
     );
+    assert_eq!(
+        std::fs::read_to_string(instructions.join(".kast-version"))
+            .expect("instructions after dry run"),
+        "old\n"
+    );
 
     let apply = kast(&home, &config_home)
         .env("PATH", &brew_bin)
@@ -1876,6 +1909,13 @@ path = "{}"
         "old\n"
     );
     assert!(!skill.join("old.txt").exists());
+    assert_ne!(
+        std::fs::read_to_string(instructions.join(".kast-version"))
+            .expect("instructions after apply"),
+        "old\n"
+    );
+    assert!(!instructions.join("old.txt").exists());
+    assert!(instructions.join("README.md").is_file());
     assert_ne!(
         std::fs::read_to_string(copilot.join(".kast-copilot-version"))
             .expect("copilot after apply"),
@@ -2162,12 +2202,18 @@ fn install_resource_gateways_support_force_and_current_versions() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let skill_dir = temp.path().join("skills");
+    let instructions_dir = temp.path().join("instructions");
     let github_dir = temp.path().join(".github");
     let stale_skill = skill_dir.join("kast");
+    let stale_instructions = instructions_dir.join("kast");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&stale_skill).expect("stale skill");
+    std::fs::create_dir_all(&stale_instructions).expect("stale instructions");
     std::fs::write(stale_skill.join(".kast-version"), b"old\n").expect("stale marker");
     std::fs::write(stale_skill.join("old.txt"), b"old\n").expect("stale file");
+    std::fs::write(stale_instructions.join(".kast-version"), b"old\n")
+        .expect("stale instructions marker");
+    std::fs::write(stale_instructions.join("old.txt"), b"old\n").expect("stale instructions file");
 
     let skill = kast(&home, &config_home)
         .args([
@@ -2219,6 +2265,39 @@ fn install_resource_gateways_support_force_and_current_versions() {
     let skill_marker =
         std::fs::read_to_string(stale_skill.join(".kast-version")).expect("skill marker");
     assert_eq!(skill_marker.trim(), skill_stdout["version"]);
+
+    let instructions = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "instructions",
+            "--target-dir",
+            instructions_dir.to_str().expect("instructions path"),
+            "-f",
+        ])
+        .output()
+        .expect("install instructions");
+    assert!(
+        instructions.status.success(),
+        "instructions install should accept -f: stdout={}, stderr={}",
+        String::from_utf8_lossy(&instructions.stdout),
+        String::from_utf8_lossy(&instructions.stderr)
+    );
+    let instructions_stdout: serde_json::Value =
+        serde_json::from_slice(&instructions.stdout).expect("instructions install json");
+    assert_eq!(
+        instructions_stdout["installedAt"],
+        stale_instructions.display().to_string()
+    );
+    assert!(stale_instructions.join("README.md").is_file());
+    assert!(stale_instructions.join("cli.md").is_file());
+    assert!(stale_instructions.join("rpc.md").is_file());
+    assert!(stale_instructions.join("lsp.md").is_file());
+    assert!(!stale_instructions.join("old.txt").exists());
+    let instructions_marker = std::fs::read_to_string(stale_instructions.join(".kast-version"))
+        .expect("instructions marker");
+    assert_eq!(instructions_marker.trim(), instructions_stdout["version"]);
 
     let copilot = kast(&home, &config_home)
         .args([

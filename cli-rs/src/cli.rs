@@ -503,6 +503,8 @@ pub enum InstallCommand {
     Affected(AffectedInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
+    /// Install portable agent instruction files.
+    Instructions(ResourceInstallArgs),
     /// Install the packaged Copilot LSP, instructions, agents, and extension tools.
     #[command(alias = "copilot-extension")]
     Copilot(CopilotInstallArgs),

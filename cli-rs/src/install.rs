@@ -24,6 +24,7 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
+static KAST_INSTRUCTIONS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-instructions");
 static COPILOT_PLUGIN: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin");
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
@@ -205,6 +206,15 @@ pub struct InstallSkillResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct InstallInstructionsResult {
+    pub installed_at: String,
+    pub version: String,
+    pub skipped: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstallCopilotExtensionResult {
     pub installed_at: String,
     pub version: String,
@@ -325,6 +335,7 @@ pub struct ProjectOpenSetupResult {
 #[serde(untagged)]
 pub enum InstallResult {
     Skill(InstallSkillResult),
+    Instructions(InstallInstructionsResult),
     Copilot(InstallCopilotExtensionResult),
     IdeaPlugin(InstallIdeaPluginResult),
     Shell(InstallShellResult),
@@ -352,6 +363,9 @@ pub fn install(args: InstallArgs, reporter: &mut dyn InstallReporter) -> Result<
         }
         Some(InstallCommand::Skill(resource_args)) => {
             install_skill(resource_args).map(InstallResult::Skill)
+        }
+        Some(InstallCommand::Instructions(resource_args)) => {
+            install_instructions(resource_args).map(InstallResult::Instructions)
         }
         Some(InstallCommand::Copilot(resource_args)) => {
             install_copilot_extension(resource_args).map(InstallResult::Copilot)
@@ -705,6 +719,7 @@ fn reconcile_install_state(
         return Ok(result);
     }
     repair_affected_skill_targets(&args, &mut result, &backup_root)?;
+    repair_affected_instruction_targets(&args, &mut result, &backup_root)?;
     repair_affected_copilot_repos(&args, &mut result, &backup_root)?;
     repair_affected_shell_sources(&args, &mut result, &backup_root)?;
     repair_affected_jetbrains_profiles(&args, &mut result, &backup_root)?;
@@ -1003,6 +1018,43 @@ fn repair_affected_skill_targets(
         if args.apply {
             backup_existing_path(&target, backup_root, result)?;
             install_skill(ResourceInstallArgs {
+                target_dir: Some(target_root),
+                name: Some("kast".to_string()),
+                force: true,
+            })?;
+        }
+    }
+    Ok(())
+}
+
+fn repair_affected_instruction_targets(
+    args: &AffectedInstallArgs,
+    result: &mut InstallAffectedResult,
+    backup_root: &Path,
+) -> Result<()> {
+    for target_root in affected_instruction_target_roots()? {
+        let target = target_root.join("kast");
+        if !target.is_dir() {
+            continue;
+        }
+        let marker = target.join(".kast-version");
+        let installed_version = fs::read_to_string(&marker).unwrap_or_default();
+        if installed_version.trim() == cli::version() {
+            continue;
+        }
+        push_affected_action(
+            result,
+            "refresh-instructions",
+            &target,
+            "Back up and refresh stale installed Kast instructions.",
+            Some(format!(
+                "kast install instructions --target-dir {} --force",
+                shell_quote_path(&target_root)
+            )),
+        );
+        if args.apply {
+            backup_existing_path(&target, backup_root, result)?;
+            install_instructions(ResourceInstallArgs {
                 target_dir: Some(target_root),
                 name: Some("kast".to_string()),
                 force: true,
@@ -1351,6 +1403,23 @@ fn affected_skill_target_roots() -> Result<Vec<PathBuf>> {
     Ok(roots.into_iter().map(config::normalize).collect())
 }
 
+fn affected_instruction_target_roots() -> Result<Vec<PathBuf>> {
+    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let home = config::home_dir();
+    let mut roots = vec![
+        default_instructions_target_dir(),
+        home.join(".codex/instructions"),
+        home.join(".agents/instructions"),
+        home.join(".kast/lib/instructions"),
+        cwd.join(".agents/instructions"),
+        cwd.join(".github/instructions"),
+        cwd.join(".claude/instructions"),
+    ];
+    let mut seen = BTreeSet::new();
+    roots.retain(|path| seen.insert(config::normalize(path.clone()).display().to_string()));
+    Ok(roots.into_iter().map(config::normalize).collect())
+}
+
 fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
     let current_exe = env::current_exe()?;
     if current_exe
@@ -1461,6 +1530,25 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
     let target = target_root.join(name);
     let skipped = install_dir(&KAST_SKILL, &target, ".kast-version", args.force)?;
     Ok(InstallSkillResult {
+        installed_at: target.display().to_string(),
+        version: cli::version().to_string(),
+        skipped,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstructionsResult> {
+    let target_root = args
+        .target_dir
+        .map(config::normalize)
+        .unwrap_or_else(default_instructions_target_dir);
+    let name = args
+        .name
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "kast".to_string());
+    let target = target_root.join(name);
+    let skipped = install_dir(&KAST_INSTRUCTIONS, &target, ".kast-version", args.force)?;
+    Ok(InstallInstructionsResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
@@ -2665,6 +2753,21 @@ fn default_skill_target_dir() -> PathBuf {
     config::home_dir().join(".kast/lib/skills")
 }
 
+fn default_instructions_target_dir() -> PathBuf {
+    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    for candidate in [
+        ".agents/instructions",
+        ".github/instructions",
+        ".claude/instructions",
+    ] {
+        let path = cwd.join(candidate);
+        if path.is_dir() {
+            return config::normalize(path);
+        }
+    }
+    config::home_dir().join(".kast/lib/instructions")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2681,6 +2784,24 @@ mod tests {
         assert!(!first.skipped);
         assert!(temp.path().join("kast/SKILL.md").is_file());
         let second = install_skill(args).unwrap();
+        assert!(second.skipped);
+    }
+
+    #[test]
+    fn install_instructions_writes_marker_and_skips_matching_version() {
+        let temp = tempfile::tempdir().unwrap();
+        let args = ResourceInstallArgs {
+            target_dir: Some(temp.path().to_path_buf()),
+            name: Some("kast".to_string()),
+            force: false,
+        };
+        let first = install_instructions(args.clone()).unwrap();
+        assert!(!first.skipped);
+        assert!(temp.path().join("kast/README.md").is_file());
+        assert!(temp.path().join("kast/cli.md").is_file());
+        assert!(temp.path().join("kast/rpc.md").is_file());
+        assert!(temp.path().join("kast/lsp.md").is_file());
+        let second = install_instructions(args).unwrap();
         assert!(second.skipped);
     }
 

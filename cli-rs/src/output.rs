@@ -4,7 +4,8 @@ use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
     ArchiveInstallResult, InstallAffectedResult, InstallCopilotExtensionResult,
-    InstallIdeaPluginResult, InstallResult, InstallShellResult, InstallSkillResult, SetupResult,
+    InstallIdeaPluginResult, InstallInstructionsResult, InstallResult, InstallShellResult,
+    InstallSkillResult, SetupResult,
 };
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -177,6 +178,7 @@ fn render_markdown_for_test(markdown: &str, style: RenderStyle) -> String {
 pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
         InstallResult::Skill(result) => print_skill_install(result),
+        InstallResult::Instructions(result) => print_instructions_install(result),
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
@@ -499,6 +501,27 @@ fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
     mdln!(
         document,
         "- Read the installed quickstart: `{}/references/quickstart.md`",
+        result.installed_at
+    );
+    print_markdown(&document.into_string())
+}
+
+fn print_instructions_install(result: &InstallInstructionsResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast instructions install");
+    mdln!(document);
+    mdln!(document, "- Installed at: `{}`", result.installed_at);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(
+        document,
+        "- Reused existing install: {}",
+        yes_no(result.skipped)
+    );
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    mdln!(
+        document,
+        "- Read the installed guide: `{}/README.md`",
         result.installed_at
     );
     print_markdown(&document.into_string())

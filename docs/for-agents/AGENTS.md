@@ -9,6 +9,8 @@ integration files exist.
 - Keep the global binary vs repository-local Copilot integration split
   explicit.
 - Treat `kast install copilot` as the primary Copilot path.
+- Treat `kast install instructions` as the lightweight fallback for hosts that
+  load Markdown instruction files but not full skills.
 - Treat `kast install skill` as a fallback for hosts that do not load the
   Copilot package.
 - Link detailed command and API material instead of copying it into these
@@ -19,6 +21,8 @@ integration files exist.
 - Copilot package truth lives in `cli-rs/resources/plugin/`.
 - The RPC/tool catalog lives in
   `cli-rs/resources/kast-skill/references/commands.json`.
+- Installable CLI/RPC/LSP instruction source lives in
+  `cli-rs/resources/kast-instructions/`.
 - Generated installed outputs under `.github` are evidence of package shape,
   not the source to edit first.
 - The current product operating model lives in
