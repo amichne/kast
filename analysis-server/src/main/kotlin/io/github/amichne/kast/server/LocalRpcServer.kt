@@ -59,8 +59,11 @@ internal class UnixDomainSocketRpcServer(
             return
         }
         runCatching { serverChannel.close() }
+        val currentThread = Thread.currentThread()
         handlers.toList().forEach { handler ->
-            handler.join(1_000)
+            if (handler != currentThread) {
+                handler.join(1_000)
+            }
         }
         socketPath.deleteIfExists()
     }
@@ -138,10 +141,11 @@ internal fun processRpcStream(
     reader: BufferedReader,
     writer: BufferedWriter,
 ) {
-    reader.useLines { lines ->
-        lines.forEach { line ->
+    reader.use {
+        while (true) {
+            val line = it.readLine() ?: break
             if (line.isBlank()) {
-                return@forEach
+                continue
             }
             val response = runBlocking {
                 dispatcher.dispatchRaw(line)
@@ -149,6 +153,9 @@ internal fun processRpcStream(
             writer.write(response)
             writer.newLine()
             writer.flush()
+            if (dispatcher.runAfterResponseActions()) {
+                return
+            }
         }
     }
 }

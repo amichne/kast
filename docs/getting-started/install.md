@@ -13,8 +13,8 @@ files belong to each repository.
 
 | Scope | Command | Writes to | Repeat when |
 |-------|---------|-----------|-------------|
-| Machine CLI | `brew install kast` | Homebrew-managed global binary on `PATH` | A macOS developer machine needs Kast |
-| Machine IDE plugin | `brew install --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | A macOS developer machine uses Kast |
+| Machine CLI + IDE plugin | `brew install kast` | Homebrew-managed global binary on `PATH` and version-coupled `kast-plugin` cask | A macOS developer machine needs Kast |
+| Machine IDE plugin repair | `brew reinstall --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | Local IDE profile links need repair |
 | Repository | `kast install copilot` | The current repository's `.github` directory | A repository should expose Kast to Copilot |
 
 Linux CI, hosted agents, and server images use the separate
@@ -30,21 +30,23 @@ repository.
 ```console title="Global binary, then repository Copilot files"
 brew tap amichne/kast
 brew install kast
-brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
-Restart IDEA or Android Studio after Homebrew links or refreshes the plugin,
-then restart after installing repository files so Copilot and IDE-hosted
-tooling discover `.github/lsp.json`, repository instructions, and custom
-agents at startup.
+`brew install kast` installs or refreshes the matching `kast-plugin` cask as
+part of the Homebrew formula install, using the same cask path as
+`brew install --cask kast-plugin`. Restart IDEA or Android Studio after
+Homebrew links or refreshes the plugin, then restart after installing
+repository files so Copilot and IDE-hosted tooling discover `.github/lsp.json`,
+repository instructions, and custom agents at startup.
 
 ??? success "Homebrew machine install"
-    `brew install kast` and `brew install --cask kast-plugin` are
-    machine-level. They install one `kast` executable that can serve many
-    repositories and link the Kast plugin into local JetBrains IDE profiles.
+    `brew install kast` is machine-level. It installs one `kast` executable
+    that can serve many repositories, then installs or reinstalls the
+    version-coupled `kast-plugin` cask so local JetBrains IDE profiles link to
+    the matching plugin.
     Confirm the binary and managed plugin state before debugging repository
     files:
 
@@ -84,7 +86,7 @@ agents at startup.
     when a Homebrew cask refresh needs to be applied through Kast:
 
     ```console title="Install or repair local IDE profiles"
-    brew install --cask kast-plugin
+    brew reinstall --cask kast-plugin
     kast install plugin
     ```
 

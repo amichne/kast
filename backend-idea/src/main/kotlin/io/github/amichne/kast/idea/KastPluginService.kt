@@ -10,6 +10,7 @@ import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.server.AnalysisServerConfig
+import io.github.amichne.kast.server.RuntimeLifecycleController
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -73,6 +74,7 @@ internal class KastPluginService(
                 workspaceRoot = workspaceRoot,
                 socketPath = socketPath,
                 config = config,
+                lifecycleController = lifecycleController(),
             )
         }.onSuccess { backend ->
             runningBackend = backend
@@ -142,6 +144,13 @@ internal class KastPluginService(
             KastDiagnosticsService.getInstance(project).recordBackendStopped()
         }
         runningConfig = null
+    }
+
+    private fun lifecycleController(): RuntimeLifecycleController = RuntimeLifecycleController { action ->
+        when (action) {
+            io.github.amichne.kast.api.contract.RuntimeLifecycleAction.SHUTDOWN -> ::stopServer
+            io.github.amichne.kast.api.contract.RuntimeLifecycleAction.RESTART -> ::restartServer
+        }
     }
 
     private fun loadConfig(workspaceRoot: Path): KastConfig = loadIdeaKastConfig(

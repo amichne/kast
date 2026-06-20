@@ -79,7 +79,8 @@ major, minor, patch = (int(part) for part in kast_version.split("."))
 require(next_release == f"v{major}.{minor}.{patch + 1}", "release-state helper must compute the next patch release")
 
 require("brew install amichne/kast/kast" in docs, "README must document direct CLI installation")
-require("brew install --cask amichne/kast/kast-plugin" in docs, "README must document direct cask installation")
+require("installs the matching `kast-plugin` cask" in docs, "README must document automatic cask coupling")
+require("brew reinstall --cask amichne/kast/kast-plugin" in docs, "README must document direct cask repair")
 require("brew tap amichne/kast" in docs, "README must document manual tap installation")
 require(
     f"/v{kast_version}/kast-v{kast_version}-macos-arm64.zip" in docs,
@@ -98,6 +99,10 @@ require("on_linux" not in kast, "kast formula must not define a Linux Homebrew d
 require('bin.install "kast"' in kast, "kast formula must install the single Rust binary directly")
 require('shell_output("#{bin}/kast version")' in kast, "kast formula test must use stable version output")
 require("strategy :github_releases" in kast, "kast formula livecheck must ignore unpublished draft tags")
+require("def post_install" in kast, "kast formula must couple the IDEA plugin cask during install")
+require('PLUGIN_CASK = "amichne/kast/kast-plugin"' in kast, "kast formula must name the version-coupled plugin cask")
+require('"brew", cask_action, "--cask", PLUGIN_CASK' in kast, "kast formula must install or reinstall the plugin cask")
+require('"list", "--cask", "kast-plugin"' in kast, "kast formula must detect existing plugin cask installs before choosing install or reinstall")
 
 require('cask "kast-plugin"' in plugin, "kast-plugin cask token is missing")
 require("HOMEBREW_KAST_ARTIFACT_ROOT" in plugin, "kast-plugin cask must support a shared artifact mirror root")

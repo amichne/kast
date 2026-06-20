@@ -14,7 +14,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        3 operations for health checks, runtime status, and capability discovery. No capability gating required.
+        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? info "health — Basic health check"
 
@@ -52,6 +52,40 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
             | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when the symbol reference index is fully populated. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "runtime/shutdown — Request runtime host shutdown after the response is flushed"
+
+        === "Input"
+
+            _No parameters._
+        === "Output: RuntimeLifecycleResponse"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
+            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
+            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "runtime/restart — Request runtime host restart after the response is flushed"
+
+        === "Input"
+
+            _No parameters._
+        === "Output: RuntimeLifecycleResponse"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
+            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
+            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "capabilities — Advertised read and mutation capabilities"

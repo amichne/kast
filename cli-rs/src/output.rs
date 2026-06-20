@@ -9,7 +9,7 @@ use crate::install::{
 };
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
-    WorkspaceStatusResult,
+    WorkspaceRestartResult, WorkspaceStatusResult,
 };
 use crate::self_mgmt::SelfDoctorResult;
 use glamour::{Renderer, Style};
@@ -253,10 +253,24 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
 
 pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
+    let lifecycle_count = result
+        .candidates
+        .iter()
+        .filter(|candidate| candidate.lifecycle_accepted)
+        .count();
     mdln!(document, "# Kast stop");
     mdln!(document);
     mdln!(document, "- Workspace: `{}`", result.workspace_root);
-    mdln!(document, "- Stopped daemon: {}", yes_no(result.stopped));
+    mdln!(document, "- Backend: `{}`", result.backend_name);
+    mdln!(document, "- Stopped runtime: {}", yes_no(result.stopped));
+    if lifecycle_count > 0 {
+        mdln!(document, "- Host lifecycle requests: {lifecycle_count}");
+    }
+    mdln!(
+        document,
+        "- Runtime records handled: {}",
+        result.stopped_count
+    );
     mdln!(document, "- Forced termination: {}", yes_no(result.forced));
     if let Some(pid) = result.pid {
         mdln!(document, "- PID: {pid}");
@@ -264,10 +278,48 @@ pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     if let Some(descriptor_path) = &result.descriptor_path {
         mdln!(document, "- Descriptor: `{descriptor_path}`");
     }
+    print_warnings(&mut document, &result.warnings);
     if !result.stopped {
         mdln!(document);
         mdln!(document, "No matching daemon was running.");
     }
+    print_markdown(&document.into_string())
+}
+
+pub fn print_restart_result(result: &WorkspaceRestartResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    let lifecycle_count = result
+        .stop
+        .candidates
+        .iter()
+        .filter(|candidate| candidate.lifecycle_accepted)
+        .count();
+    mdln!(document, "# Kast restart");
+    mdln!(document);
+    mdln!(document, "- Workspace: `{}`", result.workspace_root);
+    mdln!(document, "- Backend: `{}`", result.backend_name);
+    mdln!(
+        document,
+        "- Runtime records handled: {}",
+        result.stop.stopped_count
+    );
+    if lifecycle_count > 0 {
+        mdln!(document, "- Host lifecycle requests: {lifecycle_count}");
+    }
+    mdln!(
+        document,
+        "- Started new daemon: {}",
+        yes_no(result.ensure.started)
+    );
+    if let Some(log_file) = &result.ensure.log_file {
+        mdln!(document, "- Log file: `{log_file}`");
+    }
+    if let Some(note) = &result.ensure.note {
+        mdln!(document, "- Note: {note}");
+    }
+    print_warnings(&mut document, &result.stop.warnings);
+    mdln!(document);
+    print_candidate(&mut document, "Selected runtime", &result.ensure.selected);
     print_markdown(&document.into_string())
 }
 

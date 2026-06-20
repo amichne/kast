@@ -39,7 +39,6 @@ The documentation will lead with an agent-first install model:
 ```console
 brew tap amichne/kast
 brew install kast
-brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
@@ -47,12 +46,14 @@ kast install copilot
 
 This is the primary macOS developer-machine path. The reader should understand
 the macOS machine layer, the repository layer, and the separate Linux
-headless-server lane before seeing detailed runtime material:
+headless-server lane before seeing detailed runtime material. The Homebrew
+formula installs or refreshes the matching `kast-plugin` cask, equivalent to
+the direct repair path `brew install --cask kast-plugin`.
 
 | Scope | Owner | Current command | Documentation role |
 |-------|-------|-----------------|--------------------|
-| Machine CLI | Global `kast` binary | `brew install kast` | First step for developer machines |
-| Machine IDE plugin | Homebrew-managed JetBrains plugin links | `brew install --cask kast-plugin` | Required macOS developer-machine component |
+| Machine CLI + IDE plugin | Global `kast` binary plus Homebrew-managed JetBrains plugin links | `brew install kast` | First step for developer machines |
+| Machine IDE plugin repair | Homebrew-managed JetBrains plugin links | `brew install --cask kast-plugin` | Direct cask repair path |
 | Repository | Copilot/LSP package files under `.github` | `kast install copilot` | First step per repository |
 | Headless server | Linux bundle with binary, config, and runtime | `scripts/install-ubuntu-debian.sh install` | Second lane for hosted agents |
 

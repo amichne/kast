@@ -1,0 +1,13 @@
+{
+    "result": {
+        "accepted": true,
+        "action": "SHUTDOWN",
+        "backendName": "fake",
+        "backendVersion": "0.1.0-test",
+        "workspaceRoot": "/workspace",
+        "message": "Runtime shutdown accepted; action will run after this response is flushed.",
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

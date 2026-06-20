@@ -13,7 +13,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        3 operations for health checks, runtime status, and capability discovery. No capability gating required.
+        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? example "health — Basic health check"
 
@@ -121,6 +121,120 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "jsonrpc": "2.0"
             }
             ```
+
+    ??? example "runtime/shutdown — Request runtime host shutdown after the response is flushed"
+
+        Requests that the runtime host shut down the current backend after returning a JSON-RPC response. IDEA hosts stop the plugin backend server and indexer without killing the IDE process; headless daemon process lifecycle is handled by the top-level `kast stop` command.
+
+        === "Input"
+
+            _No parameters._
+        === "Output: RuntimeLifecycleResponse"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
+            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
+            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "CLI"
+
+            ```bash
+            kast rpc '{"jsonrpc":"2.0","method":"runtime/shutdown","params":{},"id":1}' --workspace-root=/path/to/project
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "runtime/shutdown",
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "accepted": true,
+                    "action": "SHUTDOWN",
+                    "backendName": "fake",
+                    "backendVersion": "0.1.0-test",
+                    "workspaceRoot": "/workspace",
+                    "message": "Runtime shutdown accepted; action will run after this response is flushed.",
+                    "schemaVersion": 3
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        !!! note "Behavioral notes"
+
+            - The response is flushed before the lifecycle action runs, so callers can observe an accepted request.
+            - Hosts without lifecycle support return a capability-not-supported JSON-RPC error.
+            - Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and backend-specific cleanup.
+
+        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
+
+    ??? example "runtime/restart — Request runtime host restart after the response is flushed"
+
+        Requests that the runtime host rebuild the current backend after returning a JSON-RPC response. IDEA hosts restart the plugin backend server and indexer in the open IDE; headless daemon rebuilds are handled by the top-level `kast restart` command.
+
+        === "Input"
+
+            _No parameters._
+        === "Output: RuntimeLifecycleResponse"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin accepted: Boolean` | Lifecycle action accepted by the runtime host. |
+            | `#!kotlin action: RuntimeLifecycleAction` | Requested lifecycle action. |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend. |
+            | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
+            | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
+            | `#!kotlin message: String?` | Human-readable lifecycle status message. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "CLI"
+
+            ```bash
+            kast rpc '{"jsonrpc":"2.0","method":"runtime/restart","params":{},"id":1}' --workspace-root=/path/to/project
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "runtime/restart",
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "accepted": true,
+                    "action": "RESTART",
+                    "backendName": "fake",
+                    "backendVersion": "0.1.0-test",
+                    "workspaceRoot": "/workspace",
+                    "message": "Runtime restart accepted; action will run after this response is flushed.",
+                    "schemaVersion": 3
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        !!! note "Behavioral notes"
+
+            - The response is flushed before the lifecycle action runs, so callers can observe an accepted request.
+            - Hosts without lifecycle support return a capability-not-supported JSON-RPC error.
+            - Prefer the top-level `kast restart` command for operator workflows; it combines the host lifecycle request with readiness waiting.
+
+        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
     ??? example "capabilities — Advertised read and mutation capabilities"
 

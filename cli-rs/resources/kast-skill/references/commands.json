@@ -5,6 +5,8 @@
     "system": [
       "health",
       "runtime/status",
+      "runtime/shutdown",
+      "runtime/restart",
       "capabilities"
     ],
     "symbol": [
@@ -60,6 +62,26 @@
         "fields": {}
       },
       "responseType": "RuntimeStatusResponse"
+    },
+    "runtime/shutdown": {
+      "method": "runtime/shutdown",
+      "category": "system",
+      "summary": "Ask the runtime host to shut down after this response is flushed",
+      "dataSource": "backend",
+      "request": {
+        "fields": {}
+      },
+      "responseType": "RuntimeLifecycleResponse"
+    },
+    "runtime/restart": {
+      "method": "runtime/restart",
+      "category": "system",
+      "summary": "Ask the runtime host to restart after this response is flushed",
+      "dataSource": "backend",
+      "request": {
+        "fields": {}
+      },
+      "responseType": "RuntimeLifecycleResponse"
     },
     "capabilities": {
       "method": "capabilities",

@@ -49,8 +49,11 @@ internal class TcpRpcServer(
             return
         }
         runCatching { serverChannel.close() }
+        val currentThread = Thread.currentThread()
         handlers.toList().forEach { handler ->
-            handler.join(1_000)
+            if (handler != currentThread) {
+                handler.join(1_000)
+            }
         }
     }
 

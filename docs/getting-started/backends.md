@@ -208,6 +208,14 @@ reports that IDEA is not running.
 `kast status` reports backend state, selected runtime details, and actionable
 next steps when no daemon is available.
 
+Use `kast restart --backend=headless` when a headless daemon is stuck,
+degraded, or no longer reachable. Restart stops every matching workspace
+headless process and descriptor before starting a clean runtime. IDEA-hosted
+backends run inside the IDE process; `kast restart --backend=idea` asks the
+plugin backend to stop, rebuild its server and indexer, and then waits for the
+new descriptor. If no compatible IDE backend is running, Kast follows the
+configured `runtime.ideaLaunch` path when that launch profile is enabled.
+
 ## Running multiple runtimes
 
 Some environments have both runtimes available, especially when testing release

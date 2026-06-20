@@ -190,8 +190,8 @@ fn generated_request_schemas_validate_every_catalog_sample() {
     sample_paths.sort();
     assert_eq!(
         sample_paths.len(),
-        64,
-        "29 commands currently expand to 64 minimal/maximal sample payloads"
+        68,
+        "31 commands currently expand to 68 minimal/maximal sample payloads"
     );
 
     for path in sample_paths {
