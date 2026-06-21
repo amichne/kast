@@ -189,6 +189,7 @@ require_not_contains "$agents_doc" "amichne/kast-action@v1" "Agent docs must not
 require_not_contains "$agents_doc" 'scripts/headless-agent-install.sh' "Agent docs must not document the retired headless agent installer"
 require_not_contains "$agents_doc" 'KAST_AGENT_INSTALL_ROOT' "Agent docs must not mention retired headless agent variables"
 require_contains "$agent_install_doc" '## Install into this repository' "Agent install docs must make repository Copilot install primary"
+require_contains "$agent_install_doc" 'kast install instructions' "Agent install docs must document installable instruction sets"
 require_contains "$agent_install_doc" '--plugin-dir cli-rs/resources/plugin' "Agent install docs must document the Copilot CLI source-plugin validation path"
 require_contains "$use_cases_doc" 'Global binary' "Use case docs must reinforce the global binary scope"
 require_contains "$use_cases_doc" 'Repository Copilot files' "Use case docs must reinforce the repository integration scope"

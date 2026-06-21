@@ -49,6 +49,41 @@ kast install copilot --target-dir=/absolute/path/to/repo/.github --force
     That means the machine running Copilot must have the global `kast` binary
     on `PATH`. Use the install guide if the binary is missing.
 
+## Use installable instructions
+
+Use `kast install instructions` for agent hosts that can load Markdown
+instruction files but do not load the Copilot package or a full skill. The
+installed files cover direct CLI usage, JSON-RPC request workflows, and LSP
+startup.
+
+```console title="Install portable agent instructions"
+kast install instructions
+```
+
+The command picks the default target from whichever of these directories
+already exists in your repo:
+
+- `.agents/instructions/kast`
+- `.github/instructions/kast`
+- `.claude/instructions/kast`
+
+If none of those directories exist, it installs globally at
+`~/.kast/lib/instructions/kast`. Look for `.kast-version` in the target
+directory to confirm the install.
+
+```console title="Force reinstall to a custom instruction path"
+kast install instructions --target-dir=/absolute/path/to/instructions --force
+```
+
+??? info "What's in the instruction directory"
+    The installed tree is lightweight Markdown:
+
+    - `README.md` explains when to use each file.
+    - `cli.md` covers non-interactive CLI usage.
+    - `rpc.md` covers `kast rpc`, `kast validate`, and catalog-backed request
+      workflows.
+    - `lsp.md` covers `kast lsp --stdio` and custom `kast/*` method discovery.
+
 ## Use the packaged skill fallback
 
 Use `kast install skill` for hosts that do not load the Copilot package but do
