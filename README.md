@@ -46,8 +46,8 @@ kast up --backend=headless
 ```
 
 The [install guide](https://kast.michne.com/getting-started/install/) covers
-the Homebrew CLI and IDEA plugin, repository Copilot files, and repair
-commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+the Homebrew CLI and IDEA plugin, repository Copilot files, manifest-backed
+paths, and repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
 covers server and hosted-agent installs.
 
 ## Why Kast instead of text search?

@@ -1,55 +1,18 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
+use crate::cli::AffectedInstallArgs;
 use crate::config::{self, PathResolutionReport};
 use crate::error::Result;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use crate::install::{self, InstallAffectedResult};
+use crate::manifest;
+use serde::Serialize;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallState {
-    #[serde(default)]
-    pub version: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub backend_version: String,
-    #[serde(default)]
-    pub installed_at: String,
-    #[serde(default)]
-    pub platform: String,
-    #[serde(default)]
-    pub components: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub backends: Vec<BackendComponentState>,
-    #[serde(default)]
-    pub managed_paths: Vec<String>,
-    #[serde(default)]
-    pub shell_rc_patches: Vec<Value>,
-    #[serde(default)]
-    pub repos: Vec<ManagedRepo>,
-    #[serde(default = "schema_version")]
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct BackendComponentState {
-    pub name: String,
-    pub version: String,
-    pub install_dir: String,
-    pub runtime_libs_dir: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub idea_home: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedRepo {
-    pub path: String,
-    pub copilot_extension_version: String,
-}
+pub use crate::manifest::{
+    BackendComponentState, KastInstallManifest as InstallState, ManagedRepo,
+};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,6 +54,7 @@ pub struct DoctorBinaryDiagnostic {
 pub struct SelfDoctorResult {
     pub installed: bool,
     pub config_path: String,
+    pub manifest_path: String,
     pub configuration: DoctorConfigurationDiagnostic,
     pub canonical_directory: DoctorCanonicalDirectoryDiagnostic,
     pub binary: DoctorBinaryDiagnostic,
@@ -98,16 +62,28 @@ pub struct SelfDoctorResult {
     pub minimum_backend_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallState>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repair: Option<InstallAffectedResult>,
     pub ok: bool,
     pub issues: Vec<String>,
     pub warnings: Vec<String>,
     pub schema_version: u32,
 }
 
-pub fn doctor() -> Result<SelfDoctorResult> {
+pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
     let config_path = config::global_config_path();
+    let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
     let mut warnings = vec![];
+    let repair_result = if repair {
+        manifest::install_current_executable()?;
+        Some(install::repair_install_state(AffectedInstallArgs {
+            apply: true,
+            jetbrains_config_root: None,
+        })?)
+    } else {
+        None
+    };
     let global_config = match config::KastConfig::load_global() {
         Ok(global_config) => global_config,
         Err(error) => {
@@ -120,12 +96,12 @@ pub fn doctor() -> Result<SelfDoctorResult> {
         }
     };
     let configuration = configuration_diagnostic(&config_path, issues.first().cloned());
-    let install = match read_install_state(&config_path) {
+    let install = match read_global_install_state() {
         Ok(install) => install,
         Err(error) => {
             issues.push(format!(
-                "Install state could not be read from {}: {}",
-                config_path.display(),
+                "Install manifest could not be read from {}: {}",
+                manifest_path.display(),
                 error.message
             ));
             None
@@ -186,17 +162,22 @@ pub fn doctor() -> Result<SelfDoctorResult> {
             }
         }
     } else {
-        issues.push("Install state is missing from config.toml".to_string());
+        issues.push(format!(
+            "Install manifest is missing at {}",
+            manifest_path.display()
+        ));
     }
     Ok(SelfDoctorResult {
         installed: install.is_some(),
         config_path: config_path.display().to_string(),
+        manifest_path: manifest_path.display().to_string(),
         configuration,
         canonical_directory,
         binary,
         path_resolution,
         minimum_backend_version: minimum_backend_version.to_string(),
         install,
+        repair: repair_result,
         ok: issues.is_empty(),
         issues,
         warnings,
@@ -248,15 +229,7 @@ fn binary_diagnostic(cli: &config::CliConfig) -> DoctorBinaryDiagnostic {
 }
 
 pub fn write_install_state(install: &InstallState) -> Result<PathBuf> {
-    let path = config::global_config_path();
-    let mut document = default_config_document()?;
-    merge_config_document(&mut document, read_config_document(&path)?);
-    document.insert(
-        "install".to_string(),
-        toml::Value::Table(install_state_table(install)?),
-    );
-    write_config_document(&path, &document)?;
-    Ok(path)
+    manifest::write_install_manifest(install)
 }
 
 pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
@@ -266,19 +239,7 @@ pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
         .to_path_buf()
         .components()
         .collect::<PathBuf>();
-    let path = config::global_config_path();
-    let mut install = read_install_state(&path)?.unwrap_or_else(|| InstallState {
-        version: version.to_string(),
-        backend_version: String::new(),
-        installed_at: String::new(),
-        platform: String::new(),
-        components: vec![],
-        backends: vec![],
-        managed_paths: vec![],
-        shell_rc_patches: vec![],
-        repos: vec![],
-        schema_version: SCHEMA_VERSION,
-    });
+    let mut install = read_global_install_state()?.unwrap_or_else(manifest::fresh_manifest);
     let repo_path = repo_root.display().to_string();
     install.repos.retain(|repo| repo.path != repo_path);
     install.repos.push(ManagedRepo {
@@ -289,23 +250,13 @@ pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
     if install.version.is_empty() {
         install.version = cli::version().to_string();
     }
+    install.active_version = cli::version().to_string();
     write_install_state(&install)?;
     Ok(())
 }
 
-fn read_install_state(path: &Path) -> Result<Option<InstallState>> {
-    if !path.is_file() {
-        return Ok(None);
-    }
-    let document = read_config_document(path)?;
-    let Some(value) = document.get("install") else {
-        return Ok(None);
-    };
-    Ok(Some(value.clone().try_into()?))
-}
-
 pub fn read_global_install_state() -> Result<Option<InstallState>> {
-    read_install_state(&config::global_config_path())
+    manifest::read_install_manifest()
 }
 
 pub fn update_global_config(
@@ -320,20 +271,11 @@ pub fn update_global_config(
 }
 
 pub fn remove_global_install_state() -> Result<bool> {
-    remove_install_state(&config::global_config_path())
-}
-
-fn remove_install_state(path: &Path) -> Result<bool> {
-    let mut document = read_config_document(path)?;
-    let removed = document.remove("install").is_some();
-    if !removed {
+    let path = manifest::default_install_manifest_path();
+    if !path.exists() {
         return Ok(false);
     }
-    if document.is_empty() {
-        fs::remove_file(path)?;
-    } else {
-        write_config_document(path, &document)?;
-    }
+    fs::remove_file(path)?;
     Ok(true)
 }
 
@@ -354,10 +296,6 @@ fn write_config_document(path: &Path, document: &toml::Table) -> Result<()> {
 
 fn default_config_document() -> Result<toml::Table> {
     Ok(config::default_config_template()?.parse::<toml::Table>()?)
-}
-
-fn install_state_table(install: &InstallState) -> Result<toml::Table> {
-    Ok(toml::to_string_pretty(install)?.parse::<toml::Table>()?)
 }
 
 fn merge_config_document(base: &mut toml::Table, overlay: toml::Table) {
@@ -397,8 +335,4 @@ fn parse_version_triplet(value: &str) -> Option<(u64, u64, u64)> {
     let minor = parts.next()?.parse().ok()?;
     let patch = parts.next()?.parse().ok()?;
     Some((major, minor, patch))
-}
-
-fn schema_version() -> u32 {
-    SCHEMA_VERSION
 }

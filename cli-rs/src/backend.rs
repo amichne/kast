@@ -2,6 +2,7 @@ use crate::SCHEMA_VERSION;
 use crate::cli::{self, BackendCommand, BackendComponent, BackendInstallArgs};
 use crate::config::{self, KastConfig};
 use crate::error::{CliError, Result};
+use crate::manifest;
 use crate::self_mgmt::{self, BackendComponentState, InstallState};
 use serde::Deserialize;
 use serde::Serialize;
@@ -107,7 +108,6 @@ fn install(args: BackendInstallArgs) -> Result<BackendInstallResult> {
     let runtime_libs_dir = current_dir.join("runtime-libs");
     let idea_home =
         (args.backend == BackendComponent::Headless).then(|| current_dir.join("idea-home"));
-    update_backend_config(args.backend, &runtime_libs_dir, idea_home.as_deref())?;
     update_install_state(
         args.backend,
         &version,
@@ -383,41 +383,6 @@ fn require_file(path: PathBuf, label: &str) -> Result<()> {
     ))
 }
 
-fn update_backend_config(
-    backend: BackendComponent,
-    runtime_libs_dir: &Path,
-    idea_home: Option<&Path>,
-) -> Result<()> {
-    self_mgmt::update_global_config(|document| {
-        let backends = table_entry(document, "backends")?;
-        let backend_table = table_entry(backends, backend.canonical())?;
-        backend_table.insert(
-            "runtimeLibsDir".to_string(),
-            toml::Value::String(runtime_libs_dir.display().to_string()),
-        );
-        if let Some(idea_home) = idea_home {
-            backend_table.insert(
-                "ideaHome".to_string(),
-                toml::Value::String(idea_home.display().to_string()),
-            );
-        }
-        Ok(())
-    })?;
-    Ok(())
-}
-
-fn table_entry<'a>(table: &'a mut toml::Table, key: &str) -> Result<&'a mut toml::Table> {
-    let value = table
-        .entry(key.to_string())
-        .or_insert_with(|| toml::Value::Table(toml::Table::new()));
-    value.as_table_mut().ok_or_else(|| {
-        CliError::new(
-            "CONFIG_ERROR",
-            format!("config key {key} must be a table to install a backend"),
-        )
-    })
-}
-
 fn update_install_state(
     backend: BackendComponent,
     version: &str,
@@ -457,18 +422,7 @@ fn update_install_state(
 }
 
 fn default_install_state() -> InstallState {
-    InstallState {
-        version: cli::version().to_string(),
-        backend_version: String::new(),
-        installed_at: current_timestamp(),
-        platform: format!("{}-{}", env::consts::OS, env::consts::ARCH),
-        components: vec![],
-        backends: vec![],
-        managed_paths: vec![],
-        shell_rc_patches: vec![],
-        repos: vec![],
-        schema_version: SCHEMA_VERSION,
-    }
+    manifest::fresh_manifest()
 }
 
 fn backend_asset_name(backend: BackendComponent, version: &str) -> String {

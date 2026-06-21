@@ -45,6 +45,16 @@ toml_escape() {
   printf '%s\n' "$value"
 }
 
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s\n' "$value"
+}
+
 normalize_version() {
   local value="$1"
   printf '%s\n' "${value#v}"
@@ -150,7 +160,7 @@ Environment:
   KAST_UBUNTU_DEBIAN_VERSION        Version tag for download installs
   KAST_UBUNTU_DEBIAN_ARTIFACT_PATH  Local bundle tarball path
   KAST_UBUNTU_DEBIAN_BASE_URL       Release base URL for download installs
-  KAST_UBUNTU_DEBIAN_ROOT           Install root, default ~/.local/share/kast/ubuntu-debian
+  KAST_UBUNTU_DEBIAN_ROOT           Install root, default ~/.local/share/kast
   KAST_UBUNTU_DEBIAN_BIN_DIR        Symlink directory, default ~/.local/bin
   KAST_UBUNTU_DEBIAN_CONFIG_HOME    Config directory, default ~/.config/kast
   KAST_JAVA_CMD                     Java executable, default java
@@ -184,12 +194,19 @@ write_headless_kast_shim() {
   local output_path="$1"
   local cli_path="$2"
   local quoted_cli_path
+  local quoted_install_root
+  local quoted_config_home
 
   printf -v quoted_cli_path '%q' "$cli_path"
+  printf -v quoted_install_root '%q' "$root_dir"
+  printf -v quoted_config_home '%q' "$config_home"
   mkdir -p "$(dirname -- "$output_path")"
   cat > "$output_path" <<SHIM
 #!/usr/bin/env bash
 set -euo pipefail
+
+export KAST_INSTALL_ROOT=${quoted_install_root}
+export KAST_CONFIG_HOME=${quoted_config_home}
 
 case " \${JAVA_OPTS:-} " in
   *" -Didea.force.use.core.classloader=true "*) ;;
@@ -213,20 +230,32 @@ install_kast_entrypoint() {
   write_headless_kast_shim "$bin_path" "$shim_cli_path"
 }
 
+link_active_headless_backend() {
+  local stable_backend_dir="${install_home}/lib/backends/headless"
+  mkdir -p "$stable_backend_dir"
+  rm -rf "${stable_backend_dir}/current"
+  ln -s "../headless-${version}" "${stable_backend_dir}/current"
+}
+
+activate_current_version() {
+  previous_version=""
+  if [[ -L "$current_link" ]]; then
+    previous_version="$(basename -- "$(readlink "$current_link")")"
+  elif [[ -d "$current_link" ]]; then
+    previous_version="$(basename -- "$(cd -- "$current_link" && pwd -P)")"
+  fi
+
+  rm -rf "$current_link"
+  ln -s "$install_home" "$current_link"
+
+  if [[ -n "$previous_version" && "$previous_version" != "$version" && -d "${versions_dir}/${previous_version}" ]]; then
+    rm -rf "$previous_link"
+    ln -s "${versions_dir}/${previous_version}" "$previous_link"
+  fi
+}
+
 write_config() {
   local config_file="$1"
-  local install_home="$2"
-  local bin_path="$3"
-  local version="$4"
-  local normalized_version="$5"
-
-  local backend_config="[runtime]
-defaultBackend = \"headless\"
-
-[backends.headless]
-runtimeLibsDir = \"$(toml_escape "$headless_runtime_libs_dir")\"
-ideaHome = \"$(toml_escape "$headless_idea_home")\""
-  local components='["cli", "headless-backend", "config"]'
 
   mkdir -p "$(dirname -- "$config_file")"
   cat > "$config_file" <<TOML
@@ -235,26 +264,85 @@ maxResults = 500
 requestTimeoutMillis = 30000
 maxConcurrentRequests = 4
 
-[paths]
-installRoot = "$(toml_escape "$install_home")"
-binDir = "$(toml_escape "$(dirname -- "$bin_path")")"
+[runtime]
+defaultBackend = "headless"
 
-${backend_config}
-
-[cli]
-binaryPath = "$(toml_escape "$bin_path")"
-
-[install]
-version = "$(toml_escape "$normalized_version")"
-backendVersion = "$(toml_escape "$normalized_version")"
-installedAt = "$(toml_escape "$platform"):${version}"
-platform = "$(toml_escape "$platform")"
-components = ${components}
-managedPaths = ["bin", "lib", "cache", "logs"]
-shellRcPatches = []
-repos = []
-schemaVersion = 6
+[backends.headless]
+enabled = true
 TOML
+}
+
+write_install_manifest() {
+  local manifest_file="$1"
+  local timestamp="$2"
+  local previous_version_json="null"
+  if [[ -n "${previous_version:-}" && "$previous_version" != "$version" ]]; then
+    previous_version_json="\"$(json_escape "$previous_version")\""
+  fi
+
+  mkdir -p "$(dirname -- "$manifest_file")"
+  cat > "${manifest_file}.tmp.$$" <<JSON
+{
+  "tool": "kast",
+  "installId": "$(json_escape "${install_id}")",
+  "profile": "ubuntu-debian-headless",
+  "activeVersion": "$(json_escape "$version")",
+  "previousVersion": ${previous_version_json},
+  "createdAt": "$(json_escape "$timestamp")",
+  "updatedAt": "$(json_escape "$timestamp")",
+  "roots": {
+    "install": "$(json_escape "$root_dir")",
+    "bin": "$(json_escape "$bin_dir")",
+    "config": "$(json_escape "$config_home")",
+    "data": "$(json_escape "$data_dir")",
+    "cache": "$(json_escape "$cache_dir")",
+    "runtime": "$(json_escape "$runtime_dir")",
+    "logs": "$(json_escape "$logs_dir")",
+    "locks": "$(json_escape "$locks_dir")"
+  },
+  "entrypoints": {
+    "shim": "$(json_escape "$bin_path")",
+    "activeBinary": "$(json_escape "${install_home}/bin/kast")"
+  },
+  "schemas": {
+    "manifest": 1,
+    "workspaceRegistry": 1,
+    "symbolIndex": 3
+  },
+  "version": "$(json_escape "$normalized_version")",
+  "backendVersion": "$(json_escape "$normalized_version")",
+  "installedAt": "$(json_escape "$platform"):${version}",
+  "platform": "$(json_escape "$platform")",
+  "components": ["cli", "headless-backend", "manifest"],
+  "backends": [
+    {
+      "name": "headless",
+      "version": "$(json_escape "$normalized_version")",
+      "installDir": "$(json_escape "$headless_root")",
+      "runtimeLibsDir": "$(json_escape "$headless_runtime_libs_dir")",
+      "ideaHome": "$(json_escape "$headless_idea_home")"
+    }
+  ],
+  "managedPaths": ["bin", "lib", "cache", "logs"],
+  "ownedPaths": [
+    "$(json_escape "$bin_path")",
+    "$(json_escape "$current_link")",
+    "$(json_escape "$previous_link")",
+    "$(json_escape "$versions_dir")",
+    "$(json_escape "$runtime_dir")",
+    "$(json_escape "$locks_dir")"
+  ],
+  "legacyPaths": [
+    "$(json_escape "${HOME}/.kast")",
+    "$(json_escape "${HOME}/.config/kast/daemons")",
+    "$(json_escape "${HOME}/.kast/cache/daemons")"
+  ],
+  "shellRcPatches": [],
+  "repos": [],
+  "schemaVersion": 3
+}
+JSON
+  mv "${manifest_file}.tmp.$$" "$manifest_file"
 }
 
 source_from_artifact() {
@@ -331,16 +419,26 @@ configure_paths() {
   [[ "$bundle_kind" == "headless" ]] || die "Unsupported Ubuntu/Debian bundle kind: $bundle_kind"
   platform="ubuntu-debian-headless-x86_64"
   artifact_name="kast-${platform}-${version}.tar.gz"
-  root_dir="${KAST_UBUNTU_DEBIAN_ROOT:-${HOME}/.local/share/kast/ubuntu-debian}"
-  install_home="${root_dir}/${version}"
+  root_dir="${KAST_UBUNTU_DEBIAN_ROOT:-${HOME}/.local/share/kast}"
+  versions_dir="${root_dir}/versions"
+  install_home="${versions_dir}/${version}"
+  current_link="${root_dir}/current"
+  previous_link="${root_dir}/previous"
   bin_dir="${KAST_UBUNTU_DEBIAN_BIN_DIR:-${HOME}/.local/bin}"
   bin_path="${bin_dir}/kast"
   config_home="${KAST_UBUNTU_DEBIAN_CONFIG_HOME:-${KAST_CONFIG_HOME:-${HOME}/.config/kast}}"
   config_file="${config_home}/config.toml"
+  manifest_file="${root_dir}/install.json"
+  data_dir="${root_dir}/state"
+  cache_dir="${KAST_CACHE_HOME:-${HOME}/.cache/kast}"
+  runtime_dir="${root_dir}/runtime"
+  logs_dir="${HOME}/.local/state/kast/logs"
+  locks_dir="${root_dir}/locks"
   base_url="${KAST_UBUNTU_DEBIAN_BASE_URL:-https://github.com/amichne/kast/releases/download/${version}}"
-  headless_root="${install_home}/lib/backends/headless-${version}"
+  headless_root="${install_home}/lib/backends/headless/current"
   headless_runtime_libs_dir="${headless_root}/runtime-libs"
   headless_idea_home="${headless_root}/idea-home"
+  install_id="${KAST_INSTALL_ID:-kast-${platform}-${normalized_version}}"
   java_cmd="${KAST_JAVA_CMD:-java}"
 }
 
@@ -373,6 +471,7 @@ validate_backend_source() {
 verify_install() {
   configure_paths
   export PATH="${bin_dir}:${PATH}"
+  export KAST_INSTALL_ROOT="$root_dir"
   export KAST_CONFIG_HOME="$config_home"
 
   need_tool "$java_cmd"
@@ -380,10 +479,14 @@ verify_install() {
 
   [[ -x "$bin_path" ]] || die "Expected executable kast at ${bin_path}"
   [[ -d "$install_home" ]] || die "Install root not found: ${install_home}"
+  [[ -L "$current_link" ]] || die "Current install link not found: ${current_link}"
+  [[ -f "$manifest_file" ]] || die "Kast install manifest not found: ${manifest_file}"
   [[ -f "$config_file" ]] || die "Kast config not found: ${config_file}"
   local installed_backend_kind
   installed_backend_kind="$(detect_installed_backend_kind "$install_home")"
   validate_backend_source "$install_home" "$installed_backend_kind"
+  [[ -f "${headless_runtime_libs_dir}/classpath.txt" ]] \
+    || die "Manifest-backed runtime libs missing: ${headless_runtime_libs_dir}"
 
   local version_output
   version_output="$("$bin_path" version)"
@@ -397,15 +500,13 @@ verify_install() {
   grep -Fq 'defaultBackend = "headless"' "$config_file" \
     || die "config.toml does not default to headless runtime"
   grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
-  grep -Fq "runtimeLibsDir = \"${headless_runtime_libs_dir}\"" "$config_file" \
-    || die "config.toml does not point at ${headless_runtime_libs_dir}"
-  grep -Fq "ideaHome = \"${headless_idea_home}\"" "$config_file" \
-    || die "config.toml does not point at ${headless_idea_home}"
-  grep -Fq "binaryPath = \"${bin_path}\"" "$config_file" \
-    || die "config.toml does not point at ${bin_path}"
-  if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$config_file"; then
-    die "config.toml should derive install-root-owned paths instead of writing expanded path defaults"
+  if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$config_file"; then
+    die "config.toml must not write install-owned paths"
   fi
+  grep -Fq "\"runtimeLibsDir\": \"${headless_runtime_libs_dir}\"" "$manifest_file" \
+    || die "install.json does not point at ${headless_runtime_libs_dir}"
+  grep -Fq "\"activeBinary\": \"${install_home}/bin/kast\"" "$manifest_file" \
+    || die "install.json does not point at active binary"
 
   "$bin_path" doctor >/dev/null
   printf '%s\n' "Kast Ubuntu/Debian bundle ${version} verified"
@@ -444,14 +545,20 @@ install_bundle() {
   source_backend_kind="$(detect_installed_backend_kind "$bundle_source_dir")"
   validate_backend_source "$bundle_source_dir" "$source_backend_kind"
 
-  mkdir -p "$root_dir" "$bin_dir"
+  mkdir -p "$versions_dir" "$bin_dir" "$data_dir" "$cache_dir" "$runtime_dir" "$logs_dir" "$locks_dir"
+  local staged_home="${versions_dir}/${version}.tmp.$$"
+  rm -rf "$staged_home"
+  copy_tree "$bundle_source_dir" "$staged_home"
   rm -rf "$install_home"
-  copy_tree "$bundle_source_dir" "$install_home"
+  mv "$staged_home" "$install_home"
   mkdir -p "$install_home/cache" "$install_home/logs"
   chmod +x "$install_home/bin/kast" "$install_home/scripts/install-ubuntu-debian.sh"
+  link_active_headless_backend
+  activate_current_version
   install_kast_entrypoint
 
-  write_config "$config_file" "$install_home" "$bin_path" "$version" "$normalized_version"
+  write_config "$config_file"
+  write_install_manifest "$manifest_file" "unix:$(date +%s)"
   verify_install
   log "Kast Ubuntu/Debian bundle ${version} installed at ${install_home}"
 }

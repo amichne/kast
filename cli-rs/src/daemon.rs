@@ -145,7 +145,7 @@ fn headless_idea_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<Pat
         .ok_or_else(|| {
             CliError::new(
                 "DAEMON_START_ERROR",
-                "Cannot locate IDEA home for headless backend. Set backends.headless.ideaHome in `kast config init` output, or pass --idea-home.",
+                "Cannot locate IDEA home for the manifest-backed headless backend. Run `kast doctor --repair`, or pass --idea-home for this launch.",
             )
         })
 }
@@ -274,7 +274,7 @@ fn read_classpath(runtime_libs_dir: &Path) -> Result<String> {
         return Err(CliError::new(
             "DAEMON_START_ERROR",
             format!(
-                "Backend runtime-libs classpath not found at {}. Reinstall the backend, update backends.headless.runtimeLibsDir, or pass --runtime-libs-dir.",
+                "Backend runtime-libs classpath not found at {}. Run `kast doctor --repair`, or pass --runtime-libs-dir for this launch.",
                 classpath_file.display()
             ),
         ));

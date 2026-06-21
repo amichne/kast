@@ -56,24 +56,12 @@ trace.emit("copilot.extension.bootstrap", {
   },
 });
 
-function readTomlKey(filePath, section, key) {
+function readJsonFile(filePath) {
   try {
-    let inSection = false;
-    for (const line of readFileSync(filePath, "utf8").split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed === `[${section}]`) {
-        inSection = true;
-        continue;
-      }
-      if (inSection && trimmed.startsWith("[")) break;
-      if (!inSection) continue;
-      const match = trimmed.match(/^(\w+)\s*=\s*"(.*)"$/);
-      if (match && match[1] === key) return match[2];
-    }
+    return JSON.parse(readFileSync(filePath, "utf8"));
   } catch {
     return null;
   }
-  return null;
 }
 
 function execCommand(command, args, options = {}) {
@@ -132,12 +120,14 @@ async function resolveKastBinary() {
 
   const candidates = [];
   const addCandidate = (path) => {
-    if (path && existsSync(path) && !candidates.includes(path)) candidates.push(path);
+    if (typeof path === "string" && path && existsSync(path) && !candidates.includes(path)) candidates.push(path);
   };
 
-  const configDir = process.env.KAST_CONFIG_HOME ?? join(homedir(), ".config", "kast");
-  addCandidate(readTomlKey(join(configDir, "config.toml"), "cli", "binaryPath"));
-  addCandidate(join(homedir(), ".kast", "bin", "kast"));
+  const installRoot = process.env.KAST_INSTALL_ROOT ?? join(homedir(), ".local", "share", "kast");
+  const installManifest = readJsonFile(join(installRoot, "install.json"));
+  addCandidate(installManifest?.entrypoints?.shim);
+  addCandidate(installManifest?.entrypoints?.activeBinary);
+  addCandidate(join(homedir(), ".local", "bin", "kast"));
   addCandidate(findOnPath("kast"));
 
   addCandidate(join(REPO_ROOT, "cli-rs", "target", "debug", "kast"));
@@ -161,7 +151,7 @@ async function resolveKastBinary() {
 
   resolveError = rejected.length
     ? `no resolved Rust kast CLI exposes kast rpc; rejected: ${rejected.join(", ")}`
-    : "no Rust kast CLI candidate found on PATH, in KAST_CONFIG_HOME, or under cli-rs/target";
+    : "no Rust kast CLI candidate found in install.json, ~/.local/bin, PATH, or under cli-rs/target";
   trace.emit("copilot.kast_binary.resolve_failed", {
     sdkRegistrationScope: "extension-session",
     outcome: "failed",

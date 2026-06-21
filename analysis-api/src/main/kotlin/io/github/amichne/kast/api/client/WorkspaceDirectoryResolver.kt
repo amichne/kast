@@ -62,7 +62,7 @@ class WorkspaceDirectoryResolver(
         return workspaceRoot.startsWith(tempRoot)
     }
 
-    private fun workspacesRoot(): Path = installRoot().resolve("workspaces").toAbsolutePath().normalize()
+    private fun workspacesRoot(): Path = installRoot().resolve("state/workspaces").toAbsolutePath().normalize()
 
     private fun gitWorkspaceDataDirectory(workspace: GitWorkspace, remote: GitRemote?): Path {
         val repoRoot = if (remote != null) {
@@ -133,7 +133,7 @@ class WorkspaceDirectoryResolver(
         .ifBlank { "workspace" }
 }
 
-fun kastInstallRoot(): Path = Path.of(System.getProperty("user.home")).resolve(".kast").toAbsolutePath().normalize()
+fun kastInstallRoot(): Path = defaultInstallRoot().toAbsolutePath().normalize()
 
 fun workspaceDataDirectory(workspaceRoot: Path): Path =
     WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceDataDirectory(workspaceRoot)

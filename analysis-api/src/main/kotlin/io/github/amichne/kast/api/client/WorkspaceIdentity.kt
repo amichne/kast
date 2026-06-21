@@ -1,5 +1,6 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.client.fields.defaultConfigSocketDir
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.validation.FileHashing
 import java.nio.file.Files
@@ -114,7 +115,7 @@ data class WorkspaceIdentity(
         }
 
         private fun socketPathForWorkspaceId(workspaceId: WorkspaceId): Path = Path.of(
-            System.getProperty("java.io.tmpdir"),
+            defaultConfigSocketDir(),
             "kast-${workspaceId.value}.sock",
         ).toAbsolutePath().normalize()
 

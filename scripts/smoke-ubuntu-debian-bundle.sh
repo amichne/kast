@@ -228,13 +228,34 @@ KAST_JAVA_CMD=sh \
 "${bundle_root}/scripts/install-ubuntu-debian.sh" install
 
 manifest_config_file="${manifest_config_home}/config.toml"
-manifest_installed_home="${manifest_install_root}/${version}"
+manifest_manifest_file="${manifest_install_root}/install.json"
+manifest_installed_home="${manifest_install_root}/versions/${version}"
 [[ -f "$manifest_config_file" ]] || die "Manifest-based install did not write config.toml"
-grep -Fq "runtimeLibsDir = \"${manifest_installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$manifest_config_file" \
-  || die "Manifest-based install did not infer bundle version from manifest.json"
-if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$manifest_config_file"; then
-  die "Manifest-based config.toml should derive install-root-owned paths"
+[[ -f "$manifest_manifest_file" ]] || die "Manifest-based install did not write install.json"
+[[ -L "${manifest_install_root}/current" ]] || die "Manifest-based install did not activate current"
+grep -Fq 'defaultBackend = "headless"' "$manifest_config_file" \
+  || die "Manifest-based config.toml does not set behavior backend"
+if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$manifest_config_file"; then
+  die "Manifest-based config.toml must not write install-owned paths"
 fi
+python3 - "$manifest_manifest_file" "$version" "$manifest_install_root" "$manifest_installed_home" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+version = sys.argv[2]
+install_root = sys.argv[3]
+install_home = sys.argv[4]
+assert payload["tool"] == "kast", payload
+assert payload["activeVersion"] == version, payload
+assert payload["roots"]["install"] == install_root, payload
+assert payload["entrypoints"]["activeBinary"] == f"{install_home}/bin/kast", payload
+backend = payload["backends"][0]
+assert backend["name"] == "headless", payload
+assert backend["runtimeLibsDir"] == f"{install_home}/lib/backends/headless/current/runtime-libs", payload
+assert backend["ideaHome"] == f"{install_home}/lib/backends/headless/current/idea-home", payload
+PY
 
 HOME="$home_dir" \
 PATH="$bin_dir:$PATH" \
@@ -246,25 +267,43 @@ KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
 KAST_JAVA_CMD=sh \
 "${repo_root}/scripts/install-ubuntu-debian.sh" install
 
-installed_home="${install_root}/${version}"
+installed_home="${install_root}/versions/${version}"
 installed_kast="${bin_dir}/kast"
 config_file="${config_home}/config.toml"
+install_manifest="${install_root}/install.json"
 
 [[ -x "$installed_kast" ]] || die "Installed kast is not executable"
 [[ -f "$installed_kast" && ! -L "$installed_kast" ]] || die "Installed headless kast must be an executable shim"
 grep -Fq -- "-Didea.force.use.core.classloader=true" "$installed_kast" \
   || die "Installed headless kast shim must export the core classloader JVM option"
+grep -Fq -- "KAST_INSTALL_ROOT" "$installed_kast" \
+  || die "Installed headless kast shim must export KAST_INSTALL_ROOT"
+[[ -L "${install_root}/current" ]] || die "Installer did not activate current"
+[[ -f "$install_manifest" ]] || die "Installer did not write install.json"
 [[ -f "$config_file" ]] || die "Installer did not write config.toml"
 grep -Fq 'defaultBackend = "headless"' "$config_file" || die "config.toml does not default to headless runtime"
 grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
-grep -Fq "runtimeLibsDir = \"${installed_home}/lib/backends/headless-${version}/runtime-libs\"" "$config_file" \
-  || die "config.toml does not point at bundled headless runtime libs"
-grep -Fq "ideaHome = \"${installed_home}/lib/backends/headless-${version}/idea-home\"" "$config_file" \
-  || die "config.toml does not point at bundled headless IDEA home"
-grep -Fq "backendVersion = \"9.8.7\"" "$config_file" || die "config.toml does not record normalized backend version"
-if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$config_file"; then
-  die "config.toml should derive install-root-owned paths"
+if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$config_file"; then
+  die "config.toml must not write install-owned paths"
 fi
+python3 - "$install_manifest" "$version" "$install_root" "$installed_home" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+version = sys.argv[2]
+install_root = sys.argv[3]
+install_home = sys.argv[4]
+assert payload["activeVersion"] == version, payload
+assert payload["version"] == "9.8.7", payload
+assert payload["backendVersion"] == "9.8.7", payload
+assert payload["roots"]["install"] == install_root, payload
+assert payload["entrypoints"]["activeBinary"] == f"{install_home}/bin/kast", payload
+backend = payload["backends"][0]
+assert backend["runtimeLibsDir"] == f"{install_home}/lib/backends/headless/current/runtime-libs", payload
+assert backend["ideaHome"] == f"{install_home}/lib/backends/headless/current/idea-home", payload
+PY
 
 bundle_without_sidecar="${artifact_dir}/kast-${platform}-v9.8.6.tar.gz"
 cp "$bundle_path" "$bundle_without_sidecar"

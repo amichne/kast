@@ -46,8 +46,9 @@ kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 
 ??? info "How Copilot finds the binary"
     The repository package starts `kast lsp --stdio` from `.github/lsp.json`.
-    That means the machine running Copilot must have the global `kast` binary
-    on `PATH`. Use the install guide if the binary is missing.
+    The packaged extension resolves the active CLI from the install manifest,
+    the stable `$HOME/.local/bin/kast` shim, then `PATH`. Use `kast paths` or
+    the install guide if the binary is missing.
 
 ## Use installable instructions
 
@@ -68,8 +69,8 @@ already exists in your repo:
 - `.claude/instructions/kast`
 
 If none of those directories exist, it installs globally at
-`~/.kast/lib/instructions/kast`. Look for `.kast-version` in the target
-directory to confirm the install.
+`~/.local/share/kast/current/lib/instructions/kast`. Look for `.kast-version`
+in the target directory to confirm the install.
 
 ```console title="Force reinstall to a custom instruction path"
 kast install instructions --target-dir=/absolute/path/to/instructions --force
@@ -102,9 +103,9 @@ already exists in your repo:
 - `.claude/skills/kast`
 
 If none of those directories exist, it installs globally at
-`~/.kast/lib/skills/kast`. Look for `.kast-version` in the target directory to
-confirm the install. If the same CLI version was already installed, JSON output
-shows `skipped: true`.
+`~/.local/share/kast/current/lib/skills/kast`. Look for `.kast-version` in the
+target directory to confirm the install. If the same CLI version was already
+installed, JSON output shows `skipped: true`.
 
 ```console title="Force reinstall to a custom skill path"
 kast install skill --target-dir=/absolute/path/to/skills --force

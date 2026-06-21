@@ -3,9 +3,8 @@ use crate::cli::OutputFormat;
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ArchiveInstallResult, InstallAffectedResult, InstallCopilotExtensionResult,
-    InstallIdeaPluginResult, InstallInstructionsResult, InstallResult, InstallShellResult,
-    InstallSkillResult, SetupResult,
+    ArchiveInstallResult, InstallCopilotExtensionResult, InstallIdeaPluginResult,
+    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
 };
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -182,7 +181,6 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
-        InstallResult::Affected(result) => print_affected_install(result),
         InstallResult::Headless(result) => print_backend_install(result),
         InstallResult::Archive(result) => print_archive_install(result),
     }
@@ -364,6 +362,7 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
         yes_no(result.configuration.valid)
     );
     mdln!(document, "- Config path: `{}`", result.config_path);
+    mdln!(document, "- Install manifest: `{}`", result.manifest_path);
     mdln!(
         document,
         "- Canonical directory: `{}`",
@@ -387,10 +386,23 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
     print_path_resolution(&mut document, &result.path_resolution);
     print_messages(&mut document, "Issues", &result.issues);
     print_warnings(&mut document, &result.warnings);
+    if let Some(repair) = &result.repair {
+        mdln!(document);
+        mdln!(document, "## Repair");
+        mdln!(document, "- Applied changes: {}", yes_no(repair.applied));
+        mdln!(document, "- Actions: {}", repair.actions.len());
+        print_messages(&mut document, "Backups", &repair.backups);
+        print_warnings(&mut document, &repair.warnings);
+    }
     if let Some(install) = &result.install {
         mdln!(document);
         mdln!(document, "## Installed versions");
         mdln!(document, "- CLI: `{}`", value_or_dash(&install.version));
+        mdln!(
+            document,
+            "- Active: `{}`",
+            value_or_dash(&install.active_version)
+        );
         if !install.components.is_empty() {
             mdln!(document, "- Components: {}", install.components.join(", "));
         }
@@ -456,49 +468,10 @@ fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutio
     print_messages(document, "Path warnings", &report.warnings);
 }
 
-pub fn print_setup(result: &SetupResult) -> Result<()> {
+pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast setup");
-    mdln!(document);
-    if let Some(repair) = &result.repair {
-        mdln!(document, "- Repair applied: {}", yes_no(repair.applied));
-    }
-    if let Some(headless) = &result.headless {
-        mdln!(document, "- Headless backend: `{}`", headless.version);
-    }
-    if let Some(shell) = &result.shell {
-        mdln!(
-            document,
-            "- Shell integration: `{}` profile `{}`",
-            shell.shell,
-            shell.profile
-        );
-    }
-    if let Some(skill) = &result.skill {
-        mdln!(document, "- Skill: `{}`", skill.installed_at);
-    }
-    if let Some(copilot) = &result.copilot {
-        mdln!(document, "- Copilot plugin: `{}`", copilot.installed_at);
-    }
-    if let Some(plugin) = &result.idea_plugin {
-        mdln!(document, "- IDEA plugin action: `{}`", plugin.brew_action);
-    }
-    mdln!(
-        document,
-        "- Project-open profile auto-init: {}",
-        yes_no(result.project_open.profile_auto_init)
-    );
-    mdln!(
-        document,
-        "- Project-open profile: `{}`",
-        result.project_open.profile
-    );
-    mdln!(
-        document,
-        "- Auto-exclude generated package files: {}",
-        yes_no(result.project_open.auto_exclude_git)
-    );
-    print_warnings(&mut document, &result.warnings);
+    mdln!(document, "# Kast paths");
+    print_path_resolution(&mut document, result);
     print_markdown(&document.into_string())
 }
 
@@ -678,41 +651,6 @@ fn print_archive_install(result: &ArchiveInstallResult) -> Result<()> {
         "- Reused existing install: {}",
         yes_no(result.skipped)
     );
-    print_markdown(&document.into_string())
-}
-
-fn print_affected_install(result: &InstallAffectedResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast affected install repair");
-    mdln!(document);
-    mdln!(document, "- Applied changes: {}", yes_no(result.applied));
-    mdln!(document, "- Config path: `{}`", result.config_path);
-    if !result.applied {
-        mdln!(document, "- Default: no files were changed");
-        mdln!(document, "- Apply command: `{}`", result.apply_command);
-    }
-    if result.actions.is_empty() {
-        mdln!(document);
-        mdln!(document, "No affected installs or stale paths were found.");
-    } else {
-        mdln!(document);
-        mdln!(document, "## Actions");
-        for action in &result.actions {
-            mdln!(
-                document,
-                "- `{}` `{}`: {}",
-                action.status,
-                action.kind,
-                action.target
-            );
-            mdln!(document, "  {}", action.message);
-            if let Some(command) = &action.command {
-                mdln!(document, "  Command: `{command}`");
-            }
-        }
-    }
-    print_messages(&mut document, "Backups", &result.backups);
-    print_warnings(&mut document, &result.warnings);
     print_markdown(&document.into_string())
 }
 

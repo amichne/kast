@@ -92,48 +92,52 @@ repository instructions, and custom agents at startup.
 
     Restart the IDE after replacing or linking the plugin.
 
-## Repair and setup commands
+## Repair and path inspection
 
 Most readers do not need these commands on the first pass. Use them when an
 existing install is stale, a shell profile needs to be updated, or a local IDE
 profile needs repair.
 
+Kast 1.0 resolves every install-owned path from the install manifest at
+`$HOME/.local/share/kast/install.json`. The user config file remains
+`$HOME/.config/kast/config.toml`, but it only owns behavior settings such as
+backend selection, indexing policy, launch policy, telemetry, and profiling.
+Do not put install roots, CLI paths, daemon paths, socket paths, runtime
+library paths, or managed install state in `config.toml`; those values come
+from the manifest-backed resolver.
+
+??? question "Inspect the active path model"
+    Use `kast paths` when you need the exact resolved paths that the CLI,
+    Copilot extension, headless runtime, and IDE integration should share.
+
+    ```console title="Show resolved paths"
+    kast paths
+    kast --output json paths
+    ```
+
 ??? question "Repair stale managed files"
-    Use `kast install affected` after upgrading Kast, moving between install
-    methods, or seeing `kast doctor` report stale managed paths. The default
-    mode is a dry run:
+    Plain `kast doctor` is read-only. It reports manifest validity, canonical
+    paths, binary linkage, behavior config validity, and legacy locations that
+    can be repaired. Use `kast doctor --repair` as the only broad convergence
+    command after upgrading Kast, moving between install methods, or seeing
+    stale managed paths.
 
-    ```console title="Audit affected installs"
-    kast install affected
+    ```console title="Audit install state"
+    kast doctor
     ```
 
-    In an interactive human terminal, Kast shows the planned repair and asks
-    whether to apply it. Non-interactive runs never prompt; rerun with
-    `--apply` to apply the planned repair from scripts, CI, or captured
-    shells. Apply mode creates backups under `KAST_CONFIG_HOME/backups` before
-    replacing or removing managed files.
-
-    ```console title="Repair affected installs"
-    kast install affected --apply
+    ```console title="Repair install state"
+    kast doctor --repair
     ```
 
-??? info "One-command local setup"
-    `kast setup` installs or refreshes local integrations and managed assets
-    from the installed CLI. It is useful for local repair, but it is not the
-    clearest first-run story because it crosses several scopes at once.
-
-    ```console title="Refresh local integrations"
-    kast setup
-    ```
-
-    Narrow the refresh with `--skip-repair`, `--skip-shell`, `--skip-skill`,
-    or `--skip-copilot` when a specific non-IDE integration should be left
-    untouched.
+    Repair mode writes the install manifest, refreshes the stable shim,
+    removes install-owned keys from behavior config, and creates backups under
+    `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
 
 ??? info "Shell integration"
     Use `kast install shell` to add the directory that contains the active
-    `kast` binary to your `PATH`, export the active `KAST_CONFIG_HOME`, and
-    source completions from a managed file under `KAST_CONFIG_HOME/shell`.
+    `kast` shim to your `PATH` and source completions from a managed file
+    under `KAST_CONFIG_HOME/shell`.
 
     === "Bash"
 

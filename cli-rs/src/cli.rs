@@ -57,12 +57,12 @@ pub enum Command {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Install or update local integrations and managed assets.
-    Setup(SetupArgs),
-    /// Install or repair Kast resources.
+    /// Inspect manifest-backed Kast path resolution.
+    Paths(PathsArgs),
+    /// Install scoped Kast resources.
     Install(InstallArgs),
     /// Verify the global Kast install is still healthy.
-    Doctor,
+    Doctor(DoctorArgs),
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -412,70 +412,20 @@ impl From<RuntimeArgs> for DaemonStartArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct SetupArgs {
-    /// Replace existing installed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Skip global config and managed asset repair.
+pub struct PathsArgs {
+    /// Absolute workspace root for workspace-local config inspection.
     #[arg(long)]
-    pub skip_repair: bool,
-    /// Shell to install integration for. Defaults to the current SHELL.
-    #[arg(long, value_enum)]
-    pub shell: Option<ShellKind>,
-    /// Skip shell PATH and completion integration.
+    pub workspace_root: Option<PathBuf>,
+    /// Show the IDEA host path view.
     #[arg(long)]
-    pub skip_shell: bool,
-    /// Skip headless backend installation or refresh.
+    pub idea: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct DoctorArgs {
+    /// Repair the install manifest and managed install state. Plain doctor is read-only.
     #[arg(long)]
-    pub skip_headless: bool,
-    /// Skip IDEA plugin installation or profile linking.
-    #[arg(long)]
-    pub skip_plugin: bool,
-    /// Local headless backend zip archive for refreshing an existing headless install.
-    #[arg(long)]
-    pub headless_archive: Option<PathBuf>,
-    /// Release tag or version for refreshing an existing headless install.
-    #[arg(long)]
-    pub version: Option<String>,
-    /// Release directory URL used when refreshing an existing headless install.
-    #[arg(long)]
-    pub base_url: Option<String>,
-    /// Install the packaged kast skill into the configured target directory.
-    #[arg(long)]
-    pub include_skill: bool,
-    /// Skip packaged kast skill installation even when --include-skill is present.
-    #[arg(long)]
-    pub skip_skill: bool,
-    /// Target root directory for --include-skill.
-    #[arg(long)]
-    pub skill_target_dir: Option<PathBuf>,
-    /// Install the packaged Copilot LSP, instructions, agents, and extension tools.
-    #[arg(long)]
-    pub include_copilot: bool,
-    /// Skip packaged Copilot LSP plugin installation even when --include-copilot is present.
-    #[arg(long)]
-    pub skip_copilot: bool,
-    /// Target .github directory for --include-copilot.
-    #[arg(long)]
-    pub copilot_target_dir: Option<PathBuf>,
-    /// Enable repository Copilot/LSP profile installation when IDEA opens Gradle projects.
-    #[arg(long, conflicts_with = "no_project_open_profile_auto_init")]
-    pub project_open_profile_auto_init: bool,
-    /// Disable repository Copilot/LSP profile installation when IDEA opens Gradle projects.
-    #[arg(long)]
-    pub no_project_open_profile_auto_init: bool,
-    /// Project-open profile to install. Currently only copilot-lsp is supported.
-    #[arg(long, value_enum)]
-    pub project_open_profile: Option<ProjectOpenProfileArg>,
-    /// Do not add managed Copilot/LSP package paths to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Link the Homebrew cask into local JetBrains IDE profiles.
-    #[arg(long, hide = true)]
-    pub link_jetbrains_profiles: bool,
-    /// JetBrains config root containing IDE profile directories.
-    #[arg(long)]
-    pub jetbrains_config_root: Option<PathBuf>,
+    pub repair: bool,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -501,8 +451,6 @@ pub enum InstallCommand {
     /// Install the headless JVM backend from an internal archive.
     #[command(hide = true)]
     Headless(HeadlessInstallArgs),
-    /// Audit and repair stale Kast installs, resources, and profile links.
-    Affected(AffectedInstallArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
     /// Install portable agent instruction files.
@@ -620,11 +568,6 @@ pub struct CopilotInstallArgs {
     /// Do not add managed package paths to Git info/exclude.
     #[arg(long)]
     pub no_auto_exclude_git: bool,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub enum ProjectOpenProfileArg {
-    CopilotLsp,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]

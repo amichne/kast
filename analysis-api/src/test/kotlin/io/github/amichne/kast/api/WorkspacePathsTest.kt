@@ -15,7 +15,7 @@ class WorkspacePathsTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `kast install root uses home dot kast`() {
+    fun `kast install root uses local share kast`() {
         assertEquals(defaultInstallRootPath(), kastInstallRoot())
     }
 
@@ -31,23 +31,26 @@ class WorkspacePathsTest {
             kastHeadlessRuntimeLibsEnv to tempDir.resolve("hostile-runtime-libs").toString(),
         )
         val installRoot = Path.of(System.getProperty("user.home"))
-            .resolve(".kast")
+            .resolve(".local/share/kast")
             .toAbsolutePath()
             .normalize()
+        val binDir = Path.of(System.getProperty("user.home")).resolve(".local/bin").toAbsolutePath().normalize()
+        val cacheDir = Path.of(System.getProperty("user.home")).resolve(".cache/kast").toAbsolutePath().normalize()
+        val logsDir = Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs").toAbsolutePath().normalize()
         val defaults = KastConfig.defaults()
         val workspaceRoot = tempDir.resolve("workspace")
 
         assertEquals(configHome.toAbsolutePath().normalize(), kastConfigHome(hostileEnv::get))
         assertEquals(installRoot, defaultInstallRoot(hostileEnv::get))
-        assertEquals(installRoot.resolve("bin"), defaultBinDirectory(hostileEnv::get))
-        assertEquals(installRoot.resolve("lib/backends/headless/current/runtime-libs"), defaultHeadlessRuntimeLibsDirectory(hostileEnv::get))
-        assertEquals(installRoot.resolve("cache/daemons"), defaultDescriptorDirectory(hostileEnv::get))
-        assertEquals(installRoot.resolve("logs"), kastLogDirectory(workspaceRoot, hostileEnv::get))
+        assertEquals(binDir, defaultBinDirectory(hostileEnv::get))
+        assertEquals(installRoot.resolve("current/lib/backends/headless/current/runtime-libs"), defaultHeadlessRuntimeLibsDirectory(hostileEnv::get))
+        assertEquals(installRoot.resolve("runtime/daemons"), defaultDescriptorDirectory(hostileEnv::get))
+        assertEquals(logsDir, kastLogDirectory(workspaceRoot, hostileEnv::get))
         assertEquals(installRoot.toString(), defaults.paths.installRoot.value)
-        assertEquals(installRoot.resolve("bin").toString(), defaults.paths.binDir.value)
-        assertEquals(installRoot.resolve("lib").toString(), defaults.paths.libDir.value)
-        assertEquals(installRoot.resolve("cache").toString(), defaults.paths.cacheDir.value)
-        assertEquals(installRoot.resolve("logs").toString(), defaults.paths.logsDir.value)
+        assertEquals(binDir.toString(), defaults.paths.binDir.value)
+        assertEquals(installRoot.resolve("current/lib").toString(), defaults.paths.libDir.value)
+        assertEquals(cacheDir.toString(), defaults.paths.cacheDir.value)
+        assertEquals(logsDir.toString(), defaults.paths.logsDir.value)
     }
 
     @Test
@@ -69,7 +72,7 @@ class WorkspacePathsTest {
         val worktreeHash = gitWorktreeHash(workspaceRoot, gitDir)
 
         assertEquals(
-            installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
+            installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
     }
@@ -105,8 +108,8 @@ class WorkspacePathsTest {
         val first = resolver.workspaceDataDirectory(firstRoot)
         val second = resolver.workspaceDataDirectory(secondRoot)
 
-        assertTrue(first.startsWith(installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees")))
-        assertTrue(second.startsWith(installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees")))
+        assertTrue(first.startsWith(installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees")))
+        assertTrue(second.startsWith(installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees")))
         assertTrue(first != second, "sibling worktrees should not share workspace data: first=$first second=$second")
         assertEquals(first, resolver.workspaceCacheDirectory(firstRoot).parent)
         assertEquals(second.resolve("cache/source-index.db"), resolver.workspaceDatabasePath(secondRoot))
@@ -131,7 +134,7 @@ class WorkspacePathsTest {
         )
 
         assertEquals(
-            installRoot.resolve("workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
+            installRoot.resolve("state/workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
     }
@@ -199,7 +202,7 @@ class WorkspacePathsTest {
                 kastBinDirEnv to tempDir.resolve("bin").toString(),
             )
 
-            assertEquals(defaultInstallRootPath().resolve("bin"), defaultBinDirectory(env::get))
+            assertEquals(Path.of(System.getProperty("user.home")).resolve(".local/bin").toAbsolutePath().normalize(), defaultBinDirectory(env::get))
         }
 
         @Test
@@ -211,7 +214,7 @@ class WorkspacePathsTest {
             )
 
             assertEquals(
-                defaultInstallRootPath().resolve("lib/backends/headless/current/runtime-libs"),
+                defaultInstallRootPath().resolve("current/lib/backends/headless/current/runtime-libs"),
                 defaultHeadlessRuntimeLibsDirectory(env::get),
             )
         }
@@ -224,7 +227,7 @@ class WorkspacePathsTest {
             val env = mapOf(kastConfigHomeEnv to tempDir.resolve("config").toString())
             val result = defaultDescriptorDirectory(env::get)
             assertEquals(
-                defaultInstallRootPath().resolve("cache/daemons"),
+                defaultInstallRootPath().resolve("runtime/daemons"),
                 result,
             )
         }
@@ -238,7 +241,7 @@ class WorkspacePathsTest {
             val workspaceRoot = tempDir.resolve("workspace")
             val result = kastLogDirectory(workspaceRoot, env::get)
 
-            assertEquals(defaultInstallRootPath().resolve("logs"), result)
+            assertEquals(Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs").toAbsolutePath().normalize(), result)
         }
 
         @Test
@@ -342,7 +345,7 @@ class WorkspacePathsTest {
         .normalize()
 
     private fun defaultInstallRootPath(): Path = Path.of(System.getProperty("user.home"))
-        .resolve(".kast")
+        .resolve(".local/share/kast")
         .toAbsolutePath()
         .normalize()
 

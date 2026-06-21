@@ -89,13 +89,13 @@ class KastConfigTest {
     @Test
     fun `defaults expose path and cli field defaults`() {
         val config = KastConfig.defaults()
-        val installRoot = Path.of(System.getProperty("user.home")).resolve(".kast")
-        val binDir = installRoot.resolve("bin")
-        val libDir = installRoot.resolve("lib")
-        val cacheDir = installRoot.resolve("cache")
-        val logsDir = installRoot.resolve("logs")
-        val descriptorDir = cacheDir.resolve("daemons")
-        val socketDir = System.getProperty("java.io.tmpdir")
+        val installRoot = Path.of(System.getProperty("user.home")).resolve(".local/share/kast")
+        val binDir = Path.of(System.getProperty("user.home")).resolve(".local/bin")
+        val libDir = installRoot.resolve("current/lib")
+        val cacheDir = Path.of(System.getProperty("user.home")).resolve(".cache/kast")
+        val logsDir = Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs")
+        val descriptorDir = installRoot.resolve("runtime/daemons")
+        val socketDir = installRoot.resolve("runtime")
         val binaryPath = binDir.resolve("kast")
         val runtimeLibsDir = libDir.resolve("backends/headless/current/runtime-libs")
 
@@ -108,7 +108,7 @@ class KastConfigTest {
         assertEquals(cacheDir.toString(), config.paths.cacheDir.value)
         assertEquals(logsDir.toString(), config.paths.logsDir.value)
         assertEquals(descriptorDir.toString(), config.paths.descriptorDir.value)
-        assertEquals(socketDir, config.paths.socketDir.value)
+        assertEquals(socketDir.toString(), config.paths.socketDir.value)
 
         assertEquals("cli", config.cli.binaryPath.section)
         assertEquals("binaryPath", config.cli.binaryPath.key)
@@ -223,7 +223,7 @@ class KastConfigTest {
         val dataDirectory = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(
-            installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
+            installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             dataDirectory,
         )
         assertEquals(dataDirectory.resolve("cache"), resolver.workspaceCacheDirectory(workspaceRoot))
@@ -245,9 +245,9 @@ class KastConfigTest {
         val second = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(first, second)
-        assertTrue(first.startsWith(installRoot.resolve("workspaces/local")))
+        assertTrue(first.startsWith(installRoot.resolve("state/workspaces/local")))
         assertTrue(
-            installRoot.resolve("workspaces/local-workspaces.json")
+            installRoot.resolve("state/workspaces/local-workspaces.json")
                 .readText()
                 .contains(workspaceRoot.toAbsolutePath().normalize().toString())
         )
@@ -341,7 +341,7 @@ class KastConfigTest {
         assertEquals(false, config.cache.enabled.value)
         assertEquals(true, config.indexing.remote.enabled.value)
         assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
-        assertEquals("/Applications/IDEA CE.app/Contents", config.backends.headless.ideaHome.value.orNull)
+        assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
         assertEquals(true, config.telemetry.enabled.value)
         assertEquals("references,rename", config.telemetry.scopes.value)
         assertEquals(config.server.maxResults.value, config.toServerLimits().maxResults)
@@ -351,11 +351,10 @@ class KastConfigTest {
     @Test
     fun `idea config loader ignores workspace path and binary overrides`() {
         val configHome = tempDir.resolve("config-home")
-        val globalRoot = tempDir.resolve("global-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             configHome = { configHome },
-            installRoot = { globalRoot },
+            installRoot = { tempDir.resolve("manifest-root") },
             gitWorkspaceResolver = {
                 GitWorkspace(
                     toplevel = workspaceRoot,
@@ -370,10 +369,10 @@ class KastConfigTest {
             writeText(
                 """
                 [paths]
-                installRoot = "$globalRoot"
+                installRoot = "/global/should-not-win"
 
                 [cli]
-                binaryPath = "$globalRoot/bin/kast"
+                binaryPath = "/global/bin/kast"
                 """.trimIndent(),
             )
         }
@@ -413,12 +412,13 @@ class KastConfigTest {
             workspaceDirectoryResolver = resolver,
         )
 
-        assertEquals(globalRoot.toString(), config.paths.installRoot.value)
-        assertEquals(globalRoot.resolve("cache").toString(), config.paths.cacheDir.value)
-        assertEquals(globalRoot.resolve("cache/daemons").toString(), config.paths.descriptorDir.value)
-        assertEquals(globalRoot.resolve("bin/kast").toString(), config.cli.binaryPath.value)
+        val defaults = KastConfig.defaults()
+        assertEquals(defaults.paths.installRoot.value, config.paths.installRoot.value)
+        assertEquals(defaults.paths.cacheDir.value, config.paths.cacheDir.value)
+        assertEquals(defaults.paths.descriptorDir.value, config.paths.descriptorDir.value)
+        assertEquals(defaults.cli.binaryPath.value, config.cli.binaryPath.value)
         assertEquals(
-            globalRoot.resolve("lib/backends/headless/current/runtime-libs").toString(),
+            defaults.backends.headless.runtimeLibsDir.value.orNull,
             config.backends.headless.runtimeLibsDir.value.orNull,
         )
         assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
@@ -659,14 +659,8 @@ class KastConfigTest {
                 [indexing]
                 phase2PriorityDepth = 3
 
-                [paths]
-                installRoot = "$installRoot"
-
                 [indexing.remote]
                 sourceIndexUrl = "$sourceIndexUrl"
-
-                [backends.headless]
-                ideaHome = "$installRoot/idea-home"
                 """.trimIndent(),
             )
         }
@@ -693,9 +687,7 @@ class KastConfigTest {
         val decodedProjectOpenProfile: Any? = loaded.projectOpen?.profile
         val decodedProjectOpenAutoExcludeGit: Any? = loaded.projectOpen?.autoExcludeGit
         val decodedPriorityDepth: Any? = loaded.indexing?.phase2PriorityDepth
-        val decodedInstallRoot: Any? = loaded.paths?.installRoot
         val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
-        val decodedIdeaHome: Any? = loaded.backends?.headless?.ideaHome
 
         assertTrue(
             maxResults is ServerMaxResults,
@@ -722,17 +714,12 @@ class KastConfigTest {
         assertEquals(IndexingPhase2PriorityDepth(3), decodedPriorityDepth)
 
         assertTrue(
-            decodedInstallRoot is PathsInstallRoot,
-            "Expected paths.installRoot to decode into PathsInstallRoot, got $decodedInstallRoot"
-        )
-        assertEquals(PathsInstallRoot(installRoot.toString()), decodedInstallRoot)
-
-        assertTrue(
             decodedSourceIndexUrl is IndexingRemoteSourceIndexUrl,
             "Expected indexing.remote.sourceIndexUrl to decode into IndexingRemoteSourceIndexUrl, got $decodedSourceIndexUrl",
         )
         assertEquals(IndexingRemoteSourceIndexUrl(OptionalConfigString(sourceIndexUrl)), decodedSourceIndexUrl)
-        assertEquals(HeadlessIdeaHome(OptionalConfigString("$installRoot/idea-home")), decodedIdeaHome)
+        assertNull(loaded.paths)
+        assertNull(loaded.backends)
     }
 
     private fun <T> withContextClassLoader(

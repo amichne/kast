@@ -20,8 +20,9 @@ your scripts and prompts don't change when you switch.
 ## Headless backend
 
 A separate JVM process backed by packaged IDEA components. The Linux headless
-tarball installs the CLI, backend runtime, scripts, and configuration together.
-`kast up` is the high-level entry point after that distribution is installed.
+tarball installs the CLI, backend runtime, scripts, and install manifest
+together. `kast up` is the high-level entry point after that distribution is
+installed.
 
 Reach for it when:
 
@@ -35,19 +36,15 @@ Install the Linux headless tarball:
 ./scripts/install-ubuntu-debian.sh install
 ```
 
-The Ubuntu/Debian installer writes `config.toml` with the installed headless
-runtime libraries under
-`$HOME/.local/share/kast/ubuntu-debian/<version>/lib/backends/headless-<version>/runtime-libs`.
-To use a different installation, point `backends.headless.runtimeLibsDir` at
-the installed `runtime-libs` directory and `backends.headless.ideaHome` at the
-installed headless IDEA home in `config.toml`. Then pass `--backend=headless`
-to runtime commands:
-
-```toml title="$HOME/.config/kast/config.toml"
-[backends.headless]
-runtimeLibsDir = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/runtime-libs"
-ideaHome = "/home/alex/.local/share/kast/ubuntu-debian/v1.2.3/lib/backends/headless-v1.2.3/idea-home"
-```
+The Ubuntu/Debian installer writes the install manifest at
+`$HOME/.local/share/kast/install.json`, stages versioned files under
+`$HOME/.local/share/kast/versions/<version>`, and flips
+`$HOME/.local/share/kast/current` atomically. The packaged headless runtime is
+resolved from that manifest, normally through
+`$HOME/.local/share/kast/current/lib/backends/headless/current/runtime-libs`.
+Use `kast paths` to inspect the active runtime paths. Do not put headless
+runtime library paths or IDEA home paths in `config.toml`; they are
+install-owned.
 
 Warm a headless backend. The selector is optional because headless is the
 default non-IDE backend:
@@ -137,14 +134,8 @@ IDEA / Android Studio integration is installed through the Homebrew
 `kast-plugin` cask. Use `kast install plugin` to repair Homebrew-managed
 profile links. Inside the IDE, Kast stays focused on diagnostics and the
 IDE-hosted backend instead of duplicating CLI install workflows. When IDE
-runtime launch is enabled, the configured CLI path comes from `[cli] binaryPath`
-in `config.toml`; it doesn't search `PATH`, so the value must point at an
-executable CLI binary:
-
-```toml title="$HOME/.config/kast/config.toml"
-[cli]
-binaryPath = "/home/alex/.local/bin/kast"
-```
+runtime launch is enabled, the CLI path is resolved from the same install
+manifest and stable shim used by the rest of Kast.
 
 ### Opt in to project-open profile installs
 

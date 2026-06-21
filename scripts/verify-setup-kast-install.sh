@@ -8,7 +8,7 @@ Usage: scripts/verify-setup-kast-install.sh [options]
 Verify a setup-kast installation in a CI runner, Devin snapshot, or local smoke.
 
 Options:
-  --install-dir <path>              Installed current runtime directory. Defaults to $KAST_HOME.
+  --install-dir <path>              Installed current runtime directory. Defaults to $KAST_INSTALL_ROOT/current.
   --workspace-root <path>           Workspace root to start. Defaults to a temporary Kotlin workspace.
   --source-root <path>              Kotlin source root for kast up. Defaults with temporary workspace.
   --module-name <name>              Module name for kast up. Defaults to setup-kast-verify.
@@ -55,7 +55,7 @@ assert_tree_not_writable() {
   fi
 }
 
-install_dir="${KAST_HOME:-}"
+install_dir="${KAST_INSTALL_ROOT:+${KAST_INSTALL_ROOT}/current}"
 workspace_root=""
 source_root=""
 module_name="setup-kast-verify"
@@ -113,7 +113,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "$install_dir" ]] || die "KAST_HOME is unset; pass --install-dir when verifying a non-action install"
+[[ -n "$install_dir" ]] || die "KAST_INSTALL_ROOT is unset; pass --install-dir when verifying a non-action install"
 [[ -n "$workspace_id" ]] || die "--workspace-id must not be empty"
 [[ "$wait_timeout_ms" =~ ^[0-9]+$ ]] || die "--wait-timeout-ms must be an integer"
 
@@ -123,6 +123,7 @@ need_dir "$install_dir" "Kast install directory"
 need_file "${install_dir}/bin/kast" "installed kast binary"
 need_file "${install_dir}/kast-runtime-manifest.json" "runtime manifest"
 install_root="$(cd -- "$(dirname -- "$install_dir")" && pwd)"
+need_file "${install_root}/install.json" "install manifest"
 expected_kast_bin="$(absolute_path "${install_dir}/bin/kast")"
 actual_kast_bin="$(absolute_path "$kast_bin")"
 [[ "$actual_kast_bin" == "$expected_kast_bin" ]] \

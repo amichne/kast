@@ -42,11 +42,13 @@ installed runtime directory.
 
 The runtime archive extracts into a directory that can be copied directly under
 the managed install version. `setup-kast` installs it at
-`/opt/kast/<version>` by default and maintains `/opt/kast/current`.
+`/opt/kast/<version>` by default, writes `/opt/kast/install.json`, and
+maintains `/opt/kast/current`.
 
 ```text
 /opt/kast/
   current -> /opt/kast/<version>
+  install.json
   <version>/
     bin/kast
     lib/runtime-libs/
@@ -58,14 +60,13 @@ the managed install version. `setup-kast` installs it at
       modules-2/
 ```
 
-The action also writes a managed `config.toml` under `KAST_CONFIG_HOME`, points
-the headless backend at `/opt/kast/current/lib/runtime-libs` and
-`/opt/kast/current/idea`, and exports `KAST_CACHE_HOME`. Daemon descriptors,
-sockets, and logs are resolved under `KAST_CACHE_HOME/workspaces/<workspace-id>`
-when a workspace starts.
-When that socket path would exceed Unix-domain socket path limits, the CLI keeps
-descriptors and logs under `KAST_CACHE_HOME` and falls back to a short
-`/tmp/kast-<hash>.sock` socket path.
+The action also writes the Kast install manifest under `KAST_INSTALL_ROOT`.
+That manifest points the headless backend at `/opt/kast/current/lib/runtime-libs`
+and `/opt/kast/current/idea`, records the active binary, and exports
+`KAST_CACHE_HOME`. Behavior config under `KAST_CONFIG_HOME` remains optional
+and must not own install paths. Daemon descriptors, sockets, logs, locks,
+runtime state, and workspace state are resolved from the manifest-backed path
+model when a workspace starts.
 
 ## Manifest
 
@@ -97,9 +98,10 @@ Node 20 action under `setup-kast/` because Devin blueprints run GitHub Action
 steps and carry `GITHUB_ENV` and `GITHUB_PATH` writes into later steps.
 
 The action page owns invocation details, input defaults, credential handling,
-and verification commands. Any new setup client must preserve the same manifest
-validation, checksum validation, archive-safety checks, config layout, and
-workspace-local daemon-state boundary before it is treated as equivalent.
+and verification commands. Any new setup client must preserve the same runtime
+manifest validation, install manifest activation, checksum validation,
+archive-safety checks, and workspace-local daemon-state boundary before it is
+treated as equivalent.
 
 ## Gradle cache
 

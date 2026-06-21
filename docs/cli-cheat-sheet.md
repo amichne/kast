@@ -43,14 +43,14 @@ command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
-| `kast setup`            | Install or update local integrations and refresh existing managed assets.    | `--force`, `--skip-shell`, `--skip-plugin`, `--include-copilot`, `--copilot-target-dir` |
 | `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--backend`, `--output`                            |
 | `kast status`           | Report whether a backend is running and what state it is in.                 | `--output`                                         |
 | `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |
 | `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
 | `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--output`                                         |
 | `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--output`                                         |
-| `kast doctor`           | Verify install metadata, config validity, canonical paths, and binary linkage. | `--output`                                      |
+| `kast paths`            | Print the manifest-backed resolved path model.                               | `--workspace-root`, `--idea`, `--output`           |
+| `kast doctor`           | Verify install metadata, config validity, canonical paths, and binary linkage. | `--repair`, `--output`                           |
 | `kast lsp --stdio`      | Run the Language Server Protocol adapter over stdio.                          | `--workspace-root`, `--backend`                    |
 | `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
 

@@ -504,8 +504,6 @@ private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = Kas
     telemetry = telemetryOverride(),
     profiling = profilingOverride(),
     backends = backendsOverride(),
-    paths = pathsOverride(),
-    cli = cliOverride(),
 )
 
 private fun Map<String, String>.runtimeOverride(): RuntimeConfigOverride? {
@@ -623,32 +621,12 @@ private fun Map<String, String>.backendsOverride(): BackendsConfigOverride? {
 
 private fun Map<String, String>.headlessBackendOverride(): HeadlessBackendConfigOverride? {
     val enabled = booleanValue("backends.headless.enabled")?.let(::HeadlessBackendEnabled)
-    val runtimeLibsDir = optionalStringValue("backends.headless.runtimelibsdir")?.let(::HeadlessRuntimeLibsDir)
-    val ideaHome = optionalStringValue("backends.headless.ideahome")?.let(::HeadlessIdeaHome)
-    return takeIfAny(enabled, runtimeLibsDir, ideaHome) { HeadlessBackendConfigOverride(enabled, runtimeLibsDir, ideaHome) }
+    return takeIfAny(enabled) { HeadlessBackendConfigOverride(enabled = enabled) }
 }
 
 private fun Map<String, String>.ideaBackendOverride(): IdeaBackendConfigOverride? {
     val enabled = booleanValue("backends.idea.enabled")?.let(::IdeaBackendEnabled)
     return takeIfAny(enabled) { IdeaBackendConfigOverride(enabled) }
-}
-
-private fun Map<String, String>.pathsOverride(): PathsConfigOverride? {
-    val installRoot = stringValue("paths.installroot")?.let(::PathsInstallRoot)
-    val binDir = stringValue("paths.bindir")?.let(::PathsBinDir)
-    val libDir = stringValue("paths.libdir")?.let(::PathsLibDir)
-    val cacheDir = stringValue("paths.cachedir")?.let(::PathsCacheDir)
-    val logsDir = stringValue("paths.logsdir")?.let(::PathsLogsDir)
-    val descriptorDir = stringValue("paths.descriptordir")?.let(::PathsDescriptorDir)
-    val socketDir = stringValue("paths.socketdir")?.let(::PathsSocketDir)
-    return takeIfAny(installRoot, binDir, libDir, cacheDir, logsDir, descriptorDir, socketDir) {
-        PathsConfigOverride(installRoot, binDir, libDir, cacheDir, logsDir, descriptorDir, socketDir)
-    }
-}
-
-private fun Map<String, String>.cliOverride(): CliConfigOverride? {
-    val binaryPath = stringValue("cli.binarypath")?.let(::CliBinaryPath)
-    return takeIfAny(binaryPath) { CliConfigOverride(binaryPath) }
 }
 
 private fun Map<String, String>.stringValue(key: String): String? = get(key)
@@ -882,7 +860,6 @@ data class CliConfigOverride(
 )
 
 private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
-    val previousPaths = paths
     val mergedPaths = paths.merge(override.paths)
     return copy(
         server = server.merge(override.server),
@@ -894,9 +871,9 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
         gradle = gradle.merge(override.gradle),
         telemetry = telemetry.merge(override.telemetry),
         profiling = profiling.merge(override.profiling),
-        backends = backends.merge(override.backends, previousPaths, mergedPaths),
+        backends = backends.merge(override.backends),
         paths = mergedPaths,
-        cli = cli.merge(override.cli, previousPaths, mergedPaths),
+        cli = cli.merge(override.cli),
     )
 }
 
@@ -977,75 +954,31 @@ private fun ProfilingConfig.merge(override: ProfilingConfigOverride?): Profiling
 
 private fun BackendsConfig.merge(
     override: BackendsConfigOverride?,
-    previousPaths: PathsConfig,
-    paths: PathsConfig,
 ): BackendsConfig = copy(
-    headless = headless.merge(override?.headless, previousPaths, paths),
+    headless = headless.merge(override?.headless),
     idea = idea.merge(override?.idea),
 )
 
-private fun HeadlessBackendConfig.merge(
-    override: HeadlessBackendConfigOverride?,
-    previousPaths: PathsConfig,
-    paths: PathsConfig,
-): HeadlessBackendConfig {
-    val previousDerivedRuntimeLibsDir = HeadlessRuntimeLibsDir(
-        OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir(previousPaths.libDir.value).toString()),
-    )
-    val nextDerivedRuntimeLibsDir = HeadlessRuntimeLibsDir(
-        OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir(paths.libDir.value).toString()),
-    )
-    return copy(
-        enabled = override?.enabled ?: enabled,
-        runtimeLibsDir = override?.runtimeLibsDir
-            ?: if (runtimeLibsDir == previousDerivedRuntimeLibsDir) nextDerivedRuntimeLibsDir else runtimeLibsDir,
-        ideaHome = override?.ideaHome ?: ideaHome,
-    )
-}
+private fun HeadlessBackendConfig.merge(override: HeadlessBackendConfigOverride?): HeadlessBackendConfig = copy(
+    enabled = override?.enabled ?: enabled,
+    runtimeLibsDir = override?.runtimeLibsDir ?: runtimeLibsDir,
+    ideaHome = override?.ideaHome ?: ideaHome,
+)
 
 private fun IdeaBackendConfig.merge(override: IdeaBackendConfigOverride?): IdeaBackendConfig = copy(
     enabled = override?.enabled ?: enabled,
 )
 
-private fun PathsConfig.merge(override: PathsConfigOverride?): PathsConfig {
-    val mergedInstallRoot = override?.installRoot ?: installRoot
-    val defaultBinDir = PathsBinDir(defaultConfigBinDir(installRoot.value).toString())
-    val defaultLibDir = PathsLibDir(defaultConfigLibDir(installRoot.value).toString())
-    val defaultCacheDir = PathsCacheDir(defaultConfigCacheDir(installRoot.value).toString())
-    val defaultLogsDir = PathsLogsDir(defaultConfigLogsDir(installRoot.value).toString())
-    val mergedBinDir = override?.binDir
-        ?: if (binDir == defaultBinDir) PathsBinDir(defaultConfigBinDir(mergedInstallRoot.value).toString()) else binDir
-    val mergedLibDir = override?.libDir
-        ?: if (libDir == defaultLibDir) PathsLibDir(defaultConfigLibDir(mergedInstallRoot.value).toString()) else libDir
-    val mergedCacheDir = override?.cacheDir
-        ?: if (cacheDir == defaultCacheDir) PathsCacheDir(defaultConfigCacheDir(mergedInstallRoot.value).toString()) else cacheDir
-    val defaultDescriptorDir = PathsDescriptorDir(defaultConfigDescriptorDir(cacheDir.value).toString())
-    return copy(
-        installRoot = mergedInstallRoot,
-        binDir = mergedBinDir,
-        libDir = mergedLibDir,
-        cacheDir = mergedCacheDir,
-        logsDir = override?.logsDir
-            ?: if (logsDir == defaultLogsDir) PathsLogsDir(defaultConfigLogsDir(mergedInstallRoot.value).toString()) else logsDir,
-        descriptorDir = override?.descriptorDir
-            ?: if (descriptorDir == defaultDescriptorDir) {
-                PathsDescriptorDir(defaultConfigDescriptorDir(mergedCacheDir.value).toString())
-            } else {
-                descriptorDir
-            },
-        socketDir = override?.socketDir ?: socketDir,
-    )
-}
+private fun PathsConfig.merge(override: PathsConfigOverride?): PathsConfig = copy(
+    installRoot = override?.installRoot ?: installRoot,
+    binDir = override?.binDir ?: binDir,
+    libDir = override?.libDir ?: libDir,
+    cacheDir = override?.cacheDir ?: cacheDir,
+    logsDir = override?.logsDir ?: logsDir,
+    descriptorDir = override?.descriptorDir ?: descriptorDir,
+    socketDir = override?.socketDir ?: socketDir,
+)
 
-private fun CliConfig.merge(
-    override: CliConfigOverride?,
-    previousPaths: PathsConfig,
-    paths: PathsConfig,
-): CliConfig {
-    val previousDerivedBinaryPath = CliBinaryPath(defaultConfigCliBinaryPath(previousPaths.binDir.value).toString())
-    val nextDerivedBinaryPath = CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString())
-    return copy(
-        binaryPath = override?.binaryPath
-            ?: if (binaryPath == previousDerivedBinaryPath) nextDerivedBinaryPath else binaryPath,
-    )
-}
+private fun CliConfig.merge(override: CliConfigOverride?): CliConfig = copy(
+    binaryPath = override?.binaryPath ?: binaryPath,
+)

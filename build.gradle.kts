@@ -109,70 +109,6 @@ tasks.register<Copy>("stageOpenApiSpec") {
     into(layout.projectDirectory.dir("dist"))
 }
 
-fun readKastConfigValue(
-    configFile: File,
-    sectionName: String,
-    keyName: String,
-): String? {
-    if (!configFile.isFile) return null
-    var section = ""
-    configFile.readLines().forEach { rawLine ->
-        val line = rawLine.withoutTomlComment().trim()
-        if (line.isBlank()) return@forEach
-        if (line.startsWith("[") && line.endsWith("]")) {
-            section = line.removePrefix("[").removeSuffix("]").normalizeKastConfigPath()
-            return@forEach
-        }
-        val separator = line.indexOf('=')
-        if (separator <= 0) return@forEach
-        val key = listOf(section, line.substring(0, separator).trim())
-            .filter(String::isNotBlank)
-            .joinToString(".")
-            .normalizeKastConfigPath()
-        if (key == "$sectionName.$keyName".normalizeKastConfigPath()) {
-            return line.substring(separator + 1).trim().parseTomlScalar()
-        }
-    }
-    return null
-}
-
-fun String.withoutTomlComment(): String {
-    var quoted = false
-    var quote = '\u0000'
-    var escaped = false
-    forEachIndexed { index, char ->
-        when {
-            escaped -> escaped = false
-            quoted && char == '\\' -> escaped = true
-            quoted && char == quote -> quoted = false
-            !quoted && (char == '"' || char == '\'') -> {
-                quoted = true
-                quote = char
-            }
-            !quoted && char == '#' -> return substring(0, index)
-        }
-    }
-    return this
-}
-
-fun String.parseTomlScalar(): String {
-    val trimmed = trim().removeSuffix(",").trim()
-    if (trimmed.length >= 2 && trimmed.first() == '"' && trimmed.last() == '"') {
-        return trimmed.substring(1, trimmed.lastIndex)
-            .replace("\\\"", "\"")
-            .replace("\\\\", "\\")
-            .replace("\\n", "\n")
-            .replace("\\t", "\t")
-    }
-    if (trimmed.length >= 2 && trimmed.first() == '\'' && trimmed.last() == '\'') {
-        return trimmed.substring(1, trimmed.lastIndex)
-    }
-    return trimmed
-}
-
-fun String.normalizeKastConfigPath(): String =
-    split('.').joinToString(".") { segment -> segment.filterNot { it == '-' || it == '_' }.lowercase() }
-
 data class JetBrainsProfileCandidate(
     val profileDirectory: File,
     val year: Int,
@@ -185,23 +121,12 @@ val kastHomeDirectory: File = providers.environmentVariable("HOME")
     ?.let(::file)
     ?: file(".")
 
-val kastGlobalConfigFile: File = run {
-    val configHome = providers.environmentVariable("KAST_CONFIG_HOME")
-        .orNull
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?.let(::file)
-        ?: kastHomeDirectory.resolve(".config/kast")
-    configHome.resolve("config.toml").absoluteFile.normalize()
-}
-
-val kastInstallRoot: File = readKastConfigValue(kastGlobalConfigFile, "paths", "installRoot")
+val kastBinDirectory: File = providers.environmentVariable("KAST_BIN_DIR")
+    .orNull
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
     ?.let(::file)
-    ?: kastHomeDirectory.resolve(".kast")
-
-val kastBinDirectory: File = readKastConfigValue(kastGlobalConfigFile, "paths", "binDir")
-    ?.let(::file)
-    ?: kastInstallRoot.resolve("bin")
+    ?: kastHomeDirectory.resolve(".local/bin")
 
 val cargoHomeDirectory: File = providers.environmentVariable("CARGO_HOME")
                                    .orNull

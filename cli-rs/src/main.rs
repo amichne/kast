@@ -7,8 +7,8 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
-mod interaction;
 mod lsp;
+mod manifest;
 mod metrics;
 mod metrics_database;
 mod output;
@@ -80,7 +80,6 @@ fn requested_output_format() -> OutputFormat {
 fn run(cli: Cli) -> Result<i32> {
     let output_format = cli.output;
     let command = cli.command.unwrap_or(Command::Help { topic: vec![] });
-    maybe_repair_after_cli_upgrade(&command)?;
     match command {
         Command::Help { topic } => {
             if topic.is_empty() {
@@ -165,20 +164,28 @@ fn run(cli: Cli) -> Result<i32> {
         Command::Lsp(args) => lsp::run(args),
         Command::Demo(args) => demo::run(args),
         Command::Metrics { command } => metrics::run(command, output_format),
-        Command::Setup(args) => {
-            let mut reporter = install_reporter(output_format);
-            let result = install::setup(args, reporter.as_mut())?;
+        Command::Paths(args) => {
+            let workspace_root = args
+                .workspace_root
+                .as_deref()
+                .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
+                .transpose()?;
+            let config = match &workspace_root {
+                Some(root) => config::KastConfig::load(root)?,
+                None => config::KastConfig::load_global()?,
+            };
+            let mode = if args.idea {
+                config::PathResolutionMode::Idea
+            } else {
+                config::PathResolutionMode::Cli
+            };
+            let result = config::path_resolution_report(&config, workspace_root.as_deref(), mode)?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
             } else {
-                output::print_setup(&result)?;
+                output::print_paths(&result)?;
             }
             Ok(0)
-        }
-        Command::Install(args)
-            if should_prompt_for_affected_install_apply(&args, output_format) =>
-        {
-            run_interactive_affected_install(args)
         }
         Command::Install(args)
             if matches!(args.command, Some(cli::InstallCommand::Completion(_))) =>
@@ -199,8 +206,8 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(0)
         }
-        Command::Doctor => {
-            let result = self_mgmt::doctor()?;
+        Command::Doctor(args) => {
+            let result = self_mgmt::doctor(args.repair)?;
             if output_format == OutputFormat::Json {
                 output::print_json(&result)?;
             } else {
@@ -216,71 +223,6 @@ fn install_reporter(output_format: OutputFormat) -> Box<dyn install::InstallRepo
         Box::new(install::HumanInstallReporter::new())
     } else {
         Box::new(install::NoopInstallReporter)
-    }
-}
-
-fn should_prompt_for_affected_install_apply(
-    args: &cli::InstallArgs,
-    output_format: OutputFormat,
-) -> bool {
-    interaction::PromptPolicy::current(output_format).is_enabled()
-        && matches!(
-            &args.command,
-            Some(cli::InstallCommand::Affected(cli::AffectedInstallArgs {
-                apply: false,
-                ..
-            }))
-        )
-}
-
-fn run_interactive_affected_install(args: cli::InstallArgs) -> Result<i32> {
-    let mut reporter = install_reporter(OutputFormat::Human);
-    let planned = install::install(args.clone(), reporter.as_mut())?;
-    let action_count = match &planned {
-        install::InstallResult::Affected(result) => result.actions.len(),
-        _ => 0,
-    };
-    output::print_install_result(&planned)?;
-    if action_count == 0 {
-        return Ok(0);
-    }
-
-    if interaction::confirm_affected_install_apply(action_count)?
-        == interaction::Confirmation::Accepted
-    {
-        let mut apply_args = args;
-        let Some(cli::InstallCommand::Affected(affected_args)) = &mut apply_args.command else {
-            unreachable!("interactive affected install only handles affected install arguments")
-        };
-        affected_args.apply = true;
-        let applied = install::install(apply_args, reporter.as_mut())?;
-        output::print_install_result(&applied)?;
-    }
-    Ok(0)
-}
-
-fn maybe_repair_after_cli_upgrade(command: &Command) -> Result<()> {
-    if matches!(
-        command,
-        Command::Help { .. }
-            | Command::Version
-            | Command::Validate(_)
-            | Command::Generate(_)
-            | Command::Lsp(_)
-            | Command::Setup(_)
-            | Command::Install(cli::InstallArgs {
-                command: Some(
-                    cli::InstallCommand::Affected(_) | cli::InstallCommand::Completion(_)
-                ),
-                ..
-            })
-    ) {
-        return Ok(());
-    }
-    match install::repair_if_running_cli_version_changed() {
-        Ok(_) => Ok(()),
-        Err(error) if matches!(command, Command::Doctor) && error.code == "CONFIG_ERROR" => Ok(()),
-        Err(error) => Err(error),
     }
 }
 
