@@ -71,10 +71,12 @@ expect_failure_contains() {
 repo_root="$(resolve_repo_root)"
 
 need_tool git
+need_tool cargo
 need_tool python3
 need_tool tar
 
 scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-ubuntu-debian-bundle-smoke.XXXXXX")"
+scratch_dir="$(cd -- "$scratch_dir" && pwd -P)"
 cleanup() {
   rm -rf "$scratch_dir"
 }
@@ -83,7 +85,6 @@ trap cleanup EXIT
 version="v9.8.7"
 bundle_kind="headless"
 platform="ubuntu-debian-headless-x86_64"
-packager="${repo_root}/scripts/package-ubuntu-debian-bundle.sh"
 backend_archive_root="backend-headless"
 backend_install_name="headless-${version}"
 backend_launcher="kast-headless"
@@ -112,22 +113,15 @@ mkdir -p \
   "${backend_tree}/${backend_archive_root}/idea-home/modules" \
   "${backend_tree}/${backend_archive_root}/idea-home/plugins/kast-headless/lib"
 
-cat > "${cli_tree}/kast" <<'FAKE_KAST'
-#!/usr/bin/env bash
-set -euo pipefail
-
-case "${1:-help}" in
-  version|--version)
-    printf '%s\n' "Kast CLI 9.8.7"
-    ;;
-  doctor)
-    printf '%s\n' '{"ok":true}'
-    ;;
-  *)
-    printf '%s\n' "fake kast"
-    ;;
-esac
-FAKE_KAST
+if [[ -n "${KAST_UBUNTU_DEBIAN_CLI_BIN:-}" ]]; then
+  cli_bin="$KAST_UBUNTU_DEBIAN_CLI_BIN"
+else
+  cargo build --manifest-path "${repo_root}/cli-rs/Cargo.toml" --locked
+  cli_bin="${repo_root}/cli-rs/target/debug/kast"
+fi
+[[ -x "$cli_bin" ]] || die "Rust CLI binary was not built at ${cli_bin}"
+packager_command=("$cli_bin" package ubuntu-debian-bundle --repo-root "$repo_root")
+cp "$cli_bin" "${cli_tree}/kast"
 chmod +x "${cli_tree}/kast"
 
 cat > "${backend_tree}/${backend_archive_root}/${backend_launcher}" <<'FAKE_BACKEND'
@@ -161,17 +155,17 @@ PY
 
 expect_failure_contains \
   "unsafe zip member" \
-  "$packager" \
+  "${packager_command[@]}" \
   --cli-archive "$malicious_cli_zip" \
   --backend-archive "$backend_zip" \
   --version "$version" \
-  --output "${artifact_dir}/must-not-exist.tar.gz"
+  --bundle-output "${artifact_dir}/must-not-exist.tar.gz"
 
-"$packager" \
+"${packager_command[@]}" \
   --cli-archive "$cli_zip" \
   --backend-archive "$backend_zip" \
   --version "$version" \
-  --output "$bundle_path"
+  --bundle-output "$bundle_path"
 
 [[ -f "$bundle_path" ]] || die "Bundle tarball was not created: $bundle_path"
 [[ -f "${bundle_path}.sha256" ]] || die "Bundle SHA-256 sidecar was not created"
@@ -203,12 +197,23 @@ from pathlib import Path
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 version = sys.argv[2]
-assert payload["schemaVersion"] == 1, payload
-assert payload["kind"] == "KAST_UBUNTU_DEBIAN_BUNDLE", payload
+assert payload["schemaVersion"] == 2, payload
+assert payload["kind"] == "KAST_INSTALL_BUNDLE", payload
+assert payload["profile"] == "ubuntu-debian-headless", payload
 assert payload["version"] == version, payload
 assert payload["platform"] == sys.argv[3], payload
-assert payload["backendKind"] == sys.argv[4], payload
 assert payload["entrypoint"] == "scripts/install-ubuntu-debian.sh", payload
+activation = payload["activation"]
+assert activation["cli"]["path"] == "bin/kast", payload
+assert activation["backend"]["kind"] == sys.argv[4], payload
+assert activation["backend"]["name"] == "headless", payload
+assert activation["backend"]["installDir"] == f"lib/backends/headless-{version}", payload
+assert activation["backend"]["runtimeLibsDir"] == "runtime-libs", payload
+assert activation["backend"]["ideaHome"] == "idea-home", payload
+assert activation["backend"]["requiredPlugin"] == "idea-home/plugins/kast-headless", payload
+assert "-Didea.force.use.core.classloader=true" in activation["shim"]["javaOpts"], payload
+assert activation["shim"]["exportsInstallRoot"] is True, payload
+assert activation["shim"]["exportsConfigHome"] is True, payload
 roles = {entry["role"] for entry in payload["artifacts"]}
 assert {"cli", sys.argv[5]}.issubset(roles), payload
 PY
@@ -249,6 +254,7 @@ install_root = sys.argv[3]
 install_home = sys.argv[4]
 assert payload["tool"] == "kast", payload
 assert payload["activeVersion"] == version, payload
+assert payload["profile"] == "ubuntu-debian-headless", payload
 assert payload["roots"]["install"] == install_root, payload
 assert payload["entrypoints"]["activeBinary"] == f"{install_home}/bin/kast", payload
 backend = payload["backends"][0]
@@ -296,14 +302,37 @@ version = sys.argv[2]
 install_root = sys.argv[3]
 install_home = sys.argv[4]
 assert payload["activeVersion"] == version, payload
-assert payload["version"] == "9.8.7", payload
-assert payload["backendVersion"] == "9.8.7", payload
+assert payload["version"] == version.removeprefix("v"), payload
+assert payload["backendVersion"] == version.removeprefix("v"), payload
 assert payload["roots"]["install"] == install_root, payload
 assert payload["entrypoints"]["activeBinary"] == f"{install_home}/bin/kast", payload
 backend = payload["backends"][0]
 assert backend["runtimeLibsDir"] == f"{install_home}/lib/backends/headless/current/runtime-libs", payload
 assert backend["ideaHome"] == f"{install_home}/lib/backends/headless/current/idea-home", payload
 PY
+
+HOME="$home_dir" \
+PATH="$bin_dir:$PATH" \
+KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
+KAST_UBUNTU_DEBIAN_VERSION="$version" \
+KAST_UBUNTU_DEBIAN_BASE_URL="file://${scratch_dir}/missing-release" \
+KAST_UBUNTU_DEBIAN_ROOT="$install_root" \
+KAST_UBUNTU_DEBIAN_BIN_DIR="$bin_dir" \
+KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
+KAST_JAVA_CMD=sh \
+"${repo_root}/scripts/install-ubuntu-debian.sh" install
+
+expect_failure_contains \
+  "activeVersion" \
+  env \
+  HOME="$home_dir" \
+  PATH="$bin_dir:$PATH" \
+  KAST_UBUNTU_DEBIAN_VERSION="v0.0.1" \
+  KAST_UBUNTU_DEBIAN_ROOT="$install_root" \
+  KAST_UBUNTU_DEBIAN_BIN_DIR="$bin_dir" \
+  KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
+  KAST_JAVA_CMD=sh \
+  "${repo_root}/scripts/install-ubuntu-debian.sh" verify
 
 bundle_without_sidecar="${artifact_dir}/kast-${platform}-v9.8.6.tar.gz"
 cp "$bundle_path" "$bundle_without_sidecar"

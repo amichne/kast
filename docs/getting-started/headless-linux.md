@@ -81,8 +81,16 @@ gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
 ./scripts/verify-release-assets.sh --release-dir kast-release-v1.2.3 --tag v1.2.3
 ```
 
-Use `scripts/package-ubuntu-debian-bundle.sh` only when building the release
-bundle from local CLI and backend artifacts.
+Use the hidden Rust packager only when building the release bundle from local
+CLI and backend artifacts:
+
+```bash title="Package a local Ubuntu/Debian bundle"
+kast package ubuntu-debian-bundle \
+  --cli-archive dist/kast-<version>-linux-x64.zip \
+  --backend-archive backend-headless/build/distributions/backend-headless-<version>-portable.zip \
+  --version <version> \
+  --bundle-output dist/kast-ubuntu-debian-headless-x86_64-<version>.tar.gz
+```
 
 ## Devin and ephemeral agents
 

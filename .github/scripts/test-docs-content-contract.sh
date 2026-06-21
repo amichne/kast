@@ -165,7 +165,7 @@ require_not_contains "$install_doc" 'scripts/headless-agent-install.sh' "Install
 require_not_contains "$install_doc" 'scripts/package-headless-agent-bundle.sh' "Install docs must not document retired bundle packaging"
 require_contains "$headless_doc" '# Headless Linux Server' "Headless docs must own the Linux server install path"
 require_contains "$headless_doc" 'scripts/install-ubuntu-debian.sh' "Headless docs must document the canonical non-Brew installer"
-require_contains "$headless_doc" 'scripts/package-ubuntu-debian-bundle.sh' "Headless docs must document the canonical Linux headless tarball packager"
+require_contains "$headless_doc" 'kast package ubuntu-debian-bundle' "Headless docs must document the Rust Linux headless tarball packager"
 require_contains "$headless_doc" 'kast-ubuntu-debian-headless-x86_64-<version>.tar.gz' "Headless docs must name the Linux headless tarball asset"
 require_contains "$headless_doc" 'scripts/verify-release-assets.sh' "Headless docs must document release asset verification"
 require_contains "$install_doc" 'Repository Copilot integration' "Install docs must document the repository Copilot package"

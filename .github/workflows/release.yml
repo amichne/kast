@@ -631,6 +631,9 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Download headless backend artifact
         uses: actions/download-artifact@v7
         with:
@@ -667,11 +670,13 @@ jobs:
           backend_asset="headless-backend/headless.zip"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
           [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
-          ./scripts/package-ubuntu-debian-bundle.sh \
+          cargo run --manifest-path cli-rs/Cargo.toml --locked -- \
+            package ubuntu-debian-bundle \
+            --repo-root "$PWD" \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$tag" \
-            --output "$bundle_asset"
+            --bundle-output "$bundle_asset"
           ./scripts/package-devin-runtime.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \

@@ -3,9 +3,11 @@ use crate::cli::OutputFormat;
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ArchiveInstallResult, InstallCopilotExtensionResult, InstallIdeaPluginResult,
-    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
+    ActivateBundleResult, ArchiveInstallResult, InstallCopilotExtensionResult,
+    InstallIdeaPluginResult, InstallInstructionsResult, InstallResult, InstallShellResult,
+    InstallSkillResult,
 };
+use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
     WorkspaceRestartResult, WorkspaceStatusResult,
@@ -176,6 +178,7 @@ fn render_markdown_for_test(markdown: &str, style: RenderStyle) -> String {
 
 pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
+        InstallResult::ActivateBundle(result) => print_activate_bundle_install(result),
         InstallResult::Skill(result) => print_skill_install(result),
         InstallResult::Instructions(result) => print_instructions_install(result),
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
@@ -183,6 +186,12 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
         InstallResult::Shell(result) => print_shell_install(result),
         InstallResult::Headless(result) => print_backend_install(result),
         InstallResult::Archive(result) => print_archive_install(result),
+    }
+}
+
+pub fn print_package_result(result: &PackageResult) -> Result<()> {
+    match result {
+        PackageResult::UbuntuDebianBundle(result) => print_ubuntu_debian_bundle_package(result),
     }
 }
 
@@ -651,6 +660,47 @@ fn print_archive_install(result: &ArchiveInstallResult) -> Result<()> {
         "- Reused existing install: {}",
         yes_no(result.skipped)
     );
+    print_markdown(&document.into_string())
+}
+
+fn print_activate_bundle_install(result: &ActivateBundleResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast bundle activation");
+    mdln!(document);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(document, "- Platform: `{}`", result.platform);
+    mdln!(document, "- Profile: `{}`", result.profile);
+    mdln!(document, "- Installed at: `{}`", result.installed_at);
+    mdln!(document, "- Install root: `{}`", result.install_root);
+    mdln!(document, "- Current link: `{}`", result.current);
+    mdln!(document, "- Manifest: `{}`", result.manifest);
+    mdln!(document, "- Active binary: `{}`", result.active_binary);
+    mdln!(document, "- Shim: `{}`", result.shim);
+    mdln!(
+        document,
+        "- Reused existing install: {}",
+        yes_no(result.skipped)
+    );
+    mdln!(document, "- Verify only: {}", yes_no(result.verify_only));
+    print_markdown(&document.into_string())
+}
+
+fn print_ubuntu_debian_bundle_package(result: &UbuntuDebianBundlePackageResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast Ubuntu/Debian bundle package");
+    mdln!(document);
+    mdln!(document, "- Output: `{}`", result.output);
+    mdln!(document, "- SHA-256 sidecar: `{}`", result.sha256_sidecar);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(document, "- Platform: `{}`", result.platform);
+    mdln!(
+        document,
+        "- Bundle manifest schema: {}",
+        result.manifest_schema_version
+    );
+    mdln!(document, "- CLI archive: `{}`", result.cli_archive);
+    mdln!(document, "- Backend archive: `{}`", result.backend_archive);
+    mdln!(document, "- Bundle SHA-256: `{}`", result.bundle_sha256);
     print_markdown(&document.into_string())
 }
 

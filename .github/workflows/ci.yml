@@ -257,6 +257,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Download headless backend distribution
         uses: actions/download-artifact@v7
         with:
@@ -286,11 +289,13 @@ jobs:
           [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
 
-          ./scripts/package-ubuntu-debian-bundle.sh \
+          cargo run --manifest-path cli-rs/Cargo.toml --locked -- \
+            package ubuntu-debian-bundle \
+            --repo-root "$PWD" \
             --cli-archive "$KAST_RUST_CLI_ASSET" \
             --backend-archive "$backend_asset" \
             --version "$KAST_RUST_CLI_TAG" \
-            --output "$bundle_asset"
+            --bundle-output "$bundle_asset"
 
           printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
 

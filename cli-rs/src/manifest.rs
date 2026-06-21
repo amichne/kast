@@ -367,7 +367,7 @@ fn read_manifest_at(path: &Path) -> Result<KastInstallManifest> {
     })
 }
 
-fn write_manifest_atomic(path: &Path, manifest: &KastInstallManifest) -> Result<()> {
+pub(crate) fn write_manifest_atomic(path: &Path, manifest: &KastInstallManifest) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -380,7 +380,7 @@ fn write_manifest_atomic(path: &Path, manifest: &KastInstallManifest) -> Result<
     Ok(())
 }
 
-fn with_install_lock<T>(
+pub(crate) fn with_install_lock<T>(
     paths: &ResolvedKastPaths,
     action: impl FnOnce() -> Result<T>,
 ) -> Result<T> {
@@ -430,7 +430,7 @@ fn unlock(_file: &fs::File) -> Result<()> {
     Ok(())
 }
 
-fn write_shim(shim_path: &Path, active_binary: &Path) -> Result<()> {
+pub(crate) fn write_shim(shim_path: &Path, active_binary: &Path) -> Result<()> {
     if let Some(parent) = shim_path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -443,7 +443,7 @@ fn write_shim(shim_path: &Path, active_binary: &Path) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn make_executable(path: &Path) -> Result<()> {
+pub(crate) fn make_executable(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let mut permissions = fs::metadata(path)?.permissions();
     permissions.set_mode(0o755);
@@ -452,11 +452,11 @@ fn make_executable(path: &Path) -> Result<()> {
 }
 
 #[cfg(not(unix))]
-fn make_executable(_path: &Path) -> Result<()> {
+pub(crate) fn make_executable(_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn replace_symlink_or_copy(target: &Path, link: &Path) -> Result<()> {
+pub(crate) fn replace_symlink_or_copy(target: &Path, link: &Path) -> Result<()> {
     remove_path(link)?;
     if let Some(parent) = link.parent() {
         fs::create_dir_all(parent)?;
@@ -472,7 +472,7 @@ fn replace_symlink_or_copy(target: &Path, link: &Path) -> Result<()> {
     }
 }
 
-fn remove_path(path: &Path) -> Result<()> {
+pub(crate) fn remove_path(path: &Path) -> Result<()> {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return Ok(());
     };
@@ -500,7 +500,7 @@ fn copy_dir(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
-fn owned_paths(paths: &ResolvedKastPaths) -> Vec<String> {
+pub(crate) fn owned_paths(paths: &ResolvedKastPaths) -> Vec<String> {
     vec![
         paths.shim_path.clone(),
         paths.install_root.join("current"),
@@ -514,7 +514,7 @@ fn owned_paths(paths: &ResolvedKastPaths) -> Vec<String> {
     .collect()
 }
 
-fn legacy_paths() -> Vec<String> {
+pub(crate) fn legacy_paths() -> Vec<String> {
     [
         home_dir().join(".kast"),
         home_dir().join(".config/kast/daemons"),
@@ -525,7 +525,7 @@ fn legacy_paths() -> Vec<String> {
     .collect()
 }
 
-fn current_timestamp() -> String {
+pub(crate) fn current_timestamp() -> String {
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())

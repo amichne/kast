@@ -38,6 +38,9 @@ pub enum Command {
     Validate(ValidateArgs),
     /// Generate checked-in catalog-derived artifacts.
     Generate(GenerateArgs),
+    /// Package internal distribution artifacts.
+    #[command(hide = true)]
+    Package(PackageArgs),
     /// Start or warm the workspace daemon.
     Up(RuntimeArgs),
     /// Check what backends are running.
@@ -236,6 +239,38 @@ pub struct GenerateArgs {
 pub enum GenerateCommand {
     /// Regenerate YAML, sample payloads, and JSON Schemas from commands.json.
     Contract(GenerateContractArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct PackageArgs {
+    #[command(subcommand)]
+    pub command: PackageCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum PackageCommand {
+    /// Build the Ubuntu/Debian headless install bundle.
+    #[command(name = "ubuntu-debian-bundle", hide = true)]
+    UbuntuDebianBundle(UbuntuDebianBundlePackageArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct UbuntuDebianBundlePackageArgs {
+    /// Rust CLI zip archive containing kast at the archive root.
+    #[arg(long)]
+    pub cli_archive: PathBuf,
+    /// Headless backend portable zip archive containing backend-headless/.
+    #[arg(long)]
+    pub backend_archive: PathBuf,
+    /// Release tag or version for the generated bundle.
+    #[arg(long)]
+    pub version: String,
+    /// Output tar.gz path. Defaults to dist/kast-ubuntu-debian-headless-x86_64-<version>.tar.gz.
+    #[arg(long = "bundle-output")]
+    pub bundle_output: Option<PathBuf>,
+    /// Repository root containing scripts/install-ubuntu-debian.sh and LICENSE.
+    #[arg(long, hide = true)]
+    pub repo_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -448,6 +483,9 @@ pub struct InstallArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum InstallCommand {
+    /// Activate a portable Kast install bundle from its bundled manifest.
+    #[command(name = "activate-bundle", hide = true)]
+    ActivateBundle(ActivateBundleArgs),
     /// Install the headless JVM backend from an internal archive.
     #[command(hide = true)]
     Headless(HeadlessInstallArgs),
@@ -465,6 +503,25 @@ pub enum InstallCommand {
     Shell(ShellInstallArgs),
     /// Print shell completion scripts.
     Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct ActivateBundleArgs {
+    /// Extracted bundle directory or bundle .tar.gz archive.
+    #[arg(long)]
+    pub source: PathBuf,
+    /// Managed install root. Defaults to KAST_INSTALL_ROOT or ~/.local/share/kast.
+    #[arg(long)]
+    pub install_root: Option<PathBuf>,
+    /// Directory for the kast shim. Defaults to KAST_BIN_DIR or ~/.local/bin.
+    #[arg(long)]
+    pub bin_dir: Option<PathBuf>,
+    /// Kast config home. Defaults to KAST_CONFIG_HOME or ~/.config/kast.
+    #[arg(long)]
+    pub config_home: Option<PathBuf>,
+    /// Validate the bundle and current install without changing files.
+    #[arg(long)]
+    pub verify_only: bool,
 }
 
 #[derive(Debug, Args, Clone)]

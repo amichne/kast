@@ -1,4 +1,5 @@
 mod backend;
+mod bundle;
 mod catalog_schema;
 mod cli;
 mod config;
@@ -12,6 +13,7 @@ mod manifest;
 mod metrics;
 mod metrics_database;
 mod output;
+mod package;
 mod rpc;
 mod runtime;
 mod self_mgmt;
@@ -116,6 +118,15 @@ fn run(cli: Cli) -> Result<i32> {
                 Ok(0)
             }
         },
+        Command::Package(args) => {
+            let result = package::run(args)?;
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_package_result(&result)?;
+            }
+            Ok(0)
+        }
         Command::Up(args) => {
             let result = runtime::workspace_ensure(args)?;
             if output_format == OutputFormat::Json {
