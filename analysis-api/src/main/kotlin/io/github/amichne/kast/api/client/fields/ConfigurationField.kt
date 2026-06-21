@@ -51,6 +51,7 @@ sealed class ConfigurationField<T> {
             PathsLibDir(defaultConfigLibDir().toString()),
             PathsCacheDir(defaultConfigCacheDir().toString()),
             PathsLogsDir(defaultConfigLogsDir().toString()),
+            PathsRuntimeDir(defaultConfigRuntimeDir().toString()),
             PathsDescriptorDir(defaultConfigDescriptorDir().toString()),
             PathsSocketDir(defaultConfigSocketDir()),
             CliBinaryPath(defaultConfigCliBinaryPath().toString()),

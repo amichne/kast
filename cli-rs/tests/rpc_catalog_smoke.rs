@@ -424,13 +424,6 @@ fn command_catalog_owns_copilot_tool_surface() {
         "kast_write_and_validate",
     ]);
     assert_eq!(tool_names, expected);
-
-    assert!(
-        !Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources/copilot-extension")
-            .exists(),
-        "deprecated Copilot SDK extension source must not be packaged"
-    );
 }
 
 #[test]
@@ -491,7 +484,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     );
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
-        "plugin source must own the Copilot SDK extension entrypoint"
+        "plugin source must own the catalog-backed Copilot extension entrypoint"
     );
     assert!(
         plugin_root.join("agents/kast-reader.agent.md").is_file(),

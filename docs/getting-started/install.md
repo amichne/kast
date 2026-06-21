@@ -108,7 +108,7 @@ from the manifest-backed resolver.
 
 ??? question "Inspect the active path model"
     Use `kast paths` when you need the exact resolved paths that the CLI,
-    Copilot extension, headless runtime, and IDE integration should share.
+    repository Copilot package, headless runtime, and IDE integration should share.
 
     ```console title="Show resolved paths"
     kast paths
@@ -117,7 +117,7 @@ from the manifest-backed resolver.
 
 ??? question "Repair stale managed files"
     Plain `kast doctor` is read-only. It reports manifest validity, canonical
-    paths, binary linkage, behavior config validity, and legacy locations that
+    paths, binary linkage, behavior config validity, and managed files that
     can be repaired. Use `kast doctor --repair` as the only broad convergence
     command after upgrading Kast, moving between install methods, or seeing
     stale managed paths.

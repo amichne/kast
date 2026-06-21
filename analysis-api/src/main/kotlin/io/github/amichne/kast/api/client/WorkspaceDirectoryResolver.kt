@@ -11,7 +11,6 @@ import java.nio.file.Path
 import java.util.UUID
 
 class WorkspaceDirectoryResolver(
-    configHome: () -> Path = { kastConfigHome() },
     private val installRoot: () -> Path = ::kastInstallRoot,
     private val gitWorkspaceResolver: (Path) -> GitWorkspace? = GitWorkspaceResolver::discover,
     private val gitRemoteResolver: (Path) -> GitRemote? = GitRemoteParser::origin,
@@ -133,28 +132,11 @@ class WorkspaceDirectoryResolver(
         .ifBlank { "workspace" }
 }
 
-fun kastInstallRoot(): Path = defaultInstallRoot().toAbsolutePath().normalize()
-
 fun workspaceDataDirectory(workspaceRoot: Path): Path =
-    WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceDataDirectory(workspaceRoot)
-
-fun workspaceDataDirectory(
-    workspaceRoot: Path,
-    envLookup: (String) -> String?,
-): Path = WorkspaceDirectoryResolver(configHome = { kastConfigHome(envLookup) }).workspaceDataDirectory(workspaceRoot)
+    WorkspaceDirectoryResolver().workspaceDataDirectory(workspaceRoot)
 
 fun workspaceCacheDirectory(workspaceRoot: Path): Path =
-    WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceCacheDirectory(workspaceRoot)
-
-fun workspaceCacheDirectory(
-    workspaceRoot: Path,
-    envLookup: (String) -> String?,
-): Path = WorkspaceDirectoryResolver(configHome = { kastConfigHome(envLookup) }).workspaceCacheDirectory(workspaceRoot)
+    WorkspaceDirectoryResolver().workspaceCacheDirectory(workspaceRoot)
 
 fun workspaceDatabasePath(workspaceRoot: Path): Path =
-    WorkspaceDirectoryResolver(configHome = { kastConfigHome() }).workspaceDatabasePath(workspaceRoot)
-
-fun workspaceDatabasePath(
-    workspaceRoot: Path,
-    envLookup: (String) -> String?,
-): Path = WorkspaceDirectoryResolver(configHome = { kastConfigHome(envLookup) }).workspaceDatabasePath(workspaceRoot)
+    WorkspaceDirectoryResolver().workspaceDatabasePath(workspaceRoot)

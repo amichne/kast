@@ -13,6 +13,9 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import com.intellij.testFramework.junit5.fixture.tempPathFixture
+import com.intellij.testFramework.junit5.fixture.testFixture
+import io.github.amichne.kast.api.client.workspaceDataDirectory
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
@@ -30,7 +33,24 @@ import java.nio.file.Path
 @TestApplication
 class IdeaEditApplicationTest {
     companion object {
-        private val projectFixture: TestFixture<Project> = projectFixture()
+        private val projectPathFixture: TestFixture<Path> = testFixture {
+            val path = tempPathFixture().init()
+            val configDirectory = workspaceDataDirectory(path)
+            Files.createDirectories(configDirectory)
+            Files.writeString(
+                configDirectory.resolve("config.toml"),
+                """
+                    [backends.idea]
+                    enabled = false
+                """.trimIndent(),
+            )
+            initialized(path) {}
+        }
+
+        private val projectFixture: TestFixture<Project> = projectFixture(
+            pathFixture = projectPathFixture,
+            openAfterCreation = true,
+        )
 
         private val defaultLimits = ServerLimits(
             maxResults = 500,
@@ -100,7 +120,6 @@ class IdeaEditApplicationTest {
         val unsavedHash = io.github.amichne.kast.api.validation.FileHashing.sha256(unsavedText)
         val diskHash = io.github.amichne.kast.api.validation.FileHashing.sha256(originalSource)
 
-        // RED: This should FAIL if currentHashes reads from disk
         assertEquals(1, hashes.size)
         assertEquals(filePath, hashes[0].filePath)
         assertEquals(unsavedHash, hashes[0].hash, "Hash should reflect unsaved Document text")
@@ -119,44 +138,24 @@ class IdeaEditApplicationTest {
 
         // Apply edit through backend
         val backend = backend()
-        try {
-            val result = backend.applyEdits(
-                ApplyEditsQuery(
-                    edits = listOf(
-                        TextEdit(
-                            filePath = filePath,
-                            startOffset = originalText.indexOf("oldName"),
-                            endOffset = originalText.indexOf("oldName") + "oldName".length,
-                            newText = "newName",
-                        ),
+        val result = backend.applyEdits(
+            ApplyEditsQuery(
+                edits = listOf(
+                    TextEdit(
+                        filePath = filePath,
+                        startOffset = originalText.indexOf("oldName"),
+                        endOffset = originalText.indexOf("oldName") + "oldName".length,
+                        newText = "newName",
                     ),
-                    fileHashes = listOf(FileHash(filePath, originalHash)),
-                    fileOperations = emptyList(),
                 ),
-            )
+                fileHashes = listOf(FileHash(filePath, originalHash)),
+                fileOperations = emptyList(),
+            ),
+        )
 
-            assertEquals(1, result.applied.size)
-            assertEquals(listOf(filePath), result.affectedFiles)
-        } catch (e: io.github.amichne.kast.api.protocol.PartialApplyException) {
-            println("=== PartialApplyException DEBUG ===")
-            println("Message: ${e.message}")
-            println("Details: ${e.details}")
-            e.details.forEach { (key, value) ->
-                println("  $key = $value")
-            }
-            println("Stack trace:")
-            e.printStackTrace()
-            throw e
-        } catch (e: Exception) {
-            println("=== Unexpected exception ===")
-            println("Type: ${e::class.qualifiedName}")
-            println("Message: ${e.message}")
-            e.printStackTrace()
-            throw e
-        }
+        assertEquals(1, result.applied.size)
+        assertEquals(listOf(filePath), result.affectedFiles)
 
-        // RED: This should FAIL if applyEdits bypasses IDEA Document API
-        // After applyEdits, Document should have new text immediately
         val documentText = readAction {
             FileDocumentManager.getInstance().getDocument(testFile.virtualFile)!!.text
         }

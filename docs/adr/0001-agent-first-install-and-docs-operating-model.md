@@ -99,7 +99,7 @@ Use this update matrix when the answer changes:
 |----------------|------------------|
 | Global binary or IDE plugin install changes | README, `docs/index.md`, install guide, docs content contract |
 | Repository Copilot package changes | `cli-rs/resources/plugin/`, generated `.github` outputs, install guide, agent docs, package tests |
-| RPC or tool catalog changes | `commands.json`, generated contract artifacts, API summary block, Copilot extension shared catalog |
+| RPC or tool catalog changes | `commands.json`, generated contract artifacts, API summary block, Copilot package shared catalog |
 | Primary reader path changes | New or superseding ADR, docs nav, landing page, install guide, agent overview, content/navigation contracts |
 | Runtime support changes | Backends docs, install guides, troubleshooting, README runtime table |
 | New optional complexity | Collapsible detail or reference page first; promote only after it becomes part of the golden path |

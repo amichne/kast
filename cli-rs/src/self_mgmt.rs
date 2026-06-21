@@ -1,18 +1,16 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
-use crate::cli::AffectedInstallArgs;
+use crate::cli::InstallRepairArgs;
 use crate::config::{self, PathResolutionReport};
 use crate::error::Result;
-use crate::install::{self, InstallAffectedResult};
+use crate::install::{self, InstallRepairResult};
 use crate::manifest;
 use serde::Serialize;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub use crate::manifest::{
-    BackendComponentState, KastInstallManifest as InstallState, ManagedRepo,
-};
+pub use crate::manifest::{KastInstallManifest as InstallState, ManagedRepo};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +32,7 @@ pub struct DoctorCanonicalDirectoryDiagnostic {
     pub lib_dir: String,
     pub cache_dir: String,
     pub logs_dir: String,
+    pub runtime_dir: String,
     pub descriptor_dir: String,
     pub socket_dir: String,
     pub schema_version: u32,
@@ -63,7 +62,7 @@ pub struct SelfDoctorResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallState>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub repair: Option<InstallAffectedResult>,
+    pub repair: Option<InstallRepairResult>,
     pub ok: bool,
     pub issues: Vec<String>,
     pub warnings: Vec<String>,
@@ -77,7 +76,7 @@ pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
     let mut warnings = vec![];
     let repair_result = if repair {
         manifest::install_current_executable()?;
-        Some(install::repair_install_state(AffectedInstallArgs {
+        Some(install::repair_install_state(InstallRepairArgs {
             apply: true,
             jetbrains_config_root: None,
         })?)
@@ -208,6 +207,7 @@ fn canonical_directory_diagnostic(
         lib_dir: paths.lib_dir.display().to_string(),
         cache_dir: paths.cache_dir.display().to_string(),
         logs_dir: paths.logs_dir.display().to_string(),
+        runtime_dir: paths.runtime_dir.display().to_string(),
         descriptor_dir: paths.descriptor_dir.display().to_string(),
         socket_dir: paths.socket_dir.display().to_string(),
         schema_version: SCHEMA_VERSION,
@@ -244,7 +244,7 @@ pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
     install.repos.retain(|repo| repo.path != repo_path);
     install.repos.push(ManagedRepo {
         path: repo_path,
-        copilot_extension_version: version.to_string(),
+        copilot_package_version: version.to_string(),
     });
     install.version = install.version.trim().to_string();
     if install.version.is_empty() {

@@ -52,8 +52,6 @@ pub struct KastInstallManifest {
     #[serde(default)]
     pub owned_paths: Vec<String>,
     #[serde(default)]
-    pub legacy_paths: Vec<String>,
-    #[serde(default)]
     pub shell_rc_patches: Vec<Value>,
     #[serde(default)]
     pub repos: Vec<ManagedRepo>,
@@ -76,7 +74,8 @@ pub struct BackendComponentState {
 #[serde(rename_all = "camelCase")]
 pub struct ManagedRepo {
     pub path: String,
-    pub copilot_extension_version: String,
+    #[serde(default)]
+    pub copilot_package_version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -149,7 +148,7 @@ pub fn resolve_paths() -> Result<ResolvedKastPaths> {
 pub fn default_resolved_paths() -> ResolvedKastPaths {
     let install_root = default_install_root();
     let config_root = default_config_root();
-    let bin_dir = env_path("KAST_BIN_DIR").unwrap_or_else(|| home_dir().join(".local/bin"));
+    let bin_dir = home_dir().join(".local/bin");
     let current = install_root.join("current");
     let lib_dir = current.join("lib");
     let cache_dir = env_path("KAST_CACHE_HOME").unwrap_or_else(|| home_dir().join(".cache/kast"));
@@ -249,7 +248,6 @@ pub fn manifest_from_paths(
         backends: vec![],
         managed_paths: vec![],
         owned_paths: owned_paths(&paths),
-        legacy_paths: legacy_paths(),
         shell_rc_patches: vec![],
         repos: vec![],
         schema_version: SCHEMA_VERSION,
@@ -508,17 +506,6 @@ pub(crate) fn owned_paths(paths: &ResolvedKastPaths) -> Vec<String> {
         paths.install_root.join("versions"),
         paths.runtime_dir.clone(),
         paths.locks_dir.clone(),
-    ]
-    .into_iter()
-    .map(|path| path.display().to_string())
-    .collect()
-}
-
-pub(crate) fn legacy_paths() -> Vec<String> {
-    [
-        home_dir().join(".kast"),
-        home_dir().join(".config/kast/daemons"),
-        home_dir().join(".kast/cache/daemons"),
     ]
     .into_iter()
     .map(|path| path.display().to_string())

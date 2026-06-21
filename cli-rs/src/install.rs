@@ -1,5 +1,4 @@
 use crate::SCHEMA_VERSION;
-use crate::backend::{self, BackendResult};
 use crate::bundle::{
     BUNDLE_MANIFEST_FILE, BUNDLE_MANIFEST_KIND, BUNDLE_MANIFEST_SCHEMA_VERSION, BundleManifest,
     BundleVersion, HEADLESS_BACKEND_KIND, HEADLESS_BACKEND_NAME,
@@ -7,9 +6,8 @@ use crate::bundle::{
 };
 use crate::cli;
 use crate::cli::{
-    ActivateBundleArgs, AffectedInstallArgs, BackendComponent, BackendInstallArgs,
-    CopilotInstallArgs, HeadlessInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand,
-    ResourceInstallArgs, ShellInstallArgs, ShellKind,
+    ActivateBundleArgs, CopilotInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand,
+    InstallRepairArgs, ResourceInstallArgs, ShellInstallArgs, ShellKind,
 };
 use crate::config;
 use crate::error::{CliError, Result};
@@ -172,7 +170,7 @@ pub struct InstallInstructionsResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallCopilotExtensionResult {
+pub struct InstallCopilotPackageResult {
     pub installed_at: String,
     pub version: String,
     pub skipped: bool,
@@ -233,7 +231,7 @@ pub struct InstallShellResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallAffectedAction {
+pub struct InstallRepairAction {
     pub kind: String,
     pub target: String,
     pub status: String,
@@ -244,11 +242,11 @@ pub struct InstallAffectedAction {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallAffectedResult {
+pub struct InstallRepairResult {
     pub applied: bool,
     pub config_path: String,
     pub apply_command: String,
-    pub actions: Vec<InstallAffectedAction>,
+    pub actions: Vec<InstallRepairAction>,
     pub backups: Vec<String>,
     pub warnings: Vec<String>,
     pub schema_version: u32,
@@ -260,20 +258,9 @@ pub enum InstallResult {
     ActivateBundle(ActivateBundleResult),
     Skill(InstallSkillResult),
     Instructions(InstallInstructionsResult),
-    Copilot(InstallCopilotExtensionResult),
+    Copilot(InstallCopilotPackageResult),
     IdeaPlugin(InstallIdeaPluginResult),
     Shell(InstallShellResult),
-    Headless(backend::BackendInstallResult),
-    Archive(ArchiveInstallResult),
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveInstallResult {
-    pub installed_at: String,
-    pub instance: String,
-    pub skipped: bool,
-    pub schema_version: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -313,32 +300,26 @@ struct ActivationTargetPaths {
 
 pub fn install(args: InstallArgs, reporter: &mut dyn InstallReporter) -> Result<InstallResult> {
     match args.command {
-        Some(InstallCommand::ActivateBundle(bundle_args)) => {
+        InstallCommand::ActivateBundle(bundle_args) => {
             activate_bundle(bundle_args).map(InstallResult::ActivateBundle)
         }
-        Some(InstallCommand::Headless(headless_args)) => {
-            install_headless(headless_args).map(InstallResult::Headless)
-        }
-        Some(InstallCommand::Skill(resource_args)) => {
+        InstallCommand::Skill(resource_args) => {
             install_skill(resource_args).map(InstallResult::Skill)
         }
-        Some(InstallCommand::Instructions(resource_args)) => {
+        InstallCommand::Instructions(resource_args) => {
             install_instructions(resource_args).map(InstallResult::Instructions)
         }
-        Some(InstallCommand::Copilot(resource_args)) => {
-            install_copilot_extension(resource_args).map(InstallResult::Copilot)
+        InstallCommand::Copilot(resource_args) => {
+            install_copilot(resource_args).map(InstallResult::Copilot)
         }
-        Some(InstallCommand::Plugin(resource_args)) => {
+        InstallCommand::Plugin(resource_args) => {
             install_idea_plugin(resource_args, reporter).map(InstallResult::IdeaPlugin)
         }
-        Some(InstallCommand::Shell(shell_args)) => {
-            install_shell(shell_args).map(InstallResult::Shell)
-        }
-        Some(InstallCommand::Completion(_)) => Err(CliError::new(
+        InstallCommand::Shell(shell_args) => install_shell(shell_args).map(InstallResult::Shell),
+        InstallCommand::Completion(_) => Err(CliError::new(
             "CLI_USAGE",
             "`kast install completion` must be handled as raw completion output",
         )),
-        None => install_archive(args).map(InstallResult::Archive),
     }
 }
 
@@ -676,7 +657,6 @@ fn activation_target_paths(
         .bin_dir
         .clone()
         .map(config::normalize)
-        .or_else(|| env_path("KAST_BIN_DIR"))
         .unwrap_or_else(|| manifest::home_dir().join(".local/bin"));
     let cache_dir =
         env_path("KAST_CACHE_HOME").unwrap_or_else(|| manifest::home_dir().join(".cache/kast"));
@@ -831,7 +811,6 @@ fn project_install_manifest(
             "logs".to_string(),
         ],
         owned_paths: manifest::owned_paths(&targets.resolved),
-        legacy_paths: manifest::legacy_paths(),
         shell_rc_patches: vec![],
         repos: vec![],
         schema_version: SCHEMA_VERSION,
@@ -1183,42 +1162,16 @@ fn env_path(name: &str) -> Option<PathBuf> {
         .map(config::normalize)
 }
 
-pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
-    if args.archive.is_none() {
-        return Err(CliError::new(
-            "CLI_USAGE",
-            "`kast install headless` is an internal archive refresh path and requires --archive. Headless operation is delivered through the Linux headless tarball.",
-        ));
-    }
-    if args.base_url.is_some() || args.insecure_skip_tls_verify {
-        return Err(CliError::new(
-            "CLI_USAGE",
-            "`kast install headless` no longer downloads standalone backend release assets. Pass --archive from the Linux headless tarball build output.",
-        ));
-    }
-    let backend_args = BackendInstallArgs {
-        backend: BackendComponent::Headless,
-        archive: args.archive,
-        version: args.version,
-        base_url: None,
-        insecure_skip_tls_verify: false,
-        force: args.force,
-    };
-    match backend::run(cli::BackendCommand::Install(backend_args))? {
-        BackendResult::Install(result) => Ok(result),
-    }
-}
-
-pub fn repair_install_state(args: AffectedInstallArgs) -> Result<InstallAffectedResult> {
+pub fn repair_install_state(args: InstallRepairArgs) -> Result<InstallRepairResult> {
     reconcile_install_state(args)
 }
 
-fn reconcile_install_state(args: AffectedInstallArgs) -> Result<InstallAffectedResult> {
+fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResult> {
     let config_path = config::global_config_path();
     let backup_root = config::kast_config_home()
         .join("backups")
-        .join(format!("install-affected-{}", backup_timestamp()));
-    let mut result = InstallAffectedResult {
+        .join(format!("install-repair-{}", backup_timestamp()));
+    let mut result = InstallRepairResult {
         applied: args.apply,
         config_path: config_path.display().to_string(),
         apply_command: "kast doctor --repair".to_string(),
@@ -1230,7 +1183,7 @@ fn reconcile_install_state(args: AffectedInstallArgs) -> Result<InstallAffectedR
     let mut config_backed_up = false;
 
     if !config_path.is_file() {
-        push_affected_action(
+        push_repair_action(
             &mut result,
             "provision-config",
             &config_path,
@@ -1247,25 +1200,23 @@ fn reconcile_install_state(args: AffectedInstallArgs) -> Result<InstallAffectedR
     else {
         return Ok(result);
     };
-    repair_affected_config_state(
+    repair_install_config_state(
         &args,
         &global_config,
         &mut result,
         &backup_root,
         &mut config_backed_up,
     )?;
-    repair_affected_skill_targets(&args, &mut result, &backup_root)?;
-    repair_affected_instruction_targets(&args, &mut result, &backup_root)?;
-    repair_affected_copilot_repos(&args, &mut result, &backup_root)?;
-    repair_affected_shell_sources(&args, &mut result, &backup_root)?;
-    repair_affected_jetbrains_profiles(&args, &mut result, &backup_root)?;
+    repair_install_copilot_repos(&args, &mut result, &backup_root)?;
+    repair_install_shell_sources(&args, &mut result, &backup_root)?;
+    repair_install_jetbrains_profiles(&args, &mut result, &backup_root)?;
 
     Ok(result)
 }
 
 fn load_global_config_for_repair(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
     config_backed_up: &mut bool,
 ) -> Result<Option<config::KastConfig>> {
@@ -1273,7 +1224,7 @@ fn load_global_config_for_repair(
         Ok(global_config) => Ok(Some(global_config)),
         Err(error) if error.code == "CONFIG_ERROR" => {
             let config_path = config::global_config_path();
-            push_affected_action(
+            push_repair_action(
                 result,
                 "recover-invalid-config",
                 &config_path,
@@ -1299,10 +1250,10 @@ fn load_global_config_for_repair(
     }
 }
 
-fn repair_affected_config_state(
-    args: &AffectedInstallArgs,
+fn repair_install_config_state(
+    args: &InstallRepairArgs,
     global_config: &config::KastConfig,
-    result: &mut InstallAffectedResult,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
     config_backed_up: &mut bool,
 ) -> Result<()> {
@@ -1311,10 +1262,6 @@ fn repair_affected_config_state(
     let remove_paths_table = document.contains_key("paths");
     let remove_cli_table = document.contains_key("cli");
     let remove_install_table = document.contains_key("install");
-    let remove_standalone_table = document
-        .get("backends")
-        .and_then(toml::Value::as_table)
-        .is_some_and(|backends| backends.contains_key("standalone"));
     let remove_headless_runtime_paths = document
         .get("backends")
         .and_then(toml::Value::as_table)
@@ -1327,10 +1274,9 @@ fn repair_affected_config_state(
     if remove_paths_table
         || remove_cli_table
         || remove_install_table
-        || remove_standalone_table
         || remove_headless_runtime_paths
     {
-        push_affected_action(
+        push_repair_action(
             result,
             "remove-install-owned-config",
             &config_path,
@@ -1342,7 +1288,6 @@ fn repair_affected_config_state(
         && (remove_paths_table
             || remove_cli_table
             || remove_install_table
-            || remove_standalone_table
             || remove_headless_runtime_paths)
     {
         backup_config_once(result, backup_root, config_backed_up)?;
@@ -1355,11 +1300,6 @@ fn repair_affected_config_state(
             }
             if remove_install_table {
                 document.remove("install");
-            }
-            if remove_standalone_table
-                && let Some(toml::Value::Table(backends)) = document.get_mut("backends")
-            {
-                backends.remove("standalone");
             }
             if remove_headless_runtime_paths
                 && let Some(toml::Value::Table(backends)) = document.get_mut("backends")
@@ -1377,7 +1317,7 @@ fn repair_affected_config_state(
     };
     let mut install_changed = false;
     if install.version.trim() != cli::version() {
-        push_affected_action(
+        push_repair_action(
             result,
             "update-install-version",
             &config_path,
@@ -1392,7 +1332,7 @@ fn repair_affected_config_state(
 
     let mut surviving_backends = vec![];
     for backend in install.backends {
-        let unsupported = backend.name != BackendComponent::Headless.canonical();
+        let unsupported = backend.name != HEADLESS_BACKEND_NAME;
         let classpath_missing = !Path::new(&backend.runtime_libs_dir)
             .join("classpath.txt")
             .is_file();
@@ -1400,7 +1340,7 @@ fn repair_affected_config_state(
         if unsupported || classpath_missing || install_dir_missing {
             let reason = if unsupported {
                 format!(
-                    "Remove retired {} backend state from install metadata.",
+                    "Remove unsupported {} backend state from install metadata.",
                     backend.name
                 )
             } else {
@@ -1409,7 +1349,7 @@ fn repair_affected_config_state(
                     backend.runtime_libs_dir
                 )
             };
-            push_affected_action(
+            push_repair_action(
                 result,
                 "remove-stale-backend-state",
                 Path::new(&backend.install_dir),
@@ -1439,7 +1379,7 @@ fn repair_affected_config_state(
     });
     for component in original_components {
         if !install.components.contains(&component) {
-            push_affected_action(
+            push_repair_action(
                 result,
                 "remove-stale-component-state",
                 Path::new(&component),
@@ -1454,29 +1394,13 @@ fn repair_affected_config_state(
     for managed_path_value in original_managed_paths {
         let managed = managed_install_path(&global_config.paths.install_root, &managed_path_value);
         if !path_exists_or_symlink(&managed) {
-            push_affected_action(
+            push_repair_action(
                 result,
                 "prune-missing-managed-path",
                 &managed,
                 "Remove a missing managed path from install metadata.",
                 None,
             );
-            install_changed = true;
-            continue;
-        }
-        if managed_path_value.contains("standalone") || managed_path_value == "lib/backends/current"
-        {
-            push_affected_action(
-                result,
-                "remove-retired-managed-path",
-                &managed,
-                "Back up and remove a retired managed backend path.",
-                None,
-            );
-            if args.apply {
-                backup_existing_path(&managed, backup_root, result)?;
-                remove_existing_path(&managed)?;
-            }
             install_changed = true;
             continue;
         }
@@ -1491,10 +1415,10 @@ fn repair_affected_config_state(
         if seen_repos.insert(normalized_value.clone()) {
             deduped_repos.push(self_mgmt::ManagedRepo {
                 path: normalized_value,
-                copilot_extension_version: repo.copilot_extension_version,
+                copilot_package_version: repo.copilot_package_version,
             });
         } else {
-            push_affected_action(
+            push_repair_action(
                 result,
                 "dedupe-managed-repo",
                 &normalized,
@@ -1528,83 +1452,9 @@ fn repair_affected_config_state(
     Ok(())
 }
 
-fn repair_affected_skill_targets(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
-    backup_root: &Path,
-) -> Result<()> {
-    for target_root in affected_skill_target_roots()? {
-        let target = target_root.join("kast");
-        if !target.is_dir() {
-            continue;
-        }
-        let marker = target.join(".kast-version");
-        let installed_version = fs::read_to_string(&marker).unwrap_or_default();
-        if installed_version.trim() == cli::version() {
-            continue;
-        }
-        push_affected_action(
-            result,
-            "refresh-skill",
-            &target,
-            "Back up and refresh a stale installed Kast skill.",
-            Some(format!(
-                "kast install skill --target-dir {} --force",
-                shell_quote_path(&target_root)
-            )),
-        );
-        if args.apply {
-            backup_existing_path(&target, backup_root, result)?;
-            install_skill(ResourceInstallArgs {
-                target_dir: Some(target_root),
-                name: Some("kast".to_string()),
-                force: true,
-            })?;
-        }
-    }
-    Ok(())
-}
-
-fn repair_affected_instruction_targets(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
-    backup_root: &Path,
-) -> Result<()> {
-    for target_root in affected_instruction_target_roots()? {
-        let target = target_root.join("kast");
-        if !target.is_dir() {
-            continue;
-        }
-        let marker = target.join(".kast-version");
-        let installed_version = fs::read_to_string(&marker).unwrap_or_default();
-        if installed_version.trim() == cli::version() {
-            continue;
-        }
-        push_affected_action(
-            result,
-            "refresh-instructions",
-            &target,
-            "Back up and refresh stale installed Kast instructions.",
-            Some(format!(
-                "kast install instructions --target-dir {} --force",
-                shell_quote_path(&target_root)
-            )),
-        );
-        if args.apply {
-            backup_existing_path(&target, backup_root, result)?;
-            install_instructions(ResourceInstallArgs {
-                target_dir: Some(target_root),
-                name: Some("kast".to_string()),
-                force: true,
-            })?;
-        }
-    }
-    Ok(())
-}
-
-fn repair_affected_copilot_repos(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+fn repair_install_copilot_repos(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     _backup_root: &Path,
 ) -> Result<()> {
     let Some(install) = self_mgmt::read_global_install_state()? else {
@@ -1622,7 +1472,7 @@ fn repair_affected_copilot_repos(
         if installed_version.trim() == cli::version() {
             continue;
         }
-        push_affected_action(
+        push_repair_action(
             result,
             "refresh-copilot-package",
             &github_dir,
@@ -1633,7 +1483,7 @@ fn repair_affected_copilot_repos(
             )),
         );
         if args.apply {
-            install_copilot_extension(CopilotInstallArgs {
+            install_copilot(CopilotInstallArgs {
                 target_dir: Some(github_dir),
                 force: true,
                 no_auto_exclude_git: false,
@@ -1643,9 +1493,9 @@ fn repair_affected_copilot_repos(
     Ok(())
 }
 
-fn repair_affected_shell_sources(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+fn repair_install_shell_sources(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
 ) -> Result<()> {
     let shell_dir = config::kast_config_home().join("shell");
@@ -1695,7 +1545,7 @@ fn repair_affected_shell_sources(
         )) {
             continue;
         }
-        push_affected_action(
+        push_repair_action(
             result,
             "refresh-shell-source",
             &path,
@@ -1716,9 +1566,9 @@ fn repair_affected_shell_sources(
     Ok(())
 }
 
-fn repair_affected_jetbrains_profiles(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+fn repair_install_jetbrains_profiles(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
 ) -> Result<()> {
     let Some(expected_plugin_target) = expected_homebrew_plugin_target(result)? else {
@@ -1740,7 +1590,7 @@ fn repair_affected_jetbrains_profiles(
         {
             continue;
         }
-        push_affected_action(
+        push_repair_action(
             result,
             "refresh-idea-plugin-link",
             &plugin_link,
@@ -1762,14 +1612,14 @@ fn repair_affected_jetbrains_profiles(
     Ok(())
 }
 
-fn push_affected_action(
-    result: &mut InstallAffectedResult,
+fn push_repair_action(
+    result: &mut InstallRepairResult,
     kind: &str,
     target: &Path,
     message: &str,
     command: Option<String>,
 ) {
-    result.actions.push(InstallAffectedAction {
+    result.actions.push(InstallRepairAction {
         kind: kind.to_string(),
         target: target.display().to_string(),
         status: if result.applied { "applied" } else { "planned" }.to_string(),
@@ -1779,7 +1629,7 @@ fn push_affected_action(
 }
 
 fn backup_config_once(
-    result: &mut InstallAffectedResult,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
     config_backed_up: &mut bool,
 ) -> Result<()> {
@@ -1794,7 +1644,7 @@ fn backup_config_once(
 fn backup_existing_path(
     path: &Path,
     backup_root: &Path,
-    result: &mut InstallAffectedResult,
+    result: &mut InstallRepairResult,
 ) -> Result<()> {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return Ok(());
@@ -1913,40 +1763,6 @@ fn read_toml_document(path: &Path) -> Result<toml::Table> {
     Ok(fs::read_to_string(path)?.parse::<toml::Table>()?)
 }
 
-fn affected_skill_target_roots() -> Result<Vec<PathBuf>> {
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let home = config::home_dir();
-    let mut roots = vec![
-        default_skill_target_dir(),
-        home.join(".codex/skills"),
-        home.join(".agents/skills"),
-        home.join(".kast/lib/skills"),
-        cwd.join(".agents/skills"),
-        cwd.join(".github/skills"),
-        cwd.join(".claude/skills"),
-    ];
-    let mut seen = BTreeSet::new();
-    roots.retain(|path| seen.insert(config::normalize(path.clone()).display().to_string()));
-    Ok(roots.into_iter().map(config::normalize).collect())
-}
-
-fn affected_instruction_target_roots() -> Result<Vec<PathBuf>> {
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let home = config::home_dir();
-    let mut roots = vec![
-        default_instructions_target_dir(),
-        home.join(".codex/instructions"),
-        home.join(".agents/instructions"),
-        home.join(".kast/lib/instructions"),
-        cwd.join(".agents/instructions"),
-        cwd.join(".github/instructions"),
-        cwd.join(".claude/instructions"),
-    ];
-    let mut seen = BTreeSet::new();
-    roots.retain(|path| seen.insert(config::normalize(path.clone()).display().to_string()));
-    Ok(roots.into_iter().map(config::normalize).collect())
-}
-
 fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
     let current_exe = env::current_exe()?;
     if current_exe
@@ -1974,7 +1790,7 @@ fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
         .and_then(|path| path.parent().map(Path::to_path_buf)))
 }
 
-fn expected_homebrew_plugin_target(result: &mut InstallAffectedResult) -> Result<Option<PathBuf>> {
+fn expected_homebrew_plugin_target(result: &mut InstallRepairResult) -> Result<Option<PathBuf>> {
     expected_homebrew_plugin_target_with_warnings(&mut result.warnings)
 }
 
@@ -2083,9 +1899,7 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
     })
 }
 
-pub fn install_copilot_extension(
-    args: CopilotInstallArgs,
-) -> Result<InstallCopilotExtensionResult> {
+pub fn install_copilot(args: CopilotInstallArgs) -> Result<InstallCopilotPackageResult> {
     let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
         config::normalize(
             env::current_dir()
@@ -2093,10 +1907,10 @@ pub fn install_copilot_extension(
                 .join(".github"),
         )
     });
-    let skipped = install_copilot_package(&target, args.force)?;
+    let skipped = install_copilot_package_files(&target, args.force)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
     let git_exclude = update_copilot_git_exclude(&target, args.no_auto_exclude_git)?;
-    Ok(InstallCopilotExtensionResult {
+    Ok(InstallCopilotPackageResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
@@ -2485,25 +2299,6 @@ fn ensure_homebrew_plugin_profile_link(
     Ok(())
 }
 
-fn install_archive(args: InstallArgs) -> Result<ArchiveInstallResult> {
-    if let Some(archive) = args.archive {
-        return Err(CliError::new(
-            "CLI_USAGE",
-            format!(
-                "`kast install --archive {}` is retired. Run the kast executable to activate the manifest-backed install root.",
-                archive.display()
-            ),
-        ));
-    }
-    let manifest = manifest::install_current_executable()?;
-    Ok(ArchiveInstallResult {
-        installed_at: manifest.roots.install,
-        instance: args.instance.unwrap_or(manifest.profile),
-        skipped: false,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
 fn current_timestamp() -> String {
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -2512,7 +2307,7 @@ fn current_timestamp() -> String {
     format!("unix:{seconds}")
 }
 
-fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
+fn install_copilot_package_files(github_dir: &Path, force: bool) -> Result<bool> {
     let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
     let skipped = !force
         && marker

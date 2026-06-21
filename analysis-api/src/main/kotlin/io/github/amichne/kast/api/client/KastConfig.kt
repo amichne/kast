@@ -41,6 +41,7 @@ data class KastConfig(
                 libDir = PathsLibDir(defaultConfigLibDir().toString()),
                 cacheDir = PathsCacheDir(defaultConfigCacheDir().toString()),
                 logsDir = PathsLogsDir(defaultConfigLogsDir().toString()),
+                runtimeDir = PathsRuntimeDir(defaultConfigRuntimeDir().toString()),
                 descriptorDir = PathsDescriptorDir(defaultConfigDescriptorDir().toString()),
                 socketDir = PathsSocketDir(defaultConfigSocketDir()),
             )
@@ -117,7 +118,7 @@ data class KastConfig(
         fun load(
             workspaceRoot: Path,
             configHome: () -> Path = { kastConfigHome() },
-            workspaceDirectoryResolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(configHome = configHome),
+            workspaceDirectoryResolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(),
             overrides: KastConfigOverride = KastConfigOverride(),
         ): KastConfig {
             val configFiles = listOf(
@@ -139,7 +140,7 @@ data class KastConfig(
         fun loadIdea(
             workspaceRoot: Path,
             configHome: () -> Path = { kastConfigHome() },
-            workspaceDirectoryResolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(configHome = configHome),
+            workspaceDirectoryResolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(),
             overrides: KastConfigOverride = KastConfigOverride(),
         ): KastConfig {
             val globalConfig = configHome().resolve("config.toml")
@@ -172,6 +173,7 @@ data class KastConfig(
             )
             return defaults()
                 .merge(document.toKastConfigOverride())
+                .mergeResolved(document.toResolvedRuntimeConfigOverride())
                 .merge(overrides)
         }
     }
@@ -210,7 +212,24 @@ private data class RuntimeConfigDocument(
         paths = paths?.toOverride(),
         cli = cli?.toOverride(),
     )
+
+    fun toResolvedRuntimeConfigOverride(): ResolvedRuntimeConfigOverride = ResolvedRuntimeConfigOverride(
+        backends = backends?.toResolvedOverride(),
+    )
 }
+
+private data class ResolvedRuntimeConfigOverride(
+    val backends: ResolvedBackendsConfigOverride? = null,
+)
+
+private data class ResolvedBackendsConfigOverride(
+    val headless: ResolvedHeadlessBackendConfigOverride? = null,
+)
+
+private data class ResolvedHeadlessBackendConfigOverride(
+    val runtimeLibsDir: HeadlessRuntimeLibsDir? = null,
+    val ideaHome: HeadlessIdeaHome? = null,
+)
 
 @Serializable
 private data class RuntimeRuntimeConfig(
@@ -370,6 +389,11 @@ private data class RuntimeBackendsConfig(
         headless = headless?.toOverride(),
         idea = idea?.toOverride(),
     )
+
+    fun toResolvedOverride(): ResolvedBackendsConfigOverride? {
+        val resolvedHeadless = headless?.toResolvedOverride()
+        return takeIfAny(resolvedHeadless) { ResolvedBackendsConfigOverride(resolvedHeadless) }
+    }
 }
 
 @Serializable
@@ -380,9 +404,18 @@ private data class RuntimeHeadlessBackendConfig(
 ) {
     fun toOverride(): HeadlessBackendConfigOverride = HeadlessBackendConfigOverride(
         enabled = enabled?.let(::HeadlessBackendEnabled),
-        runtimeLibsDir = runtimeLibsDir?.let(::OptionalConfigString)?.let(::HeadlessRuntimeLibsDir),
-        ideaHome = ideaHome?.let(::OptionalConfigString)?.let(::HeadlessIdeaHome),
     )
+
+    fun toResolvedOverride(): ResolvedHeadlessBackendConfigOverride? {
+        val resolvedRuntimeLibsDir = runtimeLibsDir?.let(::OptionalConfigString)?.let(::HeadlessRuntimeLibsDir)
+        val resolvedIdeaHome = ideaHome?.let(::OptionalConfigString)?.let(::HeadlessIdeaHome)
+        return takeIfAny(resolvedRuntimeLibsDir, resolvedIdeaHome) {
+            ResolvedHeadlessBackendConfigOverride(
+                runtimeLibsDir = resolvedRuntimeLibsDir,
+                ideaHome = resolvedIdeaHome,
+            )
+        }
+    }
 }
 
 @Serializable
@@ -401,6 +434,7 @@ private data class RuntimePathsConfig(
     val libDir: String? = null,
     val cacheDir: String? = null,
     val logsDir: String? = null,
+    val runtimeDir: String? = null,
     val descriptorDir: String? = null,
     val socketDir: String? = null,
 ) {
@@ -410,6 +444,7 @@ private data class RuntimePathsConfig(
         libDir = libDir?.let(::PathsLibDir),
         cacheDir = cacheDir?.let(::PathsCacheDir),
         logsDir = logsDir?.let(::PathsLogsDir),
+        runtimeDir = runtimeDir?.let(::PathsRuntimeDir),
         descriptorDir = descriptorDir?.let(::PathsDescriptorDir),
         socketDir = socketDir?.let(::PathsSocketDir),
     )
@@ -738,6 +773,7 @@ data class PathsConfig(
     val libDir: PathsLibDir,
     val cacheDir: PathsCacheDir,
     val logsDir: PathsLogsDir,
+    val runtimeDir: PathsRuntimeDir,
     val descriptorDir: PathsDescriptorDir,
     val socketDir: PathsSocketDir,
 )
@@ -837,8 +873,6 @@ data class BackendsConfigOverride(
 
 data class HeadlessBackendConfigOverride(
     val enabled: HeadlessBackendEnabled? = null,
-    val runtimeLibsDir: HeadlessRuntimeLibsDir? = null,
-    val ideaHome: HeadlessIdeaHome? = null,
 )
 
 data class IdeaBackendConfigOverride(
@@ -851,6 +885,7 @@ data class PathsConfigOverride(
     val libDir: PathsLibDir? = null,
     val cacheDir: PathsCacheDir? = null,
     val logsDir: PathsLogsDir? = null,
+    val runtimeDir: PathsRuntimeDir? = null,
     val descriptorDir: PathsDescriptorDir? = null,
     val socketDir: PathsSocketDir? = null,
 )
@@ -876,6 +911,10 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
         cli = cli.merge(override.cli),
     )
 }
+
+private fun KastConfig.mergeResolved(override: ResolvedRuntimeConfigOverride): KastConfig = copy(
+    backends = backends.mergeResolved(override.backends),
+)
 
 private fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = KastConfigOverride(
     runtime = runtime?.let { RuntimeConfigOverride(defaultBackend = it.defaultBackend) },
@@ -961,6 +1000,17 @@ private fun BackendsConfig.merge(
 
 private fun HeadlessBackendConfig.merge(override: HeadlessBackendConfigOverride?): HeadlessBackendConfig = copy(
     enabled = override?.enabled ?: enabled,
+)
+
+private fun BackendsConfig.mergeResolved(
+    override: ResolvedBackendsConfigOverride?,
+): BackendsConfig = copy(
+    headless = headless.mergeResolved(override?.headless),
+)
+
+private fun HeadlessBackendConfig.mergeResolved(
+    override: ResolvedHeadlessBackendConfigOverride?,
+): HeadlessBackendConfig = copy(
     runtimeLibsDir = override?.runtimeLibsDir ?: runtimeLibsDir,
     ideaHome = override?.ideaHome ?: ideaHome,
 )
@@ -975,6 +1025,7 @@ private fun PathsConfig.merge(override: PathsConfigOverride?): PathsConfig = cop
     libDir = override?.libDir ?: libDir,
     cacheDir = override?.cacheDir ?: cacheDir,
     logsDir = override?.logsDir ?: logsDir,
+    runtimeDir = override?.runtimeDir ?: runtimeDir,
     descriptorDir = override?.descriptorDir ?: descriptorDir,
     socketDir = override?.socketDir ?: socketDir,
 )

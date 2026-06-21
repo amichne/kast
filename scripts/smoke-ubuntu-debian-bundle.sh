@@ -240,7 +240,7 @@ manifest_installed_home="${manifest_install_root}/versions/${version}"
 [[ -L "${manifest_install_root}/current" ]] || die "Manifest-based install did not activate current"
 grep -Fq 'defaultBackend = "headless"' "$manifest_config_file" \
   || die "Manifest-based config.toml does not set behavior backend"
-if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$manifest_config_file"; then
+if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|runtimeDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$manifest_config_file"; then
   die "Manifest-based config.toml must not write install-owned paths"
 fi
 python3 - "$manifest_manifest_file" "$version" "$manifest_install_root" "$manifest_installed_home" <<'PY'
@@ -289,7 +289,7 @@ grep -Fq -- "KAST_INSTALL_ROOT" "$installed_kast" \
 [[ -f "$config_file" ]] || die "Installer did not write config.toml"
 grep -Fq 'defaultBackend = "headless"' "$config_file" || die "config.toml does not default to headless runtime"
 grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
-if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$config_file"; then
+if grep -Eq '^(installRoot|binDir|libDir|cacheDir|logsDir|runtimeDir|descriptorDir|socketDir|runtimeLibsDir|ideaHome|binaryPath) = ' "$config_file"; then
   die "config.toml must not write install-owned paths"
 fi
 python3 - "$install_manifest" "$version" "$install_root" "$installed_home" <<'PY'

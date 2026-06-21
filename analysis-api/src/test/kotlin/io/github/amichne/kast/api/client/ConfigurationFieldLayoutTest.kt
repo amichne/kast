@@ -74,6 +74,7 @@ class ConfigurationFieldLayoutTest {
             "PathsInstallRoot.kt",
             "PathsLibDir.kt",
             "PathsLogsDir.kt",
+            "PathsRuntimeDir.kt",
             "PathsSocketDir.kt",
             "ProfilingDurationSeconds.kt",
             "ProfilingEnabled.kt",

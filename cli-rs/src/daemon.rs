@@ -195,22 +195,6 @@ fn headless_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
         "-Dsplash=false".to_string(),
         "-Daether.connector.resumeDownloads=false".to_string(),
         "-Dcompose.swing.render.on.graphics=true".to_string(),
-        format!(
-            "-Dkast.headless.paths.cacheDir={}",
-            config.paths.cache_dir.display()
-        ),
-        format!(
-            "-Dkast.headless.paths.logsDir={}",
-            config.paths.logs_dir.display()
-        ),
-        format!(
-            "-Dkast.headless.paths.descriptorDir={}",
-            config.paths.descriptor_dir.display()
-        ),
-        format!(
-            "-Dkast.headless.paths.socketDir={}",
-            config.paths.socket_dir.display()
-        ),
         "--add-exports=java.desktop/com.apple.laf=ALL-UNNAMED".to_string(),
     ];
     args.extend(
@@ -380,10 +364,6 @@ mod tests {
         assert!(command.contains(&HEADLESS_MAIN_CLASS.to_string()));
         assert!(command.contains(&format!("--idea-home={}", idea_home.display())));
         assert!(command.contains(&format!(
-            "-Dkast.headless.paths.descriptorDir={}",
-            config.paths.descriptor_dir.display()
-        )));
-        assert!(command.contains(&format!(
             "-Didea.config.path={}",
             config.paths.cache_dir.join("idea-config").display()
         )));
@@ -411,8 +391,12 @@ mod tests {
         fs::create_dir_all(&headless_libs).unwrap();
         fs::write(headless_libs.join("classpath.txt"), "headless.jar\n").unwrap();
         let idea_home = temp.path().join("idea-home");
+        let runtime_dir = temp.path().join("runtime");
         let mut config = KastConfig::defaults();
         config.paths.cache_dir = temp.path().join("cache");
+        config.paths.runtime_dir = runtime_dir.clone();
+        config.paths.descriptor_dir = runtime_dir.join("daemons");
+        config.paths.socket_dir = runtime_dir.clone();
         config.backends.headless.runtime_libs_dir = Some(headless_libs.clone());
         config.backends.headless.idea_home = Some(idea_home.clone());
         config.server.max_results = 42;
@@ -445,6 +429,18 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(config_arg).expect("runtime config json"))
                 .expect("runtime config payload");
         assert_eq!(payload["server"]["maxResults"], 42);
+        assert_eq!(
+            payload["paths"]["runtimeDir"],
+            runtime_dir.display().to_string()
+        );
+        assert_eq!(
+            payload["paths"]["descriptorDir"],
+            runtime_dir.join("daemons").display().to_string()
+        );
+        assert_eq!(
+            payload["paths"]["socketDir"],
+            runtime_dir.display().to_string()
+        );
         assert_eq!(
             payload["backends"]["headless"]["runtimeLibsDir"],
             headless_libs.display().to_string()

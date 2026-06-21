@@ -36,7 +36,10 @@ class AnalysisServer(
                     socketPath = socketPath.toString(),
                 )
                 descriptorStore = DescriptorStore(
-                    (config.descriptorDirectory ?: defaultDescriptorDirectory()).resolve("daemons.json"),
+                    (config.descriptorDirectory ?: defaultDescriptorDirectory())
+                        .resolve("daemons.json")
+                        .toAbsolutePath()
+                        .toString(),
                 )
                 descriptorStore.write(descriptor)
             }

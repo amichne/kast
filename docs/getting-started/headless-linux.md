@@ -81,8 +81,8 @@ gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
 ./scripts/verify-release-assets.sh --release-dir kast-release-v1.2.3 --tag v1.2.3
 ```
 
-Use the hidden Rust packager only when building the release bundle from local
-CLI and backend artifacts:
+Use the Rust packager when building the release bundle from local CLI and
+backend artifacts:
 
 ```bash title="Package a local Ubuntu/Debian bundle"
 kast package ubuntu-debian-bundle \

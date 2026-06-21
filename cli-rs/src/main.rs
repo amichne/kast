@@ -1,4 +1,3 @@
-mod backend;
 mod bundle;
 mod catalog_schema;
 mod cli;
@@ -198,12 +197,9 @@ fn run(cli: Cli) -> Result<i32> {
             }
             Ok(0)
         }
-        Command::Install(args)
-            if matches!(args.command, Some(cli::InstallCommand::Completion(_))) =>
-        {
-            let Some(cli::InstallCommand::Completion(completion_args)) = args.command else {
-                unreachable!("install completion guard should only match completion commands")
-            };
+        Command::Install(cli::InstallArgs {
+            command: cli::InstallCommand::Completion(completion_args),
+        }) => {
             print_completion(completion_args);
             Ok(0)
         }

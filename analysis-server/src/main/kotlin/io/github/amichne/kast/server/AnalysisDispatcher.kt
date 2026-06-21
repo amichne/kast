@@ -68,12 +68,6 @@ import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
-@Deprecated("Use RpcAnalysisDispatcher instead")
-interface AnalysisDispatcher {
-    suspend fun dispatch(request: JsonRpcRequest): String
-    suspend fun dispatchRaw(requestText: String): String
-}
-
 class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
@@ -83,11 +77,11 @@ class RpcAnalysisDispatcher(
         explicitNulls = false
         prettyPrint = false
     },
-) : AnalysisDispatcher {
+) {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
     private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
 
-    override suspend fun dispatch(request: JsonRpcRequest): String {
+    suspend fun dispatch(request: JsonRpcRequest): String {
         if (request.jsonrpc != JSON_RPC_VERSION || request.method.isBlank()) {
             return json.encodeToString(
                 JsonRpcErrorResponse(
@@ -146,7 +140,7 @@ class RpcAnalysisDispatcher(
         }
     }
 
-    override suspend fun dispatchRaw(requestText: String): String {
+    suspend fun dispatchRaw(requestText: String): String {
         val request = runCatching {
             json.decodeFromString(JsonRpcRequest.serializer(), requestText)
         }.getOrElse { exception ->

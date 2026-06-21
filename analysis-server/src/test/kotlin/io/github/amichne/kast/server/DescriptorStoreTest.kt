@@ -1,18 +1,25 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.client.DescriptorRegistry
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
+import kotlinx.serialization.json.Json
 
 class DescriptorStoreTest {
     @TempDir
     lateinit var tempDir: Path
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
+
+    private fun readDescriptors(daemonsFile: Path): List<ServerInstanceDescriptor> =
+        json.decodeFromString(Files.readString(daemonsFile))
 
     @Test
     fun `writes and deletes descriptor via registry`() {
@@ -23,14 +30,13 @@ class DescriptorStoreTest {
             socketPath = "/tmp/workspace/.kast/s",
         )
         val daemonsFile = tempDir.resolve("daemons.json")
-        val store = DescriptorStore(daemonsFile)
+        val daemonsPath = daemonsFile.toAbsolutePath().toString()
+        val store = DescriptorStore(daemonsPath)
 
         store.write(descriptor)
-        val registry = DescriptorRegistry(daemonsFile)
-        assertEquals(1, registry.list().size)
+        assertEquals(listOf(descriptor), readDescriptors(daemonsFile))
 
         store.delete(descriptor)
-        assertEquals(0, registry.list().size)
         assertFalse(daemonsFile.exists())
     }
 }

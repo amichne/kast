@@ -82,10 +82,6 @@ impl RuntimeKastRpc {
             profile_modes: None,
             profile_duration: None,
             profile_otlp_endpoint: None,
-            install_version: None,
-            install_base_url: None,
-            install_insecure_skip_tls_verify: false,
-            auto_install_headless: false,
         })
     }
 

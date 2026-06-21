@@ -453,16 +453,7 @@ internal class IdeaEditApplier(
                 document.replaceString(edit.startOffset, edit.endOffset, edit.newText)
             }
 
-            // Commit to PSI - catch exceptions for test compatibility
-            // In production, project is always open; in tests, fixture may not be fully initialized
-            try {
-                psiDocumentManager.commitDocument(document)
-            } catch (e: IllegalArgumentException) {
-                // Ignore "unopened project" errors in test scenarios
-                if (e.message?.contains("unopened project") != true) {
-                    throw e
-                }
-            }
+            psiDocumentManager.commitDocument(document)
 
             // Save to VFS
             fileDocumentManager.saveDocument(document)

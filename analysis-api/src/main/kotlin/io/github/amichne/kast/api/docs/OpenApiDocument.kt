@@ -78,7 +78,7 @@ import java.nio.file.Path
 /**
  * Generates an OpenAPI 3.1 specification for the Kast analysis daemon JSON-RPC API.
  *
- * Each JSON-RPC method dispatched by [AnalysisDispatcher] is modelled as a logical
+ * Each JSON-RPC method dispatched by the analysis server is modelled as a logical
  * `POST /rpc/{method}` operation whose request body is the `params` payload and whose
  * response body is the `result` payload. The JSON-RPC envelope and error format are
  * documented as separate schemas.

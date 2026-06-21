@@ -115,12 +115,9 @@ kast install skill --target-dir=/absolute/path/to/skills --force
     The installed tree is the same manifest embedded in the CLI:
 
     - `SKILL.md` for workflow, triggers, and routing rules
+    - `AGENTS.md` for package-local maintenance guidance
     - `references/commands.json`, `references/quickstart.md`, and
       `references/routing-improvement.md`
-    - `scripts/resolve-kast.sh` to find the `kast` binary
-    - `scripts/kast-session-start.sh` for shell bootstrap compatibility
-    - `scripts/build-routing-corpus.py` for routing maintenance
-    - `fixtures/maintenance/` and `evaluation/` for maintenance and eval work
 
     Keep transient benchmark outputs outside the installed skill tree.
 

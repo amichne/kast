@@ -43,6 +43,8 @@ command.
 
 | Command                 | What it does                                                                  | Common flags                                       |
 |-------------------------|-------------------------------------------------------------------------------|----------------------------------------------------|
+| `kast package ubuntu-debian-bundle` | Build the Ubuntu/Debian headless install bundle.                   | `--cli-archive`, `--backend-archive`, `--version`, `--bundle-output` |
+| `kast install activate-bundle` | Activate an extracted or archived portable install bundle.              | `--source`, `--install-root`, `--bin-dir`, `--verify-only` |
 | `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--backend`, `--output`                            |
 | `kast status`           | Report whether a backend is running and what state it is in.                 | `--output`                                         |
 | `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |

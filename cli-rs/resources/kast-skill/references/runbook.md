@@ -1,8 +1,6 @@
 # Kast RPC runbook
 
-This runbook shows the standard request-file harness for `kast rpc`. It is
-documentation only; the installed skill does not ship executable helper
-scripts.
+This runbook shows the standard request-file harness for `kast rpc`.
 
 ```sh
 KAST_TMP="$(mktemp -d)"

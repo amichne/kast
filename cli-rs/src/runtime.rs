@@ -219,8 +219,8 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let mut config = KastConfig::load(&workspace_root)?;
-    let mut path_resolution = config::path_resolution_report(
+    let config = KastConfig::load(&workspace_root)?;
+    let path_resolution = config::path_resolution_report(
         &config,
         Some(&workspace_root),
         config::PathResolutionMode::Cli,
@@ -319,28 +319,6 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         .filter(|path| path.is_dir())
     {
         Some(path) => path,
-        None if launch_backend == BackendName::Headless && args.auto_install_headless => {
-            install::install_headless(crate::cli::HeadlessInstallArgs {
-                archive: None,
-                version: args.install_version.clone(),
-                base_url: args.install_base_url.clone(),
-                insecure_skip_tls_verify: args.install_insecure_skip_tls_verify,
-                force: false,
-            })?;
-            config = KastConfig::load(&workspace_root)?;
-            path_resolution = config::path_resolution_report(
-                &config,
-                Some(&workspace_root),
-                config::PathResolutionMode::Cli,
-            )?;
-            config
-                .backends
-                .headless
-                .runtime_libs_dir
-                .clone()
-                .filter(|path| path.is_dir())
-                .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?
-        }
         None => return Err(no_backend_error(&workspace_root, Some(launch_backend))),
     };
     let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
@@ -718,10 +696,6 @@ pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
         profile_modes: None,
         profile_duration: None,
         profile_otlp_endpoint: None,
-        install_version: None,
-        install_base_url: None,
-        install_insecure_skip_tls_verify: false,
-        auto_install_headless: false,
     })?;
     rpc::raw(
         Path::new(&ensure.selected.descriptor.socket_path),

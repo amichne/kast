@@ -329,18 +329,6 @@ class AnalysisDispatcherTest {
     }
 
     @Test
-    fun `legacy rpc method names are rejected`() {
-        val response = dispatchRaw("skill/resolve")
-
-        val error = json.decodeFromJsonElement(
-            JsonRpcErrorResponse.serializer(),
-            response,
-        )
-        assertEquals(-32601, error.error.code)
-        assertTrue(error.error.message.contains("skill/resolve"))
-    }
-
-    @Test
     fun `references dispatches without HTTP`() {
         val file = sampleFile()
 

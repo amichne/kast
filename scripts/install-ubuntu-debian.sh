@@ -259,7 +259,6 @@ run_bundle_activation() {
   fi
 
   KAST_INSTALL_ROOT="$root_dir" \
-  KAST_BIN_DIR="$bin_dir" \
   KAST_CONFIG_HOME="$config_home" \
     "$bundled_kast" "${activation_args[@]}"
 }
@@ -312,7 +311,6 @@ if headless.get("ideaHome") != f"{install_home}/lib/backends/headless/current/id
 PY
 
   KAST_INSTALL_ROOT="$root_dir" \
-  KAST_BIN_DIR="$bin_dir" \
   KAST_CONFIG_HOME="$config_home" \
     "$bin_path" doctor >/dev/null
 }

@@ -1,11 +1,9 @@
-use crate::backend::BackendInstallResult;
 use crate::cli::OutputFormat;
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ActivateBundleResult, ArchiveInstallResult, InstallCopilotExtensionResult,
-    InstallIdeaPluginResult, InstallInstructionsResult, InstallResult, InstallShellResult,
-    InstallSkillResult,
+    ActivateBundleResult, InstallCopilotPackageResult, InstallIdeaPluginResult,
+    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
 };
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
@@ -184,8 +182,6 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
-        InstallResult::Headless(result) => print_backend_install(result),
-        InstallResult::Archive(result) => print_archive_install(result),
     }
 }
 
@@ -429,7 +425,7 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
                 document,
                 "- Copilot repo `{}`: `{}`",
                 repo.path,
-                repo.copilot_extension_version
+                repo.copilot_package_version
             );
         }
     }
@@ -484,41 +480,6 @@ pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
-fn print_backend_install(result: &BackendInstallResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast backend install");
-    mdln!(document);
-    mdln!(document, "- Backend: `{}`", result.backend_name);
-    mdln!(document, "- Version: `{}`", result.version);
-    mdln!(document, "- Installed directory: `{}`", result.install_dir);
-    mdln!(
-        document,
-        "- Runtime libraries: `{}`",
-        result.runtime_libs_dir
-    );
-    print_optional(&mut document, "IDEA home", result.idea_home.as_deref());
-    mdln!(document, "- Source archive: `{}`", result.source_archive);
-    mdln!(
-        document,
-        "- Downloaded release asset: {}",
-        yes_no(result.downloaded)
-    );
-    mdln!(
-        document,
-        "- Reused existing install: {}",
-        yes_no(result.skipped)
-    );
-    mdln!(document);
-    mdln!(document, "## Next steps");
-    mdln!(
-        document,
-        "- Start it: `kast up --backend={}`",
-        result.backend_name
-    );
-    mdln!(document, "- Inspect it: `kast status`");
-    print_markdown(&document.into_string())
-}
-
 fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast skill install");
@@ -561,11 +522,11 @@ fn print_instructions_install(result: &InstallInstructionsResult) -> Result<()> 
     print_markdown(&document.into_string())
 }
 
-fn print_copilot_install(title: &str, result: &InstallCopilotExtensionResult) -> Result<()> {
+fn print_copilot_install(title: &str, result: &InstallCopilotPackageResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# {title}");
     mdln!(document);
-    mdln!(document, "- Extension path: `{}`", result.installed_at);
+    mdln!(document, "- Package path: `{}`", result.installed_at);
     mdln!(document, "- Version: `{}`", result.version);
     mdln!(
         document,
@@ -645,20 +606,6 @@ fn print_shell_install(result: &InstallShellResult) -> Result<()> {
         document,
         "- Open a fresh shell or run `{}`.",
         result.source_line
-    );
-    print_markdown(&document.into_string())
-}
-
-fn print_archive_install(result: &ArchiveInstallResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast install");
-    mdln!(document);
-    mdln!(document, "- Installed at: `{}`", result.installed_at);
-    mdln!(document, "- Instance: `{}`", result.instance);
-    mdln!(
-        document,
-        "- Reused existing install: {}",
-        yes_no(result.skipped)
     );
     print_markdown(&document.into_string())
 }

@@ -12,9 +12,8 @@ kast --help
 ```
 
 If `kast` is missing in an installed skill session, stop and report that setup
-blocker instead of switching to non-semantic Kotlin search. The installed skill
-does not ship bootstrap scripts; `kast doctor --repair` owns broad install
-repair and manifest convergence.
+blocker instead of switching to non-semantic Kotlin search. Use
+`kast doctor --repair` for broad install repair and manifest convergence.
 
 If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index
