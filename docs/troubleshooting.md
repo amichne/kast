@@ -20,11 +20,14 @@ that matches what you're seeing.
     kast --output json doctor
     ```
 
-    The payload reports `configuration.valid`, `canonicalDirectory`,
-    `binary.runningBinary`, `binary.configuredBinary`, install metadata,
-    issues, and warnings. `doctor` still emits this payload when
+    The payload reports configuration validity, the install manifest,
+    resolved canonical paths, binary linkage, issues, and warnings.
+    `doctor` still emits this payload when
     `config.toml` is malformed, so configuration failures can be diagnosed
     without guessing which file or binary was active.
+
+    Use `kast paths` when you only need to inspect the resolved filesystem
+    model.
 
 ??? question "Daemon won't start"
 
@@ -44,16 +47,16 @@ that matches what you're seeing.
         ```
 
     3. Look for a stale socket file. If the daemon crashed without
-       cleanup, the socket may still exist in the configured socket
-       directory. By default, that is your platform temp directory, not
-       always `/tmp`:
+       cleanup, the socket may still exist in the manifest-owned runtime
+       directory:
 
         ```console
-        find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'kast-*.sock'
+        kast paths
+        find "$HOME/.local/share/kast/runtime" -maxdepth 1 -name 'kast-*.sock'
         ```
 
-        On macOS, `TMPDIR` is often under `/var/folders/...`. Remove any
-        stale sockets and retry.
+        Remove stale sockets only after confirming no matching Kast process is
+        running.
 
 ??? question "Indexing takes too long"
 
@@ -76,10 +79,10 @@ that matches what you're seeing.
       `test -x "$HOME/.local/bin/kast"`
     - Check that `$HOME/.local/bin` is on `PATH`:
       `echo "$PATH" | tr ':' '\n' | grep "$HOME/.local/bin"`
-    - If you keep config outside the default directory, set
+    - Run `kast doctor --repair` from any available `kast` binary to refresh
+      the install manifest and stable shim.
+    - If you keep behavior config outside the default directory, set
       `KAST_CONFIG_HOME` to the directory that contains `config.toml`.
-    - If the binary lives somewhere else, set `[cli] binaryPath` in
-      `$HOME/.config/kast/config.toml` to the executable path.
 
 ??? question "IDEA or Android Studio can't find the Kast plugin"
 

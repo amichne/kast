@@ -13,8 +13,8 @@ files belong to each repository.
 
 | Scope | Command | Writes to | Repeat when |
 |-------|---------|-----------|-------------|
-| Machine CLI | `brew install kast` | Homebrew-managed global binary on `PATH` | A macOS developer machine needs Kast |
-| Machine IDE plugin | `brew install --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | A macOS developer machine uses Kast |
+| Machine CLI + IDE plugin | `brew install kast` | Homebrew-managed global binary on `PATH` and version-coupled `kast-plugin` cask | A macOS developer machine needs Kast |
+| Machine IDE plugin repair | `brew reinstall --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | Local IDE profile links need repair |
 | Repository | `kast install copilot` | The current repository's `.github` directory | A repository should expose Kast to Copilot |
 
 Linux CI, hosted agents, and server images use the separate
@@ -30,21 +30,23 @@ repository.
 ```console title="Global binary, then repository Copilot files"
 brew tap amichne/kast
 brew install kast
-brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
-Restart IDEA or Android Studio after Homebrew links or refreshes the plugin,
-then restart after installing repository files so Copilot and IDE-hosted
-tooling discover `.github/lsp.json`, repository instructions, and custom
-agents at startup.
+`brew install kast` installs or refreshes the matching `kast-plugin` cask as
+part of the Homebrew formula install, using the same cask path as
+`brew install --cask kast-plugin`. Restart IDEA or Android Studio after
+Homebrew links or refreshes the plugin, then restart after installing
+repository files so Copilot and IDE-hosted tooling discover `.github/lsp.json`,
+repository instructions, and custom agents at startup.
 
 ??? success "Homebrew machine install"
-    `brew install kast` and `brew install --cask kast-plugin` are
-    machine-level. They install one `kast` executable that can serve many
-    repositories and link the Kast plugin into local JetBrains IDE profiles.
+    `brew install kast` is machine-level. It installs one `kast` executable
+    that can serve many repositories, then installs or reinstalls the
+    version-coupled `kast-plugin` cask so local JetBrains IDE profiles link to
+    the matching plugin.
     Confirm the binary and managed plugin state before debugging repository
     files:
 
@@ -84,54 +86,58 @@ agents at startup.
     when a Homebrew cask refresh needs to be applied through Kast:
 
     ```console title="Install or repair local IDE profiles"
-    brew install --cask kast-plugin
+    brew reinstall --cask kast-plugin
     kast install plugin
     ```
 
     Restart the IDE after replacing or linking the plugin.
 
-## Repair and setup commands
+## Repair and path inspection
 
 Most readers do not need these commands on the first pass. Use them when an
 existing install is stale, a shell profile needs to be updated, or a local IDE
 profile needs repair.
 
+Kast 1.0 resolves every install-owned path from the install manifest at
+`$HOME/.local/share/kast/install.json`. The user config file remains
+`$HOME/.config/kast/config.toml`, but it only owns behavior settings such as
+backend selection, indexing policy, launch policy, telemetry, and profiling.
+Do not put install roots, CLI paths, daemon paths, socket paths, runtime
+library paths, or managed install state in `config.toml`; those values come
+from the manifest-backed resolver.
+
+??? question "Inspect the active path model"
+    Use `kast paths` when you need the exact resolved paths that the CLI,
+    repository Copilot package, headless runtime, and IDE integration should share.
+
+    ```console title="Show resolved paths"
+    kast paths
+    kast --output json paths
+    ```
+
 ??? question "Repair stale managed files"
-    Use `kast install affected` after upgrading Kast, moving between install
-    methods, or seeing `kast doctor` report stale managed paths. The default
-    mode is a dry run:
+    Plain `kast doctor` is read-only. It reports manifest validity, canonical
+    paths, binary linkage, behavior config validity, and managed files that
+    can be repaired. Use `kast doctor --repair` as the only broad convergence
+    command after upgrading Kast, moving between install methods, or seeing
+    stale managed paths.
 
-    ```console title="Audit affected installs"
-    kast install affected
+    ```console title="Audit install state"
+    kast doctor
     ```
 
-    In an interactive human terminal, Kast shows the planned repair and asks
-    whether to apply it. Non-interactive runs never prompt; rerun with
-    `--apply` to apply the planned repair from scripts, CI, or captured
-    shells. Apply mode creates backups under `KAST_CONFIG_HOME/backups` before
-    replacing or removing managed files.
-
-    ```console title="Repair affected installs"
-    kast install affected --apply
+    ```console title="Repair install state"
+    kast doctor --repair
     ```
 
-??? info "One-command local setup"
-    `kast setup` installs or refreshes local integrations and managed assets
-    from the installed CLI. It is useful for local repair, but it is not the
-    clearest first-run story because it crosses several scopes at once.
-
-    ```console title="Refresh local integrations"
-    kast setup
-    ```
-
-    Narrow the refresh with `--skip-repair`, `--skip-shell`, `--skip-skill`,
-    or `--skip-copilot` when a specific non-IDE integration should be left
-    untouched.
+    Repair mode writes the install manifest, refreshes the stable shim,
+    removes install-owned keys from behavior config, and creates backups under
+    `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
 
 ??? info "Shell integration"
     Use `kast install shell` to add the directory that contains the active
-    `kast` binary to your `PATH`, export the active `KAST_CONFIG_HOME`, and
-    source completions from a managed file under `KAST_CONFIG_HOME/shell`.
+    `kast` shim to your `PATH` and source completions from a managed file
+    under `KAST_CONFIG_HOME/shell`.
 
     === "Bash"
 

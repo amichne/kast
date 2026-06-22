@@ -63,6 +63,42 @@ object OperationDocRegistry {
             cliExample = "kast rpc '{\"jsonrpc\":\"2.0\",\"method\":\"runtime/status\",\"id\":1}' --workspace-root=/path/to/project",
         ),
         OperationDoc(
+            operationId = "runtimeShutdown",
+            jsonRpcMethod = "runtime/shutdown",
+            summary = "Request runtime host shutdown after the response is flushed",
+            tag = "system",
+            responseSchema = "RuntimeLifecycleResponse",
+            description = "Requests that the runtime host shut down the current backend " +
+                "after returning a JSON-RPC response. IDEA hosts stop the plugin backend " +
+                "server and indexer without killing the IDE process; headless daemon " +
+                "process lifecycle is handled by the top-level `kast stop` command.",
+            behavioralNotes = listOf(
+                "The response is flushed before the lifecycle action runs, so callers can observe an accepted request.",
+                "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
+                "Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and backend-specific cleanup.",
+            ),
+            cliExample = "kast rpc '{\"jsonrpc\":\"2.0\",\"method\":\"runtime/shutdown\",\"params\":{},\"id\":1}' --workspace-root=/path/to/project",
+            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
+        ),
+        OperationDoc(
+            operationId = "runtimeRestart",
+            jsonRpcMethod = "runtime/restart",
+            summary = "Request runtime host restart after the response is flushed",
+            tag = "system",
+            responseSchema = "RuntimeLifecycleResponse",
+            description = "Requests that the runtime host rebuild the current backend " +
+                "after returning a JSON-RPC response. IDEA hosts restart the plugin " +
+                "backend server and indexer in the open IDE; headless daemon rebuilds " +
+                "are handled by the top-level `kast restart` command.",
+            behavioralNotes = listOf(
+                "The response is flushed before the lifecycle action runs, so callers can observe an accepted request.",
+                "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
+                "Prefer the top-level `kast restart` command for operator workflows; it combines the host lifecycle request with readiness waiting.",
+            ),
+            cliExample = "kast rpc '{\"jsonrpc\":\"2.0\",\"method\":\"runtime/restart\",\"params\":{},\"id\":1}' --workspace-root=/path/to/project",
+            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
+        ),
+        OperationDoc(
             operationId = "capabilities",
             jsonRpcMethod = "capabilities",
             summary = "Advertised read and mutation capabilities",

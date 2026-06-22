@@ -8,6 +8,7 @@ import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.shared.analysis.callHierarchyDeclaration
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.toSymbolModel
@@ -27,7 +28,7 @@ import io.github.amichne.kast.shared.hierarchy.callSiteLocation
  */
 internal class IdeaCallEdgeResolver(
     private val project: Project,
-    private val workspacePrefix: String,
+    private val workspaceIdentity: WorkspaceIdentity,
 ) : CallEdgeResolver {
 
     override fun incomingEdges(
@@ -62,7 +63,7 @@ internal class IdeaCallEdgeResolver(
                 if (visitedFiles.add(filePath)) {
                     onFileVisited(filePath)
                 }
-                if (!filePath.startsWith(workspacePrefix)) return@runReadAction null
+                if (!workspaceIdentity.contains(filePath)) return@runReadAction null
                 val caller = element.callHierarchyDeclaration() ?: return@runReadAction null
                 CallEdge(
                     target = caller,
@@ -126,7 +127,7 @@ internal class IdeaCallEdgeResolver(
                 val resolved = ref.reference.resolve() ?: return@runReadAction null
                 if (resolved.containingFile == null) return@runReadAction null
                 val resolvedPath = resolved.resolvedFilePath().value
-                if (!resolvedPath.startsWith(workspacePrefix)) return@runReadAction null
+                if (!workspaceIdentity.contains(resolvedPath)) return@runReadAction null
                 CallEdge(
                     target = resolved,
                     symbol = resolved.toSymbolModel(containingDeclaration = null),

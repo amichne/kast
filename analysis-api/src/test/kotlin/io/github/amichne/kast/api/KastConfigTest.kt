@@ -1,10 +1,6 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -89,13 +85,14 @@ class KastConfigTest {
     @Test
     fun `defaults expose path and cli field defaults`() {
         val config = KastConfig.defaults()
-        val installRoot = Path.of(System.getProperty("user.home")).resolve(".kast")
-        val binDir = installRoot.resolve("bin")
-        val libDir = installRoot.resolve("lib")
-        val cacheDir = installRoot.resolve("cache")
-        val logsDir = installRoot.resolve("logs")
-        val descriptorDir = cacheDir.resolve("daemons")
-        val socketDir = System.getProperty("java.io.tmpdir")
+        val installRoot = Path.of(System.getProperty("user.home")).resolve(".local/share/kast")
+        val binDir = Path.of(System.getProperty("user.home")).resolve(".local/bin")
+        val libDir = installRoot.resolve("current/lib")
+        val cacheDir = Path.of(System.getProperty("user.home")).resolve(".cache/kast")
+        val logsDir = Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs")
+        val runtimeDir = installRoot.resolve("runtime")
+        val descriptorDir = runtimeDir.resolve("daemons")
+        val socketDir = runtimeDir
         val binaryPath = binDir.resolve("kast")
         val runtimeLibsDir = libDir.resolve("backends/headless/current/runtime-libs")
 
@@ -107,8 +104,9 @@ class KastConfigTest {
         assertEquals(libDir.toString(), config.paths.libDir.value)
         assertEquals(cacheDir.toString(), config.paths.cacheDir.value)
         assertEquals(logsDir.toString(), config.paths.logsDir.value)
+        assertEquals(runtimeDir.toString(), config.paths.runtimeDir.value)
         assertEquals(descriptorDir.toString(), config.paths.descriptorDir.value)
-        assertEquals(socketDir, config.paths.socketDir.value)
+        assertEquals(socketDir.toString(), config.paths.socketDir.value)
 
         assertEquals("cli", config.cli.binaryPath.section)
         assertEquals("binaryPath", config.cli.binaryPath.key)
@@ -177,6 +175,7 @@ class KastConfigTest {
             "paths" to "libDir",
             "paths" to "cacheDir",
             "paths" to "logsDir",
+            "paths" to "runtimeDir",
             "paths" to "descriptorDir",
             "paths" to "socketDir",
             "cli" to "binaryPath",
@@ -203,12 +202,10 @@ class KastConfigTest {
 
     @Test
     fun `workspace directory resolver uses git remote worktree hierarchy when origin is parseable`() {
-        val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
             installRoot = { installRoot },
             gitWorkspaceResolver = {
                 GitWorkspace(
@@ -223,7 +220,7 @@ class KastConfigTest {
         val dataDirectory = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(
-            installRoot.resolve("workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
+            installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             dataDirectory,
         )
         assertEquals(dataDirectory.resolve("cache"), resolver.workspaceCacheDirectory(workspaceRoot))
@@ -232,11 +229,9 @@ class KastConfigTest {
 
     @Test
     fun `workspace directory resolver persists local workspace ids when origin is unavailable`() {
-        val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = Path.of("/workspace/not-git")
         val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
             installRoot = { installRoot },
             gitRemoteResolver = { null },
         )
@@ -245,9 +240,9 @@ class KastConfigTest {
         val second = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(first, second)
-        assertTrue(first.startsWith(installRoot.resolve("workspaces/local")))
+        assertTrue(first.startsWith(installRoot.resolve("state/workspaces/local")))
         assertTrue(
-            installRoot.resolve("workspaces/local-workspaces.json")
+            installRoot.resolve("state/workspaces/local-workspaces.json")
                 .readText()
                 .contains(workspaceRoot.toAbsolutePath().normalize().toString())
         )
@@ -259,7 +254,6 @@ class KastConfigTest {
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
             installRoot = { installRoot },
             gitWorkspaceResolver = {
                 GitWorkspace(
@@ -341,7 +335,7 @@ class KastConfigTest {
         assertEquals(false, config.cache.enabled.value)
         assertEquals(true, config.indexing.remote.enabled.value)
         assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
-        assertEquals("/Applications/IDEA CE.app/Contents", config.backends.headless.ideaHome.value.orNull)
+        assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
         assertEquals(true, config.telemetry.enabled.value)
         assertEquals("references,rename", config.telemetry.scopes.value)
         assertEquals(config.server.maxResults.value, config.toServerLimits().maxResults)
@@ -351,11 +345,9 @@ class KastConfigTest {
     @Test
     fun `idea config loader ignores workspace path and binary overrides`() {
         val configHome = tempDir.resolve("config-home")
-        val globalRoot = tempDir.resolve("global-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
-            installRoot = { globalRoot },
+            installRoot = { tempDir.resolve("manifest-root") },
             gitWorkspaceResolver = {
                 GitWorkspace(
                     toplevel = workspaceRoot,
@@ -370,10 +362,10 @@ class KastConfigTest {
             writeText(
                 """
                 [paths]
-                installRoot = "$globalRoot"
+                installRoot = "/global/should-not-win"
 
                 [cli]
-                binaryPath = "$globalRoot/bin/kast"
+                binaryPath = "/global/bin/kast"
                 """.trimIndent(),
             )
         }
@@ -384,7 +376,9 @@ class KastConfigTest {
                 [paths]
                 installRoot = "/workspace/should-not-win"
                 cacheDir = "/workspace/cache"
+                runtimeDir = "/workspace/runtime"
                 descriptorDir = "/workspace/descriptors"
+                socketDir = "/workspace/socket"
 
                 [cli]
                 binaryPath = "/workspace/bin/kast"
@@ -413,12 +407,15 @@ class KastConfigTest {
             workspaceDirectoryResolver = resolver,
         )
 
-        assertEquals(globalRoot.toString(), config.paths.installRoot.value)
-        assertEquals(globalRoot.resolve("cache").toString(), config.paths.cacheDir.value)
-        assertEquals(globalRoot.resolve("cache/daemons").toString(), config.paths.descriptorDir.value)
-        assertEquals(globalRoot.resolve("bin/kast").toString(), config.cli.binaryPath.value)
+        val defaults = KastConfig.defaults()
+        assertEquals(defaults.paths.installRoot.value, config.paths.installRoot.value)
+        assertEquals(defaults.paths.cacheDir.value, config.paths.cacheDir.value)
+        assertEquals(defaults.paths.runtimeDir.value, config.paths.runtimeDir.value)
+        assertEquals(defaults.paths.descriptorDir.value, config.paths.descriptorDir.value)
+        assertEquals(defaults.paths.socketDir.value, config.paths.socketDir.value)
+        assertEquals(defaults.cli.binaryPath.value, config.cli.binaryPath.value)
         assertEquals(
-            globalRoot.resolve("lib/backends/headless/current/runtime-libs").toString(),
+            defaults.backends.headless.runtimeLibsDir.value.orNull,
             config.backends.headless.runtimeLibsDir.value.orNull,
         )
         assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
@@ -429,12 +426,11 @@ class KastConfigTest {
     }
 
     @Test
-    fun `config loader uses Kast classloader instead of thread context loader for default Hoplite services`() {
+    fun `config loader does not depend on the thread context classloader`() {
         val configHome = tempDir.resolve("config-home")
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
             installRoot = { installRoot },
             gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
         )
@@ -459,38 +455,6 @@ class KastConfigTest {
         }
 
         assertEquals(321, config.server.maxResults.value)
-    }
-
-    @Test
-    fun `config loader does not write Hoplite warnings to stdout`() {
-        val configHome = tempDir.resolve("config-home")
-        val installRoot = tempDir.resolve("install-root")
-        val workspaceRoot = tempDir.resolve("workspace")
-        val resolver = WorkspaceDirectoryResolver(
-            configHome = { configHome },
-            installRoot = { installRoot },
-            gitRemoteResolver = { GitRemote(host = "github.com", owner = "amichne", repo = "kast") },
-        )
-        configHome.resolve("config.toml").apply {
-            parent.toFile().mkdirs()
-            writeText(
-                """
-                [server]
-                max-results = 321
-                """.trimIndent(),
-            )
-        }
-
-        val stdout = captureStandardOut {
-            val config = KastConfig.load(
-                workspaceRoot = workspaceRoot,
-                configHome = { configHome },
-                workspaceDirectoryResolver = resolver,
-            )
-            assertEquals(321, config.server.maxResults.value)
-        }
-
-        assertTrue(stdout.isBlank(), "Expected KastConfig.load to keep stdout clean, but got: $stdout")
     }
 
     @Test
@@ -571,6 +535,7 @@ class KastConfigTest {
                     "libDir": "/opt/kast/lib",
                     "cacheDir": "/opt/kast/cache",
                     "logsDir": "/opt/kast/logs",
+                    "runtimeDir": "/opt/kast/runtime",
                     "descriptorDir": "/opt/kast/cache/daemons",
                     "socketDir": "/tmp"
                   },
@@ -628,111 +593,8 @@ class KastConfigTest {
         assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)
         assertEquals(false, config.backends.idea.enabled.value)
         assertEquals("/opt/kast/cache", config.paths.cacheDir.value)
+        assertEquals("/opt/kast/runtime", config.paths.runtimeDir.value)
         assertEquals("/opt/kast/bin/kast", config.cli.binaryPath.value)
-    }
-
-    @Test
-    @OptIn(ExperimentalHoplite::class)
-    fun hopliteDecodesReadableTomlDirectlyIntoConfigurationFieldOverrideLeaves() {
-        val installRoot = tempDir.resolve("install-root")
-        val sourceIndexUrl = "file:///private/var/kast/source-index.db"
-        val configFile = tempDir.resolve("field-overrides.toml").apply {
-            writeText(
-                """
-                [server]
-                maxResults = 123
-
-                [runtime]
-                defaultBackend = "idea"
-
-                [runtime.ideaLaunch]
-                enabled = true
-                command = "$installRoot/bin/idea"
-                waitTimeoutMillis = 67890
-                requireInstalledPlugin = false
-
-                [projectOpen]
-                profileAutoInit = true
-                profile = "copilot-lsp"
-                autoExcludeGit = false
-
-                [indexing]
-                phase2PriorityDepth = 3
-
-                [paths]
-                installRoot = "$installRoot"
-
-                [indexing.remote]
-                sourceIndexUrl = "$sourceIndexUrl"
-
-                [backends.headless]
-                ideaHome = "$installRoot/idea-home"
-                """.trimIndent(),
-            )
-        }
-
-        val loaded = ConfigLoaderBuilder.empty()
-            .withClassLoader(KastConfig::class.java.classLoader)
-            .addDefaultDecoders()
-            .addDefaultPreprocessors()
-            .addDefaultNodeTransformers()
-            .addDefaultParamMappers()
-            .addDefaultParsers()
-            .withExplicitSealedTypes()
-            .allowEmptyConfigFiles()
-            .build()
-            .loadConfigOrThrow<KastConfigOverride>(listOf(configFile.toString()))
-
-        val maxResults: Any? = loaded.server?.maxResults
-        val decodedDefaultBackend: Any? = loaded.runtime?.defaultBackend
-        val decodedIdeaLaunchEnabled: Any? = loaded.runtime?.ideaLaunch?.enabled
-        val decodedIdeaLaunchCommand: Any? = loaded.runtime?.ideaLaunch?.command
-        val decodedIdeaLaunchWaitTimeoutMillis: Any? = loaded.runtime?.ideaLaunch?.waitTimeoutMillis
-        val decodedIdeaLaunchRequireInstalledPlugin: Any? = loaded.runtime?.ideaLaunch?.requireInstalledPlugin
-        val decodedProjectOpenProfileAutoInit: Any? = loaded.projectOpen?.profileAutoInit
-        val decodedProjectOpenProfile: Any? = loaded.projectOpen?.profile
-        val decodedProjectOpenAutoExcludeGit: Any? = loaded.projectOpen?.autoExcludeGit
-        val decodedPriorityDepth: Any? = loaded.indexing?.phase2PriorityDepth
-        val decodedInstallRoot: Any? = loaded.paths?.installRoot
-        val decodedSourceIndexUrl: Any? = loaded.indexing?.remote?.sourceIndexUrl
-        val decodedIdeaHome: Any? = loaded.backends?.headless?.ideaHome
-
-        assertTrue(
-            maxResults is ServerMaxResults,
-            "Expected server.maxResults to decode into ServerMaxResults, got $maxResults"
-        )
-        assertEquals(ServerMaxResults(123), maxResults)
-        assertEquals("server", (maxResults as ServerMaxResults).section)
-        assertEquals("maxResults", maxResults.key)
-        assertEquals(500, maxResults.default.unwrap)
-
-        assertEquals(RuntimeDefaultBackend("idea"), decodedDefaultBackend)
-        assertEquals(IdeaLaunchEnabled(true), decodedIdeaLaunchEnabled)
-        assertEquals(IdeaLaunchCommand("$installRoot/bin/idea"), decodedIdeaLaunchCommand)
-        assertEquals(IdeaLaunchWaitTimeoutMillis(67_890L), decodedIdeaLaunchWaitTimeoutMillis)
-        assertEquals(IdeaLaunchRequireInstalledPlugin(false), decodedIdeaLaunchRequireInstalledPlugin)
-        assertEquals(ProjectOpenProfileAutoInit(true), decodedProjectOpenProfileAutoInit)
-        assertEquals(ProjectOpenProfile("copilot-lsp"), decodedProjectOpenProfile)
-        assertEquals(ProjectOpenAutoExcludeGit(false), decodedProjectOpenAutoExcludeGit)
-
-        assertTrue(
-            decodedPriorityDepth is IndexingPhase2PriorityDepth,
-            "Expected indexing.phase2PriorityDepth to decode into IndexingPhase2PriorityDepth, got $decodedPriorityDepth",
-        )
-        assertEquals(IndexingPhase2PriorityDepth(3), decodedPriorityDepth)
-
-        assertTrue(
-            decodedInstallRoot is PathsInstallRoot,
-            "Expected paths.installRoot to decode into PathsInstallRoot, got $decodedInstallRoot"
-        )
-        assertEquals(PathsInstallRoot(installRoot.toString()), decodedInstallRoot)
-
-        assertTrue(
-            decodedSourceIndexUrl is IndexingRemoteSourceIndexUrl,
-            "Expected indexing.remote.sourceIndexUrl to decode into IndexingRemoteSourceIndexUrl, got $decodedSourceIndexUrl",
-        )
-        assertEquals(IndexingRemoteSourceIndexUrl(OptionalConfigString(sourceIndexUrl)), decodedSourceIndexUrl)
-        assertEquals(HeadlessIdeaHome(OptionalConfigString("$installRoot/idea-home")), decodedIdeaHome)
     }
 
     private fun <T> withContextClassLoader(
@@ -746,18 +608,6 @@ class KastConfigTest {
             block()
         } finally {
             thread.contextClassLoader = previous
-        }
-    }
-
-    private fun <T> captureStandardOut(block: () -> T): String {
-        val original = System.out
-        val output = ByteArrayOutputStream()
-        System.setOut(PrintStream(output, true, Charsets.UTF_8))
-        return try {
-            block()
-            output.toString(Charsets.UTF_8)
-        } finally {
-            System.setOut(original)
         }
     }
 }

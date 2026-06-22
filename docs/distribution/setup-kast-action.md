@@ -9,7 +9,7 @@ icon: lucide/workflow
 
 Use `setup-kast` when a Linux x64 blueprint or CI job already has Kast runtime
 artifacts and needs an isolated headless install. The action consumes release
-artifacts, validates them, writes Kast runtime config, and puts the installed
+artifacts, validates them, writes the Kast install manifest, and puts the installed
 `kast` binary on later action steps' `PATH`.
 
 !!! warning "Not a first-time developer install"
@@ -173,7 +173,7 @@ initialize:
 
   - name: Verify and persist Kast environment
     run: |
-      export KAST_HOME=/opt/kast/current
+      export KAST_INSTALL_ROOT=/opt/kast
       export PATH=/opt/kast/current/bin:$PATH
       export KAST_CACHE_HOME=$HOME/.cache/kast
       export KAST_CONFIG_HOME=$HOME/.config/kast
@@ -181,7 +181,7 @@ initialize:
       export GRADLE_USER_HOME=$HOME/.gradle
 
       {
-        echo 'export KAST_HOME=/opt/kast/current'
+        echo 'export KAST_INSTALL_ROOT=/opt/kast'
         echo 'export PATH=/opt/kast/current/bin:$PATH'
         echo 'export KAST_CACHE_HOME=$HOME/.cache/kast'
         echo 'export KAST_CONFIG_HOME=$HOME/.config/kast'
@@ -193,24 +193,27 @@ initialize:
       kast --version
       kast doctor
       test -L /opt/kast/current
+      test -f /opt/kast/install.json
       test -f /opt/kast/current/kast-runtime-manifest.json
       test -d /opt/kast/cache/gradle-ro/modules-2
 ```
 
-The action itself writes `KAST_HOME`, `KAST_CACHE_HOME`, `KAST_CONFIG_HOME`,
-and the installed `bin` directory through `GITHUB_ENV` and `GITHUB_PATH`.
+The action itself writes `KAST_INSTALL_ROOT`, `KAST_CACHE_HOME`,
+`KAST_CONFIG_HOME`, and the installed `bin` directory through `GITHUB_ENV` and
+`GITHUB_PATH`.
 Persist shell exports separately when the booted workspace session needs them
 outside the action runner process.
 
 ## Installed layout
 
 By default the action installs a versioned runtime under `/opt/kast`, then
-publishes the `current` symlink only after the archive, manifest, config, and
-`kast doctor` checks pass.
+publishes the `current` symlink only after the archive, runtime manifest,
+install manifest, and `kast doctor` checks pass.
 
 ```text
 /opt/kast/
   current -> /opt/kast/<version>
+  install.json
   <version>/
     bin/kast
     lib/runtime-libs/
@@ -222,11 +225,11 @@ publishes the `current` symlink only after the archive, manifest, config, and
       modules-2/
 ```
 
-The generated `config.toml` lives under `KAST_CONFIG_HOME`. It selects the
-headless backend, points `runtimeLibsDir` at
-`/opt/kast/current/lib/runtime-libs`, points `ideaHome` at
-`/opt/kast/current/idea`, and stores daemon descriptors, sockets, and logs
-under `KAST_CACHE_HOME`.
+The generated `install.json` lives under `KAST_INSTALL_ROOT`. It records the
+active version, stable entrypoint, active binary, backend runtime paths, and
+state/cache/log roots. `config.toml` under `KAST_CONFIG_HOME` is optional and
+behavior-only; it must not point at runtime libraries, IDEA home, daemon
+descriptors, sockets, logs, or the CLI binary.
 
 ## Verify the install
 

@@ -10,6 +10,7 @@ import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.server.AnalysisServerConfig
+import io.github.amichne.kast.server.RuntimeLifecycleController
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -57,6 +58,12 @@ internal class KastPluginService(
 
     private fun startServer(workspaceRoot: Path, config: KastConfig) {
         LOG.info("Starting kast idea backend for workspace: $workspaceRoot")
+        KastStructuredTrace.event(
+            eventName = "idea.backend.starting",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+        )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         diagnostics.recordBackendStarting(workspaceRoot)
 
@@ -67,13 +74,33 @@ internal class KastPluginService(
                 workspaceRoot = workspaceRoot,
                 socketPath = socketPath,
                 config = config,
+                lifecycleController = lifecycleController(),
             )
         }.onSuccess { backend ->
             runningBackend = backend
             runningConfig = config
 
+            KastStructuredTrace.event(
+                eventName = "idea.backend.started",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+                outcome = "completed",
+                detail = mapOf("socketPath" to socketPath.toString()),
+            )
             LOG.info("Kast idea backend started on socket: $socketPath")
         }.onFailure { error ->
+            KastStructuredTrace.event(
+                eventName = "idea.backend.start_failed",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+                outcome = "failed",
+                detail = mapOf(
+                    "errorClass" to error::class.qualifiedName,
+                    "message" to error.message,
+                ),
+            )
             diagnostics.recordBackendFailed(error)
             throw error
         }
@@ -82,12 +109,48 @@ internal class KastPluginService(
     private fun stopServer() {
         runningBackend?.let { backend ->
             LOG.info("Shutting down kast idea backend")
+            val workspaceRoot = workspaceRoot()
+            KastStructuredTrace.event(
+                eventName = "idea.backend.stopping",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+            )
             runCatching { backend.close() }
-                .onFailure { LOG.warn("Error closing kast server", it) }
+                .onSuccess {
+                    KastStructuredTrace.event(
+                        eventName = "idea.backend.stopped",
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+                        outcome = "completed",
+                    )
+                }
+                .onFailure {
+                    KastStructuredTrace.event(
+                        eventName = "idea.backend.stop_failed",
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+                        outcome = "failed",
+                        detail = mapOf(
+                            "errorClass" to it::class.qualifiedName,
+                            "message" to it.message,
+                        ),
+                    )
+                    LOG.warn("Error closing kast server", it)
+                }
             runningBackend = null
             KastDiagnosticsService.getInstance(project).recordBackendStopped()
         }
         runningConfig = null
+    }
+
+    private fun lifecycleController(): RuntimeLifecycleController = RuntimeLifecycleController { action ->
+        when (action) {
+            io.github.amichne.kast.api.contract.RuntimeLifecycleAction.SHUTDOWN -> ::stopServer
+            io.github.amichne.kast.api.contract.RuntimeLifecycleAction.RESTART -> ::restartServer
+        }
     }
 
     private fun loadConfig(workspaceRoot: Path): KastConfig = loadIdeaKastConfig(
@@ -120,6 +183,16 @@ internal fun loadIdeaKastConfig(
     try {
         loader(workspaceRoot)
     } catch (error: Exception) {
+        KastStructuredTrace.event(
+            eventName = "idea.config.fallback",
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+            outcome = "failed",
+            detail = mapOf(
+                "errorClass" to error::class.qualifiedName,
+                "message" to error.message,
+            ),
+        )
         reportFailure(workspaceRoot, error)
         KastConfig.defaults()
     }

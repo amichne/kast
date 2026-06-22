@@ -1,15 +1,14 @@
-use crate::backend::BackendInstallResult;
 use crate::cli::OutputFormat;
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ArchiveInstallResult, InstallAffectedResult, InstallCopilotExtensionResult,
-    InstallIdeaPluginResult, InstallInstructionsResult, InstallResult, InstallShellResult,
-    InstallSkillResult, SetupResult,
+    ActivateBundleResult, InstallCopilotPackageResult, InstallIdeaPluginResult,
+    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
 };
+use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
-    WorkspaceStatusResult,
+    WorkspaceRestartResult, WorkspaceStatusResult,
 };
 use crate::self_mgmt::SelfDoctorResult;
 use glamour::{Renderer, Style};
@@ -177,14 +176,18 @@ fn render_markdown_for_test(markdown: &str, style: RenderStyle) -> String {
 
 pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
+        InstallResult::ActivateBundle(result) => print_activate_bundle_install(result),
         InstallResult::Skill(result) => print_skill_install(result),
         InstallResult::Instructions(result) => print_instructions_install(result),
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
-        InstallResult::Affected(result) => print_affected_install(result),
-        InstallResult::Headless(result) => print_backend_install(result),
-        InstallResult::Archive(result) => print_archive_install(result),
+    }
+}
+
+pub fn print_package_result(result: &PackageResult) -> Result<()> {
+    match result {
+        PackageResult::UbuntuDebianBundle(result) => print_ubuntu_debian_bundle_package(result),
     }
 }
 
@@ -253,10 +256,24 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
 
 pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
+    let lifecycle_count = result
+        .candidates
+        .iter()
+        .filter(|candidate| candidate.lifecycle_accepted)
+        .count();
     mdln!(document, "# Kast stop");
     mdln!(document);
     mdln!(document, "- Workspace: `{}`", result.workspace_root);
-    mdln!(document, "- Stopped daemon: {}", yes_no(result.stopped));
+    mdln!(document, "- Backend: `{}`", result.backend_name);
+    mdln!(document, "- Stopped runtime: {}", yes_no(result.stopped));
+    if lifecycle_count > 0 {
+        mdln!(document, "- Host lifecycle requests: {lifecycle_count}");
+    }
+    mdln!(
+        document,
+        "- Runtime records handled: {}",
+        result.stopped_count
+    );
     mdln!(document, "- Forced termination: {}", yes_no(result.forced));
     if let Some(pid) = result.pid {
         mdln!(document, "- PID: {pid}");
@@ -264,10 +281,48 @@ pub fn print_stop_result(result: &DaemonStopResult) -> Result<()> {
     if let Some(descriptor_path) = &result.descriptor_path {
         mdln!(document, "- Descriptor: `{descriptor_path}`");
     }
+    print_warnings(&mut document, &result.warnings);
     if !result.stopped {
         mdln!(document);
         mdln!(document, "No matching daemon was running.");
     }
+    print_markdown(&document.into_string())
+}
+
+pub fn print_restart_result(result: &WorkspaceRestartResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    let lifecycle_count = result
+        .stop
+        .candidates
+        .iter()
+        .filter(|candidate| candidate.lifecycle_accepted)
+        .count();
+    mdln!(document, "# Kast restart");
+    mdln!(document);
+    mdln!(document, "- Workspace: `{}`", result.workspace_root);
+    mdln!(document, "- Backend: `{}`", result.backend_name);
+    mdln!(
+        document,
+        "- Runtime records handled: {}",
+        result.stop.stopped_count
+    );
+    if lifecycle_count > 0 {
+        mdln!(document, "- Host lifecycle requests: {lifecycle_count}");
+    }
+    mdln!(
+        document,
+        "- Started new daemon: {}",
+        yes_no(result.ensure.started)
+    );
+    if let Some(log_file) = &result.ensure.log_file {
+        mdln!(document, "- Log file: `{log_file}`");
+    }
+    if let Some(note) = &result.ensure.note {
+        mdln!(document, "- Note: {note}");
+    }
+    print_warnings(&mut document, &result.stop.warnings);
+    mdln!(document);
+    print_candidate(&mut document, "Selected runtime", &result.ensure.selected);
     print_markdown(&document.into_string())
 }
 
@@ -312,6 +367,7 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
         yes_no(result.configuration.valid)
     );
     mdln!(document, "- Config path: `{}`", result.config_path);
+    mdln!(document, "- Install manifest: `{}`", result.manifest_path);
     mdln!(
         document,
         "- Canonical directory: `{}`",
@@ -335,10 +391,23 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
     print_path_resolution(&mut document, &result.path_resolution);
     print_messages(&mut document, "Issues", &result.issues);
     print_warnings(&mut document, &result.warnings);
+    if let Some(repair) = &result.repair {
+        mdln!(document);
+        mdln!(document, "## Repair");
+        mdln!(document, "- Applied changes: {}", yes_no(repair.applied));
+        mdln!(document, "- Actions: {}", repair.actions.len());
+        print_messages(&mut document, "Backups", &repair.backups);
+        print_warnings(&mut document, &repair.warnings);
+    }
     if let Some(install) = &result.install {
         mdln!(document);
         mdln!(document, "## Installed versions");
         mdln!(document, "- CLI: `{}`", value_or_dash(&install.version));
+        mdln!(
+            document,
+            "- Active: `{}`",
+            value_or_dash(&install.active_version)
+        );
         if !install.components.is_empty() {
             mdln!(document, "- Components: {}", install.components.join(", "));
         }
@@ -356,7 +425,7 @@ pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
                 document,
                 "- Copilot repo `{}`: `{}`",
                 repo.path,
-                repo.copilot_extension_version
+                repo.copilot_package_version
             );
         }
     }
@@ -404,84 +473,10 @@ fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutio
     print_messages(document, "Path warnings", &report.warnings);
 }
 
-pub fn print_setup(result: &SetupResult) -> Result<()> {
+pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast setup");
-    mdln!(document);
-    if let Some(repair) = &result.repair {
-        mdln!(document, "- Repair applied: {}", yes_no(repair.applied));
-    }
-    if let Some(headless) = &result.headless {
-        mdln!(document, "- Headless backend: `{}`", headless.version);
-    }
-    if let Some(shell) = &result.shell {
-        mdln!(
-            document,
-            "- Shell integration: `{}` profile `{}`",
-            shell.shell,
-            shell.profile
-        );
-    }
-    if let Some(skill) = &result.skill {
-        mdln!(document, "- Skill: `{}`", skill.installed_at);
-    }
-    if let Some(copilot) = &result.copilot {
-        mdln!(document, "- Copilot plugin: `{}`", copilot.installed_at);
-    }
-    if let Some(plugin) = &result.idea_plugin {
-        mdln!(document, "- IDEA plugin action: `{}`", plugin.brew_action);
-    }
-    mdln!(
-        document,
-        "- Project-open profile auto-init: {}",
-        yes_no(result.project_open.profile_auto_init)
-    );
-    mdln!(
-        document,
-        "- Project-open profile: `{}`",
-        result.project_open.profile
-    );
-    mdln!(
-        document,
-        "- Auto-exclude generated package files: {}",
-        yes_no(result.project_open.auto_exclude_git)
-    );
-    print_warnings(&mut document, &result.warnings);
-    print_markdown(&document.into_string())
-}
-
-fn print_backend_install(result: &BackendInstallResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast backend install");
-    mdln!(document);
-    mdln!(document, "- Backend: `{}`", result.backend_name);
-    mdln!(document, "- Version: `{}`", result.version);
-    mdln!(document, "- Installed directory: `{}`", result.install_dir);
-    mdln!(
-        document,
-        "- Runtime libraries: `{}`",
-        result.runtime_libs_dir
-    );
-    print_optional(&mut document, "IDEA home", result.idea_home.as_deref());
-    mdln!(document, "- Source archive: `{}`", result.source_archive);
-    mdln!(
-        document,
-        "- Downloaded release asset: {}",
-        yes_no(result.downloaded)
-    );
-    mdln!(
-        document,
-        "- Reused existing install: {}",
-        yes_no(result.skipped)
-    );
-    mdln!(document);
-    mdln!(document, "## Next steps");
-    mdln!(
-        document,
-        "- Start it: `kast up --backend={}`",
-        result.backend_name
-    );
-    mdln!(document, "- Inspect it: `kast status`");
+    mdln!(document, "# Kast paths");
+    print_path_resolution(&mut document, result);
     print_markdown(&document.into_string())
 }
 
@@ -527,11 +522,11 @@ fn print_instructions_install(result: &InstallInstructionsResult) -> Result<()> 
     print_markdown(&document.into_string())
 }
 
-fn print_copilot_install(title: &str, result: &InstallCopilotExtensionResult) -> Result<()> {
+fn print_copilot_install(title: &str, result: &InstallCopilotPackageResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# {title}");
     mdln!(document);
-    mdln!(document, "- Extension path: `{}`", result.installed_at);
+    mdln!(document, "- Package path: `{}`", result.installed_at);
     mdln!(document, "- Version: `{}`", result.version);
     mdln!(
         document,
@@ -615,52 +610,44 @@ fn print_shell_install(result: &InstallShellResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
-fn print_archive_install(result: &ArchiveInstallResult) -> Result<()> {
+fn print_activate_bundle_install(result: &ActivateBundleResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast install");
+    mdln!(document, "# Kast bundle activation");
     mdln!(document);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(document, "- Platform: `{}`", result.platform);
+    mdln!(document, "- Profile: `{}`", result.profile);
     mdln!(document, "- Installed at: `{}`", result.installed_at);
-    mdln!(document, "- Instance: `{}`", result.instance);
+    mdln!(document, "- Install root: `{}`", result.install_root);
+    mdln!(document, "- Current link: `{}`", result.current);
+    mdln!(document, "- Manifest: `{}`", result.manifest);
+    mdln!(document, "- Active binary: `{}`", result.active_binary);
+    mdln!(document, "- Shim: `{}`", result.shim);
     mdln!(
         document,
         "- Reused existing install: {}",
         yes_no(result.skipped)
     );
+    mdln!(document, "- Verify only: {}", yes_no(result.verify_only));
     print_markdown(&document.into_string())
 }
 
-fn print_affected_install(result: &InstallAffectedResult) -> Result<()> {
+fn print_ubuntu_debian_bundle_package(result: &UbuntuDebianBundlePackageResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast affected install repair");
+    mdln!(document, "# Kast Ubuntu/Debian bundle package");
     mdln!(document);
-    mdln!(document, "- Applied changes: {}", yes_no(result.applied));
-    mdln!(document, "- Config path: `{}`", result.config_path);
-    if !result.applied {
-        mdln!(document, "- Default: no files were changed");
-        mdln!(document, "- Apply command: `{}`", result.apply_command);
-    }
-    if result.actions.is_empty() {
-        mdln!(document);
-        mdln!(document, "No affected installs or stale paths were found.");
-    } else {
-        mdln!(document);
-        mdln!(document, "## Actions");
-        for action in &result.actions {
-            mdln!(
-                document,
-                "- `{}` `{}`: {}",
-                action.status,
-                action.kind,
-                action.target
-            );
-            mdln!(document, "  {}", action.message);
-            if let Some(command) = &action.command {
-                mdln!(document, "  Command: `{command}`");
-            }
-        }
-    }
-    print_messages(&mut document, "Backups", &result.backups);
-    print_warnings(&mut document, &result.warnings);
+    mdln!(document, "- Output: `{}`", result.output);
+    mdln!(document, "- SHA-256 sidecar: `{}`", result.sha256_sidecar);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(document, "- Platform: `{}`", result.platform);
+    mdln!(
+        document,
+        "- Bundle manifest schema: {}",
+        result.manifest_schema_version
+    );
+    mdln!(document, "- CLI archive: `{}`", result.cli_archive);
+    mdln!(document, "- Backend archive: `{}`", result.backend_archive);
+    mdln!(document, "- Bundle SHA-256: `{}`", result.bundle_sha256);
     print_markdown(&document.into_string())
 }
 

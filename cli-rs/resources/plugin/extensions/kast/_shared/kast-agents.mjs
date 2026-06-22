@@ -11,8 +11,8 @@ export function kastWriterTools() {
   return [...WRITER_BASE_TOOLS, ...KAST_TOOL_NAMES];
 }
 
-export function makeKastCustomAgents() {
-  return [
+export function makeKastCustomAgents(trace = null) {
+  const agents = [
     {
       name: "kast-reader",
       displayName: "Kast Reader",
@@ -32,4 +32,13 @@ export function makeKastCustomAgents() {
         "You are Kast Writer. Make narrowly scoped Kotlin and Gradle changes only after compiler-backed identity is established. Resolve symbols and enumerate impact with kotlin LSP or kast_* tools before editing. If Kast is installed but backend or source-index facts are missing, run kast up --workspace-root \"$PWD\" --backend idea before falling back so the IDE-hosted backend can open or warm the project when config allows it. Prefer kast_rename and kast_write_and_validate for Kotlin changes, then run Kast diagnostics and the narrowest relevant tests. Stop and report the blocker instead of guessing when Kast facts are stale, missing, ambiguous, partial, or truncated after that IDE warmup path fails.",
     },
   ];
+  trace?.("copilot.custom_agents.defined", {
+    agentRole: "custom-agent-registry",
+    detail: agents.map((agent) => ({
+      name: agent.name,
+      toolCount: agent.tools.length,
+      hasWriteTools: agent.tools.includes("edit") || agent.tools.includes("execute"),
+    })),
+  });
+  return agents;
 }

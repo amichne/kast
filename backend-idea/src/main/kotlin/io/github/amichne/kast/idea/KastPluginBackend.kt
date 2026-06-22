@@ -98,14 +98,16 @@ import java.nio.file.Path
 @OptIn(KaExperimentalApi::class)
 internal class KastPluginBackend(
     private val project: Project,
-    private val workspaceRoot: Path,
+    workspaceRoot: Path,
     private val limits: ServerLimits,
     private val telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
     private val backendName: String? = null,
+    private val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
 ) : AnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
-    private val workspacePrefix = workspaceRoot.toString() + "/"
+    private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+    private val sharedWorkspaceIdentity = workspaceIdentity.workspaceIdentity
     private val ideaReadAccess = object : ReadAccessScope {
         override fun <T> run(action: () -> T): T =
             ApplicationManager.getApplication().runReadAction<T> { action() }
@@ -223,7 +225,7 @@ internal class KastPluginBackend(
                     candidateFileCount = searchScope.let { scope ->
                         kotlinFileType()?.let { fileType ->
                             FileTypeIndex.getFiles(fileType, scope)
-                                .count { it.path.startsWith(workspacePrefix) }
+                                .count { isWorkspaceFile(it.path) }
                         } ?: 0
                     },
                 ) to refs
@@ -276,7 +278,7 @@ internal class KastPluginBackend(
         )
         val resolver = IdeaCallEdgeResolver(
             project = project,
-            workspacePrefix = workspacePrefix,
+            workspaceIdentity = sharedWorkspaceIdentity,
         )
         val engine = CallHierarchyEngine(edgeResolver = resolver, readAccess = ideaReadAccess)
         val root = engine.buildNode(
@@ -436,7 +438,7 @@ internal class KastPluginBackend(
                 val rootManager = ModuleRootManager.getInstance(module)
                 val sourceRoots = rootManager.sourceRoots
                     .map { it.path }
-                    .filter { it.startsWith(workspacePrefix) }
+                    .filter(::isWorkspaceFile)
                 val depNames = rootManager.dependencies.map { it.name }
                 val moduleScope = GlobalSearchScope.moduleScope(module)
                 val kotlinFiles = kotlinFileType()?.let { fileType ->
@@ -446,7 +448,7 @@ internal class KastPluginBackend(
                 var fileCount = 0
                 kotlinFiles.forEach { file ->
                     val path = file.path
-                    if (path.startsWith(workspacePrefix)) {
+                    if (isWorkspaceFile(path)) {
                         fileCount += 1
                         if (query.includeFiles && filteredPaths.size < fileLimit) {
                             filteredPaths += path
@@ -532,7 +534,7 @@ internal class KastPluginBackend(
                 val (searchScope, scopeKind) = visibilityScopedSearch(target, visibility)
                 val candidateFileCount = kotlinFileType()?.let { fileType ->
                     FileTypeIndex.getFiles(fileType, searchScope)
-                        .count { it.path.startsWith(workspacePrefix) }
+                        .count { isWorkspaceFile(it.path) }
                 } ?: 0
                 val refs = mutableListOf<PsiReference>()
                 ReferencesSearch.search(target, searchScope).forEach { ref ->
@@ -587,7 +589,7 @@ internal class KastPluginBackend(
 
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
         return telemetry.inSpan(IdeaTelemetryScope.APPLY_EDITS, "kast.idea.applyEdits") {
-            val applier = IdeaEditApplier(project)
+            val applier = IdeaEditApplier(project, workspaceRoot, workspaceIdentity)
             applier.apply(query.toWire())
             // No asyncRefresh needed - IDEA APIs handle VFS updates automatically
         }
@@ -757,7 +759,7 @@ internal class KastPluginBackend(
     }
 
     private fun isWorkspaceFile(filePath: String): Boolean =
-        filePath.startsWith(workspacePrefix) || filePath == workspaceRoot.toString()
+        sharedWorkspaceIdentity.contains(filePath)
 
     private fun compileWorkspaceSearchRegex(query: ParsedWorkspaceSearchQuery): Regex? =
         if (query.regex) {
@@ -795,7 +797,7 @@ internal class KastPluginBackend(
     private fun matchesFileGlob(filePath: String, fileGlob: String): Boolean {
         val matcher = FileSystems.getDefault().getPathMatcher("glob:$fileGlob")
         val path = Path.of(filePath)
-        val relative = runCatching { workspaceRoot.relativize(path) }.getOrNull()
+        val relative = sharedWorkspaceIdentity.relativizeIfContained(path)
         return listOfNotNull(relative, relative?.fileName, path.fileName).any(matcher::matches)
     }
 
@@ -808,6 +810,9 @@ internal class KastPluginBackend(
 
     private fun findKtFile(filePath: String): KtFile {
         val normalizedPath = Path.of(filePath).toAbsolutePath().normalize().toString()
+        if (!isWorkspaceFile(normalizedPath)) {
+            throw NotFoundException("File is outside the active workspace: $filePath")
+        }
         val virtualFile = LocalFileSystem.getInstance().findFileByPath(normalizedPath)
             ?: throw NotFoundException("File not found: $filePath")
         val psiFile = PsiManager.getInstance(project).findFile(virtualFile)

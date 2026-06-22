@@ -23,8 +23,10 @@ stateDiagram-v2
     STARTING --> INDEXING: session bootstrapped
     INDEXING --> READY: indexing complete
     READY --> INDEXING: raw/workspace-refresh
+    READY --> STARTING: restart
     READY --> [*]: stop
     INDEXING --> DEGRADED: fatal error
+    DEGRADED --> STARTING: restart
     DEGRADED --> [*]: stop
 ```
 
@@ -52,10 +54,27 @@ kast status
 
 ### Stop the daemon
 
-Stop explicitly when you're done. Don't leave orphans behind.
+Stop explicitly when you're done. `kast stop` removes every matching stale
+descriptor and terminates every matching headless process for the workspace.
+For IDEA-hosted backends, Kast asks the plugin backend to stop its server and
+indexer without killing the IDE process.
 
 ```console title="Stop the daemon cleanly"
 kast stop
+```
+
+### Restart a backend
+
+Use `restart` when startup is wedged, indexing is stuck, or automation wants a
+known fresh connection lifecycle. For headless, Kast stops every matching
+workspace daemon record, removes stale descriptors, starts a new backend, and
+waits for the selected runtime. For IDEA, Kast sends a host lifecycle request
+to the plugin so it rebuilds the server and indexer in the open IDE, then waits
+for the selected runtime. If no compatible descriptor is running, Kast follows
+the configured `runtime.ideaLaunch` path when that launch profile is enabled.
+
+```console title="Rebuild the selected backend lifecycle"
+kast restart --backend=headless
 ```
 
 ## Workspace discovery

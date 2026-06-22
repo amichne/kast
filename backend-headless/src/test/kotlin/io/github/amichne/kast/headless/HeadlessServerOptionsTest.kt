@@ -92,20 +92,25 @@ class HeadlessServerOptionsTest {
     }
 
     @Test
-    fun `headless config override reads launcher path properties`() {
-        withSystemProperties(
-            HeadlessConfigProperties.CACHE_DIR to "/tmp/kast-cache",
-            HeadlessConfigProperties.LOGS_DIR to "/tmp/kast-logs",
-            HeadlessConfigProperties.DESCRIPTOR_DIR to "/tmp/kast-descriptors",
-            HeadlessConfigProperties.SOCKET_DIR to "/tmp/kast-sockets",
-        ) {
-            val paths = HeadlessConfigProperties.configOverride(profilingOverride = null).paths
-
-            assertEquals("/tmp/kast-cache", paths?.cacheDir?.value)
-            assertEquals("/tmp/kast-logs", paths?.logsDir?.value)
-            assertEquals("/tmp/kast-descriptors", paths?.descriptorDir?.value)
-            assertEquals("/tmp/kast-sockets", paths?.socketDir?.value)
+    fun `starter args apply launch profiling override to resolved runtime config`() {
+        val runtimeConfig = tempDir.resolve("runtime-config.json").apply {
+            writeText("{}")
         }
+
+        val options = HeadlessServerOptions.parseStarterArgs(
+            listOf(
+                HeadlessApplicationStarter.COMMAND_NAME,
+                "--workspace-root=/tmp/project",
+                "--runtime-config-file=$runtimeConfig",
+                "--profile",
+                "--profile-modes=cpu,alloc",
+                "--profile-duration=12",
+            ),
+        )
+
+        assertEquals(true, options.runtimeConfig?.profiling?.enabled?.value)
+        assertEquals("cpu,alloc", options.runtimeConfig?.profiling?.modes?.value)
+        assertEquals(12L, options.runtimeConfig?.profiling?.durationSeconds?.value)
     }
 
     @Test
@@ -198,22 +203,4 @@ class HeadlessServerOptionsTest {
             }
         } as Project
 
-    private fun withSystemProperties(
-        vararg values: Pair<String, String>,
-        block: () -> Unit,
-    ) {
-        val previousValues = values.associate { (key, _) -> key to System.getProperty(key) }
-        try {
-            values.forEach { (key, value) -> System.setProperty(key, value) }
-            block()
-        } finally {
-            previousValues.forEach { (key, value) ->
-                if (value == null) {
-                    System.clearProperty(key)
-                } else {
-                    System.setProperty(key, value)
-                }
-            }
-        }
-    }
 }

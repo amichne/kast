@@ -32,6 +32,8 @@ categories:
   system:
   - health
   - runtime/status
+  - runtime/shutdown
+  - runtime/restart
   - capabilities
 commands:
   capabilities:
@@ -519,6 +521,22 @@ commands:
     tool:
       description: Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase because it understands Kotlin symbol names, kinds, and declaration scopes.
       name: kast_workspace_symbol
+  runtime/restart:
+    category: system
+    dataSource: backend
+    method: runtime/restart
+    request:
+      fields: {}
+    responseType: RuntimeLifecycleResponse
+    summary: Ask the runtime host to restart after this response is flushed
+  runtime/shutdown:
+    category: system
+    dataSource: backend
+    method: runtime/shutdown
+    request:
+      fields: {}
+    responseType: RuntimeLifecycleResponse
+    summary: Ask the runtime host to shut down after this response is flushed
   runtime/status:
     category: system
     dataSource: backend

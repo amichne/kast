@@ -3,13 +3,7 @@ package io.github.amichne.kast.headless
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.KastConfigOverride
-import io.github.amichne.kast.api.client.PathsConfigOverride
-import io.github.amichne.kast.api.client.ProfilingConfigOverride
 import io.github.amichne.kast.api.client.ServerLaunchOptions
-import io.github.amichne.kast.api.client.fields.PathsCacheDir
-import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
-import io.github.amichne.kast.api.client.fields.PathsLogsDir
-import io.github.amichne.kast.api.client.fields.PathsSocketDir
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.KastIdeaBackendRuntime
 import io.github.amichne.kast.idea.RunningKastIdeaBackend
@@ -42,7 +36,7 @@ data class HeadlessServerOptions(
             return HeadlessServerOptions(
                 serverOptions = serverOptions,
                 runtimeConfig = runtimeConfig?.withOverrides(
-                    HeadlessConfigProperties.configOverride(serverOptions.profilingOverride),
+                    KastConfigOverride(profiling = serverOptions.profilingOverride),
                 ),
                 smokeOnly = smokeOnly,
             )
@@ -116,7 +110,7 @@ object HeadlessRuntime {
         val project = projectOpener.openProject(workspaceRoot)
         val config = options.runtimeConfig ?: KastConfig.load(
             workspaceRoot = workspaceRoot,
-            overrides = HeadlessConfigProperties.configOverride(serverOptions.profilingOverride),
+            overrides = KastConfigOverride(profiling = serverOptions.profilingOverride),
         )
         val backendRuntime = KastIdeaBackendRuntime.start(
             project = project,
@@ -155,36 +149,4 @@ object HeadlessRuntime {
         }
         runtime.await()
     }
-}
-
-internal object HeadlessConfigProperties {
-    const val CACHE_DIR = "kast.headless.paths.cacheDir"
-    const val LOGS_DIR = "kast.headless.paths.logsDir"
-    const val DESCRIPTOR_DIR = "kast.headless.paths.descriptorDir"
-    const val SOCKET_DIR = "kast.headless.paths.socketDir"
-
-    fun configOverride(profilingOverride: ProfilingConfigOverride?): KastConfigOverride = KastConfigOverride(
-        profiling = profilingOverride,
-        paths = pathsOverride(),
-    )
-
-    private fun pathsOverride(): PathsConfigOverride? {
-        val cacheDir = pathProperty(CACHE_DIR)?.let(::PathsCacheDir)
-        val logsDir = pathProperty(LOGS_DIR)?.let(::PathsLogsDir)
-        val descriptorDir = pathProperty(DESCRIPTOR_DIR)?.let(::PathsDescriptorDir)
-        val socketDir = pathProperty(SOCKET_DIR)?.let(::PathsSocketDir)
-        if (cacheDir == null && logsDir == null && descriptorDir == null && socketDir == null) {
-            return null
-        }
-        return PathsConfigOverride(
-            cacheDir = cacheDir,
-            logsDir = logsDir,
-            descriptorDir = descriptorDir,
-            socketDir = socketDir,
-        )
-    }
-
-    private fun pathProperty(name: String): String? = System.getProperty(name)
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
 }

@@ -127,30 +127,6 @@ fn reads_metrics_directly_from_source_index_db() {
         "stderr: {}",
         String::from_utf8_lossy(&metrics_help.stderr)
     );
-    let metrics_help_stdout = String::from_utf8_lossy(&metrics_help.stdout);
-    assert!(
-        !metrics_help_stdout.contains("graph"),
-        "metrics graph visualization should not be exposed: {metrics_help_stdout}"
-    );
-
-    let removed_graph = kast(&home, &config_home)
-        .args([
-            "metrics",
-            "graph",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-            "--json",
-            "lib.Foo",
-        ])
-        .output()
-        .expect("removed metrics graph");
-    assert!(
-        !removed_graph.status.success(),
-        "metrics graph should no longer be commandable: stdout={}, stderr={}",
-        String::from_utf8_lossy(&removed_graph.stdout),
-        String::from_utf8_lossy(&removed_graph.stderr)
-    );
-
     let demo = kast(&home, &config_home)
         .args([
             "demo",
@@ -292,31 +268,6 @@ fn reads_metrics_directly_from_source_index_db() {
         demo_help_stdout.contains("symbol"),
         "symbol demo should remain exposed: {demo_help_stdout}"
     );
-    assert!(
-        !demo_help_stdout.contains("spatial"),
-        "spatial demo should not be exposed: {demo_help_stdout}"
-    );
-
-    let removed_spatial = kast(&home, &config_home)
-        .args([
-            "demo",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-            "--view",
-            "spatial",
-            "--json",
-            "--symbol",
-            "app.A",
-        ])
-        .output()
-        .expect("removed spatial demo");
-    assert!(
-        !removed_spatial.status.success(),
-        "spatial demo should no longer be commandable: stdout={}, stderr={}",
-        String::from_utf8_lossy(&removed_spatial.stdout),
-        String::from_utf8_lossy(&removed_spatial.stderr)
-    );
-
     let metrics_rpc_request = serde_json::json!({
         "jsonrpc": "2.0",
         "method": "database/metrics",

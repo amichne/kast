@@ -9,6 +9,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.shared.analysis.ReferenceIndexEnvironment
 import java.nio.file.Path
@@ -16,9 +17,15 @@ import java.util.concurrent.Callable
 
 internal class IdeaReferenceIndexEnvironment(
     private val project: Project,
-    private val workspaceRoot: Path,
+    private val workspaceIdentity: WorkspaceIdentity,
     private val cancelled: () -> Boolean,
 ) : ReferenceIndexEnvironment {
+    constructor(
+        project: Project,
+        workspaceRoot: Path,
+        cancelled: () -> Boolean,
+    ) : this(project, WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), cancelled)
+
     override fun allFilePaths(): Collection<String> = withReadAccess {
         val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
             ?: return@withReadAccess emptyList()
@@ -27,7 +34,7 @@ internal class IdeaReferenceIndexEnvironment(
             .asSequence()
             .filter { file -> file.isValid && file.fileType == kotlinFileType }
             .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
-            .filter { path -> path.startsWith(workspaceRoot) }
+            .filter(workspaceIdentity::contains)
             .filter(SourceIndexFilePolicy::isEligible)
             .map(Path::toString)
             .sorted()
@@ -36,7 +43,7 @@ internal class IdeaReferenceIndexEnvironment(
 
     override fun findPsiFile(filePath: String): PsiFile? = withReadAccess {
         val path = Path.of(filePath).toAbsolutePath().normalize()
-        if (!path.startsWith(workspaceRoot)) return@withReadAccess null
+        if (!workspaceIdentity.contains(path)) return@withReadAccess null
         val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(path) ?: return@withReadAccess null
         PsiManager.getInstance(project).findFile(virtualFile)
     }

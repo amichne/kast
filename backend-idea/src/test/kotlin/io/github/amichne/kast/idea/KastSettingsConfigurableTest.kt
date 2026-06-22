@@ -1,5 +1,3 @@
-@file:Suppress("INVISIBLE_REFERENCE")
-
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.client.KastConfig
@@ -41,17 +39,6 @@ class KastSettingsConfigurableTest {
         assertFalse(toml.contains("maxResults"))
         assertFalse(toml.contains("runtimeLibsDir"))
         assertFalse(toml.contains("[telemetry]"))
-    }
-
-    @Test
-    fun `legacy tuning fields are not emitted from plugin settings`() {
-        val state = KastSettingsState().apply {
-            loadFromConfig(KastConfig.defaults())
-        }
-
-        val toml = state.toWorkspaceToml()
-
-        assertEquals("", toml)
     }
 
     @Test

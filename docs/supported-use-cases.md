@@ -19,18 +19,18 @@ developer machines, repository files, and Linux servers as separate concerns.
 
 ??? success "Global binary and IDE plugin: one macOS machine"
     Install the `kast` binary and IDEA or Android Studio plugin once on the
-    machine. On macOS developer machines, the Homebrew formula and cask are
-    the developer distribution:
+    machine. On macOS developer machines, the Homebrew formula installs the
+    CLI and the version-coupled `kast-plugin` cask:
 
     ```console
     brew tap amichne/kast
     brew install kast
-    brew install --cask kast-plugin
     ```
 
     The binary owns CLI commands, `kast lsp --stdio`, `kast rpc`, install
     repair, and backend lifecycle commands. The cask links the Kast plugin
-    into local JetBrains IDE profiles.
+    into local JetBrains IDE profiles; run `brew install --cask kast-plugin`
+    or `brew reinstall --cask kast-plugin` only for direct cask repair.
 
 ??? tip "Repository Copilot files: one repository at a time"
     Run `kast install copilot` inside every repository where Copilot should

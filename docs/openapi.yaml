@@ -66,6 +66,46 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/runtime-shutdown":
+    post:
+      operationId: runtimeShutdown
+      summary: Request runtime host shutdown after the response is flushed
+      tags:
+        - system
+      x-jsonrpc-method: runtime/shutdown
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RuntimeLifecycleResponse"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/runtime-restart":
+    post:
+      operationId: runtimeRestart
+      summary: Request runtime host restart after the response is flushed
+      tags:
+        - system
+      x-jsonrpc-method: runtime/restart
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RuntimeLifecycleResponse"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
   "/rpc/capabilities":
     post:
       operationId: capabilities
@@ -707,6 +747,38 @@ components:
         - INDEXING
         - READY
         - DEGRADED
+    RuntimeLifecycleResponse:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        action:
+          "$ref": "#/components/schemas/RuntimeLifecycleAction"
+        backendName:
+          type: string
+        backendVersion:
+          type: string
+        workspaceRoot:
+          type: string
+        message:
+          anyOf:
+            - type: string
+            - type: "null"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - accepted
+        - action
+        - backendName
+        - backendVersion
+        - workspaceRoot
+    RuntimeLifecycleAction:
+      type: string
+      enum:
+        - SHUTDOWN
+        - RESTART
     BackendCapabilities:
       type: object
       properties:

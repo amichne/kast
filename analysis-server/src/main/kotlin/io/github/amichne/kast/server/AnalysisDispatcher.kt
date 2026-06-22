@@ -18,6 +18,8 @@ import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.HealthResponse
+import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
+import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -64,25 +66,22 @@ import kotlinx.serialization.json.JsonNull
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
-
-@Deprecated("Use RpcAnalysisDispatcher instead")
-interface AnalysisDispatcher {
-    suspend fun dispatch(request: JsonRpcRequest): String
-    suspend fun dispatchRaw(requestText: String): String
-}
+import java.util.concurrent.ConcurrentLinkedQueue
 
 class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
+    private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
     private val json: Json = Json {
         encodeDefaults = true
         explicitNulls = false
         prettyPrint = false
     },
-) : AnalysisDispatcher {
+) {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
+    private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
 
-    override suspend fun dispatch(request: JsonRpcRequest): String {
+    suspend fun dispatch(request: JsonRpcRequest): String {
         if (request.jsonrpc != JSON_RPC_VERSION || request.method.isBlank()) {
             return json.encodeToString(
                 JsonRpcErrorResponse(
@@ -141,7 +140,7 @@ class RpcAnalysisDispatcher(
         }
     }
 
-    override suspend fun dispatchRaw(requestText: String): String {
+    suspend fun dispatchRaw(requestText: String): String {
         val request = runCatching {
             json.decodeFromString(JsonRpcRequest.serializer(), requestText)
         }.getOrElse { exception ->
@@ -164,6 +163,16 @@ class RpcAnalysisDispatcher(
         return when (method) {
             "health" -> encode(HealthResponse.serializer(), backend.health())
             "runtime/status" -> encode(RuntimeStatusResponse.serializer(), backend.runtimeStatus())
+            "runtime/shutdown" -> encode(
+                RuntimeLifecycleResponse.serializer(),
+                requestLifecycle(RuntimeLifecycleAction.SHUTDOWN),
+            )
+
+            "runtime/restart" -> encode(
+                RuntimeLifecycleResponse.serializer(),
+                requestLifecycle(RuntimeLifecycleAction.RESTART),
+            )
+
             "capabilities" -> encode(BackendCapabilities.serializer(), backend.capabilities())
             "raw/resolve" -> encode(
                 SymbolResult.serializer(),
@@ -366,6 +375,33 @@ class RpcAnalysisDispatcher(
         }
     }
 
+    internal fun runAfterResponseActions(): Boolean {
+        var ranAction = false
+        while (true) {
+            val action = afterResponseActions.poll() ?: return ranAction
+            ranAction = true
+            runCatching(action)
+        }
+    }
+
+    private suspend fun requestLifecycle(action: RuntimeLifecycleAction): RuntimeLifecycleResponse {
+        val afterResponseAction = lifecycleController.afterResponseAction(action)
+            ?: throw CapabilityNotSupportedException(
+                capability = "RUNTIME_LIFECYCLE",
+                message = "Runtime lifecycle actions are not available for this backend host",
+            )
+        val capabilities = backend.capabilities()
+        afterResponseActions += afterResponseAction
+        return RuntimeLifecycleResponse(
+            accepted = true,
+            action = action,
+            backendName = capabilities.backendName,
+            backendVersion = capabilities.backendVersion,
+            workspaceRoot = capabilities.workspaceRoot,
+            message = "Runtime ${action.name.lowercase()} accepted; action will run after this response is flushed.",
+        )
+    }
+
     private suspend fun requireReadCapability(capability: ReadCapability) {
         val capabilities = backend.capabilities()
         if (!capabilities.readCapabilities.contains(capability)) {
@@ -396,6 +432,14 @@ class RpcAnalysisDispatcher(
         serializer: KSerializer<T>,
         value: T,
     ): JsonElement = json.encodeToJsonElement(serializer, value)
+}
+
+fun interface RuntimeLifecycleController {
+    fun afterResponseAction(action: RuntimeLifecycleAction): (() -> Unit)?
+
+    object Unavailable : RuntimeLifecycleController {
+        override fun afterResponseAction(action: RuntimeLifecycleAction): (() -> Unit)? = null
+    }
 }
 
 private class UnknownRpcMethodException(

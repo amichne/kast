@@ -33,6 +33,8 @@ import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
+import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
@@ -90,6 +92,35 @@ class AnalysisDispatcherTest {
 
         assertTrue(result.readCapabilities.contains(ReadCapability.RESOLVE_SYMBOL))
         assertEquals("fake", result.backendName)
+    }
+
+    @Test
+    fun `runtime restart schedules lifecycle action after response`() {
+        val actions = mutableListOf<RuntimeLifecycleAction>()
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(),
+            lifecycleController = RuntimeLifecycleController { action ->
+                { actions += action }
+            },
+        )
+
+        val raw = runBlocking {
+            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/restart"))
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(
+            RuntimeLifecycleResponse.serializer(),
+            response.result,
+        )
+
+        assertEquals(RuntimeLifecycleAction.RESTART, result.action)
+        assertTrue(result.accepted)
+        assertTrue(actions.isEmpty(), "Lifecycle action must wait until the transport flushes the response")
+
+        assertTrue(dispatcher.runAfterResponseActions())
+        assertEquals(listOf(RuntimeLifecycleAction.RESTART), actions)
+        assertFalse(dispatcher.runAfterResponseActions())
     }
 
     @Test
@@ -295,18 +326,6 @@ class AnalysisDispatcherTest {
         assertEquals(true, success.ok)
         assertEquals(1, success.affectedFiles.size)
         assertTrue(file.readText().contains("fun hello()"))
-    }
-
-    @Test
-    fun `legacy rpc method names are rejected`() {
-        val response = dispatchRaw("skill/resolve")
-
-        val error = json.decodeFromJsonElement(
-            JsonRpcErrorResponse.serializer(),
-            response,
-        )
-        assertEquals(-32601, error.error.code)
-        assertTrue(error.error.message.contains("skill/resolve"))
     }
 
     @Test

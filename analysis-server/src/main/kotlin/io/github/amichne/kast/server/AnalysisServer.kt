@@ -10,12 +10,13 @@ import java.io.Closeable
 class AnalysisServer(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
+    private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
 ) {
     fun start(): RunningAnalysisServer {
         val capabilities = runBlocking {
             backend.capabilities()
         }
-        val dispatcher = RpcAnalysisDispatcher(backend, config)
+        val dispatcher = RpcAnalysisDispatcher(backend, config, lifecycleController)
 
         val transportServer: LocalRpcServer
         val descriptor: ServerInstanceDescriptor?
@@ -35,7 +36,10 @@ class AnalysisServer(
                     socketPath = socketPath.toString(),
                 )
                 descriptorStore = DescriptorStore(
-                    (config.descriptorDirectory ?: defaultDescriptorDirectory()).resolve("daemons.json"),
+                    (config.descriptorDirectory ?: defaultDescriptorDirectory())
+                        .resolve("daemons.json")
+                        .toAbsolutePath()
+                        .toString(),
                 )
                 descriptorStore.write(descriptor)
             }

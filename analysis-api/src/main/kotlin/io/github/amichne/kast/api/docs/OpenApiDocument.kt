@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
@@ -77,7 +78,7 @@ import java.nio.file.Path
 /**
  * Generates an OpenAPI 3.1 specification for the Kast analysis daemon JSON-RPC API.
  *
- * Each JSON-RPC method dispatched by [AnalysisDispatcher] is modelled as a logical
+ * Each JSON-RPC method dispatched by the analysis server is modelled as a logical
  * `POST /rpc/{method}` operation whose request body is the `params` payload and whose
  * response body is the `result` payload. The JSON-RPC envelope and error format are
  * documented as separate schemas.
@@ -178,6 +179,7 @@ object OpenApiDocument {
         // System responses
         registry.register("HealthResponse", HealthResponse.serializer())
         registry.register("RuntimeStatusResponse", RuntimeStatusResponse.serializer())
+        registry.register("RuntimeLifecycleResponse", RuntimeLifecycleResponse.serializer())
         registry.register("BackendCapabilities", BackendCapabilities.serializer())
 
         // Shared types
@@ -261,6 +263,18 @@ object OpenApiDocument {
             summary = "Detailed runtime state including indexing progress",
             method = "runtime/status",
             responseSchema = "RuntimeStatusResponse",
+        ),
+        "/rpc/runtime-shutdown" to systemMethod(
+            operationId = "runtimeShutdown",
+            summary = "Request runtime host shutdown after the response is flushed",
+            method = "runtime/shutdown",
+            responseSchema = "RuntimeLifecycleResponse",
+        ),
+        "/rpc/runtime-restart" to systemMethod(
+            operationId = "runtimeRestart",
+            summary = "Request runtime host restart after the response is flushed",
+            method = "runtime/restart",
+            responseSchema = "RuntimeLifecycleResponse",
         ),
         "/rpc/capabilities" to systemMethod(
             operationId = "capabilities",

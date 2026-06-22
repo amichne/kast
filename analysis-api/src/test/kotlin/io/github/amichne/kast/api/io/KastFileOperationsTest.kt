@@ -10,64 +10,36 @@ import java.io.FileNotFoundException
 import java.nio.file.Files
 import java.nio.file.Path
 
-/**
- * RED phase tracer bullet test for KastFileOperations.
- *
- * This test defines the desired behavior for the LocalDisk-backed implementation.
- * Expected to FAIL during RED phase because LocalDiskFileOperations intentionally
- * throws NotImplementedError.
- */
 class KastFileOperationsTest {
 
     @TempDir
     lateinit var tempDir: Path
 
-    /**
-     * Tracer bullet test exercising the full lifecycle of file operations
-     * through the KastFileOperations abstraction.
-     *
-     * This test validates:
-     * - writeText creates files with content
-     * - readText retrieves the written content
-     * - exists reports file existence correctly
-     * - list enumerates directory children
-     * - delete removes files
-     */
     @Test
     fun `local disk file operations read write list and delete through abstraction`() {
         val ops: KastFileOperations = LocalDiskFileOperations
-
-        // Setup: use temp directory for isolated testing
         val testFile = tempDir.resolve("test.txt").toString()
         val testDir = tempDir.toString()
 
-        // Verify file doesn't exist initially
         assertFalse(ops.exists(testFile), "File should not exist before creation")
 
-        // Write content to file
         val content = "Hello, Kast filesystem abstraction!"
         ops.writeText(testFile, content)
 
-        // Verify file was created
         assertTrue(ops.exists(testFile), "File should exist after writeText")
 
-        // Read content back
         val readContent = ops.readText(testFile)
         assertEquals(content, readContent, "Read content should match written content")
 
-        // List directory contents
         val children = ops.list(testDir)
         assertTrue(children.any { it.endsWith("test.txt") },
             "Directory listing should include test.txt")
 
-        // Delete file
         val deleted = ops.delete(testFile)
         assertTrue(deleted, "delete should return true for existing file")
 
-        // Verify file no longer exists
         assertFalse(ops.exists(testFile), "File should not exist after deletion")
 
-        // Verify delete returns false for non-existent file
         val deletedAgain = ops.delete(testFile)
         assertFalse(deletedAgain, "delete should return false for non-existent file")
     }
@@ -87,14 +59,11 @@ class KastFileOperationsTest {
         val ops: KastFileOperations = LocalDiskFileOperations
         val testFile = tempDir.resolve("overwrite-test.txt").toString()
 
-        // Write initial content
         ops.writeText(testFile, "initial content")
 
-        // Overwrite with new content
         val newContent = "new content"
         ops.writeText(testFile, newContent)
 
-        // Verify only new content remains
         val readContent = ops.readText(testFile)
         assertEquals(newContent, readContent, "File should contain only new content after overwrite")
     }
@@ -104,7 +73,6 @@ class KastFileOperationsTest {
         val ops: KastFileOperations = LocalDiskFileOperations
         val emptyDir = tempDir.resolve("empty").toString()
 
-        // Create empty directory using Java NIO (setup only)
         Files.createDirectory(Path.of(emptyDir))
 
         val children = ops.list(emptyDir)
@@ -119,53 +87,34 @@ class KastFileOperationsTest {
         assertFalse(ops.exists(nonExistentPath), "Non-existent path should return false")
     }
 
-    /**
-     * RED test: Verify that writeText creates parent directories automatically.
-     * This ensures consistency with JimfsFileOperations and matches the documented contract.
-     *
-     * Expected to FAIL initially if LocalDiskFileOperations doesn't create parents.
-     */
     @Test
     fun `writeText creates parent directories if they do not exist`() {
         val ops: KastFileOperations = LocalDiskFileOperations
         val nestedFile = tempDir.resolve("deeply/nested/path/test.txt").toString()
 
-        // Verify parent directories don't exist initially
         val parentDir = tempDir.resolve("deeply/nested/path").toString()
         assertFalse(ops.exists(parentDir), "Parent directories should not exist before writeText")
 
-        // Write to file in non-existent directory structure
         val content = "Content in nested location"
         ops.writeText(nestedFile, content)
 
-        // Verify file was created and parent directories exist
         assertTrue(ops.exists(nestedFile), "File should exist after writeText")
         assertTrue(ops.exists(parentDir), "Parent directories should be created")
 
-        // Verify content is correct
         val readContent = ops.readText(nestedFile)
         assertEquals(content, readContent, "Content should match what was written")
     }
 
-    /**
-     * RED test: Verify that list() returns absolute paths, not relative.
-     * This ensures the contract is unambiguous across implementations.
-     *
-     * Expected to FAIL or require verification that current behavior matches contract.
-     */
     @Test
     fun `list returns absolute paths`() {
         val ops: KastFileOperations = LocalDiskFileOperations
         val testDir = tempDir.toString()
         val testFile = tempDir.resolve("absolute-test.txt").toString()
 
-        // Create a file in the test directory
         ops.writeText(testFile, "test content")
 
-        // List directory contents
         val children = ops.list(testDir)
 
-        // Verify all returned paths are absolute
         assertTrue(children.isNotEmpty(), "Directory should contain at least one file")
         children.forEach { path ->
             assertTrue(Path.of(path).isAbsolute,

@@ -17,8 +17,8 @@ Most developers do not need this page. For local macOS development, use the
 
 ## Install the bundle
 
-The Ubuntu/Debian bundle installs the binary, config, and backend runtime
-together.
+The Ubuntu/Debian bundle installs the binary, install manifest, and backend
+runtime together.
 
 ```bash title="Install Kast on Ubuntu or Debian"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
@@ -34,10 +34,10 @@ runtime, `scripts/install-ubuntu-debian.sh`, metadata, and the license notice.
 
 ??? info "Server install details"
     The installer refuses non-Ubuntu/Debian hosts, installs to
-    `$HOME/.local/share/kast/ubuntu-debian/<version>` by default, symlinks
-    `$HOME/.local/bin/kast`, and writes `config.toml` so the CLI points at
-    `lib/backends/headless-<version>/runtime-libs` and the bundled headless
-    `idea-home`.
+    `$HOME/.local/share/kast/versions/<version>` by default, flips
+    `$HOME/.local/share/kast/current`, symlinks `$HOME/.local/bin/kast`, and
+    writes `$HOME/.local/share/kast/install.json` so the CLI resolves the
+    bundled headless runtime from one manifest-backed path model.
 
     Java 21 or newer must be available on `PATH` or through `JAVA_HOME` when
     the Linux headless runtime starts.
@@ -81,15 +81,23 @@ gh release download v1.2.3 --repo amichne/kast --dir kast-release-v1.2.3
 ./scripts/verify-release-assets.sh --release-dir kast-release-v1.2.3 --tag v1.2.3
 ```
 
-Use `scripts/package-ubuntu-debian-bundle.sh` only when building the release
-bundle from local CLI and backend artifacts.
+Use the Rust packager when building the release bundle from local CLI and
+backend artifacts:
+
+```bash title="Package a local Ubuntu/Debian bundle"
+kast package ubuntu-debian-bundle \
+  --cli-archive dist/kast-<version>-linux-x64.zip \
+  --backend-archive backend-headless/build/distributions/backend-headless-<version>-portable.zip \
+  --version <version> \
+  --bundle-output dist/kast-ubuntu-debian-headless-x86_64-<version>.tar.gz
+```
 
 ## Devin and ephemeral agents
 
 Devin blueprints and other short-lived Linux x64 workspaces can use the
 prebuilt runtime action instead of running the Ubuntu/Debian installer directly.
-That path installs `kast` under `/opt/kast/current`, writes the headless runtime
-config, and seeds an optional read-only Gradle dependency cache.
+That path installs `kast` under `/opt/kast/current`, activates an install
+manifest, and seeds an optional read-only Gradle dependency cache.
 
 Use the [setup-kast action](../distribution/setup-kast-action.md) page for the
 blueprint snippet, inputs, credentials, and verification loop. The

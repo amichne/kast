@@ -190,8 +190,8 @@ fn generated_request_schemas_validate_every_catalog_sample() {
     sample_paths.sort();
     assert_eq!(
         sample_paths.len(),
-        64,
-        "29 commands currently expand to 64 minimal/maximal sample payloads"
+        68,
+        "31 commands currently expand to 68 minimal/maximal sample payloads"
     );
 
     for path in sample_paths {
@@ -424,13 +424,6 @@ fn command_catalog_owns_copilot_tool_surface() {
         "kast_write_and_validate",
     ]);
     assert_eq!(tool_names, expected);
-
-    assert!(
-        !Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources/copilot-extension")
-            .exists(),
-        "deprecated Copilot SDK extension source must not be packaged"
-    );
 }
 
 #[test]
@@ -476,6 +469,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
             "agents/kast-writer.agent.md",
             "extensions/kast/_shared/kast-agents.mjs",
             "extensions/kast/_shared/commands.json",
+            "extensions/kast/_shared/kast-trace.mjs",
             "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
             "instructions/kast-kotlin.instructions.md",
@@ -490,7 +484,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     );
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
-        "plugin source must own the Copilot SDK extension entrypoint"
+        "plugin source must own the catalog-backed Copilot extension entrypoint"
     );
     assert!(
         plugin_root.join("agents/kast-reader.agent.md").is_file(),
@@ -509,7 +503,8 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         extension.contains("RECOVERABLE_WARMUP_CODES")
             && extension.contains("\"INDEX_UNAVAILABLE\"")
-            && extension.contains("\"up\""),
+            && extension.contains("\"up\"")
+            && extension.contains("createTraceEmitter"),
         "extension must warm the IDEA backend for missing backend/index results"
     );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
@@ -609,6 +604,15 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
     let installed_extension = std::fs::read_to_string(target.join("extensions/kast/extension.mjs"))
         .expect("installed extension");
     assert_eq!(installed_extension, extension_source);
+
+    let trace_source = std::fs::read_to_string(
+        manifest_dir.join("resources/plugin/extensions/kast/_shared/kast-trace.mjs"),
+    )
+    .expect("plugin trace helper");
+    let installed_trace =
+        std::fs::read_to_string(target.join("extensions/kast/_shared/kast-trace.mjs"))
+            .expect("installed trace helper");
+    assert_eq!(installed_trace, trace_source);
 
     let catalog_source =
         std::fs::read_to_string(manifest_dir.join("resources/kast-skill/references/commands.json"))

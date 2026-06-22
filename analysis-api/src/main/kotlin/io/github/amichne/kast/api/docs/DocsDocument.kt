@@ -74,6 +74,7 @@ object DocsDocument {
         // System responses
         "HealthResponse" to HealthResponse.serializer(),
         "RuntimeStatusResponse" to RuntimeStatusResponse.serializer(),
+        "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
         "BackendCapabilities" to BackendCapabilities.serializer(),
         // Shared types
         "FilePosition" to FilePosition.serializer(),
@@ -405,7 +406,7 @@ object DocsDocument {
     }
 
     private fun tagSummary(tag: String, count: Int): String = when (tag) {
-        "system" -> "$count operations for health checks, runtime status, and capability discovery. No capability gating required."
+        "system" -> "$count operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required."
         "read" -> "${count - 1} read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions."
         "mutation" -> "$count operations that modify workspace state: rename, optimize imports, apply edits, and refresh."
         else -> "$count operations."

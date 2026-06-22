@@ -9,6 +9,7 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiFile
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
@@ -18,13 +19,15 @@ import java.nio.file.Path
 
 internal class IdeaProjectIndexer(
     private val project: Project,
-    private val workspaceRoot: Path,
+    workspaceRoot: Path,
     private val store: SqliteSourceIndexStore,
     private val cancelled: () -> Boolean,
+    private val workspaceIdentity: WorkspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot),
 ) {
+    private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val environment = IdeaReferenceIndexEnvironment(
         project = project,
-        workspaceRoot = workspaceRoot,
+        workspaceIdentity = workspaceIdentity,
         cancelled = cancelled,
     )
 

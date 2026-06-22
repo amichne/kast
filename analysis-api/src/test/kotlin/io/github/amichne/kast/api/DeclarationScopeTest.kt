@@ -83,7 +83,7 @@ class DeclarationScopeTest {
     }
 
     @Test
-    fun `Symbol without declarationScope remains backward compatible`() {
+    fun `Symbol omits declarationScope by default`() {
         val symbol = Symbol(
             fqName = "sample.greet",
             kind = SymbolKind.FUNCTION,

@@ -254,7 +254,7 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
 
         if [[ ! -d "${dollar}{runtime_libs_dir}" ]]; then
           echo "kast-headless: runtime-libs directory not found: ${dollar}{runtime_libs_dir}" >&2
-          echo "hint: reinstall with kast.sh to restore the packaged runtime libraries" >&2
+          echo "hint: reinstall the Linux headless bundle to restore the packaged runtime libraries" >&2
           exit 1
         fi
 

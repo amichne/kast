@@ -1,22 +1,26 @@
 use crate::SCHEMA_VERSION;
-use crate::backend::{self, BackendResult};
+use crate::bundle::{
+    BUNDLE_MANIFEST_FILE, BUNDLE_MANIFEST_KIND, BUNDLE_MANIFEST_SCHEMA_VERSION, BundleManifest,
+    BundleVersion, HEADLESS_BACKEND_KIND, HEADLESS_BACKEND_NAME,
+    UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID,
+};
 use crate::cli;
 use crate::cli::{
-    AffectedInstallArgs, BackendComponent, BackendInstallArgs, CopilotInstallArgs,
-    HeadlessInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand, ResourceInstallArgs,
-    SetupArgs, ShellInstallArgs, ShellKind,
+    ActivateBundleArgs, CopilotInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand,
+    InstallRepairArgs, ResourceInstallArgs, ShellInstallArgs, ShellKind,
 };
 use crate::config;
-use crate::config::ProjectOpenProfile;
 use crate::error::{CliError, Result};
+use crate::manifest;
 use crate::self_mgmt;
+use flate2::read::GzDecoder;
 use include_dir::{Dir, DirEntry, include_dir};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command as ProcessCommand, Output, Stdio};
 use std::thread;
@@ -37,10 +41,6 @@ const COPILOT_GIT_EXCLUDE_BLOCK_START: &str = "# >>> kast copilot package >>>";
 const COPILOT_GIT_EXCLUDE_BLOCK_END: &str = "# <<< kast copilot package <<<";
 
 pub trait InstallReporter {
-    fn prompt_project_open_auto_init(
-        &mut self,
-        current: &config::ProjectOpenConfig,
-    ) -> Result<Option<bool>>;
     fn idea_plugin_plan(&mut self, _plan: &IdeaPluginDownloadPlan) -> Result<()> {
         Ok(())
     }
@@ -54,17 +54,9 @@ pub trait InstallReporter {
 
 pub struct NoopInstallReporter;
 
-impl InstallReporter for NoopInstallReporter {
-    fn prompt_project_open_auto_init(
-        &mut self,
-        _current: &config::ProjectOpenConfig,
-    ) -> Result<Option<bool>> {
-        Ok(None)
-    }
-}
+impl InstallReporter for NoopInstallReporter {}
 
 pub struct HumanInstallReporter {
-    interactive: bool,
     last_downloaded_bytes: Option<u64>,
     download_frame: usize,
 }
@@ -72,7 +64,6 @@ pub struct HumanInstallReporter {
 impl HumanInstallReporter {
     pub fn new() -> Self {
         Self {
-            interactive: io::stdin().is_terminal() && io::stderr().is_terminal(),
             last_downloaded_bytes: None,
             download_frame: 0,
         }
@@ -118,42 +109,6 @@ fn indeterminate_progress_bar(frame: usize) -> String {
 }
 
 impl InstallReporter for HumanInstallReporter {
-    fn prompt_project_open_auto_init(
-        &mut self,
-        current: &config::ProjectOpenConfig,
-    ) -> Result<Option<bool>> {
-        if !self.interactive {
-            return Ok(None);
-        }
-        eprintln!();
-        eprintln!("## Project-open Copilot/LSP profile");
-        eprintln!(
-            "Enable automatic `{}` install for Gradle projects opened in IDEA? [{}]",
-            current.profile.canonical(),
-            if current.profile_auto_init {
-                "Y/n"
-            } else {
-                "y/N"
-            }
-        );
-        eprint!("> ");
-        io::stderr().flush()?;
-        let mut answer = String::new();
-        io::stdin().read_line(&mut answer)?;
-        let answer = answer.trim().to_ascii_lowercase();
-        if answer.is_empty() {
-            return Ok(None);
-        }
-        match answer.as_str() {
-            "y" | "yes" => Ok(Some(true)),
-            "n" | "no" => Ok(Some(false)),
-            _ => {
-                eprintln!("Keeping current setting; expected yes or no.");
-                Ok(None)
-            }
-        }
-    }
-
     fn idea_plugin_plan(&mut self, plan: &IdeaPluginDownloadPlan) -> Result<()> {
         eprintln!();
         eprintln!("## Installing Kast IDEA plugin");
@@ -215,7 +170,7 @@ pub struct InstallInstructionsResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallCopilotExtensionResult {
+pub struct InstallCopilotPackageResult {
     pub installed_at: String,
     pub version: String,
     pub skipped: bool,
@@ -276,7 +231,7 @@ pub struct InstallShellResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallAffectedAction {
+pub struct InstallRepairAction {
     pub kind: String,
     pub target: String,
     pub status: String,
@@ -287,402 +242,939 @@ pub struct InstallAffectedAction {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallAffectedResult {
+pub struct InstallRepairResult {
     pub applied: bool,
     pub config_path: String,
     pub apply_command: String,
-    pub actions: Vec<InstallAffectedAction>,
+    pub actions: Vec<InstallRepairAction>,
     pub backups: Vec<String>,
     pub warnings: Vec<String>,
     pub schema_version: u32,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SetupResult {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub repair: Option<InstallAffectedResult>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub headless: Option<backend::BackendInstallResult>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub shell: Option<InstallShellResult>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skill: Option<InstallSkillResult>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub copilot: Option<InstallCopilotExtensionResult>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub idea_plugin: Option<InstallIdeaPluginResult>,
-    pub project_open: ProjectOpenSetupResult,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub warnings: Vec<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectOpenSetupResult {
-    pub profile_auto_init: bool,
-    pub profile: String,
-    pub auto_exclude_git: bool,
-    pub prompted: bool,
-    pub updated: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub config_path: Option<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum InstallResult {
+    ActivateBundle(ActivateBundleResult),
     Skill(InstallSkillResult),
     Instructions(InstallInstructionsResult),
-    Copilot(InstallCopilotExtensionResult),
+    Copilot(InstallCopilotPackageResult),
     IdeaPlugin(InstallIdeaPluginResult),
     Shell(InstallShellResult),
-    Affected(InstallAffectedResult),
-    Headless(backend::BackendInstallResult),
-    Archive(ArchiveInstallResult),
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveInstallResult {
+pub struct ActivateBundleResult {
     pub installed_at: String,
-    pub instance: String,
+    pub version: String,
+    pub platform: String,
+    pub profile: String,
+    pub install_root: String,
+    pub current: String,
+    pub manifest: String,
+    pub active_binary: String,
+    pub shim: String,
     pub skipped: bool,
+    pub verify_only: bool,
     pub schema_version: u32,
+}
+
+#[derive(Debug)]
+struct ValidatedBundle {
+    root: PathBuf,
+    manifest: BundleManifest,
+    version: BundleVersion,
+    cli_relative: PathBuf,
+    backend_install_relative: PathBuf,
+}
+
+#[derive(Debug)]
+struct ActivationTargetPaths {
+    resolved: manifest::ResolvedKastPaths,
+    version_dir: PathBuf,
+    current_link: PathBuf,
+    previous_link: PathBuf,
+    headless_current_dir: PathBuf,
 }
 
 pub fn install(args: InstallArgs, reporter: &mut dyn InstallReporter) -> Result<InstallResult> {
     match args.command {
-        Some(InstallCommand::Headless(headless_args)) => {
-            install_headless(headless_args).map(InstallResult::Headless)
+        InstallCommand::ActivateBundle(bundle_args) => {
+            activate_bundle(bundle_args).map(InstallResult::ActivateBundle)
         }
-        Some(InstallCommand::Affected(affected_args)) => {
-            install_affected(affected_args).map(InstallResult::Affected)
-        }
-        Some(InstallCommand::Skill(resource_args)) => {
+        InstallCommand::Skill(resource_args) => {
             install_skill(resource_args).map(InstallResult::Skill)
         }
-        Some(InstallCommand::Instructions(resource_args)) => {
+        InstallCommand::Instructions(resource_args) => {
             install_instructions(resource_args).map(InstallResult::Instructions)
         }
-        Some(InstallCommand::Copilot(resource_args)) => {
-            install_copilot_extension(resource_args).map(InstallResult::Copilot)
+        InstallCommand::Copilot(resource_args) => {
+            install_copilot(resource_args).map(InstallResult::Copilot)
         }
-        Some(InstallCommand::Plugin(resource_args)) => {
+        InstallCommand::Plugin(resource_args) => {
             install_idea_plugin(resource_args, reporter).map(InstallResult::IdeaPlugin)
         }
-        Some(InstallCommand::Shell(shell_args)) => {
-            install_shell(shell_args).map(InstallResult::Shell)
-        }
-        Some(InstallCommand::Completion(_)) => Err(CliError::new(
+        InstallCommand::Shell(shell_args) => install_shell(shell_args).map(InstallResult::Shell),
+        InstallCommand::Completion(_) => Err(CliError::new(
             "CLI_USAGE",
             "`kast install completion` must be handled as raw completion output",
         )),
-        None => install_archive(args).map(InstallResult::Archive),
     }
 }
 
-pub fn setup(args: SetupArgs, reporter: &mut dyn InstallReporter) -> Result<SetupResult> {
-    let repair = if args.skip_repair {
-        None
-    } else {
-        Some(install_affected(AffectedInstallArgs {
-            apply: true,
-            jetbrains_config_root: args.jetbrains_config_root.clone(),
-        })?)
-    };
-    let project_open = configure_project_open_policy(&args, reporter)?;
-    let headless_present = if args.skip_headless {
-        false
-    } else {
-        setup_headless_present()?
-    };
-    let headless_inputs_present =
-        args.headless_archive.is_some() || args.version.is_some() || args.base_url.is_some();
-    if !args.skip_headless && !headless_present && headless_inputs_present {
-        return Err(CliError::new(
-            "CLI_USAGE",
-            "`kast setup` does not add a new headless backend. Install the Linux headless tarball for first-time headless use; setup can only refresh a headless backend that is already recorded by that distribution.",
-        ));
+pub fn activate_bundle(args: ActivateBundleArgs) -> Result<ActivateBundleResult> {
+    let source = config::normalize(args.source.clone());
+    let scratch = ScratchDir::new("kast-activate-bundle")?;
+    let bundle_root = bundle_source_root(&source, scratch.path())?;
+    let bundle = validate_bundle(&bundle_root)?;
+    let targets = activation_target_paths(&args, &bundle)?;
+
+    if args.verify_only {
+        verify_activated_bundle(&bundle, &targets)?;
+        return Ok(activate_bundle_result(&bundle, &targets, true, true));
     }
-    if !args.skip_headless
-        && headless_present
-        && args.headless_archive.is_none()
-        && (args.version.is_some() || args.base_url.is_some())
-    {
-        return Err(CliError::new(
-            "CLI_USAGE",
-            "`kast setup` cannot download a standalone headless backend. Pass --headless-archive to refresh an existing Linux headless tarball install.",
-        ));
+
+    if verify_activated_bundle(&bundle, &targets).is_ok() {
+        return Ok(activate_bundle_result(&bundle, &targets, true, false));
     }
-    let headless = if args.skip_headless || !headless_present || args.headless_archive.is_none() {
-        None
-    } else {
-        Some(install_headless(HeadlessInstallArgs {
-            archive: args.headless_archive,
-            version: args.version.clone(),
-            base_url: args.base_url,
-            insecure_skip_tls_verify: false,
-            force: args.force,
-        })?)
-    };
-    let shell = if args.skip_shell {
-        None
-    } else {
-        Some(install_shell(ShellInstallArgs {
-            shell: args.shell,
-            profile: None,
-            source_file: None,
-            command_name: None,
-            dry_run: false,
-        })?)
-    };
-    let skill = if args.include_skill && !args.skip_skill {
-        Some(install_skill(ResourceInstallArgs {
-            target_dir: args.skill_target_dir,
-            name: None,
-            force: args.force,
-        })?)
-    } else {
-        None
-    };
-    let copilot = if args.include_copilot && !args.skip_copilot {
-        Some(install_copilot_extension(CopilotInstallArgs {
-            target_dir: args.copilot_target_dir,
-            force: args.force,
-            no_auto_exclude_git: args.no_auto_exclude_git,
-        })?)
-    } else {
-        None
-    };
-    let link_jetbrains_profiles = args.link_jetbrains_profiles
-        || setup_detected_jetbrains_profiles(&args.jetbrains_config_root)?;
-    let idea_plugin = if link_jetbrains_profiles && !args.skip_plugin {
-        Some(install_idea_plugin(
-            IdeaPluginInstallArgs {
-                jetbrains_config_root: args.jetbrains_config_root,
-                link_jetbrains_profiles: true,
-                cask_token: None,
-                force: args.force,
-                dry_run: false,
-            },
-            reporter,
-        )?)
-    } else {
-        None
-    };
-    Ok(SetupResult {
-        repair,
-        headless,
-        shell,
-        skill,
-        copilot,
-        idea_plugin,
-        project_open,
-        warnings: vec![],
-        schema_version: SCHEMA_VERSION,
-    })
+
+    install_validated_bundle(&bundle, &targets)?;
+    verify_activated_bundle(&bundle, &targets)?;
+    Ok(activate_bundle_result(&bundle, &targets, false, false))
 }
 
-fn setup_detected_jetbrains_profiles(jetbrains_config_root: &Option<PathBuf>) -> Result<bool> {
-    if !cfg!(target_os = "macos") {
-        return Ok(false);
+fn bundle_source_root(source: &Path, scratch_root: &Path) -> Result<PathBuf> {
+    if source.is_dir() {
+        return Ok(source.to_path_buf());
     }
-    let root = jetbrains_config_root
-        .clone()
-        .map(config::normalize)
-        .unwrap_or_else(default_jetbrains_config_root);
-    Ok(!jetbrains_plugin_dirs(&root)?.is_empty())
+    if source.is_file() {
+        return extract_bundle_tarball(source, &scratch_root.join("extract"));
+    }
+    Err(CliError::new(
+        "BUNDLE_SOURCE_NOT_FOUND",
+        format!("Bundle source was not found: {}", source.display()),
+    ))
 }
 
-fn setup_headless_present() -> Result<bool> {
-    if self_mgmt::read_global_install_state()?.is_some_and(|install| {
-        install.backends.into_iter().any(|backend| {
-            backend.name == BackendComponent::Headless.canonical()
-                && Path::new(&backend.runtime_libs_dir)
-                    .join("classpath.txt")
-                    .is_file()
-                && path_exists_or_symlink(Path::new(&backend.install_dir))
-        })
-    }) {
-        return Ok(true);
-    }
-    let global_config = config::KastConfig::load_global()?;
-    Ok(global_config
-        .backends
-        .headless
-        .runtime_libs_dir
-        .is_some_and(|runtime_libs_dir| runtime_libs_dir.join("classpath.txt").is_file()))
-}
-
-fn configure_project_open_policy(
-    args: &SetupArgs,
-    reporter: &mut dyn InstallReporter,
-) -> Result<ProjectOpenSetupResult> {
-    if args.project_open_profile_auto_init && args.no_project_open_profile_auto_init {
-        return Err(CliError::new(
-            "CLI_USAGE",
-            "Pass only one of --project-open-profile-auto-init or --no-project-open-profile-auto-init.",
-        ));
-    }
-    let mut policy = config::KastConfig::load_global()?.project_open;
-    let mut prompted = false;
-    let mut changed = false;
-
-    if let Some(profile) = args.project_open_profile {
-        let next = match profile {
-            crate::cli::ProjectOpenProfileArg::CopilotLsp => ProjectOpenProfile::CopilotLsp,
-        };
-        if policy.profile != next {
-            policy.profile = next;
-            changed = true;
-        }
-    }
-    if args.no_auto_exclude_git && policy.auto_exclude_git {
-        policy.auto_exclude_git = false;
-        changed = true;
-    }
-    if args.project_open_profile_auto_init && !policy.profile_auto_init {
-        policy.profile_auto_init = true;
-        changed = true;
-    }
-    if args.no_project_open_profile_auto_init && policy.profile_auto_init {
-        policy.profile_auto_init = false;
-        changed = true;
-    }
-    if !args.project_open_profile_auto_init
-        && !args.no_project_open_profile_auto_init
-        && let Some(answer) = reporter.prompt_project_open_auto_init(&policy)?
-    {
-        prompted = true;
-        if policy.profile_auto_init != answer {
-            policy.profile_auto_init = answer;
-            changed = true;
-        }
-    }
-
-    let config_path = if changed {
-        Some(write_project_open_policy(&policy)?.display().to_string())
+fn extract_bundle_tarball(archive_path: &Path, output_dir: &Path) -> Result<PathBuf> {
+    let top_level = validate_tarball_members(archive_path)?;
+    fs::create_dir_all(output_dir)?;
+    let archive_file = fs::File::open(archive_path)?;
+    let decoder = GzDecoder::new(archive_file);
+    let mut archive = tar::Archive::new(decoder);
+    archive.unpack(output_dir).map_err(|error| {
+        CliError::new(
+            "BUNDLE_ARCHIVE_INVALID",
+            format!(
+                "Could not extract bundle archive {}: {error}",
+                archive_path.display()
+            ),
+        )
+    })?;
+    let bundle_root = output_dir.join(top_level);
+    if bundle_root.is_dir() {
+        Ok(bundle_root)
     } else {
-        None
-    };
-
-    Ok(ProjectOpenSetupResult {
-        profile_auto_init: policy.profile_auto_init,
-        profile: policy.profile.canonical().to_string(),
-        auto_exclude_git: policy.auto_exclude_git,
-        prompted,
-        updated: changed,
-        config_path,
-        schema_version: SCHEMA_VERSION,
-    })
+        Err(CliError::new(
+            "BUNDLE_ARCHIVE_INVALID",
+            format!(
+                "Bundle archive {} did not extract to a top-level directory.",
+                archive_path.display()
+            ),
+        ))
+    }
 }
 
-fn write_project_open_policy(policy: &config::ProjectOpenConfig) -> Result<PathBuf> {
-    self_mgmt::update_global_config(|document| {
-        let project_open = document
-            .entry("projectOpen".to_string())
-            .or_insert_with(|| toml::Value::Table(toml::Table::new()));
-        let toml::Value::Table(project_open) = project_open else {
+fn validate_tarball_members(archive_path: &Path) -> Result<PathBuf> {
+    let archive_file = fs::File::open(archive_path)?;
+    let decoder = GzDecoder::new(archive_file);
+    let mut archive = tar::Archive::new(decoder);
+    let mut top_level: Option<PathBuf> = None;
+    let entries = archive.entries().map_err(|error| {
+        CliError::new(
+            "BUNDLE_ARCHIVE_INVALID",
+            format!(
+                "Could not read bundle archive {}: {error}",
+                archive_path.display()
+            ),
+        )
+    })?;
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            CliError::new(
+                "BUNDLE_ARCHIVE_INVALID",
+                format!(
+                    "Could not read bundle archive {}: {error}",
+                    archive_path.display()
+                ),
+            )
+        })?;
+        if entry.header().entry_type().is_symlink() || entry.header().entry_type().is_hard_link() {
             return Err(CliError::new(
-                "CONFIG_ERROR",
-                "Global config key `projectOpen` must be a table.",
+                "BUNDLE_ARCHIVE_INVALID",
+                format!(
+                    "Bundle archive {} must not contain link entries.",
+                    archive_path.display()
+                ),
+            ));
+        }
+        let relative = safe_relative_path(&entry.path()?, "archive member")?;
+        let Some(first_component) = relative.components().next() else {
+            return Err(CliError::new(
+                "BUNDLE_ARCHIVE_INVALID",
+                "Bundle archive contains an empty member path.",
             ));
         };
-        project_open.insert(
-            "profileAutoInit".to_string(),
-            toml::Value::Boolean(policy.profile_auto_init),
-        );
-        project_open.insert(
-            "profile".to_string(),
-            toml::Value::String(policy.profile.canonical().to_string()),
-        );
-        project_open.insert(
-            "autoExcludeGit".to_string(),
-            toml::Value::Boolean(policy.auto_exclude_git),
-        );
+        let current_top = PathBuf::from(first_component.as_os_str());
+        match &top_level {
+            Some(expected) if expected != &current_top => {
+                return Err(CliError::new(
+                    "BUNDLE_ARCHIVE_INVALID",
+                    "Bundle archive must contain exactly one top-level directory.",
+                ));
+            }
+            Some(_) => {}
+            None => top_level = Some(current_top),
+        }
+    }
+    top_level.ok_or_else(|| {
+        CliError::new(
+            "BUNDLE_ARCHIVE_INVALID",
+            format!("Bundle archive is empty: {}", archive_path.display()),
+        )
+    })
+}
+
+fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
+    let manifest = read_bundle_manifest(root)?;
+    let version = validate_bundle_manifest_header(&manifest)?;
+    validate_bundle_artifacts(&manifest)?;
+
+    let cli_relative = bundle_manifest_path(&manifest.activation.cli.path, "activation.cli.path")?;
+    let backend_install_relative = bundle_manifest_path(
+        &manifest.activation.backend.install_dir,
+        "activation.backend.installDir",
+    )?;
+    let launcher_relative = bundle_manifest_path(
+        &manifest.activation.backend.launcher,
+        "activation.backend.launcher",
+    )?;
+    let runtime_libs_relative = bundle_manifest_path(
+        &manifest.activation.backend.runtime_libs_dir,
+        "activation.backend.runtimeLibsDir",
+    )?;
+    let idea_home_relative = bundle_manifest_path(
+        &manifest.activation.backend.idea_home,
+        "activation.backend.ideaHome",
+    )?;
+    let required_plugin_relative = bundle_manifest_path(
+        &manifest.activation.backend.required_plugin,
+        "activation.backend.requiredPlugin",
+    )?;
+
+    validate_headless_activation(&manifest)?;
+
+    let cli_path = root.join(&cli_relative);
+    let backend_install_dir = root.join(&backend_install_relative);
+    let backend_launcher = backend_install_dir.join(&launcher_relative);
+    let runtime_libs_dir = backend_install_dir.join(&runtime_libs_relative);
+    let idea_home = backend_install_dir.join(&idea_home_relative);
+    let required_plugin = backend_install_dir.join(&required_plugin_relative);
+
+    require_executable(&cli_path, "bundle CLI")?;
+    require_directory(&backend_install_dir, "headless backend install directory")?;
+    require_executable(&backend_launcher, "headless backend launcher")?;
+    require_file(
+        &runtime_libs_dir.join("classpath.txt"),
+        "headless runtime classpath",
+    )?;
+    require_file(
+        &idea_home.join("lib/nio-fs.jar"),
+        "headless IDEA nio-fs.jar",
+    )?;
+    require_file(
+        &idea_home.join("modules/module-descriptors.dat"),
+        "headless IDEA module descriptors",
+    )?;
+    require_directory(&required_plugin, "bundled kast-headless plugin")?;
+
+    Ok(ValidatedBundle {
+        root: root.to_path_buf(),
+        manifest,
+        version,
+        cli_relative,
+        backend_install_relative,
+    })
+}
+
+fn read_bundle_manifest(root: &Path) -> Result<BundleManifest> {
+    let path = root.join(BUNDLE_MANIFEST_FILE);
+    let content = fs::read_to_string(&path).map_err(|error| {
+        CliError::new(
+            "BUNDLE_MANIFEST_MISSING",
+            format!("Could not read bundle manifest {}: {error}", path.display()),
+        )
+    })?;
+    serde_json::from_str(&content).map_err(|error| {
+        CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            format!("Invalid bundle manifest at {}: {error}", path.display()),
+        )
+    })
+}
+
+fn validate_bundle_manifest_header(manifest: &BundleManifest) -> Result<BundleVersion> {
+    if manifest.schema_version != BUNDLE_MANIFEST_SCHEMA_VERSION {
+        return Err(CliError::new(
+            "BUNDLE_MANIFEST_UNSUPPORTED",
+            format!(
+                "Unsupported bundle manifest schemaVersion {}; expected {}.",
+                manifest.schema_version, BUNDLE_MANIFEST_SCHEMA_VERSION
+            ),
+        ));
+    }
+    if manifest.kind != BUNDLE_MANIFEST_KIND {
+        return Err(CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            format!(
+                "Bundle manifest kind must be `{BUNDLE_MANIFEST_KIND}`, got `{}`.",
+                manifest.kind
+            ),
+        ));
+    }
+    let version = BundleVersion::parse(&manifest.version).map_err(|message| {
+        CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            format!("Bundle manifest version {message}."),
+        )
+    })?;
+    if manifest.profile.trim().is_empty() {
+        return Err(CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            "Bundle manifest profile must not be empty.",
+        ));
+    }
+    if manifest.platform != UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID {
+        return Err(CliError::new(
+            "BUNDLE_PLATFORM_UNSUPPORTED",
+            format!(
+                "Unsupported bundle platform `{}`; expected `{UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID}`.",
+                manifest.platform
+            ),
+        ));
+    }
+    let _entrypoint = bundle_manifest_path(&manifest.entrypoint, "entrypoint")?;
+    Ok(version)
+}
+
+fn validate_bundle_artifacts(manifest: &BundleManifest) -> Result<()> {
+    let mut roles = BTreeSet::new();
+    for artifact in &manifest.artifacts {
+        if artifact.role.trim().is_empty() {
+            return Err(CliError::new(
+                "BUNDLE_MANIFEST_INVALID",
+                "Bundle artifact role must not be empty.",
+            ));
+        }
+        let _artifact_path = bundle_manifest_path(&artifact.path, "artifacts[].path")?;
+        if artifact.source_sha256.trim().is_empty() {
+            return Err(CliError::new(
+                "BUNDLE_MANIFEST_INVALID",
+                format!(
+                    "Bundle artifact `{}` must record sourceSha256.",
+                    artifact.role
+                ),
+            ));
+        }
+        roles.insert(artifact.role.as_str());
+    }
+    for role in ["cli", "headless-backend"] {
+        if !roles.contains(role) {
+            return Err(CliError::new(
+                "BUNDLE_MANIFEST_INVALID",
+                format!("Bundle manifest artifacts must include role `{role}`."),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_headless_activation(manifest: &BundleManifest) -> Result<()> {
+    let backend = &manifest.activation.backend;
+    if backend.kind != HEADLESS_BACKEND_KIND || backend.name != HEADLESS_BACKEND_NAME {
+        return Err(CliError::new(
+            "BUNDLE_BACKEND_UNSUPPORTED",
+            format!(
+                "Unsupported bundle backend kind/name `{}/{}`; expected `{HEADLESS_BACKEND_KIND}/{HEADLESS_BACKEND_NAME}`.",
+                backend.kind, backend.name
+            ),
+        ));
+    }
+    if backend.version.trim().is_empty() {
+        return Err(CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            "Bundle backend version must not be empty.",
+        ));
+    }
+    let shim = &manifest.activation.shim;
+    if !shim.exports_install_root || !shim.exports_config_home {
+        return Err(CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            "Headless bundle shim must export KAST_INSTALL_ROOT and KAST_CONFIG_HOME.",
+        ));
+    }
+    if !shim
+        .java_opts
+        .iter()
+        .any(|option| option == "-Didea.force.use.core.classloader=true")
+    {
+        return Err(CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            "Headless bundle shim must include -Didea.force.use.core.classloader=true.",
+        ));
+    }
+    Ok(())
+}
+
+fn activation_target_paths(
+    args: &ActivateBundleArgs,
+    bundle: &ValidatedBundle,
+) -> Result<ActivationTargetPaths> {
+    let install_root = args
+        .install_root
+        .clone()
+        .map(config::normalize)
+        .or_else(|| env_path("KAST_INSTALL_ROOT"))
+        .unwrap_or_else(|| manifest::home_dir().join(".local/share/kast"));
+    let config_root = args
+        .config_home
+        .clone()
+        .map(config::normalize)
+        .or_else(|| env_path("KAST_CONFIG_HOME"))
+        .unwrap_or_else(|| manifest::home_dir().join(".config/kast"));
+    let bin_dir = args
+        .bin_dir
+        .clone()
+        .map(config::normalize)
+        .unwrap_or_else(|| manifest::home_dir().join(".local/bin"));
+    let cache_dir =
+        env_path("KAST_CACHE_HOME").unwrap_or_else(|| manifest::home_dir().join(".cache/kast"));
+    let runtime_dir = install_root.join("runtime");
+    let logs_dir = manifest::home_dir().join(".local/state/kast/logs");
+    let locks_dir = install_root.join("locks");
+    let version_dir = install_root.join("versions").join(bundle.version.as_str());
+    let current_link = install_root.join("current");
+    let previous_link = install_root.join("previous");
+    let headless_current_dir = version_dir.join("lib/backends/headless/current");
+    let lib_dir = current_link.join("lib");
+    let resolved = manifest::ResolvedKastPaths {
+        install_root: install_root.clone(),
+        manifest_file: install_root.join(manifest::INSTALL_MANIFEST_FILE),
+        bin_dir: bin_dir.clone(),
+        lib_dir,
+        data_dir: install_root.join("state"),
+        cache_dir,
+        logs_dir,
+        runtime_dir: runtime_dir.clone(),
+        locks_dir,
+        descriptor_dir: runtime_dir.join("daemons"),
+        socket_dir: runtime_dir,
+        config_file: config_root.join("config.toml"),
+        config_root,
+        shim_path: bin_dir.join("kast"),
+        active_binary: version_dir.join(&bundle.cli_relative),
+        headless_runtime_libs_dir: headless_current_dir.join("runtime-libs"),
+        headless_idea_home: Some(headless_current_dir.join("idea-home")),
+    };
+    Ok(ActivationTargetPaths {
+        resolved,
+        version_dir,
+        current_link,
+        previous_link,
+        headless_current_dir,
+    })
+}
+
+fn install_validated_bundle(
+    bundle: &ValidatedBundle,
+    targets: &ActivationTargetPaths,
+) -> Result<()> {
+    if bundle.root.starts_with(&targets.resolved.install_root) {
+        return Err(CliError::new(
+            "BUNDLE_SOURCE_UNSAFE",
+            format!(
+                "Bundle source {} must not be inside the install root {}.",
+                bundle.root.display(),
+                targets.resolved.install_root.display()
+            ),
+        ));
+    }
+    let install_manifest = project_install_manifest(bundle, targets)?;
+    manifest::with_install_lock(&targets.resolved, || {
+        manifest::ensure_install_directories(&targets.resolved)?;
+        let staged = targets.resolved.install_root.join("versions").join(format!(
+            "{}.tmp-{}",
+            bundle.version.as_str(),
+            std::process::id()
+        ));
+        manifest::remove_path(&staged)?;
+        copy_bundle_tree(&bundle.root, &staged)?;
+        manifest::remove_path(&targets.version_dir)?;
+        fs::rename(&staged, &targets.version_dir)?;
+        link_active_headless_backend(bundle, targets)?;
+        manifest::replace_symlink_or_copy(&targets.version_dir, &targets.current_link)?;
+        if let Some(previous) = &install_manifest.previous_version {
+            let previous_dir = targets
+                .resolved
+                .install_root
+                .join("versions")
+                .join(previous);
+            if previous_dir.exists() {
+                manifest::replace_symlink_or_copy(&previous_dir, &targets.previous_link)?;
+            }
+        }
+        let active_binary = ensure_active_cli_path(bundle, targets)?;
+        write_headless_kast_shim(
+            &targets.resolved.shim_path,
+            &active_binary,
+            &targets.resolved.install_root,
+            &targets.resolved.config_root,
+            &bundle.manifest.activation.shim.java_opts,
+        )?;
+        write_headless_config(&targets.resolved.config_file)?;
+        manifest::write_manifest_atomic(&targets.resolved.manifest_file, &install_manifest)?;
         Ok(())
     })
 }
 
-#[derive(Clone, Copy)]
-enum InstallReconciliationScope {
-    ConfigOnly,
-    Full,
-}
-
-pub fn repair_if_running_cli_version_changed() -> Result<Option<InstallAffectedResult>> {
-    let Some(install) = self_mgmt::read_global_install_state()? else {
-        return Ok(None);
+fn project_install_manifest(
+    bundle: &ValidatedBundle,
+    targets: &ActivationTargetPaths,
+) -> Result<manifest::KastInstallManifest> {
+    let previous = if targets.resolved.manifest_file.is_file() {
+        let manifest = manifest_from_file(&targets.resolved.manifest_file)?;
+        BundleVersion::parse(&manifest.active_version)
+            .ok()
+            .filter(|version| version.as_str() != bundle.version.as_str())
+            .map(BundleVersion::into_string)
+    } else {
+        None
     };
-    if install.version.trim() == cli::version() {
-        return Ok(None);
-    }
-    reconcile_install_state(
-        AffectedInstallArgs {
-            apply: true,
-            jetbrains_config_root: None,
+    let now = manifest::current_timestamp();
+    let normalized_version = bundle.version.normalized();
+    let headless_root = targets.headless_current_dir.clone();
+    let install_id = format!("kast-{}-{}", bundle.manifest.platform, normalized_version);
+    Ok(manifest::KastInstallManifest {
+        tool: "kast".to_string(),
+        install_id,
+        profile: bundle.manifest.profile.clone(),
+        active_version: bundle.version.as_str().to_string(),
+        previous_version: previous,
+        created_at: now.clone(),
+        updated_at: now,
+        roots: manifest::ManifestRoots {
+            install: targets.resolved.install_root.display().to_string(),
+            bin: targets.resolved.bin_dir.display().to_string(),
+            config: targets.resolved.config_root.display().to_string(),
+            data: targets.resolved.data_dir.display().to_string(),
+            cache: targets.resolved.cache_dir.display().to_string(),
+            runtime: targets.resolved.runtime_dir.display().to_string(),
+            logs: targets.resolved.logs_dir.display().to_string(),
+            locks: targets.resolved.locks_dir.display().to_string(),
         },
-        InstallReconciliationScope::Full,
-    )
-    .map(Some)
+        entrypoints: manifest::ManifestEntrypoints {
+            shim: targets.resolved.shim_path.display().to_string(),
+            active_binary: targets.resolved.active_binary.display().to_string(),
+        },
+        schemas: manifest::ManifestSchemas::default(),
+        version: normalized_version.clone(),
+        backend_version: bundle.manifest.activation.backend.version.clone(),
+        installed_at: format!("{}:{}", bundle.manifest.platform, bundle.version.as_str()),
+        platform: bundle.manifest.platform.clone(),
+        components: vec![
+            "cli".to_string(),
+            "headless-backend".to_string(),
+            "manifest".to_string(),
+        ],
+        backends: vec![manifest::BackendComponentState {
+            name: "headless".to_string(),
+            version: bundle.manifest.activation.backend.version.clone(),
+            install_dir: headless_root.display().to_string(),
+            runtime_libs_dir: headless_root.join("runtime-libs").display().to_string(),
+            idea_home: Some(headless_root.join("idea-home").display().to_string()),
+        }],
+        managed_paths: vec![
+            "bin".to_string(),
+            "lib".to_string(),
+            "cache".to_string(),
+            "logs".to_string(),
+        ],
+        owned_paths: manifest::owned_paths(&targets.resolved),
+        shell_rc_patches: vec![],
+        repos: vec![],
+        schema_version: SCHEMA_VERSION,
+    })
 }
 
-pub fn install_headless(args: HeadlessInstallArgs) -> Result<backend::BackendInstallResult> {
-    if args.archive.is_none() {
+fn verify_activated_bundle(
+    bundle: &ValidatedBundle,
+    targets: &ActivationTargetPaths,
+) -> Result<()> {
+    require_file(&targets.resolved.manifest_file, "install manifest")?;
+    require_executable(&targets.resolved.shim_path, "kast shim")?;
+    require_directory(&targets.version_dir, "installed bundle version")?;
+    require_file(
+        &targets
+            .resolved
+            .headless_runtime_libs_dir
+            .join("classpath.txt"),
+        "installed runtime classpath",
+    )?;
+    if let Some(idea_home) = &targets.resolved.headless_idea_home {
+        require_file(
+            &idea_home.join("lib/nio-fs.jar"),
+            "installed IDEA nio-fs.jar",
+        )?;
+        require_file(
+            &idea_home.join("modules/module-descriptors.dat"),
+            "installed IDEA module descriptors",
+        )?;
+    }
+    let manifest = manifest_from_file(&targets.resolved.manifest_file)?;
+    if manifest.active_version != bundle.version.as_str() {
         return Err(CliError::new(
-            "CLI_USAGE",
-            "`kast install headless` is an internal archive refresh path and requires --archive. Headless operation is delivered through the Linux headless tarball.",
+            "BUNDLE_INSTALL_MISMATCH",
+            format!(
+                "Install manifest activeVersion is `{}`, expected `{}`.",
+                manifest.active_version,
+                bundle.version.as_str()
+            ),
         ));
     }
-    if args.base_url.is_some() || args.insecure_skip_tls_verify {
+    if manifest.entrypoints.active_binary != targets.resolved.active_binary.display().to_string() {
         return Err(CliError::new(
-            "CLI_USAGE",
-            "`kast install headless` no longer downloads standalone backend release assets. Pass --archive from the Linux headless tarball build output.",
+            "BUNDLE_INSTALL_MISMATCH",
+            "Install manifest activeBinary does not match the projected bundle activation path.",
         ));
     }
-    let backend_args = BackendInstallArgs {
-        backend: BackendComponent::Headless,
-        archive: args.archive,
-        version: args.version,
-        base_url: None,
-        insecure_skip_tls_verify: false,
-        force: args.force,
-    };
-    match backend::run(cli::BackendCommand::Install(backend_args))? {
-        BackendResult::Install(result) => Ok(result),
+    let shim = fs::read_to_string(&targets.resolved.shim_path)?;
+    for java_opt in &bundle.manifest.activation.shim.java_opts {
+        if !shim.contains(java_opt) {
+            return Err(CliError::new(
+                "BUNDLE_INSTALL_MISMATCH",
+                format!("Installed shim does not include required JVM option `{java_opt}`."),
+            ));
+        }
+    }
+    if !shim.contains("KAST_INSTALL_ROOT") || !shim.contains("KAST_CONFIG_HOME") {
+        return Err(CliError::new(
+            "BUNDLE_INSTALL_MISMATCH",
+            "Installed shim does not export KAST_INSTALL_ROOT and KAST_CONFIG_HOME.",
+        ));
+    }
+    let output = ProcessCommand::new(&targets.resolved.shim_path)
+        .arg("doctor")
+        .env("KAST_INSTALL_ROOT", &targets.resolved.install_root)
+        .env("KAST_CONFIG_HOME", &targets.resolved.config_root)
+        .output()
+        .map_err(|error| {
+            CliError::new(
+                "BUNDLE_DOCTOR_FAILED",
+                format!("Could not run installed kast doctor: {error}"),
+            )
+        })?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(command_error(
+            "BUNDLE_DOCTOR_FAILED",
+            "Installed bundle did not pass kast doctor",
+            &["doctor".to_string()],
+            &output,
+        ))
     }
 }
 
-pub fn install_affected(args: AffectedInstallArgs) -> Result<InstallAffectedResult> {
-    reconcile_install_state(args, InstallReconciliationScope::Full)
+fn manifest_from_file(path: &Path) -> Result<manifest::KastInstallManifest> {
+    serde_json::from_str(&fs::read_to_string(path)?).map_err(|error| {
+        CliError::new(
+            "INSTALL_MANIFEST_INVALID",
+            format!("Invalid install manifest at {}: {error}", path.display()),
+        )
+    })
 }
 
-fn repair_global_config_for_running_cli(apply: bool) -> Result<()> {
-    reconcile_install_state(
-        AffectedInstallArgs {
-            apply,
-            jetbrains_config_root: None,
-        },
-        InstallReconciliationScope::ConfigOnly,
-    )
-    .map(|_| ())
+fn activate_bundle_result(
+    bundle: &ValidatedBundle,
+    targets: &ActivationTargetPaths,
+    skipped: bool,
+    verify_only: bool,
+) -> ActivateBundleResult {
+    ActivateBundleResult {
+        installed_at: targets.version_dir.display().to_string(),
+        version: bundle.version.as_str().to_string(),
+        platform: bundle.manifest.platform.clone(),
+        profile: bundle.manifest.profile.clone(),
+        install_root: targets.resolved.install_root.display().to_string(),
+        current: targets.current_link.display().to_string(),
+        manifest: targets.resolved.manifest_file.display().to_string(),
+        active_binary: targets.resolved.active_binary.display().to_string(),
+        shim: targets.resolved.shim_path.display().to_string(),
+        skipped,
+        verify_only,
+        schema_version: SCHEMA_VERSION,
+    }
 }
 
-fn reconcile_install_state(
-    args: AffectedInstallArgs,
-    scope: InstallReconciliationScope,
-) -> Result<InstallAffectedResult> {
+struct ScratchDir {
+    path: PathBuf,
+}
+
+impl ScratchDir {
+    fn new(label: &str) -> Result<Self> {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let path = env::temp_dir().join(format!("{label}-{}-{suffix}", std::process::id()));
+        manifest::remove_path(&path)?;
+        fs::create_dir_all(&path)?;
+        Ok(Self { path })
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for ScratchDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+fn safe_relative_path(path: &Path, field: &str) -> Result<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(value) => normalized.push(value),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(CliError::new(
+                    "BUNDLE_PATH_UNSAFE",
+                    format!(
+                        "Bundle {field} path `{}` must be relative and must not contain `..`.",
+                        path.display()
+                    ),
+                ));
+            }
+        }
+    }
+    if normalized.as_os_str().is_empty() {
+        return Err(CliError::new(
+            "BUNDLE_PATH_UNSAFE",
+            format!("Bundle {field} path must not be empty."),
+        ));
+    }
+    Ok(normalized)
+}
+
+fn bundle_manifest_path(value: &str, field: &str) -> Result<PathBuf> {
+    safe_relative_path(Path::new(value.trim()), field)
+}
+
+fn require_file(path: &Path, label: &str) -> Result<()> {
+    if path.is_file() {
+        Ok(())
+    } else {
+        Err(CliError::new(
+            "BUNDLE_SHAPE_INVALID",
+            format!("Missing {label}: {}", path.display()),
+        ))
+    }
+}
+
+fn require_directory(path: &Path, label: &str) -> Result<()> {
+    if path.is_dir() {
+        Ok(())
+    } else {
+        Err(CliError::new(
+            "BUNDLE_SHAPE_INVALID",
+            format!("Missing {label}: {}", path.display()),
+        ))
+    }
+}
+
+fn require_executable(path: &Path, label: &str) -> Result<()> {
+    require_file(path, label)?;
+    if is_executable(path)? {
+        Ok(())
+    } else {
+        Err(CliError::new(
+            "BUNDLE_SHAPE_INVALID",
+            format!("{label} is not executable: {}", path.display()),
+        ))
+    }
+}
+
+#[cfg(unix)]
+fn is_executable(path: &Path) -> Result<bool> {
+    use std::os::unix::fs::PermissionsExt;
+    Ok(fs::metadata(path)?.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn is_executable(path: &Path) -> Result<bool> {
+    Ok(path.is_file())
+}
+
+fn copy_bundle_tree(source: &Path, target: &Path) -> Result<()> {
+    let metadata = fs::symlink_metadata(source)?;
+    if metadata.file_type().is_symlink() {
+        return Err(CliError::new(
+            "BUNDLE_SOURCE_UNSAFE",
+            format!(
+                "Bundle source must not contain symlinks: {}",
+                source.display()
+            ),
+        ));
+    }
+    if metadata.is_dir() {
+        fs::create_dir_all(target)?;
+        let mut entries = fs::read_dir(source)?.collect::<std::result::Result<Vec<_>, _>>()?;
+        entries.sort_by_key(|entry| entry.path());
+        for entry in entries {
+            copy_bundle_tree(&entry.path(), &target.join(entry.file_name()))?;
+        }
+    } else if metadata.is_file() {
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::copy(source, target)?;
+        fs::set_permissions(target, metadata.permissions())?;
+    }
+    Ok(())
+}
+
+fn link_active_headless_backend(
+    bundle: &ValidatedBundle,
+    targets: &ActivationTargetPaths,
+) -> Result<()> {
+    let stable_backend_dir = targets.version_dir.join("lib/backends/headless");
+    fs::create_dir_all(&stable_backend_dir)?;
+    let current = stable_backend_dir.join("current");
+    manifest::remove_path(&current)?;
+    let backend_name = bundle.backend_install_relative.file_name().ok_or_else(|| {
+        CliError::new(
+            "BUNDLE_MANIFEST_INVALID",
+            "Bundle backend installDir must include a final path component.",
+        )
+    })?;
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(Path::new("..").join(backend_name), &current)?;
+    }
+    #[cfg(not(unix))]
+    {
+        let backend_dir = targets.version_dir.join(&bundle.backend_install_relative);
+        copy_bundle_tree(&backend_dir, &current)?;
+    }
+    Ok(())
+}
+
+fn ensure_active_cli_path(
+    bundle: &ValidatedBundle,
+    targets: &ActivationTargetPaths,
+) -> Result<PathBuf> {
+    let active_binary = targets.version_dir.join(&bundle.cli_relative);
+    if targets.resolved.shim_path == active_binary {
+        let renamed = active_binary.with_file_name("kast-cli");
+        manifest::remove_path(&renamed)?;
+        fs::rename(&active_binary, &renamed)?;
+        manifest::make_executable(&renamed)?;
+        return Ok(renamed);
+    }
+    manifest::make_executable(&active_binary)?;
+    Ok(active_binary)
+}
+
+fn write_headless_kast_shim(
+    shim_path: &Path,
+    active_binary: &Path,
+    install_root: &Path,
+    config_home: &Path,
+    java_opts: &[String],
+) -> Result<()> {
+    if let Some(parent) = shim_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut content = String::new();
+    content.push_str("#!/usr/bin/env bash\nset -euo pipefail\n\n");
+    content.push_str(&format!(
+        "export KAST_INSTALL_ROOT={}\n",
+        shell_quote(&install_root.display().to_string())
+    ));
+    content.push_str(&format!(
+        "export KAST_CONFIG_HOME={}\n\n",
+        shell_quote(&config_home.display().to_string())
+    ));
+    for java_opt in java_opts {
+        content.push_str(&format!(
+            "case \" ${{JAVA_OPTS:-}} \" in\n  *\" {} \"*) ;;\n  *) export JAVA_OPTS=\"${{JAVA_OPTS:+${{JAVA_OPTS}} }}{}\" ;;\nesac\n",
+            java_opt, java_opt
+        ));
+    }
+    content.push('\n');
+    content.push_str(&format!(
+        "exec {} \"$@\"\n",
+        shell_quote(&active_binary.display().to_string())
+    ));
+    fs::write(shim_path, content)?;
+    manifest::make_executable(shim_path)
+}
+
+fn write_headless_config(config_file: &Path) -> Result<()> {
+    if let Some(parent) = config_file.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(
+        config_file,
+        r#"[server]
+maxResults = 500
+requestTimeoutMillis = 30000
+maxConcurrentRequests = 4
+
+[runtime]
+defaultBackend = "headless"
+
+[backends.headless]
+enabled = true
+"#,
+    )?;
+    Ok(())
+}
+
+fn env_path(name: &str) -> Option<PathBuf> {
+    env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .map(config::normalize)
+}
+
+pub fn repair_install_state(args: InstallRepairArgs) -> Result<InstallRepairResult> {
+    reconcile_install_state(args)
+}
+
+fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResult> {
     let config_path = config::global_config_path();
     let backup_root = config::kast_config_home()
         .join("backups")
-        .join(format!("install-affected-{}", backup_timestamp()));
-    let mut result = InstallAffectedResult {
+        .join(format!("install-repair-{}", backup_timestamp()));
+    let mut result = InstallRepairResult {
         applied: args.apply,
         config_path: config_path.display().to_string(),
-        apply_command: "kast install affected --apply".to_string(),
+        apply_command: "kast doctor --repair".to_string(),
         actions: vec![],
         backups: vec![],
         warnings: vec![],
@@ -691,7 +1183,7 @@ fn reconcile_install_state(
     let mut config_backed_up = false;
 
     if !config_path.is_file() {
-        push_affected_action(
+        push_repair_action(
             &mut result,
             "provision-config",
             &config_path,
@@ -708,28 +1200,23 @@ fn reconcile_install_state(
     else {
         return Ok(result);
     };
-    repair_affected_config_state(
+    repair_install_config_state(
         &args,
         &global_config,
         &mut result,
         &backup_root,
         &mut config_backed_up,
     )?;
-    if matches!(scope, InstallReconciliationScope::ConfigOnly) {
-        return Ok(result);
-    }
-    repair_affected_skill_targets(&args, &mut result, &backup_root)?;
-    repair_affected_instruction_targets(&args, &mut result, &backup_root)?;
-    repair_affected_copilot_repos(&args, &mut result, &backup_root)?;
-    repair_affected_shell_sources(&args, &mut result, &backup_root)?;
-    repair_affected_jetbrains_profiles(&args, &mut result, &backup_root)?;
+    repair_install_copilot_repos(&args, &mut result, &backup_root)?;
+    repair_install_shell_sources(&args, &mut result, &backup_root)?;
+    repair_install_jetbrains_profiles(&args, &mut result, &backup_root)?;
 
     Ok(result)
 }
 
 fn load_global_config_for_repair(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
     config_backed_up: &mut bool,
 ) -> Result<Option<config::KastConfig>> {
@@ -737,12 +1224,12 @@ fn load_global_config_for_repair(
         Ok(global_config) => Ok(Some(global_config)),
         Err(error) if error.code == "CONFIG_ERROR" => {
             let config_path = config::global_config_path();
-            push_affected_action(
+            push_repair_action(
                 result,
                 "recover-invalid-config",
                 &config_path,
                 "Back up the invalid global Kast config and restore safe defaults.",
-                Some("kast install affected --apply".to_string()),
+                Some("kast doctor --repair".to_string()),
             );
             if !args.apply {
                 result.warnings.push(format!(
@@ -763,72 +1250,63 @@ fn load_global_config_for_repair(
     }
 }
 
-fn repair_affected_config_state(
-    args: &AffectedInstallArgs,
+fn repair_install_config_state(
+    args: &InstallRepairArgs,
     global_config: &config::KastConfig,
-    result: &mut InstallAffectedResult,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
     config_backed_up: &mut bool,
 ) -> Result<()> {
     let config_path = config::global_config_path();
     let document = read_toml_document(&config_path)?;
-    let remove_standalone_table = document
+    let remove_paths_table = document.contains_key("paths");
+    let remove_cli_table = document.contains_key("cli");
+    let remove_install_table = document.contains_key("install");
+    let remove_headless_runtime_paths = document
         .get("backends")
         .and_then(toml::Value::as_table)
-        .is_some_and(|backends| backends.contains_key("standalone"));
-    let current_exe = env::current_exe()?;
-    let cli_binary_update = document
-        .get("cli")
+        .and_then(|backends| backends.get("headless"))
         .and_then(toml::Value::as_table)
-        .and_then(|cli| cli.get("binaryPath"))
-        .and_then(toml::Value::as_str)
-        .map(PathBuf::from)
-        .filter(|path| should_update_cli_binary_path(path, &current_exe))
-        .map(|path| (path, current_exe.clone()));
+        .is_some_and(|headless| {
+            headless.contains_key("runtimeLibsDir") || headless.contains_key("ideaHome")
+        });
 
-    if remove_standalone_table {
-        push_affected_action(
+    if remove_paths_table
+        || remove_cli_table
+        || remove_install_table
+        || remove_headless_runtime_paths
+    {
+        push_repair_action(
             result,
-            "remove-retired-backend-config",
+            "remove-install-owned-config",
             &config_path,
-            "Remove the retired standalone backend config table while preserving supported settings.",
+            "Remove install-owned TOML keys so install identity and paths resolve only from install.json.",
             None,
         );
     }
-    if let Some((old_path, new_path)) = &cli_binary_update {
-        push_affected_action(
-            result,
-            "update-cli-binary-path",
-            old_path,
-            &format!(
-                "Update stale cli.binaryPath to the running kast binary at {}.",
-                new_path.display()
-            ),
-            None,
-        );
-    }
-    if args.apply && (remove_standalone_table || cli_binary_update.is_some()) {
+    if args.apply
+        && (remove_paths_table
+            || remove_cli_table
+            || remove_install_table
+            || remove_headless_runtime_paths)
+    {
         backup_config_once(result, backup_root, config_backed_up)?;
         self_mgmt::update_global_config(|document| {
-            if remove_standalone_table
-                && let Some(toml::Value::Table(backends)) = document.get_mut("backends")
-            {
-                backends.remove("standalone");
+            if remove_paths_table {
+                document.remove("paths");
             }
-            if let Some((_, new_path)) = &cli_binary_update {
-                let cli = document
-                    .entry("cli".to_string())
-                    .or_insert_with(|| toml::Value::Table(toml::Table::new()));
-                let toml::Value::Table(cli) = cli else {
-                    return Err(CliError::new(
-                        "CONFIG_UPDATE_FAILED",
-                        "The `cli` config value is not a TOML table.",
-                    ));
-                };
-                cli.insert(
-                    "binaryPath".to_string(),
-                    toml::Value::String(new_path.display().to_string()),
-                );
+            if remove_cli_table {
+                document.remove("cli");
+            }
+            if remove_install_table {
+                document.remove("install");
+            }
+            if remove_headless_runtime_paths
+                && let Some(toml::Value::Table(backends)) = document.get_mut("backends")
+                && let Some(toml::Value::Table(headless)) = backends.get_mut("headless")
+            {
+                headless.remove("runtimeLibsDir");
+                headless.remove("ideaHome");
             }
             Ok(())
         })?;
@@ -839,7 +1317,7 @@ fn repair_affected_config_state(
     };
     let mut install_changed = false;
     if install.version.trim() != cli::version() {
-        push_affected_action(
+        push_repair_action(
             result,
             "update-install-version",
             &config_path,
@@ -854,7 +1332,7 @@ fn repair_affected_config_state(
 
     let mut surviving_backends = vec![];
     for backend in install.backends {
-        let unsupported = backend.name != BackendComponent::Headless.canonical();
+        let unsupported = backend.name != HEADLESS_BACKEND_NAME;
         let classpath_missing = !Path::new(&backend.runtime_libs_dir)
             .join("classpath.txt")
             .is_file();
@@ -862,7 +1340,7 @@ fn repair_affected_config_state(
         if unsupported || classpath_missing || install_dir_missing {
             let reason = if unsupported {
                 format!(
-                    "Remove retired {} backend state from install metadata.",
+                    "Remove unsupported {} backend state from install metadata.",
                     backend.name
                 )
             } else {
@@ -871,7 +1349,7 @@ fn repair_affected_config_state(
                     backend.runtime_libs_dir
                 )
             };
-            push_affected_action(
+            push_repair_action(
                 result,
                 "remove-stale-backend-state",
                 Path::new(&backend.install_dir),
@@ -901,7 +1379,7 @@ fn repair_affected_config_state(
     });
     for component in original_components {
         if !install.components.contains(&component) {
-            push_affected_action(
+            push_repair_action(
                 result,
                 "remove-stale-component-state",
                 Path::new(&component),
@@ -916,29 +1394,13 @@ fn repair_affected_config_state(
     for managed_path_value in original_managed_paths {
         let managed = managed_install_path(&global_config.paths.install_root, &managed_path_value);
         if !path_exists_or_symlink(&managed) {
-            push_affected_action(
+            push_repair_action(
                 result,
                 "prune-missing-managed-path",
                 &managed,
                 "Remove a missing managed path from install metadata.",
                 None,
             );
-            install_changed = true;
-            continue;
-        }
-        if managed_path_value.contains("standalone") || managed_path_value == "lib/backends/current"
-        {
-            push_affected_action(
-                result,
-                "remove-retired-managed-path",
-                &managed,
-                "Back up and remove a retired managed backend path.",
-                None,
-            );
-            if args.apply {
-                backup_existing_path(&managed, backup_root, result)?;
-                remove_existing_path(&managed)?;
-            }
             install_changed = true;
             continue;
         }
@@ -953,10 +1415,10 @@ fn repair_affected_config_state(
         if seen_repos.insert(normalized_value.clone()) {
             deduped_repos.push(self_mgmt::ManagedRepo {
                 path: normalized_value,
-                copilot_extension_version: repo.copilot_extension_version,
+                copilot_package_version: repo.copilot_package_version,
             });
         } else {
-            push_affected_action(
+            push_repair_action(
                 result,
                 "dedupe-managed-repo",
                 &normalized,
@@ -990,83 +1452,9 @@ fn repair_affected_config_state(
     Ok(())
 }
 
-fn repair_affected_skill_targets(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
-    backup_root: &Path,
-) -> Result<()> {
-    for target_root in affected_skill_target_roots()? {
-        let target = target_root.join("kast");
-        if !target.is_dir() {
-            continue;
-        }
-        let marker = target.join(".kast-version");
-        let installed_version = fs::read_to_string(&marker).unwrap_or_default();
-        if installed_version.trim() == cli::version() {
-            continue;
-        }
-        push_affected_action(
-            result,
-            "refresh-skill",
-            &target,
-            "Back up and refresh a stale installed Kast skill.",
-            Some(format!(
-                "kast install skill --target-dir {} --force",
-                shell_quote_path(&target_root)
-            )),
-        );
-        if args.apply {
-            backup_existing_path(&target, backup_root, result)?;
-            install_skill(ResourceInstallArgs {
-                target_dir: Some(target_root),
-                name: Some("kast".to_string()),
-                force: true,
-            })?;
-        }
-    }
-    Ok(())
-}
-
-fn repair_affected_instruction_targets(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
-    backup_root: &Path,
-) -> Result<()> {
-    for target_root in affected_instruction_target_roots()? {
-        let target = target_root.join("kast");
-        if !target.is_dir() {
-            continue;
-        }
-        let marker = target.join(".kast-version");
-        let installed_version = fs::read_to_string(&marker).unwrap_or_default();
-        if installed_version.trim() == cli::version() {
-            continue;
-        }
-        push_affected_action(
-            result,
-            "refresh-instructions",
-            &target,
-            "Back up and refresh stale installed Kast instructions.",
-            Some(format!(
-                "kast install instructions --target-dir {} --force",
-                shell_quote_path(&target_root)
-            )),
-        );
-        if args.apply {
-            backup_existing_path(&target, backup_root, result)?;
-            install_instructions(ResourceInstallArgs {
-                target_dir: Some(target_root),
-                name: Some("kast".to_string()),
-                force: true,
-            })?;
-        }
-    }
-    Ok(())
-}
-
-fn repair_affected_copilot_repos(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+fn repair_install_copilot_repos(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     _backup_root: &Path,
 ) -> Result<()> {
     let Some(install) = self_mgmt::read_global_install_state()? else {
@@ -1084,7 +1472,7 @@ fn repair_affected_copilot_repos(
         if installed_version.trim() == cli::version() {
             continue;
         }
-        push_affected_action(
+        push_repair_action(
             result,
             "refresh-copilot-package",
             &github_dir,
@@ -1095,7 +1483,7 @@ fn repair_affected_copilot_repos(
             )),
         );
         if args.apply {
-            install_copilot_extension(CopilotInstallArgs {
+            install_copilot(CopilotInstallArgs {
                 target_dir: Some(github_dir),
                 force: true,
                 no_auto_exclude_git: false,
@@ -1105,9 +1493,9 @@ fn repair_affected_copilot_repos(
     Ok(())
 }
 
-fn repair_affected_shell_sources(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+fn repair_install_shell_sources(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
 ) -> Result<()> {
     let shell_dir = config::kast_config_home().join("shell");
@@ -1157,7 +1545,7 @@ fn repair_affected_shell_sources(
         )) {
             continue;
         }
-        push_affected_action(
+        push_repair_action(
             result,
             "refresh-shell-source",
             &path,
@@ -1165,7 +1553,7 @@ fn repair_affected_shell_sources(
                 "Back up and rewrite managed shell integration for `{command_name}` to use {}.",
                 bin_dir.display()
             ),
-            Some("kast install affected --apply".to_string()),
+            Some("kast doctor --repair".to_string()),
         );
         if args.apply {
             backup_existing_path(&path, backup_root, result)?;
@@ -1178,9 +1566,9 @@ fn repair_affected_shell_sources(
     Ok(())
 }
 
-fn repair_affected_jetbrains_profiles(
-    args: &AffectedInstallArgs,
-    result: &mut InstallAffectedResult,
+fn repair_install_jetbrains_profiles(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
 ) -> Result<()> {
     let Some(expected_plugin_target) = expected_homebrew_plugin_target(result)? else {
@@ -1202,7 +1590,7 @@ fn repair_affected_jetbrains_profiles(
         {
             continue;
         }
-        push_affected_action(
+        push_repair_action(
             result,
             "refresh-idea-plugin-link",
             &plugin_link,
@@ -1224,14 +1612,14 @@ fn repair_affected_jetbrains_profiles(
     Ok(())
 }
 
-fn push_affected_action(
-    result: &mut InstallAffectedResult,
+fn push_repair_action(
+    result: &mut InstallRepairResult,
     kind: &str,
     target: &Path,
     message: &str,
     command: Option<String>,
 ) {
-    result.actions.push(InstallAffectedAction {
+    result.actions.push(InstallRepairAction {
         kind: kind.to_string(),
         target: target.display().to_string(),
         status: if result.applied { "applied" } else { "planned" }.to_string(),
@@ -1241,7 +1629,7 @@ fn push_affected_action(
 }
 
 fn backup_config_once(
-    result: &mut InstallAffectedResult,
+    result: &mut InstallRepairResult,
     backup_root: &Path,
     config_backed_up: &mut bool,
 ) -> Result<()> {
@@ -1256,7 +1644,7 @@ fn backup_config_once(
 fn backup_existing_path(
     path: &Path,
     backup_root: &Path,
-    result: &mut InstallAffectedResult,
+    result: &mut InstallRepairResult,
 ) -> Result<()> {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return Ok(());
@@ -1359,17 +1747,6 @@ pub(crate) fn kast_idea_plugin_installed_under(jetbrains_config_root: &Path) -> 
         .any(|plugin_dir| path_exists_or_symlink(&plugin_dir.join("kast"))))
 }
 
-fn should_update_cli_binary_path(path: &Path, current_exe: &Path) -> bool {
-    if !path_exists_or_symlink(path) {
-        return true;
-    }
-    if path == current_exe {
-        return false;
-    }
-    let value = path.display().to_string();
-    value.contains("/.kast/bin/kast") || value.contains("/Cellar/kast/")
-}
-
 fn managed_install_path(install_root: &Path, value: &str) -> PathBuf {
     let path = Path::new(value);
     if path.is_absolute() {
@@ -1384,40 +1761,6 @@ fn read_toml_document(path: &Path) -> Result<toml::Table> {
         return Ok(toml::Table::new());
     }
     Ok(fs::read_to_string(path)?.parse::<toml::Table>()?)
-}
-
-fn affected_skill_target_roots() -> Result<Vec<PathBuf>> {
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let home = config::home_dir();
-    let mut roots = vec![
-        default_skill_target_dir(),
-        home.join(".codex/skills"),
-        home.join(".agents/skills"),
-        home.join(".kast/lib/skills"),
-        cwd.join(".agents/skills"),
-        cwd.join(".github/skills"),
-        cwd.join(".claude/skills"),
-    ];
-    let mut seen = BTreeSet::new();
-    roots.retain(|path| seen.insert(config::normalize(path.clone()).display().to_string()));
-    Ok(roots.into_iter().map(config::normalize).collect())
-}
-
-fn affected_instruction_target_roots() -> Result<Vec<PathBuf>> {
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let home = config::home_dir();
-    let mut roots = vec![
-        default_instructions_target_dir(),
-        home.join(".codex/instructions"),
-        home.join(".agents/instructions"),
-        home.join(".kast/lib/instructions"),
-        cwd.join(".agents/instructions"),
-        cwd.join(".github/instructions"),
-        cwd.join(".claude/instructions"),
-    ];
-    let mut seen = BTreeSet::new();
-    roots.retain(|path| seen.insert(config::normalize(path.clone()).display().to_string()));
-    Ok(roots.into_iter().map(config::normalize).collect())
 }
 
 fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
@@ -1447,7 +1790,7 @@ fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
         .and_then(|path| path.parent().map(Path::to_path_buf)))
 }
 
-fn expected_homebrew_plugin_target(result: &mut InstallAffectedResult) -> Result<Option<PathBuf>> {
+fn expected_homebrew_plugin_target(result: &mut InstallRepairResult) -> Result<Option<PathBuf>> {
     expected_homebrew_plugin_target_with_warnings(&mut result.warnings)
 }
 
@@ -1556,9 +1899,7 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
     })
 }
 
-pub fn install_copilot_extension(
-    args: CopilotInstallArgs,
-) -> Result<InstallCopilotExtensionResult> {
+pub fn install_copilot(args: CopilotInstallArgs) -> Result<InstallCopilotPackageResult> {
     let target = args.target_dir.map(config::normalize).unwrap_or_else(|| {
         config::normalize(
             env::current_dir()
@@ -1566,10 +1907,10 @@ pub fn install_copilot_extension(
                 .join(".github"),
         )
     });
-    let skipped = install_copilot_package(&target, args.force)?;
+    let skipped = install_copilot_package_files(&target, args.force)?;
     self_mgmt::record_copilot_repo(&target, cli::version())?;
     let git_exclude = update_copilot_git_exclude(&target, args.no_auto_exclude_git)?;
-    Ok(InstallCopilotExtensionResult {
+    Ok(InstallCopilotPackageResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
         skipped,
@@ -1585,7 +1926,6 @@ pub fn install_idea_plugin(
 ) -> Result<InstallIdeaPluginResult> {
     let homebrew = discover_homebrew_context()?;
     verify_homebrew_cli(&homebrew)?;
-    repair_global_config_for_running_cli(!args.dry_run)?;
     let mut warnings = vec![];
     let formula_tap = match homebrew_formula_tap() {
         Ok(tap) => tap,
@@ -1929,7 +2269,7 @@ fn ensure_homebrew_plugin_profile_link(
     if path_exists_or_symlink(plugin_link) {
         let Some(current_target) = fs::read_link(plugin_link).ok() else {
             warnings.push(format!(
-                "Not replacing existing JetBrains plugin path {}; run `kast install affected --apply` for backed-up repair",
+                "Not replacing existing JetBrains plugin path {}; run `kast doctor --repair` for backed-up repair",
                 plugin_link.display()
             ));
             return Ok(());
@@ -1944,7 +2284,7 @@ fn ensure_homebrew_plugin_profile_link(
                 .contains("/kast-plugin/")
         {
             warnings.push(format!(
-                "Not replacing existing JetBrains plugin link {} -> {}; run `kast install affected --apply` for backed-up repair",
+                "Not replacing existing JetBrains plugin link {} -> {}; run `kast doctor --repair` for backed-up repair",
                 plugin_link.display(),
                 current_target.display()
             ));
@@ -1959,56 +2299,6 @@ fn ensure_homebrew_plugin_profile_link(
     Ok(())
 }
 
-fn install_archive(args: InstallArgs) -> Result<ArchiveInstallResult> {
-    let archive = args.archive.ok_or_else(|| {
-        CliError::new(
-            "CLI_USAGE",
-            "`kast install` requires --archive or a resource subcommand",
-        )
-    })?;
-    if !archive.is_file() {
-        return Err(CliError::new(
-            "INSTALL_ARCHIVE_NOT_FOUND",
-            format!("Archive not found at {}", archive.display()),
-        ));
-    }
-    let config = config::KastConfig::load_global()?;
-    initialize_install_directories(&config)?;
-    let install = self_mgmt::InstallState {
-        version: cli::version().to_string(),
-        backend_version: String::new(),
-        installed_at: current_timestamp(),
-        platform: format!("{}-{}", env::consts::OS, env::consts::ARCH),
-        components: vec!["cli".to_string(), "config".to_string()],
-        backends: vec![],
-        managed_paths: vec![
-            "bin".to_string(),
-            "lib".to_string(),
-            "cache".to_string(),
-            "logs".to_string(),
-        ],
-        shell_rc_patches: vec![],
-        repos: vec![],
-        schema_version: SCHEMA_VERSION,
-    };
-    self_mgmt::write_install_state(&install)?;
-    Ok(ArchiveInstallResult {
-        installed_at: config.paths.install_root.display().to_string(),
-        instance: args.instance.unwrap_or_else(|| "default".to_string()),
-        skipped: false,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
-fn initialize_install_directories(config: &config::KastConfig) -> Result<()> {
-    fs::create_dir_all(&config.paths.install_root)?;
-    fs::create_dir_all(&config.paths.bin_dir)?;
-    fs::create_dir_all(&config.paths.lib_dir)?;
-    fs::create_dir_all(&config.paths.cache_dir)?;
-    fs::create_dir_all(&config.paths.logs_dir)?;
-    Ok(())
-}
-
 fn current_timestamp() -> String {
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -2017,7 +2307,7 @@ fn current_timestamp() -> String {
     format!("unix:{seconds}")
 }
 
-fn install_copilot_package(github_dir: &Path, force: bool) -> Result<bool> {
+fn install_copilot_package_files(github_dir: &Path, force: bool) -> Result<bool> {
     let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
     let skipped = !force
         && marker
@@ -2750,7 +3040,10 @@ fn default_skill_target_dir() -> PathBuf {
             return config::normalize(path);
         }
     }
-    config::home_dir().join(".kast/lib/skills")
+    manifest::resolve_paths()
+        .unwrap_or_else(|_| manifest::default_resolved_paths())
+        .lib_dir
+        .join("skills")
 }
 
 fn default_instructions_target_dir() -> PathBuf {
@@ -2765,7 +3058,10 @@ fn default_instructions_target_dir() -> PathBuf {
             return config::normalize(path);
         }
     }
-    config::home_dir().join(".kast/lib/instructions")
+    manifest::resolve_paths()
+        .unwrap_or_else(|_| manifest::default_resolved_paths())
+        .lib_dir
+        .join("instructions")
 }
 
 #[cfg(test)]
@@ -2854,21 +3150,6 @@ mod tests {
         let metadata = parse_homebrew_cask_metadata(json).unwrap();
 
         assert_eq!(metadata.plugin_version, "9.8.7");
-    }
-
-    #[test]
-    fn human_reporter_does_not_prompt_when_not_interactive() {
-        let mut reporter = HumanInstallReporter {
-            interactive: false,
-            last_downloaded_bytes: None,
-            download_frame: 0,
-        };
-
-        let answer = reporter
-            .prompt_project_open_auto_init(&config::ProjectOpenConfig::default())
-            .unwrap();
-
-        assert_eq!(answer, None);
     }
 
     #[test]

@@ -109,13 +109,58 @@ pub struct WorkspaceEnsureResult {
 #[serde(rename_all = "camelCase")]
 pub struct DaemonStopResult {
     pub workspace_root: String,
+    pub backend_name: String,
     pub stopped: bool,
+    pub stopped_count: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub descriptor_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid: Option<u64>,
     pub forced: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidates: Vec<RuntimeStopAction>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
     pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceRestartResult {
+    pub workspace_root: String,
+    pub backend_name: String,
+    pub stop: DaemonStopResult,
+    pub ensure: WorkspaceEnsureResult,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeStopAction {
+    pub backend_name: String,
+    pub descriptor_path: String,
+    pub pid: u64,
+    pub pid_alive: bool,
+    pub reachable: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub lifecycle_accepted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lifecycle_method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lifecycle_action: Option<String>,
+    pub terminated: bool,
+    pub descriptor_deleted: bool,
+    pub forced: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skipped_reason: Option<String>,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeLifecycleResponse {
+    accepted: bool,
+    action: String,
 }
 
 #[derive(Debug, Clone)]
@@ -174,8 +219,8 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let mut config = KastConfig::load(&workspace_root)?;
-    let mut path_resolution = config::path_resolution_report(
+    let config = KastConfig::load(&workspace_root)?;
+    let path_resolution = config::path_resolution_report(
         &config,
         Some(&workspace_root),
         config::PathResolutionMode::Cli,
@@ -236,6 +281,36 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         ));
     }
 
+    if launch_backend == BackendName::Headless {
+        if select_servable(&inspection.candidates, Some(launch_backend), true).is_some()
+            && let Ok(selected) = wait_for_servable(
+                &workspace_root,
+                Some(launch_backend),
+                args.accept_indexing.unwrap_or(false),
+                args.wait_timeout_ms,
+            )
+        {
+            return Ok(WorkspaceEnsureResult {
+                workspace_root: workspace_root.display().to_string(),
+                descriptor_directory: inspection.descriptor_directory.display().to_string(),
+                path_resolution,
+                started: false,
+                log_file: None,
+                selected,
+                note: Some(
+                    "Reused an existing headless runtime after it became ready.".to_string(),
+                ),
+                schema_version: SCHEMA_VERSION,
+            });
+        }
+        let _ = stop_backend_candidates(
+            &workspace_root,
+            RuntimeBackendPreference::Fixed(launch_backend),
+            true,
+            None,
+        )?;
+    }
+
     let runtime_libs_dir = match config
         .backends
         .headless
@@ -244,28 +319,6 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         .filter(|path| path.is_dir())
     {
         Some(path) => path,
-        None if launch_backend == BackendName::Headless && args.auto_install_headless => {
-            install::install_headless(crate::cli::HeadlessInstallArgs {
-                archive: None,
-                version: args.install_version.clone(),
-                base_url: args.install_base_url.clone(),
-                insecure_skip_tls_verify: args.install_insecure_skip_tls_verify,
-                force: false,
-            })?;
-            config = KastConfig::load(&workspace_root)?;
-            path_resolution = config::path_resolution_report(
-                &config,
-                Some(&workspace_root),
-                config::PathResolutionMode::Cli,
-            )?;
-            config
-                .backends
-                .headless
-                .runtime_libs_dir
-                .clone()
-                .filter(|path| path.is_dir())
-                .ok_or_else(|| no_backend_error(&workspace_root, Some(launch_backend)))?
-        }
         None => return Err(no_backend_error(&workspace_root, Some(launch_backend))),
     };
     let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
@@ -276,12 +329,25 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         ..DaemonStartArgs::from(args.clone())
     };
     daemon::spawn_background(daemon_args, &log_file)?;
-    let selected = wait_for_servable(
+    let selected = match wait_for_servable(
         &workspace_root,
         Some(launch_backend),
         args.accept_indexing.unwrap_or(false),
         args.wait_timeout_ms,
-    )?;
+    ) {
+        Ok(selected) => selected,
+        Err(error) => {
+            if launch_backend == BackendName::Headless {
+                let _ = stop_backend_candidates(
+                    &workspace_root,
+                    RuntimeBackendPreference::Fixed(launch_backend),
+                    true,
+                    None,
+                );
+            }
+            return Err(error);
+        }
+    };
     Ok(WorkspaceEnsureResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
@@ -296,50 +362,298 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
 
 pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
-    let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
-    let inspection = inspect_workspace(
+    let config = KastConfig::load(&workspace_root)?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
+    stop_backend_candidates(
         &workspace_root,
         RuntimeBackendPreference::Fixed(backend_name),
         true,
-    )?;
-    let Some(candidate) = inspection
-        .candidates
-        .into_iter()
-        .find(|candidate| candidate.descriptor.backend_name == backend_name.canonical())
-    else {
-        return Ok(DaemonStopResult {
-            workspace_root: workspace_root.display().to_string(),
-            stopped: false,
-            descriptor_path: None,
-            pid: None,
-            forced: false,
-            schema_version: SCHEMA_VERSION,
-        });
-    };
+        Some("runtime/shutdown"),
+    )
+}
 
-    let mut forced = false;
-    if candidate.descriptor.backend_name != "idea" && candidate.pid_alive {
-        terminate_process(candidate.descriptor.pid, false);
-        for _ in 0..20 {
-            if !is_process_alive(candidate.descriptor.pid) {
-                break;
-            }
-            thread::sleep(Duration::from_millis(250));
-        }
-        if is_process_alive(candidate.descriptor.pid) {
-            terminate_process(candidate.descriptor.pid, true);
-            forced = true;
-        }
+pub fn workspace_restart(args: RuntimeArgs) -> Result<WorkspaceRestartResult> {
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let config = KastConfig::load(&workspace_root)?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
+    if backend_name == BackendName::Idea
+        && let Some(result) = restart_idea_backend_candidates(&workspace_root, &config, &args)?
+    {
+        return Ok(result);
     }
-    delete_descriptor(&inspection.descriptor_directory, &candidate.descriptor)?;
-    Ok(DaemonStopResult {
-        workspace_root: candidate.descriptor.workspace_root,
-        stopped: true,
-        descriptor_path: Some(candidate.descriptor_path),
-        pid: Some(candidate.descriptor.pid),
-        forced,
+    let mut stop_args = args.clone();
+    stop_args.backend_name = Some(backend_name);
+    let stop = workspace_stop(stop_args)?;
+    let mut ensure_args = args;
+    ensure_args.backend_name = Some(backend_name);
+    let ensure = workspace_ensure(ensure_args)?;
+    Ok(WorkspaceRestartResult {
+        workspace_root: workspace_root.display().to_string(),
+        backend_name: backend_name.canonical().to_string(),
+        stop,
+        ensure,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn stop_backend_candidates(
+    workspace_root: &Path,
+    preference: RuntimeBackendPreference,
+    allow_reachable_idea_descriptor_delete: bool,
+    reachable_idea_lifecycle_method: Option<&str>,
+) -> Result<DaemonStopResult> {
+    let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
+    let inspection = inspect_workspace(workspace_root, preference, true)?;
+    let mut actions = vec![];
+    let mut warnings = vec![];
+    for candidate in inspection.candidates {
+        if candidate.descriptor.backend_name != backend_name.canonical() {
+            continue;
+        }
+        actions.push(stop_candidate(
+            &inspection.descriptor_directory,
+            candidate,
+            allow_reachable_idea_descriptor_delete,
+            reachable_idea_lifecycle_method,
+            &mut warnings,
+        )?);
+    }
+    let stopped_count = actions
+        .iter()
+        .filter(|action| {
+            action.terminated || action.descriptor_deleted || action.lifecycle_accepted
+        })
+        .count();
+    let stopped = stopped_count > 0;
+    let descriptor_path = actions
+        .iter()
+        .find(|action| action.descriptor_deleted || action.terminated || action.lifecycle_accepted)
+        .or_else(|| actions.first())
+        .map(|action| action.descriptor_path.clone());
+    let pid = actions
+        .iter()
+        .find(|action| action.descriptor_deleted || action.terminated || action.lifecycle_accepted)
+        .or_else(|| actions.first())
+        .map(|action| action.pid);
+    let forced = actions.iter().any(|action| action.forced);
+    Ok(DaemonStopResult {
+        workspace_root: workspace_root.display().to_string(),
+        backend_name: backend_name.canonical().to_string(),
+        stopped,
+        stopped_count,
+        descriptor_path,
+        pid,
+        forced,
+        candidates: actions,
+        warnings,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn stop_candidate(
+    descriptor_directory: &Path,
+    candidate: RuntimeCandidateStatus,
+    allow_reachable_idea_descriptor_delete: bool,
+    reachable_idea_lifecycle_method: Option<&str>,
+    warnings: &mut Vec<String>,
+) -> Result<RuntimeStopAction> {
+    let is_idea = candidate.descriptor.backend_name == BackendName::Idea.canonical();
+    let mut lifecycle_accepted = false;
+    let mut lifecycle_method = None;
+    let mut lifecycle_action = None;
+    let mut terminated = false;
+    let mut descriptor_deleted = false;
+    let mut forced = false;
+    let mut skipped_reason = None;
+
+    if is_idea && candidate.reachable {
+        if let Some(method) = reachable_idea_lifecycle_method {
+            let response = request_runtime_lifecycle(&candidate, method)?;
+            lifecycle_accepted = response.accepted;
+            lifecycle_method = Some(method.to_string());
+            lifecycle_action = Some(response.action);
+            if method == "runtime/shutdown" {
+                descriptor_deleted = wait_for_descriptor_release(
+                    descriptor_directory,
+                    &candidate.descriptor,
+                    Duration::from_secs(5),
+                )?;
+                if lifecycle_accepted && !descriptor_deleted {
+                    warnings.push(format!(
+                        "IDEA accepted {method}, but its descriptor was still present after waiting for shutdown."
+                    ));
+                }
+            }
+        } else if !allow_reachable_idea_descriptor_delete {
+            let reason = "IDEA-hosted backends run inside the IDE process; close or restart the project in IDEA to stop the live backend.".to_string();
+            warnings.push(reason.clone());
+            skipped_reason = Some(reason);
+        } else {
+            delete_descriptor(descriptor_directory, &candidate.descriptor)?;
+            descriptor_deleted = true;
+        }
+    } else {
+        if !is_idea && candidate.pid_alive {
+            terminate_process(candidate.descriptor.pid, false);
+            terminated = true;
+            for _ in 0..20 {
+                if !is_process_alive(candidate.descriptor.pid) {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(250));
+            }
+            if is_process_alive(candidate.descriptor.pid) {
+                terminate_process(candidate.descriptor.pid, true);
+                forced = true;
+            }
+        }
+        delete_descriptor(descriptor_directory, &candidate.descriptor)?;
+        descriptor_deleted = true;
+    }
+
+    Ok(RuntimeStopAction {
+        backend_name: candidate.descriptor.backend_name,
+        descriptor_path: candidate.descriptor_path,
+        pid: candidate.descriptor.pid,
+        pid_alive: candidate.pid_alive,
+        reachable: candidate.reachable,
+        lifecycle_accepted,
+        lifecycle_method,
+        lifecycle_action,
+        terminated,
+        descriptor_deleted,
+        forced,
+        skipped_reason,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn restart_idea_backend_candidates(
+    workspace_root: &Path,
+    config: &KastConfig,
+    args: &RuntimeArgs,
+) -> Result<Option<WorkspaceRestartResult>> {
+    let inspection = inspect_workspace_with_config(
+        workspace_root,
+        config,
+        RuntimeBackendPreference::Fixed(BackendName::Idea),
+        true,
+    )?;
+    if inspection.candidates.is_empty()
+        || !inspection
+            .candidates
+            .iter()
+            .any(|candidate| candidate.reachable)
+    {
+        return Ok(None);
+    }
+
+    let mut warnings = vec![];
+    let mut actions = vec![];
+    for candidate in inspection.candidates {
+        actions.push(stop_candidate(
+            &inspection.descriptor_directory,
+            candidate,
+            false,
+            Some("runtime/restart"),
+            &mut warnings,
+        )?);
+    }
+    let stopped_count = actions
+        .iter()
+        .filter(|action| {
+            action.terminated || action.descriptor_deleted || action.lifecycle_accepted
+        })
+        .count();
+    let descriptor_path = actions
+        .iter()
+        .find(|action| action.lifecycle_accepted)
+        .or_else(|| actions.iter().find(|action| action.descriptor_deleted))
+        .or_else(|| actions.first())
+        .map(|action| action.descriptor_path.clone());
+    let pid = actions
+        .iter()
+        .find(|action| action.lifecycle_accepted)
+        .or_else(|| actions.iter().find(|action| action.descriptor_deleted))
+        .or_else(|| actions.first())
+        .map(|action| action.pid);
+    let stopped = actions
+        .iter()
+        .any(|action| action.lifecycle_accepted || action.descriptor_deleted || action.terminated);
+    let forced = actions.iter().any(|action| action.forced);
+    let stop = DaemonStopResult {
+        workspace_root: workspace_root.display().to_string(),
+        backend_name: BackendName::Idea.canonical().to_string(),
+        stopped,
+        stopped_count,
+        descriptor_path,
+        pid,
+        forced,
+        candidates: actions,
+        warnings,
+        schema_version: SCHEMA_VERSION,
+    };
+    let selected = wait_for_servable(
+        workspace_root,
+        Some(BackendName::Idea),
+        args.accept_indexing.unwrap_or(false),
+        args.wait_timeout_ms,
+    )?;
+    let path_resolution = config::path_resolution_report(
+        config,
+        Some(workspace_root),
+        config::PathResolutionMode::Cli,
+    )?;
+    let ensure = WorkspaceEnsureResult {
+        workspace_root: workspace_root.display().to_string(),
+        descriptor_directory: inspection.descriptor_directory.display().to_string(),
+        path_resolution,
+        started: false,
+        log_file: None,
+        selected,
+        note: Some("Requested IDEA backend restart through runtime/restart.".to_string()),
+        schema_version: SCHEMA_VERSION,
+    };
+    Ok(Some(WorkspaceRestartResult {
+        workspace_root: workspace_root.display().to_string(),
+        backend_name: BackendName::Idea.canonical().to_string(),
+        stop,
+        ensure,
+        schema_version: SCHEMA_VERSION,
+    }))
+}
+
+fn request_runtime_lifecycle(
+    candidate: &RuntimeCandidateStatus,
+    method: &str,
+) -> Result<RuntimeLifecycleResponse> {
+    rpc::request_wait_for_close::<RuntimeLifecycleResponse>(
+        Path::new(&candidate.descriptor.socket_path),
+        method,
+        Value::Object(Default::default()),
+        Duration::from_secs(5),
+    )
+}
+
+fn wait_for_descriptor_release(
+    descriptor_directory: &Path,
+    descriptor: &ServerInstanceDescriptor,
+    timeout: Duration,
+) -> Result<bool> {
+    let expected_descriptor_id = descriptor_id(descriptor);
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        let still_registered = read_descriptors(descriptor_directory)?
+            .iter()
+            .any(|candidate| descriptor_id(candidate) == expected_descriptor_id);
+        if !still_registered {
+            return Ok(true);
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    Ok(false)
 }
 
 pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
@@ -382,10 +696,6 @@ pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
         profile_modes: None,
         profile_duration: None,
         profile_otlp_endpoint: None,
-        install_version: None,
-        install_base_url: None,
-        install_insecure_skip_tls_verify: false,
-        auto_install_headless: false,
     })?;
     rpc::raw(
         Path::new(&ensure.selected.descriptor.socket_path),
@@ -949,6 +1259,10 @@ fn default_transport() -> String {
 
 fn schema_version() -> u32 {
     SCHEMA_VERSION
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[cfg(test)]

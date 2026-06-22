@@ -5,7 +5,7 @@ _KAST_UBUNTU_DEBIAN_TMP_DIR=""
 
 cleanup_tmp() {
   if [[ -n "${_KAST_UBUNTU_DEBIAN_TMP_DIR:-}" && -d "$_KAST_UBUNTU_DEBIAN_TMP_DIR" ]]; then
-    rm -rf "$_KAST_UBUNTU_DEBIAN_TMP_DIR"
+    rm -rf -- "$_KAST_UBUNTU_DEBIAN_TMP_DIR"
   fi
 }
 
@@ -38,16 +38,50 @@ compute_sha256() {
   die "Neither sha256sum nor shasum is available"
 }
 
-toml_escape() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  printf '%s\n' "$value"
+resolve_script_dir() {
+  cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 }
 
-normalize_version() {
-  local value="$1"
-  printf '%s\n' "${value#v}"
+usage() {
+  cat >&2 <<'USAGE'
+Usage: scripts/install-ubuntu-debian.sh [install|verify]
+
+Canonical non-Brew Kast bootstrap installer for Ubuntu/Debian x86_64 hosts.
+
+Environment:
+  KAST_UBUNTU_DEBIAN_VERSION        Version tag for download installs
+  KAST_UBUNTU_DEBIAN_ARTIFACT_PATH  Local bundle tarball path
+  KAST_UBUNTU_DEBIAN_BASE_URL       Release base URL for download installs
+  KAST_UBUNTU_DEBIAN_ROOT           Install root, default ~/.local/share/kast
+  KAST_UBUNTU_DEBIAN_BIN_DIR        Shim directory, default ~/.local/bin
+  KAST_UBUNTU_DEBIAN_CONFIG_HOME    Config directory, default ~/.config/kast
+  KAST_JAVA_CMD                     Java executable, default java
+USAGE
+}
+
+assert_debian_like_host() {
+  [[ "${KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK:-false}" == "true" ]] && return
+  [[ "$(uname -s)" == "Linux" ]] || die "This installer only supports Ubuntu/Debian Linux hosts"
+  [[ "$(uname -m)" == "x86_64" ]] || die "This installer only supports x86_64 hosts"
+  [[ -r /etc/os-release ]] || die "Cannot verify Ubuntu/Debian host: /etc/os-release is missing"
+
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  local distro="${ID:-} ${ID_LIKE:-}"
+  case "$distro" in
+    *debian*|*ubuntu*) ;;
+    *) die "This installer only supports Ubuntu/Debian hosts; found ID=${ID:-unknown} ID_LIKE=${ID_LIKE:-unknown}" ;;
+  esac
+}
+
+validate_version() {
+  local candidate="$1"
+  [[ -n "$candidate" ]] || die "KAST_UBUNTU_DEBIAN_VERSION must not be empty"
+  case "$candidate" in
+    "."|".."|*[!A-Za-z0-9._+-]*)
+      die "KAST_UBUNTU_DEBIAN_VERSION must be a single version label using only ASCII letters, digits, '.', '_', '-', or '+'"
+      ;;
+  esac
 }
 
 infer_version_from_bundle_name() {
@@ -86,9 +120,9 @@ try:
 except Exception:
     raise SystemExit(1)
 
-if payload.get("schemaVersion") != 1:
+if payload.get("schemaVersion") != 2:
     raise SystemExit(1)
-if payload.get("kind") != "KAST_UBUNTU_DEBIAN_BUNDLE":
+if payload.get("kind") != "KAST_INSTALL_BUNDLE":
     raise SystemExit(1)
 
 value = payload.get(field_name)
@@ -111,150 +145,6 @@ infer_version_from_context() {
   fi
 
   return 1
-}
-
-infer_bundle_kind_from_name() {
-  local bundle_name="$1"
-  case "$bundle_name" in
-    kast-ubuntu-debian-headless-x86_64-*) printf '%s\n' "headless" ;;
-    *) return 1 ;;
-  esac
-}
-
-infer_bundle_kind_from_context() {
-  if [[ -n "${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}" ]]; then
-    infer_bundle_kind_from_name "$(basename -- "$KAST_UBUNTU_DEBIAN_ARTIFACT_PATH")" && return
-  fi
-
-  local script_dir
-  script_dir="$(resolve_script_dir)"
-  if [[ -f "${script_dir}/../manifest.json" && -x "${script_dir}/../bin/kast" ]]; then
-    read_bundle_manifest_value "${script_dir}/../manifest.json" "backendKind" && return
-    infer_bundle_kind_from_name "$(basename -- "$(cd -- "${script_dir}/.." && pwd)")" && return
-  fi
-
-  printf '%s\n' "headless"
-}
-
-resolve_script_dir() {
-  cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
-}
-
-usage() {
-  cat >&2 <<'USAGE'
-Usage: scripts/install-ubuntu-debian.sh [install|verify]
-
-Canonical non-Brew Kast installer for Ubuntu/Debian x86_64 hosts.
-
-Environment:
-  KAST_UBUNTU_DEBIAN_VERSION        Version tag for download installs
-  KAST_UBUNTU_DEBIAN_ARTIFACT_PATH  Local bundle tarball path
-  KAST_UBUNTU_DEBIAN_BASE_URL       Release base URL for download installs
-  KAST_UBUNTU_DEBIAN_ROOT           Install root, default ~/.local/share/kast/ubuntu-debian
-  KAST_UBUNTU_DEBIAN_BIN_DIR        Symlink directory, default ~/.local/bin
-  KAST_UBUNTU_DEBIAN_CONFIG_HOME    Config directory, default ~/.config/kast
-  KAST_JAVA_CMD                     Java executable, default java
-USAGE
-}
-
-assert_debian_like_host() {
-  [[ "${KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK:-false}" == "true" ]] && return
-  [[ "$(uname -s)" == "Linux" ]] || die "This installer only supports Ubuntu/Debian Linux hosts"
-  [[ "$(uname -m)" == "x86_64" ]] || die "This installer only supports x86_64 hosts"
-  [[ -r /etc/os-release ]] || die "Cannot verify Ubuntu/Debian host: /etc/os-release is missing"
-
-  # shellcheck disable=SC1091
-  . /etc/os-release
-  local distro="${ID:-} ${ID_LIKE:-}"
-  case "$distro" in
-    *debian*|*ubuntu*) ;;
-    *) die "This installer only supports Ubuntu/Debian hosts; found ID=${ID:-unknown} ID_LIKE=${ID_LIKE:-unknown}" ;;
-  esac
-}
-
-copy_tree() {
-  local source_dir="$1"
-  local destination_dir="$2"
-
-  mkdir -p "$destination_dir"
-  tar -C "$source_dir" -cf - . | tar -C "$destination_dir" -xf -
-}
-
-write_headless_kast_shim() {
-  local output_path="$1"
-  local cli_path="$2"
-  local quoted_cli_path
-
-  printf -v quoted_cli_path '%q' "$cli_path"
-  mkdir -p "$(dirname -- "$output_path")"
-  cat > "$output_path" <<SHIM
-#!/usr/bin/env bash
-set -euo pipefail
-
-case " \${JAVA_OPTS:-} " in
-  *" -Didea.force.use.core.classloader=true "*) ;;
-  *) export JAVA_OPTS="\${JAVA_OPTS:+\${JAVA_OPTS} }-Didea.force.use.core.classloader=true" ;;
-esac
-
-exec ${quoted_cli_path} "\$@"
-SHIM
-  chmod 755 "$output_path"
-}
-
-install_kast_entrypoint() {
-  local bundled_cli_path="${install_home}/bin/kast"
-
-  local shim_cli_path="$bundled_cli_path"
-  if [[ "$bin_path" == "$bundled_cli_path" ]]; then
-    shim_cli_path="${install_home}/bin/kast-cli"
-    mv "$bundled_cli_path" "$shim_cli_path"
-  fi
-  rm -f "$bin_path"
-  write_headless_kast_shim "$bin_path" "$shim_cli_path"
-}
-
-write_config() {
-  local config_file="$1"
-  local install_home="$2"
-  local bin_path="$3"
-  local version="$4"
-  local normalized_version="$5"
-
-  local backend_config="[runtime]
-defaultBackend = \"headless\"
-
-[backends.headless]
-runtimeLibsDir = \"$(toml_escape "$headless_runtime_libs_dir")\"
-ideaHome = \"$(toml_escape "$headless_idea_home")\""
-  local components='["cli", "headless-backend", "config"]'
-
-  mkdir -p "$(dirname -- "$config_file")"
-  cat > "$config_file" <<TOML
-[server]
-maxResults = 500
-requestTimeoutMillis = 30000
-maxConcurrentRequests = 4
-
-[paths]
-installRoot = "$(toml_escape "$install_home")"
-binDir = "$(toml_escape "$(dirname -- "$bin_path")")"
-
-${backend_config}
-
-[cli]
-binaryPath = "$(toml_escape "$bin_path")"
-
-[install]
-version = "$(toml_escape "$normalized_version")"
-backendVersion = "$(toml_escape "$normalized_version")"
-installedAt = "$(toml_escape "$platform"):${version}"
-platform = "$(toml_escape "$platform")"
-components = ${components}
-managedPaths = ["bin", "lib", "cache", "logs"]
-shellRcPatches = []
-repos = []
-schemaVersion = 6
-TOML
 }
 
 source_from_artifact() {
@@ -294,8 +184,8 @@ fetch_artifact() {
   if [[ -n "$local_artifact" ]]; then
     [[ -f "$local_artifact" ]] || die "KAST_UBUNTU_DEBIAN_ARTIFACT_PATH does not exist: $local_artifact"
     [[ -f "${local_artifact}.sha256" ]] || die "Missing SHA-256 sidecar: ${local_artifact}.sha256"
-    cp "$local_artifact" "$artifact_path"
-    cp "${local_artifact}.sha256" "${artifact_path}.sha256"
+    cp -- "$local_artifact" "$artifact_path"
+    cp -- "${local_artifact}.sha256" "${artifact_path}.sha256"
   else
     need_tool curl
     curl --fail --location --retry 3 --retry-delay 2 --silent --show-error \
@@ -326,134 +216,141 @@ configure_paths() {
     version="$(infer_version_from_context || true)"
   fi
   [[ -n "$version" ]] || die "Set KAST_UBUNTU_DEBIAN_VERSION or run from an extracted Ubuntu/Debian bundle"
-  normalized_version="$(normalize_version "$version")"
-  bundle_kind="$(infer_bundle_kind_from_context)"
-  [[ "$bundle_kind" == "headless" ]] || die "Unsupported Ubuntu/Debian bundle kind: $bundle_kind"
+  validate_version "$version"
   platform="ubuntu-debian-headless-x86_64"
   artifact_name="kast-${platform}-${version}.tar.gz"
-  root_dir="${KAST_UBUNTU_DEBIAN_ROOT:-${HOME}/.local/share/kast/ubuntu-debian}"
-  install_home="${root_dir}/${version}"
+  root_dir="${KAST_UBUNTU_DEBIAN_ROOT:-${HOME}/.local/share/kast}"
   bin_dir="${KAST_UBUNTU_DEBIAN_BIN_DIR:-${HOME}/.local/bin}"
-  bin_path="${bin_dir}/kast"
   config_home="${KAST_UBUNTU_DEBIAN_CONFIG_HOME:-${KAST_CONFIG_HOME:-${HOME}/.config/kast}}"
-  config_file="${config_home}/config.toml"
+  bin_path="${bin_dir}/kast"
   base_url="${KAST_UBUNTU_DEBIAN_BASE_URL:-https://github.com/amichne/kast/releases/download/${version}}"
-  headless_root="${install_home}/lib/backends/headless-${version}"
-  headless_runtime_libs_dir="${headless_root}/runtime-libs"
-  headless_idea_home="${headless_root}/idea-home"
   java_cmd="${KAST_JAVA_CMD:-java}"
 }
 
-detect_installed_backend_kind() {
-  local source_dir="$1"
-  if [[ -f "${source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]]; then
-    printf '%s\n' "headless"
+resolve_bundle_source() {
+  local script_dir
+  script_dir="$(resolve_script_dir)"
+  if [[ -f "${script_dir}/../manifest.json" && -x "${script_dir}/../bin/kast" ]]; then
+    cd -- "${script_dir}/.." && pwd
     return
   fi
-  die "Bundle source missing backend runtime-libs/classpath.txt for ${version}"
+
+  _KAST_UBUNTU_DEBIAN_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kast-ubuntu-debian-install.XXXXXX")"
+  local artifact_path="${_KAST_UBUNTU_DEBIAN_TMP_DIR}/${artifact_name}"
+  fetch_artifact "$artifact_path" "$artifact_name" "$base_url"
+  source_from_artifact "$artifact_path" "${_KAST_UBUNTU_DEBIAN_TMP_DIR}/extract"
 }
 
-validate_backend_source() {
-  local source_dir="$1"
-  local backend_kind="$2"
+run_bundle_activation() {
+  local bundle_source_dir="$1"
+  local verify_only="$2"
+  local bundled_kast="${bundle_source_dir}/bin/kast"
+  [[ -x "$bundled_kast" ]] || die "Bundle source missing executable bin/kast"
 
-  [[ "$backend_kind" == "headless" ]] || die "Unsupported bundle backend kind: $backend_kind"
-  [[ -f "${source_dir}/lib/backends/headless-${version}/runtime-libs/classpath.txt" ]] \
-    || die "Bundle source missing headless runtime-libs/classpath.txt"
-  [[ -x "${source_dir}/lib/backends/headless-${version}/kast-headless" ]] \
-    || die "Bundle source missing headless kast-headless launcher"
-  [[ -f "${source_dir}/lib/backends/headless-${version}/idea-home/lib/nio-fs.jar" ]] \
-    || die "Bundle source missing headless idea-home/lib/nio-fs.jar"
-  [[ -f "${source_dir}/lib/backends/headless-${version}/idea-home/modules/module-descriptors.dat" ]] \
-    || die "Bundle source missing headless idea-home/modules/module-descriptors.dat"
-  [[ -d "${source_dir}/lib/backends/headless-${version}/idea-home/plugins/kast-headless" ]] \
-    || die "Bundle source missing bundled kast-headless plugin"
-}
-
-verify_install() {
-  configure_paths
-  export PATH="${bin_dir}:${PATH}"
-  export KAST_CONFIG_HOME="$config_home"
-
-  need_tool "$java_cmd"
-  need_tool kast
-
-  [[ -x "$bin_path" ]] || die "Expected executable kast at ${bin_path}"
-  [[ -d "$install_home" ]] || die "Install root not found: ${install_home}"
-  [[ -f "$config_file" ]] || die "Kast config not found: ${config_file}"
-  local installed_backend_kind
-  installed_backend_kind="$(detect_installed_backend_kind "$install_home")"
-  validate_backend_source "$install_home" "$installed_backend_kind"
-
-  local version_output
-  version_output="$("$bin_path" version)"
-  printf '%s\n' "$version_output" | grep -Fq "$normalized_version" \
-    || die "kast version does not contain ${normalized_version}: ${version_output}"
-
-  [[ "$installed_backend_kind" == "headless" ]] || die "Installed backend kind must be headless"
-  [[ -f "$bin_path" && ! -L "$bin_path" ]] || die "Expected headless ${bin_path} to be an executable shim"
-  grep -Fq -- "-Didea.force.use.core.classloader=true" "$bin_path" \
-    || die "Headless kast shim does not export the core classloader JVM option"
-  grep -Fq 'defaultBackend = "headless"' "$config_file" \
-    || die "config.toml does not default to headless runtime"
-  grep -Fq "[backends.headless]" "$config_file" || die "config.toml does not include headless backend config"
-  grep -Fq "runtimeLibsDir = \"${headless_runtime_libs_dir}\"" "$config_file" \
-    || die "config.toml does not point at ${headless_runtime_libs_dir}"
-  grep -Fq "ideaHome = \"${headless_idea_home}\"" "$config_file" \
-    || die "config.toml does not point at ${headless_idea_home}"
-  grep -Fq "binaryPath = \"${bin_path}\"" "$config_file" \
-    || die "config.toml does not point at ${bin_path}"
-  if grep -Eq '^(libDir|cacheDir|logsDir|descriptorDir|socketDir) = ' "$config_file"; then
-    die "config.toml should derive install-root-owned paths instead of writing expanded path defaults"
+  local activation_args=(
+    install activate-bundle
+    --source "$bundle_source_dir"
+    --install-root "$root_dir"
+    --bin-dir "$bin_dir"
+    --config-home "$config_home"
+  )
+  if [[ "$verify_only" == "true" ]]; then
+    activation_args+=(--verify-only)
   fi
 
-  "$bin_path" doctor >/dev/null
-  printf '%s\n' "Kast Ubuntu/Debian bundle ${version} verified"
+  KAST_INSTALL_ROOT="$root_dir" \
+  KAST_CONFIG_HOME="$config_home" \
+    "$bundled_kast" "${activation_args[@]}"
+}
+
+existing_install_matches() {
+  local manifest_file="${root_dir}/install.json"
+  [[ -x "$bin_path" ]] || return 1
+  [[ -f "$manifest_file" ]] || return 1
+  command -v python3 >/dev/null 2>&1 || return 1
+
+  python3 - "$manifest_file" "$version" "$root_dir" <<'PY' || return 1
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+expected_version = sys.argv[2]
+install_root = sys.argv[3]
+install_home = f"{install_root}/versions/{expected_version}"
+
+def fail(message):
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+try:
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+except Exception as error:
+    fail(f"Could not read install manifest {manifest_path}: {error}")
+
+if payload.get("tool") != "kast":
+    fail("install.json tool is not kast")
+if payload.get("profile") != "ubuntu-debian-headless":
+    fail("install.json profile is not ubuntu-debian-headless")
+if payload.get("activeVersion") != expected_version:
+    fail(f"install.json activeVersion is {payload.get('activeVersion')!r}, expected {expected_version!r}")
+if payload.get("roots", {}).get("install") != install_root:
+    fail("install.json roots.install does not match the requested install root")
+if payload.get("entrypoints", {}).get("activeBinary") != f"{install_home}/bin/kast":
+    fail("install.json activeBinary does not match the requested version")
+
+backends = payload.get("backends")
+if not isinstance(backends, list):
+    fail("install.json backends must be a list")
+headless = next((entry for entry in backends if entry.get("name") == "headless"), None)
+if headless is None:
+    fail("install.json does not include the headless backend")
+if headless.get("runtimeLibsDir") != f"{install_home}/lib/backends/headless/current/runtime-libs":
+    fail("install.json headless runtimeLibsDir does not match the requested version")
+if headless.get("ideaHome") != f"{install_home}/lib/backends/headless/current/idea-home":
+    fail("install.json headless ideaHome does not match the requested version")
+PY
+
+  KAST_INSTALL_ROOT="$root_dir" \
+  KAST_CONFIG_HOME="$config_home" \
+    "$bin_path" doctor >/dev/null
 }
 
 install_bundle() {
   assert_debian_like_host
   configure_paths
-  need_tool tar
   need_tool "$java_cmd"
 
-  if [[ -x "$bin_path" && -d "$install_home" ]]; then
-    if "$bin_path" version 2>/dev/null | grep -Fq "$normalized_version"; then
-      if verify_install >/dev/null 2>&1; then
-        log "Kast Ubuntu/Debian bundle ${version} is already installed"
-        exit 0
-      fi
-    fi
+  if existing_install_matches >/dev/null 2>&1; then
+    log "Kast Ubuntu/Debian bundle ${version} is already installed"
+    return
   fi
+
+  local bundle_source_dir
+  need_tool tar
+  bundle_source_dir="$(resolve_bundle_source)"
+  run_bundle_activation "$bundle_source_dir" false
+  log "Kast Ubuntu/Debian bundle ${version} installed at ${root_dir}/versions/${version}"
+}
+
+verify_install() {
+  configure_paths
+  need_tool "$java_cmd"
 
   local script_dir
   script_dir="$(resolve_script_dir)"
-  local bundle_source_dir=""
-
-  if [[ -f "${script_dir}/../manifest.json" && -x "${script_dir}/../bin/kast" ]]; then
-    bundle_source_dir="$(cd -- "${script_dir}/.." && pwd)"
-  else
-    _KAST_UBUNTU_DEBIAN_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kast-ubuntu-debian-install.XXXXXX")"
-    local artifact_path="${_KAST_UBUNTU_DEBIAN_TMP_DIR}/${artifact_name}"
-    fetch_artifact "$artifact_path" "$artifact_name" "$base_url"
-    bundle_source_dir="$(source_from_artifact "$artifact_path" "${_KAST_UBUNTU_DEBIAN_TMP_DIR}/extract")"
+  if [[ -n "${KAST_UBUNTU_DEBIAN_ARTIFACT_PATH:-}" || ( -f "${script_dir}/../manifest.json" && -x "${script_dir}/../bin/kast" ) ]]; then
+    need_tool tar
+    local bundle_source_dir
+    bundle_source_dir="$(resolve_bundle_source)"
+    run_bundle_activation "$bundle_source_dir" true
+    printf '%s\n' "Kast Ubuntu/Debian bundle ${version} verified"
+    return
   fi
 
-  [[ -x "${bundle_source_dir}/bin/kast" ]] || die "Bundle source missing executable bin/kast"
-  local source_backend_kind
-  source_backend_kind="$(detect_installed_backend_kind "$bundle_source_dir")"
-  validate_backend_source "$bundle_source_dir" "$source_backend_kind"
-
-  mkdir -p "$root_dir" "$bin_dir"
-  rm -rf "$install_home"
-  copy_tree "$bundle_source_dir" "$install_home"
-  mkdir -p "$install_home/cache" "$install_home/logs"
-  chmod +x "$install_home/bin/kast" "$install_home/scripts/install-ubuntu-debian.sh"
-  install_kast_entrypoint
-
-  write_config "$config_file" "$install_home" "$bin_path" "$version" "$normalized_version"
-  verify_install
-  log "Kast Ubuntu/Debian bundle ${version} installed at ${install_home}"
+  need_tool python3
+  existing_install_matches || die "Installed Kast bundle does not match requested version ${version}"
+  printf '%s\n' "Kast Ubuntu/Debian bundle ${version} verified"
 }
 
 main() {

@@ -40,7 +40,7 @@ class FileOperationTest {
     }
 
     @Test
-    fun `ApplyEditsQuery with empty fileOperations is backward compatible`() {
+    fun `ApplyEditsQuery defaults fileOperations to empty`() {
         val decoded = json.decodeFromString(
             ApplyEditsQuery.serializer(),
             """

@@ -22,11 +22,12 @@ result will be parsed, stored, or used as evidence.
 ## Non-Interactive Rules
 
 - Prefer `--output json` for agent-run operator commands.
-- Pass command-specific mutation controls explicitly, such as `--apply`,
+- Pass command-specific mutation controls explicitly, such as `--repair`,
   `--dry-run`, or `--force`.
 - Use `kast demo --json` for snapshots; the default demo opens an interactive
   TUI when stdout is a terminal.
-- Use `kast install affected --apply` only when repairs should be applied.
+- Use plain `kast doctor` for read-only install diagnostics.
+- Use `kast doctor --repair` only when broad install repair should be applied.
 
 ## Common Commands
 

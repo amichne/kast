@@ -10,6 +10,7 @@ import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.server.AnalysisServer
+import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -37,12 +38,14 @@ object KastIdeaBackendRuntime {
         socketPath: Path = defaultSocketPath(workspaceRoot),
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
+        lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
     ): RunningKastIdeaBackend = start(
         project = project,
         workspaceRoot = workspaceRoot,
         transport = AnalysisTransport.UnixDomainSocket(socketPath),
         config = config,
         backendName = backendName,
+        lifecycleController = lifecycleController,
     )
 
     fun start(
@@ -51,25 +54,51 @@ object KastIdeaBackendRuntime {
         transport: AnalysisTransport,
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
+        lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
     ): RunningKastIdeaBackend {
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            descriptorDirectory = config.paths.descriptorDir.toPath(),
+        )
+        KastStructuredTrace.event(
+            eventName = "idea.runtime.start_requested",
+            project = project,
+            workspaceRoot = workspaceIdentity.workspaceRootPath,
+            fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
+            detail = mapOf(
+                "transport" to transport.toString(),
+                "backendName" to backendName,
+            ) + workspaceIdentity.traceDetails(),
+        )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
         val backend = ObservedAnalysisBackend(
             delegate = KastPluginBackend(
                 project = project,
-                workspaceRoot = workspaceRoot,
+                workspaceRoot = workspaceIdentity.workspaceRootPath,
                 limits = limits,
                 telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
                 backendName = backendName,
+                workspaceIdentity = workspaceIdentity,
             ),
             diagnostics = diagnostics,
         )
         val server = AnalysisServer(
             backend = backend,
             config = ideaAnalysisServerConfig(transport, limits, config),
+            lifecycleController = lifecycleController,
         ).start()
+        KastStructuredTrace.event(
+            eventName = "idea.runtime.server_started",
+            project = project,
+            workspaceRoot = workspaceIdentity.workspaceRootPath,
+            fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
+            outcome = "completed",
+            detail = mapOf("transport" to transport.toString()) + workspaceIdentity.traceDetails(),
+        )
         diagnostics.recordBackendStarted(transport)
-        val projectIndexing = KastIdeaProjectIndexing(project, workspaceRoot, config, diagnostics).also { it.start() }
+        val projectIndexing = KastIdeaProjectIndexing(project, workspaceIdentity, config, diagnostics).also { it.start() }
         return RunningKastIdeaBackend(
             backend = backend,
             server = server,
@@ -80,10 +109,19 @@ object KastIdeaBackendRuntime {
 
 internal class KastIdeaProjectIndexing(
     private val project: Project,
-    private val workspaceRoot: Path,
+    private val workspaceIdentity: IdeaWorkspaceIdentity,
     private val config: KastConfig,
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
 ) {
+    constructor(
+        project: Project,
+        workspaceRoot: Path,
+        config: KastConfig,
+        diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
+    ) : this(project, IdeaWorkspaceIdentity.fromProject(project, workspaceRoot, config.paths.descriptorDir.toPath()), config, diagnostics)
+
+    private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+
     private val cancelled = AtomicBoolean(false)
 
     @Volatile
@@ -95,38 +133,91 @@ internal class KastIdeaProjectIndexing(
     fun start() {
         if (indexingThread != null) return
         cancelled.set(false)
+        KastStructuredTrace.event(
+            eventName = "idea.index.waiting_for_smart_mode",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+            detail = workspaceIdentity.traceDetails(),
+        )
         diagnostics.recordIndexWaitingForIde()
         DumbService.getInstance(project).runWhenSmart {
             if (cancelled.get() || project.isDisposed) return@runWhenSmart
+            KastStructuredTrace.event(
+                eventName = "idea.index.smart_mode_ready",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                detail = workspaceIdentity.traceDetails(),
+            )
             indexingThread = thread(
                 start = true,
                 isDaemon = true,
                 name = "kast-idea-project-indexer",
             ) {
                 runCatching {
+                    KastStructuredTrace.event(
+                        eventName = "idea.index.hydrating",
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                        detail = workspaceIdentity.traceDetails(),
+                    )
                     diagnostics.recordIndexHydrating()
                     runCatching {
                         SourceIndexHydrator().hydrate(workspaceRoot, config.indexing.remote)
                     }.onFailure { error ->
                         LOG.warn("Kast IDEA remote source index hydration failed", error)
                     }
-                    val store = SqliteSourceIndexStore(workspaceRoot)
+                    val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
                     indexStore = store
+                    KastStructuredTrace.event(
+                        eventName = "idea.index.started",
+                        project = project,
+                        workspaceRoot = workspaceRoot,
+                        fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                        detail = workspaceIdentity.traceDetails(),
+                    )
                     diagnostics.recordIndexingStarted()
                     IdeaProjectIndexer(
                         project = project,
                         workspaceRoot = workspaceRoot,
                         store = store,
                         cancelled = { cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
+                        workspaceIdentity = workspaceIdentity.workspaceIdentity,
                     ).indexProject(config)
                     store.loadKastSourceIndexSummary()
                 }.onSuccess { summary ->
                     if (!cancelled.get()) {
+                        KastStructuredTrace.event(
+                            eventName = "idea.index.completed",
+                            project = project,
+                            workspaceRoot = workspaceRoot,
+                            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                            outcome = "completed",
+                            detail = mapOf(
+                                "fileCount" to summary.fileCount,
+                                "identifierCount" to summary.identifierCount,
+                                "moduleCount" to summary.moduleCount,
+                                "importCount" to summary.importCount,
+                            ) + workspaceIdentity.traceDetails(),
+                        )
                         diagnostics.recordIndexCompleted(summary)
                         LOG.info("Kast IDEA project index completed")
                     }
                 }.onFailure { error ->
                     if (!cancelled.get()) {
+                        KastStructuredTrace.event(
+                            eventName = "idea.index.failed",
+                            project = project,
+                            workspaceRoot = workspaceRoot,
+                            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                            outcome = "failed",
+                            detail = mapOf(
+                                "errorClass" to error::class.qualifiedName,
+                                "message" to error.message,
+                            ) + workspaceIdentity.traceDetails(),
+                        )
                         diagnostics.recordIndexFailed(error)
                         LOG.warn("Kast IDEA project index failed", error)
                     }
@@ -149,6 +240,14 @@ internal class KastIdeaProjectIndexing(
         }
         indexStore = null
         if (wasRunning) {
+            KastStructuredTrace.event(
+                eventName = "idea.index.cancelled",
+                project = project,
+                workspaceRoot = workspaceRoot,
+                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+                outcome = "cancelled",
+                detail = workspaceIdentity.traceDetails(),
+            )
             diagnostics.recordIndexCancelled()
         }
     }

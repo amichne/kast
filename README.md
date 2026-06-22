@@ -12,7 +12,8 @@ are real, or whether a planned edit is safe to apply.
 
 Keep the install scopes separate:
 
-- **Machine install:** put the global `kast` binary on the machine once.
+- **Machine install:** put the global `kast` binary and version-coupled IDEA
+  plugin on the machine once.
 - **Repository install:** add Copilot integration files to each repository
   where agents should use Kast.
 
@@ -22,12 +23,13 @@ package to a repository:
 ```console
 brew tap amichne/kast
 brew install kast
-brew install --cask kast-plugin
 
 cd /path/to/your/repository
 kast install copilot
 ```
 
+`brew install kast` installs or refreshes the matching `kast-plugin` cask, the
+same cask path exposed by `brew install --cask kast-plugin` for direct repair.
 Restart IDEA or Android Studio after Homebrew links or refreshes the plugin.
 The repository install writes managed files under `.github`, including the LSP
 config, Kotlin instructions, `kast-reader`, `kast-writer`, and
@@ -44,8 +46,8 @@ kast up --backend=headless
 ```
 
 The [install guide](https://kast.michne.com/getting-started/install/) covers
-the Homebrew CLI and IDEA plugin, repository Copilot files, and repair
-commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+the Homebrew CLI and IDEA plugin, repository Copilot files, manifest-backed
+paths, and repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
 covers server and hosted-agent installs.
 
 ## Why Kast instead of text search?

@@ -14,7 +14,6 @@ idea = "2025.3"
 gradle-tooling-api = "9.4.0"
 opentelemetry = "1.62.0"
 sqlite-jdbc = "3.53.2.0"
-hoplite = "2.9.0"
 json-schema-validator = "3.0.3"
 
 [libraries]
@@ -38,8 +37,6 @@ opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref
 opentelemetry-sdk = { module = "io.opentelemetry:opentelemetry-sdk", version.ref = "opentelemetry" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
-hoplite-core = { module = "com.sksamuel.hoplite:hoplite-core", version.ref = "hoplite" }
-hoplite-toml = { module = "com.sksamuel.hoplite:hoplite-toml", version.ref = "hoplite" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 
 [bundles]
@@ -51,11 +48,6 @@ test = [
 coroutines = [
     "coroutines-core",
     "coroutines-jdk8",
-]
-
-hoplite = [
-    "hoplite-core",
-    "hoplite-toml",
 ]
 
 [plugins]

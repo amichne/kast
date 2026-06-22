@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 # kast.sh - repo-local Kast build tooling
 #
-# Subcommands:
-#   build    Build portable distribution artifacts  ->  dist/
-#   install  Retired; use Homebrew or scripts/install-ubuntu-debian.sh
-#
-# Explicit subcommand:
+# Usage:
 #   ./kast.sh build [plugin] [headless] [--all]
-#   ./kast.sh install  # prints the supported install paths
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
@@ -325,44 +320,19 @@ USAGE
 
 usage_main() {
   cat >&2 << 'USAGE'
-Usage: ./kast.sh <subcommand> [options]
+Usage: ./kast.sh build [target...] [options]
 
-Subcommands:
-  build    Build portable distribution artifacts  ->  dist/
-  install  Show the supported install paths
+Build portable distribution artifacts into dist/.
 
-Run ./kast.sh <subcommand> --help for subcommand-specific options.
-
-Recommended local CLI install:
-  brew tap amichne/kast
-  brew install kast
-
-Ubuntu/Debian install:
-  ./scripts/install-ubuntu-debian.sh install
+Run ./kast.sh build --help for target and option details.
 USAGE
-}
-
-cmd_install_retired() {
-  cat >&2 <<'USAGE'
-The kast.sh shell installer is retired.
-
-Supported install paths:
-  brew tap amichne/kast && brew install kast
-  ./scripts/install-ubuntu-debian.sh install
-USAGE
-  exit 2
 }
 
 main() {
   local cmd="${1:-}"
 
-  if [[ -z "$SCRIPT_DIR" ]] && [[ -z "$cmd" || "$cmd" == --* ]]; then
-    cmd_install_retired
-  fi
-
   case "$cmd" in
     build)          shift; cmd_build "$@" ;;
-    install)        shift; cmd_install_retired "$@" ;;
     --help|-h|help) usage_main ;;
     "")             usage_main; exit 1 ;;
     *)              die "Unknown subcommand: ${cmd}. Run ./kast.sh --help for usage." ;;

@@ -43,7 +43,7 @@ skills and `kast rpc`. It embeds the command families, flow-oriented
 building blocks, and request fields that callers compose into larger
 automation flows.
 
-Catalog version: `dev`. Methods: `29`.
+Catalog version: `dev`. Methods: `31`.
 
 #### Method families
 
@@ -51,7 +51,7 @@ The families below are the top-level namespaces accepted by `kast rpc`.
 
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
-| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`capabilities` |
+| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Rust-owned SQLite source-index queries for metrics and impact views. | sqlite | `database/metrics` |
@@ -81,6 +81,8 @@ uses a discriminated response envelope.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `health` | `system` | backend | Basic health check | none | none | `HealthResponse` | single result |
 | `runtime/status` | `system` | backend | Detailed runtime state including indexing progress | none | none | `RuntimeStatusResponse` | single result |
+| `runtime/shutdown` | `system` | backend | Ask the runtime host to shut down after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
+| `runtime/restart` | `system` | backend | Ask the runtime host to restart after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
@@ -128,6 +130,24 @@ Response type: `HealthResponse`.
 No request parameters.
 
 Response type: `RuntimeStatusResponse`.
+
+</details>
+
+<details markdown="1">
+<summary><code>runtime/shutdown</code> - Ask the runtime host to shut down after this response is flushed</summary>
+
+No request parameters.
+
+Response type: `RuntimeLifecycleResponse`.
+
+</details>
+
+<details markdown="1">
+<summary><code>runtime/restart</code> - Ask the runtime host to restart after this response is flushed</summary>
+
+No request parameters.
+
+Response type: `RuntimeLifecycleResponse`.
 
 </details>
 

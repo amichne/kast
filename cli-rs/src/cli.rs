@@ -38,12 +38,16 @@ pub enum Command {
     Validate(ValidateArgs),
     /// Generate checked-in catalog-derived artifacts.
     Generate(GenerateArgs),
+    /// Package distribution artifacts.
+    Package(PackageArgs),
     /// Start or warm the workspace daemon.
     Up(RuntimeArgs),
     /// Check what backends are running.
     Status(RuntimeArgs),
     /// Stop the workspace daemon.
     Stop(RuntimeArgs),
+    /// Stop every matching runtime and start it again.
+    Restart(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
     /// Run the Language Server Protocol adapter over stdio.
@@ -55,41 +59,12 @@ pub enum Command {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Install or update local integrations and managed assets.
-    Setup(SetupArgs),
-    /// Install or repair Kast resources.
+    /// Inspect manifest-backed Kast path resolution.
+    Paths(PathsArgs),
+    /// Install scoped Kast resources.
     Install(InstallArgs),
     /// Verify the global Kast install is still healthy.
-    Doctor,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum BackendCommand {
-    /// Install one backend component from a release asset or local archive.
-    Install(BackendInstallArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct BackendInstallArgs {
-    /// Backend component to install.
-    #[arg(value_enum)]
-    pub backend: BackendComponent,
-    /// Local backend zip archive. When omitted, kast downloads the release asset.
-    #[arg(long)]
-    pub archive: Option<PathBuf>,
-    /// Release tag or version. Defaults to this CLI version.
-    #[arg(long)]
-    pub version: Option<String>,
-    /// Release directory URL containing backend zip, SHA256SUMS, and build-provenance.json.
-    /// Defaults to the matching GitHub release.
-    #[arg(long)]
-    pub base_url: Option<String>,
-    /// Disable TLS certificate verification for downloads; SHA256SUMS and provenance checks still run.
-    #[arg(long)]
-    pub insecure_skip_tls_verify: bool,
-    /// Replace an existing installed backend version.
-    #[arg(short = 'f', long)]
-    pub force: bool,
+    Doctor(DoctorArgs),
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -205,7 +180,7 @@ pub struct RpcArgs {
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
     /// Pin the command to a specific backend.
-    #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
+    #[arg(long = "backend", value_enum)]
     pub backend_name: Option<BackendName>,
 }
 
@@ -237,6 +212,38 @@ pub enum GenerateCommand {
 }
 
 #[derive(Debug, Args, Clone)]
+pub struct PackageArgs {
+    #[command(subcommand)]
+    pub command: PackageCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum PackageCommand {
+    /// Build the Ubuntu/Debian headless install bundle.
+    #[command(name = "ubuntu-debian-bundle")]
+    UbuntuDebianBundle(UbuntuDebianBundlePackageArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct UbuntuDebianBundlePackageArgs {
+    /// Rust CLI zip archive containing kast at the archive root.
+    #[arg(long)]
+    pub cli_archive: PathBuf,
+    /// Headless backend portable zip archive containing backend-headless/.
+    #[arg(long)]
+    pub backend_archive: PathBuf,
+    /// Release tag or version for the generated bundle.
+    #[arg(long)]
+    pub version: String,
+    /// Output tar.gz path. Defaults to dist/kast-ubuntu-debian-headless-x86_64-<version>.tar.gz.
+    #[arg(long = "bundle-output")]
+    pub bundle_output: Option<PathBuf>,
+    /// Repository root containing scripts/install-ubuntu-debian.sh and LICENSE.
+    #[arg(long, hide = true)]
+    pub repo_root: Option<PathBuf>,
+}
+
+#[derive(Debug, Args, Clone)]
 pub struct GenerateContractArgs {
     /// Fail if generated contract artifacts are stale.
     #[arg(long)]
@@ -258,7 +265,7 @@ pub struct RuntimeArgs {
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
     /// Pin the command to a specific backend.
-    #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
+    #[arg(long = "backend", value_enum)]
     pub backend_name: Option<BackendName>,
     /// IDEA Community installation home for the headless backend.
     #[arg(long, hide = true)]
@@ -305,17 +312,6 @@ pub struct RuntimeArgs {
     /// OTLP endpoint override while profiling is enabled.
     #[arg(long, hide = true)]
     pub profile_otlp_endpoint: Option<String>,
-    /// Release tag or version for the retired headless auto-install fallback.
-    #[arg(long, hide = true)]
-    pub install_version: Option<String>,
-    /// Release directory URL for the retired headless auto-install fallback.
-    #[arg(long, hide = true)]
-    pub install_base_url: Option<String>,
-    /// Disable TLS certificate verification for the retired download fallback.
-    #[arg(long, hide = true)]
-    pub install_insecure_skip_tls_verify: bool,
-    #[arg(skip = false)]
-    pub auto_install_headless: bool,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -324,7 +320,7 @@ pub struct DaemonStartArgs {
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
     /// Backend runtime to launch. Defaults to headless.
-    #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
+    #[arg(long = "backend", value_enum)]
     pub backend_name: Option<BackendName>,
     /// Override the directory containing backend runtime classpath.txt.
     #[arg(long)]
@@ -379,7 +375,7 @@ pub struct LspArgs {
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
     /// Pin LSP requests to a specific backend.
-    #[arg(long = "backend", visible_alias = "backend-name", value_enum)]
+    #[arg(long = "backend", value_enum)]
     pub backend_name: Option<BackendName>,
     /// Maximum time to wait for a ready daemon when LSP needs one.
     #[arg(long, default_value_t = 60_000)]
@@ -410,106 +406,40 @@ impl From<RuntimeArgs> for DaemonStartArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct SetupArgs {
-    /// Replace existing installed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Skip global config and managed asset repair.
+pub struct PathsArgs {
+    /// Absolute workspace root for workspace-local config inspection.
     #[arg(long)]
-    pub skip_repair: bool,
-    /// Shell to install integration for. Defaults to the current SHELL.
-    #[arg(long, value_enum)]
-    pub shell: Option<ShellKind>,
-    /// Skip shell PATH and completion integration.
+    pub workspace_root: Option<PathBuf>,
+    /// Show the IDEA host path view.
     #[arg(long)]
-    pub skip_shell: bool,
-    /// Skip headless backend installation or refresh.
+    pub idea: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct DoctorArgs {
+    /// Repair the install manifest and managed install state. Plain doctor is read-only.
     #[arg(long)]
-    pub skip_headless: bool,
-    /// Skip IDEA plugin installation or profile linking.
-    #[arg(long)]
-    pub skip_plugin: bool,
-    /// Local headless backend zip archive for refreshing an existing headless install.
-    #[arg(long)]
-    pub headless_archive: Option<PathBuf>,
-    /// Release tag or version for refreshing an existing headless install.
-    #[arg(long)]
-    pub version: Option<String>,
-    /// Release directory URL used when refreshing an existing headless install.
-    #[arg(long)]
-    pub base_url: Option<String>,
-    /// Install the packaged kast skill into the configured target directory.
-    #[arg(long)]
-    pub include_skill: bool,
-    /// Skip packaged kast skill installation even when --include-skill is present.
-    #[arg(long)]
-    pub skip_skill: bool,
-    /// Target root directory for --include-skill.
-    #[arg(long)]
-    pub skill_target_dir: Option<PathBuf>,
-    /// Install the packaged Copilot LSP, instructions, agents, and extension tools.
-    #[arg(long)]
-    pub include_copilot: bool,
-    /// Skip packaged Copilot LSP plugin installation even when --include-copilot is present.
-    #[arg(long)]
-    pub skip_copilot: bool,
-    /// Target .github directory for --include-copilot.
-    #[arg(long)]
-    pub copilot_target_dir: Option<PathBuf>,
-    /// Enable repository Copilot/LSP profile installation when IDEA opens Gradle projects.
-    #[arg(long, conflicts_with = "no_project_open_profile_auto_init")]
-    pub project_open_profile_auto_init: bool,
-    /// Disable repository Copilot/LSP profile installation when IDEA opens Gradle projects.
-    #[arg(long)]
-    pub no_project_open_profile_auto_init: bool,
-    /// Project-open profile to install. Currently only copilot-lsp is supported.
-    #[arg(long, value_enum)]
-    pub project_open_profile: Option<ProjectOpenProfileArg>,
-    /// Do not add managed Copilot/LSP package paths to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Link the Homebrew cask into local JetBrains IDE profiles.
-    #[arg(long, hide = true)]
-    pub link_jetbrains_profiles: bool,
-    /// JetBrains config root containing IDE profile directories.
-    #[arg(long)]
-    pub jetbrains_config_root: Option<PathBuf>,
+    pub repair: bool,
 }
 
 #[derive(Debug, Args, Clone)]
 pub struct InstallArgs {
     #[command(subcommand)]
-    pub command: Option<InstallCommand>,
-    /// Absolute path to a portable Kast zip archive to install.
-    #[arg(long, hide = true)]
-    pub archive: Option<PathBuf>,
-    /// Instance name for the installed build.
-    #[arg(long, hide = true)]
-    pub instance: Option<String>,
-    /// Root directory for instances.
-    #[arg(long, hide = true)]
-    pub instances_root: Option<PathBuf>,
-    /// Directory for launcher scripts.
-    #[arg(long, hide = true)]
-    pub bin_dir: Option<PathBuf>,
+    pub command: InstallCommand,
 }
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum InstallCommand {
-    /// Install the headless JVM backend from an internal archive.
-    #[command(hide = true)]
-    Headless(HeadlessInstallArgs),
-    /// Audit and repair stale Kast installs, resources, and profile links.
-    Affected(AffectedInstallArgs),
+    /// Activate a portable Kast install bundle from its bundled manifest.
+    #[command(name = "activate-bundle")]
+    ActivateBundle(ActivateBundleArgs),
     /// Install the packaged kast skill into the current workspace.
     Skill(ResourceInstallArgs),
     /// Install portable agent instruction files.
     Instructions(ResourceInstallArgs),
     /// Install the packaged Copilot LSP, instructions, agents, and extension tools.
-    #[command(alias = "copilot-extension")]
     Copilot(CopilotInstallArgs),
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
-    #[command(alias = "idea-plugin", alias = "developer-plugin")]
     Plugin(IdeaPluginInstallArgs),
     /// Install shell PATH and completion integration.
     Shell(ShellInstallArgs),
@@ -518,7 +448,26 @@ pub enum InstallCommand {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct AffectedInstallArgs {
+pub struct ActivateBundleArgs {
+    /// Extracted bundle directory or bundle .tar.gz archive.
+    #[arg(long)]
+    pub source: PathBuf,
+    /// Managed install root. Defaults to KAST_INSTALL_ROOT or ~/.local/share/kast.
+    #[arg(long)]
+    pub install_root: Option<PathBuf>,
+    /// Directory for the kast shim. Defaults to ~/.local/bin.
+    #[arg(long)]
+    pub bin_dir: Option<PathBuf>,
+    /// Kast config home. Defaults to KAST_CONFIG_HOME or ~/.config/kast.
+    #[arg(long)]
+    pub config_home: Option<PathBuf>,
+    /// Validate the bundle and current install without changing files.
+    #[arg(long)]
+    pub verify_only: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct InstallRepairArgs {
     /// Apply the planned repairs. Without this flag, no files are changed.
     #[arg(long)]
     pub apply: bool,
@@ -535,25 +484,6 @@ pub struct CompletionArgs {
     /// Command name to embed in completion output. Defaults to kast.
     #[arg(long)]
     pub command_name: Option<String>,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct HeadlessInstallArgs {
-    /// Local backend zip archive to refresh an existing Linux headless tarball install.
-    #[arg(long)]
-    pub archive: Option<PathBuf>,
-    /// Version label to record for the local archive. Defaults to this CLI version.
-    #[arg(long)]
-    pub version: Option<String>,
-    /// Retired standalone backend release URL option.
-    #[arg(long)]
-    pub base_url: Option<String>,
-    /// Retired standalone backend download TLS option.
-    #[arg(long)]
-    pub insecure_skip_tls_verify: bool,
-    /// Replace an existing installed backend version.
-    #[arg(short = 'f', long)]
-    pub force: bool,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -621,11 +551,6 @@ pub struct CopilotInstallArgs {
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub enum ProjectOpenProfileArg {
-    CopilotLsp,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ShellKind {
     Bash,
     Zsh,
@@ -658,19 +583,6 @@ impl BackendName {
     pub fn canonical(self) -> &'static str {
         match self {
             Self::Idea => "idea",
-            Self::Headless => "headless",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub enum BackendComponent {
-    Headless,
-}
-
-impl BackendComponent {
-    pub fn canonical(self) -> &'static str {
-        match self {
             Self::Headless => "headless",
         }
     }

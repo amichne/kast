@@ -4,7 +4,7 @@
 
 The ideal setup is boring: `command -v kast` succeeds and agents run `kast`
 directly. Prefer a durable PATH install such as Homebrew or the managed
-`~/.kast/bin/kast` launcher over per-command absolute paths.
+`~/.local/bin/kast` shim over per-command absolute paths.
 
 ```console
 command -v kast
@@ -12,8 +12,8 @@ kast --help
 ```
 
 If `kast` is missing in an installed skill session, stop and report that setup
-blocker instead of switching to non-semantic Kotlin search. The installed skill
-does not ship bootstrap scripts; `kast setup` owns durable repair.
+blocker instead of switching to non-semantic Kotlin search. Use
+`kast doctor --repair` for broad install repair and manifest convergence.
 
 If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index

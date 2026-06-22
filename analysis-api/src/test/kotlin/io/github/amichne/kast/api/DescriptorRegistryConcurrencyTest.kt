@@ -1,22 +1,19 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.testing.InMemoryFileOperationsFixture
 import io.github.amichne.kast.testing.inMemoryFileOperations
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
-/**
- * GREEN test verifying DescriptorRegistry concurrency safety.
- *
- * With file-level locking via KastFileOperations.withLock, concurrent
- * register/delete operations from separate instances should serialize
- * correctly without lost updates.
- */
 class DescriptorRegistryConcurrencyTest {
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
 
     private fun descriptor(
         workspaceRoot: String = "/workspace",
@@ -30,13 +27,14 @@ class DescriptorRegistryConcurrencyTest {
         pid = pid,
     )
 
+    private fun readDescriptors(path: String, fixture: InMemoryFileOperationsFixture): List<ServerInstanceDescriptor> =
+        json.decodeFromString(fixture.fileOps.readText(path))
+
     @Test
     fun `concurrent registrations from separate instances preserve all updates`() {
-        // Arrange: Two separate DescriptorRegistry instances for same file
         val fixture = inMemoryFileOperations()
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
 
-        // Act: Register many descriptors concurrently from separate instances
         val numRegistrations = 20
         val errors = AtomicInteger(0)
         val startLatch = CountDownLatch(1)
@@ -66,9 +64,7 @@ class DescriptorRegistryConcurrencyTest {
 
         assertEquals(0, errors.get(), "No errors should occur during registration")
 
-        // Assert: All descriptors should survive (no lost updates)
-        val finalRegistry = DescriptorRegistry(daemonsPath, fixture.fileOps)
-        val listed = finalRegistry.list()
+        val listed = readDescriptors(daemonsPath, fixture)
 
         assertEquals(
             numRegistrations,
@@ -76,15 +72,13 @@ class DescriptorRegistryConcurrencyTest {
             "All $numRegistrations registrations should survive with file-level locking"
         )
 
-        // Verify all expected descriptors are present
         val expectedPids = (0 until numRegistrations).map { 100L + it }.toSet()
-        val actualPids = listed.map { it.descriptor.pid }.toSet()
+        val actualPids = listed.map { it.pid }.toSet()
         assertEquals(expectedPids, actualPids, "All PIDs should be present")
     }
 
     @Test
     fun `concurrent mixed operations from separate instances preserve consistency`() {
-        // Arrange: Pre-populate with some descriptors
         val fixture = inMemoryFileOperations()
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
 
@@ -96,12 +90,10 @@ class DescriptorRegistryConcurrencyTest {
             ).also { initialRegistry.register(it) }
         }
 
-        // Act: Concurrent deletes and registrations
         val errors = AtomicInteger(0)
         val startLatch = CountDownLatch(1)
         val threads = mutableListOf<Thread>()
 
-        // Delete half the descriptors concurrently
         for (i in 0 until 5) {
             val registry = DescriptorRegistry(daemonsPath, fixture.fileOps)
             val descriptor = initialDescriptors[i]
@@ -118,7 +110,6 @@ class DescriptorRegistryConcurrencyTest {
             threads.add(thread)
         }
 
-        // Register new descriptors concurrently
         for (i in 10 until 20) {
             val registry = DescriptorRegistry(daemonsPath, fixture.fileOps)
             val descriptor = descriptor(
@@ -143,9 +134,7 @@ class DescriptorRegistryConcurrencyTest {
 
         assertEquals(0, errors.get(), "No errors should occur during operations")
 
-        // Assert: Should have 5 remaining + 10 new = 15 total
-        val finalRegistry = DescriptorRegistry(daemonsPath, fixture.fileOps)
-        val listed = finalRegistry.list()
+        val listed = readDescriptors(daemonsPath, fixture)
 
         assertEquals(
             15,
@@ -153,8 +142,7 @@ class DescriptorRegistryConcurrencyTest {
             "Should have 15 descriptors after concurrent delete+register"
         )
 
-        // Verify deleted descriptors are gone
-        val finalPids = listed.map { it.descriptor.pid }.toSet()
+        val finalPids = listed.map { it.pid }.toSet()
         for (i in 0 until 5) {
             assertTrue(
                 100L + i !in finalPids,
@@ -162,7 +150,6 @@ class DescriptorRegistryConcurrencyTest {
             )
         }
 
-        // Verify new descriptors are present
         for (i in 10 until 20) {
             assertTrue(
                 100L + i in finalPids,
@@ -173,7 +160,6 @@ class DescriptorRegistryConcurrencyTest {
 
     @Test
     fun `concurrent registration of same descriptor is idempotent`() {
-        // Arrange: Multiple instances will try to register same descriptor
         val fixture = inMemoryFileOperations()
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
 
@@ -182,7 +168,6 @@ class DescriptorRegistryConcurrencyTest {
             pid = 42L
         )
 
-        // Act: Register same descriptor 10 times concurrently
         val numThreads = 10
         val errors = AtomicInteger(0)
         val startLatch = CountDownLatch(1)
@@ -208,15 +193,13 @@ class DescriptorRegistryConcurrencyTest {
 
         assertEquals(0, errors.get(), "No errors should occur during registration")
 
-        // Assert: Should have exactly 1 descriptor (idempotent)
-        val finalRegistry = DescriptorRegistry(daemonsPath, fixture.fileOps)
-        val listed = finalRegistry.list()
+        val listed = readDescriptors(daemonsPath, fixture)
 
         assertEquals(
             1,
             listed.size,
             "Concurrent registration of same descriptor should be idempotent"
         )
-        assertEquals(sharedDescriptor, listed.single().descriptor)
+        assertEquals(sharedDescriptor, listed.single())
     }
 }
