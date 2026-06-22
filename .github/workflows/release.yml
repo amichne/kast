@@ -670,7 +670,7 @@ jobs:
           backend_asset="headless-backend/headless.zip"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
           [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
-          cargo run --manifest-path cli-rs/Cargo.toml --locked -- \
+          cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
             package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$cli_asset" \

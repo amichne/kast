@@ -215,6 +215,7 @@ require_not_contains "$release_workflow" 'action_tag="v1"' "Kast releases must n
 require_not_contains "$release_workflow" "needs.publish-setup-kast-action.result" "Final release verification must not depend on the separate action repo"
 require_not_contains "$release_workflow" "needs.publish-maven-central.result == 'success' && needs.build-cli" "GitHub release publication must not depend on raw Maven Central job success"
 require_contains "$release_workflow" "build-linux-headless-tarball:" "Default release must build the Linux headless tarball"
+require_contains "$release_workflow" "cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked --" "Release workflow must name the Rust CLI binary explicitly"
 require_contains "$release_workflow" "package ubuntu-debian-bundle" "Default release must package the Linux headless tarball through the Rust packager"
 require_contains "$release_workflow" "scripts/package-devin-runtime.sh" "Default release must package the Devin-compatible headless runtime"
 require_contains "$release_workflow" "Ensure zstd is available" "Release workflow must install zstd when the runner image lacks it"
