@@ -289,7 +289,7 @@ jobs:
           [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
 
-          cargo run --manifest-path cli-rs/Cargo.toml --locked -- \
+          cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
             package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$KAST_RUST_CLI_ASSET" \
