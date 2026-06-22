@@ -144,6 +144,7 @@ require_contains "$ci_workflow" "v0.7.11-ci" "CI bundle tests must use a bundle 
 require_contains "$ci_workflow" 'bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"' "CI bundle tests must name the bundle from the doctor-compatible bundle version"
 require_contains "$ci_workflow" '--version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG"' "CI bundle tests must write the doctor-compatible version into the bundle manifest"
 require_not_contains "$ci_workflow" '--version "$KAST_RUST_CLI_TAG"' "CI bundle tests must not write the synthetic Rust CLI tag into the backend manifest"
+require_contains "$ubuntu_debian_validator" "docker pull --platform linux/amd64" "Ubuntu/Debian container validation must pre-pull matrix images with retry before docker run"
 require_contains "$ci_workflow" "Test Devin artifact packagers" "CI must test Devin runtime and Gradle cache packagers"
 require_not_contains "$ci_workflow" "npm --prefix setup-kast" "CI must not build a deleted in-repo setup-kast action"
 require_contains "$ci_workflow" "Test Devin snapshot build verifier" "CI must test the Devin snapshot build verifier"
