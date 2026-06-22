@@ -1,24 +1,26 @@
 ---
 title: Direct CLI usage
-description: When and how agents call `kast rpc` directly instead of through the packaged skill.
+description: When and how agents use the pipe-friendly Kast CLI fallback.
 icon: lucide/terminal
 ---
 
 # Direct CLI usage for agents
 
 Most agents should prefer the packaged skill or native `kast_*` tools.
-When the host needs a CLI fallback, use `kast rpc`: it forwards a raw
-JSON-RPC request and auto-ensures the daemon for backend-owned methods.
-SQLite-backed `database/metrics` and `symbol/query` are handled by the
-Rust CLI before daemon passthrough.
+When the host needs a CLI fallback, use `kast agent`: it emits a stable JSON
+envelope with `ok`, `method`, `request`, and either `result` or `error`.
+`kast agent` auto-ensures the daemon for backend-owned methods. SQLite-backed
+`database/metrics` and `symbol/query` are handled by the Rust CLI before daemon
+passthrough.
 
 Humans can still manage the daemon lifecycle explicitly with `kast up`,
 `kast status`, and `kast stop`.
 
 ## Method families
 
-The CLI accepts the same line-delimited JSON-RPC envelope for every
-family. Pick the family that matches the information you already have.
+Use flag aliases for shallow requests and `kast agent call <method>` for
+structured payloads. Pick the family that matches the information you already
+have.
 
 - `raw/*` methods take explicit file paths, offsets, or file lists and
   are documented in the generated [API reference](../reference/api-reference.md)
@@ -35,28 +37,30 @@ the raw backend projection.
 
 - The agent already has absolute paths or offsets from a previous response
 - It's chaining operations in a script or pipeline
-- It wants a JSON-RPC method the packaged skill does not expose directly
-- It needs `--request-file` for a larger structured payload
+- It wants a catalog method the packaged skill does not expose directly
+- It needs `--params-file` for a larger structured payload
 
 ## `raw/workspace-symbol` as the bridge when there's no offset
 
-No offset? Use the `raw/workspace-symbol` JSON-RPC method instead of
-grepping. It's a semantic declaration search.
+No offset? Use `kast agent workspace-symbol` instead of grepping. It's a
+semantic declaration search.
 
 === "Basic search"
 
     ```console title="Find declarations by name"
-    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":"HealthCheckService","maxResults":100,"regex":false,"includeDeclarationScope":false},"id":1}'
+    kast agent workspace-symbol --pattern HealthCheckService --max-results 100 --workspace-root "$PWD"
     ```
 
 === "Regex matching"
 
     ```console title="Pattern-based matching"
-    kast rpc '{"jsonrpc":"2.0","method":"raw/workspace-symbol","params":{"pattern":".*Service$","maxResults":100,"regex":true,"includeDeclarationScope":false},"id":1}'
+    kast agent workspace-symbol --pattern '.*Service$' --regex --max-results 100 --workspace-root "$PWD"
     ```
 
-```json hl_lines="4-5" title="Response — symbol metadata for each match"
+```json hl_lines="7-8" title="Response — symbol metadata for each match"
 {
+  "ok": true,
+  "method": "raw/workspace-symbol",
   "result": {
     "symbols": [
       {
@@ -70,46 +74,51 @@ grepping. It's a semantic declaration search.
       }
     ],
     "page": { "truncated": false }
-  },
-  "id": 1,
-  "jsonrpc": "2.0"
+  }
 }
 ```
 
 Feed `location.filePath` and `location.startOffset` from a match
-straight into `raw/resolve`, `raw/references`, or `raw/call-hierarchy` — no
+straight into `raw-resolve`, `raw-references`, or `raw-call-hierarchy` — no
 intermediate text search.
 
-## Inline JSON or request files
+## Flags, stdin, or params files
 
-Small requests fit inline as JSON-RPC payloads:
+Small requests should use flags:
 
-```console title="Inline JSON for ad hoc queries"
-kast rpc '{"jsonrpc":"2.0","method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"includeDeclarationScope":false,"includeDocumentation":false},"id":1}'
+```console title="Resolve a file position"
+kast agent raw-resolve --file-path /absolute/path/to/src/main/kotlin/App.kt --offset 42 --workspace-root "$PWD"
 ```
 
-Complex payloads — especially `raw/apply-edits`, which needs a structured
-edit plan — go through `--request-file`:
+Pipe a params object when a script already has structured data:
 
-```console title="Request file for structured payloads"
-kast rpc --request-file=/path/to/request.json
+```console title="Resolve by piped params"
+printf '%s\n' '{"symbol":"HealthCheckService","kind":"class"}' |
+  kast agent call symbol/resolve --workspace-root "$PWD"
 ```
 
-`request.json` should contain the full JSON-RPC envelope, including
-`jsonrpc`, `method`, `params`, and `id`.
+Complex payloads — especially `raw/apply-edits`, which needs a structured edit
+plan — go through `--params-file`:
+
+```console title="Params file for structured payloads"
+kast agent call raw/apply-edits --params-file=/path/to/params.json --workspace-root "$PWD"
+```
+
+`kast rpc` still exists as the raw transport escape hatch for compatibility and
+debugging, but agent-facing scripts should prefer `kast agent`.
 
 ## Reading the JSON
 
-Every `kast rpc` call returns a single JSON object on stdout. Stderr is
-human-readable noise (daemon startup, progress) that the agent can
-ignore.
+Every `kast agent` call returns a single JSON object on stdout. Stderr is
+human-readable noise (daemon startup, progress) that the agent can ignore.
 
 Things to check before claiming an answer:
 
-- **`result`** — every successful response wraps payload here
-- **`searchScope.exhaustive`** on `raw/references` — was the search complete?
-- **`stats.truncatedNodes`** on `raw/call-hierarchy` — was the tree cut off?
-- **`page.truncated`** on `raw/workspace-symbol` — were results capped?
+- **`ok`** — false means the operation failed even if transport succeeded
+- **`result`** — successful backend payloads are wrapped here
+- **`result.searchScope.exhaustive`** on `raw/references` — was the search complete?
+- **`result.stats.truncatedNodes`** on `raw/call-hierarchy` — was the tree cut off?
+- **`result.page.truncated`** on `raw/workspace-symbol` — were results capped?
 
 ## Next steps
 

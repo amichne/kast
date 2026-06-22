@@ -95,15 +95,14 @@ kast package ubuntu-debian-bundle \
 ## Devin and ephemeral agents
 
 Devin blueprints and other short-lived Linux x64 workspaces can use the
-prebuilt runtime action instead of running the Ubuntu/Debian installer directly.
+`kast-action` repository instead of running the Ubuntu/Debian installer directly.
 That path installs `kast` under `/opt/kast/current`, activates an install
 manifest, and seeds an optional read-only Gradle dependency cache.
 
-Use the [setup-kast action](../distribution/setup-kast-action.md) page for the
-blueprint snippet, inputs, credentials, and verification loop. The
-[runtime artifact contract](../distribution/runtime-artifact-contract.md)
-defines the artifact names, manifest schema, and cache layout that the action
-validates.
+The [runtime artifact contract](../distribution/runtime-artifact-contract.md)
+defines the artifact names, manifest schema, cache layout, and
+`kast-action@v2` compatibility smoke. Detailed action inputs and enterprise
+mirror guidance live in the sibling `kast-action` repository.
 
 ## Next steps
 

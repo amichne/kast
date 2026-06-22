@@ -7,11 +7,11 @@ icon: lucide/terminal
 # CLI cheat sheet
 
 A scannable index of the `kast` CLI. The public command tree is
-small: lifecycle commands, install/manage commands, validation
-helpers, and `rpc` for the analysis contract. Common flags only;
-run `kast <command> --help` for the full set.
+small: lifecycle commands, install/manage commands, and validation
+helpers. Agent-facing pipe commands live under the hidden `kast agent`
+surface. Common flags only; run `kast <command> --help` for the full set.
 
-Lifecycle, metrics, demo, and RPC commands default to the current
+Lifecycle, metrics, demo, and agent commands default to the current
 workspace. When run from a subdirectory, Kast walks up to
 `settings.gradle.kts`, `settings.gradle`, `build.gradle.kts`,
 `build.gradle`, or `.kast`. Use `--workspace-root` only when you
@@ -31,9 +31,10 @@ structured payload:
 kast --output json status
 ```
 
-`kast rpc` is the raw JSON-RPC transport and always returns the backend
-contract response on stdout. `kast lsp --stdio` is the Language Server
-Protocol adapter and writes LSP-framed JSON-RPC messages on stdout.
+`kast agent` is the pipe-friendly command surface for agents and always emits a
+single JSON envelope on stdout. `kast rpc` remains available as the raw
+JSON-RPC transport/debug escape hatch. `kast lsp --stdio` is the Language
+Server Protocol adapter and writes LSP-framed JSON-RPC messages on stdout.
 
 ## Workspace lifecycle
 
@@ -47,14 +48,14 @@ command.
 | `kast install activate-bundle` | Activate an extracted or archived portable install bundle.              | `--source`, `--install-root`, `--bin-dir`, `--verify-only` |
 | `kast up`               | Start the backend if needed and print the selected runtime summary.          | `--backend`, `--output`                            |
 | `kast status`           | Report whether a backend is running and what state it is in.                 | `--output`                                         |
-| `kast rpc …runtime/status…` | Return the machine-readable runtime status response.                     | JSON argument or `--request-file`                  |
-| `kast rpc …raw/workspace-refresh…` | Manually request a workspace refresh through raw JSON-RPC.           | JSON argument or `--request-file`                  |
+| `kast agent runtime-status` | Return the machine-readable runtime status response.                     | `--workspace-root`, `--backend`                    |
+| `kast agent raw-workspace-refresh` | Manually request a workspace refresh.                              | `--file-path`, `--workspace-root`                  |
 | `kast stop`             | Shut the backend down cleanly and print what was removed.                    | `--output`                                         |
 | `kast capabilities`     | Summarize which JSON-RPC methods this backend supports.                       | `--output`                                         |
 | `kast paths`            | Print the manifest-backed resolved path model.                               | `--workspace-root`, `--idea`, `--output`           |
 | `kast doctor`           | Verify install metadata, config validity, canonical paths, and binary linkage. | `--repair`, `--output`                           |
 | `kast lsp --stdio`      | Run the Language Server Protocol adapter over stdio.                          | `--workspace-root`, `--backend`                    |
-| `kast rpc …health…`     | Lightweight liveness ping. Returns immediately.                               | JSON argument or `--request-file`                  |
+| `kast agent health`     | Lightweight liveness ping. Returns immediately.                               | `--workspace-root`, `--backend`                    |
 
 ## Read operations
 
@@ -95,8 +96,8 @@ state `kast` planned against is the state `kast` writes to.
 ## Operator-level RPC methods
 
 The packaged skill and Copilot LSP plugin also use generated `symbol/*`
-and `database/*` methods. They live in the same `kast rpc` transport,
-but their exact request shapes come from
+and `database/*` methods. Prefer `kast agent` when invoking them from shell;
+their exact request shapes come from
 `cli-rs/resources/kast-skill/references/commands.json`, not from the OpenAPI
 projection.
 
@@ -176,8 +177,8 @@ Not every command targets the same audience. `kast` organizes
 its surface into two tiers — both fully supported.
 
 **Tier 1 (primary path):** `up`, `status`, `stop`, `capabilities`,
-`rpc`, and `lsp`. The default operational flow starts or checks a workspace
-session with readable CLI summaries, then sends explicit JSON-RPC requests or
+`agent`, and `lsp`. The default operational flow starts or checks a workspace
+session with readable CLI summaries, then sends `kast agent` requests or
 LSP-framed requests for compiler-backed analysis and prepared rename.
 
 **Tier 2 (specialized RPC methods):** the `raw/*`, `symbol/*`, and

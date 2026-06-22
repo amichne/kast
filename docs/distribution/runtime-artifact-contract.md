@@ -12,9 +12,11 @@ blueprints and other short-lived agent workspaces. The goal is to install Kast
 from immutable artifacts and validate the install locally before spending a full
 release cycle on a remote snapshot.
 
-Use the [setup-kast action](setup-kast-action.md) page for blueprint snippets,
-action inputs, credentials, and operator verification. This page owns the
-artifact shape that release jobs, cache jobs, and setup clients must agree on.
+The sibling
+[`kast-action`](https://github.com/amichne/kast-action) repository owns the
+GitHub Action implementation and detailed action usage. This page owns the
+artifact shape that release jobs, cache jobs, and action consumers must agree
+on.
 
 ## Artifact set
 
@@ -34,16 +36,16 @@ gradle-ro-dep-cache.sha256
 
 `kast-runtime-manifest.json` is a sidecar, not only a file inside the tarball.
 That is intentional: a manifest cannot reliably contain the SHA-256 digest of
-the archive that contains the manifest itself. `setup-kast` validates the
+the archive that contains the manifest itself. `kast-action` validates the
 sidecar against the runtime tarball digest, then copies the manifest into the
 installed runtime directory.
 
 ## Runtime layout
 
 The runtime archive extracts into a directory that can be copied directly under
-the managed install version. `setup-kast` installs it at
-`/opt/kast/<version>` by default, writes `/opt/kast/install.json`, and
-maintains `/opt/kast/current`.
+the managed install version. Action consumers install it at
+`/opt/kast/<version>` by default, write `/opt/kast/install.json`, and maintain
+`/opt/kast/current`.
 
 ```text
 /opt/kast/
@@ -91,14 +93,27 @@ platforms, and digest mismatches are installation failures.
 }
 ```
 
-## Setup clients
+## Action compatibility
 
-`setup-kast` is the supported setup client for this artifact set. It is a
-Node 20 action under `setup-kast/` because Devin blueprints run GitHub Action
-steps and carry `GITHUB_ENV` and `GITHUB_PATH` writes into later steps.
+`kast-action@v2` is the supported action line for this artifact set. The action
+is intentionally low-level: callers provide the runtime artifact URL, runtime
+SHA-256, manifest URL, optional Gradle cache URL, and optional Gradle cache
+SHA-256. That keeps enterprise mirrors explicit and keeps artifact publication
+separate from action publication.
 
-The action page owns invocation details, input defaults, credential handling,
-and verification commands. Any new setup client must preserve the same runtime
+The `kast` monorepo owns the release artifacts and keeps one CI smoke that
+installs those artifacts through `amichne/kast-action@v2`. The monorepo must
+not contain a GitHub coding-agent setup workflow, publish an in-repository
+action copy, or document action inputs beyond the compatibility boundary here.
+
+The Ubuntu/Debian server bundle is a separate install surface. It is packaged
+with `kast package ubuntu-debian-bundle` and activated by
+`kast install activate-bundle`; `scripts/install-ubuntu-debian.sh` is only the
+bootstrap and compatibility entrypoint for that bundle. Do not treat the server
+bundle as a replacement for the Marketplace action inputs unless the client is
+intentionally running the server installer path.
+
+Any new action consumer must preserve the same runtime
 manifest validation, install manifest activation, checksum validation,
 archive-safety checks, and workspace-local daemon-state boundary before it is
 treated as equivalent.
@@ -107,7 +122,7 @@ treated as equivalent.
 
 The read-only cache artifact must contain `gradle-ro/modules-2` at the archive
 root. Lock files and Gradle GC metadata are excluded before packaging, and
-`setup-kast` rejects cache artifacts that do not keep that shape.
+`kast-action` rejects cache artifacts that do not keep that shape.
 
 ```bash
 export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-seed"
@@ -118,32 +133,32 @@ scripts/package-gradle-ro-cache.sh \
   --output dist/gradle-ro-dep-cache.tar.zst
 ```
 
-`setup-kast` installs the cache under `/opt/kast/cache/gradle-ro` and exports
+`kast-action` installs the cache under `/opt/kast/cache/gradle-ro` and exports
 `GRADLE_RO_DEP_CACHE` plus a writable `GRADLE_USER_HOME=$HOME/.gradle`. The
 installed cache tree is made non-writable after extraction so sessions cannot
 silently mutate the snapshot seed.
 
 `scripts/verify-setup-kast-install.sh` fails if `command -v kast` resolves to a
 different binary than `<install-dir>/bin/kast`. Keep `/opt/kast/current/bin`
-ahead of any global Kast install in blueprint `PATH` setup so snapshots do not
-silently exercise a stale machine-level binary.
+ahead of any global Kast install in hosted-workspace `PATH` setup so snapshots
+do not silently exercise a stale machine-level binary.
 
 ## Contract verification
 
-Artifact changes need proof at three boundaries: packaging, action install, and
-external snapshot build. Keep fast fixture checks close to `setup-kast`, then
-prove the real runtime path before publication.
+Artifact changes need proof at three boundaries: packaging, action
+compatibility, and external snapshot build. The action repository owns its own
+fixture tests; this monorepo proves that current artifacts still install
+through `kast-action@v2`.
 
 ```bash
 .github/scripts/test-devin-artifact-packagers.sh
-.github/scripts/test-setup-kast-action.sh
-.github/scripts/test-setup-kast-real-artifacts.sh
+./scripts/smoke-ubuntu-debian-bundle.sh
 .github/scripts/test-devin-snapshot-build-verifier.sh
 ```
 
-CI also has a `setup-kast runtime artifact` job. It consumes the real Linux CLI
-and headless backend artifacts from earlier CI jobs, packages the runtime,
-invokes `setup-kast` as a local GitHub Action, runs
+CI also has a `kast-action runtime contract` job. It consumes the real Linux
+CLI and headless backend artifacts from earlier CI jobs, packages the runtime,
+invokes `amichne/kast-action@v2`, runs
 `scripts/verify-setup-kast-install.sh`, starts the installed headless backend on
 a tiny Kotlin workspace, and verifies that daemon state stays out of the install
 tree. The verifier also passes `--gradle-root "$GITHUB_WORKSPACE"` so CI proves

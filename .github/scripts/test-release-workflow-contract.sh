@@ -68,7 +68,6 @@ ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
 devin_packager_test="${repo_root}/.github/scripts/test-devin-artifact-packagers.sh"
 devin_snapshot_build_verifier_test="${repo_root}/.github/scripts/test-devin-snapshot-build-verifier.sh"
 runtime_artifact_contract="${repo_root}/docs/distribution/runtime-artifact-contract.md"
-setup_kast_action_doc="${repo_root}/docs/distribution/setup-kast-action.md"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -99,7 +98,6 @@ for path in \
   "$devin_packager_test" \
   "$devin_snapshot_build_verifier_test" \
   "$runtime_artifact_contract" \
-  "$setup_kast_action_doc" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -107,6 +105,8 @@ done
 
 [[ ! -e "${repo_root}/setup-kast" ]] || die "setup-kast action source must live in amichne/kast-action, not this repository"
 [[ ! -e "${repo_root}/.github/scripts/test-setup-kast-action.sh" ]] || die "setup-kast fixture tests must live in amichne/kast-action"
+[[ ! -e "${repo_root}/.github/workflows/copilot-setup-steps.yml" ]] || die "GitHub coding-agent setup workflow is obsolete"
+[[ ! -e "${repo_root}/docs/distribution/setup-kast-action.md" ]] || die "Detailed action docs must live in the kast-action repository"
 
 for workflow in "$ci_workflow" "$release_workflow" "$snapshot_workflow" "$docs_workflow" "$seed_gradle_ro_cache_workflow"; do
   require_not_contains "$workflow" "actions/cache@v4" "Workflow actions must not use the Node 20 cache action"
@@ -148,13 +148,14 @@ require_contains "$ci_workflow" "Test Devin artifact packagers" "CI must test De
 require_not_contains "$ci_workflow" "npm --prefix setup-kast" "CI must not build a deleted in-repo setup-kast action"
 require_contains "$ci_workflow" "Test Devin snapshot build verifier" "CI must test the Devin snapshot build verifier"
 require_contains "$ci_workflow" "Ensure zstd is available" "CI workflow contracts must install zstd before zstd-dependent local tests"
-require_contains "$ci_workflow" "setup-kast runtime artifact" "CI must install and start the real setup-kast runtime artifact"
-require_contains "$ci_workflow" "Package setup-kast runtime inputs" "CI must package setup-kast inputs from real Linux artifacts"
-require_contains "$ci_workflow" "uses: amichne/kast-action@v1" "CI must invoke the published setup action"
+require_contains "$ci_workflow" "kast-action runtime contract" "CI must install and start the real kast-action runtime contract"
+require_contains "$ci_workflow" "Package kast-action runtime inputs" "CI must package kast-action inputs from real Linux artifacts"
+require_contains "$ci_workflow" "uses: amichne/kast-action@v2" "CI must invoke the published kast-action v2 line"
+require_not_contains "$ci_workflow" "amichne/kast-action@v1" "CI must not invoke the old kast-action v1 line"
 require_not_contains "$ci_workflow" "uses: ./setup-kast" "CI must not invoke a deleted local setup-kast action"
 require_contains "$ci_workflow" "scripts/verify-setup-kast-install.sh" "CI must run the shared setup-kast install verifier"
-require_contains "$ci_workflow" "--workspace-id setup-kast-ci-smoke" "CI setup-kast verifier must use an explicit workspace id"
-require_contains "$ci_workflow" '--gradle-root "$GITHUB_WORKSPACE"' "CI setup-kast verifier must run a repo-level Gradle warm step after installation"
+require_contains "$ci_workflow" "--workspace-id kast-action-ci-smoke" "CI kast-action verifier must use an explicit workspace id"
+require_contains "$ci_workflow" '--gradle-root "$GITHUB_WORKSPACE"' "CI kast-action verifier must run a repo-level Gradle warm step after installation"
 require_contains "$ci_workflow" "Test CI Gradle retry helper" "CI must test the Gradle retry helper before using it"
 require_contains "$ci_workflow" "./scripts/ci-gradle-retry.sh" "CI Gradle steps must use retry helper for transient repository failures"
 require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
@@ -306,24 +307,13 @@ require_contains "$devin_snapshot_build_verifier" "ManageRepoBlueprints" "Devin 
 require_contains "$devin_snapshot_build_verifier_test" "fake Devin API" "Devin snapshot verifier test must use a local fake API"
 require_contains "$devin_snapshot_build_verifier_test" "build-ok" "Devin snapshot verifier test must cover successful polling"
 require_contains "$devin_snapshot_build_verifier_test" "build-failed" "Devin snapshot verifier test must cover terminal failure"
-require_contains "$setup_kast_action_doc" "authorization-header" "setup-kast action docs must document private artifact store credentials"
-require_contains "$setup_kast_action_doc" "github.com/amichne/kast/releases/download/v1.0.0/gradle-ro-dep-cache.tar.zst" "setup-kast action docs must show the public Gradle cache release URL"
-require_contains "$setup_kast_action_doc" "Public GitHub release assets do not need the authorization inputs" "setup-kast action docs must keep auth inputs scoped to private stores"
-require_contains "$setup_kast_action_doc" "never prints full HTTP artifact URLs" "setup-kast action docs must document secret-safe download diagnostics"
-require_contains "$setup_kast_action_doc" "streamed to disk" "setup-kast action docs must document large artifact memory behavior"
-require_contains "$setup_kast_action_doc" "Install artifact decompression tools" "setup-kast action docs must make zstd setup explicit for blueprints"
-require_contains "$setup_kast_action_doc" 'github.com/amichne/kast-action@v1' "setup-kast action docs must document the published marketplace action tag"
-require_contains "$setup_kast_action_doc" 'amichne/kast-action@v1' "setup-kast action docs must document GitHub Actions usage"
-require_not_contains "$setup_kast_action_doc" 'github.com/amichne/kast/setup-kast@v1' "setup-kast action docs must not reference the retired monorepo subpath action"
-require_contains "$setup_kast_action_doc" 'The action ref pins the installer implementation' "setup-kast action docs must distinguish action and runtime pins"
-require_contains "$setup_kast_action_doc" "command -v kast" "setup-kast action docs must keep blueprint validation independent of repo-local scripts"
-require_contains "$setup_kast_action_doc" "test -d /opt/kast/cache/gradle-ro/modules-2" "setup-kast action docs must validate the Gradle read-only cache in blueprint snippets"
-require_contains "$setup_kast_action_doc" 'requires `tar` and `zstd`' "setup-kast action docs must document setup-kast external decompression requirements"
-require_contains "$setup_kast_action_doc" 'version` must be a semver path segment' "setup-kast action docs must document version path safety"
-require_contains "$setup_kast_action_doc" "repo-level Gradle warm" "setup-kast action docs must document post-install Gradle warm verification"
-require_contains "$setup_kast_action_doc" "scripts/verify-devin-snapshot-build.sh" "setup-kast action docs must document the Devin snapshot build verifier"
-require_contains "$setup_kast_action_doc" "ManageOrgSnapshots" "setup-kast action docs must document Devin trigger permission requirements"
-require_contains "$setup_kast_action_doc" "ManageRepoBlueprints" "setup-kast action docs must document Devin polling permission requirements"
+require_contains "$runtime_artifact_contract" "kast-action@v2" "Runtime artifact docs must document kast-action v2 compatibility"
+require_contains "$runtime_artifact_contract" "sibling" "Runtime artifact docs must point detailed action docs to the sibling repository"
+require_contains "$runtime_artifact_contract" "low-level" "Runtime artifact docs must keep kast-action inputs low-level"
+require_contains "$runtime_artifact_contract" "kast-action runtime contract" "Runtime artifact docs must name the CI compatibility smoke"
+require_not_contains "$runtime_artifact_contract" "setup-kast action" "Runtime artifact docs must not publish setup-kast as the action name"
+require_not_contains "$runtime_artifact_contract" "amichne/kast-action@v1" "Runtime artifact docs must not document the old action line"
+require_not_contains "$runtime_artifact_contract" "Copilot Setup Steps" "Runtime artifact docs must not document obsolete GitHub coding-agent setup"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 
 printf '%s\n' "Release workflow contract passed"

@@ -317,7 +317,39 @@ fn smoke_core_cli_commands() {
         .output()
         .expect("help");
     assert!(help.status.success());
-    assert!(String::from_utf8_lossy(&help.stdout).contains("Usage: kast"));
+    let help_stdout = String::from_utf8_lossy(&help.stdout);
+    assert!(help_stdout.contains("Usage: kast"));
+    assert!(
+        !help_stdout.contains("agent"),
+        "hidden agent command should not appear in top-level help: {help_stdout}"
+    );
+    assert!(
+        !help_stdout.contains("rpc"),
+        "raw rpc transport should not appear in top-level help: {help_stdout}"
+    );
+
+    let agent_help = kast(&home, &config_home)
+        .args(["agent", "--help"])
+        .output()
+        .expect("agent help");
+    assert!(agent_help.status.success());
+    let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
+    assert!(agent_help_stdout.contains("call"));
+    assert!(agent_help_stdout.contains("raw-resolve"));
+
+    let invalid_agent_call = kast(&home, &config_home)
+        .args(["agent", "call", "symbol/resolve"])
+        .output()
+        .expect("agent validation failure");
+    assert!(
+        !invalid_agent_call.status.success(),
+        "missing required params should fail validation before dispatch"
+    );
+    let invalid_agent_json: serde_json::Value =
+        serde_json::from_slice(&invalid_agent_call.stdout).expect("agent validation json");
+    assert_eq!(invalid_agent_json["ok"], false);
+    assert_eq!(invalid_agent_json["method"], "symbol/resolve");
+    assert_eq!(invalid_agent_json["error"]["code"], "AGENT_REQUEST_INVALID");
 
     let install_help = kast(&home, &config_home)
         .args(["install", "--help"])
@@ -3001,8 +3033,8 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("raw/apply-edits"));
     assert!(skill.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("command -v kast"));
-    assert!(quickstart.contains("kast validate --request-file"));
-    assert!(quickstart.contains("kast rpc"));
+    assert!(quickstart.contains("kast agent call"));
+    assert!(quickstart.contains("raw transport/debug escape hatch"));
     assert!(quickstart.contains("kast metrics impact"));
     assert!(quickstart.contains("kast demo"));
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));

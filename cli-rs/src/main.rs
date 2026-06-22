@@ -1,3 +1,4 @@
+mod agent;
 mod bundle;
 mod catalog_schema;
 mod cli;
@@ -100,6 +101,7 @@ fn run(cli: Cli) -> Result<i32> {
             println!("{response}");
             Ok(0)
         }
+        Command::Agent(args) => agent::run(args),
         Command::Validate(args) => {
             let result = validate::run(args)?;
             output::print_json(&result)?;

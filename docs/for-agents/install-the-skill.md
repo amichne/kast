@@ -54,8 +54,8 @@ kast install copilot --target-dir=/absolute/path/to/repo/.github --force
 
 Use `kast install instructions` for agent hosts that can load Markdown
 instruction files but do not load the Copilot package or a full skill. The
-installed files cover direct CLI usage, JSON-RPC request workflows, and LSP
-startup.
+installed files cover direct CLI usage, the `kast agent` pipe workflow, raw RPC
+fallback, and LSP startup.
 
 ```console title="Install portable agent instructions"
 kast install instructions
@@ -81,8 +81,8 @@ kast install instructions --target-dir=/absolute/path/to/instructions --force
 
     - `README.md` explains when to use each file.
     - `cli.md` covers non-interactive CLI usage.
-    - `rpc.md` covers `kast rpc`, `kast validate`, and catalog-backed request
-      workflows.
+    - `rpc.md` covers `kast agent`, raw RPC fallback, and catalog-backed
+      request workflows.
     - `lsp.md` covers `kast lsp --stdio` and custom `kast/*` method discovery.
 
 ## Use the packaged skill fallback
@@ -149,5 +149,5 @@ fallback depending on the host.
 
 - [Talk to your agent](talk-to-your-agent.md) shows resolve-first prompt
   patterns.
-- [Direct CLI usage](direct-cli.md) explains `kast rpc` for hosts without
+- [Direct CLI usage](direct-cli.md) explains `kast agent` for hosts without
   native tools.

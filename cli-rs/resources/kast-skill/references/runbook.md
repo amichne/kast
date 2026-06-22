@@ -1,6 +1,8 @@
-# Kast RPC runbook
+# Kast raw RPC runbook
 
-This runbook shows the standard request-file harness for `kast rpc`.
+This runbook shows the raw request-file harness for `kast rpc`. Agents should
+copy the `kast agent` patterns from `quickstart.md` first; use this only when
+debugging the transport or preserving a full JSON-RPC envelope matters.
 
 ```sh
 KAST_TMP="$(mktemp -d)"

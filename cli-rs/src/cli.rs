@@ -32,8 +32,12 @@ pub enum Command {
     },
     /// Print the packaged CLI version.
     Version,
-    /// Send a raw JSON-RPC request to the workspace daemon.
+    /// Raw JSON-RPC transport escape hatch.
+    #[command(hide = true)]
     Rpc(RpcArgs),
+    /// Hidden agent-oriented pipe surface.
+    #[command(hide = true)]
+    Agent(AgentArgs),
     /// Validate a JSON-RPC request payload against the command catalog.
     Validate(ValidateArgs),
     /// Generate checked-in catalog-derived artifacts.
@@ -182,6 +186,521 @@ pub struct RpcArgs {
     /// Pin the command to a specific backend.
     #[arg(long = "backend", value_enum)]
     pub backend_name: Option<BackendName>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentArgs {
+    #[command(subcommand)]
+    pub command: AgentCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum AgentCommand {
+    /// Call any catalog method with params from flags, file, or stdin.
+    Call(AgentCallArgs),
+    /// Run the health RPC.
+    Health(AgentRuntimeArgs),
+    /// Read detailed backend runtime state.
+    RuntimeStatus(AgentRuntimeArgs),
+    /// Read advertised backend capabilities.
+    Capabilities(AgentRuntimeArgs),
+    /// Gather structural generation context for a Kotlin file.
+    Scaffold(AgentScaffoldArgs),
+    /// Rank candidate Kotlin declarations for a simple symbol name.
+    Discover(AgentDiscoverArgs),
+    /// Resolve a Kotlin symbol by name.
+    Resolve(AgentSymbolResolveArgs),
+    /// Find usages of a Kotlin symbol by name.
+    References(AgentSymbolReferencesArgs),
+    /// Expand a Kotlin call hierarchy by symbol name.
+    Callers(AgentSymbolCallersArgs),
+    /// Resolve the symbol at a file offset.
+    RawResolve(AgentRawResolveArgs),
+    /// Find references for the symbol at a file offset.
+    RawReferences(AgentRawReferencesArgs),
+    /// Expand call hierarchy from a file offset.
+    RawCallHierarchy(AgentRawCallHierarchyArgs),
+    /// Expand type hierarchy from a file offset.
+    RawTypeHierarchy(AgentRawTypeHierarchyArgs),
+    /// Find an insertion point near a file offset.
+    RawSemanticInsertionPoint(AgentRawSemanticInsertionPointArgs),
+    /// Read diagnostics for one or more files.
+    RawDiagnostics(AgentFilePathsArgs),
+    /// Rename the symbol at a file offset.
+    RawRename(AgentRawRenameArgs),
+    /// Optimize imports for one or more files.
+    RawOptimizeImports(AgentFilePathsArgs),
+    /// Refresh workspace state for optional files.
+    RawWorkspaceRefresh(AgentOptionalFilePathsArgs),
+    /// Read a hierarchical Kotlin file outline.
+    FileOutline(AgentFileOutlineArgs),
+    /// Search workspace symbols.
+    WorkspaceSymbol(AgentWorkspaceSymbolArgs),
+    /// Search workspace text.
+    WorkspaceSearch(AgentWorkspaceSearchArgs),
+    /// List workspace modules and optionally files.
+    WorkspaceFiles(AgentWorkspaceFilesArgs),
+    /// Find implementations from a file offset.
+    RawImplementations(AgentRawImplementationsArgs),
+    /// Read code actions at a file offset.
+    RawCodeActions(AgentRawCodeActionsArgs),
+    /// Read completions at a file offset.
+    RawCompletions(AgentRawCompletionsArgs),
+    /// Query source-index metrics through the RPC catalog.
+    Metrics(AgentMetricsArgs),
+}
+
+#[derive(Debug, Args, Clone, Default)]
+pub struct AgentRuntimeArgs {
+    /// Absolute workspace root for daemon lifecycle and RPC commands.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
+    /// Pin the command to a specific backend.
+    #[arg(long = "backend", value_enum)]
+    pub backend_name: Option<BackendName>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentCallArgs {
+    /// Catalog RPC method, such as symbol/resolve or raw/apply-edits.
+    pub method: String,
+    /// Params object, full JSON-RPC request, prior agent envelope, or nextRequest object.
+    #[arg(long)]
+    pub params: Option<String>,
+    /// JSON file containing params, a full JSON-RPC request, prior envelope, or nextRequest.
+    #[arg(long)]
+    pub params_file: Option<PathBuf>,
+    /// JSON file containing a full JSON-RPC request or pipe-compatible input object.
+    #[arg(long)]
+    pub request_file: Option<PathBuf>,
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentScaffoldArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub target_file: String,
+    #[arg(long)]
+    pub target_symbol: Option<String>,
+    #[arg(long, value_enum)]
+    pub mode: Option<AgentScaffoldMode>,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentDiscoverArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long)]
+    pub line: Option<u32>,
+    #[arg(long)]
+    pub code_snippet: Option<String>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    #[arg(long)]
+    pub include_declaration_scope: bool,
+    #[arg(long)]
+    pub max_results: Option<u32>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentSymbolResolveArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    #[arg(long)]
+    pub include_declaration_scope: bool,
+    #[arg(long)]
+    pub include_documentation: bool,
+    #[arg(long)]
+    pub surrounding_lines: Option<u32>,
+    #[arg(long)]
+    pub include_surrounding_members: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentSymbolReferencesArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    #[arg(long)]
+    pub include_declaration: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentSymbolCallersArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    #[arg(long, value_enum)]
+    pub direction: Option<AgentSymbolCallDirection>,
+    #[arg(long)]
+    pub depth: Option<u32>,
+    #[arg(long)]
+    pub max_total_calls: Option<u32>,
+    #[arg(long)]
+    pub max_children_per_node: Option<u32>,
+    #[arg(long)]
+    pub timeout_millis: Option<u32>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentPositionArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub file_path: String,
+    #[arg(long)]
+    pub offset: u64,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawResolveArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub include_declaration_scope: bool,
+    #[arg(long)]
+    pub include_documentation: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawReferencesArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub include_declaration: bool,
+    #[arg(long)]
+    pub include_usage_site_scope: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawCallHierarchyArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long, value_enum)]
+    pub direction: AgentRawCallDirection,
+    #[arg(long)]
+    pub depth: Option<u32>,
+    #[arg(long)]
+    pub max_total_calls: Option<u32>,
+    #[arg(long)]
+    pub max_children_per_node: Option<u32>,
+    #[arg(long)]
+    pub timeout_millis: Option<u32>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawTypeHierarchyArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long, value_enum)]
+    pub direction: Option<AgentRawTypeDirection>,
+    #[arg(long)]
+    pub depth: Option<u32>,
+    #[arg(long)]
+    pub max_results: Option<u32>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawSemanticInsertionPointArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub target: String,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentFilePathsArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long = "file-path", required = true)]
+    pub file_paths: Vec<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentOptionalFilePathsArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long = "file-path")]
+    pub file_paths: Vec<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawRenameArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub new_name: String,
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentFileOutlineArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub file_path: String,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkspaceSymbolArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub pattern: String,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentRawSymbolKind>,
+    #[arg(long)]
+    pub max_results: Option<u32>,
+    #[arg(long)]
+    pub regex: bool,
+    #[arg(long)]
+    pub include_declaration_scope: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkspaceSearchArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub pattern: String,
+    #[arg(long)]
+    pub regex: bool,
+    #[arg(long)]
+    pub max_results: Option<u32>,
+    #[arg(long)]
+    pub file_glob: Option<String>,
+    #[arg(long)]
+    pub case_sensitive: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkspaceFilesArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long)]
+    pub module_name: Option<String>,
+    #[arg(long)]
+    pub include_files: bool,
+    #[arg(long)]
+    pub max_files_per_module: Option<u32>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawImplementationsArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub max_results: Option<u32>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawCodeActionsArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub diagnostic_code: Option<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRawCompletionsArgs {
+    #[command(flatten)]
+    pub position: AgentPositionArgs,
+    #[arg(long)]
+    pub max_results: Option<u32>,
+    #[arg(long = "kind-filter")]
+    pub kind_filter: Vec<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentMetricsArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long, value_enum)]
+    pub metric: AgentMetric,
+    #[arg(long)]
+    pub limit: Option<u32>,
+    #[arg(long)]
+    pub symbol: Option<String>,
+    #[arg(long)]
+    pub depth: Option<u32>,
+    #[arg(long)]
+    pub file_glob: Option<String>,
+    #[arg(long)]
+    pub folder_filter: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentSymbolKind {
+    Class,
+    Interface,
+    Object,
+    Function,
+    Property,
+}
+
+impl AgentSymbolKind {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Class => "class",
+            Self::Interface => "interface",
+            Self::Object => "object",
+            Self::Function => "function",
+            Self::Property => "property",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentScaffoldMode {
+    Implement,
+    Replace,
+    Consolidate,
+    Extract,
+}
+
+impl AgentScaffoldMode {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Implement => "implement",
+            Self::Replace => "replace",
+            Self::Consolidate => "consolidate",
+            Self::Extract => "extract",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentSymbolCallDirection {
+    Incoming,
+    Outgoing,
+}
+
+impl AgentSymbolCallDirection {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Incoming => "incoming",
+            Self::Outgoing => "outgoing",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentRawCallDirection {
+    Incoming,
+    Outgoing,
+}
+
+impl AgentRawCallDirection {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Incoming => "INCOMING",
+            Self::Outgoing => "OUTGOING",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentRawTypeDirection {
+    Supertypes,
+    Subtypes,
+    Both,
+}
+
+impl AgentRawTypeDirection {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Supertypes => "SUPERTYPES",
+            Self::Subtypes => "SUBTYPES",
+            Self::Both => "BOTH",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentRawSymbolKind {
+    Class,
+    Interface,
+    Object,
+    Function,
+    Property,
+    Parameter,
+    Unknown,
+}
+
+impl AgentRawSymbolKind {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::Class => "CLASS",
+            Self::Interface => "INTERFACE",
+            Self::Object => "OBJECT",
+            Self::Function => "FUNCTION",
+            Self::Property => "PROPERTY",
+            Self::Parameter => "PARAMETER",
+            Self::Unknown => "UNKNOWN",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentMetric {
+    #[value(name = "fanIn")]
+    FanIn,
+    #[value(name = "fanOut")]
+    FanOut,
+    #[value(name = "deadCode")]
+    DeadCode,
+    Impact,
+    Coupling,
+    Search,
+    Graph,
+}
+
+impl AgentMetric {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::FanIn => "fanIn",
+            Self::FanOut => "fanOut",
+            Self::DeadCode => "deadCode",
+            Self::Impact => "impact",
+            Self::Coupling => "coupling",
+            Self::Search => "search",
+            Self::Graph => "graph",
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]

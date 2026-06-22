@@ -32,13 +32,22 @@ installed. That is the blocker; do not stop at the first missing-index result.
 
 The Rust `kast` command tree is the operator surface. Use `kast --help` and
 `kast <command> --help` for direct CLI commands such as `metrics`, `demo`,
-`up`, `status`, and `rpc`.
+`up`, and `status`. Agent and raw transport commands are hidden from top-level
+help but still have scoped help, such as `kast agent --help` and
+`kast rpc --help`.
+
+For shell pipelines, use the hidden `kast agent` surface instead of hand-written
+JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
+and either `result` or `error`; `kast agent call <method>` accepts params,
+full JSON-RPC requests, previous envelopes, and `nextRequest` objects through
+stdin or `--params-file`. `kast rpc` remains a raw transport/debug escape hatch,
+not the workflow agents should copy first.
 
 JSON-RPC request schemas, response types, discriminated variants, and
 field-level notes live in `references/commands.yaml` for reading and
 `references/commands.json` for tooling. Treat that catalog as the method
-contract for requests sent through `kast rpc`, not as a replacement for the
-Rust CLI help.
+contract for requests sent through `kast agent call`, not as a replacement for
+the Rust CLI help.
 
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use
@@ -51,48 +60,62 @@ before sending them.
 ```sh
 KAST_TMP="$(mktemp -d)"
 trap 'rm -rf "$KAST_TMP"' EXIT
-KAST_REQUEST="$KAST_TMP/request.json"
+KAST_PARAMS="$KAST_TMP/params.json"
 KAST_RESULT="$KAST_TMP/kast.json"
 KAST_STDERR="$KAST_TMP/kast.stderr"
 
-run_kast_rpc() {
-  printf '%s\n' "$1" >"$KAST_REQUEST"
-  kast validate --request-file "$KAST_REQUEST" >/dev/null
-  kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
+run_kast_agent() {
+  method="$1"
+  params="$2"
+  printf '%s\n' "$params" >"$KAST_PARAMS"
+  kast agent call "$method" --params-file "$KAST_PARAMS" \
+    --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 }
 
 # Query indexed declarations with tight bounds
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/query","params":{"query":"EventBean","modes":["exact","lexical"],"filters":{"relativePathPrefix":"src/"},"limit":10},"id":1}'
+run_kast_agent symbol/query '{"query":"EventBean","modes":["exact","lexical"],"filters":{"relativePathPrefix":"src/"},"limit":10}'
 
 # Secondary module summary; request file paths only with moduleName and a small cap
-run_kast_rpc '{"jsonrpc":"2.0","method":"raw/workspace-files","params":{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25},"id":1}'
+run_kast_agent raw/workspace-files '{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25}'
 
 # Resolve an ambiguous symbol
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean"},"id":1}'
+kast agent resolve --symbol date --kind property \
+  --containing-type com.example.EventBean --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Rank candidates before resolving
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/discover","params":{"symbol":"date","fileHint":"/abs/path/EventBean.kt","line":42,"codeSnippet":"val date = event.date","maxResults":5},"id":1}'
+run_kast_agent symbol/discover '{"symbol":"date","fileHint":"/abs/path/EventBean.kt","line":42,"codeSnippet":"val date = event.date","maxResults":5}'
 
 # Resolve with declaration context
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/resolve","params":{"symbol":"date","kind":"property","containingType":"com.example.EventBean","includeDeclarationScope":true,"includeDocumentation":true,"surroundingLines":3,"includeSurroundingMembers":true},"id":1}'
+kast agent resolve --symbol date --kind property \
+  --containing-type com.example.EventBean --include-declaration-scope \
+  --include-documentation --surrounding-lines 3 \
+  --include-surrounding-members --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Find usages
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/references","params":{"symbol":"EventBean","includeDeclaration":true},"id":1}'
+kast agent references --symbol EventBean --include-declaration \
+  --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Trace callers
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/callers","params":{"symbol":"process","direction":"incoming","depth":3},"id":1}'
+kast agent callers --symbol process --direction incoming --depth 3 \
+  --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Scaffold a file
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/scaffold","params":{"targetFile":"/abs/path/EventBean.kt"},"id":1}'
+kast agent scaffold --target-file /abs/path/EventBean.kt \
+  --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Rename
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"},"id":1}'
+run_kast_agent symbol/rename '{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"}'
 
 # Write and validate
-run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/write-and-validate","params":{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."},"id":1}'
+run_kast_agent symbol/write-and-validate '{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."}'
 
 # Diagnostics
-run_kast_rpc '{"jsonrpc":"2.0","method":"raw/diagnostics","params":{"filePaths":["/abs/path/File.kt"]},"id":1}'
+kast agent raw-diagnostics --file-path /abs/path/File.kt \
+  --workspace-root "$PWD" >"$KAST_RESULT"
+
+# Complex edit plans stay JSON-shaped
+kast agent call raw/apply-edits --params-file "$KAST_PARAMS" \
+  --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Direct source-index metrics
 kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \

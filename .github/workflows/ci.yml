@@ -307,8 +307,8 @@ jobs:
         shell: bash
         run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_BUNDLE" ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
 
-  setup-kast-runtime:
-    name: setup-kast runtime artifact
+  kast-action-runtime-contract:
+    name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
       - build-and-test
@@ -346,7 +346,7 @@ jobs:
           name: kast-rust-cli-linux-x64
           path: dist
 
-      - name: Package setup-kast runtime inputs
+      - name: Package kast-action runtime inputs
         id: package-runtime
         shell: bash
         run: |
@@ -378,8 +378,8 @@ jobs:
           printf 'runtime_sha=%s\n' "$(awk '{ print $1 }' dist/kast-headless-linux-x64.sha256)" >> "$GITHUB_OUTPUT"
           printf 'gradle_cache_sha=%s\n' "$(awk '{ print $1 }' dist/gradle-ro-dep-cache.sha256)" >> "$GITHUB_OUTPUT"
 
-      - name: Install packaged runtime with setup-kast
-        uses: amichne/kast-action@v1
+      - name: Install packaged runtime with kast-action
+        uses: amichne/kast-action@v2
         with:
           version: ${{ steps.package-runtime.outputs.runtime_version }}
           artifact-url: file://${{ github.workspace }}/dist/kast-headless-linux-x64.tar.zst
@@ -391,15 +391,15 @@ jobs:
           fail-on-cache-miss: "true"
           strict: "true"
 
-      - name: Validate setup-kast installed runtime
+      - name: Validate kast-action installed runtime
         shell: bash
         run: |
           set -euo pipefail
           test -L "${RUNNER_TEMP}/kast-install/current"
           scripts/verify-setup-kast-install.sh \
             --install-dir "${RUNNER_TEMP}/kast-install/current" \
-            --workspace-id setup-kast-ci-smoke \
-            --module-name setup-kast-smoke \
+            --workspace-id kast-action-ci-smoke \
+            --module-name kast-action-smoke \
             --gradle-root "$GITHUB_WORKSPACE"
 
   analysis-server-transport:

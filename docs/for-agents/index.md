@@ -32,8 +32,9 @@ and after installing repository files. The Copilot package starts
 and `kast-writer`, and provides catalog-backed `kast_*` tools.
 
 ??? success "Machine-level responsibility"
-    The global `kast` binary owns CLI commands, LSP startup, direct JSON-RPC,
-    install repair, and backend lifecycle commands. The Homebrew formula keeps
+    The global `kast` binary owns CLI commands, LSP startup, the `kast agent`
+    pipe surface, raw RPC fallback, install repair, and backend lifecycle
+    commands. The Homebrew formula keeps
     the `kast-plugin` cask version-coupled, and the cask owns the IDE plugin
     links into local JetBrains profiles. A single machine install can serve
     many repositories. Use `brew install --cask kast-plugin` or
@@ -53,7 +54,7 @@ stays the same; the backend that provides Kotlin state changes.
 |-------------------|--------------|--------------|---------------------|
 | Local Copilot in a developer repo | Homebrew global binary with version-coupled `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
 | Local agent with an open IDE | Homebrew machine install plus repository Copilot files | IDEA backend reusing the open project | Warm IDE project model and the same Kast protocol |
-| CI or hosted Linux agent | Ubuntu/Debian headless bundle | Headless backend warmed with `kast up --backend=headless` | `kast` on `PATH`, structured JSON-RPC, and bundled runtime libraries |
+| CI or hosted Linux agent | Ubuntu/Debian headless bundle | Headless backend warmed with `kast up --backend=headless` | `kast` on `PATH`, `kast agent` JSON envelopes, and bundled runtime libraries |
 
 Use the Linux headless path when the agent image cannot rely on Homebrew, a
 human shell profile, or an already-open IDE. Do not present it as the local
@@ -107,5 +108,5 @@ to ask for useful evidence.
   and the skill-only fallback.
 - [Talk to your agent](talk-to-your-agent.md) gives prompt shapes that make
   agents resolve first.
-- [Direct CLI usage](direct-cli.md) covers `kast rpc` when an agent needs a
-  raw fallback.
+- [Direct CLI usage](direct-cli.md) covers `kast agent` when an agent needs a
+  CLI fallback.
