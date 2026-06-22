@@ -8,8 +8,8 @@ kast lsp --stdio
 ```
 
 The adapter speaks LSP over stdio and forwards semantic requests to the active
-Kast backend. The global `kast` binary must be on `PATH`, and the workspace
-must have a ready backend.
+Kast backend. These instructions assume the installed `kast` binary is on
+`PATH`; the workspace must have a ready backend.
 
 ## Startup
 

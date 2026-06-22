@@ -28,8 +28,8 @@ kast install copilot
 
 Restart IDEA or Android Studio after Homebrew links or refreshes the plugin
 and after installing repository files. The Copilot package starts
-`kast lsp --stdio`, loads Kotlin-specific instructions, exposes `kast-reader`
-and `kast-writer`, and provides catalog-backed `kast_*` tools.
+`kast lsp --stdio`, injects runtime tooling guidance, and provides
+catalog-backed `kast_*` tools.
 
 ??? success "Machine-level responsibility"
     The global `kast` binary owns CLI commands, LSP startup, the `kast agent`
@@ -52,7 +52,7 @@ stays the same; the backend that provides Kotlin state changes.
 
 | Agent environment | Install path | Runtime path | What the agent gets |
 |-------------------|--------------|--------------|---------------------|
-| Local Copilot in a developer repo | Homebrew global binary with version-coupled `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions, `kast-reader`, `kast-writer`, and `kast_*` tools |
+| Local Copilot in a developer repo | Homebrew global binary with version-coupled `kast-plugin` cask, plus `kast install copilot` in that repo | LSP through the global binary, then IDEA backend on developer machines | Repository instructions and `kast_*` tools |
 | Local agent with an open IDE | Homebrew machine install plus repository Copilot files | IDEA backend reusing the open project | Warm IDE project model and the same Kast protocol |
 | CI or hosted Linux agent | Ubuntu/Debian headless bundle | Headless backend warmed with `kast up --backend=headless` | `kast` on `PATH`, `kast agent` JSON envelopes, and bundled runtime libraries |
 

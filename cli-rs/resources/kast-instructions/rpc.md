@@ -1,7 +1,7 @@
 # Kast Agent Pipe Instructions
 
 Use `kast agent` for CLI pipelines when a host does not expose native Kast
-tools. Request shapes are catalog-backed:
+tools or LSP custom methods. Request shapes are catalog-backed:
 
 - `references/commands.json` is the complete machine-readable catalog.
 - `references/commands.yaml` is easier to read by hand.
@@ -35,7 +35,7 @@ printf '%s\n' '{"symbol":"EventBean","includeDocumentation":true}' |
 Keep deeply nested payloads such as `raw/apply-edits` JSON-shaped and pass them
 through `kast agent call raw/apply-edits --params-file request.json`.
 `kast rpc --request-file` remains available only as a raw transport/debug
-escape hatch.
+escape hatch when preserving a full JSON-RPC envelope matters.
 
 ## Request Harness
 

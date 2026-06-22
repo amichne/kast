@@ -32,8 +32,7 @@ kast install copilot
 same cask path exposed by `brew install --cask kast-plugin` for direct repair.
 Restart IDEA or Android Studio after Homebrew links or refreshes the plugin.
 The repository install writes managed files under `.github`, including the LSP
-config, Kotlin instructions, `kast-reader`, `kast-writer`, and
-catalog-backed extension tools.
+config and catalog-backed extension tools with runtime guidance.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:

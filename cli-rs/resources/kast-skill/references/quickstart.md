@@ -2,18 +2,18 @@
 
 ## Put `kast` on PATH
 
-The ideal setup is boring: `command -v kast` succeeds and agents run `kast`
-directly. Prefer a durable PATH install such as Homebrew or the managed
-`~/.local/bin/kast` shim over per-command absolute paths.
+The skill is installed by the Kast binary, so the normal path is boring:
+`command -v kast` succeeds and agents run `kast` directly.
 
 ```console
 command -v kast
 kast --help
+kast agent --help
 ```
 
-If `kast` is missing in an installed skill session, stop and report that setup
-blocker instead of switching to non-semantic Kotlin search. Use
-`kast doctor --repair` for broad install repair and manifest convergence.
+If `kast` is missing or `kast agent --help` is unavailable in an installed skill
+session, stop and report that the skill and binary are out of sync. Do not
+switch to non-semantic Kotlin search.
 
 If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index
@@ -52,8 +52,8 @@ the Rust CLI help.
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use
 `references/requests/<category>/<method>/minimal.json` and `maximal.json` for
-walkable sample payloads. Validate hand-authored requests with `kast validate`
-before sending them.
+walkable sample payloads. Keep raw JSON-RPC validation in `runbook.md` for
+transport debugging.
 
 ## Common patterns
 
@@ -132,4 +132,5 @@ kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   before assuming field names.
 - If a symbol name is broad, add `kind`, `containingType`, or `fileHint`.
 - For large result sets, narrow the query before post-processing.
+- If `kast agent` is unavailable, report a stale binary/skill installation.
 - Never pivot to `grep` or `rg` for Kotlin identity.

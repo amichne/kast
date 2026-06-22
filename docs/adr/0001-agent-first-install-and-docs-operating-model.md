@@ -74,7 +74,7 @@ conversation summaries.
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Use-case framing | `docs/supported-use-cases.md` | `zensical build --clean` |
 | Copilot package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
-| Installed Copilot outputs | `.github/lsp.json`, `.github/instructions/`, `.github/agents/`, `.github/extensions/kast/` | `kast install copilot --force` plus package tests |
+| Installed Copilot outputs | `.github/lsp.json`, `.github/instructions/`, `.github/extensions/kast/` | `kast install copilot --force` plus package tests |
 | RPC/tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check` |
 | API summary block | `docs/reference/api-specification.md` generated block | `.github/scripts/render-rpc-contract-summary.py --check` |
 

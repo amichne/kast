@@ -36,7 +36,7 @@ kast install copilot
     version-coupled IDE backend.
     `kast install copilot` is a repository-level install. It writes managed
     files under this repository's `.github` directory so Copilot can start
-    `kast lsp --stdio`, load Kotlin instructions, and expose Kast tools.
+    `kast lsp --stdio`, inject runtime guidance, and expose Kast tools.
 
 ??? tip "When to rerun `kast install copilot`"
     Run it once in every repository where Copilot should use Kast. Rerun it

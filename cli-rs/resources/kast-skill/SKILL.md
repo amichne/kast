@@ -12,19 +12,29 @@ metadata:
 
 # Kast
 
-Kast is the Rust `kast` CLI semantic surface for Kotlin and Gradle
-repositories. Default to Kast for Gradle project file operations that need file
-discovery, Kotlin context, symbol identity, relationships, diagnostics, edits,
-or focused Gradle validation.
+Kast is the installed Rust `kast` CLI semantic surface for Kotlin and Gradle
+repositories. When this skill is present, assume the binary installed it and use
+`kast` directly for file discovery, Kotlin context, symbol identity,
+relationships, diagnostics, edits, and focused validation.
 
 ## First Move
 
-Run `command -v kast` and `kast --help` before project exploration. If `kast`
-is missing, stop and report the setup blocker instead of switching to
-non-semantic Kotlin search.
+Confirm the command surface, then use Kast before ordinary text tools for
+Kotlin or Gradle project facts:
 
-If `kast` is present but no backend or source index is available, try to warm
-the IDE-hosted backend before falling back:
+```console
+command -v kast
+kast --help
+kast agent --help
+```
+
+If the binary is missing or does not expose the expected agent surface, report
+that the installed skill and binary are out of sync. Do not replace the missing
+compiler-backed path with non-semantic Kotlin search.
+
+If a command reports `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`,
+`METRICS_DB_UNAVAILABLE`, or a missing source-index database, warm the
+IDE-hosted backend before falling back:
 
 ```console
 kast up --workspace-root "$PWD" --backend idea
@@ -38,7 +48,7 @@ failed.
 ## Gradle File Routing
 
 - Use for Gradle project file work, not only direct Kotlin edits.
-- Unknown symbol: start with `symbol/query`; use tight `query`, `limit`,
+- Unknown symbol: start with `kast agent call symbol/query`; use tight `query`, `limit`,
   `modes`, and filters such as `relativePathPrefix`, `gradleProject`,
   `sourceSet`, or `kinds`.
 - Ambiguous symbol: escalate through `raw/workspace-symbol`, `symbol/discover`,
@@ -61,15 +71,16 @@ failed.
 
 ## Request Discipline
 
-For nontrivial RPC calls, write request, result, and stderr to temp files; see
-`references/quickstart.md` for the harness. Validate payloads with
-`kast validate --request-file "$KAST_REQUEST"`, then run
-`kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD"`. Use
-camelCase fields, absolute paths, and check `ok` plus `type`; validation
-errors, `ok=false`, dirty diagnostics, hash mismatches, and failed Gradle tasks
-fail the operation.
+For nontrivial CLI automation, write params, result, and stderr to temp files;
+see `references/quickstart.md` for the harness. Send catalog methods through
+`kast agent call <method> --params-file "$KAST_PARAMS" --workspace-root "$PWD"`.
+Use camelCase fields, absolute paths, and check the agent envelope `ok` plus
+the nested result status; validation errors, `ok=false`, dirty diagnostics,
+hash mismatches, and failed Gradle tasks fail the operation.
 Load `references/commands.yaml`, `references/commands.json`, or
 `references/requests/` only for exact fields, variants, enum values, or samples.
+Use `references/runbook.md` only when debugging raw transport or preserving a
+full JSON-RPC envelope matters.
 
 ## Boundaries
 
