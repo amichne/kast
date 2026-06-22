@@ -169,6 +169,8 @@ require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must
 require_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository" "Snapshot workflow must publish GitHub Packages snapshots"
 require_contains "$snapshot_workflow" "publishToMavenCentral" "Snapshot workflow must publish Maven Central snapshots"
 require_contains "$snapshot_workflow" "-Pkast.publish.target=snapshot" "Snapshot workflow must use the snapshot publish target"
+require_not_contains "$snapshot_workflow" "Check GitHub Packages signing secrets" "Snapshot GitHub Packages publishing must not be gated on Maven signing secrets"
+require_not_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository \"\${signing_args[@]}\"" "Snapshot GitHub Packages publishing must not pass Maven signing credentials"
 require_not_contains "$snapshot_workflow" "gh release" "Snapshot workflow must not create GitHub releases"
 require_not_contains "$snapshot_workflow" "homebrew" "Snapshot workflow must not update Homebrew"
 
@@ -207,6 +209,7 @@ require_contains "$release_workflow" "Verify published release state" "Release m
 require_contains "$release_workflow" "scripts/verify-release-state.sh" "Release must verify the final published state"
 require_contains "$release_workflow" "scripts/verify-maven-central.sh" "Release must verify Maven Central coordinates"
 require_contains "$release_workflow" "./scripts/ci-gradle-retry.sh" "Release Gradle steps must use retry helper for transient repository failures"
+require_contains "$publishing_conventions" "publishTarget != PublishTarget.Github" "Publishing convention must not require Maven signatures for GitHub Packages"
 require_contains "$release_workflow" "needs.validate-jvm.result == 'success'" "Release publication must require local JVM and Maven validation"
 require_contains "$release_workflow" "needs.publish-release.result" "Final release verification must read the publish-release result"
 require_contains "$release_workflow" "Publish release finished with result" "Final release verification must fail when publication did not complete"

@@ -136,7 +136,8 @@ fun Project.configureKastPublishing(
     }
 
     extensions.configure<SigningExtension> {
-        val signingRequired = publishTarget != PublishTarget.Local
+        val signingRequired = publishTarget != PublishTarget.Local &&
+            publishTarget != PublishTarget.Github
         val useGpgCmd = props.containsKey("signing.gnupg.keyName") ||
             System.getenv("SIGNING_GPG_KEY_NAME") != null
         val hasKeyringCredentials = props.containsKey("signing.keyId") ||

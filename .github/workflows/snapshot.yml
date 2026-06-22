@@ -97,50 +97,14 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Check GitHub Packages signing secrets
-        id: gate
-        shell: bash
-        env:
-          SIGNING_GPG_PRIVATE_KEY: ${{ secrets.SIGNING_GPG_PRIVATE_KEY }}
-          SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${SIGNING_GPG_PRIVATE_KEY:-}" || -z "${SIGNING_GPG_KEY_NAME:-}" ]]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Import GPG key
-        if: steps.gate.outputs.publish == 'true'
-        env:
-          SIGNING_GPG_PRIVATE_KEY: ${{ secrets.SIGNING_GPG_PRIVATE_KEY }}
-          SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! printf '%s' "$SIGNING_GPG_PRIVATE_KEY" | gpg --batch --import; then
-            printf '%s' "$SIGNING_GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
-          fi
-
       - name: Publish to GitHub Packages
-        if: steps.gate.outputs.publish == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-          SIGNING_GPG_KEY_NAME: ${{ secrets.SIGNING_GPG_KEY_NAME }}
-          SIGNING_GPG_PASSPHRASE: ${{ secrets.SIGNING_GPG_PASSPHRASE }}
         shell: bash
         run: |
           set -euo pipefail
-          signing_args=()
-          if [[ -n "${SIGNING_GPG_KEY_NAME:-}" ]]; then
-            signing_args=(-Psigning.gnupg.keyName="$SIGNING_GPG_KEY_NAME")
-            if [[ -n "${SIGNING_GPG_PASSPHRASE:-}" ]]; then
-              signing_args+=(-Psigning.gnupg.passphrase="$SIGNING_GPG_PASSPHRASE")
-            fi
-          fi
-          ./gradlew publishAllPublicationsToGitHubPackagesRepository "${signing_args[@]}" \
+          ./gradlew publishAllPublicationsToGitHubPackagesRepository \
             -Pkast.publish.target=github \
             -Pversion="${{ needs.validate.outputs.snapshot-version }}" \
             --no-configuration-cache \
