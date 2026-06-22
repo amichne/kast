@@ -158,6 +158,7 @@ require_contains "$ci_workflow" "--workspace-id kast-action-ci-smoke" "CI kast-a
 require_contains "$ci_workflow" '--gradle-root "$GITHUB_WORKSPACE"' "CI kast-action verifier must run a repo-level Gradle warm step after installation"
 require_contains "$ci_workflow" "Test CI Gradle retry helper" "CI must test the Gradle retry helper before using it"
 require_contains "$ci_workflow" "./scripts/ci-gradle-retry.sh" "CI Gradle steps must use retry helper for transient repository failures"
+require_contains "$ci_workflow" "Free disk for IDEA plugin verification" "CI IDEA plugin verification must free unused runner SDKs before downloading IDEs"
 require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
 require_contains "$ci_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
 require_not_contains "$ci_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
