@@ -24,12 +24,16 @@ bundle_kind="${KAST_UBUNTU_DEBIAN_BUNDLE_KIND:-}"
 java_version="${KAST_UBUNTU_DEBIAN_JAVA_VERSION:-21}"
 container_image="${KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE:-ubuntu:24.04}"
 wait_timeout_ms="${KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS:-120000}"
+docker_pull_attempts="${KAST_UBUNTU_DEBIAN_DOCKER_PULL_ATTEMPTS:-3}"
+docker_pull_delay_seconds="${KAST_UBUNTU_DEBIAN_DOCKER_PULL_DELAY_SECONDS:-15}"
 
 [[ -n "$bundle_path" ]] || die "BUNDLE_PATH is required"
 [[ -f "$bundle_path" ]] || die "Bundle not found: $bundle_path"
 [[ -f "${bundle_path}.sha256" ]] || die "Bundle SHA-256 sidecar not found: ${bundle_path}.sha256"
 [[ "$java_version" =~ ^[0-9]+$ ]] || die "KAST_UBUNTU_DEBIAN_JAVA_VERSION must be numeric: $java_version"
 [[ "$wait_timeout_ms" =~ ^[0-9]+$ ]] || die "KAST_UBUNTU_DEBIAN_WAIT_TIMEOUT_MS must be numeric: $wait_timeout_ms"
+[[ "$docker_pull_attempts" =~ ^[1-9][0-9]*$ ]] || die "KAST_UBUNTU_DEBIAN_DOCKER_PULL_ATTEMPTS must be a positive integer: $docker_pull_attempts"
+[[ "$docker_pull_delay_seconds" =~ ^[0-9]+$ ]] || die "KAST_UBUNTU_DEBIAN_DOCKER_PULL_DELAY_SECONDS must be numeric: $docker_pull_delay_seconds"
 
 bundle_dir="$(cd -- "$(dirname -- "$bundle_path")" && pwd)"
 bundle_abs="${bundle_dir}/$(basename -- "$bundle_path")"
@@ -70,6 +74,26 @@ case "$bundle_kind" in
 esac
 
 need_tool docker
+
+pull_container_image() {
+  local -a docker_pull_command=(docker pull --platform linux/amd64 "$container_image")
+  local attempt
+
+  for ((attempt = 1; attempt <= docker_pull_attempts; attempt += 1)); do
+    printf 'Pulling container image %s for linux/amd64 (attempt %d/%d)\n' "$container_image" "$attempt" "$docker_pull_attempts"
+    if "${docker_pull_command[@]}"; then
+      return 0
+    fi
+
+    if [[ "$attempt" -eq "$docker_pull_attempts" ]]; then
+      die "Failed to pull container image after ${docker_pull_attempts} attempts: ${container_image}"
+    fi
+
+    sleep "$docker_pull_delay_seconds"
+  done
+}
+
+pull_container_image
 
 docker run --rm \
   --platform linux/amd64 \

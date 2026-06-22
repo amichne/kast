@@ -437,6 +437,18 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Free disk for IDEA plugin verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-cleanup: always
