@@ -64,7 +64,7 @@ prepare_no_python_path() {
   local target_dir="$1"
   mkdir -p "$target_dir"
   local tool_name
-  for tool_name in bash sh tar mkdir mktemp rm cp basename dirname pwd uname awk; do
+  for tool_name in bash sh tar gzip mkdir mktemp rm cp basename dirname pwd uname awk; do
     link_external_tool "$tool_name" "$target_dir"
   done
   if type -P sha256sum >/dev/null 2>&1; then
