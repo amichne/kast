@@ -108,7 +108,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-version="v9.8.7"
+version="v0.7.11-ci"
+normalized_version="${version#v}"
 bundle_kind="headless"
 platform="ubuntu-debian-headless-x86_64"
 backend_archive_root="backend-headless"
@@ -161,7 +162,7 @@ printf '%s\n' "fake nio fs" > "${backend_tree}/${backend_archive_root}/idea-home
 printf '%s\n' "fake module descriptors" > "${backend_tree}/${backend_archive_root}/idea-home/modules/module-descriptors.dat"
 printf '%s\n' "fake plugin lib" > "${backend_tree}/${backend_archive_root}/idea-home/plugins/kast-headless/lib/backend-headless.jar"
 mkdir -p "${backend_tree}/${backend_archive_root}/lib"
-printf '%s\n' "fat jar placeholder" > "${backend_tree}/${backend_archive_root}/lib/${backend_archive_root}-9.8.7-all.jar"
+printf '%s\n' "fat jar placeholder" > "${backend_tree}/${backend_archive_root}/lib/${backend_archive_root}-${normalized_version}-all.jar"
 
 cli_zip="${artifact_dir}/kast-${version}-linux-x64.zip"
 backend_zip="${artifact_dir}/${backend_archive_root}-${version}.zip"

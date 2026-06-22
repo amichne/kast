@@ -279,6 +279,7 @@ jobs:
           cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
           [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
           printf 'KAST_RUST_CLI_TAG=%s\n' "v0.0.0-ci" >> "$GITHUB_ENV"
+          printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "v0.7.11-ci" >> "$GITHUB_ENV"
           printf 'KAST_RUST_CLI_ASSET=%s\n' "$cli_asset" >> "$GITHUB_ENV"
 
       - name: Package Ubuntu/Debian CI bundle
@@ -287,14 +288,14 @@ jobs:
           set -euo pipefail
           backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
           [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
-          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_RUST_CLI_TAG}.tar.gz"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
 
           cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
             package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$KAST_RUST_CLI_ASSET" \
             --backend-archive "$backend_asset" \
-            --version "$KAST_RUST_CLI_TAG" \
+            --version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" \
             --bundle-output "$bundle_asset"
 
           printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"

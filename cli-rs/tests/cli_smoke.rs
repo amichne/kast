@@ -1519,7 +1519,7 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
     let install_root = temp.path().join("install-root");
     let bin_dir = temp.path().join("bin");
     std::fs::create_dir_all(&home).expect("home");
-    let bundle = write_install_bundle_source(temp.path(), "v9.8.7");
+    let bundle = write_install_bundle_source(temp.path(), "v0.7.11-ci");
 
     let install = kast(&home, &config_home)
         .args([
@@ -1547,20 +1547,20 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
     );
     let stdout: serde_json::Value =
         serde_json::from_slice(&install.stdout).expect("activate bundle json");
-    assert_eq!(stdout["version"], "v9.8.7");
+    assert_eq!(stdout["version"], "v0.7.11-ci");
     assert_eq!(stdout["platform"], "ubuntu-debian-headless-x86_64");
     assert_eq!(stdout["profile"], "ubuntu-debian-headless");
     assert_eq!(stdout["skipped"], false);
     assert_eq!(stdout["verifyOnly"], false);
 
-    let installed_home = install_root.join("versions/v9.8.7");
+    let installed_home = install_root.join("versions/v0.7.11-ci");
     let manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(install_root.join("install.json")).unwrap())
             .expect("install manifest json");
     assert_eq!(manifest["tool"], "kast");
-    assert_eq!(manifest["activeVersion"], "v9.8.7");
-    assert_eq!(manifest["version"], "9.8.7");
-    assert_eq!(manifest["backendVersion"], "9.8.7");
+    assert_eq!(manifest["activeVersion"], "v0.7.11-ci");
+    assert_eq!(manifest["version"], "0.7.11-ci");
+    assert_eq!(manifest["backendVersion"], "0.7.11-ci");
     assert_eq!(
         manifest["entrypoints"]["activeBinary"],
         installed_home.join("bin/kast").display().to_string()
