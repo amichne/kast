@@ -267,6 +267,7 @@ existing_install_matches() {
   local manifest_file="${root_dir}/install.json"
   [[ -x "$bin_path" ]] || return 1
   [[ -f "$manifest_file" ]] || return 1
+  command -v python3 >/dev/null 2>&1 || return 1
 
   python3 - "$manifest_file" "$version" "$root_dir" <<'PY' || return 1
 import json
@@ -318,7 +319,6 @@ PY
 install_bundle() {
   assert_debian_like_host
   configure_paths
-  need_tool python3
   need_tool "$java_cmd"
 
   if existing_install_matches >/dev/null 2>&1; then
@@ -335,7 +335,6 @@ install_bundle() {
 
 verify_install() {
   configure_paths
-  need_tool python3
   need_tool "$java_cmd"
 
   local script_dir
@@ -349,6 +348,7 @@ verify_install() {
     return
   fi
 
+  need_tool python3
   existing_install_matches || die "Installed Kast bundle does not match requested version ${version}"
   printf '%s\n' "Kast Ubuntu/Debian bundle ${version} verified"
 }

@@ -51,6 +51,32 @@ with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as arch
 PY
 }
 
+link_external_tool() {
+  local tool_name="$1"
+  local target_dir="$2"
+  local tool_path
+  tool_path="$(type -P "$tool_name" || true)"
+  [[ -n "$tool_path" ]] || die "Missing external tool for no-python installer smoke: $tool_name"
+  ln -sf "$tool_path" "${target_dir}/${tool_name}"
+}
+
+prepare_no_python_path() {
+  local target_dir="$1"
+  mkdir -p "$target_dir"
+  local tool_name
+  for tool_name in bash sh tar mkdir mktemp rm cp basename dirname pwd uname awk; do
+    link_external_tool "$tool_name" "$target_dir"
+  done
+  if type -P sha256sum >/dev/null 2>&1; then
+    link_external_tool sha256sum "$target_dir"
+  elif type -P shasum >/dev/null 2>&1; then
+    link_external_tool shasum "$target_dir"
+  else
+    die "Neither sha256sum nor shasum is available"
+  fi
+  [[ ! -e "${target_dir}/python3" ]] || die "No-python installer smoke PATH unexpectedly contains python3"
+}
+
 expect_failure_contains() {
   local expected="$1"
   shift
@@ -333,6 +359,33 @@ expect_failure_contains \
   KAST_UBUNTU_DEBIAN_CONFIG_HOME="$config_home" \
   KAST_JAVA_CMD=sh \
   "${repo_root}/scripts/install-ubuntu-debian.sh" verify
+
+no_python_tools="${scratch_dir}/no-python-tools"
+no_python_install_root="${scratch_dir}/no-python-install-root"
+no_python_bin_dir="${scratch_dir}/no-python-bin"
+no_python_config_home="${scratch_dir}/no-python-config"
+prepare_no_python_path "$no_python_tools"
+mkdir -p "$no_python_bin_dir"
+
+HOME="$home_dir" \
+PATH="${no_python_tools}:${no_python_bin_dir}" \
+KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
+KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="$bundle_path" \
+KAST_UBUNTU_DEBIAN_ROOT="$no_python_install_root" \
+KAST_UBUNTU_DEBIAN_BIN_DIR="$no_python_bin_dir" \
+KAST_UBUNTU_DEBIAN_CONFIG_HOME="$no_python_config_home" \
+KAST_JAVA_CMD=sh \
+"${repo_root}/scripts/install-ubuntu-debian.sh" install
+
+HOME="$home_dir" \
+PATH="${no_python_tools}:${no_python_bin_dir}" \
+KAST_UBUNTU_DEBIAN_TEST_BYPASS_HOST_CHECK=true \
+KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="$bundle_path" \
+KAST_UBUNTU_DEBIAN_ROOT="$no_python_install_root" \
+KAST_UBUNTU_DEBIAN_BIN_DIR="$no_python_bin_dir" \
+KAST_UBUNTU_DEBIAN_CONFIG_HOME="$no_python_config_home" \
+KAST_JAVA_CMD=sh \
+"${repo_root}/scripts/install-ubuntu-debian.sh" verify
 
 bundle_without_sidecar="${artifact_dir}/kast-${platform}-v9.8.6.tar.gz"
 cp "$bundle_path" "$bundle_without_sidecar"
