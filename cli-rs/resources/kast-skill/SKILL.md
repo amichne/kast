@@ -3,11 +3,10 @@ name: kast
 description: >
   Use when an agent works in a Gradle project and needs the Rust `kast` CLI for
   file discovery, Kotlin source reads or edits, symbol identity, references,
-  callers, hierarchy, diagnostics, source-index metrics, or focused Gradle
-  validation. Prefer Kast before generic text or file tools for Kotlin and broad
-  Gradle project exploration.
-metadata:
-  short-description: Semantic Gradle project file operations
+  callers, hierarchy, diagnostics, source-index metrics, install/config/package
+  verification, file-backed Kast calls, or focused Gradle validation. Prefer
+  Kast before generic text or file tools for Kotlin and broad Gradle project
+  exploration.
 ---
 
 # Kast
@@ -15,7 +14,8 @@ metadata:
 Kast is the installed Rust `kast` CLI semantic surface for Kotlin and Gradle
 repositories. When this skill is present, assume the binary installed it and use
 `kast` directly for file discovery, Kotlin context, symbol identity,
-relationships, diagnostics, edits, and focused validation.
+relationships, diagnostics, edits, and focused validation. Default to Kast for
+Gradle project file operations that need semantic or install-state evidence.
 
 ## First Move
 
@@ -26,6 +26,13 @@ Kotlin or Gradle project facts:
 command -v kast
 kast --help
 kast agent --help
+```
+
+When the installed skill exposes `scripts/`, prefer the read-only verifier for
+install, package, config, active-binary, and project-readiness evidence:
+
+```console
+python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
 If the binary is missing or does not expose the expected agent surface, report
@@ -71,16 +78,22 @@ failed.
 
 ## Request Discipline
 
-For nontrivial CLI automation, write params, result, and stderr to temp files;
-see `references/quickstart.md` for the harness. Send catalog methods through
-`kast agent call <method> --params-file "$KAST_PARAMS" --workspace-root "$PWD"`.
-Use camelCase fields, absolute paths, and check the agent envelope `ok` plus
-the nested result status; validation errors, `ok=false`, dirty diagnostics,
-hash mismatches, and failed Gradle tasks fail the operation.
+For repeated semantic sequences, use `scripts/kast-semantic-workflow.py` when
+available. For one nontrivial catalog call, use `scripts/kast-agent-call.py`
+so params, stdout, and stderr are preserved as files. Send catalog methods
+through `kast agent call <method> --params-file "$KAST_PARAMS"` with
+`--workspace-root "$PWD"` when scripting manually. Use camelCase fields,
+absolute paths, and check the agent envelope `ok` plus the nested result
+status; validation errors, `ok=false`, dirty diagnostics, hash mismatches, and
+failed Gradle tasks fail the operation.
 Load `references/commands.yaml`, `references/commands.json`, or
 `references/requests/` only for exact fields, variants, enum values, or samples.
 Use `references/runbook.md` only when debugging raw transport or preserving a
 full JSON-RPC envelope matters.
+
+Read `references/workflows.md` for install/refresh/verify ownership, project
+readiness gates, file-backed request exchange, semantic request sequences, and
+failure recovery.
 
 ## Boundaries
 

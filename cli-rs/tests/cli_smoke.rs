@@ -480,6 +480,18 @@ fn smoke_core_cli_commands() {
     assert!(skill_dir.join("kast/references/commands.json").is_file());
     assert!(skill_dir.join("kast/references/quickstart.md").is_file());
     assert!(skill_dir.join("kast/references/runbook.md").is_file());
+    assert!(skill_dir.join("kast/references/workflows.md").is_file());
+    assert!(
+        skill_dir
+            .join("kast/scripts/verify-kast-state.py")
+            .is_file()
+    );
+    assert!(skill_dir.join("kast/scripts/kast-agent-call.py").is_file());
+    assert!(
+        skill_dir
+            .join("kast/scripts/kast-semantic-workflow.py")
+            .is_file()
+    );
     assert!(
         skill_dir
             .join("kast/references/requests/symbol/query/request.schema.json")
@@ -3053,6 +3065,9 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
     assert!(skill.contains("kast agent --help"));
+    assert!(skill.contains("scripts/verify-kast-state.py"));
+    assert!(skill.contains("scripts/kast-agent-call.py"));
+    assert!(skill.contains("scripts/kast-semantic-workflow.py"));
     assert!(skill.contains("Use for Gradle project file work"));
     assert!(skill.contains("assume the binary installed it"));
     assert!(skill.contains("`kast` directly"));
@@ -3074,6 +3089,9 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("command -v kast"));
     assert!(quickstart.contains("kast agent --help"));
     assert!(quickstart.contains("kast agent call"));
+    assert!(quickstart.contains("scripts/verify-kast-state.py"));
+    assert!(quickstart.contains("scripts/kast-agent-call.py"));
+    assert!(quickstart.contains("scripts/kast-semantic-workflow.py"));
     assert!(quickstart.contains("skill and binary are out of sync"));
     assert!(quickstart.contains("raw transport/debug escape hatch"));
     assert!(quickstart.contains("kast metrics impact"));
@@ -3081,6 +3099,26 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));
     assert!(quickstart.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(routing_reference.contains("rust-kast-cli"));
+    assert!(
+        root.join("resources/kast-skill/references/workflows.md")
+            .is_file(),
+        "packaged skill must include workflow ownership reference"
+    );
+    assert!(
+        root.join("resources/kast-skill/scripts/verify-kast-state.py")
+            .is_file(),
+        "packaged skill must include state verifier"
+    );
+    assert!(
+        root.join("resources/kast-skill/scripts/kast-agent-call.py")
+            .is_file(),
+        "packaged skill must include file-backed call harness"
+    );
+    assert!(
+        root.join("resources/kast-skill/scripts/kast-semantic-workflow.py")
+            .is_file(),
+        "packaged skill must include semantic workflow runner"
+    );
 
     assert!(
         root.join("resources/plugin/lsp.json").is_file(),

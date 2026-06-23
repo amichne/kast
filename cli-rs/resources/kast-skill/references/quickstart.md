@@ -11,6 +11,14 @@ kast --help
 kast agent --help
 ```
 
+When the installed skill includes `scripts/`, run the read-only verifier before
+claiming the active binary, install manifest, package files, or workspace are
+ready:
+
+```console
+python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
+```
+
 If `kast` is missing or `kast agent --help` is unavailable in an installed skill
 session, stop and report that the skill and binary are out of sync. Do not
 switch to non-semantic Kotlin search.
@@ -56,6 +64,24 @@ walkable sample payloads. Keep raw JSON-RPC validation in `runbook.md` for
 transport debugging.
 
 ## Common patterns
+
+Prefer the script-backed file exchange for nontrivial calls:
+
+```sh
+python3 scripts/kast-agent-call.py symbol/query \
+  --params-json '{"query":"EventBean","modes":["exact","lexical"],"limit":10}' \
+  --workspace-root "$PWD"
+```
+
+The script writes `params.json`, `stdout.json`, and `stderr.txt`, then emits a
+small JSON summary with the file paths and recovery guidance.
+
+For common multi-step evidence gathering, use the semantic workflow runner:
+
+```sh
+python3 scripts/kast-semantic-workflow.py --workspace-root "$PWD" \
+  --dry-run symbol --symbol EventBean --references
+```
 
 ```sh
 KAST_TMP="$(mktemp -d)"
@@ -133,4 +159,6 @@ kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
 - If a symbol name is broad, add `kind`, `containingType`, or `fileHint`.
 - For large result sets, narrow the query before post-processing.
 - If `kast agent` is unavailable, report a stale binary/skill installation.
+- If install, config, active binary, or package state is unclear, run
+  `scripts/verify-kast-state.py` and follow its recovery commands.
 - Never pivot to `grep` or `rg` for Kotlin identity.

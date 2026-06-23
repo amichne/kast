@@ -114,7 +114,11 @@ kast install skill --target-dir=/absolute/path/to/skills --force
     - `SKILL.md` for workflow, triggers, and routing rules
     - `AGENTS.md` for package-local maintenance guidance
     - `references/commands.json`, `references/quickstart.md`,
-      `references/runbook.md`, and `references/routing-improvement.md`
+      `references/runbook.md`, `references/workflows.md`, and
+      `references/routing-improvement.md`
+    - `scripts/verify-kast-state.py`, `scripts/kast-agent-call.py`, and
+      `scripts/kast-semantic-workflow.py` for JSON-emitting state checks,
+      file-backed request exchange, and semantic workflow sequences
 
     Keep transient benchmark outputs outside the installed skill tree.
 
