@@ -9,11 +9,8 @@ the authored source for the Kast Copilot package installed by
 The package provides the repository-local Copilot integration:
 
 - `lsp.json` starts `kast lsp --stdio`.
-- `instructions/kast-kotlin.instructions.md` routes Kotlin work through Kast.
-- `agents/kast-reader.agent.md` and `agents/kast-writer.agent.md` define the
-  read-only and write-capable agent split.
-- `extensions/kast/extension.mjs` and shared modules expose catalog-backed
-  `kast_*` tools.
+- `extensions/kast/extension.mjs` injects runtime tooling guidance and exposes
+  catalog-backed `kast_*` tools through shared modules.
 - `primitive-manifest.json` defines the files copied into a repository
   `.github` directory.
 
@@ -27,8 +24,10 @@ The package provides the repository-local Copilot integration:
   package shape.
 - Do not edit generated `.github` package copies as the source of truth.
   Regenerate or reinstall them from this tree.
-- Keep reader and writer agents intentionally different. The reader must not
-  expose write tools; the writer must expose scoped edit and validation tools.
+- Keep the package surface focused on LSP, runtime guidance, and catalog-backed
+  `kast_*` tools. Do not add package-specific custom agents or static
+  instruction entrypoints unless the public package shape is intentionally
+  being expanded.
 
 ## Downstream surfaces
 

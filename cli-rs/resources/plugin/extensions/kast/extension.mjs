@@ -5,13 +5,20 @@ import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { joinSession } from "@github/copilot-sdk/extension";
-import { makeKastCustomAgents } from "./_shared/kast-agents.mjs";
 import { createTraceEmitter, traceFieldsFromParams } from "./_shared/kast-trace.mjs";
 import { KAST_TOOL_NAMES, makeKastTools } from "./_shared/kast-tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT_MARKER = "workspace.repos.toml";
 const COPILOT_IDEA_AUTOSTART_ENV = "KAST_COPILOT_IDEA_AUTOSTART";
+const KAST_TOOLING_CONTEXT = [
+  "Kast tooling preference:",
+  "For Kotlin or Gradle semantic work, use the configured kotlin LSP server first for standard editor operations.",
+  "Use catalog-backed kast_* tools for Kast-specific symbol identity, references, callers, hierarchy, diagnostics, workspace discovery, metrics, and safe write flows.",
+  "Use shell only for validation, explicit lifecycle commands, or a `kast agent` fallback when LSP and kast_* tools cannot cover the operation.",
+  "If Kast reports a missing backend, missing source index, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or NO_BACKEND_AVAILABLE, warm the IDEA backend with `kast up --workspace-root \"$PWD\" --backend idea` before falling back.",
+  "Treat stale, missing, ambiguous, partial, or truncated compiler-backed facts as blockers after warmup; do not replace Kotlin identity, references, hierarchy, rename, or edit scope with text search guesses.",
+].join(" ");
 const RECOVERABLE_WARMUP_CODES = new Set([
   "INDEX_UNAVAILABLE",
   "METRICS_DB_UNAVAILABLE",
@@ -361,24 +368,26 @@ async function callKast(method, params) {
 }
 
 const tools = makeKastTools((method, args) => callKast(method, args));
-const customAgents = makeKastCustomAgents((eventName, fields) => {
-  trace.emit(eventName, {
-    sdkRegistrationScope: "extension-session",
-    ...fields,
-  });
-});
+const hooks = {
+  onSessionStart: async () => ({
+    additionalContext: KAST_TOOLING_CONTEXT,
+  }),
+  onUserPromptSubmitted: async () => ({
+    additionalContext: KAST_TOOLING_CONTEXT,
+  }),
+};
 
 trace.emit("copilot.session.join_requested", {
   sdkRegistrationScope: "extension-session",
   detail: {
     tools: tools.map((tool) => tool.name),
-    customAgents: customAgents.map((agent) => agent.name),
+    runtimeGuidance: "kast-tooling-context",
   },
 });
 
 const session = await joinSession({
   tools,
-  customAgents,
+  hooks,
   disabledSkills: ["kast"],
 });
 trace.attachSession(session);
@@ -387,7 +396,7 @@ trace.emit("copilot.session.joined", {
   outcome: "completed",
   detail: {
     tools: tools.map((tool) => tool.name),
-    customAgents: customAgents.map((agent) => agent.name),
+    runtimeGuidance: "kast-tooling-context",
   },
 });
 

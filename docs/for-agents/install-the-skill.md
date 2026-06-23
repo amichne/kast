@@ -8,8 +8,8 @@ icon: lucide/download
 # Copilot integrations
 
 The preferred agent path is `kast install copilot`. It installs
-repository-local files that let Copilot start Kast through LSP, load
-Kotlin-specific instructions, and expose Kast reader and writer agents.
+repository-local files that let Copilot start Kast through LSP, receive
+runtime tooling guidance, and use catalog-backed Kast tools.
 
 ## Install into this repository
 
@@ -32,12 +32,9 @@ kast install copilot --target-dir=/absolute/path/to/repo/.github --force
     The installed tree is managed by the running CLI version:
 
     - `lsp.json`
-    - `instructions/kast-kotlin.instructions.md`
-    - `agents/kast-reader.agent.md`
-    - `agents/kast-writer.agent.md`
     - `extensions/kast/extension.mjs`
     - `extensions/kast/_shared/kast-tools.mjs`
-    - `extensions/kast/_shared/kast-agents.mjs`
+    - `extensions/kast/_shared/kast-trace.mjs`
     - `extensions/kast/_shared/commands.json`
     - `.kast-copilot-version`
 
@@ -116,17 +113,20 @@ kast install skill --target-dir=/absolute/path/to/skills --force
 
     - `SKILL.md` for workflow, triggers, and routing rules
     - `AGENTS.md` for package-local maintenance guidance
-    - `references/commands.json`, `references/quickstart.md`, and
+    - `references/commands.json`, `references/quickstart.md`,
+      `references/runbook.md`, `references/workflows.md`, and
       `references/routing-improvement.md`
+    - `scripts/verify-kast-state.py`, `scripts/kast-agent-call.py`, and
+      `scripts/kast-semantic-workflow.py` for JSON-emitting state checks,
+      file-backed request exchange, and semantic workflow sequences
 
     Keep transient benchmark outputs outside the installed skill tree.
 
 ## Validate package changes from this checkout
 
 Contributors can validate the authored source package under
-`cli-rs/resources/plugin/`. Project installs expose agents as `kast-reader`
-and `kast-writer`; source-plugin validation exposes them under the plugin
-namespace, such as `kast-copilot-lsp:kast-reader`.
+`cli-rs/resources/plugin/`. Project installs expose LSP configuration,
+runtime tooling guidance, and catalog-backed `kast_*` tools.
 
 ```console title="Validate the checked-in source package"
 .github/scripts/test-kast-copilot-plugin.sh
@@ -137,9 +137,8 @@ package explicitly with `--plugin-dir cli-rs/resources/plugin`.
 
 ```console title="Load the source package in Copilot CLI"
 copilot -C /path/to/repo --plugin-dir cli-rs/resources/plugin \
-  --agent kast-copilot-lsp:kast-reader \
   --model gpt-5-mini --effort low \
-  -p 'Validation only. Reply exactly: KAST_READER_LOADED'
+  -p 'Validation only. Reply exactly: KAST_PLUGIN_LOADED'
 ```
 
 ## Next steps

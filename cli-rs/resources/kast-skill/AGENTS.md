@@ -13,6 +13,11 @@ extension, and generated LSP custom route metadata.
   contract artifacts.
 - `references/quickstart.md` and `references/runbook.md` are agent-facing
   lookup material.
+- `references/workflows.md` owns install/config/package verification, project
+  readiness, semantic workflow sequencing, and recovery ownership.
+- `scripts/verify-kast-state.py`, `scripts/kast-agent-call.py`, and
+  `scripts/kast-semantic-workflow.py` are packaged deterministic helpers for
+  read-only state checks, file-backed requests, and common semantic sequences.
 
 ## Edit rules
 
@@ -25,6 +30,9 @@ extension, and generated LSP custom route metadata.
   query methods.
 - Keep fallback guidance resolve-first and compiler-backed; do not route
   Kotlin symbol work through text search.
+- Prefer scripts for repeated verification or request-exchange workflows. Keep
+  them JSON-emitting, eager about input validation, and read-only unless a
+  future command explicitly documents mutation.
 
 ## Downstream surfaces
 
@@ -49,3 +57,11 @@ python3 .github/scripts/render-rpc-contract-summary.py --check
 ```
 
 Use `kast validate --request-file <file>` for hand-authored request examples.
+Run the packaged helper dry run after script or workflow edits:
+
+```console
+python3 cli-rs/resources/kast-skill/scripts/kast-agent-call.py symbol/query \
+  --params-json '{"query":"Kast","limit":1}' --dry-run
+python3 cli-rs/resources/kast-skill/scripts/kast-semantic-workflow.py \
+  --dry-run symbol --symbol Kast
+```

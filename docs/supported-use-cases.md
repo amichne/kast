@@ -42,8 +42,8 @@ developer machines, repository files, and Linux servers as separate concerns.
     ```
 
     This writes managed files under `.github`: the LSP config, Kotlin
-    instructions, reader and writer agents, and catalog-backed extension
-    tools. Restart the IDE after installing or refreshing them.
+    instructions, and catalog-backed extension tools. Restart the IDE after
+    installing or refreshing them.
 
 ??? info "IDEA backend: developer machines use the IDE"
     On macOS developer machines, Kast expects IDEA or Android Studio with the

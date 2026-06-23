@@ -2,20 +2,13 @@
   "schemaVersion": 1,
   "name": "kast-copilot-lsp",
   "version": "0.1.0",
-  "description": "Kast Copilot package for compiler-backed Kotlin work through LSP, instructions, reader/writer agents, and catalog-backed tools.",
+  "description": "Kast Copilot package for compiler-backed Kotlin work through LSP, runtime guidance, and catalog-backed tools.",
   "requires": {
     "kast": ">=0.9.3",
     "copilotCli": ">=1.0.60"
   },
   "entrypoints": {
     "lsp": "lsp.json",
-    "instructions": [
-      "instructions/kast-kotlin.instructions.md"
-    ],
-    "agents": [
-      "agents/kast-reader.agent.md",
-      "agents/kast-writer.agent.md"
-    ],
     "extensions": [
       "extensions/kast/extension.mjs"
     ],

@@ -1,11 +1,13 @@
 # Kast CLI Instructions
 
 Use the Rust `kast` CLI before ordinary text search for Kotlin and Gradle
-project navigation. Start by confirming the binary and command surface:
+project navigation. These instructions are installed by the binary, so confirm
+the command surface and then use it:
 
 ```sh
 command -v kast
 kast --help
+kast agent --help
 ```
 
 For agent automation, prefer machine-readable output and explicit workspace
@@ -22,12 +24,12 @@ result will be parsed, stored, or used as evidence.
 ## Non-Interactive Rules
 
 - Prefer `--output json` for agent-run operator commands.
-- Pass command-specific mutation controls explicitly, such as `--repair`,
-  `--dry-run`, or `--force`.
+- Pass command-specific mutation controls explicitly, such as `--dry-run` or
+  `--force`.
 - Use `kast demo --json` for snapshots; the default demo opens an interactive
   TUI when stdout is a terminal.
-- Use plain `kast doctor` for read-only install diagnostics.
-- Use `kast doctor --repair` only when broad install repair should be applied.
+- If `kast` or `kast agent` is missing, report a stale instruction/binary
+  install instead of falling back to Kotlin text search.
 
 ## Common Commands
 

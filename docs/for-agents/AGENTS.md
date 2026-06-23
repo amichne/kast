@@ -50,4 +50,4 @@ zensical build --clean
 ```
 
 Also run `.github/scripts/test-kast-copilot-plugin.sh` when prose describes
-Copilot package outputs, tools, custom agents, or LSP startup behavior.
+Copilot package outputs, tools, or LSP startup behavior.

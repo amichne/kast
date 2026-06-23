@@ -24,9 +24,6 @@ For release workflow changes, run `.github/scripts/test-release-workflow-contrac
 These files are repository-local install outputs from `kast install copilot`:
 
 - `.github/lsp.json`
-- `.github/instructions/kast-kotlin.instructions.md`
-- `.github/agents/kast-reader.agent.md`
-- `.github/agents/kast-writer.agent.md`
 - `.github/extensions/kast/**`
 - `.github/.kast-copilot-version`
 

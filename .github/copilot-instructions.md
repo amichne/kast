@@ -2,29 +2,14 @@
 
 ## Repo-specific tooling
 
-- For Kotlin symbol navigation, use the `kast-kotlin` LSP server configured in
-  `.github/lsp.json` before broad text search. Prefer LSP definition,
-  references, hover, workspace symbols, document symbols, implementations, and
-  call hierarchy for read-only discovery.
-- For Kast-specific operations that are not standard LSP methods, inspect
-  `capabilities.experimental.kastMethods` from the LSP `initialize` response
-  and use the advertised `kast/*` custom requests before falling back to
-  native tools or shell commands.
-- Treat stale, not-ready, missing, or ambiguous Kast/LSP results as blockers,
-  not as permission to guess from grep or file dumps.
-- Do not perform Kotlin refactors until the symbol has been resolved and
-  references have been enumerated. Use LSP rename or write-capable Kast/RPC
-  operations only when the requested edit is explicit and validation is planned.
-- If LSP is unavailable or unsupported for the operation, use the native
-  `kast_*` tools next. If a bash fallback is genuinely necessary, call
-  `kast rpc '<jsonrpc-request>'` directly instead of relying on exported shell
-  state across tool calls.
 - `cli-rs/resources/plugin/` is the primary Copilot package source for this
-  repo. It owns the `kast-kotlin` LSP configuration, Kotlin instructions,
-  `kast-reader` and `kast-writer` agent profiles, and the SDK extension that
-  exposes catalog-backed `kast_*` tools. Hooks and standalone package skills
-  are not shipped by the package. Generated install copies under `.github` are
-  local outputs, not checked-in sources of truth.
+  repo. It owns the `kast-kotlin` LSP configuration and the SDK extension that
+  injects runtime tooling guidance while exposing catalog-backed `kast_*`
+  tools. Static instruction files, hooks, custom agents, and standalone package
+  skills are not shipped by the package. Generated install copies under
+  `.github` are local outputs, not checked-in sources of truth.
+- Do not duplicate package tooling preferences in static Copilot instruction
+  files. Keep that operational guidance in the extension runtime hook.
 - Read `AGENTS.md` at the repo root first, then any deeper `AGENTS.md` in the module you touch. The narrower file
   overrides the root guide.
 

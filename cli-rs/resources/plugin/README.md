@@ -3,17 +3,12 @@
 This package distributes the minimal reliable Kast Copilot primitive set:
 
 - `kotlin` LSP configuration
-- Kotlin-scoped instructions that route agents through LSP and Kast methods
-- a small SDK extension that exposes catalog-backed `kast_*` tools
-- two custom agents: `kast-reader` for read-only analysis and `kast-writer` for
-  scoped edits and validation
+- a small SDK extension that injects tooling guidance and exposes
+  catalog-backed `kast_*` tools
 
 The package source is `plugin.json` plus `primitive-manifest.json`; generated
 files under `.github` are install outputs. When validating the SDK extension in
 Copilot CLI, load this source directory explicitly with `--plugin-dir`.
-Project-installed `.github/agents` load as `kast-reader` and `kast-writer`;
-source-plugin agents load under the plugin namespace, such as
-`kast-copilot-lsp:kast-reader`.
 
 Install into a repository:
 
@@ -31,7 +26,6 @@ Validate a live Copilot CLI source-plugin load with a short request:
 
 ```console
 copilot -C /path/to/repo --plugin-dir cli-rs/resources/plugin \
-  --agent kast-copilot-lsp:kast-reader \
   --model gpt-5-mini --effort low \
-  -p 'Validation only. Reply exactly: KAST_READER_LOADED'
+  -p 'Validation only. Reply exactly: KAST_PLUGIN_LOADED'
 ```

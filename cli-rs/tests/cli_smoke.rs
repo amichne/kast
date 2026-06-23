@@ -479,6 +479,19 @@ fn smoke_core_cli_commands() {
     assert!(skill_dir.join("kast/SKILL.md").is_file());
     assert!(skill_dir.join("kast/references/commands.json").is_file());
     assert!(skill_dir.join("kast/references/quickstart.md").is_file());
+    assert!(skill_dir.join("kast/references/runbook.md").is_file());
+    assert!(skill_dir.join("kast/references/workflows.md").is_file());
+    assert!(
+        skill_dir
+            .join("kast/scripts/verify-kast-state.py")
+            .is_file()
+    );
+    assert!(skill_dir.join("kast/scripts/kast-agent-call.py").is_file());
+    assert!(
+        skill_dir
+            .join("kast/scripts/kast-semantic-workflow.py")
+            .is_file()
+    );
     assert!(
         skill_dir
             .join("kast/references/requests/symbol/query/request.schema.json")
@@ -513,8 +526,8 @@ fn smoke_core_cli_commands() {
         .expect("install copilot plugin");
     assert!(copilot.status.success());
     assert!(github_dir.join("lsp.json").is_file());
-    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
-    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
+    assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
+    assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
     assert!(github_dir.join(".kast-copilot-version").is_file());
 
     let status = kast(&home, &config_home)
@@ -2395,6 +2408,31 @@ fn install_resource_gateways_support_force_and_current_versions() {
         .expect("instructions marker");
     assert_eq!(instructions_marker.trim(), instructions_stdout["version"]);
 
+    std::fs::create_dir_all(github_dir.join("agents")).expect("stale agents dir");
+    std::fs::create_dir_all(github_dir.join("instructions")).expect("stale instructions dir");
+    std::fs::create_dir_all(github_dir.join("extensions/kast/_shared"))
+        .expect("stale extension dir");
+    std::fs::write(
+        github_dir.join("instructions/kast-kotlin.instructions.md"),
+        b"old instructions\n",
+    )
+    .expect("stale instructions");
+    std::fs::write(
+        github_dir.join("agents/kast-reader.agent.md"),
+        b"old reader\n",
+    )
+    .expect("stale reader");
+    std::fs::write(
+        github_dir.join("agents/kast-writer.agent.md"),
+        b"old writer\n",
+    )
+    .expect("stale writer");
+    std::fs::write(
+        github_dir.join("extensions/kast/_shared/kast-agents.mjs"),
+        b"old agents\n",
+    )
+    .expect("stale agent module");
+
     let copilot = kast(&home, &config_home)
         .args([
             "--output",
@@ -2421,14 +2459,14 @@ fn install_resource_gateways_support_force_and_current_versions() {
     );
     assert!(github_dir.join("lsp.json").is_file());
     assert!(
-        github_dir
+        !github_dir
             .join("instructions/kast-kotlin.instructions.md")
-            .is_file()
+            .exists()
     );
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
     assert!(
         github_dir
-            .join("extensions/kast/_shared/kast-agents.mjs")
+            .join("extensions/kast/_shared/kast-tools.mjs")
             .is_file()
     );
     assert!(
@@ -2441,8 +2479,18 @@ fn install_resource_gateways_support_force_and_current_versions() {
             .join("extensions/kast/_shared/commands.json")
             .is_file()
     );
-    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
-    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
+    assert!(
+        !github_dir
+            .join("extensions/kast/_shared/kast-agents.mjs")
+            .exists()
+    );
+    assert!(
+        !github_dir
+            .join("instructions/kast-kotlin.instructions.md")
+            .exists()
+    );
+    assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
+    assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
 
     let copilot_marker =
         std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("copilot marker");
@@ -2637,13 +2685,13 @@ fn copilot_package_install_preserves_existing_github_content() {
     );
     assert!(github_dir.join("lsp.json").is_file());
     assert!(
-        github_dir
+        !github_dir
             .join("instructions/kast-kotlin.instructions.md")
-            .is_file()
+            .exists()
     );
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
-    assert!(github_dir.join("agents/kast-reader.agent.md").is_file());
-    assert!(github_dir.join("agents/kast-writer.agent.md").is_file());
+    assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
+    assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
     assert!(
         github_dir
             .join("extensions/kast/_shared/commands.json")
@@ -3016,8 +3064,14 @@ fn packaged_skill_targets_rust_kast_only() {
 
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
+    assert!(skill.contains("kast agent --help"));
+    assert!(skill.contains("scripts/verify-kast-state.py"));
+    assert!(skill.contains("scripts/kast-agent-call.py"));
+    assert!(skill.contains("scripts/kast-semantic-workflow.py"));
     assert!(skill.contains("Use for Gradle project file work"));
-    assert!(skill.contains("Default to Kast"));
+    assert!(skill.contains("assume the binary installed it"));
+    assert!(skill.contains("`kast` directly"));
+    assert!(skill.contains("installed skill and binary are out of sync"));
     assert!(skill.contains("project file operations"));
     assert!(skill.contains("Use Kast to discover the owning module"));
     assert!(skill.contains("when the path is not already exact"));
@@ -3033,13 +3087,38 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("raw/apply-edits"));
     assert!(skill.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("command -v kast"));
+    assert!(quickstart.contains("kast agent --help"));
     assert!(quickstart.contains("kast agent call"));
+    assert!(quickstart.contains("scripts/verify-kast-state.py"));
+    assert!(quickstart.contains("scripts/kast-agent-call.py"));
+    assert!(quickstart.contains("scripts/kast-semantic-workflow.py"));
+    assert!(quickstart.contains("skill and binary are out of sync"));
     assert!(quickstart.contains("raw transport/debug escape hatch"));
     assert!(quickstart.contains("kast metrics impact"));
     assert!(quickstart.contains("kast demo"));
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));
     assert!(quickstart.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(routing_reference.contains("rust-kast-cli"));
+    assert!(
+        root.join("resources/kast-skill/references/workflows.md")
+            .is_file(),
+        "packaged skill must include workflow ownership reference"
+    );
+    assert!(
+        root.join("resources/kast-skill/scripts/verify-kast-state.py")
+            .is_file(),
+        "packaged skill must include state verifier"
+    );
+    assert!(
+        root.join("resources/kast-skill/scripts/kast-agent-call.py")
+            .is_file(),
+        "packaged skill must include file-backed call harness"
+    );
+    assert!(
+        root.join("resources/kast-skill/scripts/kast-semantic-workflow.py")
+            .is_file(),
+        "packaged skill must include semantic workflow runner"
+    );
 
     assert!(
         root.join("resources/plugin/lsp.json").is_file(),

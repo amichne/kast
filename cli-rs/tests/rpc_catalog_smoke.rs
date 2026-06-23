@@ -465,34 +465,28 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert_eq!(
         targets,
         BTreeSet::from([
-            "agents/kast-reader.agent.md",
-            "agents/kast-writer.agent.md",
-            "extensions/kast/_shared/kast-agents.mjs",
             "extensions/kast/_shared/commands.json",
             "extensions/kast/_shared/kast-trace.mjs",
             "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
-            "instructions/kast-kotlin.instructions.md",
             "lsp.json",
         ])
     );
     assert!(
-        plugin_root
+        !plugin_root
             .join("instructions/kast-kotlin.instructions.md")
-            .is_file(),
-        "plugin source must own the Kotlin instruction"
+            .exists(),
+        "plugin source must not expose static Kotlin instructions"
     );
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
         "plugin source must own the catalog-backed Copilot extension entrypoint"
     );
     assert!(
-        plugin_root.join("agents/kast-reader.agent.md").is_file(),
-        "plugin source must own the reader agent"
-    );
-    assert!(
-        plugin_root.join("agents/kast-writer.agent.md").is_file(),
-        "plugin source must own the writer agent"
+        !plugin_root
+            .join("extensions/kast/_shared/kast-agents.mjs")
+            .exists(),
+        "plugin source must not expose custom agent helpers"
     );
     let extension = std::fs::read_to_string(plugin_root.join("extensions/kast/extension.mjs"))
         .expect("extension source");
@@ -566,36 +560,13 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
     let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
     assert_eq!(installed, source);
 
-    let instruction_source = std::fs::read_to_string(
-        manifest_dir.join("resources/plugin/instructions/kast-kotlin.instructions.md"),
-    )
-    .expect("plugin instruction");
-    let installed_instruction =
-        std::fs::read_to_string(target.join("instructions/kast-kotlin.instructions.md"))
-            .expect("installed instruction");
-    assert_eq!(installed_instruction, instruction_source);
     assert!(
-        installed_instruction.contains("start with the `kotlin` LSP server"),
-        "Kotlin instruction must force the LSP route"
+        !target
+            .join("instructions/kast-kotlin.instructions.md")
+            .exists()
     );
-    assert!(
-        installed_instruction.contains("kast up --workspace-root \"$PWD\" --backend idea"),
-        "Kotlin instruction must warm the IDEA backend before missing-index fallback"
-    );
-
-    let installed_reader = std::fs::read_to_string(target.join("agents/kast-reader.agent.md"))
-        .expect("installed reader agent");
-    assert!(installed_reader.contains("name: Kast Reader"));
-    assert!(installed_reader.contains("kast up --workspace-root \"$PWD\" --backend idea"));
-    assert!(!installed_reader.contains("kast_write_and_validate"));
-    assert!(!installed_reader.contains("  - edit"));
-
-    let installed_writer = std::fs::read_to_string(target.join("agents/kast-writer.agent.md"))
-        .expect("installed writer agent");
-    assert!(installed_writer.contains("name: Kast Writer"));
-    assert!(installed_writer.contains("kast up --workspace-root \"$PWD\" --backend idea"));
-    assert!(installed_writer.contains("kast_write_and_validate"));
-    assert!(installed_writer.contains("  - edit"));
+    assert!(!target.join("agents/kast-reader.agent.md").exists());
+    assert!(!target.join("agents/kast-writer.agent.md").exists());
 
     let extension_source = std::fs::read_to_string(
         manifest_dir.join("resources/plugin/extensions/kast/extension.mjs"),
@@ -604,6 +575,9 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
     let installed_extension = std::fs::read_to_string(target.join("extensions/kast/extension.mjs"))
         .expect("installed extension");
     assert_eq!(installed_extension, extension_source);
+    assert!(installed_extension.contains("KAST_TOOLING_CONTEXT"));
+    assert!(installed_extension.contains("onUserPromptSubmitted"));
+    assert!(installed_extension.contains("additionalContext"));
 
     let trace_source = std::fs::read_to_string(
         manifest_dir.join("resources/plugin/extensions/kast/_shared/kast-trace.mjs"),
@@ -613,6 +587,11 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         std::fs::read_to_string(target.join("extensions/kast/_shared/kast-trace.mjs"))
             .expect("installed trace helper");
     assert_eq!(installed_trace, trace_source);
+    assert!(
+        !target
+            .join("extensions/kast/_shared/kast-agents.mjs")
+            .exists()
+    );
 
     let catalog_source =
         std::fs::read_to_string(manifest_dir.join("resources/kast-skill/references/commands.json"))

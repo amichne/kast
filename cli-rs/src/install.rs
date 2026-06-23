@@ -34,6 +34,12 @@ const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
 const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
+const RETIRED_COPILOT_PACKAGE_OUTPUTS: &[&str] = &[
+    "instructions/kast-kotlin.instructions.md",
+    "agents/kast-reader.agent.md",
+    "agents/kast-writer.agent.md",
+    "extensions/kast/_shared/kast-agents.mjs",
+];
 const COPILOT_PRIMITIVE_MANIFEST: &str = "primitive-manifest.json";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
@@ -2318,6 +2324,9 @@ fn install_copilot_package_files(github_dir: &Path, force: bool) -> Result<bool>
         return Ok(true);
     }
     let replace_managed = force || marker.is_file();
+    if replace_managed {
+        remove_retired_copilot_package_outputs(github_dir)?;
+    }
     for output in copilot_package_outputs()? {
         write_copilot_package_file(
             github_dir,
@@ -2329,6 +2338,13 @@ fn install_copilot_package_files(github_dir: &Path, force: bool) -> Result<bool>
     }
     fs::write(marker, format!("{}\n", cli::version()))?;
     Ok(false)
+}
+
+fn remove_retired_copilot_package_outputs(github_dir: &Path) -> Result<()> {
+    for relative in RETIRED_COPILOT_PACKAGE_OUTPUTS {
+        remove_existing_path(&github_dir.join(relative))?;
+    }
+    Ok(())
 }
 
 fn update_copilot_git_exclude(github_dir: &Path, disabled: bool) -> Result<GitExcludeResult> {

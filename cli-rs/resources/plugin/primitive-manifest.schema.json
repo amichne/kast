@@ -105,9 +105,9 @@
       "examples": [
         {
           "type": "PACKAGE_FILE",
-          "source": "instructions/kast-kotlin.instructions.md",
-          "target": "instructions/kast-kotlin.instructions.md",
-          "executable": false
+          "source": "extensions/kast/extension.mjs",
+          "target": "extensions/kast/extension.mjs",
+          "executable": true
         }
       ]
     },

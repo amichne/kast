@@ -40,7 +40,7 @@ part of the Homebrew formula install, using the same cask path as
 `brew install --cask kast-plugin`. Restart IDEA or Android Studio after
 Homebrew links or refreshes the plugin, then restart after installing
 repository files so Copilot and IDE-hosted tooling discover `.github/lsp.json`,
-repository instructions, and custom agents at startup.
+runtime guidance, and catalog-backed tools at startup.
 
 ??? success "Homebrew machine install"
     `brew install kast` is machine-level. It installs one `kast` executable
@@ -67,12 +67,9 @@ repository instructions, and custom agents at startup.
     The command writes managed files for the running CLI version:
 
     - `.github/lsp.json`
-    - `.github/instructions/kast-kotlin.instructions.md`
-    - `.github/agents/kast-reader.agent.md`
-    - `.github/agents/kast-writer.agent.md`
     - `.github/extensions/kast/extension.mjs`
     - `.github/extensions/kast/_shared/kast-tools.mjs`
-    - `.github/extensions/kast/_shared/kast-agents.mjs`
+    - `.github/extensions/kast/_shared/kast-trace.mjs`
     - `.github/extensions/kast/_shared/commands.json`
     - `.github/.kast-copilot-version`
 
@@ -172,10 +169,7 @@ cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/proje
 
 Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
 For live Copilot CLI validation of the SDK extension tools, load the source
-package explicitly with `--plugin-dir cli-rs/resources/plugin`. Project
-installs expose the agents as `kast-reader` and `kast-writer`; source-plugin
-validation exposes them under the plugin namespace, such as
-`kast-copilot-lsp:kast-reader`.
+package explicitly with `--plugin-dir cli-rs/resources/plugin`.
 
 Use the development Gradle task when you need a local debug CLI and IDEA plugin
 from the checkout:
