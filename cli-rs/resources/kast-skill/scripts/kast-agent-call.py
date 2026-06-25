@@ -144,6 +144,20 @@ def envelope_summary(envelope: Any) -> dict[str, Any] | None:
     return summary
 
 
+def agent_tools_envelope_ok(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    result = value.get("result")
+    if not isinstance(result, dict):
+        return False
+    return (
+        value.get("ok") is True
+        and value.get("method") == "agent/tools"
+        and result.get("type") == "KAST_AGENT_TOOLS"
+        and isinstance(result.get("tools"), list)
+    )
+
+
 def recovery_from_text(text: str, workspace_root: Path) -> list[str]:
     commands = []
     if "unrecognized subcommand 'agent'" in text or "KAST_AGENT_UNAVAILABLE" in text:
@@ -238,6 +252,32 @@ def main() -> int:
             )
         )
         result["process"] = {"exitCode": agent_help["exitCode"], "preflight": "agent --help"}
+        result["recovery"] = ["./gradlew installDevelopmentLocal"]
+        json.dump(result, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return 1
+
+    agent_tools = command_record([kast_bin, "agent", "tools"], workspace_root, args.timeout)
+    agent_tools_json = None
+    try:
+        agent_tools_json = json.loads(agent_tools["stdout"])
+    except json.JSONDecodeError:
+        pass
+    if not agent_tools_envelope_ok(agent_tools_json):
+        stdout_file.write_text(agent_tools["stdout"], encoding="utf-8")
+        stderr_file.write_text(agent_tools["stderr"], encoding="utf-8")
+        result["issues"].append(
+            issue(
+                "KAST_AGENT_TOOLS_UNAVAILABLE",
+                "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+                "./gradlew installDevelopmentLocal",
+            )
+        )
+        result["process"] = {
+            "exitCode": agent_tools["exitCode"],
+            "timedOut": agent_tools["timedOut"],
+            "preflight": "agent tools",
+        }
         result["recovery"] = ["./gradlew installDevelopmentLocal"]
         json.dump(result, sys.stdout, indent=2, sort_keys=True)
         sys.stdout.write("\n")

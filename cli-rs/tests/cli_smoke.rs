@@ -2986,6 +2986,67 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
 }
 
 #[test]
+fn packaged_agent_call_requires_agent_tools_preflight() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let workspace = temp.path().join("workspace");
+    let fake_bin = temp.path().join("kast");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        &fake_bin,
+        r#"#!/bin/sh
+if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
+  printf 'Usage: kast agent\nCommands:\n  call\n  tools\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+  printf '{"ok":true,"method":"agent/tools","result":{"type":"WRONG","tools":[]}}\n'
+  exit 0
+fi
+printf 'unexpected fake kast args:' >&2
+printf ' %s' "$@" >&2
+printf '\n' >&2
+exit 64
+"#,
+    )
+    .expect("fake kast");
+    set_executable_for_test(&fake_bin);
+
+    let script = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/kast-agent-call.py");
+    let call = Command::new("python3")
+        .arg(&script)
+        .arg("symbol/query")
+        .arg("--params-json")
+        .arg(r#"{"query":"Widget"}"#)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--kast-bin")
+        .arg(&fake_bin)
+        .output()
+        .expect("run packaged call helper");
+    assert!(
+        !call.status.success(),
+        "invalid agent tools envelope should fail before dispatch: stdout={}, stderr={}",
+        String::from_utf8_lossy(&call.stdout),
+        String::from_utf8_lossy(&call.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&call.stdout).expect("call helper json");
+    assert!(
+        stdout["issues"]
+            .as_array()
+            .expect("issues")
+            .iter()
+            .any(|issue| issue["code"] == "KAST_AGENT_TOOLS_UNAVAILABLE"),
+        "{stdout:#}"
+    );
+    assert_eq!(stdout["process"]["preflight"], "agent tools", "{stdout:#}");
+    assert!(
+        !String::from_utf8_lossy(&call.stderr).contains("unexpected fake kast args"),
+        "helper should not dispatch after invalid agent tools preflight"
+    );
+}
+
+#[test]
 fn idea_plugin_install_uses_profile_install_mode() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

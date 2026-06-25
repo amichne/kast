@@ -72,7 +72,8 @@ python3 scripts/kast-agent-call.py symbol/query \
 ```
 
 For large payloads, put JSON in a file and pass `--params-file`. The script
-validates that the method exists in the shipped catalog, writes `params.json`,
+validates that the method exists in the shipped catalog, checks that the active
+binary exposes a valid `kast agent tools` envelope, writes `params.json`,
 `stdout.json`, and `stderr.txt`, and fails if the agent envelope or nested
 result reports failure.
 
