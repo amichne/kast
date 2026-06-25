@@ -36,7 +36,7 @@ brew tap amichne/kast
 brew install kast
 
 cd /path/to/your/repository
-kast install copilot
+kast agent setup copilot
 ```
 
 This is the primary macOS developer-machine path. The reader should understand
@@ -49,7 +49,8 @@ the direct repair path `brew install --cask kast-plugin`.
 |-------|-------|-----------------|--------------------|
 | Machine CLI + IDE plugin | Global `kast` binary plus Homebrew-managed JetBrains plugin links | `brew install kast` | First step for developer machines |
 | Machine IDE plugin repair | Homebrew-managed JetBrains plugin links | `brew install --cask kast-plugin` | Direct cask repair path |
-| Repository | Copilot/LSP package files under `.github` | `kast install copilot` | First step per repository |
+| Repository | Copilot/LSP package files under `.github` | `kast agent setup copilot` | First step per repository |
+| Repository harness selection | Copilot package, packaged skill, or Markdown instructions | `kast agent setup auto --harness ...` or `projectOpen.agentHarness` | Explicit enterprise/portable harness path |
 | Headless server | Linux bundle with binary, config, and runtime | `scripts/install-ubuntu-debian.sh install` | Second lane for hosted agents |
 
 Detailed backend, API, repair, shell, release, and local-development material
@@ -68,8 +69,8 @@ conversation summaries.
 | Headless server path | `docs/getting-started/headless-linux.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Copilot package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
-| Installed Copilot outputs | `.github/lsp.json`, `.github/instructions/`, `.github/extensions/kast/` | `kast install copilot --force` plus package tests |
-| RPC/tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check` |
+| Installed Copilot outputs | `.github/lsp.json`, `.github/extensions/kast/` | `kast agent setup copilot --force` plus package tests |
+| RPC/tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check` |
 | Protocol artifacts | `cli-rs/protocol/` | `.github/scripts/render-rpc-contract-summary.py --check`, `./gradlew :analysis-api:test` |
 
 Generated or installed copies must not become independent product truth. When

@@ -1,14 +1,14 @@
 ---
 title: Agent Automation Commands
-description: Use the hidden `kast agent` command surface for scripts and agents.
+description: Use the public `kast agent` command surface for scripts and agents.
 icon: lucide/bot
 ---
 
 # Agent Automation Commands
 
 `kast agent` is the advanced CLI surface for scripts, CI steps, and coding
-agents. It is hidden from the normal public command tree, but supported and
-documented here because it is the preferred machine-oriented command path.
+agents. It is part of the public command tree because it is the preferred
+machine-oriented command path.
 
 ## JSON envelope
 
@@ -26,6 +26,40 @@ as a failed operation even when the process exited cleanly.
 
 Stderr may contain human-readable startup or progress messages. Scripts should
 parse stdout and keep stderr for diagnostics.
+
+## Bring Up A Repository
+
+Use `kast agent up` when a repository should be ready for an agent in one
+step. It selects the agent harness, installs the selected resource package, and
+warms the runtime for the resolved workspace root.
+
+```console title="Plan and run agent bring-up"
+kast agent up --dry-run
+kast agent up --workspace-root "$PWD" --backend=headless
+kast agent up --harness instructions --workspace-root "$PWD" --dry-run
+```
+
+When `--workspace-root` is supplied, setup targets that repository instead of
+the shell's current directory. The command reports the selected setup command
+and runtime command in both human and JSON output.
+
+## Setup
+
+Use `kast agent setup` to install repository-local agent resources. Copilot
+repositories usually use the full LSP package, while enterprise or portable
+harnesses can select skills or Markdown instructions without relying on a
+Copilot extension or MCP availability.
+
+```console title="Choose an agent harness"
+kast agent setup copilot
+kast agent setup auto --dry-run
+kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
+kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
+```
+
+When `--harness` is omitted, `kast agent setup auto` reads
+`projectOpen.agentHarness` from config before falling back to repository
+detection.
 
 ## Alias commands
 

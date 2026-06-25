@@ -7,8 +7,18 @@ resource trust, agent command surface, and bundled agent resources.
 ## Local purpose
 
 - `src/cli.rs` defines the public and hidden CLI command surface.
+- Public CLI families are intent-first: `kast ready`, `kast agent`,
+  `kast runtime`, `kast inspect`, `kast machine`, and `kast release`.
 - `src/agent.rs` owns `kast agent` aliases, `kast agent call`, and
-  `kast agent workflow`.
+  `kast agent workflow`; `kast agent up`, `kast agent setup`, and
+  `kast agent lsp` dispatch through operator handlers before JSON-envelope
+  execution.
+- `kast agent setup auto` is harness-aware: an explicit `--harness` value
+  wins, then `projectOpen.agentHarness`, then repository detection.
+  Its `--dry-run` mode must stay read-only and explain the selected harness.
+- `kast agent up` composes harness-aware setup with `kast runtime up`.
+  Its explicit `--workspace-root` must stay authoritative for setup targets,
+  and `--dry-run` must not write resources or start a backend.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
 - `resources/plugin/` owns the Copilot package source.
@@ -29,8 +39,9 @@ The durable decision record for agent resources and workflows is
 - Do not maintain compatibility helpers only for older binaries. Missing
   `kast agent` or `kast agent workflow` support is an incompatibility that
   requires upgrade or reinstall.
-- Keep raw `kast rpc` hidden/debug-oriented. Agent and Copilot integrations use
-  `kast agent call` and `kast agent workflow`.
+- Keep raw `kast rpc` and older top-level command aliases hidden/debug-oriented.
+  Agent and Copilot integrations use `kast agent up`, `kast agent setup`,
+  `kast agent lsp`, `kast agent call`, and `kast agent workflow`.
 - When install output shape changes, update manifest resource recording,
   doctor verification, package scripts, docs, and smoke tests in the same
   change.
@@ -62,8 +73,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 For resource, package, or catalog changes, also run the relevant contracts:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check
+cargo run --manifest-path cli-rs/Cargo.toml -- release generate contract --check
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh
+.github/scripts/test-docs-navigation-contract.sh
+zensical build --clean
 ```

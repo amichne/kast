@@ -8,6 +8,6 @@ the `kast` binary that installed them is available to the agent.
 - `rpc.md` explains the pipe-friendly `kast agent` path and raw RPC fallback.
 - `lsp.md` explains the standard LSP adapter contract.
 
-Prefer `kast install copilot` for Copilot repositories and `kast install skill`
+Prefer `kast agent setup copilot` for Copilot repositories and `kast agent setup skill`
 for hosts that understand skills. Use this instruction set only when the host
 needs portable Markdown operating rules.

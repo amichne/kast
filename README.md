@@ -25,8 +25,11 @@ brew tap amichne/kast
 brew install kast
 
 cd /path/to/your/repository
-kast install copilot
+kast agent setup copilot
 ```
+
+Use `kast agent up --dry-run` to preview the selected repository harness and
+runtime warmup command before writing files or starting a backend.
 
 `brew install kast` installs or refreshes the matching `kast-plugin` cask, the
 same cask path exposed by `brew install --cask kast-plugin` for direct repair.
@@ -41,7 +44,7 @@ air-gapped host needs its own binary and backend runtime:
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
 ./scripts/install-ubuntu-debian.sh verify
-kast up --backend=headless
+kast runtime up --backend=headless
 ```
 
 The [install guide](https://kast.michne.com/getting-started/install/) covers

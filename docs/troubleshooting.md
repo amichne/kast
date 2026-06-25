@@ -6,9 +6,9 @@ icon: lucide/life-buoy
 
 # Troubleshooting
 
-Start with commands that report active state instead of guessing. `kast doctor`
-checks managed install state, `kast paths` explains filesystem resolution, and
-`kast status` reports backend state for the current workspace.
+Start with commands that report active state instead of guessing. `kast ready`
+checks managed install state, `kast inspect paths` explains filesystem resolution, and
+`kast runtime status` reports backend state for the current workspace.
 
 ## Install state
 
@@ -17,21 +17,21 @@ plugin links are suspected.
 
 ??? question "Which Kast install is active?"
 
-    Run doctor in JSON mode first. The payload includes config validity,
+    Run readiness in JSON mode first. The payload includes config validity,
     install manifest state, canonical paths, binary linkage, issues, and
     warnings.
 
     ```console
-    kast --output json doctor
-    kast paths
+    kast --output json ready --for machine
+    kast inspect paths
     ```
 
-    If doctor reports repairable managed state, run the repair command once and
+    If readiness reports repairable managed state, run the repair command once and
     inspect again.
 
     ```console
-    kast doctor --repair
-    kast doctor
+    kast ready --fix
+    kast ready
     ```
 
 ??? question "The shell cannot find `kast`"
@@ -40,8 +40,8 @@ plugin links are suspected.
     help, install shell integration and verify the active shim path.
 
     ```console
-    kast install shell --shell zsh
-    kast paths
+    kast machine shell --shell zsh
+    kast inspect paths
     command -v kast
     ```
 
@@ -55,12 +55,12 @@ plugin links are suspected.
 
     ```console
     brew reinstall --cask kast-plugin
-    kast install plugin
-    kast doctor
+    kast machine plugin
+    kast ready
     ```
 
-    Doctor should report the managed plugin and JetBrains profile links. If it
-    does not, inspect the profile root shown by `kast paths --idea`.
+    `kast ready` should report the managed plugin and JetBrains profile links.
+    If it does not, inspect the profile root shown by `kast inspect paths --idea`.
 
 ??? question "Repository Copilot files look stale"
 
@@ -70,8 +70,8 @@ plugin links are suspected.
 
     ```console
     cd /path/to/your/repository
-    kast install copilot --force
-    kast doctor
+    kast agent setup copilot --force
+    kast ready
     ```
 
 ## Backend state
@@ -85,9 +85,10 @@ results.
     paths or machine-readable details.
 
     ```console
-    kast up --backend=headless
-    kast status --backend=headless
-    kast --output json status --backend=headless
+    kast ready --for kotlin
+    kast runtime up --backend=headless
+    kast runtime status --backend=headless
+    kast --output json runtime status --backend=headless
     ```
 
     Check Java 21 or newer for the headless backend:
@@ -105,8 +106,8 @@ results.
     the backend reaches a servable state.
 
     ```console
-    kast status
-    kast --output json status
+    kast runtime status
+    kast --output json runtime status
     ```
 
     If indexing never converges, verify the Gradle project itself works, then
@@ -186,7 +187,7 @@ no longer matches the planned state.
     generated or read-only.
 
     ```console
-    kast capabilities
+    kast runtime capabilities
     kast agent raw-rename \
       --file-path "$PWD/src/main/kotlin/App.kt" \
       --offset 42 \
@@ -218,13 +219,13 @@ host logs.
     Verify the repository package and backend from a normal shell.
 
     ```console
-    kast doctor
-    kast status --workspace-root "$PWD"
+    kast ready
+    kast runtime status --workspace-root "$PWD"
     kast agent health --workspace-root "$PWD"
     ```
 
-    If those commands pass, inspect the host logs for the exact `kast lsp
-    --stdio` command, working directory, and environment.
+    If those commands pass, inspect the host logs for the exact
+    `kast agent lsp --stdio` command, working directory, and environment.
 
 ## Getting help
 
@@ -232,7 +233,7 @@ When opening an issue, include command output that proves the active state.
 Prefer JSON where the command supports it.
 
 ```console
-kast --output json doctor
-kast --output json status
-kast paths
+kast --output json ready
+kast --output json runtime status
+kast inspect paths
 ```

@@ -12,12 +12,12 @@ inspect when a semantic request fails.
 
 ## Start or warm a backend
 
-Use `kast up` from the repository root or any subdirectory. The first run may
+Use `kast runtime up` from the repository root or any subdirectory. The first run may
 index the workspace; later calls reuse the warm backend.
 
 ```console title="Start the selected backend"
-kast up --backend=headless
-kast up --backend=idea
+kast runtime up --backend=headless
+kast runtime up --backend=idea
 ```
 
 `--backend=headless` starts the packaged headless runtime. `--backend=idea`
@@ -26,30 +26,30 @@ plugin is installed.
 
 ## Inspect runtime state
 
-Use `kast status` for a human-readable state summary. Add `--output json` when
+Use `kast runtime status` for a human-readable state summary. Add `--output json` when
 a script needs resolved paths, daemon state, logs, warnings, or backend details.
 
 ```console title="Check runtime state"
-kast status
-kast --output json status
+kast runtime status
+kast --output json runtime status
 ```
 
-Use `kast capabilities` when you need to know which semantic operations the
+Use `kast runtime capabilities` when you need to know which semantic operations the
 selected backend advertises.
 
 ```console title="Inspect capabilities"
-kast capabilities --backend=headless
+kast runtime capabilities --backend=headless
 ```
 
 ## Restart or stop
 
-Use `kast restart` when a backend should be rebuilt from the current install
-state. Use `kast stop` to shut it down and remove runtime state owned by that
+Use `kast runtime restart` when a backend should be rebuilt from the current install
+state. Use `kast runtime stop` to shut it down and remove runtime state owned by that
 workspace.
 
 ```console title="Restart or stop"
-kast restart --backend=headless
-kast stop --backend=headless
+kast runtime restart --backend=headless
+kast runtime stop --backend=headless
 ```
 
 Restart is broader than a workspace refresh. Use it when runtime state is
@@ -63,7 +63,7 @@ guessing about plugin state, runtime paths, or daemon readiness.
 | Need | Command |
 |------|---------|
 | Confirm a backend is reachable | `kast agent health` |
-| Read machine output for automation | `kast --output json status` |
-| Check the selected runtime path model | `kast paths` |
-| Verify managed install state | `kast doctor` |
-| Repair managed install state | `kast doctor --repair` |
+| Read machine output for automation | `kast --output json runtime status` |
+| Check the selected runtime path model | `kast inspect paths` |
+| Verify managed install state | `kast ready` |
+| Repair managed install state | `kast ready --fix` |

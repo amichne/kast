@@ -13,7 +13,7 @@ KAST_STDERR="$KAST_TMP/kast.stderr"
 
 run_kast_rpc() {
   printf '%s\n' "$1" >"$KAST_REQUEST"
-  kast validate --request-file "$KAST_REQUEST" >/dev/null
+  kast release validate --request-file "$KAST_REQUEST" >/dev/null
   kast rpc --request-file "$KAST_REQUEST" --workspace-root "$PWD" \
     >"$KAST_RESULT" 2>"$KAST_STDERR"
 }
@@ -22,7 +22,7 @@ warm_idea_backend_if_needed() {
   # Use this when kast is installed but RPC/source-index output reports
   # NO_BACKEND_AVAILABLE, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or a
   # missing source-index database.
-  kast up --workspace-root "$PWD" --backend idea
+  kast runtime up --workspace-root "$PWD" --backend idea
 }
 
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/query","params":{"query":"EventBean","modes":["exact","lexical"],"filters":{"relativePathPrefix":"src/"},"limit":10},"id":1}'
@@ -36,9 +36,9 @@ run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/rename","params":{"type":"RENAME
 run_kast_rpc '{"jsonrpc":"2.0","method":"symbol/write-and-validate","params":{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."},"id":1}'
 run_kast_rpc '{"jsonrpc":"2.0","method":"raw/diagnostics","params":{"filePaths":["/abs/path/File.kt"]},"id":1}'
 
-kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
+kast inspect metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
-kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
+kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```

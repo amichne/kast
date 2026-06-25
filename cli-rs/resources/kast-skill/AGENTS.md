@@ -58,13 +58,13 @@ Catalog changes can affect:
 Run the catalog and docs checks after catalog changes:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check
 python3 .github/scripts/render-rpc-contract-summary.py --check
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 ```
 
-Use `kast validate --request-file <file>` for hand-authored request examples.
+Use `kast release validate --request-file <file>` for hand-authored request examples.
 Run the packaged helper dry run after script or workflow edits:
 
 ```console

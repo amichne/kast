@@ -17,18 +17,20 @@ python3 scripts/verify-kast-state.py --workspace-root "$PWD" \
 
 Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
 when that repository-local artifact is required for the task. The script emits
-JSON with command-surface evidence, `doctor`, `paths`, manifest-backed
+JSON with command-surface evidence, readiness, paths, manifest-backed
 resource state, catalog hash comparisons, and recovery commands.
 
 If the verifier reports stale state, use the one owner for that state:
 
 | Symptom | Owner |
 | --- | --- |
-| `kast` missing, bad manifest, install-owned config drift | `kast doctor --repair` |
+| `kast` missing, bad manifest, install-owned config drift | `kast ready --fix` |
+| configured binary missing or not the running binary | `kast ready --for machine --fix` |
+| Kotlin semantic backend absent from the manifest | `kast ready --for kotlin`, then install or activate a backend |
 | active binary lacks `kast agent`, shows top-level `kast rpc`, or shows `install affected` | refresh the active binary, in this repo `./gradlew installDevelopmentLocal` |
-| stale repository Copilot files or catalog mismatch | `kast install copilot --force` |
-| stale repository skill | `kast install skill --force` |
-| stale Markdown instructions | `kast install instructions --force` |
+| stale repository Copilot files or catalog mismatch | `kast agent setup copilot --force` |
+| stale repository skill | `kast agent setup skill --force` |
+| stale Markdown instructions | `kast agent setup instructions --force` |
 
 Do not edit generated `.github` package files as source. The source owners are
 `cli-rs/resources/plugin/`, `cli-rs/resources/kast-instructions/`, and this
@@ -43,15 +45,20 @@ Before semantic work, prove three things:
    Kotlin/Gradle semantics;
 3. backend or index failures have a recovery attempt or a clear blocker.
 
+Use `kast agent up --dry-run --workspace-root "$PWD"` when harness setup and
+runtime readiness both matter. The dry run reports the selected harness,
+workspace-root-derived setup target, and runtime command without writing files
+or starting a backend.
+
 For `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a
 missing source-index database, warm the runtime:
 
 ```sh
-kast up --workspace-root "$PWD" --backend idea
+kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
-Use `kast restart --workspace-root "$PWD"` when daemon/config drift is likely,
-then re-run the failed request. Use `kast status --workspace-root "$PWD"` to
+Use `kast runtime restart --workspace-root "$PWD"` when daemon/config drift is likely,
+then re-run the failed request. Use `kast runtime status --workspace-root "$PWD"` to
 quote runtime evidence.
 
 ## File-backed request exchange

@@ -30,7 +30,7 @@ If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 database, warm the IDEA backend before using non-semantic file tools:
 
 ```console
-kast up --workspace-root "$PWD" --backend idea
+kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Kast opens IDEA or Android Studio dynamically only when
@@ -41,12 +41,17 @@ installed. That is the blocker; do not stop at the first missing-index result.
 ## Contract reference
 
 The Rust `kast` command tree is the operator surface. Use `kast --help` and
-`kast <command> --help` for direct CLI commands such as `metrics`, `demo`,
-`up`, and `status`. Agent and raw transport commands are hidden from top-level
-help but still have scoped help, such as `kast agent --help` and
-`kast rpc --help`.
+`kast <command> --help` for direct CLI families such as `agent`, `runtime`,
+`inspect`, `machine`, and `release`. `kast agent --help` is the public
+agent-oriented entrypoint; `kast rpc --help` remains available as a raw
+transport/debug topic.
 
-For shell pipelines, use the hidden `kast agent` surface instead of hand-written
+Use `kast agent up --dry-run --workspace-root "$PWD"` when you need to inspect
+both the selected harness package and the runtime warmup command before writing
+files or launching a backend. Use `kast agent up --workspace-root "$PWD"` when
+the repository should be prepared and warmed in one operator step.
+
+For shell pipelines, use the public `kast agent` surface instead of hand-written
 JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
 and either `result` or `error`; `kast agent call <method>` accepts params,
 full JSON-RPC requests, previous envelopes, and `nextRequest` objects through
@@ -152,11 +157,11 @@ kast agent call raw/apply-edits --params-file "$KAST_PARAMS" \
   --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Direct source-index metrics
-kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
+kast inspect metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 # Agent-readable symbol graph snapshot
-kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
+kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 

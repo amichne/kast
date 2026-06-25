@@ -2,7 +2,7 @@
 
 This file applies to `cli-rs/resources/kast-instructions/` and descendants.
 This tree is the authored source for Markdown instructions installed by
-`kast install instructions`.
+`kast agent setup instructions`.
 
 ## Local purpose
 
@@ -10,7 +10,7 @@ This tree is the authored source for Markdown instructions installed by
 - `cli.md` covers non-interactive CLI usage.
 - `rpc.md` covers `kast agent`, file-backed request exchange, and the raw RPC
   debug escape hatch.
-- `lsp.md` covers `kast lsp --stdio` and custom `kast/*` method discovery.
+- `lsp.md` covers `kast agent lsp --stdio` and custom `kast/*` method discovery.
 
 The durable source-of-truth contract for agent resources and workflows is
 `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.

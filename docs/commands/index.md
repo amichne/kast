@@ -18,12 +18,12 @@ binary.
 
 | Group | Commands | Use when |
 |-------|----------|----------|
-| Lifecycle | `up`, `status`, `restart`, `stop`, `capabilities` | Start, inspect, refresh, or stop the workspace backend |
-| Install and repair | `install ...`, `doctor`, `paths` | Install repository resources, repair managed files, or inspect path resolution |
-| Agent automation | `agent ...`, `agent workflow ...` | Script semantic reads and file-backed workflows through a JSON envelope |
-| Metrics | `metrics ...`, `agent metrics` | Query the local SQLite source index for fan-in, fan-out, coupling, impact, and search |
-| LSP | `lsp --stdio` | Start the Language Server Protocol adapter for editors and Copilot packages |
-| Distribution | `package ubuntu-debian-bundle`, `install activate-bundle` | Build or activate the Linux headless bundle |
+| Readiness | `ready` | Prove the active binary, manifest, and task surface are usable |
+| Agent automation | `agent up`, `agent setup ...`, `agent workflow ...`, `agent ...` | Bring a repository up for agents, install resources, start LSP, and script semantic workflows |
+| Runtime | `runtime up`, `runtime status`, `runtime restart`, `runtime stop`, `runtime capabilities` | Start, inspect, refresh, or stop the workspace backend |
+| Inspect | `inspect paths`, `inspect metrics`, `inspect demo`, `inspect catalog` | Inspect paths, catalogs, demos, and source-index metrics |
+| Machine | `machine plugin`, `machine shell` | Manage local IDE plugin links and shell integration |
+| Release | `release package ...`, `release activate bundle`, `release generate`, `release validate` | Build, activate, or validate release artifacts |
 
 ## Output modes
 
@@ -32,8 +32,8 @@ in terminals and plain text in captured logs. Add `--output json` to preserve
 the structured payload for automation.
 
 ```console title="Readable by default, JSON when requested"
-kast status
-kast --output json status
+kast runtime status
+kast --output json runtime status
 ```
 
 `kast agent` is different by design. It always emits a single JSON envelope
@@ -49,8 +49,8 @@ Kast walks upward to a Gradle marker or `.kast` directory. Pass
 Backend selection is explicit when it matters:
 
 ```console title="Select the backend"
-kast up --backend=headless
-kast status --backend=idea
+kast runtime up --backend=headless
+kast runtime status --backend=idea
 kast agent health --workspace-root "$PWD" --backend=headless
 ```
 

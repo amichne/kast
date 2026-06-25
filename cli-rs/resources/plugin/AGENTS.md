@@ -2,13 +2,13 @@
 
 This file applies to `cli-rs/resources/plugin/` and descendants. This tree is
 the authored source for the Kast Copilot package installed by
-`kast install copilot`.
+`kast agent setup copilot`.
 
 ## Local purpose
 
 The package provides the repository-local Copilot integration:
 
-- `lsp.json` starts `kast lsp --stdio`.
+- `lsp.json` starts `kast agent lsp --stdio`.
 - `extensions/kast/extension.mjs` injects runtime tooling guidance and exposes
   catalog-backed `kast_*` tools through shared modules.
 - `primitive-manifest.json` defines the files copied into a repository
