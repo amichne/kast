@@ -10,7 +10,7 @@ class AnalysisOpenApiDocumentTest {
 
     @Test
     fun `checked in openapi yaml matches generated document`() {
-        val expected = repoRoot().resolve("docs/openapi.yaml").toFile().readText()
+        val expected = repoRoot().resolve("cli-rs/protocol/openapi.yaml").toFile().readText()
         val generated = OpenApiDocument.renderYaml()
         assertEquals(expected.trimEnd(), generated.trimEnd())
     }

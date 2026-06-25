@@ -65,7 +65,7 @@ own:
 
 ## Runtime choices
 
-Kast has two runtime modes behind the same JSON-RPC contract:
+Kast has two runtime modes behind the same command surface:
 
 | Runtime mode | Best when | Install path |
 | --- | --- | --- |
@@ -81,5 +81,6 @@ fallback.
 
 - Read the [documentation site](https://kast.michne.com/).
 - Follow the [install guide](https://kast.michne.com/getting-started/install/).
-- Review [supported use cases](https://kast.michne.com/supported-use-cases/).
-- Compare runtime modes in [Backends](https://kast.michne.com/getting-started/backends/).
+- Run the [quickstart](https://kast.michne.com/getting-started/quickstart/).
+- Browse the [command manual](https://kast.michne.com/commands/).
+- Use [recipes](https://kast.michne.com/recipes/) for common CLI workflows.

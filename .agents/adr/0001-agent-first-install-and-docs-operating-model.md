@@ -1,12 +1,14 @@
 # ADR 0001: Agent-first install and docs operating model
 
-Status: Accepted
+Status: Accepted; public documentation model superseded by ADR 0003
 
 Date: 2026-06-17
 
 This ADR records the current delivery contract for Kast documentation and
 agent-facing setup. It exists so future agents can update the site from a
 checked-in operating model instead of preserving stale conversation context.
+ADR 0003 supersedes the public documentation topology; this ADR still owns the
+machine, repository, and headless install-scope split.
 
 ## Context
 
@@ -62,14 +64,13 @@ conversation summaries.
 | Surface | Source of truth | Validation |
 |---------|-----------------|------------|
 | Published site nav | `zensical.toml` | `.github/scripts/test-docs-navigation-contract.sh` |
-| First reader path | `docs/index.md`, `docs/getting-started/install.md`, `docs/for-agents/index.md` | `.github/scripts/test-docs-content-contract.sh` |
+| First reader path | `docs/index.md`, `docs/getting-started/install.md`, `docs/getting-started/quickstart.md`, `docs/commands/` | `.github/scripts/test-docs-content-contract.sh` |
 | Headless server path | `docs/getting-started/headless-linux.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |
-| Use-case framing | `docs/supported-use-cases.md` | `zensical build --clean` |
 | Copilot package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
 | Installed Copilot outputs | `.github/lsp.json`, `.github/instructions/`, `.github/extensions/kast/` | `kast install copilot --force` plus package tests |
 | RPC/tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check` |
-| API summary block | `docs/reference/api-specification.md` generated block | `.github/scripts/render-rpc-contract-summary.py --check` |
+| Protocol artifacts | `cli-rs/protocol/` | `.github/scripts/render-rpc-contract-summary.py --check`, `./gradlew :analysis-api:test` |
 
 Generated or installed copies must not become independent product truth. When
 they drift, update the source owner and regenerate or reinstall the copy.
@@ -91,10 +92,10 @@ Use this update matrix when the answer changes:
 | Change trigger | Required updates |
 |----------------|------------------|
 | Global binary or IDE plugin install changes | README, `docs/index.md`, install guide, docs content contract |
-| Repository Copilot package changes | `cli-rs/resources/plugin/`, generated `.github` outputs, install guide, agent docs, package tests |
-| RPC or tool catalog changes | `commands.json`, generated contract artifacts, API summary block, Copilot package shared catalog |
-| Primary reader path changes | New or superseding ADR, docs nav, landing page, install guide, agent overview, content/navigation contracts |
-| Runtime support changes | Backends docs, install guides, troubleshooting, README runtime table |
+| Repository Copilot package changes | `cli-rs/resources/plugin/`, generated `.github` outputs, install guide, command docs, package tests |
+| RPC or tool catalog changes | `commands.json`, generated contract artifacts under `cli-rs/protocol/`, Copilot package shared catalog |
+| Primary reader path changes | New or superseding ADR, docs nav, landing page, install guide, command overview, content/navigation contracts |
+| Runtime support changes | Command docs, install guides, troubleshooting, README runtime table |
 | New optional complexity | Collapsible detail or reference page first; promote only after it becomes part of the golden path |
 
 ## Staleness rules

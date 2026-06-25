@@ -1,245 +1,238 @@
 ---
 title: Troubleshooting
-description: Common issues and solutions when running Kast.
+description: Diagnose common Kast CLI install, backend, agent, and LSP issues.
 icon: lucide/life-buoy
 ---
 
 # Troubleshooting
 
-When something breaks, start here. Each section names one failure
-mode, lists symptoms, and walks you to a fix. Open the section
-that matches what you're seeing.
+Start with commands that report active state instead of guessing. `kast doctor`
+checks managed install state, `kast paths` explains filesystem resolution, and
+`kast status` reports backend state for the current workspace.
 
-## Installation and startup
+## Install state
 
-??? question "I need to know which Kast install is active"
+Use these checks when the wrong binary, stale repository files, or missing
+plugin links are suspected.
 
-    Run doctor in JSON mode first:
+??? question "Which Kast install is active?"
+
+    Run doctor in JSON mode first. The payload includes config validity,
+    install manifest state, canonical paths, binary linkage, issues, and
+    warnings.
 
     ```console
     kast --output json doctor
+    kast paths
     ```
 
-    The payload reports configuration validity, the install manifest,
-    resolved canonical paths, binary linkage, issues, and warnings.
-    `doctor` still emits this payload when
-    `config.toml` is malformed, so configuration failures can be diagnosed
-    without guessing which file or binary was active.
+    If doctor reports repairable managed state, run the repair command once and
+    inspect again.
 
-    Use `kast paths` when you only need to inspect the resolved filesystem
-    model.
+    ```console
+    kast doctor --repair
+    kast doctor
+    ```
 
-??? question "Daemon won't start"
+??? question "The shell cannot find `kast`"
 
-    **Symptoms:** a `health` JSON-RPC request returns an error or
-    hangs.
+    Open a fresh shell so the updated `PATH` takes effect. If that does not
+    help, install shell integration and verify the active shim path.
 
-    1. Verify the workspace root exists and contains Kotlin sources:
+    ```console
+    kast install shell --shell zsh
+    kast paths
+    command -v kast
+    ```
 
-        ```console
-        kast rpc '{"jsonrpc":"2.0","id":1,"method":"health"}'
-        ```
+    Use `--shell bash` for Bash profiles. If no `kast` binary is reachable,
+    rerun the platform install path from the install guide.
 
-    2. Check that Java 21 or newer is available:
+??? question "IDEA or Android Studio does not load the plugin"
 
-        ```console
-        java -version
-        ```
+    The macOS developer install includes the Homebrew-managed plugin cask. Use
+    the direct repair path, then restart the IDE.
 
-    3. Look for a stale socket file. If the daemon crashed without
-       cleanup, the socket may still exist in the manifest-owned runtime
-       directory:
+    ```console
+    brew reinstall --cask kast-plugin
+    kast install plugin
+    kast doctor
+    ```
 
-        ```console
-        kast paths
-        find "$HOME/.local/share/kast/runtime" -maxdepth 1 -name 'kast-*.sock'
-        ```
+    Doctor should report the managed plugin and JetBrains profile links. If it
+    does not, inspect the profile root shown by `kast paths --idea`.
 
-        Remove stale sockets only after confirming no matching Kast process is
-        running.
+??? question "Repository Copilot files look stale"
+
+    Reinstall the repository-local package with the active binary. This updates
+    managed files under `.github` and refreshes resource checksums in the
+    install manifest.
+
+    ```console
+    cd /path/to/your/repository
+    kast install copilot --force
+    kast doctor
+    ```
+
+## Backend state
+
+Use lifecycle commands when semantic commands fail, hang, or return stale
+results.
+
+??? question "The backend will not start"
+
+    Start from the visible lifecycle commands. Use JSON status if you need log
+    paths or machine-readable details.
+
+    ```console
+    kast up --backend=headless
+    kast status --backend=headless
+    kast --output json status --backend=headless
+    ```
+
+    Check Java 21 or newer for the headless backend:
+
+    ```console
+    java -version
+    ```
+
+    If the IDEA backend is selected, confirm the project is open in IDEA or
+    Android Studio and the Kast plugin is installed.
 
 ??? question "Indexing takes too long"
 
-    On first start, the daemon indexes the entire workspace. Big
-    multi-module projects can take 30–60 seconds.
-
-    - Run `kast status` to watch progress
-    - Wait for `state: READY` before running queries
-    - If indexing never finishes, check the project's Gradle
-      wrapper works (`./gradlew tasks` should succeed)
-    - If indexing never reaches READY, inspect the daemon log from
-      `kast status --output json`
-
-??? question "Shell can't find kast after install"
-
-    Open a fresh shell so the updated `PATH` takes effect. If that doesn't
-    help:
-
-    - Check that `$HOME/.local/bin/kast` exists and is executable:
-      `test -x "$HOME/.local/bin/kast"`
-    - Check that `$HOME/.local/bin` is on `PATH`:
-      `echo "$PATH" | tr ':' '\n' | grep "$HOME/.local/bin"`
-    - Run `kast doctor --repair` from any available `kast` binary to refresh
-      the install manifest and stable shim.
-    - If you keep behavior config outside the default directory, set
-      `KAST_CONFIG_HOME` to the directory that contains `config.toml`.
-
-??? question "IDEA or Android Studio can't find the Kast plugin"
-
-    **Symptoms:** IDEA or Android Studio starts without Kast diagnostics, or
-    `kast doctor` reports missing JetBrains profile links.
-
-    Install or repair the Homebrew-managed plugin link from the CLI:
+    First starts can be slow on large multi-module projects. Watch status until
+    the backend reaches a servable state.
 
     ```console
-    kast install plugin
+    kast status
+    kast --output json status
     ```
 
-    Then restart the IDE so it reloads installed plugins.
+    If indexing never converges, verify the Gradle project itself works, then
+    inspect the daemon log path from the JSON status payload.
 
-??? question "Kast does not open IDEA for a Copilot session"
+??? question "Results look stale after file changes"
 
-    **Symptoms:** Copilot starts, but `kast` reports `IDEA_NOT_RUNNING` or
-    `IDEA_PLUGIN_NOT_INSTALLED` instead of opening the IDE.
-
-    `kast` only opens a GUI IDE when both the backend and launch policy are
-    explicit. Configure the IDEA launch policy:
-
-    ```toml title="$HOME/.config/kast/config.toml"
-    [runtime]
-    defaultBackend = "idea"
-
-    [runtime.ideaLaunch]
-    enabled = true
-    command = "idea"
-    waitTimeoutMillis = 90000
-    requireInstalledPlugin = true
-    ```
-
-    Then configure Copilot to launch the packaged Kast LSP with
-    `--backend=idea` when you want IDE-hosted analysis. If the plugin check
-    fails, install or repair the profile link:
+    Refresh the files that changed outside the backend, then rerun the semantic
+    command.
 
     ```console
-    kast install plugin
+    APP_FILE="$PWD/src/main/kotlin/App.kt"
+
+    kast agent raw-workspace-refresh --file-path "$APP_FILE"
+    kast agent raw-diagnostics --file-path "$APP_FILE"
     ```
 
-??? question "Copilot LSP package files look stale"
+    The same refresh pattern applies before resolve, references, file outline,
+    or code action calls when disk changed outside Kast's observation window.
 
-    Reinstall the packaged files with `--force`. This replaces the managed
-    LSP package file under `.github` and records the running CLI version.
+## Semantic results
+
+Use the response metadata before deciding whether a result is complete,
+bounded, or failed.
+
+??? question "A symbol is not found"
+
+    Confirm the file path is absolute, inside the workspace, and points at a
+    Kotlin identifier. Use `workspace-symbol` when you only know the name.
 
     ```console
-    kast install copilot --force
+    kast agent workspace-symbol --pattern OrderService --max-results 20
+    kast agent raw-resolve --file-path "$PWD/src/main/kotlin/App.kt" --offset 42
     ```
 
-## Analysis results
-
-??? question "Symbol not found"
-
-    **Symptoms:** `raw/resolve` returns empty or a `NOT_FOUND`
-    error.
-
-    - Confirm the file path is absolute and inside the workspace
-      root
-    - Confirm the offset lands on an actual identifier (not
-      whitespace or a comment)
-    - Confirm the daemon finished indexing
-      (`kast status` shows `state: READY`)
-    - If the file is brand new, run `raw/workspace-refresh` through
-      `kast rpc` to
-      update the index
+    If the file is new or recently edited, refresh it first.
 
 ??? question "References return partial results"
 
-    `kast` scopes analysis to the workspace root. References in
-    files outside the workspace, in generated code, or in binary
-    dependencies don't appear.
+    Read `result.searchScope.exhaustive` in the `kast agent raw-references`
+    envelope.
 
-    Read `searchScope.exhaustive` in the response:
+    ```console
+    kast agent raw-references \
+      --file-path "$PWD/src/main/kotlin/App.kt" \
+      --offset 42 \
+      --include-declaration
+    ```
 
-    - `true` — every candidate file was searched. The list is
-      complete.
-    - `false` — the search was bounded. Compare
-      `candidateFileCount` and `searchedFileCount` to see the
-      gap.
-
-    See [Limits and boundaries](architecture/behavioral-model.md)
-    for workspace scoping and visibility rules.
+    `true` means every candidate file was searched. `false` means the search
+    was bounded; compare candidate and searched file counts before making a
+    completeness claim.
 
 ??? question "Call hierarchy is truncated"
 
-    Call hierarchy is bounded by depth, fan-out, total edges, and
-    timeout. Read the `stats` field to see which limits hit.
-
-    Adjust these in the request:
-
-    | Parameter | Default | What to change |
-    |-----------|---------|----------------|
-    | `depth` | 3 | Increase for deeper trees |
-    | `maxTotalCalls` | 256 | Increase for wider graphs |
-    | `maxChildrenPerNode` | 64 | Increase for highly-called functions |
-
-    See [Limits and boundaries](architecture/behavioral-model.md#call-hierarchy-is-intentionally-bounded)
-    for the full truncation model.
-
-??? question "Diagnostics return stale results"
-
-    **Symptoms:** `raw/diagnostics` reports an error you already
-    fixed, or misses a problem you just introduced.
-
-    The daemon caches the last view of disk it observed. If you
-    (or your agent, or `git checkout`) modified files outside its
-    observation window, you'll get a stale answer. Refresh first:
+    Call hierarchy is intentionally bounded by depth, fan-out, total nodes, and
+    timeout. Increase limits only when the larger tree is useful.
 
     ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}'
-    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/App.kt"]}}'
+    kast agent raw-call-hierarchy \
+      --file-path "$PWD/src/main/kotlin/App.kt" \
+      --offset 42 \
+      --direction incoming \
+      --depth 5
     ```
 
-    Same fix applies to `raw/resolve`, `raw/references`,
-    `raw/file-outline`, and any other read method that looks
-    suspiciously out of date.
+    Read `result.stats` to identify which bound stopped traversal.
 
 ## Mutations
 
-??? question "Rename fails with capability error"
+Plan mutations before writing files. Kast rejects apply steps when a file hash
+no longer matches the planned state.
 
-    Both backends support rename. Run `kast capabilities` to
-    confirm.
+??? question "Rename planning fails"
 
-    If the rename target is in a generated file or a read-only
-    location, the operation fails with a descriptive error.
+    Check that the backend advertises rename support and that the target is not
+    generated or read-only.
 
-??? question "Apply-edits rejects with conflict error"
+    ```console
+    kast capabilities
+    kast agent raw-rename \
+      --file-path "$PWD/src/main/kotlin/App.kt" \
+      --offset 42 \
+      --new-name newName \
+      --dry-run
+    ```
 
-    A file changed between plan and apply. The SHA-256 hash no
-    longer matches.
+??? question "Apply-edits rejects with a conflict"
 
-    1. Re-run `raw/rename` for a fresh plan with updated hashes
-    2. Review the new plan
-    3. Apply it before any other changes land
+    A file changed between plan and apply. Recreate the plan from the current
+    file state, review it, and apply the fresh plan.
 
-## Transport and connectivity
+    ```console
+    kast agent raw-rename \
+      --file-path "$PWD/src/main/kotlin/App.kt" \
+      --offset 42 \
+      --new-name newName \
+      --dry-run > rename-plan.json
+    ```
 
-??? question "Connection refused on stdio transport"
+## LSP hosts
 
-    Using stdio (for example, from an agent):
+LSP failures are usually command path, workspace root, backend, or stdio
+framing problems. Prove the same workspace outside the host before debugging
+host logs.
 
-    - Verify the daemon process is running and attached to
-      stdin/stdout
-    - Make sure no other process is competing for the same
-      streams
-    - Make sure JSON-RPC messages are line-delimited (one JSON
-      object per line)
+??? question "The LSP host cannot start Kast"
+
+    Verify the repository package and backend from a normal shell.
+
+    ```console
+    kast doctor
+    kast status --workspace-root "$PWD"
+    kast agent health --workspace-root "$PWD"
+    ```
+
+    If those commands pass, inspect the host logs for the exact `kast lsp
+    --stdio` command, working directory, and environment.
 
 ## Getting help
 
-If nothing here resolves it:
+When opening an issue, include command output that proves the active state.
+Prefer JSON where the command supports it.
 
-1. Run `health` through `kast rpc`, then run `kast status`, and capture the
-   output
-2. Check daemon stderr for stack traces
-3. Open an issue in the
-   [Kast issue tracker](https://github.com/amichne/kast/issues) with the
-   diagnostic output
+```console
+kast --output json doctor
+kast --output json status
+kast paths
+```

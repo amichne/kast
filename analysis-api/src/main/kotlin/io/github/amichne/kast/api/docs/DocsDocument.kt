@@ -64,7 +64,8 @@ import java.nio.file.Path
  * - **Capabilities** (`renderCapabilities`): overview with collapsed schema tables
  * - **API reference** (`renderApiReference`): expanded detail with examples and notes
  *
- * Generated pages are checked in and validated by `AnalysisDocsDocumentTest`.
+ * Generated pages are checked in under `cli-rs/protocol` and validated by
+ * `AnalysisDocsDocumentTest`.
  */
 object DocsDocument {
 
@@ -422,7 +423,7 @@ object DocsDocument {
 
     private fun findExamplesDir(): Path =
         generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-            .map { it.resolve("docs/examples") }
+            .map { it.resolve("cli-rs/protocol/examples") }
             .first { Files.isDirectory(it) }
 }
 
@@ -431,8 +432,8 @@ fun main(args: Array<String>) {
         Path.of(args[0])
     } else {
         generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-            .first { Files.isDirectory(it.resolve("docs")) }
-            .resolve("docs/reference")
+            .first { Files.isDirectory(it.resolve("cli-rs/protocol")) }
+            .resolve("cli-rs/protocol")
     }
     Files.createDirectories(outputDir)
     outputDir.resolve("capabilities.md").toFile().writeText(DocsDocument.renderCapabilities())

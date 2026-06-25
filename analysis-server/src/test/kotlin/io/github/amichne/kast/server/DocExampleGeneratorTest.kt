@@ -13,7 +13,7 @@ class DocExampleGeneratorTest {
     @Test
     fun `checked in doc examples match generated examples`() {
         val generated = DocExampleGenerator.generateExamples()
-        val docsExamples = repoRoot().resolve("docs/examples")
+        val docsExamples = repoRoot().resolve("cli-rs/protocol/examples")
 
         generated.forEach { (operationId, pair) ->
             val expectedRequest = docsExamples.resolve("$operationId-request.json").readText().trimEnd()
@@ -29,7 +29,7 @@ class DocExampleGeneratorTest {
         val operationIdRegex = Regex("""operationId:\s*(\w+)""")
         val operationIds = operationIdRegex.findAll(yaml).map { it.groupValues[1] }.toSet()
 
-        val docsExamples = repoRoot().resolve("docs/examples")
+        val docsExamples = repoRoot().resolve("cli-rs/protocol/examples")
         operationIds.forEach { id ->
             assertTrue(Files.exists(docsExamples.resolve("$id-request.json")), "Missing request for $id")
             assertTrue(Files.exists(docsExamples.resolve("$id-response.json")), "Missing response for $id")

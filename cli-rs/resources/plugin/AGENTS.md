@@ -42,10 +42,10 @@ When package behavior changes, update the affected public surfaces in the
 same change:
 
 - `docs/getting-started/install.md`
-- `docs/for-agents/index.md`
-- `docs/for-agents/install-the-skill.md`
-- `docs/supported-use-cases.md`
-- `.agents/adr/0001-agent-first-install-and-docs-operating-model.md` or a
+- `docs/commands/agent.md`
+- `docs/commands/lsp.md`
+- `docs/troubleshooting.md`
+- `.agents/adr/0003-cli-command-documentation-operating-model.md` or a
   superseding ADR when the product story changes
 - `.github/scripts/test-docs-content-contract.sh`
 

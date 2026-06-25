@@ -37,14 +37,12 @@ The monorepo release workflow publishes platform-specific CLI zips named
 `amichne/homebrew-kast` tap, where `Formula/kast.rb` installs the binary
 directly.
 
-Documentation is authored as a Zensical site in `docs/` with
-`zensical.toml` as the navigation source of truth:
+Public documentation is authored from the monorepo `docs/` tree. This crate no
+longer owns a separate docs site. Generated protocol artifacts used by release
+and integration consumers live under `protocol/`:
 
 ```sh
-python3 -m venv .venv-docs
-. .venv-docs/bin/activate
-python -m pip install -r requirements-docs.txt
-zensical build --clean
+../gradlew :analysis-api:generateOpenApiSpec :analysis-api:generateDocPages :analysis-server:generateDocExamples
 ```
 
 The surrounding monorepo supplies the JVM analysis backend and release assembly

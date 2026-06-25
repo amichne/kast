@@ -11,7 +11,7 @@ usage() {
 Usage: scripts/verify-release-assets.sh --release-dir <dir> --tag <vX.Y.Z>
 
 Verify a downloaded Kast release directory. The directory must contain the
-published zip/tar assets, SHA256SUMS, and build-provenance.json.
+published zip/tar/protocol assets, SHA256SUMS, and build-provenance.json.
 USAGE
 }
 
@@ -62,6 +62,7 @@ required = {
     "gradle-ro-cache": "gradle-ro-dep-cache.tar.zst",
     "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
     "idea": f"kast-idea-{tag}.zip",
+    "openapi": "openapi.yaml",
     "runtime-manifest": "kast-runtime-manifest.json",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
@@ -79,6 +80,7 @@ actual_assets = {
         or path.name.endswith(".tar.gz")
         or path.name.endswith(".tar.zst")
         or path.name == "kast-runtime-manifest.json"
+        or path.name == "openapi.yaml"
     )
     and not path.name.endswith(".tar.gz.sha256")
     and not path.name.endswith(".tar.zst.sha256")

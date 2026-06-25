@@ -22,7 +22,7 @@ tasks.register<JavaExec>("generateDocExamples") {
     group = "documentation"
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("io.github.amichne.kast.server.DocExampleGeneratorKt")
-    val outputDir = rootProject.layout.projectDirectory.dir("docs/examples")
+    val outputDir = rootProject.layout.projectDirectory.dir("cli-rs/protocol/examples")
     args(outputDir.asFile.absolutePath)
     dependsOn("testClasses")
 }

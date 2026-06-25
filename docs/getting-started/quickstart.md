@@ -1,198 +1,111 @@
 ---
 title: Quickstart
-description: Run your first Kast analysis in under 60 seconds.
+description: Start Kast and run the first semantic CLI queries.
 icon: lucide/zap
 ---
 
 # Quickstart
 
-By the end of this page you'll have started a readable CLI session, then
-asked the daemon two compiler-backed questions: "what symbol is this?" and
-"who uses it?" The lifecycle commands render readable summaries by default;
-raw analysis requests still return JSON-RPC payloads.
-
-The walkthrough uses the headless backend because it works on Linux terminals,
-CI runners, and agent loops after the Linux headless tarball is installed. If
-IDEA or Android Studio is already open on the project with the plugin
-installed, swap `--backend=headless` for `--backend=idea` and skip the
-start/stop steps. The plugin reuses the IDE's analysis session — no second
-daemon to babysit.
+This walkthrough starts a backend, resolves one Kotlin symbol, and finds its
+references through the CLI. The lifecycle commands render readable summaries;
+the advanced `kast agent` commands return JSON envelopes for scripts.
 
 ## Before you begin
 
-You need:
+You need Kast installed and a Kotlin workspace on disk. Use the developer
+machine install on macOS, or the Linux headless bundle on CI runners, hosted
+agents, and server images.
 
-- Kast installed through the [Linux headless bundle](headless-linux.md), or
-  through Homebrew plus the IDEA plugin on macOS (see [Install](install.md))
-- A Kotlin workspace on your machine — Gradle or plain
-- The absolute path to that workspace root
-
-??? info "About Gradle discovery"
-
-    With `settings.gradle(.kts)` or `build.gradle(.kts)` at the root,
-    headless discovery uses Gradle's project model. Without those
-    files, `kast` falls back to conventional source roots and a
-    source-file scan. The Gradle path matters most for multi-module
-    builds.
-
-## Step 1: Start the headless backend
-
-Run commands from your project root or any subdirectory below it. Kast
-walks up to the nearest Gradle or `.kast` marker when `--workspace-root`
-is omitted. The first call is the slow one — the daemon discovers your
-project and indexes Kotlin files. After that, you're hitting a warm
-session.
-
-```console title="First-time local setup"
-./scripts/install-ubuntu-debian.sh install
+```console title="Check the active install"
+kast doctor
+kast paths
 ```
 
-```console linenums="1" title="Start the daemon"
+Run the remaining commands from the repository root or any subdirectory below
+it. Kast walks upward to the nearest Gradle or `.kast` marker when
+`--workspace-root` is omitted.
+
+## Step 1: start a backend
+
+Use the backend that matches the machine. The headless backend works well for
+servers and CI. The IDEA backend reuses an already-open IDEA or Android Studio
+project on developer machines.
+
+```console title="Start or warm a backend"
 kast up --backend=headless
+kast status --backend=headless
 ```
 
-```mermaid
-sequenceDiagram
-    participant You
-    participant CLI as "kast CLI"
-    participant Daemon as "Analysis daemon"
-    participant K2 as "K2 engine"
+Use JSON output for automation:
 
-    You->>CLI: up
-    CLI->>Daemon: Start process
-    Daemon->>K2: Bootstrap session
-    K2-->>Daemon: Indexing complete
-    Daemon-->>CLI: READY
-    CLI-->>You: Rendered status summary
+```console title="Machine-readable status"
+kast --output json status --backend=headless
 ```
 
-The first start indexes every Kotlin file. Later commands reuse the warm
-state — the cost you pay here buys you fast lookups for the rest of the
-session.
+## Step 2: resolve a symbol
 
-The default output is meant to be read. In an interactive terminal, headings
-and inline code are styled; in logs and captured output, the same summary is
-rendered as plain text:
+Pick a Kotlin file and a byte offset that lands on an identifier. The command
+returns one JSON object with the normalized request and result.
 
-```text title="Example output"
-  Kast up
-  =======
-
-  - Workspace: /workspace
-  - Started new daemon: yes
-
-  Selected runtime
-  ----------------
-  - Backend: headless
-  - Runtime state: READY
-```
-
-Use `--output json` on lifecycle and install commands when a script needs
-the original structured payload.
-
-## Step 2: Resolve a symbol
-
-Pick a Kotlin file and a byte offset that lands on a symbol name. `kast`
-returns the fully qualified name, kind, signature, and source location
-of the declaration at that offset.
-
-!!! tip "How to get an offset"
-    The fast way: `grep -bo 'functionName' src/main/kotlin/App.kt`
-    prints the byte offset of every match.
-
-```console linenums="1" title="Resolve a symbol"
+```console title="Resolve a symbol at a file offset"
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-kast rpc \
-  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/resolve\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}"
+kast agent raw-resolve \
+  --file-path "$APP_FILE" \
+  --offset 42 \
+  --backend=headless
 ```
 
-```json hl_lines="3-4" title="Example response"
-{
-  "result": {
-    "fqName": "com.example.App.processOrder",
-    "kind": "FUNCTION",
-    "returnType": "OrderResult",
-    "parameters": [
-      { "name": "orderId", "type": "String" }
-    ],
-    "location": {
-      "filePath": "/workspace/src/main/kotlin/App.kt",
-      "startLine": 12, "startColumn": 5
-    }
-  }
-}
+The important fields are in `result`: fully qualified name, kind, signature,
+and source location. That is compiler-backed symbol identity, not a text match.
+
+## Step 3: find references
+
+Use the same file and offset to ask for usages. Include the declaration when
+you want one complete evidence list.
+
+```console title="Find references"
+kast agent raw-references \
+  --file-path "$APP_FILE" \
+  --offset 42 \
+  --include-declaration \
+  --backend=headless
 ```
 
-`fqName` and `kind` are compiler identity, not text matches. Every later
-command can stay anchored to this declaration without ambiguity.
+Read `result.searchScope.exhaustive` before claiming the list is complete. If
+it is false, compare the candidate and searched file counts in the payload.
 
-## Step 3: Find references
+## Step 4: bridge from a name to an offset
 
-Same file, same offset. Ask for every reference across the workspace.
+When you do not have an offset, search declarations by name first. Feed the
+returned `location.filePath` and `location.startOffset` into the offset-based
+commands.
 
-```console linenums="1" title="Find references"
-APP_FILE="$PWD/src/main/kotlin/App.kt"
-
-kast rpc \
-  "{\"jsonrpc\":\"2.0\",\"method\":\"raw/references\",\"params\":{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}},\"id\":1}"
+```console title="Find declarations by name"
+kast agent workspace-symbol \
+  --pattern OrderService \
+  --max-results 20 \
+  --backend=headless
 ```
 
-```json hl_lines="10-11" title="Example response"
-{
-  "result": {
-    "declaration": {
-      "fqName": "com.example.App.processOrder",
-      "kind": "FUNCTION"
-    },
-    "references": [
-      {
-        "filePath": "/workspace/src/.../CheckoutController.kt",
-        "startLine": 45,
-        "preview": "app.processOrder(orderId)"
-      }
-    ],
-    "searchScope": {
-      "exhaustive": true,
-      "candidateFileCount": 12,
-      "searchedFileCount": 12
-    }
-  }
-}
-```
+This keeps the workflow semantic. Use text search only when you are looking for
+plain text, comments, or literals.
 
-`searchScope.exhaustive: true` is the part that matters. `kast` walked
-every candidate file. The reference list is complete for this workspace
-— not a sample, not a best effort.
+## Step 5: stop when finished
 
-## Step 4 (optional): stop the daemon
+Stop the backend when you want to free local resources. Long-lived developer
+machines can keep a warm backend running.
 
-Free the resources when you're done.
-
-```console title="Stop the daemon"
+```console title="Stop the backend"
 kast stop --backend=headless
 ```
 
-## What just happened
+## Next commands
 
-Four commands. You:
+The next page to read depends on the job. Use lifecycle commands for runtime
+state, agent commands for semantic reads and scripts, and recipes for common
+multi-command workflows.
 
-1. Started a daemon that indexed your Kotlin codebase into a live K2
-   session.
-2. Resolved a cursor position to a real declaration with type info — no
-   string match.
-3. Got every reference back as JSON-RPC, with proof the search was exhaustive.
-4. Shut the daemon down cleanly.
-
-The CLI defaults to readable summaries for lifecycle work and keeps JSON
-where JSON is the contract: `kast rpc` and explicit `--output json` calls.
-No regex, no guessing, no "we might have missed some."
-
-## Next steps
-
-- [Understand symbols](../what-can-kast-do/understand-symbols.md) —
-  everything `kast` will tell you about a declaration
-- [Trace usage](../what-can-kast-do/trace-usage.md) — references, call
-  hierarchy, type hierarchy
-- [Kast for agents](../for-agents/index.md) — these same commands from
-  an LLM
+- [Lifecycle commands](../commands/lifecycle.md)
+- [Agent automation commands](../commands/agent.md)
+- [Recipes](../recipes.md)

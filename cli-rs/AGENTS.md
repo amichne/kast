@@ -14,8 +14,8 @@ resource trust, agent command surface, and bundled agent resources.
 - `resources/plugin/` owns the Copilot package source.
 - `resources/kast-skill/` owns the packaged skill and RPC/tool catalog.
 - `resources/kast-instructions/` owns installable Markdown instructions.
-- `docs/` is the Rust CLI Zensical subsite; follow
-  `.agents/docs/cli-rs/AGENTS.md` when editing there.
+- `protocol/` contains generated protocol artifacts for release and
+  integration consumers. It is not a docs site.
 
 The durable decision record for agent resources and workflows is
 `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
@@ -45,6 +45,8 @@ The durable decision record for agent resources and workflows is
 - Installable instruction source lives in `resources/kast-instructions/`.
 - Generated request schemas and samples are derived from the catalog. Regenerate
   them through the contract generator instead of hand-editing generated drift.
+- Generated protocol markdown, OpenAPI YAML, and example fixtures live under
+  `protocol/`; regenerate them through the Gradle docs generators.
 
 ## Verify
 

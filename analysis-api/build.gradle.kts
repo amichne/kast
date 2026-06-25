@@ -21,7 +21,7 @@ tasks.register<JavaExec>("generateOpenApiSpec") {
     group = "documentation"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("io.github.amichne.kast.api.docs.OpenApiDocumentKt")
-    val outputFile = rootProject.layout.projectDirectory.file("docs/openapi.yaml")
+    val outputFile = rootProject.layout.projectDirectory.file("cli-rs/protocol/openapi.yaml")
     args(outputFile.asFile.absolutePath)
 }
 
@@ -30,7 +30,7 @@ tasks.register<JavaExec>("generateDocPages") {
     group = "documentation"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("io.github.amichne.kast.api.docs.DocsDocumentKt")
-    val outputDir = rootProject.layout.projectDirectory.dir("docs/reference")
+    val outputDir = rootProject.layout.projectDirectory.dir("cli-rs/protocol")
     args(outputDir.asFile.absolutePath)
 }
 

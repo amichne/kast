@@ -13,16 +13,16 @@ class AnalysisDocsDocumentTest {
 
     @Test
     fun `checked in capabilities markdown matches generated document`() {
-        val expected = repoRoot().resolve("docs/reference/capabilities.md").toFile().readText()
+        val expected = repoRoot().resolve("cli-rs/protocol/capabilities.md").toFile().readText()
         val generated = DocsDocument.renderCapabilities()
-        assertEquals(expected, generated, "docs/reference/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
+        assertEquals(expected, generated, "cli-rs/protocol/capabilities.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
     }
 
     @Test
     fun `checked in api-reference markdown matches generated document`() {
-        val expected = repoRoot().resolve("docs/reference/api-reference.md").toFile().readText()
+        val expected = repoRoot().resolve("cli-rs/protocol/api-reference.md").toFile().readText()
         val generated = DocsDocument.renderApiReference()
-        assertEquals(expected, generated, "docs/reference/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
+        assertEquals(expected, generated, "cli-rs/protocol/api-reference.md has drifted from the generator — run ./gradlew :analysis-api:generateDocPages")
     }
 
     @Test
