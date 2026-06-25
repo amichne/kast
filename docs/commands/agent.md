@@ -56,6 +56,7 @@ kast agent setup auto --dry-run
 kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
 kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
 kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
+kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
 ```
 
 When `--harness` is omitted, `kast agent setup auto` reads

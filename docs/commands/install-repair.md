@@ -45,6 +45,7 @@ kast agent setup auto --harness copilot
 kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
 kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
 kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
+kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
 ```
 
 Repository auto-detection treats `.codex/skills` and `.codex/instructions` as

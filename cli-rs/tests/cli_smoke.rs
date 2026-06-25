@@ -3243,6 +3243,150 @@ agentHarness = "skill"
 }
 
 #[test]
+fn codex_instruction_roots_are_first_class_agent_targets() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let codex_instructions = workspace.join(".codex/instructions");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&codex_instructions).expect("codex instructions");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&workspace)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+    let repair = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["ready", "--fix"])
+        .output()
+        .expect("ready repair");
+    assert!(
+        repair.status.success(),
+        "ready --fix should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+
+    let install = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["--output", "json", "agent", "setup", "auto", "--force"])
+        .output()
+        .expect("agent setup auto");
+    assert!(
+        install.status.success(),
+        "Codex instruction root should be selected by auto setup: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let install_stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("instructions install json");
+    let expected_codex_instructions = codex_instructions
+        .join("kast")
+        .canonicalize()
+        .expect("canonical installed Codex instructions");
+    let expected_codex_instruction_root = codex_instructions
+        .canonicalize()
+        .expect("canonical Codex instruction root");
+    assert_eq!(
+        install_stdout["installedAt"],
+        expected_codex_instructions.display().to_string()
+    );
+    assert!(codex_instructions.join("kast/README.md").is_file());
+    assert!(codex_instructions.join("kast/cli.md").is_file());
+    assert!(codex_instructions.join("kast/rpc.md").is_file());
+
+    let up = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--dry-run",
+        ])
+        .output()
+        .expect("agent up dry-run");
+    assert!(
+        up.status.success(),
+        "agent up dry-run should preserve Codex instruction target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&up.stdout),
+        String::from_utf8_lossy(&up.stderr)
+    );
+    let up_stdout: serde_json::Value = serde_json::from_slice(&up.stdout).expect("up json");
+    assert_eq!(up_stdout["setup"]["harness"], "instructions", "{up_stdout}");
+    assert_eq!(
+        PathBuf::from(
+            up_stdout["setup"]["targetDir"]
+                .as_str()
+                .expect("setup target dir")
+        )
+        .canonicalize()
+        .expect("canonical setup target dir"),
+        expected_codex_instruction_root,
+        "{up_stdout}"
+    );
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill"))
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .arg("--require-gradle-project")
+        .arg("--require-instructions")
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run verifier");
+    assert!(
+        verify.status.success(),
+        "verifier should accept manifest-backed Codex instruction target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let verify_json: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("verifier json");
+    let codex_target = verify_json["checks"]["instructions"]["targets"]
+        .as_array()
+        .expect("instruction targets")
+        .iter()
+        .find(|target| {
+            target["path"]
+                .as_str()
+                .expect("target path")
+                .ends_with(".codex/instructions/kast")
+        })
+        .expect("Codex instruction target");
+    assert!(codex_target["exists"].as_bool().expect("exists"));
+    assert!(
+        codex_target["manifestResource"].is_object(),
+        "{codex_target:#}"
+    );
+    assert_eq!(
+        codex_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
+}
+
+#[test]
 fn agent_setup_auto_dry_run_explains_selection_without_writing() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
