@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { joinSession } from "@github/copilot-sdk/extension";
 import { createTraceEmitter, traceFieldsFromParams } from "./_shared/kast-trace.mjs";
-import { bundledKastToolSpecs, makeKastTools, toolSpecsFromAgentToolsResult } from "./_shared/kast-tools.mjs";
+import { bundledKastToolSpecs, isKastAgentToolsEnvelope, makeKastTools, toolSpecsFromAgentToolsResult } from "./_shared/kast-tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT_MARKER = "workspace.repos.toml";
@@ -108,10 +108,7 @@ async function supportsKastCli(path) {
   if (!help.ok || !/\bcall\b/i.test(`${help.stdout}\n${help.stderr}`)) return false;
   const tools = await execCommand(path, ["agent", "tools"]);
   const toolsJson = parseJsonOrNull(tools.stdout.trim());
-  return tools.ok &&
-    toolsJson?.ok === true &&
-    toolsJson?.method === "agent/tools" &&
-    Array.isArray(toolsJson?.result?.tools);
+  return tools.ok && isKastAgentToolsEnvelope(toolsJson);
 }
 
 function findOnPath(commandName) {
@@ -195,7 +192,7 @@ async function loadKastToolSpecs() {
   if (bin) {
     const tools = await execCommand(bin, ["agent", "tools"]);
     const toolsJson = parseJsonOrNull(tools.stdout.trim());
-    if (tools.ok && toolsJson?.ok === true) {
+    if (tools.ok && isKastAgentToolsEnvelope(toolsJson)) {
       try {
         const specs = toolSpecsFromAgentToolsResult(toolsJson);
         trace.emit("copilot.tool_specs.loaded", {

@@ -92,6 +92,7 @@ assert(extension.includes('"runtime"') && extension.includes('"up"'), "extension
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
 assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
 assert(extension.includes('"agent"') && extension.includes('"tools"'), "extension must load tool specs from kast agent tools");
+assert(extension.includes("isKastAgentToolsEnvelope"), "extension must validate the full KAST_AGENT_TOOLS envelope");
 assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");
 assert(extension.includes("KAST_TOOLING_CONTEXT"), "extension must own runtime tooling guidance");
 assert(extension.includes("onUserPromptSubmitted"), "extension must inject prompt-time tooling guidance");
@@ -120,6 +121,16 @@ const pluginRoot = process.argv[2];
 const toolsModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-tools.mjs`);
 const traceModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-trace.mjs`);
 const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["agent", "tools"], { encoding: "utf8" }));
+if (!toolsModule.isKastAgentToolsEnvelope(agentTools)) {
+  throw new Error("source plugin must accept the current KAST_AGENT_TOOLS envelope");
+}
+if (toolsModule.isKastAgentToolsEnvelope({
+  ok: true,
+  method: "agent/tools",
+  result: { type: "WRONG", tools: [] },
+})) {
+  throw new Error("source plugin must reject malformed agent tools envelopes");
+}
 const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
 const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
@@ -214,6 +225,16 @@ import { execFileSync } from "node:child_process";
 const target = process.argv[2];
 const toolsModule = await import(`file://${target}/.github/extensions/kast/_shared/kast-tools.mjs`);
 const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["agent", "tools"], { encoding: "utf8" }));
+if (!toolsModule.isKastAgentToolsEnvelope(agentTools)) {
+  throw new Error("installed plugin must accept the current KAST_AGENT_TOOLS envelope");
+}
+if (toolsModule.isKastAgentToolsEnvelope({
+  ok: true,
+  method: "agent/tools",
+  result: { type: "WRONG", tools: [] },
+})) {
+  throw new Error("installed plugin must reject malformed agent tools envelopes");
+}
 const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
 const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),

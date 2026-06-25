@@ -249,6 +249,13 @@ export function toolSpecsFromAgentToolsResult(value) {
   return result.tools.map(normalizeToolSpec);
 }
 
+export function isKastAgentToolsEnvelope(value) {
+  return value?.ok === true &&
+    value?.method === "agent/tools" &&
+    value?.result?.type === "KAST_AGENT_TOOLS" &&
+    Array.isArray(value.result.tools);
+}
+
 export function bundledKastToolSpecs() {
   return buildBundledToolSpecs(COMMAND_CATALOG).map(normalizeToolSpec);
 }
