@@ -548,6 +548,7 @@ fn smoke_core_cli_commands() {
     assert!(instructions.status.success());
     assert!(instructions_dir.join("kast/README.md").is_file());
     assert!(instructions_dir.join("kast/cli.md").is_file());
+    assert!(instructions_dir.join("kast/tools.md").is_file());
     assert!(instructions_dir.join("kast/rpc.md").is_file());
     assert!(instructions_dir.join("kast/lsp.md").is_file());
 
@@ -2583,6 +2584,7 @@ fn install_resource_gateways_support_force_and_current_versions() {
     );
     assert!(stale_instructions.join("README.md").is_file());
     assert!(stale_instructions.join("cli.md").is_file());
+    assert!(stale_instructions.join("tools.md").is_file());
     assert!(stale_instructions.join("rpc.md").is_file());
     assert!(stale_instructions.join("lsp.md").is_file());
     assert_eq!(
@@ -3072,6 +3074,7 @@ agentHarness = "instructions"
         target_root.join("kast").display().to_string()
     );
     assert!(target_root.join("kast/README.md").is_file());
+    assert!(target_root.join("kast/tools.md").is_file());
     assert!(!target_root.join("lsp.json").exists());
 }
 
@@ -3302,6 +3305,7 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
     );
     assert!(codex_instructions.join("kast/README.md").is_file());
     assert!(codex_instructions.join("kast/cli.md").is_file());
+    assert!(codex_instructions.join("kast/tools.md").is_file());
     assert!(codex_instructions.join("kast/rpc.md").is_file());
 
     let up = kast(&home, &config_home)

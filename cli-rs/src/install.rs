@@ -3498,6 +3498,7 @@ mod tests {
         assert!(!first.skipped);
         assert!(temp.path().join("kast/README.md").is_file());
         assert!(temp.path().join("kast/cli.md").is_file());
+        assert!(temp.path().join("kast/tools.md").is_file());
         assert!(temp.path().join("kast/rpc.md").is_file());
         assert!(temp.path().join("kast/lsp.md").is_file());
         assert!(!temp.path().join("kast/.kast-version").exists());

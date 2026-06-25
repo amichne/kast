@@ -8,6 +8,8 @@ This tree is the authored source for Markdown instructions installed by
 
 - `README.md` routes agents across the installed instruction files.
 - `cli.md` covers non-interactive CLI usage.
+- `tools.md` maps common agent tasks to portable `kast agent` commands and
+  workflows.
 - `rpc.md` covers `kast agent`, file-backed request exchange, and the raw RPC
   debug escape hatch.
 - `lsp.md` covers `kast agent lsp --stdio` and custom `kast/*` method discovery.
