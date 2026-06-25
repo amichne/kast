@@ -3,9 +3,12 @@ use crate::cli;
 use crate::error::{CliError, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::env;
+use std::fmt;
 use std::fs;
 use std::fs::OpenOptions;
+use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -74,8 +77,64 @@ pub struct BackendComponentState {
 #[serde(rename_all = "camelCase")]
 pub struct ManagedRepo {
     pub path: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub copilot_package_version: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub resources: Vec<ManagedRepoResource>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedRepoResource {
+    pub kind: ManagedResourceKind,
+    pub target_path: String,
+    pub primitive_version: String,
+    pub source_bundle_sha256: String,
+    pub output_paths: Vec<String>,
+    pub output_checksums: Vec<ManagedResourceOutputChecksum>,
+    pub installed_at: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub history: Vec<ManagedRepoResourceHistory>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedResourceOutputChecksum {
+    pub path: String,
+    pub sha256: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedRepoResourceHistory {
+    pub primitive_version: String,
+    pub source_bundle_sha256: String,
+    pub installed_at: String,
+    pub output_checksums: Vec<ManagedResourceOutputChecksum>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ManagedResourceKind {
+    CopilotPackage,
+    Skill,
+    Instructions,
+}
+
+impl fmt::Display for ManagedResourceKind {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::CopilotPackage => "COPILOT_PACKAGE",
+            Self::Skill => "SKILL",
+            Self::Instructions => "INSTRUCTIONS",
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ManagedResourceVerification {
+    pub ok: bool,
+    pub issues: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -518,6 +577,55 @@ pub(crate) fn current_timestamp() -> String {
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
     format!("unix:{seconds}")
+}
+
+pub(crate) fn sha256_bytes(bytes: &[u8]) -> String {
+    let mut digest = Sha256::new();
+    digest.update(bytes);
+    hex::encode(digest.finalize())
+}
+
+pub(crate) fn sha256_file(path: &Path) -> Result<String> {
+    let mut file = fs::File::open(path)?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 1024 * 64];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(hex::encode(digest.finalize()))
+}
+
+pub fn verify_managed_resource_outputs(
+    resource: &ManagedRepoResource,
+) -> Result<ManagedResourceVerification> {
+    let mut issues = Vec::new();
+    for output in &resource.output_checksums {
+        let path = Path::new(&output.path);
+        if !path.is_file() {
+            issues.push(format!(
+                "{} output is missing: {}",
+                resource.kind,
+                path.display()
+            ));
+            continue;
+        }
+        let actual = sha256_file(path)?;
+        if actual != output.sha256 {
+            issues.push(format!(
+                "{} output checksum mismatch at {}",
+                resource.kind,
+                path.display()
+            ));
+        }
+    }
+    Ok(ManagedResourceVerification {
+        ok: issues.is_empty(),
+        issues,
+    })
 }
 
 fn shell_quote(value: &str) -> String {

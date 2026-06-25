@@ -198,6 +198,8 @@ pub struct AgentArgs {
 pub enum AgentCommand {
     /// Call any catalog method with params from flags, file, or stdin.
     Call(AgentCallArgs),
+    /// Run a file-backed multi-step workflow.
+    Workflow(AgentWorkflowArgs),
     /// Run the health RPC.
     Health(AgentRuntimeArgs),
     /// Read detailed backend runtime state.
@@ -275,6 +277,146 @@ pub struct AgentCallArgs {
     pub request_file: Option<PathBuf>,
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowArgs {
+    #[command(subcommand)]
+    pub command: AgentWorkflowCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum AgentWorkflowCommand {
+    /// Verify backend health, runtime state, and capabilities.
+    Verify(AgentWorkflowVerifyArgs),
+    /// Query and resolve a symbol, optionally gathering references and callers.
+    Symbol(AgentWorkflowSymbolArgs),
+    /// Query source-index impact for a fully-qualified symbol.
+    Impact(AgentWorkflowImpactArgs),
+    /// Refresh touched files and run diagnostics.
+    Diagnostics(AgentWorkflowDiagnosticsArgs),
+    /// Build a dry-run rename plan from a file offset.
+    #[command(name = "rename-plan")]
+    RenamePlan(AgentWorkflowRenamePlanArgs),
+    /// Apply symbol/write-and-validate with explicit mutation opt-in.
+    #[command(name = "write-validate")]
+    WriteValidate(AgentWorkflowWriteValidateArgs),
+    /// Verify manifest-backed package and install state.
+    #[command(name = "package-verify")]
+    PackageVerify(AgentWorkflowPackageVerifyArgs),
+}
+
+#[derive(Debug, Args, Clone, Default)]
+pub struct AgentWorkflowCommonArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Directory where params, stdout, stderr, and workflow summaries are written.
+    #[arg(long)]
+    pub out_dir: Option<PathBuf>,
+    /// Write deterministic step files without calling the backend.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowVerifyArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowPackageVerifyArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowSymbolArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    #[arg(long, default_value_t = 10)]
+    pub query_limit: u32,
+    #[arg(long)]
+    pub references: bool,
+    #[arg(long)]
+    pub include_declaration: bool,
+    #[arg(long, value_enum)]
+    pub callers: Option<AgentSymbolCallDirection>,
+    #[arg(long, default_value_t = 3)]
+    pub caller_depth: u32,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowImpactArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+    /// Fully-qualified symbol name.
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long, default_value_t = 3)]
+    pub depth: u32,
+    #[arg(long, default_value_t = 50)]
+    pub limit: u32,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowDiagnosticsArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+    #[arg(long = "file-path", required = true)]
+    pub file_paths: Vec<String>,
+    #[arg(long)]
+    pub skip_refresh: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowRenamePlanArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+    #[arg(long)]
+    pub file_path: String,
+    #[arg(long)]
+    pub offset: u64,
+    #[arg(long)]
+    pub new_name: String,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentWorkflowWriteValidateArgs {
+    #[command(flatten)]
+    pub common: AgentWorkflowCommonArgs,
+    #[arg(long, value_enum)]
+    pub mode: AgentWorkflowWriteMode,
+    #[arg(long)]
+    pub file_path: String,
+    #[arg(long)]
+    pub offset: Option<u64>,
+    #[arg(long)]
+    pub start_offset: Option<u64>,
+    #[arg(long)]
+    pub end_offset: Option<u64>,
+    #[arg(long)]
+    pub content: Option<String>,
+    #[arg(long)]
+    pub content_file: Option<String>,
+    /// Actually run the mutating write workflow.
+    #[arg(long)]
+    pub allow_mutation: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentWorkflowWriteMode {
+    Create,
+    Insert,
+    Replace,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -1054,6 +1196,9 @@ pub struct ResourceInstallArgs {
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
+    /// Do not add managed resource paths to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
 }
 
 #[derive(Debug, Args, Clone)]

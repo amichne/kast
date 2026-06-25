@@ -233,7 +233,7 @@ def main() -> int:
         result["issues"].append(
             issue(
                 "KAST_AGENT_UNAVAILABLE",
-                "`kast agent --help` failed; the installed skill and active binary are out of sync.",
+                "`kast agent --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
                 "./gradlew installDevelopmentLocal",
             )
         )

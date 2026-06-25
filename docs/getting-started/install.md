@@ -71,10 +71,11 @@ runtime guidance, and catalog-backed tools at startup.
     - `.github/extensions/kast/_shared/kast-tools.mjs`
     - `.github/extensions/kast/_shared/kast-trace.mjs`
     - `.github/extensions/kast/_shared/commands.json`
-    - `.github/.kast-copilot-version`
 
-    Rerun with `--force` after upgrading the global binary or when the
-    repository files look stale.
+    The global `$HOME/.local/share/kast/install.json` manifest records the
+    repository resource version, source bundle checksum, output checksums, and
+    install time. `kast doctor` verifies those manifest-backed files and fails
+    closed when an installed output is missing or tampered.
 
 ??? info "Homebrew-managed IDE plugin"
     The IDEA or Android Studio plugin is part of the macOS developer install.

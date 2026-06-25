@@ -29,7 +29,6 @@ COPILOT_FILES = [
     "extensions/kast/_shared/kast-tools.mjs",
     "extensions/kast/_shared/kast-trace.mjs",
     "extensions/kast/_shared/commands.json",
-    ".kast-copilot-version",
 ]
 
 
@@ -148,6 +147,11 @@ def verify_command_surface(
     checks = result["checks"]
     top_help = command_record(kast_command + ["--help"], workspace_root, timeout)
     agent_help = command_record(kast_command + ["agent", "--help"], workspace_root, timeout)
+    agent_workflow_help = command_record(
+        kast_command + ["agent", "workflow", "--help"],
+        workspace_root,
+        timeout,
+    )
     install_help = command_record(kast_command + ["install", "--help"], workspace_root, timeout)
     version = command_record(kast_command + ["version"], workspace_root, timeout)
 
@@ -156,11 +160,13 @@ def verify_command_surface(
     checks["commandSurface"] = {
         "helpExitCode": top_help["exitCode"],
         "agentHelpExitCode": agent_help["exitCode"],
+        "agentWorkflowHelpExitCode": agent_workflow_help["exitCode"],
         "installHelpExitCode": install_help["exitCode"],
         "versionExitCode": version["exitCode"],
         "version": version["stdout"].strip(),
         "cliVersion": parse_cli_version(version["stdout"]),
         "agentAvailable": agent_help["exitCode"] == 0,
+        "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
         "rpcVisibleInTopHelp": help_lists_command(top_help_text, "rpc"),
         "installAffectedVisible": help_lists_command(install_help_text, "affected"),
     }
@@ -171,7 +177,14 @@ def verify_command_surface(
         add_issue(
             result,
             "KAST_AGENT_UNAVAILABLE",
-            "`kast agent --help` failed; the installed skill and active binary are out of sync.",
+            "`kast agent --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            RECOVERY["development"],
+        )
+    if agent_workflow_help["exitCode"] != 0:
+        add_issue(
+            result,
+            "KAST_AGENT_WORKFLOW_UNAVAILABLE",
+            "`kast agent workflow --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
     if checks["commandSurface"]["rpcVisibleInTopHelp"]:
@@ -195,7 +208,7 @@ def verify_doctor_and_paths(
     kast_command: list[str],
     workspace_root: Path,
     timeout: int,
-) -> None:
+) -> dict[str, Any] | None:
     doctor = command_record(kast_command + ["--output", "json", "doctor"], workspace_root, timeout)
     doctor_json = parse_json_output(doctor)
     result["checks"]["doctor"] = {
@@ -244,6 +257,35 @@ def verify_doctor_and_paths(
             "KAST_PATHS_WARNINGS",
             f"`kast --output json paths` reported warnings: {paths_json['warnings']}",
         )
+    return doctor_json if isinstance(doctor_json, dict) else None
+
+
+def manifest_resources(doctor_json: dict[str, Any] | None) -> list[dict[str, Any]]:
+    install = doctor_json.get("install") if isinstance(doctor_json, dict) else None
+    if not isinstance(install, dict):
+        return []
+    resources: list[dict[str, Any]] = []
+    for repo in install.get("repos", []):
+        if not isinstance(repo, dict):
+            continue
+        for resource in repo.get("resources", []):
+            if isinstance(resource, dict):
+                resource = dict(resource)
+                resource["repoPath"] = repo.get("path")
+                resources.append(resource)
+    return resources
+
+
+def resource_record_for_target(
+    doctor_json: dict[str, Any] | None,
+    kind: str,
+    target: Path,
+) -> dict[str, Any] | None:
+    target_value = str(normalize(target))
+    for resource in manifest_resources(doctor_json):
+        if resource.get("kind") == kind and resource.get("targetPath") == target_value:
+            return resource
+    return None
 
 
 def verify_workspace(result: dict[str, Any], workspace_root: Path, require_gradle: bool) -> None:
@@ -278,6 +320,7 @@ def verify_copilot(
     source_catalog: Path,
     expected_version: str | None,
     required: bool,
+    doctor_json: dict[str, Any] | None,
 ) -> None:
     github_dir = workspace_root / ".github"
     files = {
@@ -290,32 +333,38 @@ def verify_copilot(
     commands_path = github_dir / "extensions/kast/_shared/commands.json"
     source_hash = file_sha256(source_catalog)
     installed_hash = file_sha256(commands_path)
-    marker_version = read_text(github_dir / ".kast-copilot-version")
+    retired_marker_exists = (github_dir / ".kast-copilot-version").exists()
+    resource = resource_record_for_target(doctor_json, "COPILOT_PACKAGE", github_dir)
     check = {
         "target": str(github_dir),
         "exists": github_dir.is_dir(),
         "files": files,
-        "markerVersion": marker_version,
+        "retiredMarkerExists": retired_marker_exists,
         "expectedVersion": expected_version,
-        "markerMatchesExpected": bool(expected_version and marker_version == expected_version),
+        "manifestResource": resource,
+        "versionMatchesExpected": bool(
+            resource and expected_version and resource.get("primitiveVersion") == expected_version
+        ),
         "commandsHashMatchesSource": bool(source_hash and installed_hash and source_hash == installed_hash),
     }
     result["checks"]["copilotPackage"] = check
     missing = [relative for relative, info in files.items() if not info["exists"]]
     stale = source_hash and installed_hash and source_hash != installed_hash
-    version_mismatch = expected_version and marker_version and expected_version != marker_version
-    if required and (missing or stale or version_mismatch):
+    version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
+    missing_record = github_dir.is_dir() and resource is None
+    retired_marker = retired_marker_exists
+    if required and (missing or stale or version_mismatch or missing_record or retired_marker):
         add_issue(
             result,
             "COPILOT_PACKAGE_STALE",
             f"Repository Copilot package is missing or stale under {github_dir}.",
             RECOVERY["copilot"],
         )
-    elif github_dir.is_dir() and (stale or version_mismatch):
+    elif github_dir.is_dir() and (stale or version_mismatch or missing_record or retired_marker):
         add_warning(
             result,
             "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package differs from the installed skill source under {github_dir}.",
+            f"Repository Copilot package differs from the manifest-backed expected state under {github_dir}.",
         )
 
 
@@ -335,10 +384,12 @@ def verify_resource_install(
     required: bool,
     source_root: Path | None = None,
     content_files: list[str] | None = None,
+    doctor_json: dict[str, Any] | None = None,
 ) -> None:
     targets = []
+    manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
     for target in resource_targets(workspace_root, kind):
-        marker = read_text(target / ".kast-version")
+        resource = resource_record_for_target(doctor_json, manifest_kind, target)
         content_mismatches: list[str] = []
         if target.is_dir() and source_root and content_files:
             for relative in content_files:
@@ -350,9 +401,12 @@ def verify_resource_install(
             {
                 "path": str(target),
                 "exists": target.is_dir(),
-                "markerVersion": marker,
+                "retiredMarkerExists": (target / ".kast-version").exists(),
                 "expectedVersion": expected_version,
-                "versionMatchesExpected": bool(marker and expected_version and marker == expected_version),
+                "manifestResource": resource,
+                "versionMatchesExpected": bool(
+                    resource and expected_version and resource.get("primitiveVersion") == expected_version
+                ),
                 "contentMismatches": content_mismatches,
             }
         )
@@ -361,7 +415,8 @@ def verify_resource_install(
     stale = [
         target
         for target in installed
-        if (expected_version and target["markerVersion"] != expected_version)
+        if (expected_version and not target["versionMatchesExpected"])
+        or target["retiredMarkerExists"]
         or target["contentMismatches"]
     ]
     if required and (not installed or stale):
@@ -387,7 +442,6 @@ def main() -> int:
     script_root = Path(__file__).resolve().parents[1]
     skill_root = normalize(args.skill_root) if args.skill_root else script_root
     source_catalog = skill_root / "references" / "commands.json"
-    source_content_marker = read_text(skill_root / ".kast-version")
 
     which_kast = shutil.which("kast")
     if args.kast_bin:
@@ -412,11 +466,9 @@ def main() -> int:
     result["checks"]["sourceSkill"] = {
         "catalog": str(source_catalog),
         "catalogExists": source_catalog.is_file(),
-        "contentMarker": source_content_marker,
         "scripts": {
             "verifyKastState": str(skill_root / "scripts/verify-kast-state.py"),
             "kastAgentCall": str(skill_root / "scripts/kast-agent-call.py"),
-            "kastSemanticWorkflow": str(skill_root / "scripts/kast-semantic-workflow.py"),
         },
     }
     if not source_catalog.is_file():
@@ -428,14 +480,15 @@ def main() -> int:
     }
     if not kast_bin:
         add_issue(result, "KAST_NOT_FOUND", "`kast` was not found on PATH.", RECOVERY["doctor"])
+        doctor_json = None
     else:
         kast_command = [kast_bin]
         verify_command_surface(result, kast_command, workspace_root, args.timeout)
-        verify_doctor_and_paths(result, kast_command, workspace_root, args.timeout)
+        doctor_json = verify_doctor_and_paths(result, kast_command, workspace_root, args.timeout)
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
-    verify_copilot(result, workspace_root, source_catalog, expected_version, args.require_copilot)
+    verify_copilot(result, workspace_root, source_catalog, expected_version, args.require_copilot, doctor_json)
     verify_resource_install(
         result,
         workspace_root,
@@ -451,8 +504,8 @@ def main() -> int:
             "references/workflows.md",
             "scripts/verify-kast-state.py",
             "scripts/kast-agent-call.py",
-            "scripts/kast-semantic-workflow.py",
         ],
+        doctor_json,
     )
     verify_resource_install(
         result,
@@ -460,6 +513,7 @@ def main() -> int:
         expected_version,
         "instructions",
         args.require_instructions,
+        doctor_json=doctor_json,
     )
 
     result["ok"] = not result["issues"]

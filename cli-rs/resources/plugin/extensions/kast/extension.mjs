@@ -103,8 +103,8 @@ function looksLikeKastCliVersion(stdout) {
 async function supportsKastCli(path) {
   const version = await execCommand(path, ["--version"]);
   if (!version.ok || !looksLikeKastCliVersion(version.stdout)) return false;
-  const help = await execCommand(path, ["help", "rpc"]);
-  return help.ok && /\brpc\b/i.test(`${help.stdout}\n${help.stderr}`);
+  const help = await execCommand(path, ["agent", "--help"]);
+  return help.ok && /\bcall\b/i.test(`${help.stdout}\n${help.stderr}`);
 }
 
 function findOnPath(commandName) {
@@ -157,7 +157,7 @@ async function resolveKastBinary() {
   }
 
   resolveError = rejected.length
-    ? `no resolved Rust kast CLI exposes kast rpc; rejected: ${rejected.join(", ")}`
+    ? `no resolved Rust kast CLI exposes kast agent; rejected: ${rejected.join(", ")}`
     : "no Rust kast CLI candidate found in install.json, ~/.local/bin, PATH, or under cli-rs/target";
   trace.emit("copilot.kast_binary.resolve_failed", {
     sdkRegistrationScope: "extension-session",
@@ -186,6 +186,13 @@ function parseJsonOrNull(text) {
 function resultCode(value) {
   if (!value || typeof value !== "object") return null;
   if (typeof value.code === "string") return value.code;
+  if (typeof value.error?.code === "string") return value.error.code;
+  if (typeof value.error?.details?.rpcError?.data?.code === "string") {
+    return value.error.details.rpcError.data.code;
+  }
+  if (typeof value.response?.error?.data?.code === "string") {
+    return value.response.error.data.code;
+  }
   if (typeof value.error?.data?.code === "string") return value.error.data.code;
   const result = value.result;
   if (result && typeof result === "object") {
@@ -199,12 +206,15 @@ function needsIdeaWarmup(value) {
   return RECOVERABLE_WARMUP_CODES.has(resultCode(value));
 }
 
-function rpcArgs(request, args = backendArgs()) {
+function agentArgs(method, params, args = backendArgs()) {
   return [
     "--output",
     "json",
-    "rpc",
-    request,
+    "agent",
+    "call",
+    method,
+    "--params",
+    JSON.stringify(params ?? {}),
     "--workspace-root",
     REPO_ROOT,
     ...args,
@@ -223,14 +233,14 @@ async function warmIdeaBackend(bin) {
   ]);
 }
 
-function formattedRpcResult(method, result, warmup = null) {
+function formattedAgentResult(method, result, warmup = null) {
   const out = result.stdout.trim();
   if (!out) {
     return JSON.stringify({
       ok: false,
       stage: "extension.exec",
       method,
-      message: `kast rpc ${method} produced no output`,
+      message: `kast agent call ${method} produced no output`,
       exitCode: result.code,
       errorText: result.stderr.trim() || null,
       ideaWarmup: warmup,
@@ -241,7 +251,7 @@ function formattedRpcResult(method, result, warmup = null) {
     ok: false,
     stage: "extension.parse",
     method,
-    message: `kast rpc ${method} returned non-JSON`,
+    message: `kast agent call ${method} returned non-JSON`,
     exitCode: result.code,
     raw: out,
     errorText: result.stderr.trim() || null,
@@ -284,15 +294,9 @@ async function callKast(method, params) {
     });
   }
 
-  const request = JSON.stringify({
-    jsonrpc: "2.0",
-    method,
-    params: params ?? {},
-    id: 1,
-  });
-  const first = await execCommand(bin, rpcArgs(request));
+  const first = await execCommand(bin, agentArgs(method, params));
   const firstJson = parseJsonOrNull(first.stdout.trim());
-  trace.emit("copilot.tool.rpc_completed", {
+  trace.emit("copilot.tool.agent_completed", {
     invocationId,
     agentRole: "kast-tool",
     sdkRegistrationScope: "extension-session",
@@ -330,7 +334,7 @@ async function callKast(method, params) {
       },
     });
     if (warmup.ok) {
-      const retried = await execCommand(bin, rpcArgs(request, ["--backend", "idea"]));
+      const retried = await execCommand(bin, agentArgs(method, params, ["--backend", "idea"]));
       const retriedJson = parseJsonOrNull(retried.stdout.trim());
       trace.emit("copilot.tool.idea_retry_completed", {
         invocationId,
@@ -344,9 +348,9 @@ async function callKast(method, params) {
           resultCode: resultCode(retriedJson),
         },
       });
-      return formattedRpcResult(method, retried);
+      return formattedAgentResult(method, retried);
     }
-    return formattedRpcResult(method, first, {
+    return formattedAgentResult(method, first, {
       attempted: true,
       ok: false,
       exitCode: warmup.code,
@@ -364,7 +368,7 @@ async function callKast(method, params) {
       method,
     },
   });
-  return formattedRpcResult(method, first);
+  return formattedAgentResult(method, first);
 }
 
 const tools = makeKastTools((method, args) => callKast(method, args));

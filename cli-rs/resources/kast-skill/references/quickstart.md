@@ -9,6 +9,7 @@ The skill is installed by the Kast binary, so the normal path is boring:
 command -v kast
 kast --help
 kast agent --help
+kast agent workflow --help
 ```
 
 When the installed skill includes `scripts/`, run the read-only verifier before
@@ -19,13 +20,14 @@ ready:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
-If `kast` is missing or `kast agent --help` is unavailable in an installed skill
-session, stop and report that the skill and binary are out of sync. Do not
-switch to non-semantic Kotlin search.
+If `kast` is missing or `kast agent workflow --help` is unavailable in an
+installed skill session, stop and report that the skill and active binary are
+incompatible. Upgrade or reinstall Kast; do not switch to non-semantic Kotlin
+search.
 
 If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index
-database, warm the IDEA backend before using text fallback:
+database, warm the IDEA backend before using non-semantic file tools:
 
 ```console
 kast up --workspace-root "$PWD" --backend idea
@@ -76,12 +78,18 @@ python3 scripts/kast-agent-call.py symbol/query \
 The script writes `params.json`, `stdout.json`, and `stderr.txt`, then emits a
 small JSON summary with the file paths and recovery guidance.
 
-For common multi-step evidence gathering, use the semantic workflow runner:
+For common multi-step evidence gathering, use the first-class workflow
+commands. They preserve each step under one output directory:
 
 ```sh
-python3 scripts/kast-semantic-workflow.py --workspace-root "$PWD" \
-  --dry-run symbol --symbol EventBean --references
+kast agent workflow symbol --workspace-root "$PWD" \
+  --dry-run --out-dir "$PWD/.kast-workflow" \
+  --symbol EventBean --references
 ```
+
+If `kast agent workflow --help` fails, stop and upgrade/reinstall the active
+Kast CLI. The skill does not provide a maintained workflow runner for older
+binaries.
 
 ```sh
 KAST_TMP="$(mktemp -d)"
