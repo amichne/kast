@@ -5,6 +5,14 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && 
 plugin_root="${repo_root}/cli-rs/resources/plugin"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-plugin-test.XXXXXX")"
 trap 'rm -rf -- "$tmp_dir"' EXIT
+host_home="${HOME:-}"
+if [[ -n "$host_home" ]]; then
+  export CARGO_HOME="${CARGO_HOME:-${host_home}/.cargo}"
+  export RUSTUP_HOME="${RUSTUP_HOME:-${host_home}/.rustup}"
+fi
+if [[ -n "${CARGO_HOME:-}" && -d "${CARGO_HOME}/bin" ]]; then
+  export PATH="${CARGO_HOME}/bin:${PATH}"
+fi
 export HOME="${tmp_dir}/home"
 export KAST_CONFIG_HOME="${tmp_dir}/kast-config"
 mkdir -p "$HOME"
