@@ -148,6 +148,7 @@ def verify_command_surface(
     top_help = command_record(kast_command + ["--help"], workspace_root, timeout)
     ready_help = command_record(kast_command + ["ready", "--help"], workspace_root, timeout)
     agent_help = command_record(kast_command + ["agent", "--help"], workspace_root, timeout)
+    agent_tools = command_record(kast_command + ["agent", "tools"], workspace_root, timeout)
     agent_setup_help = command_record(kast_command + ["agent", "setup", "--help"], workspace_root, timeout)
     agent_workflow_help = command_record(
         kast_command + ["agent", "workflow", "--help"],
@@ -159,10 +160,23 @@ def verify_command_surface(
 
     top_help_text = top_help["stdout"] + top_help["stderr"]
     install_help_text = install_help["stdout"] + install_help["stderr"]
+    agent_tools_json = parse_json_output(agent_tools)
+    agent_tools_result = agent_tools_json.get("result") if isinstance(agent_tools_json, dict) else None
+    agent_tools_specs = agent_tools_result.get("tools") if isinstance(agent_tools_result, dict) else None
+    agent_tools_type = agent_tools_result.get("type") if isinstance(agent_tools_result, dict) else None
+    agent_tools_envelope_ok = (
+        agent_tools["exitCode"] == 0
+        and isinstance(agent_tools_json, dict)
+        and agent_tools_json.get("ok") is True
+        and agent_tools_json.get("method") == "agent/tools"
+        and agent_tools_type == "KAST_AGENT_TOOLS"
+        and isinstance(agent_tools_specs, list)
+    )
     checks["commandSurface"] = {
         "helpExitCode": top_help["exitCode"],
         "readyHelpExitCode": ready_help["exitCode"],
         "agentHelpExitCode": agent_help["exitCode"],
+        "agentToolsExitCode": agent_tools["exitCode"],
         "agentSetupHelpExitCode": agent_setup_help["exitCode"],
         "agentWorkflowHelpExitCode": agent_workflow_help["exitCode"],
         "installHelpExitCode": install_help["exitCode"],
@@ -171,6 +185,10 @@ def verify_command_surface(
         "cliVersion": parse_cli_version(version["stdout"]),
         "readyAvailable": ready_help["exitCode"] == 0,
         "agentAvailable": agent_help["exitCode"] == 0,
+        "agentToolsAvailable": agent_tools["exitCode"] == 0,
+        "agentToolsEnvelopeOk": agent_tools_envelope_ok,
+        "agentToolsType": agent_tools_type,
+        "agentToolsToolCount": len(agent_tools_specs) if isinstance(agent_tools_specs, list) else None,
         "agentSetupAvailable": agent_setup_help["exitCode"] == 0,
         "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
         "rpcVisibleInTopHelp": help_lists_command(top_help_text, "rpc"),
@@ -192,6 +210,13 @@ def verify_command_surface(
             result,
             "KAST_READY_UNAVAILABLE",
             "`kast ready --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            RECOVERY["development"],
+        )
+    if not agent_tools_envelope_ok:
+        add_issue(
+            result,
+            "KAST_AGENT_TOOLS_UNAVAILABLE",
+            "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
     if agent_setup_help["exitCode"] != 0:

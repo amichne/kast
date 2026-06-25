@@ -26,6 +26,7 @@ Kotlin or Gradle project facts:
 command -v kast
 kast --help
 kast agent --help
+kast agent tools
 kast agent workflow --help
 ```
 
@@ -36,7 +37,7 @@ install, package, config, active-binary, and project-readiness evidence:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
-If the binary is missing or does not expose the expected agent workflow
+If the binary is missing or does not expose the expected agent tool/workflow
 surface, report that the installed skill and active binary are incompatible and
 require a CLI upgrade/reinstall. Do not replace the missing compiler-backed path
 with non-semantic Kotlin search.

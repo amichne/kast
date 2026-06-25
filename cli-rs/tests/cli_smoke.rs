@@ -2878,6 +2878,21 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
     );
     let verify_json: serde_json::Value =
         serde_json::from_slice(&verify.stdout).expect("verifier json");
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsEnvelopeOk"], true,
+        "{verify_json:#}"
+    );
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsType"], "KAST_AGENT_TOOLS",
+        "{verify_json:#}"
+    );
+    assert!(
+        verify_json["checks"]["commandSurface"]["agentToolsToolCount"]
+            .as_u64()
+            .expect("agent tools count")
+            >= 13,
+        "{verify_json:#}"
+    );
     assert!(
         verify_json["warnings"]
             .as_array()
@@ -4266,6 +4281,7 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
     assert!(skill.contains("kast agent --help"));
+    assert!(skill.contains("kast agent tools"));
     assert!(skill.contains("kast agent workflow --help"));
     assert!(skill.contains("scripts/verify-kast-state.py"));
     assert!(skill.contains("scripts/kast-agent-call.py"));
@@ -4291,12 +4307,13 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("command -v kast"));
     assert!(quickstart.contains("kast agent --help"));
+    assert!(quickstart.contains("kast agent tools"));
     assert!(quickstart.contains("kast agent workflow --help"));
     assert!(quickstart.contains("kast agent call"));
     assert!(quickstart.contains("scripts/verify-kast-state.py"));
     assert!(quickstart.contains("scripts/kast-agent-call.py"));
     assert!(!quickstart.contains("scripts/kast-semantic-workflow.py"));
-    assert!(quickstart.contains("skill and active binary are"));
+    assert!(quickstart.contains("active binary are incompatible"));
     assert!(quickstart.contains("incompatible. Upgrade or reinstall Kast"));
     assert!(quickstart.contains("raw transport/debug escape hatch"));
     assert!(quickstart.contains("kast inspect metrics impact"));

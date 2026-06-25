@@ -21,10 +21,10 @@ ready:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
-If `kast` is missing or `kast agent workflow --help` is unavailable in an
-installed skill session, stop and report that the skill and active binary are
-incompatible. Upgrade or reinstall Kast; do not switch to non-semantic Kotlin
-search.
+If `kast` is missing, `kast agent tools` fails, or `kast agent workflow --help`
+is unavailable in an installed skill session, stop and report that the skill
+and active binary are incompatible. Upgrade or reinstall Kast; do not switch to
+non-semantic Kotlin search.
 
 If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index

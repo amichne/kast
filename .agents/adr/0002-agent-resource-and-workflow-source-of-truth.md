@@ -49,7 +49,8 @@ current install signal.
 
 Agent-facing changes must keep these requirements true:
 
-- The active `kast` binary provides `kast agent` and `kast agent workflow`.
+- The active `kast` binary provides `kast agent`, `kast agent tools`, and
+  `kast agent workflow`.
 - `kast agent setup auto` is harness-aware: explicit `--harness` wins,
   `projectOpen.agentHarness` wins over repository detection, and auto-detection
   is only the fallback. The portable skill and instruction harnesses must not

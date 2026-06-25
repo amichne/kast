@@ -36,8 +36,8 @@ trust, and active-binary workflow support is
 - Keep recovery guidance resolve-first and compiler-backed; do not route
   Kotlin symbol work through text search.
 - Do not preserve workflow helpers solely for older binaries. If the active
-  binary lacks `kast agent workflow`, report the incompatibility and require
-  upgrade or reinstall.
+  binary lacks `kast agent tools` or `kast agent workflow`, report the
+  incompatibility and require upgrade or reinstall.
 - Prefer scripts for repeated verification or request-exchange workflows. Keep
   them JSON-emitting, eager about input validation, and read-only unless a
   future command explicitly documents mutation.
