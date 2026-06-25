@@ -1,8 +1,9 @@
 # Agent docs guide
 
-This file applies to `docs/for-agents/` and descendants. These pages explain
-how Copilot and other agents use Kast after the global binary and repository
-integration files exist.
+This file applies to `docs/for-agents/` and descendants. It intentionally
+lives under `.agents/docs/for-agents/` so Zensical does not publish agent-only
+guidance as site content. These pages explain how Copilot and other agents use
+Kast after the global binary and repository integration files exist.
 
 ## Local purpose
 
@@ -26,7 +27,7 @@ integration files exist.
 - Generated installed outputs under `.github` are evidence of package shape,
   not the source to edit first.
 - The current product operating model lives in
-  `docs/adr/0001-agent-first-install-and-docs-operating-model.md`.
+  `.agents/adr/0001-agent-first-install-and-docs-operating-model.md`.
 
 ## Edit rules
 

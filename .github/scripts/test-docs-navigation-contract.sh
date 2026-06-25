@@ -15,17 +15,14 @@ resolve_repo_root() {
 repo_root="$(resolve_repo_root)"
 
 python3 - "$repo_root" <<'PY'
-import json
 import sys
 import tomllib
 from pathlib import Path
 
 repo_root = Path(sys.argv[1])
 zensical_path = repo_root / "zensical.toml"
-mintlify_path = repo_root / "docs" / "docs.json"
 
 zensical = tomllib.loads(zensical_path.read_text())
-mintlify = json.loads(mintlify_path.read_text())
 
 
 def normalize_page(page: str) -> str:
@@ -51,16 +48,8 @@ def zensical_groups(nav):
     return groups
 
 
-expected = zensical_groups(zensical["project"]["nav"])
-actual = mintlify["navigation"]["groups"]
-
-if actual != expected:
-    print("docs/docs.json navigation must mirror zensical.toml", file=sys.stderr)
-    print("expected:", json.dumps(expected, indent=2), file=sys.stderr)
-    print("actual:", json.dumps(actual, indent=2), file=sys.stderr)
-    sys.exit(1)
-
-groups_by_name = {group["group"]: group["pages"] for group in expected}
+groups = zensical_groups(zensical["project"]["nav"])
+groups_by_name = {group["group"]: group["pages"] for group in groups}
 
 required_group_order = [
     "Overview",
@@ -71,7 +60,7 @@ required_group_order = [
     "Reference",
     "Architecture",
 ]
-actual_group_order = [group["group"] for group in expected]
+actual_group_order = [group["group"] for group in groups]
 if actual_group_order != required_group_order:
     print("Docs sidebar groups should stay intent-first and reader-oriented", file=sys.stderr)
     print("expected:", required_group_order, file=sys.stderr)
@@ -85,7 +74,6 @@ placement_checks = [
     ("Supported use cases", "supported-use-cases"),
     ("Reference", "cli-cheat-sheet"),
     ("Reference", "getting-started/backends"),
-    ("Architecture", "adr/0001-agent-first-install-and-docs-operating-model"),
     ("Architecture", "architecture/kast-vs-lsp"),
 ]
 for group_name, page in placement_checks:

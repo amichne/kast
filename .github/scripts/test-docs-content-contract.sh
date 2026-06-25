@@ -96,7 +96,14 @@ agents_doc="${docs_root}/for-agents/index.md"
 index_doc="${docs_root}/index.md"
 agent_install_doc="${docs_root}/for-agents/install-the-skill.md"
 use_cases_doc="${docs_root}/supported-use-cases.md"
-adr_doc="${docs_root}/adr/0001-agent-first-install-and-docs-operating-model.md"
+adr_doc="${repo_root}/.agents/adr/0001-agent-first-install-and-docs-operating-model.md"
+agent_resource_adr="${repo_root}/.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md"
+
+[[ ! -e "${repo_root}/docs/docs.json" ]] || die "docs/docs.json must not be used; zensical.toml owns published navigation"
+[[ ! -d "${docs_root}/adr" ]] || die "agent-focused ADRs must live under .agents/adr, not docs/adr"
+if find "${docs_root}" "${repo_root}/cli-rs/docs" -name AGENTS.md -print -quit | grep -q .; then
+  die "AGENTS.md files are agent-only and must not live under published docs trees"
+fi
 
 require_not_contains "$docs_root" '$HOME/.kast/lib/backends' "Docs must use the installer-managed backend path"
 require_not_contains "$docs_root" '$HOME/.kast/lib' "Docs must not document retired global kast lib paths"
@@ -225,6 +232,9 @@ require_contains "$adr_doc" 'brew install kast' "ADR must preserve the current g
 require_contains "$adr_doc" 'brew install --cask kast-plugin' "ADR must preserve the current macOS IDEA plugin install command"
 require_contains "$adr_doc" 'kast install copilot' "ADR must preserve the current repository Copilot install command"
 require_contains "$adr_doc" 'Iteration framework' "ADR must define how future documentation changes iterate"
+require_contains "$agent_resource_adr" 'Status: Accepted' "Agent resource ADR must record the accepted source-of-truth contract"
+require_contains "$agent_resource_adr" 'kast agent workflow' "Agent resource ADR must preserve the active-binary workflow contract"
+require_contains "$agent_resource_adr" 'require upgrade or reinstall' "Agent resource ADR must preserve the no older-binary compatibility posture"
 require_embedded_markdown_links
 python3 "${repo_root}/.github/scripts/render-rpc-contract-summary.py" --check
 

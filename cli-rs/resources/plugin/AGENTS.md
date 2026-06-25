@@ -14,6 +14,10 @@ The package provides the repository-local Copilot integration:
 - `primitive-manifest.json` defines the files copied into a repository
   `.github` directory.
 
+The durable decision record for package ownership, manifest-backed resource
+trust, and active-binary workflow support is
+`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+
 ## Edit rules
 
 - Edit this source tree first for Copilot package changes.
@@ -24,6 +28,9 @@ The package provides the repository-local Copilot integration:
   package shape.
 - Do not edit generated `.github` package copies as the source of truth.
   Regenerate or reinstall them from this tree.
+- Do not add package behavior that exists only to support older active
+  binaries. Missing `kast agent` or `kast agent workflow` support is an
+  upgrade/reinstall requirement.
 - Keep the package surface focused on LSP, runtime guidance, and catalog-backed
   `kast_*` tools. Do not add package-specific custom agents or static
   instruction entrypoints unless the public package shape is intentionally
@@ -38,7 +45,7 @@ same change:
 - `docs/for-agents/index.md`
 - `docs/for-agents/install-the-skill.md`
 - `docs/supported-use-cases.md`
-- `docs/adr/0001-agent-first-install-and-docs-operating-model.md` or a
+- `.agents/adr/0001-agent-first-install-and-docs-operating-model.md` or a
   superseding ADR when the product story changes
 - `.github/scripts/test-docs-content-contract.sh`
 

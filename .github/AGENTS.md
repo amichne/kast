@@ -31,7 +31,9 @@ Do not make these the source of truth for package behavior. Edit
 outputs. The installed command catalog under
 `.github/extensions/kast/_shared/commands.json` comes from
 `cli-rs/resources/kast-skill/references/commands.json`. The global
-`install.json` records installed resource versions and checksums.
+`install.json` records installed resource versions and checksums. The durable
+agent-only contract is
+`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
 
 ## Verify
 

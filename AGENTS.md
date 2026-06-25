@@ -14,6 +14,19 @@ source; `site/` is generated output. Copilot and skill source lives under
 Deeper `AGENTS.md` files narrow these rules for their subtrees. Follow the
 nearest guide when editing inside a scoped directory.
 
+## Decision Records & Source Of Truth
+
+Use durable agent-only docs for product and agent-surface decisions instead of
+preserving conversation-only context. `.agents/adr/0001-agent-first-install-and-docs-operating-model.md`
+owns the global binary, repository Copilot, and docs operating model.
+`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md` owns
+manifest-backed agent resources, `kast agent workflow`, and the rule that stale
+binary/resource combinations fail loudly and require upgrade or reinstall.
+
+When a change alters source ownership, generated outputs, or validation gates,
+update the nearest scoped `AGENTS.md` in the same change. Agent-only ADRs stay
+under `.agents/adr/` and must not be added to the published docs nav.
+
 ## Build, Test, and Development Commands
 
 - `./gradlew test` runs the Kotlin/JVM test suite.

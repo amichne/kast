@@ -20,17 +20,24 @@ extension, and generated LSP custom route metadata.
   Common semantic sequences belong to first-class `kast agent workflow`
   commands in the active binary.
 
+The durable decision record for package ownership, manifest-backed resource
+trust, and active-binary workflow support is
+`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+
 ## Edit rules
 
 - Treat `references/commands.json` as the source catalog for methods, request
   fields, tool names, and flow grouping.
 - Regenerate derived contract artifacts after catalog changes.
 - Keep command and tool descriptions aligned with the current product story in
-  `docs/adr/0001-agent-first-install-and-docs-operating-model.md`.
+  `.agents/adr/0001-agent-first-install-and-docs-operating-model.md`.
 - Do not add JVM-owned handlers for Rust-owned `database/*` or source-index
   query methods.
 - Keep recovery guidance resolve-first and compiler-backed; do not route
   Kotlin symbol work through text search.
+- Do not preserve workflow helpers solely for older binaries. If the active
+  binary lacks `kast agent workflow`, report the incompatibility and require
+  upgrade or reinstall.
 - Prefer scripts for repeated verification or request-exchange workflows. Keep
   them JSON-emitting, eager about input validation, and read-only unless a
   future command explicitly documents mutation.

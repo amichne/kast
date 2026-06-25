@@ -1,8 +1,10 @@
 # Docs agent guide
 
-The `docs` unit is the source for the Zensical site for `cli-rs`.
-It follows the reader-oriented structure used by the main Kast docs:
-overview, getting started, capability pages, reference, and architecture.
+This file applies to `cli-rs/docs/`. It intentionally lives under
+`.agents/docs/cli-rs/` so the CLI Zensical site does not publish agent-only
+guidance as site content. The `cli-rs/docs` unit follows the reader-oriented
+structure used by the main Kast docs: overview, getting started, capability
+pages, reference, and architecture.
 
 ## Ownership
 
