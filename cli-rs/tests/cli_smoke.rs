@@ -3924,6 +3924,100 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
 }
 
 #[test]
+fn skill_and_instruction_installs_add_managed_git_info_exclude_blocks() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo");
+    let skill_dir = repo.join(".agents/skills");
+    let instructions_dir = repo.join(".agents/instructions");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+
+    let skill = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            skill_dir.to_str().expect("skill path"),
+        ])
+        .output()
+        .expect("install skill");
+    assert!(
+        skill.status.success(),
+        "skill install should write git exclude block: stdout={}, stderr={}",
+        String::from_utf8_lossy(&skill.stdout),
+        String::from_utf8_lossy(&skill.stderr),
+    );
+    let skill_stdout: serde_json::Value =
+        serde_json::from_slice(&skill.stdout).expect("skill install json");
+    assert_eq!(skill_stdout["gitExclude"]["attempted"], true);
+    assert_eq!(skill_stdout["gitExclude"]["updated"], true);
+
+    let instructions = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "instructions",
+            "--target-dir",
+            instructions_dir.to_str().expect("instructions path"),
+        ])
+        .output()
+        .expect("install instructions");
+    assert!(
+        instructions.status.success(),
+        "instructions install should write git exclude block: stdout={}, stderr={}",
+        String::from_utf8_lossy(&instructions.stdout),
+        String::from_utf8_lossy(&instructions.stderr),
+    );
+    let instructions_stdout: serde_json::Value =
+        serde_json::from_slice(&instructions.stdout).expect("instructions install json");
+    assert_eq!(instructions_stdout["gitExclude"]["attempted"], true);
+    assert_eq!(instructions_stdout["gitExclude"]["updated"], true);
+
+    let exclude =
+        std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
+    assert!(exclude.contains("# >>> kast skill >>>"));
+    assert!(exclude.contains(".agents/skills/kast/SKILL.md"));
+    assert!(exclude.contains("# <<< kast skill <<<"));
+    assert!(exclude.contains("# >>> kast instructions >>>"));
+    assert!(exclude.contains(".agents/instructions/kast/README.md"));
+    assert!(exclude.contains("# <<< kast instructions <<<"));
+
+    let manifest: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(install_manifest_path(&home)).expect("install manifest"),
+    )
+    .expect("manifest json");
+    let resource_kinds = manifest["repos"][0]["resources"]
+        .as_array()
+        .expect("resources")
+        .iter()
+        .map(|resource| resource["kind"].as_str().expect("resource kind"))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        resource_kinds,
+        std::collections::BTreeSet::from(["INSTRUCTIONS", "SKILL"])
+    );
+}
+
+#[test]
 fn copilot_package_install_can_skip_git_info_exclude() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
