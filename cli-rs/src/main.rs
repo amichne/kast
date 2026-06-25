@@ -229,13 +229,19 @@ fn default_agent_up_target_dir(harness: cli::AgentSetupHarness, workspace_root: 
         cli::AgentSetupHarness::Copilot => workspace_root.join(".github"),
         cli::AgentSetupHarness::Skill => first_existing_or_default(
             workspace_root,
-            &[".agents/skills", ".github/skills", ".claude/skills"],
+            &[
+                ".agents/skills",
+                ".codex/skills",
+                ".github/skills",
+                ".claude/skills",
+            ],
             ".agents/skills",
         ),
         cli::AgentSetupHarness::Instructions => first_existing_or_default(
             workspace_root,
             &[
                 ".agents/instructions",
+                ".codex/instructions",
                 ".github/instructions",
                 ".claude/instructions",
             ],
@@ -364,11 +370,17 @@ fn agent_setup_auto_detected_harness(
         };
     }
 
-    let has_skill_root = [".agents/skills", ".github/skills", ".claude/skills"]
-        .iter()
-        .any(|candidate| cwd.join(candidate).is_dir());
+    let has_skill_root = [
+        ".agents/skills",
+        ".codex/skills",
+        ".github/skills",
+        ".claude/skills",
+    ]
+    .iter()
+    .any(|candidate| cwd.join(candidate).is_dir());
     let has_instruction_root = [
         ".agents/instructions",
+        ".codex/instructions",
         ".github/instructions",
         ".claude/instructions",
     ]

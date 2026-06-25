@@ -3400,7 +3400,12 @@ fn cask_name(cask_token: &str) -> String {
 
 fn default_skill_target_dir() -> PathBuf {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for candidate in [".agents/skills", ".github/skills", ".claude/skills"] {
+    for candidate in [
+        ".agents/skills",
+        ".codex/skills",
+        ".github/skills",
+        ".claude/skills",
+    ] {
         let path = cwd.join(candidate);
         if path.is_dir() {
             return config::normalize(path);
@@ -3416,6 +3421,7 @@ fn default_instructions_target_dir() -> PathBuf {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     for candidate in [
         ".agents/instructions",
+        ".codex/instructions",
         ".github/instructions",
         ".claude/instructions",
     ] {

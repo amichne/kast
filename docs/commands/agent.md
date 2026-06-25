@@ -54,12 +54,14 @@ Copilot extension or MCP availability.
 kast agent setup copilot
 kast agent setup auto --dry-run
 kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
+kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
 kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
 ```
 
 When `--harness` is omitted, `kast agent setup auto` reads
 `projectOpen.agentHarness` from config before falling back to repository
-detection.
+detection. Portable repository roots include `.agents/skills`,
+`.codex/skills`, `.agents/instructions`, and `.codex/instructions`.
 
 ## Alias commands
 

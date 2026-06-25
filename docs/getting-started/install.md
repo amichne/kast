@@ -90,8 +90,13 @@ runtime guidance, and catalog-backed tools at startup.
     kast agent setup auto --dry-run
     kast agent setup auto --harness copilot
     kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
+    kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
     kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
     ```
+
+    Repository auto-detection recognizes `.codex/skills` and
+    `.codex/instructions` as Codex-native portable roots, while Copilot
+    repositories continue to use the `.github` package by default.
 
     Set a machine or workspace preference when the same harness should win
     over repository auto-detection:

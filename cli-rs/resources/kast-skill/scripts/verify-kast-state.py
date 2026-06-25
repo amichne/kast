@@ -428,6 +428,7 @@ def verify_copilot(
 def resource_targets(workspace_root: Path, kind: str) -> list[Path]:
     return [
         workspace_root / ".agents" / kind / "kast",
+        workspace_root / ".codex" / kind / "kast",
         workspace_root / ".github" / kind / "kast",
         workspace_root / ".claude" / kind / "kast",
     ]

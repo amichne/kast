@@ -43,8 +43,13 @@ detection.
 kast agent setup auto --dry-run
 kast agent setup auto --harness copilot
 kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
+kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
 kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
 ```
+
+Repository auto-detection treats `.codex/skills` and `.codex/instructions` as
+portable Codex roots alongside `.agents`, `.github`, and `.claude` skill or
+instruction roots.
 
 ```toml title="$HOME/.config/kast/config.toml"
 [projectOpen]

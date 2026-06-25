@@ -3076,6 +3076,173 @@ agentHarness = "instructions"
 }
 
 #[test]
+fn codex_skill_roots_are_first_class_agent_targets() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let codex_skills = workspace.join(".codex/skills");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&codex_skills).expect("codex skills");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    std::fs::write(
+        config_home.join("config.toml"),
+        r#"[projectOpen]
+agentHarness = "skill"
+"#,
+    )
+    .expect("config");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&workspace)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+    let repair = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["ready", "--fix"])
+        .output()
+        .expect("ready repair");
+    assert!(
+        repair.status.success(),
+        "ready --fix should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+
+    let install = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["--output", "json", "agent", "setup", "auto", "--force"])
+        .output()
+        .expect("agent setup auto");
+    assert!(
+        install.status.success(),
+        "Codex skill root should be selected by auto setup: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let install_stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("skill install json");
+    let expected_codex_skill = codex_skills
+        .join("kast")
+        .canonicalize()
+        .expect("canonical installed Codex skill");
+    let expected_codex_skill_root = codex_skills
+        .canonicalize()
+        .expect("canonical Codex skill root");
+    assert_eq!(
+        install_stdout["installedAt"],
+        expected_codex_skill.display().to_string()
+    );
+    assert!(codex_skills.join("kast/SKILL.md").is_file());
+    assert!(codex_skills.join("kast/references/commands.json").is_file());
+
+    let up = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--dry-run",
+        ])
+        .output()
+        .expect("agent up dry-run");
+    assert!(
+        up.status.success(),
+        "agent up dry-run should preserve Codex skill target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&up.stdout),
+        String::from_utf8_lossy(&up.stderr)
+    );
+    let up_stdout: serde_json::Value = serde_json::from_slice(&up.stdout).expect("up json");
+    assert_eq!(up_stdout["setup"]["harness"], "skill", "{up_stdout}");
+    assert_eq!(
+        PathBuf::from(
+            up_stdout["setup"]["targetDir"]
+                .as_str()
+                .expect("setup target dir")
+        )
+        .canonicalize()
+        .expect("canonical setup target dir"),
+        expected_codex_skill_root,
+        "{up_stdout}"
+    );
+    let install_command = up_stdout["setup"]["installCommand"]
+        .as_array()
+        .expect("install command");
+    assert_eq!(install_command.len(), 6, "{up_stdout}");
+    assert_eq!(install_command[0], "kast", "{up_stdout}");
+    assert_eq!(install_command[1], "agent", "{up_stdout}");
+    assert_eq!(install_command[2], "setup", "{up_stdout}");
+    assert_eq!(install_command[3], "skill", "{up_stdout}");
+    assert_eq!(install_command[4], "--target-dir", "{up_stdout}");
+    assert_eq!(
+        PathBuf::from(install_command[5].as_str().expect("install command target"))
+            .canonicalize()
+            .expect("canonical install command target"),
+        expected_codex_skill_root,
+        "{up_stdout}"
+    );
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill"))
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .arg("--require-gradle-project")
+        .arg("--require-skill")
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run verifier");
+    assert!(
+        verify.status.success(),
+        "verifier should accept manifest-backed Codex skill target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let verify_json: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("verifier json");
+    let codex_target = verify_json["checks"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets")
+        .iter()
+        .find(|target| {
+            target["path"]
+                .as_str()
+                .expect("target path")
+                .ends_with(".codex/skills/kast")
+        })
+        .expect("Codex skill target");
+    assert!(codex_target["exists"].as_bool().expect("exists"));
+    assert!(
+        codex_target["manifestResource"].is_object(),
+        "{codex_target:#}"
+    );
+    assert_eq!(
+        codex_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
+}
+
+#[test]
 fn agent_setup_auto_dry_run_explains_selection_without_writing() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
