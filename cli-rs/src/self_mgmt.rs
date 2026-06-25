@@ -10,7 +10,12 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub use crate::manifest::{KastInstallManifest as InstallState, ManagedRepo};
+pub use crate::manifest::{
+    KastInstallManifest as InstallState, ManagedRepo, ManagedRepoResource,
+    ManagedRepoResourceHistory, ManagedResourceKind,
+};
+
+const MANAGED_RESOURCE_HISTORY_LIMIT: usize = 5;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,6 +165,34 @@ pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
                 )),
             }
         }
+        for repo in &install.repos {
+            if !repo.copilot_package_version.trim().is_empty()
+                && !repo
+                    .resources
+                    .iter()
+                    .any(|resource| resource.kind == ManagedResourceKind::CopilotPackage)
+            {
+                issues.push(format!(
+                    "Managed repo {} uses retired copilotPackageVersion state, which is incompatible with manifest-backed resource verification; upgrade/reinstall Kast if needed, then run `kast doctor --repair` to refresh from the active binary bundles",
+                    repo.path
+                ));
+            }
+            for resource in &repo.resources {
+                let verification = manifest::verify_managed_resource_outputs(resource)?;
+                if !verification.ok {
+                    issues.extend(verification.issues);
+                }
+                if resource.primitive_version != cli::version() {
+                    warnings.push(format!(
+                        "{} resource at {} was installed by version {}, current binary is {}",
+                        resource.kind,
+                        resource.target_path,
+                        resource.primitive_version,
+                        cli::version()
+                    ));
+                }
+            }
+        }
     } else {
         issues.push(format!(
             "Install manifest is missing at {}",
@@ -232,25 +265,53 @@ pub fn write_install_state(install: &InstallState) -> Result<PathBuf> {
     manifest::write_install_manifest(install)
 }
 
-pub fn record_copilot_repo(github_dir: &Path, version: &str) -> Result<()> {
-    let repo_root = github_dir
-        .parent()
-        .unwrap_or(github_dir)
-        .to_path_buf()
-        .components()
-        .collect::<PathBuf>();
+pub fn record_repo_resource(repo_root: &Path, mut resource: ManagedRepoResource) -> Result<()> {
+    let normalized_repo = config::normalize(repo_root.to_path_buf());
+    let repo_path = normalized_repo.display().to_string();
     let mut install = read_global_install_state()?.unwrap_or_else(manifest::fresh_manifest);
-    let repo_path = repo_root.display().to_string();
-    install.repos.retain(|repo| repo.path != repo_path);
-    install.repos.push(ManagedRepo {
-        path: repo_path,
-        copilot_package_version: version.to_string(),
-    });
+    let repo_index = install
+        .repos
+        .iter()
+        .position(|repo| repo.path == repo_path)
+        .unwrap_or_else(|| {
+            install.repos.push(ManagedRepo {
+                path: repo_path.clone(),
+                copilot_package_version: String::new(),
+                resources: vec![],
+            });
+            install.repos.len() - 1
+        });
+    let repo = &mut install.repos[repo_index];
+    if resource.kind == ManagedResourceKind::CopilotPackage {
+        repo.copilot_package_version.clear();
+    }
+    if let Some(existing_index) = repo
+        .resources
+        .iter()
+        .position(|existing| existing.kind == resource.kind)
+    {
+        let existing = repo.resources.remove(existing_index);
+        let mut history = existing.history;
+        history.insert(
+            0,
+            ManagedRepoResourceHistory {
+                primitive_version: existing.primitive_version,
+                source_bundle_sha256: existing.source_bundle_sha256,
+                installed_at: existing.installed_at,
+                output_checksums: existing.output_checksums,
+            },
+        );
+        history.truncate(MANAGED_RESOURCE_HISTORY_LIMIT);
+        resource.history = history;
+    }
+    repo.resources.push(resource);
+    repo.resources.sort_by_key(|resource| resource.kind);
     install.version = install.version.trim().to_string();
     if install.version.is_empty() {
         install.version = cli::version().to_string();
     }
     install.active_version = cli::version().to_string();
+    install.updated_at = manifest::current_timestamp();
     write_install_state(&install)?;
     Ok(())
 }

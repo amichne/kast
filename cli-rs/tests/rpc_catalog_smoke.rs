@@ -501,6 +501,13 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
             && extension.contains("createTraceEmitter"),
         "extension must warm the IDEA backend for missing backend/index results"
     );
+    assert!(
+        extension.contains("\"agent\"")
+            && extension.contains("\"call\"")
+            && extension.contains("formattedAgentResult")
+            && !extension.contains("rpcArgs("),
+        "extension tools must use the shared `kast agent call` envelope instead of raw rpc"
+    );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
         .expect("local plugin installer");
     assert!(

@@ -11,12 +11,15 @@ use crate::cli::{
 };
 use crate::config;
 use crate::error::{CliError, Result};
-use crate::manifest;
+use crate::manifest::{
+    self, ManagedRepoResource, ManagedResourceKind, ManagedResourceOutputChecksum,
+};
 use crate::self_mgmt;
 use flate2::read::GzDecoder;
 use include_dir::{Dir, DirEntry, include_dir};
 use serde::Serialize;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
@@ -34,6 +37,7 @@ const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
 const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
+const RESOURCE_MARKER: &str = ".kast-version";
 const RETIRED_COPILOT_PACKAGE_OUTPUTS: &[&str] = &[
     "instructions/kast-kotlin.instructions.md",
     "agents/kast-reader.agent.md",
@@ -161,7 +165,10 @@ impl InstallReporter for HumanInstallReporter {
 pub struct InstallSkillResult {
     pub installed_at: String,
     pub version: String,
+    pub source_bundle_sha256: String,
+    pub output_paths: Vec<String>,
     pub skipped: bool,
+    pub git_exclude: GitExcludeResult,
     pub schema_version: u32,
 }
 
@@ -170,7 +177,10 @@ pub struct InstallSkillResult {
 pub struct InstallInstructionsResult {
     pub installed_at: String,
     pub version: String,
+    pub source_bundle_sha256: String,
+    pub output_paths: Vec<String>,
     pub skipped: bool,
+    pub git_exclude: GitExcludeResult,
     pub schema_version: u32,
 }
 
@@ -179,6 +189,8 @@ pub struct InstallInstructionsResult {
 pub struct InstallCopilotPackageResult {
     pub installed_at: String,
     pub version: String,
+    pub source_bundle_sha256: String,
+    pub output_paths: Vec<String>,
     pub skipped: bool,
     pub git_exclude: GitExcludeResult,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -1422,6 +1434,7 @@ fn repair_install_config_state(
             deduped_repos.push(self_mgmt::ManagedRepo {
                 path: normalized_value,
                 copilot_package_version: repo.copilot_package_version,
+                resources: repo.resources,
             });
         } else {
             push_repair_action(
@@ -1473,16 +1486,24 @@ fn repair_install_copilot_repos(
             continue;
         }
         let github_dir = repo_root.join(".github");
-        let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
-        let installed_version = fs::read_to_string(&marker).unwrap_or_default();
-        if installed_version.trim() == cli::version() {
+        let copilot_resource = repo
+            .resources
+            .iter()
+            .find(|resource| resource.kind == ManagedResourceKind::CopilotPackage);
+        let needs_refresh = if let Some(resource) = copilot_resource {
+            resource.primitive_version != cli::version()
+                || !manifest::verify_managed_resource_outputs(resource)?.ok
+        } else {
+            !repo.copilot_package_version.trim().is_empty()
+        };
+        if !needs_refresh {
             continue;
         }
         push_repair_action(
             result,
             "refresh-copilot-package",
             &github_dir,
-            "Refresh a stale managed Copilot LSP package install.",
+            "Refresh a stale managed Copilot LSP package install from the active binary bundles.",
             Some(format!(
                 "kast install copilot --target-dir {} --force",
                 shell_quote_path(&github_dir)
@@ -1877,11 +1898,39 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let skipped = install_dir(&KAST_SKILL, &target, ".kast-version", args.force)?;
+    let files = embedded_dir_resource_files(&KAST_SKILL)?;
+    let outcome = install_embedded_resource(
+        ManagedResourceKind::Skill,
+        &target,
+        &files,
+        args.force,
+        &[RESOURCE_MARKER],
+        ResourceReplaceMode::WholeDirectory,
+    )?;
+    let repo_root = resource_repo_root(&target);
+    let git_exclude = match &repo_root {
+        Some(repo_root) => update_resource_git_exclude(
+            ManagedResourceKind::Skill,
+            repo_root,
+            &outcome.output_paths,
+            args.no_auto_exclude_git,
+        )?,
+        None => git_exclude_not_repository(),
+    };
+    if let Some(repo_root) = &repo_root {
+        record_managed_resource(ManagedResourceKind::Skill, repo_root, &target, &outcome)?;
+    }
     Ok(InstallSkillResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
-        skipped,
+        source_bundle_sha256: outcome.source_bundle_sha256,
+        output_paths: outcome
+            .output_paths
+            .iter()
+            .map(|path| path.display().to_string())
+            .collect(),
+        skipped: outcome.skipped,
+        git_exclude,
         schema_version: SCHEMA_VERSION,
     })
 }
@@ -1896,11 +1945,44 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let skipped = install_dir(&KAST_INSTRUCTIONS, &target, ".kast-version", args.force)?;
+    let files = embedded_dir_resource_files(&KAST_INSTRUCTIONS)?;
+    let outcome = install_embedded_resource(
+        ManagedResourceKind::Instructions,
+        &target,
+        &files,
+        args.force,
+        &[RESOURCE_MARKER],
+        ResourceReplaceMode::WholeDirectory,
+    )?;
+    let repo_root = resource_repo_root(&target);
+    let git_exclude = match &repo_root {
+        Some(repo_root) => update_resource_git_exclude(
+            ManagedResourceKind::Instructions,
+            repo_root,
+            &outcome.output_paths,
+            args.no_auto_exclude_git,
+        )?,
+        None => git_exclude_not_repository(),
+    };
+    if let Some(repo_root) = &repo_root {
+        record_managed_resource(
+            ManagedResourceKind::Instructions,
+            repo_root,
+            &target,
+            &outcome,
+        )?;
+    }
     Ok(InstallInstructionsResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
-        skipped,
+        source_bundle_sha256: outcome.source_bundle_sha256,
+        output_paths: outcome
+            .output_paths
+            .iter()
+            .map(|path| path.display().to_string())
+            .collect(),
+        skipped: outcome.skipped,
+        git_exclude,
         schema_version: SCHEMA_VERSION,
     })
 }
@@ -1913,13 +1995,50 @@ pub fn install_copilot(args: CopilotInstallArgs) -> Result<InstallCopilotPackage
                 .join(".github"),
         )
     });
-    let skipped = install_copilot_package_files(&target, args.force)?;
-    self_mgmt::record_copilot_repo(&target, cli::version())?;
-    let git_exclude = update_copilot_git_exclude(&target, args.no_auto_exclude_git)?;
+    let files = copilot_package_outputs()?
+        .into_iter()
+        .map(|output| EmbeddedResourceFile {
+            relative: output.target,
+            contents: output.contents.to_vec(),
+            executable: output.executable,
+        })
+        .collect::<Vec<_>>();
+    let outcome = install_embedded_resource(
+        ManagedResourceKind::CopilotPackage,
+        &target,
+        &files,
+        args.force,
+        &[COPILOT_PACKAGE_MARKER],
+        ResourceReplaceMode::ManagedFilesOnly,
+    )?;
+    let repo_root = resource_repo_root(&target);
+    let git_exclude = match &repo_root {
+        Some(repo_root) => update_resource_git_exclude(
+            ManagedResourceKind::CopilotPackage,
+            repo_root,
+            &outcome.output_paths,
+            args.no_auto_exclude_git,
+        )?,
+        None => git_exclude_not_repository(),
+    };
+    if let Some(repo_root) = &repo_root {
+        record_managed_resource(
+            ManagedResourceKind::CopilotPackage,
+            repo_root,
+            &target,
+            &outcome,
+        )?;
+    }
     Ok(InstallCopilotPackageResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
-        skipped,
+        source_bundle_sha256: outcome.source_bundle_sha256,
+        output_paths: outcome
+            .output_paths
+            .iter()
+            .map(|path| path.display().to_string())
+            .collect(),
+        skipped: outcome.skipped,
         git_exclude,
         warnings: vec![],
         schema_version: SCHEMA_VERSION,
@@ -2313,31 +2432,229 @@ fn current_timestamp() -> String {
     format!("unix:{seconds}")
 }
 
-fn install_copilot_package_files(github_dir: &Path, force: bool) -> Result<bool> {
-    let marker = github_dir.join(COPILOT_PACKAGE_MARKER);
-    let skipped = !force
-        && marker
-            .is_file()
-            .then(|| fs::read_to_string(&marker).unwrap_or_default())
-            .is_some_and(|current| current.trim() == cli::version());
-    if skipped {
-        return Ok(true);
+#[derive(Debug, Clone)]
+struct EmbeddedResourceFile {
+    relative: PathBuf,
+    contents: Vec<u8>,
+    executable: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResourceReplaceMode {
+    WholeDirectory,
+    ManagedFilesOnly,
+}
+
+#[derive(Debug)]
+struct EmbeddedResourceInstallOutcome {
+    skipped: bool,
+    source_bundle_sha256: String,
+    output_paths: Vec<PathBuf>,
+    output_checksums: Vec<ManagedResourceOutputChecksum>,
+}
+
+fn install_embedded_resource(
+    kind: ManagedResourceKind,
+    target: &Path,
+    files: &[EmbeddedResourceFile],
+    force: bool,
+    retired_markers: &[&str],
+    replace_mode: ResourceReplaceMode,
+) -> Result<EmbeddedResourceInstallOutcome> {
+    let source_bundle_sha256 = source_bundle_sha256(files);
+    let output_paths = files
+        .iter()
+        .map(|file| target.join(&file.relative))
+        .collect::<Vec<_>>();
+    let retired_marker_paths = retired_markers
+        .iter()
+        .map(|marker| target.join(marker))
+        .collect::<Vec<_>>();
+    let outputs_match = resource_outputs_match(target, files)?;
+    let markers_present = retired_marker_paths.iter().any(|path| path.exists());
+    if !force && outputs_match && !markers_present {
+        return Ok(EmbeddedResourceInstallOutcome {
+            skipped: true,
+            source_bundle_sha256,
+            output_checksums: resource_output_checksums(&output_paths)?,
+            output_paths,
+        });
     }
-    let replace_managed = force || marker.is_file();
-    if replace_managed {
-        remove_retired_copilot_package_outputs(github_dir)?;
+
+    let manifest_managed = manifest_has_resource(kind, target)?;
+    let retired_marker_managed = markers_present;
+    if target.exists()
+        && !force
+        && !outputs_match
+        && !manifest_managed
+        && !retired_marker_managed
+        && resource_outputs_collide(target, files)
+    {
+        return Err(CliError::new(
+            "INSTALL_TARGET_EXISTS",
+            format!(
+                "{} already contains unmanaged Kast {} files. Pass --force to replace them.",
+                target.display(),
+                kind
+            ),
+        ));
     }
-    for output in copilot_package_outputs()? {
-        write_copilot_package_file(
-            github_dir,
-            &output.target,
-            output.contents,
-            replace_managed,
-            output.executable,
-        )?;
+
+    match replace_mode {
+        ResourceReplaceMode::WholeDirectory => {
+            if target.exists() && (force || manifest_managed || retired_marker_managed) {
+                fs::remove_dir_all(target)?;
+            }
+        }
+        ResourceReplaceMode::ManagedFilesOnly => {
+            if force || manifest_managed || retired_marker_managed {
+                remove_managed_resource_outputs(&output_paths)?;
+                remove_retired_copilot_package_outputs(target)?;
+            }
+        }
     }
-    fs::write(marker, format!("{}\n", cli::version()))?;
-    Ok(false)
+    remove_paths(&retired_marker_paths)?;
+    write_embedded_resource_files(target, files)?;
+    Ok(EmbeddedResourceInstallOutcome {
+        skipped: false,
+        source_bundle_sha256,
+        output_checksums: resource_output_checksums(&output_paths)?,
+        output_paths,
+    })
+}
+
+fn embedded_dir_resource_files(dir: &'static Dir<'static>) -> Result<Vec<EmbeddedResourceFile>> {
+    let mut files = Vec::new();
+    collect_embedded_dir_files(dir.entries(), &mut files)?;
+    files.sort_by(|left, right| left.relative.cmp(&right.relative));
+    Ok(files)
+}
+
+fn collect_embedded_dir_files(
+    entries: &[DirEntry<'static>],
+    files: &mut Vec<EmbeddedResourceFile>,
+) -> Result<()> {
+    for entry in entries {
+        match entry {
+            DirEntry::Dir(dir) => collect_embedded_dir_files(dir.entries(), files)?,
+            DirEntry::File(file) => {
+                if is_retired_resource_marker(file.path()) {
+                    continue;
+                }
+                files.push(EmbeddedResourceFile {
+                    relative: file.path().to_path_buf(),
+                    contents: file.contents().to_vec(),
+                    executable: is_script_contents(file.contents()),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_retired_resource_marker(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| matches!(name, RESOURCE_MARKER | COPILOT_PACKAGE_MARKER))
+}
+
+fn is_script_contents(contents: &[u8]) -> bool {
+    contents.starts_with(b"#!")
+}
+
+fn source_bundle_sha256(files: &[EmbeddedResourceFile]) -> String {
+    let mut digest = Sha256::new();
+    let mut ordered = files.iter().collect::<Vec<_>>();
+    ordered.sort_by(|left, right| left.relative.cmp(&right.relative));
+    for file in ordered {
+        digest.update(file.relative.to_string_lossy().as_bytes());
+        digest.update([0]);
+        digest.update(if file.executable { b"1" } else { b"0" });
+        digest.update([0]);
+        digest.update(file.contents.len().to_le_bytes());
+        digest.update([0]);
+        digest.update(&file.contents);
+        digest.update([0]);
+    }
+    hex::encode(digest.finalize())
+}
+
+fn resource_outputs_match(target: &Path, files: &[EmbeddedResourceFile]) -> Result<bool> {
+    for file in files {
+        let output = target.join(&file.relative);
+        if !output.is_file() {
+            return Ok(false);
+        }
+        let actual = manifest::sha256_file(&output)?;
+        let expected = manifest::sha256_bytes(&file.contents);
+        if actual != expected {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn resource_outputs_collide(target: &Path, files: &[EmbeddedResourceFile]) -> bool {
+    files
+        .iter()
+        .any(|file| target.join(&file.relative).exists())
+}
+
+fn write_embedded_resource_files(target: &Path, files: &[EmbeddedResourceFile]) -> Result<()> {
+    for file in files {
+        let output = target.join(&file.relative);
+        if let Some(parent) = output.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&output, &file.contents)?;
+        if file.executable {
+            set_executable(&output)?;
+        } else {
+            set_executable_if_script(&output)?;
+        }
+    }
+    Ok(())
+}
+
+fn resource_output_checksums(paths: &[PathBuf]) -> Result<Vec<ManagedResourceOutputChecksum>> {
+    paths
+        .iter()
+        .map(|path| {
+            Ok(ManagedResourceOutputChecksum {
+                path: path.display().to_string(),
+                sha256: manifest::sha256_file(path)?,
+            })
+        })
+        .collect()
+}
+
+fn manifest_has_resource(kind: ManagedResourceKind, target: &Path) -> Result<bool> {
+    let normalized_target = config::normalize(target.to_path_buf());
+    Ok(
+        self_mgmt::read_global_install_state()?.is_some_and(|install| {
+            install.repos.iter().any(|repo| {
+                repo.resources.iter().any(|resource| {
+                    resource.kind == kind
+                        && config::normalize(PathBuf::from(&resource.target_path))
+                            == normalized_target
+                })
+            })
+        }),
+    )
+}
+
+fn remove_managed_resource_outputs(paths: &[PathBuf]) -> Result<()> {
+    for path in paths {
+        remove_existing_path(path)?;
+    }
+    Ok(())
+}
+
+fn remove_paths(paths: &[PathBuf]) -> Result<()> {
+    for path in paths {
+        remove_existing_path(path)?;
+    }
+    Ok(())
 }
 
 fn remove_retired_copilot_package_outputs(github_dir: &Path) -> Result<()> {
@@ -2347,7 +2664,37 @@ fn remove_retired_copilot_package_outputs(github_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn update_copilot_git_exclude(github_dir: &Path, disabled: bool) -> Result<GitExcludeResult> {
+fn record_managed_resource(
+    kind: ManagedResourceKind,
+    repo_root: &Path,
+    target: &Path,
+    outcome: &EmbeddedResourceInstallOutcome,
+) -> Result<()> {
+    self_mgmt::record_repo_resource(
+        repo_root,
+        ManagedRepoResource {
+            kind,
+            target_path: target.display().to_string(),
+            primitive_version: cli::version().to_string(),
+            source_bundle_sha256: outcome.source_bundle_sha256.clone(),
+            output_paths: outcome
+                .output_paths
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect(),
+            output_checksums: outcome.output_checksums.clone(),
+            installed_at: current_timestamp(),
+            history: vec![],
+        },
+    )
+}
+
+fn update_resource_git_exclude(
+    kind: ManagedResourceKind,
+    repo_root: &Path,
+    output_paths: &[PathBuf],
+    disabled: bool,
+) -> Result<GitExcludeResult> {
     if disabled {
         return Ok(GitExcludeResult {
             attempted: false,
@@ -2357,7 +2704,6 @@ fn update_copilot_git_exclude(github_dir: &Path, disabled: bool) -> Result<GitEx
             schema_version: SCHEMA_VERSION,
         });
     }
-    let repo_root = github_dir.parent().unwrap_or(github_dir);
     let Some(exclude_file) = git_info_exclude_path(repo_root) else {
         return Ok(GitExcludeResult {
             attempted: false,
@@ -2367,22 +2713,16 @@ fn update_copilot_git_exclude(github_dir: &Path, disabled: bool) -> Result<GitEx
             schema_version: SCHEMA_VERSION,
         });
     };
-    let entries = copilot_git_exclude_entries(repo_root, github_dir)?;
-    let block = format!(
-        "{COPILOT_GIT_EXCLUDE_BLOCK_START}\n{}\n{COPILOT_GIT_EXCLUDE_BLOCK_END}\n",
-        entries.join("\n")
-    );
+    let entries = git_exclude_entries(repo_root, output_paths)?;
+    let (start_marker, end_marker) = git_exclude_markers(kind);
+    let block = format!("{start_marker}\n{}\n{end_marker}\n", entries.join("\n"));
     let original = match fs::read_to_string(&exclude_file) {
         Ok(content) => content,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(error) => return Err(error.into()),
     };
-    let updated_content = replace_managed_block_with_markers(
-        &original,
-        &block,
-        COPILOT_GIT_EXCLUDE_BLOCK_START,
-        COPILOT_GIT_EXCLUDE_BLOCK_END,
-    );
+    let updated_content =
+        replace_managed_block_with_markers(&original, &block, start_marker, end_marker);
     let updated = updated_content != original;
     if updated {
         if let Some(parent) = exclude_file.parent() {
@@ -2397,6 +2737,16 @@ fn update_copilot_git_exclude(github_dir: &Path, disabled: bool) -> Result<GitEx
         reason: None,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn git_exclude_not_repository() -> GitExcludeResult {
+    GitExcludeResult {
+        attempted: false,
+        updated: false,
+        exclude_file: None,
+        reason: Some("not a git repository".to_string()),
+        schema_version: SCHEMA_VERSION,
+    }
 }
 
 fn git_info_exclude_path(repo_root: &Path) -> Option<PathBuf> {
@@ -2422,12 +2772,10 @@ fn git_info_exclude_path(repo_root: &Path) -> Option<PathBuf> {
     })
 }
 
-fn copilot_git_exclude_entries(repo_root: &Path, github_dir: &Path) -> Result<Vec<String>> {
-    let mut entries = copilot_package_outputs()?
-        .into_iter()
-        .map(|output| github_dir.join(output.target))
-        .chain(std::iter::once(github_dir.join(COPILOT_PACKAGE_MARKER)))
-        .map(|path| path_to_git_exclude_entry(repo_root, &path))
+fn git_exclude_entries(repo_root: &Path, output_paths: &[PathBuf]) -> Result<Vec<String>> {
+    let mut entries = output_paths
+        .iter()
+        .map(|path| path_to_git_exclude_entry(repo_root, path))
         .collect::<Result<Vec<_>>>()?;
     entries.sort();
     entries.dedup();
@@ -2435,21 +2783,45 @@ fn copilot_git_exclude_entries(repo_root: &Path, github_dir: &Path) -> Result<Ve
 }
 
 fn path_to_git_exclude_entry(repo_root: &Path, path: &Path) -> Result<String> {
-    let relative = path.strip_prefix(repo_root).map_err(|_| {
-        CliError::new(
-            "INSTALL_TARGET_OUTSIDE_GIT_REPO",
-            format!(
-                "Managed Copilot package path {} is not under Git repository {}",
-                path.display(),
-                repo_root.display()
-            ),
-        )
-    })?;
+    let normalized_repo_root = canonical_path_for_compare(repo_root);
+    let normalized_path = canonical_path_for_compare(path);
+    let relative = normalized_path
+        .strip_prefix(&normalized_repo_root)
+        .map_err(|_| {
+            CliError::new(
+                "INSTALL_TARGET_OUTSIDE_GIT_REPO",
+                format!(
+                    "Managed Kast resource path {} is not under Git repository {}",
+                    path.display(),
+                    repo_root.display()
+                ),
+            )
+        })?;
     Ok(relative
         .components()
         .map(|component| component.as_os_str().to_string_lossy())
         .collect::<Vec<_>>()
         .join("/"))
+}
+
+fn canonical_path_for_compare(path: &Path) -> PathBuf {
+    path.canonicalize()
+        .unwrap_or_else(|_| path.to_path_buf())
+        .components()
+        .collect()
+}
+
+fn git_exclude_markers(kind: ManagedResourceKind) -> (&'static str, &'static str) {
+    match kind {
+        ManagedResourceKind::CopilotPackage => (
+            COPILOT_GIT_EXCLUDE_BLOCK_START,
+            COPILOT_GIT_EXCLUDE_BLOCK_END,
+        ),
+        ManagedResourceKind::Skill => ("# >>> kast skill >>>", "# <<< kast skill <<<"),
+        ManagedResourceKind::Instructions => {
+            ("# >>> kast instructions >>>", "# <<< kast instructions <<<")
+        }
+    }
 }
 
 struct CopilotPackageOutput {
@@ -2534,88 +2906,6 @@ fn validate_manifest_relative_path(value: &str) -> Result<PathBuf> {
     ))
 }
 
-fn write_copilot_package_file(
-    github_dir: &Path,
-    relative: &Path,
-    contents: &[u8],
-    force: bool,
-    executable: bool,
-) -> Result<()> {
-    let target = github_dir.join(relative);
-    if target.exists() && !force {
-        return Err(CliError::new(
-            "INSTALL_TARGET_EXISTS",
-            format!(
-                "{} already exists. Pass --force to replace it.",
-                target.display()
-            ),
-        ));
-    }
-    if let Some(parent) = target.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&target, contents)?;
-    if executable {
-        set_executable(&target)?;
-    } else {
-        set_executable_if_script(&target)?;
-    }
-    Ok(())
-}
-
-fn install_dir(dir: &Dir<'_>, target: &Path, marker_name: &str, force: bool) -> Result<bool> {
-    let marker = target.join(marker_name);
-    if marker.is_file() {
-        let current = fs::read_to_string(&marker).unwrap_or_default();
-        if !force && current.trim() == cli::version() {
-            return Ok(true);
-        }
-    }
-    if target.exists() && !force {
-        return Err(CliError::new(
-            "INSTALL_TARGET_EXISTS",
-            format!(
-                "{} already exists. Pass --force to replace it.",
-                target.display()
-            ),
-        ));
-    }
-    if target.exists() {
-        fs::remove_dir_all(target)?;
-    }
-    fs::create_dir_all(target)?;
-    copy_dir_entries(dir, target)?;
-    fs::write(marker, format!("{}\n", cli::version()))?;
-    Ok(false)
-}
-
-fn copy_dir_entries(dir: &Dir<'_>, target: &Path) -> Result<()> {
-    for entry in dir.entries() {
-        copy_entry(entry, target)?;
-    }
-    Ok(())
-}
-
-fn copy_entry(entry: &DirEntry<'_>, target_root: &Path) -> Result<()> {
-    match entry {
-        DirEntry::Dir(dir) => {
-            let target = target_root.join(dir.path());
-            fs::create_dir_all(&target)?;
-            for child in dir.entries() {
-                copy_entry(child, target_root)?;
-            }
-        }
-        DirEntry::File(file) => {
-            let target = target_root.join(file.path());
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            fs::write(&target, file.contents())?;
-            set_executable_if_script(&target)?;
-        }
-    }
-    Ok(())
-}
 #[cfg(unix)]
 fn set_executable(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -3080,32 +3370,63 @@ fn default_instructions_target_dir() -> PathBuf {
         .join("instructions")
 }
 
+fn resource_repo_root(target: &Path) -> Option<PathBuf> {
+    let start = if target.is_dir() {
+        target
+    } else {
+        target.parent().unwrap_or(target)
+    };
+    git_repo_root(start)
+}
+
+fn git_repo_root(start: &Path) -> Option<PathBuf> {
+    let output = ProcessCommand::new("git")
+        .arg("-C")
+        .arg(start)
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8(output.stdout).ok()?;
+    let raw = raw.trim();
+    if raw.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(raw).components().collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn install_skill_writes_marker_and_skips_matching_version() {
+    fn install_skill_omits_marker_and_skips_matching_version() {
         let temp = tempfile::tempdir().unwrap();
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
             force: false,
+            no_auto_exclude_git: false,
         };
         let first = install_skill(args.clone()).unwrap();
         assert!(!first.skipped);
         assert!(temp.path().join("kast/SKILL.md").is_file());
+        assert!(!temp.path().join("kast/.kast-version").exists());
         let second = install_skill(args).unwrap();
         assert!(second.skipped);
     }
 
     #[test]
-    fn install_instructions_writes_marker_and_skips_matching_version() {
+    fn install_instructions_omits_marker_and_skips_matching_version() {
         let temp = tempfile::tempdir().unwrap();
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
             force: false,
+            no_auto_exclude_git: false,
         };
         let first = install_instructions(args.clone()).unwrap();
         assert!(!first.skipped);
@@ -3113,6 +3434,7 @@ mod tests {
         assert!(temp.path().join("kast/cli.md").is_file());
         assert!(temp.path().join("kast/rpc.md").is_file());
         assert!(temp.path().join("kast/lsp.md").is_file());
+        assert!(!temp.path().join("kast/.kast-version").exists());
         let second = install_instructions(args).unwrap();
         assert!(second.skipped);
     }

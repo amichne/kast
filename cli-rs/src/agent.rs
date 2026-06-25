@@ -6,15 +6,19 @@ use crate::cli::{
     AgentRawImplementationsArgs, AgentRawReferencesArgs, AgentRawRenameArgs, AgentRawResolveArgs,
     AgentRawSemanticInsertionPointArgs, AgentRawTypeHierarchyArgs, AgentRuntimeArgs,
     AgentScaffoldArgs, AgentSymbolCallersArgs, AgentSymbolReferencesArgs, AgentSymbolResolveArgs,
+    AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
+    AgentWorkflowSymbolArgs, AgentWorkflowWriteMode, AgentWorkflowWriteValidateArgs,
     AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs, AgentWorkspaceSymbolArgs, RpcArgs,
 };
 use crate::error::{CliError, Result};
-use crate::{output, runtime, validate};
+use crate::{output, runtime, self_mgmt, validate};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, IsTerminal, Read};
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +53,49 @@ struct AgentRequest {
     runtime: AgentRuntimeArgs,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentWorkflowSummary {
+    #[serde(rename = "type")]
+    summary_type: &'static str,
+    ok: bool,
+    workflow: String,
+    workspace_root: String,
+    out_dir: String,
+    dry_run: bool,
+    steps: Vec<AgentWorkflowStepSummary>,
+    issues: Vec<AgentWorkflowIssue>,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentWorkflowStepSummary {
+    name: String,
+    method: String,
+    params_file: String,
+    stdout: String,
+    stderr: String,
+    exit_code: i32,
+    summary: Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentWorkflowIssue {
+    code: String,
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    step: Option<String>,
+}
+
+struct AgentWorkflowStep {
+    name: &'static str,
+    method: &'static str,
+    params: Value,
+    mutates: bool,
+}
+
 pub fn run(args: AgentArgs) -> Result<i32> {
     let envelope = execute(args.command);
     let exit_code = if envelope.ok { 0 } else { 1 };
@@ -57,14 +104,22 @@ pub fn run(args: AgentArgs) -> Result<i32> {
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {
+    if let AgentCommand::Workflow(args) = command {
+        return execute_workflow(args.command);
+    }
     let request = match command {
         AgentCommand::Call(args) => prepare_call(args),
+        AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         other => Ok(prepare_alias(other)),
     };
     let request = match request {
         Ok(request) => request,
         Err(error) => return error_envelope(error.method, error.request, error.error),
     };
+    execute_request(request)
+}
+
+fn execute_request(request: AgentRequest) -> AgentEnvelope {
     let validation = validate_request(&request.method, &request.request);
     if let Err(error) = validation {
         return error_envelope(request.method, Some(request.request), error);
@@ -92,6 +147,427 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             Some(request.request),
             AgentError::from_cli_error(error),
         ),
+    }
+}
+
+fn execute_workflow(command: AgentWorkflowCommand) -> AgentEnvelope {
+    let method = format!("agent/workflow/{}", workflow_name(&command));
+    let prepared = workflow_steps(command);
+    let (workflow, common, steps) = match prepared {
+        Ok(prepared) => prepared,
+        Err(error) => return error_envelope(method, None, error),
+    };
+    match run_workflow(&workflow, &common, steps) {
+        Ok(summary) => workflow_envelope(method, summary),
+        Err(error) => error_envelope(method, None, AgentError::from_cli_error(error)),
+    }
+}
+
+fn workflow_name(command: &AgentWorkflowCommand) -> &'static str {
+    match command {
+        AgentWorkflowCommand::Verify(_) => "verify",
+        AgentWorkflowCommand::Symbol(_) => "symbol",
+        AgentWorkflowCommand::Impact(_) => "impact",
+        AgentWorkflowCommand::Diagnostics(_) => "diagnostics",
+        AgentWorkflowCommand::RenamePlan(_) => "rename-plan",
+        AgentWorkflowCommand::WriteValidate(_) => "write-validate",
+        AgentWorkflowCommand::PackageVerify(_) => "package-verify",
+    }
+}
+
+fn workflow_steps(
+    command: AgentWorkflowCommand,
+) -> std::result::Result<(String, AgentWorkflowCommonArgs, Vec<AgentWorkflowStep>), AgentError> {
+    match command {
+        AgentWorkflowCommand::Verify(args) => Ok((
+            "verify".to_string(),
+            args.common,
+            vec![
+                AgentWorkflowStep {
+                    name: "health",
+                    method: "health",
+                    params: json!({}),
+                    mutates: false,
+                },
+                AgentWorkflowStep {
+                    name: "runtime-status",
+                    method: "runtime/status",
+                    params: json!({}),
+                    mutates: false,
+                },
+                AgentWorkflowStep {
+                    name: "capabilities",
+                    method: "capabilities",
+                    params: json!({}),
+                    mutates: false,
+                },
+            ],
+        )),
+        AgentWorkflowCommand::Symbol(args) => symbol_workflow_steps(args),
+        AgentWorkflowCommand::Impact(args) => Ok((
+            "impact".to_string(),
+            args.common,
+            vec![AgentWorkflowStep {
+                name: "impact",
+                method: "database/metrics",
+                params: json!({
+                    "metric": "impact",
+                    "symbol": args.symbol,
+                    "depth": args.depth,
+                    "limit": args.limit,
+                }),
+                mutates: false,
+            }],
+        )),
+        AgentWorkflowCommand::Diagnostics(args) => diagnostics_workflow_steps(args),
+        AgentWorkflowCommand::RenamePlan(args) => Ok((
+            "rename-plan".to_string(),
+            args.common,
+            vec![AgentWorkflowStep {
+                name: "rename-plan",
+                method: "raw/rename",
+                params: json!({
+                    "position": {
+                        "filePath": args.file_path,
+                        "offset": args.offset,
+                    },
+                    "newName": args.new_name,
+                    "dryRun": true,
+                }),
+                mutates: false,
+            }],
+        )),
+        AgentWorkflowCommand::WriteValidate(args) => write_validate_workflow_steps(args),
+        AgentWorkflowCommand::PackageVerify(args) => Ok((
+            "package-verify".to_string(),
+            args.common,
+            vec![AgentWorkflowStep {
+                name: "doctor",
+                method: "package/verify",
+                params: json!({}),
+                mutates: false,
+            }],
+        )),
+    }
+}
+
+fn symbol_workflow_steps(
+    args: AgentWorkflowSymbolArgs,
+) -> std::result::Result<(String, AgentWorkflowCommonArgs, Vec<AgentWorkflowStep>), AgentError> {
+    let mut steps = vec![
+        AgentWorkflowStep {
+            name: "symbol-query",
+            method: "symbol/query",
+            params: json!({
+                "query": args.symbol,
+                "modes": ["exact", "lexical"],
+                "filters": {},
+                "limit": args.query_limit,
+                "includeEvidence": true,
+                "includeNextRequests": true,
+            }),
+            mutates: false,
+        },
+        AgentWorkflowStep {
+            name: "symbol-resolve",
+            method: "symbol/resolve",
+            params: drop_nulls(json!({
+                "symbol": args.symbol,
+                "kind": args.kind.map(|kind| kind.canonical()),
+                "fileHint": args.file_hint,
+                "containingType": args.containing_type,
+                "includeDeclarationScope": true,
+                "includeDocumentation": true,
+                "surroundingLines": 3,
+                "includeSurroundingMembers": true,
+            })),
+            mutates: false,
+        },
+    ];
+    if args.references {
+        steps.push(AgentWorkflowStep {
+            name: "symbol-references",
+            method: "symbol/references",
+            params: drop_nulls(json!({
+                "symbol": args.symbol,
+                "kind": args.kind.map(|kind| kind.canonical()),
+                "fileHint": args.file_hint,
+                "containingType": args.containing_type,
+                "includeDeclaration": args.include_declaration,
+            })),
+            mutates: false,
+        });
+    }
+    if let Some(direction) = args.callers {
+        steps.push(AgentWorkflowStep {
+            name: "symbol-callers",
+            method: "symbol/callers",
+            params: drop_nulls(json!({
+                "symbol": args.symbol,
+                "kind": args.kind.map(|kind| kind.canonical()),
+                "fileHint": args.file_hint,
+                "containingType": args.containing_type,
+                "direction": direction.canonical(),
+                "depth": args.caller_depth,
+            })),
+            mutates: false,
+        });
+    }
+    Ok(("symbol".to_string(), args.common, steps))
+}
+
+fn diagnostics_workflow_steps(
+    args: AgentWorkflowDiagnosticsArgs,
+) -> std::result::Result<(String, AgentWorkflowCommonArgs, Vec<AgentWorkflowStep>), AgentError> {
+    let mut steps = Vec::new();
+    if !args.skip_refresh {
+        steps.push(AgentWorkflowStep {
+            name: "workspace-refresh",
+            method: "raw/workspace-refresh",
+            params: json!({ "filePaths": args.file_paths }),
+            mutates: false,
+        });
+    }
+    steps.push(AgentWorkflowStep {
+        name: "diagnostics",
+        method: "raw/diagnostics",
+        params: json!({ "filePaths": args.file_paths }),
+        mutates: false,
+    });
+    Ok(("diagnostics".to_string(), args.common, steps))
+}
+
+fn write_validate_workflow_steps(
+    args: AgentWorkflowWriteValidateArgs,
+) -> std::result::Result<(String, AgentWorkflowCommonArgs, Vec<AgentWorkflowStep>), AgentError> {
+    if !args.common.dry_run && !args.allow_mutation {
+        return Err(agent_error(
+            "AGENT_WORKFLOW_MUTATION_REQUIRES_OPT_IN",
+            "`write-validate` requires --allow-mutation unless --dry-run is set.",
+        ));
+    }
+    if args.content.is_some() && args.content_file.is_some() {
+        return Err(agent_error(
+            "AGENT_WORKFLOW_INPUT_CONFLICT",
+            "Use only one of --content or --content-file.",
+        ));
+    }
+    let params = match args.mode {
+        AgentWorkflowWriteMode::Create => drop_nulls(json!({
+            "type": "CREATE_FILE_REQUEST",
+            "filePath": args.file_path,
+            "content": args.content,
+            "contentFile": args.content_file,
+        })),
+        AgentWorkflowWriteMode::Insert => {
+            let offset = args.offset.ok_or_else(|| {
+                agent_error(
+                    "AGENT_WORKFLOW_INPUT_INVALID",
+                    "write-validate --mode insert requires --offset.",
+                )
+            })?;
+            drop_nulls(json!({
+                "type": "INSERT_AT_OFFSET_REQUEST",
+                "filePath": args.file_path,
+                "offset": offset,
+                "content": args.content,
+                "contentFile": args.content_file,
+            }))
+        }
+        AgentWorkflowWriteMode::Replace => {
+            let start_offset = args.start_offset.ok_or_else(|| {
+                agent_error(
+                    "AGENT_WORKFLOW_INPUT_INVALID",
+                    "write-validate --mode replace requires --start-offset.",
+                )
+            })?;
+            let end_offset = args.end_offset.ok_or_else(|| {
+                agent_error(
+                    "AGENT_WORKFLOW_INPUT_INVALID",
+                    "write-validate --mode replace requires --end-offset.",
+                )
+            })?;
+            if end_offset < start_offset {
+                return Err(agent_error(
+                    "AGENT_WORKFLOW_INPUT_INVALID",
+                    "--end-offset must be greater than or equal to --start-offset.",
+                ));
+            }
+            drop_nulls(json!({
+                "type": "REPLACE_RANGE_REQUEST",
+                "filePath": args.file_path,
+                "startOffset": start_offset,
+                "endOffset": end_offset,
+                "content": args.content,
+                "contentFile": args.content_file,
+            }))
+        }
+    };
+    Ok((
+        "write-validate".to_string(),
+        args.common,
+        vec![AgentWorkflowStep {
+            name: "write-and-validate",
+            method: "symbol/write-and-validate",
+            params,
+            mutates: true,
+        }],
+    ))
+}
+
+fn run_workflow(
+    workflow: &str,
+    common: &AgentWorkflowCommonArgs,
+    steps: Vec<AgentWorkflowStep>,
+) -> Result<AgentWorkflowSummary> {
+    let out_dir = workflow_out_dir(workflow, common.out_dir.as_deref())?;
+    fs::create_dir_all(&out_dir)?;
+    let workspace_root = common
+        .runtime
+        .workspace_root
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let mut step_summaries = Vec::new();
+    let mut issues = Vec::new();
+    for step in steps {
+        let summary = run_workflow_step(&out_dir, common, &step)?;
+        let step_ok = summary.exit_code == 0
+            && summary
+                .summary
+                .get("ok")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+        if !step_ok {
+            issues.push(AgentWorkflowIssue {
+                code: "AGENT_WORKFLOW_STEP_FAILED".to_string(),
+                message: format!("{} failed", step.name),
+                step: Some(step.name.to_string()),
+            });
+        }
+        step_summaries.push(summary);
+        if !issues.is_empty() && !common.dry_run {
+            break;
+        }
+    }
+    let summary = AgentWorkflowSummary {
+        summary_type: "KAST_AGENT_WORKFLOW",
+        ok: issues.is_empty(),
+        workflow: workflow.to_string(),
+        workspace_root: workspace_root.display().to_string(),
+        out_dir: out_dir.display().to_string(),
+        dry_run: common.dry_run,
+        steps: step_summaries,
+        issues,
+        schema_version: SCHEMA_VERSION,
+    };
+    write_json_file(&out_dir.join("workflow.json"), &summary)?;
+    Ok(summary)
+}
+
+fn run_workflow_step(
+    out_dir: &Path,
+    common: &AgentWorkflowCommonArgs,
+    step: &AgentWorkflowStep,
+) -> Result<AgentWorkflowStepSummary> {
+    let step_dir = out_dir.join(step.name);
+    fs::create_dir_all(&step_dir)?;
+    let params_file = step_dir.join("input.json");
+    let stdout_file = step_dir.join("stdout.json");
+    let stderr_file = step_dir.join("stderr.txt");
+    write_json_file(&params_file, &step.params)?;
+    let (exit_code, summary) = if common.dry_run {
+        (
+            0,
+            json!({
+                "ok": true,
+                "dryRun": true,
+                "method": step.method,
+                "mutates": step.mutates,
+                "nextRequest": json_rpc_request(step.method, step.params.clone()),
+                "schemaVersion": SCHEMA_VERSION,
+            }),
+        )
+    } else if step.method == "package/verify" {
+        let result = self_mgmt::doctor(false)?;
+        let exit_code = if result.ok { 0 } else { 1 };
+        (exit_code, serde_json::to_value(result)?)
+    } else {
+        let envelope = execute_request(AgentRequest {
+            method: step.method.to_string(),
+            request: json_rpc_request(step.method, step.params.clone()),
+            runtime: common.runtime.clone(),
+        });
+        let exit_code = if envelope.ok { 0 } else { 1 };
+        (exit_code, serde_json::to_value(envelope)?)
+    };
+    write_json_file(&stdout_file, &summary)?;
+    fs::write(&stderr_file, "")?;
+    Ok(AgentWorkflowStepSummary {
+        name: step.name.to_string(),
+        method: step.method.to_string(),
+        params_file: params_file.display().to_string(),
+        stdout: stdout_file.display().to_string(),
+        stderr: stderr_file.display().to_string(),
+        exit_code,
+        summary,
+    })
+}
+
+fn workflow_envelope(method: String, summary: AgentWorkflowSummary) -> AgentEnvelope {
+    let result = serde_json::to_value(&summary).unwrap_or(Value::Null);
+    let ok = summary.ok;
+    let error = (!ok).then(|| {
+        let mut error = agent_error("AGENT_WORKFLOW_FAILED", "Agent workflow failed.");
+        error.details.insert(
+            "issues".to_string(),
+            result.get("issues").cloned().unwrap_or(Value::Null),
+        );
+        error
+    });
+    AgentEnvelope {
+        ok,
+        method,
+        request: None,
+        response: None,
+        result: Some(result),
+        raw_response: None,
+        error,
+        schema_version: SCHEMA_VERSION,
+    }
+}
+
+fn workflow_out_dir(workflow: &str, requested: Option<&Path>) -> Result<PathBuf> {
+    if let Some(path) = requested {
+        return Ok(path.to_path_buf());
+    }
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or_default();
+    Ok(std::env::temp_dir().join(format!(
+        "kast-agent-workflow-{workflow}-{}-{seconds}",
+        std::process::id()
+    )))
+}
+
+fn write_json_file(path: &Path, value: &impl Serialize) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut bytes = serde_json::to_vec_pretty(value)?;
+    bytes.push(b'\n');
+    fs::write(path, bytes)?;
+    Ok(())
+}
+
+fn drop_nulls(value: Value) -> Value {
+    match value {
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .filter_map(|(key, value)| (!value.is_null()).then_some((key, value)))
+                .collect(),
+        ),
+        value => value,
     }
 }
 
@@ -144,6 +620,7 @@ struct AliasParts {
 fn alias_parts(command: AgentCommand) -> AliasParts {
     match command {
         AgentCommand::Call(_) => unreachable!("agent call is prepared separately"),
+        AgentCommand::Workflow(_) => unreachable!("agent workflow is prepared separately"),
         AgentCommand::Health(runtime) => empty_alias("health", runtime),
         AgentCommand::RuntimeStatus(runtime) => empty_alias("runtime/status", runtime),
         AgentCommand::Capabilities(runtime) => empty_alias("capabilities", runtime),

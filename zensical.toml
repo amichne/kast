@@ -43,7 +43,6 @@ nav = [
     { "Error codes" = "reference/error-codes.md" },
   ]},
   { "Architecture" = [
-    { "Agent-first docs ADR" = "adr/0001-agent-first-install-and-docs-operating-model.md" },
     { "How Kast works" = "architecture/how-it-works.md" },
     { "Limits and boundaries" = "architecture/behavioral-model.md" },
     { "Kast vs LSP" = "architecture/kast-vs-lsp.md" },

@@ -15,9 +15,14 @@ extension, and generated LSP custom route metadata.
   lookup material.
 - `references/workflows.md` owns install/config/package verification, project
   readiness, semantic workflow sequencing, and recovery ownership.
-- `scripts/verify-kast-state.py`, `scripts/kast-agent-call.py`, and
-  `scripts/kast-semantic-workflow.py` are packaged deterministic helpers for
-  read-only state checks, file-backed requests, and common semantic sequences.
+- `scripts/verify-kast-state.py` and `scripts/kast-agent-call.py` are packaged
+  deterministic helpers for read-only state checks and file-backed requests.
+  Common semantic sequences belong to first-class `kast agent workflow`
+  commands in the active binary.
+
+The durable decision record for package ownership, manifest-backed resource
+trust, and active-binary workflow support is
+`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
 
 ## Edit rules
 
@@ -25,11 +30,14 @@ extension, and generated LSP custom route metadata.
   fields, tool names, and flow grouping.
 - Regenerate derived contract artifacts after catalog changes.
 - Keep command and tool descriptions aligned with the current product story in
-  `docs/adr/0001-agent-first-install-and-docs-operating-model.md`.
+  `.agents/adr/0001-agent-first-install-and-docs-operating-model.md`.
 - Do not add JVM-owned handlers for Rust-owned `database/*` or source-index
   query methods.
-- Keep fallback guidance resolve-first and compiler-backed; do not route
+- Keep recovery guidance resolve-first and compiler-backed; do not route
   Kotlin symbol work through text search.
+- Do not preserve workflow helpers solely for older binaries. If the active
+  binary lacks `kast agent workflow`, report the incompatibility and require
+  upgrade or reinstall.
 - Prefer scripts for repeated verification or request-exchange workflows. Keep
   them JSON-emitting, eager about input validation, and read-only unless a
   future command explicitly documents mutation.
@@ -62,6 +70,6 @@ Run the packaged helper dry run after script or workflow edits:
 ```console
 python3 cli-rs/resources/kast-skill/scripts/kast-agent-call.py symbol/query \
   --params-json '{"query":"Kast","limit":1}' --dry-run
-python3 cli-rs/resources/kast-skill/scripts/kast-semantic-workflow.py \
-  --dry-run symbol --symbol Kast
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- agent workflow symbol \
+  --dry-run --symbol Kast
 ```

@@ -1,10 +1,3 @@
----
-title: "ADR 0001: Agent-first install and docs operating model"
-description: Current Kast delivery contract for global binary install,
-  repository-local Copilot integrations, and future documentation iteration.
-icon: lucide/file-check
----
-
 # ADR 0001: Agent-first install and docs operating model
 
 Status: Accepted
@@ -68,7 +61,7 @@ conversation summaries.
 
 | Surface | Source of truth | Validation |
 |---------|-----------------|------------|
-| Published site nav | `zensical.toml` and `docs/docs.json` | `.github/scripts/test-docs-navigation-contract.sh` |
+| Published site nav | `zensical.toml` | `.github/scripts/test-docs-navigation-contract.sh` |
 | First reader path | `docs/index.md`, `docs/getting-started/install.md`, `docs/for-agents/index.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Headless server path | `docs/getting-started/headless-linux.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |

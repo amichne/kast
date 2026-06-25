@@ -25,13 +25,15 @@ These files are repository-local install outputs from `kast install copilot`:
 
 - `.github/lsp.json`
 - `.github/extensions/kast/**`
-- `.github/.kast-copilot-version`
 
 Do not make these the source of truth for package behavior. Edit
 `cli-rs/resources/plugin/` first, then reinstall or regenerate the package
 outputs. The installed command catalog under
 `.github/extensions/kast/_shared/commands.json` comes from
-`cli-rs/resources/kast-skill/references/commands.json`.
+`cli-rs/resources/kast-skill/references/commands.json`. The global
+`install.json` records installed resource versions and checksums. The durable
+agent-only contract is
+`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
 
 ## Verify
 

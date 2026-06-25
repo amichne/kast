@@ -26,6 +26,7 @@ Kotlin or Gradle project facts:
 command -v kast
 kast --help
 kast agent --help
+kast agent workflow --help
 ```
 
 When the installed skill exposes `scripts/`, prefer the read-only verifier for
@@ -35,9 +36,10 @@ install, package, config, active-binary, and project-readiness evidence:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
-If the binary is missing or does not expose the expected agent surface, report
-that the installed skill and binary are out of sync. Do not replace the missing
-compiler-backed path with non-semantic Kotlin search.
+If the binary is missing or does not expose the expected agent workflow
+surface, report that the installed skill and active binary are incompatible and
+require a CLI upgrade/reinstall. Do not replace the missing compiler-backed path
+with non-semantic Kotlin search.
 
 If a command reports `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`,
 `METRICS_DB_UNAVAILABLE`, or a missing source-index database, warm the
@@ -78,14 +80,14 @@ failed.
 
 ## Request Discipline
 
-For repeated semantic sequences, use `scripts/kast-semantic-workflow.py` when
-available. For one nontrivial catalog call, use `scripts/kast-agent-call.py`
-so params, stdout, and stderr are preserved as files. Send catalog methods
-through `kast agent call <method> --params-file "$KAST_PARAMS"` with
-`--workspace-root "$PWD"` when scripting manually. Use camelCase fields,
-absolute paths, and check the agent envelope `ok` plus the nested result
-status; validation errors, `ok=false`, dirty diagnostics, hash mismatches, and
-failed Gradle tasks fail the operation.
+For repeated semantic sequences, use `kast agent workflow ...`; the active CLI
+must provide this command. For one nontrivial catalog call, use
+`scripts/kast-agent-call.py` so params, stdout, and stderr are preserved as
+files. Send catalog methods through `kast agent call <method> --params-file
+"$KAST_PARAMS"` with `--workspace-root "$PWD"` when scripting manually. Use
+camelCase fields, absolute paths, and check the agent envelope `ok` plus the
+nested result status; validation errors, `ok=false`, dirty diagnostics, hash
+mismatches, and failed Gradle tasks fail the operation.
 Load `references/commands.yaml`, `references/commands.json`, or
 `references/requests/` only for exact fields, variants, enum values, or samples.
 Use `references/runbook.md` only when debugging raw transport or preserving a

@@ -36,10 +36,11 @@ kast install copilot --target-dir=/absolute/path/to/repo/.github --force
     - `extensions/kast/_shared/kast-tools.mjs`
     - `extensions/kast/_shared/kast-trace.mjs`
     - `extensions/kast/_shared/commands.json`
-    - `.kast-copilot-version`
 
     These paths live under the target `.github` directory. Restart the IDE
-    after installing or refreshing them.
+    after installing or refreshing them. The global
+    `$HOME/.local/share/kast/install.json` manifest records the repository
+    resource version and checksums.
 
 ??? info "How Copilot finds the binary"
     The repository package starts `kast lsp --stdio` from `.github/lsp.json`.
@@ -66,8 +67,8 @@ already exists in your repo:
 - `.claude/instructions/kast`
 
 If none of those directories exist, it installs globally at
-`~/.local/share/kast/current/lib/instructions/kast`. Look for `.kast-version`
-in the target directory to confirm the install.
+`~/.local/share/kast/current/lib/instructions/kast`. Use
+`kast --output json doctor` to verify the manifest-backed install state.
 
 ```console title="Force reinstall to a custom instruction path"
 kast install instructions --target-dir=/absolute/path/to/instructions --force
@@ -100,9 +101,10 @@ already exists in your repo:
 - `.claude/skills/kast`
 
 If none of those directories exist, it installs globally at
-`~/.local/share/kast/current/lib/skills/kast`. Look for `.kast-version` in the
-target directory to confirm the install. If the same CLI version was already
-installed, JSON output shows `skipped: true`.
+`~/.local/share/kast/current/lib/skills/kast`. Use
+`kast --output json doctor` to verify the manifest-backed install state. If the
+same CLI version and checksummed outputs are already installed, JSON output
+shows `skipped: true`.
 
 ```console title="Force reinstall to a custom skill path"
 kast install skill --target-dir=/absolute/path/to/skills --force
@@ -116,9 +118,10 @@ kast install skill --target-dir=/absolute/path/to/skills --force
     - `references/commands.json`, `references/quickstart.md`,
       `references/runbook.md`, `references/workflows.md`, and
       `references/routing-improvement.md`
-    - `scripts/verify-kast-state.py`, `scripts/kast-agent-call.py`, and
-      `scripts/kast-semantic-workflow.py` for JSON-emitting state checks,
-      file-backed request exchange, and semantic workflow sequences
+    - `scripts/verify-kast-state.py` and `scripts/kast-agent-call.py` for
+      JSON-emitting state checks and file-backed request exchange
+    - first-class `kast agent workflow ...` commands in the active CLI for
+      semantic workflow sequences; if unavailable, upgrade or reinstall Kast
 
     Keep transient benchmark outputs outside the installed skill tree.
 

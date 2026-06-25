@@ -5,7 +5,18 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && 
 plugin_root="${repo_root}/cli-rs/resources/plugin"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-plugin-test.XXXXXX")"
 trap 'rm -rf -- "$tmp_dir"' EXIT
+host_home="${HOME:-}"
+if [[ -n "$host_home" ]]; then
+  export CARGO_HOME="${CARGO_HOME:-${host_home}/.cargo}"
+  export RUSTUP_HOME="${RUSTUP_HOME:-${host_home}/.rustup}"
+fi
+if [[ -n "${CARGO_HOME:-}" && -d "${CARGO_HOME}/bin" ]]; then
+  export PATH="${CARGO_HOME}/bin:${PATH}"
+fi
+export HOME="${tmp_dir}/home"
 export KAST_CONFIG_HOME="${tmp_dir}/kast-config"
+mkdir -p "$HOME"
+git -c init.defaultBranch=main -C "$tmp_dir" init >/dev/null
 
 node --input-type=module - "$plugin_root" <<'NODE'
 import { existsSync, readFileSync } from "node:fs";
@@ -79,6 +90,8 @@ assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify 
 assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
 assert(extension.includes('"up"'), "extension must invoke kast up for warmup");
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
+assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
+assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");
 assert(extension.includes("KAST_TOOLING_CONTEXT"), "extension must own runtime tooling guidance");
 assert(extension.includes("onUserPromptSubmitted"), "extension must inject prompt-time tooling guidance");
 assert(extension.includes("additionalContext"), "extension hooks must pass tooling guidance as context");
@@ -143,6 +156,35 @@ test -f "$tmp_dir/.github/extensions/kast/extension.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/commands.json"
+test ! -e "$tmp_dir/.github/.kast-copilot-version"
+
+node --input-type=module - "$HOME/.local/share/kast/install.json" "$tmp_dir" <<'NODE'
+import { readFileSync, realpathSync } from "node:fs";
+import { join } from "node:path";
+
+const manifestPath = process.argv[2];
+const target = realpathSync(process.argv[3]);
+const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+const repo = manifest.repos.find((candidate) => candidate.path === target);
+if (!repo) throw new Error(`missing managed repo record for ${target}`);
+if (repo.copilotPackageVersion) throw new Error("copilotPackageVersion must not be written for new installs");
+const resource = repo.resources?.find((candidate) => candidate.kind === "COPILOT_PACKAGE");
+if (!resource) throw new Error("missing COPILOT_PACKAGE resource record");
+if (!/^[a-f0-9]{64}$/.test(resource.sourceBundleSha256)) {
+  throw new Error("source bundle checksum must be a SHA-256 hex string");
+}
+const outputs = new Set(resource.outputPaths.map((outputPath) => realpathSync(outputPath)));
+for (const relative of [
+  ".github/lsp.json",
+  ".github/extensions/kast/extension.mjs",
+  ".github/extensions/kast/_shared/kast-tools.mjs",
+  ".github/extensions/kast/_shared/kast-trace.mjs",
+  ".github/extensions/kast/_shared/commands.json",
+]) {
+  const expected = join(target, relative);
+  if (!outputs.has(expected)) throw new Error(`missing output path ${expected}`);
+}
+NODE
 
 node --input-type=module - "$repo_root" "$tmp_dir" <<'NODE'
 import { readFileSync } from "node:fs";

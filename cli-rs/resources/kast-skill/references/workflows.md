@@ -17,8 +17,8 @@ python3 scripts/verify-kast-state.py --workspace-root "$PWD" \
 
 Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
 when that repository-local artifact is required for the task. The script emits
-JSON with command-surface evidence, `doctor`, `paths`, package marker state,
-catalog hash comparisons, and recovery commands.
+JSON with command-surface evidence, `doctor`, `paths`, manifest-backed
+resource state, catalog hash comparisons, and recovery commands.
 
 If the verifier reports stale state, use the one owner for that state:
 
@@ -76,21 +76,24 @@ backend. Mutating methods such as `symbol/write-and-validate`, `symbol/rename`,
 
 ## Semantic workflow patterns
 
-Use `scripts/kast-semantic-workflow.py` for common identity-first sequences and
-fall back to `scripts/kast-agent-call.py` only when you need a catalog method
-outside these patterns:
+Use `kast agent workflow ...` for common identity-first sequences. For catalog
+methods outside these patterns, use `scripts/kast-agent-call.py` as the
+file-backed request harness:
 
 ```sh
-python3 scripts/kast-semantic-workflow.py --workspace-root "$PWD" \
-  symbol --symbol EventBean --references --callers incoming
-python3 scripts/kast-semantic-workflow.py --workspace-root "$PWD" \
-  diagnostics --file-path "$PWD/src/main/kotlin/App.kt"
+kast agent workflow symbol --workspace-root "$PWD" \
+  --out-dir "$PWD/.kast-workflow/symbol" \
+  --symbol EventBean --references --callers incoming
+kast agent workflow diagnostics --workspace-root "$PWD" \
+  --out-dir "$PWD/.kast-workflow/diagnostics" \
+  --file-path "$PWD/src/main/kotlin/App.kt"
 ```
 
-The workflow runner preserves every step under one output directory and stops
-after the first failing step. Mutating workflows (`rename`, `write`) require
-`--allow-mutation`; use `--dry-run` to build request files without contacting a
-backend.
+The workflow runner preserves `input.json`, `stdout.json`, `stderr.txt`, and
+`workflow.json` under one output directory and stops after the first failing
+step. `write-validate` requires `--allow-mutation`; use `--dry-run` to build
+request files without contacting a backend. `rename-plan` always uses dry-run
+rename evidence.
 
 Use the narrowest identity-first sequence that fits the evidence you already
 have:

@@ -335,6 +335,7 @@ fn smoke_core_cli_commands() {
     assert!(agent_help.status.success());
     let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
     assert!(agent_help_stdout.contains("call"));
+    assert!(agent_help_stdout.contains("workflow"));
     assert!(agent_help_stdout.contains("raw-resolve"));
 
     let invalid_agent_call = kast(&home, &config_home)
@@ -488,9 +489,9 @@ fn smoke_core_cli_commands() {
     );
     assert!(skill_dir.join("kast/scripts/kast-agent-call.py").is_file());
     assert!(
-        skill_dir
+        !skill_dir
             .join("kast/scripts/kast-semantic-workflow.py")
-            .is_file()
+            .exists()
     );
     assert!(
         skill_dir
@@ -528,7 +529,7 @@ fn smoke_core_cli_commands() {
     assert!(github_dir.join("lsp.json").is_file());
     assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
     assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
-    assert!(github_dir.join(".kast-copilot-version").is_file());
+    assert!(!github_dir.join(".kast-copilot-version").exists());
 
     let status = kast(&home, &config_home)
         .args([
@@ -2322,6 +2323,18 @@ fn install_resource_gateways_support_force_and_current_versions() {
     let stale_skill = skill_dir.join("kast");
     let stale_instructions = instructions_dir.join("kast");
     std::fs::create_dir_all(&home).expect("home");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(temp.path())
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
     std::fs::create_dir_all(&stale_skill).expect("stale skill");
     std::fs::create_dir_all(&stale_instructions).expect("stale instructions");
     std::fs::write(stale_skill.join(".kast-version"), b"old\n").expect("stale marker");
@@ -2349,6 +2362,20 @@ fn install_resource_gateways_support_force_and_current_versions() {
     let skill_stdout: serde_json::Value =
         serde_json::from_slice(&skill.stdout).expect("skill install json");
     assert!(stale_skill.join("SKILL.md").is_file());
+    assert_eq!(
+        skill_stdout["sourceBundleSha256"]
+            .as_str()
+            .expect("skill source checksum")
+            .len(),
+        64
+    );
+    assert!(
+        skill_stdout["outputPaths"]
+            .as_array()
+            .expect("skill output paths")
+            .iter()
+            .any(|path| path.as_str().expect("path").ends_with("SKILL.md"))
+    );
 
     let forced_skill = kast(&home, &config_home)
         .args([
@@ -2372,9 +2399,7 @@ fn install_resource_gateways_support_force_and_current_versions() {
         serde_json::from_slice(&forced_skill.stdout).expect("forced skill json");
     assert_eq!(forced_skill_stdout["skipped"], false);
 
-    let skill_marker =
-        std::fs::read_to_string(stale_skill.join(".kast-version")).expect("skill marker");
-    assert_eq!(skill_marker.trim(), skill_stdout["version"]);
+    assert!(!stale_skill.join(".kast-version").exists());
 
     let instructions = kast(&home, &config_home)
         .args([
@@ -2404,9 +2429,14 @@ fn install_resource_gateways_support_force_and_current_versions() {
     assert!(stale_instructions.join("cli.md").is_file());
     assert!(stale_instructions.join("rpc.md").is_file());
     assert!(stale_instructions.join("lsp.md").is_file());
-    let instructions_marker = std::fs::read_to_string(stale_instructions.join(".kast-version"))
-        .expect("instructions marker");
-    assert_eq!(instructions_marker.trim(), instructions_stdout["version"]);
+    assert_eq!(
+        instructions_stdout["sourceBundleSha256"]
+            .as_str()
+            .expect("instructions source checksum")
+            .len(),
+        64
+    );
+    assert!(!stale_instructions.join(".kast-version").exists());
 
     std::fs::create_dir_all(github_dir.join("agents")).expect("stale agents dir");
     std::fs::create_dir_all(github_dir.join("instructions")).expect("stale instructions dir");
@@ -2491,10 +2521,39 @@ fn install_resource_gateways_support_force_and_current_versions() {
     );
     assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
     assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
+    assert_eq!(
+        copilot_stdout["sourceBundleSha256"]
+            .as_str()
+            .expect("copilot source checksum")
+            .len(),
+        64
+    );
+    assert!(
+        copilot_stdout["outputPaths"]
+            .as_array()
+            .expect("copilot output paths")
+            .iter()
+            .any(|path| path
+                .as_str()
+                .expect("path")
+                .ends_with("extensions/kast/extension.mjs"))
+    );
 
-    let copilot_marker =
-        std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("copilot marker");
-    assert_eq!(copilot_marker.trim(), copilot_stdout["version"]);
+    assert!(!github_dir.join(".kast-copilot-version").exists());
+    let manifest: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(install_manifest_path(&home)).expect("install manifest"),
+    )
+    .expect("manifest json");
+    let resource_kinds = manifest["repos"]
+        .as_array()
+        .expect("repos")
+        .iter()
+        .flat_map(|repo| repo["resources"].as_array().into_iter().flatten())
+        .map(|resource| resource["kind"].as_str().expect("kind"))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(resource_kinds.contains("SKILL"), "{manifest}");
+    assert!(resource_kinds.contains("INSTRUCTIONS"), "{manifest}");
+    assert!(resource_kinds.contains("COPILOT_PACKAGE"), "{manifest}");
 }
 
 #[test]
@@ -2679,9 +2738,9 @@ fn copilot_package_install_preserves_existing_github_content() {
         std::fs::read_to_string(&extension_customization).expect("customization"),
         "{\"keep\":true}\n"
     );
-    assert_eq!(
-        std::fs::read_to_string(github_dir.join(".kast-copilot-version")).expect("package marker"),
-        format!("{}\n", env!("CARGO_PKG_VERSION"))
+    assert!(
+        !github_dir.join(".kast-copilot-version").exists(),
+        "package marker should be removed after manifest-backed refresh"
     );
     assert!(github_dir.join("lsp.json").is_file());
     assert!(
@@ -2754,22 +2813,43 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
     assert_eq!(stdout["gitExclude"]["updated"], true);
     assert_eq!(
         stdout["gitExclude"]["excludeFile"],
-        repo.join(".git/info/exclude").display().to_string()
+        std::fs::canonicalize(&repo)
+            .expect("canonical repo")
+            .join(".git/info/exclude")
+            .display()
+            .to_string()
     );
     let manifest: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(install_manifest_path(&home)).expect("install manifest"),
     )
     .expect("manifest json");
-    assert_eq!(manifest["repos"][0]["path"], repo.display().to_string());
     assert_eq!(
-        manifest["repos"][0]["copilotPackageVersion"],
+        manifest["repos"][0]["path"],
+        std::fs::canonicalize(&repo)
+            .expect("canonical repo")
+            .display()
+            .to_string()
+    );
+    assert_eq!(
+        manifest["repos"][0]["resources"][0]["kind"],
+        "COPILOT_PACKAGE"
+    );
+    assert_eq!(
+        manifest["repos"][0]["resources"][0]["primitiveVersion"],
         env!("CARGO_PKG_VERSION")
+    );
+    assert_eq!(
+        manifest["repos"][0]["resources"][0]["sourceBundleSha256"]
+            .as_str()
+            .expect("source bundle checksum")
+            .len(),
+        64
     );
 
     let exclude =
         std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
     assert!(exclude.contains("# >>> kast copilot package >>>"));
-    assert!(exclude.contains(".github/.kast-copilot-version"));
+    assert!(!exclude.contains(".github/.kast-copilot-version"));
     assert!(exclude.contains(".github/lsp.json"));
     assert!(exclude.contains("# <<< kast copilot package <<<"));
 
@@ -2847,6 +2927,72 @@ fn copilot_package_install_can_skip_git_info_exclude() {
         std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
     assert!(!exclude.contains("# >>> kast copilot package >>>"));
     assert!(!exclude.contains(".github/lsp.json"));
+}
+
+#[test]
+fn doctor_reports_tampered_manifest_backed_repo_resource() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo");
+    let github_dir = repo.join(".github");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+
+    let copilot = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "install",
+            "copilot",
+            "--target-dir",
+            github_dir.to_str().expect("github path"),
+        ])
+        .output()
+        .expect("install copilot plugin");
+    assert!(
+        copilot.status.success(),
+        "install should write manifest-backed resource state: stdout={}, stderr={}",
+        String::from_utf8_lossy(&copilot.stdout),
+        String::from_utf8_lossy(&copilot.stderr),
+    );
+    std::fs::write(github_dir.join("lsp.json"), b"{\"tampered\":true}\n").expect("tamper lsp");
+
+    let doctor = kast(&home, &config_home)
+        .args(["--output", "json", "doctor"])
+        .output()
+        .expect("doctor");
+    assert!(
+        !doctor.status.success(),
+        "doctor should fail closed for tampered managed resources: stdout={}, stderr={}",
+        String::from_utf8_lossy(&doctor.stdout),
+        String::from_utf8_lossy(&doctor.stderr),
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert!(
+        stdout["issues"]
+            .as_array()
+            .expect("issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .expect("issue")
+                .contains("COPILOT_PACKAGE output checksum mismatch")),
+        "{stdout}"
+    );
 }
 
 #[test]
@@ -2978,6 +3124,88 @@ fn doctor_reports_invalid_config_without_crashing() {
 }
 
 #[test]
+fn agent_workflow_dry_run_writes_stable_step_files() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let out_dir = temp.path().join("workflow");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let workflow = kast(&home, &config_home)
+        .args([
+            "agent",
+            "workflow",
+            "symbol",
+            "--dry-run",
+            "--out-dir",
+            out_dir.to_str().expect("workflow path"),
+            "--symbol",
+            "Kast",
+            "--references",
+        ])
+        .output()
+        .expect("agent workflow symbol dry-run");
+
+    assert!(
+        workflow.status.success(),
+        "workflow dry-run should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&workflow.stdout),
+        String::from_utf8_lossy(&workflow.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&workflow.stdout).expect("workflow envelope json");
+    assert_eq!(stdout["ok"], true, "{stdout}");
+    assert_eq!(stdout["method"], "agent/workflow/symbol", "{stdout}");
+    assert_eq!(stdout["result"]["workflow"], "symbol", "{stdout}");
+    assert_eq!(stdout["result"]["dryRun"], true, "{stdout}");
+    assert!(out_dir.join("workflow.json").is_file());
+    assert!(out_dir.join("symbol-query/input.json").is_file());
+    assert!(out_dir.join("symbol-query/stdout.json").is_file());
+    assert!(out_dir.join("symbol-resolve/input.json").is_file());
+    assert!(out_dir.join("symbol-references/input.json").is_file());
+}
+
+#[test]
+fn agent_write_validate_workflow_requires_mutation_opt_in() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let workflow = kast(&home, &config_home)
+        .args([
+            "agent",
+            "workflow",
+            "write-validate",
+            "--mode",
+            "create",
+            "--file-path",
+            temp.path()
+                .join("Example.kt")
+                .to_str()
+                .expect("example path"),
+            "--content",
+            "class Example",
+        ])
+        .output()
+        .expect("agent workflow write-validate");
+
+    assert!(
+        !workflow.status.success(),
+        "write workflow without opt-in should fail: stdout={}, stderr={}",
+        String::from_utf8_lossy(&workflow.stdout),
+        String::from_utf8_lossy(&workflow.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&workflow.stdout).expect("workflow error json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(
+        stdout["error"]["code"], "AGENT_WORKFLOW_MUTATION_REQUIRES_OPT_IN",
+        "{stdout}"
+    );
+}
+
+#[test]
 fn doctor_flags_installed_backend_below_embedded_minimum() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -3065,13 +3293,15 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
     assert!(skill.contains("kast agent --help"));
+    assert!(skill.contains("kast agent workflow --help"));
     assert!(skill.contains("scripts/verify-kast-state.py"));
     assert!(skill.contains("scripts/kast-agent-call.py"));
-    assert!(skill.contains("scripts/kast-semantic-workflow.py"));
+    assert!(!skill.contains("scripts/kast-semantic-workflow.py"));
+    assert!(skill.contains("kast agent workflow ..."));
     assert!(skill.contains("Use for Gradle project file work"));
     assert!(skill.contains("assume the binary installed it"));
     assert!(skill.contains("`kast` directly"));
-    assert!(skill.contains("installed skill and binary are out of sync"));
+    assert!(skill.contains("active binary are incompatible"));
     assert!(skill.contains("project file operations"));
     assert!(skill.contains("Use Kast to discover the owning module"));
     assert!(skill.contains("when the path is not already exact"));
@@ -3088,11 +3318,13 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("kast up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("command -v kast"));
     assert!(quickstart.contains("kast agent --help"));
+    assert!(quickstart.contains("kast agent workflow --help"));
     assert!(quickstart.contains("kast agent call"));
     assert!(quickstart.contains("scripts/verify-kast-state.py"));
     assert!(quickstart.contains("scripts/kast-agent-call.py"));
-    assert!(quickstart.contains("scripts/kast-semantic-workflow.py"));
-    assert!(quickstart.contains("skill and binary are out of sync"));
+    assert!(!quickstart.contains("scripts/kast-semantic-workflow.py"));
+    assert!(quickstart.contains("skill and active binary are"));
+    assert!(quickstart.contains("incompatible. Upgrade or reinstall Kast"));
     assert!(quickstart.contains("raw transport/debug escape hatch"));
     assert!(quickstart.contains("kast metrics impact"));
     assert!(quickstart.contains("kast demo"));
@@ -3115,9 +3347,10 @@ fn packaged_skill_targets_rust_kast_only() {
         "packaged skill must include file-backed call harness"
     );
     assert!(
-        root.join("resources/kast-skill/scripts/kast-semantic-workflow.py")
-            .is_file(),
-        "packaged skill must include semantic workflow runner"
+        !root
+            .join("resources/kast-skill/scripts/kast-semantic-workflow.py")
+            .exists(),
+        "semantic workflow runner must live in the active kast binary"
     );
 
     assert!(
