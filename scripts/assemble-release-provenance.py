@@ -13,6 +13,7 @@ REQUIRED_PLATFORMS = {
     "gradle-ro-cache",
     "headless-linux-x64",
     "idea",
+    "openapi",
     "runtime-manifest",
     "ubuntu-debian-headless-x86_64",
 }
@@ -82,6 +83,7 @@ def validate(entries: list[dict]) -> None:
             or asset_name.endswith(".tar.gz")
             or asset_name.endswith(".tar.zst")
             or asset_name.endswith(".json")
+            or asset_name.endswith(".yaml")
         ):
             fail(f"provenance entry for {platform} has no supported assetName")
         if (

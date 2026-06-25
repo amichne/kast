@@ -211,6 +211,79 @@ jobs:
           --no-daemon
           --stacktrace
 
+  build-openapi-spec:
+    name: Build OpenAPI spec
+    needs:
+      - prepare-release
+      - validate-jvm
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Stage OpenAPI spec
+        run: >
+          ./scripts/ci-gradle-retry.sh
+          ./gradlew
+          stageOpenApiSpec
+          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
+          --no-daemon
+          --stacktrace
+
+      - name: Generate OpenAPI provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "dist/openapi.yaml" "dist/build-provenance-openapi.json" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "openapi",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
+          }
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload OpenAPI release asset
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          gh release upload "$tag" dist/openapi.yaml --clobber
+
+      - name: Upload OpenAPI workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: openapi-spec-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: error
+
   publish-maven-central:
     name: Publish Maven Central
     needs:
@@ -811,11 +884,12 @@ jobs:
     needs:
       - prepare-release
       - validate-jvm
+      - build-openapi-spec
       - build-cli
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -843,6 +917,13 @@ jobs:
           pattern: linux-headless-tarball-*
           merge-multiple: true
 
+      - name: Download OpenAPI provenance
+        uses: actions/download-artifact@v7
+        with:
+          path: provenance-openapi
+          pattern: openapi-spec-*
+          merge-multiple: true
+
       - name: Upload Gradle read-only cache release asset
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
@@ -868,7 +949,8 @@ jobs:
             --output dist/build-provenance.json \
             provenance-cli \
             provenance-linux-headless \
-            provenance-idea
+            provenance-idea \
+            provenance-openapi
 
       - name: Upload combined provenance
         env:
@@ -892,6 +974,7 @@ jobs:
           gh release download "$tag" --dir release-assets --pattern '*.tar.gz' || true
           gh release download "$tag" --dir release-assets --pattern '*.tar.zst' || true
           gh release download "$tag" --dir release-assets --pattern '*.sha256' || true
+          gh release download "$tag" --dir release-assets --pattern 'openapi.yaml'
           gh release download "$tag" --dir release-assets --pattern 'kast-runtime-manifest.json'
           gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
           mapfile -t expected_assets < <(python3 - release-assets/build-provenance.json <<'PY'

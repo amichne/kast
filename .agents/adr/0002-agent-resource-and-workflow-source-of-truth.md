@@ -77,8 +77,6 @@ right source before editing an installed or generated output.
 | `cli-rs/resources/kast-instructions/AGENTS.md` | Installable Markdown instruction source |
 | `.github/AGENTS.md` | Authored GitHub automation vs generated Copilot package outputs |
 | `.agents/docs/AGENTS.md` | Published docs site source guidance kept out of the site |
-| `.agents/docs/for-agents/AGENTS.md` | Agent-facing published docs guidance kept out of the site |
-| `.agents/docs/cli-rs/AGENTS.md` | Rust CLI docs guidance kept out of the CLI site |
 
 Add a scoped `AGENTS.md` only when a subtree has a real local delta: different
 commands, source ownership, generated-output rules, or validation gates. Do not

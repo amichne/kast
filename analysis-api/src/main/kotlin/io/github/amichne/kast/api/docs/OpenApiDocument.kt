@@ -83,8 +83,8 @@ import java.nio.file.Path
  * response body is the `result` payload. The JSON-RPC envelope and error format are
  * documented as separate schemas.
  *
- * The generated YAML is checked in at `docs/openapi.yaml` so Zensical can serve it,
- * and is validated by [AnalysisOpenApiDocumentTest] to prevent drift.
+ * The generated YAML is checked in at `cli-rs/protocol/openapi.yaml` for
+ * release packaging and is validated by [AnalysisOpenApiDocumentTest] to prevent drift.
  */
 object OpenApiDocument {
 
@@ -826,6 +826,7 @@ private fun renderKey(key: String): String =
 
 fun main(args: Array<String>) {
     val target = args.firstOrNull()?.let(Path::of)
-                 ?: Path.of("docs/openapi.yaml")
+                 ?: Path.of("cli-rs/protocol/openapi.yaml")
+    Files.createDirectories(target.parent)
     Files.writeString(target, OpenApiDocument.renderYaml())
 }

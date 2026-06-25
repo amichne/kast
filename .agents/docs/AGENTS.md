@@ -7,40 +7,26 @@ content. The `docs` unit is the source for the published Zensical site, with
 
 ## Site structure
 
-The documentation is organized around the shortest user path first:
+The published documentation is a CLI command manual for developers:
 
-- `docs/index.md` — landing page for the two-scope install model:
-  machine-level global binary plus repository-local Copilot integration.
-- `docs/getting-started/install.md` — primary install guide for macOS
-  developer machines. Keep repair, plugin repair, shell, and development
-  details behind collapsible sections.
-- `docs/getting-started/headless-linux.md` — separate install guide for Linux
-  CI runners, hosted agents, server images, mirrors, and headless release
-  artifact verification.
-- `docs/for-agents/` — agent-facing content. The overview explains the
-  global binary vs repository integration split, `install-the-skill.md`
-  documents Copilot integrations first and skill-only fallback second,
-  `talk-to-your-agent.md` covers prompting, and `direct-cli.md` covers
-  raw CLI fallback.
-- `docs/supported-use-cases.md` — concise value and fit page for supported
-  agent workflows.
-- `docs/troubleshooting.md` — task-oriented support page that stays visible
-  as a top-level sidebar entry.
-- `docs/reference/` plus reference-nav pages — detailed API, CLI, backend,
-  recipe, and capability material. `capabilities.md` is generated but
-  intentionally excluded from the nav to avoid duplicating
-  `api-reference.md`.
-- `docs/architecture/` — how-it-works, behavioral-model, kast-vs-lsp,
-  and ADT boundaries.
+- `docs/index.md` — landing page for the command manual and install path.
+- `docs/getting-started/install.md` — macOS developer-machine install, managed
+  repository files, repair commands, and source checkout notes.
+- `docs/getting-started/headless-linux.md` — Linux server, CI, hosted-agent,
+  mirror, and image-build install path.
+- `docs/getting-started/quickstart.md` — first lifecycle and `kast agent`
+  semantic commands.
+- `docs/commands/` — command group documentation for lifecycle, install and
+  repair, agent automation, metrics, and LSP.
+- `docs/recipes.md` — copy-paste command sequences.
+- `docs/troubleshooting.md` — command-oriented diagnosis.
+- `docs/distribution/runtime-artifact-contract.md` — distribution commands,
+  bundle activation, and release verification.
 
-Generated reference pages under `docs/reference/` are produced by
-`./gradlew :analysis-api:generateDocPages` and drift-tested by
-`AnalysisDocsDocumentTest`. Do not hand-edit those generated pages.
-`docs/reference/api-specification.md` is hand-authored, but its
-JSON-RPC suite block is generated from
-`cli-rs/resources/kast-skill/references/commands.json` by
-`.github/scripts/render-rpc-contract-summary.py` and checked by
-`.github/scripts/test-docs-content-contract.sh`.
+RPC/OpenAPI material is generated and distributed from `cli-rs/protocol/`.
+There is no separate `cli-rs` docs site. Generated protocol markdown and YAML
+are drift-tested by the Kotlin docs tests. Do not hand-edit generated protocol
+pages.
 
 ## Ownership
 
@@ -50,7 +36,7 @@ CLI workflow.
 - Keep docs aligned with the code that exists today. Mark planned or
   missing behavior explicitly instead of implying it already works.
 - Keep broad product-story changes aligned with
-  `.agents/adr/0001-agent-first-install-and-docs-operating-model.md` or a
+  `.agents/adr/0003-cli-command-documentation-operating-model.md` or a
   superseding ADR.
 - Keep agent resource, package, manifest-trust, and `kast agent workflow`
   changes aligned with `.agents/adr/` records. Agent-only ADRs must not be
@@ -68,8 +54,7 @@ CLI workflow.
 
 ## Authoring conventions
 
-- Use content tabs (`=== "Tab"`) for CLI / JSON-RPC / Agent
-  alternatives.
+- Use content tabs (`=== "Tab"`) for CLI alternatives.
 - Use `hl_lines` to highlight key fields in JSON response examples.
 - Use Mermaid diagrams for architecture, sequences, and state machines.
 - Use collapsible admonitions (`??? question`) for troubleshooting.

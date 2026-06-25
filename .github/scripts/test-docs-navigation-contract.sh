@@ -21,7 +21,6 @@ from pathlib import Path
 
 repo_root = Path(sys.argv[1])
 zensical_path = repo_root / "zensical.toml"
-
 zensical = tomllib.loads(zensical_path.read_text())
 
 
@@ -54,32 +53,44 @@ groups_by_name = {group["group"]: group["pages"] for group in groups}
 required_group_order = [
     "Overview",
     "Install",
-    "Use with agents",
-    "Supported use cases",
+    "Quickstart",
+    "Commands",
+    "Recipes",
     "Troubleshooting",
-    "Reference",
-    "Architecture",
+    "Distribution",
 ]
 actual_group_order = [group["group"] for group in groups]
 if actual_group_order != required_group_order:
-    print("Docs sidebar groups should stay intent-first and reader-oriented", file=sys.stderr)
+    print("Docs sidebar must stay a CLI command manual", file=sys.stderr)
     print("expected:", required_group_order, file=sys.stderr)
     print("actual:", actual_group_order, file=sys.stderr)
     sys.exit(1)
 
 placement_checks = [
+    ("Overview", "index"),
     ("Install", "getting-started/install"),
     ("Install", "getting-started/headless-linux"),
-    ("Use with agents", "for-agents/install-the-skill"),
-    ("Supported use cases", "supported-use-cases"),
-    ("Reference", "cli-cheat-sheet"),
-    ("Reference", "getting-started/backends"),
-    ("Architecture", "architecture/kast-vs-lsp"),
+    ("Quickstart", "getting-started/quickstart"),
+    ("Commands", "commands/index"),
+    ("Commands", "commands/lifecycle"),
+    ("Commands", "commands/install-repair"),
+    ("Commands", "commands/agent"),
+    ("Commands", "commands/metrics"),
+    ("Commands", "commands/lsp"),
+    ("Recipes", "recipes"),
+    ("Troubleshooting", "troubleshooting"),
+    ("Distribution", "distribution/runtime-artifact-contract"),
 ]
 for group_name, page in placement_checks:
     if page not in groups_by_name.get(group_name, []):
         print(f"{page} must appear under {group_name} in the sidebar", file=sys.stderr)
         sys.exit(1)
+
+for group in groups:
+    for page in group["pages"]:
+        if page.startswith(("reference/", "architecture/", "for-agents/", "what-can-kast-do/")):
+            print(f"{page} must not be published in the command-manual nav", file=sys.stderr)
+            sys.exit(1)
 
 print("Docs navigation contract passed")
 PY

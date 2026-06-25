@@ -587,10 +587,11 @@ conditional requirement is documented with the
 
 ## View the spec
 
-The generated YAML is checked into `docs/openapi.yaml` in the repository root
-and served alongside these docs on GitHub Pages.
+The generated YAML is checked into `cli-rs/protocol/openapi.yaml` for release
+packaging and repository-local protocol inspection. It is not part of any
+published docs site.
 
-[:material-file-code: View openapi.yaml](../openapi.yaml){ .md-button }
+[:material-file-code: View openapi.yaml](openapi.yaml){ .md-button }
 
 ## Download as build artifact
 

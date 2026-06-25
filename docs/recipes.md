@@ -1,157 +1,142 @@
 ---
 title: Recipes
-description: Copy-paste workflows for the things you actually want to do with Kast.
+description: Copy-paste command sequences for common Kast CLI workflows.
 icon: lucide/book-open
 ---
 
 # Recipes
 
-Capability pages explain *what `kast` can do*. This page answers
-the question one step earlier: *what do I run to do the thing I
-want?*
+Recipes combine the command groups into short workflows. They assume Kast is
+installed, the command runs inside a Kotlin workspace, and a backend can be
+started with `kast up`.
 
-Every recipe assumes you've started a backend with
-`kast up`. Run that from the
-root of your Kotlin project, open the recipe that matches your
-task, and copy. Each one ends with a link to the deeper reference
-if you want the full story.
+## Find usages of a symbol
 
-## Read operations
+Resolve first, then ask for references. Check the envelope and the search
+scope before using the result as evidence.
 
-??? example "Find all usages of a function"
+```console title="Resolve and find references"
+APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-    Two steps: identify the symbol, then ask who references it. The
-    `searchScope.exhaustive` field on the response tells you whether the
-    search was complete.
+kast up --backend=headless
+kast agent raw-resolve --file-path "$APP_FILE" --offset 42 --backend=headless
+kast agent raw-references \
+  --file-path "$APP_FILE" \
+  --offset 42 \
+  --include-declaration \
+  --backend=headless
+```
 
-    ```console
-    # 1. Resolve the symbol at the cursor (get its compiler identity)
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}'
+Trust the usage list only after `ok` is true and
+`result.searchScope.exhaustive` is true.
 
-    # 2. Find every reference to that same symbol
-    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/references","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}'
-    ```
+## Trace callers
 
-    Check `searchScope.exhaustive: true` on the response to confirm the
-    list is complete. If it's `false`, compare `candidateFileCount` and
-    `searchedFileCount` to see what was skipped.
-    [Full reference →](what-can-kast-do/trace-usage.md)
+Use call hierarchy when you need bounded caller or callee evidence. Increase
+depth carefully; wide graphs can truncate by design.
 
-??? example "See who calls a function"
+```console title="Incoming callers"
+APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-    Resolve first, then walk incoming callers up to the depth you care
-    about. Every node in the response carries truncation metadata, so you
-    know whether the tree is complete or Kast stopped on purpose.
+kast agent raw-call-hierarchy \
+  --file-path "$APP_FILE" \
+  --offset 42 \
+  --direction incoming \
+  --depth 3
+```
 
-    ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}'
+Read `result.stats` to see whether depth, timeout, total node, or per-node
+limits affected the tree.
 
-    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/call-hierarchy","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"direction":"INCOMING","depth":3}}'
-    ```
+## Find a declaration by name
 
-    Zero callers on something you know is called from outside?
-    Probably an entry point — a `main`, a test, a framework
-    callback, or a public API used by code outside this
-    workspace. `kast` only sees what's inside the session.
-    [Full reference →](what-can-kast-do/trace-usage.md#expand-the-call-hierarchy)
+Use `workspace-symbol` when you know the name but not the file offset. Resolve
+the selected location before chaining further commands.
 
-??? example "Find all implementations of an interface"
+```console title="Search, then resolve the selected result"
+kast agent workspace-symbol --pattern OrderService --max-results 20
 
-    Same resolve-first pattern. `implementations` returns every
-    concrete subtype `kast` can see in the workspace.
+kast agent raw-resolve \
+  --file-path /absolute/path/from/the/result.kt \
+  --offset 123
+```
 
-    ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/Repository.kt","offset":120}}}'
+Use `--regex` for pattern matching and check `result.page.truncated` before
+assuming the candidate list is complete.
 
-    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/implementations","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/Repository.kt","offset":120}}}'
-    ```
-    [Full reference →](what-can-kast-do/understand-symbols.md)
+## Plan a rename
 
-??? example "Find a class by name when you don't have an offset"
+Plan first and review the edit set before applying anything. A rename plan
+contains file hashes so the apply step can reject stale edits.
 
-    `raw/workspace-symbol` searches by name across the workspace. Use it as
-    a bridge into the resolve-first flow when you only know what
-    something is called.
+```console title="Dry-run rename plan"
+APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-    ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-symbol","params":{"pattern":"OrderService"}}'
+kast agent raw-rename \
+  --file-path "$APP_FILE" \
+  --offset 42 \
+  --new-name processOrderSafely \
+  --dry-run > rename-plan.json
+```
 
-    # Then feed the result's filePath + startOffset into resolve
-    kast rpc '{"jsonrpc":"2.0","id":2,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/from/previous/result.kt","offset":123}}}'
-    ```
+When a script needs to apply a reviewed plan, build a `raw/apply-edits` params
+file from the returned edits and hashes, then pass it through `agent call`.
 
-    Default match is case-insensitive substring. Pass `--regex=true` if
-    you need patterns. Always check `page.truncated` before assuming the
-    result list is complete.
-    [Full reference →](what-can-kast-do/understand-symbols.md)
+```console title="Apply reviewed edits"
+kast agent call raw/apply-edits --params-file /tmp/apply-edits.json
+```
 
-??? example "Explore a file's structure"
+## Validate changed files
 
-    `raw/file-outline` returns a nested tree of named declarations —
-    classes, objects, named functions, named properties. It skips
-    lambdas, object literals, and locals inside function bodies.
-    Use it as a map, not a complete index of identifiers.
+Refresh touched files when they changed outside the backend's observation
+window, then run diagnostics for the exact files.
 
-    ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/file-outline","params":{"filePath":"/absolute/path/to/src/main/kotlin/OrderService.kt"}}'
-    ```
-    [Full reference →](what-can-kast-do/understand-symbols.md)
+```console title="Refresh and diagnose"
+APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-## Mutations
+kast agent raw-workspace-refresh --file-path "$APP_FILE"
+kast agent raw-diagnostics --file-path "$APP_FILE"
+```
 
-??? example "Rename a symbol safely"
+Use `kast agent workflow diagnostics` when you want deterministic evidence
+files for a CI step or agent handoff.
 
-    Three steps: plan, review, apply. The plan response carries
-    SHA-256 hashes of every file `kast` read. If anything changes
-    on disk before you apply, the apply step rejects with a clear
-    conflict error.
+```console title="Diagnostics workflow evidence"
+kast agent workflow diagnostics \
+  --file-path "$APP_FILE" \
+  --out-dir .kast-workflows/diagnostics
+```
 
-    ```console
-    # 1. Plan the rename — nothing touches disk yet
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/rename","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42},"newName":"newSymbolName","dryRun":true}}' > plan.json
+## Inspect source-index impact
 
-    # 2. Review the returned `edits` array. When you're satisfied, apply.
-    #    Create a raw/apply-edits request from the reviewed plan.
-    kast rpc --request-file=apply-edits.json
+Use metrics when the question is about indexed relationships rather than live
+cursor position.
 
-    # 3. Verify by resolving the new name at the same position
-    kast rpc '{"jsonrpc":"2.0","id":3,"method":"raw/resolve","params":{"position":{"filePath":"/absolute/path/to/src/main/kotlin/App.kt","offset":42}}}'
-    ```
-    [Full reference →](what-can-kast-do/refactor-safely.md)
+```console title="Impact and coupling"
+kast metrics impact io.example.OrderService.process --depth 3
+kast metrics coupling
+kast metrics fan-in --limit 20
+```
 
-??? example "Clean up imports"
+For scripts or agents, use the envelope-shaped metric command.
 
-    Same plan-then-apply flow as rename. `raw/optimize-imports`
-    returns the edits `kast` would make; `apply-edits` writes
-    them with conflict detection.
+```console title="Agent metric envelope"
+kast agent metrics \
+  --metric impact \
+  --symbol io.example.OrderService.process \
+  --depth 3
+```
 
-    ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/optimize-imports","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}' > plan.json
+## Repair a stale repository package
 
-    kast rpc --request-file=apply-edits.json
-    ```
-    [Full reference →](what-can-kast-do/refactor-safely.md)
+When Copilot or an LSP host cannot find Kast files, verify the install, then
+refresh the managed repository package.
 
-## Validation
+```console title="Repair repository-local files"
+kast doctor
+kast install copilot --force
+kast doctor
+```
 
-??? example "Check if a file compiles"
-
-    Run diagnostics on one or more files. The response is a
-    structured list of errors and warnings with exact source
-    ranges — easy to feed into a CI script or an agent.
-
-    ```console
-    kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/diagnostics","params":{"filePaths":["/absolute/path/to/src/main/kotlin/App.kt"]}}'
-    ```
-
-    If you edited the file outside the daemon, run
-    `kast rpc '{"jsonrpc":"2.0","id":1,"method":"raw/workspace-refresh","params":{}}'` first so diagnostics
-    don't return a stale view.
-    [Full reference →](what-can-kast-do/validate-code.md)
-
-## Troubleshooting recipes
-
-If a command returns an error or a result you didn't expect, the
-[troubleshooting page](troubleshooting.md) has a section for each common
-failure — daemon won't start, references look incomplete, apply-edits
-rejected with a conflict, and so on.
+Use [Troubleshooting](troubleshooting.md) when doctor reports a missing binary,
+plugin, manifest, or repository resource.

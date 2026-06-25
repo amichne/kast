@@ -63,7 +63,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 
 - Treat `AnalysisBackend`, the `kast rpc` JSON-RPC method surface, embedded skill resources, and packaged
   Copilot plugin resources as contract surfaces. If one changes, update its consumers together:
-  `docs/openapi.yaml`, `cli-rs/resources/kast-skill/**`, `cli-rs/resources/plugin/**`,
+  `cli-rs/protocol/openapi.yaml`, `cli-rs/resources/kast-skill/**`, `cli-rs/resources/plugin/**`,
   `kast.sh`/`install.sh`, and the related tests.
 - Any `AnalysisBackend` operation change must land in every surviving runtime
   that advertises it. Update parity coverage and keep advertised capabilities honest.
@@ -72,7 +72,7 @@ requests, while `kast up`, `kast status`, and `kast stop` are the human lifecycl
 - Runtime cleanup must be explicit. When code owns background threads or daemons, call `interrupt()` first and then
   `join(timeout)` in `close()` or shutdown paths; otherwise macOS `@TempDir` cleanup races show up in tests.
 - `docs/` plus `zensical.toml` are the documentation source of truth. `site/`
-  and generated `docs/reference/*.md` output are build artifacts and should not be hand-edited.
+  and generated `cli-rs/protocol/*.md` output are build artifacts and should not be hand-edited.
 - Packaged Copilot resources are embedded by the Rust CLI in `cli-rs/`; the
   package source is LSP-only.
 - Source `.github/skill-shadowing.json` intentionally keeps the repo-local

@@ -106,10 +106,10 @@ mirror guidance live in the sibling `kast-action` repository.
 
 ## Next steps
 
-After installing the bundle, use the backend and troubleshooting pages for
-runtime behavior.
+After installing the bundle, use the command manual and troubleshooting pages
+for runtime behavior.
 
-- [Backends](backends.md) explains how the headless runtime starts and how it
-  differs from the IDEA plugin backend.
 - [Quickstart](quickstart.md) walks through a first headless analysis session.
+- [Commands](../commands/index.md) explains lifecycle, install, agent, metrics,
+  and LSP commands.
 - [Troubleshooting](../troubleshooting.md) covers startup and indexing issues.

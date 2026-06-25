@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the embedded JSON-RPC contract catalog in api-specification.md."""
+"""Render the embedded JSON-RPC contract catalog in the protocol reference."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ COMMAND_PATH_CANDIDATES = [
     REPO_ROOT / "cli-rs/resources/kast-skill/references/commands.json",
 ]
 COMMANDS_PATH = None
-DOC_PATH = REPO_ROOT / "docs/reference/api-specification.md"
+DOC_PATH = REPO_ROOT / "cli-rs/protocol/api-specification.md"
 COMMANDS_PATH_LABEL = "`cli-rs/resources/kast-skill/references/commands.json`"
 CANONICAL_COMMANDS_PATH_LABEL = "`cli-rs/resources/kast-skill/references/commands.json`"
 
@@ -399,7 +399,7 @@ def main() -> int:
             return 0
         if expected != current:
             print(
-                "docs/reference/api-specification.md has drifted from commands.json; "
+                "cli-rs/protocol/api-specification.md has drifted from commands.json; "
                 "run python3 .github/scripts/render-rpc-contract-summary.py --write",
                 file=sys.stderr,
             )

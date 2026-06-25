@@ -286,7 +286,7 @@ private fun repoRoot(): Path =
         .first { Files.isDirectory(it.resolve("docs")) }
 
 fun main(args: Array<String>) {
-    val outputDir = if (args.isNotEmpty()) Path.of(args[0]) else repoRoot().resolve("docs/examples")
+    val outputDir = if (args.isNotEmpty()) Path.of(args[0]) else repoRoot().resolve("cli-rs/protocol/examples")
     Files.createDirectories(outputDir)
     val examples = DocExampleGenerator.generateExamples()
     examples.forEach { (operationId, pair) ->

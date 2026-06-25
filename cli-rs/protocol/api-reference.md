@@ -339,7 +339,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/resolveSymbol-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/resolveSymbol-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -424,7 +424,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/findReferences-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/findReferences-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -520,7 +520,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/callHierarchy-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/callHierarchy-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -643,7 +643,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/typeHierarchy-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/typeHierarchy-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -763,7 +763,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -821,7 +821,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/diagnostics-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/diagnostics-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -876,7 +876,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/fileOutline-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/fileOutline-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -959,7 +959,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1091,7 +1091,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/workspaceSearch-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/workspaceSearch-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1165,7 +1165,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/workspaceFiles-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/workspaceFiles-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1232,7 +1232,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/implementations-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/implementations-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1321,7 +1321,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/codeActions-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/codeActions-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1379,7 +1379,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/completions-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/completions-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1463,7 +1463,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/rename-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/rename-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1545,7 +1545,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/optimizeImports-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/optimizeImports-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1606,7 +1606,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/applyEdits-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/applyEdits-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1687,7 +1687,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=docs/examples/refreshWorkspace-request.json --workspace-root=/path/to/project
+            kast rpc --request-file=cli-rs/protocol/examples/refreshWorkspace-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 

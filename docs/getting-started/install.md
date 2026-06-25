@@ -183,11 +183,9 @@ from the checkout:
 
 After installation, choose the path that matches your workflow.
 
-- [Use Kast with agents](../for-agents/index.md) explains what the Copilot
-  package gives an agent.
+- [Quickstart](quickstart.md) runs the first lifecycle and semantic commands.
+- [Commands](../commands/index.md) explains the CLI command groups.
 - [Headless Linux server](headless-linux.md) covers CI runners, hosted
   agents, and server images.
-- [Supported use cases](../supported-use-cases.md) describes where Kast is
-  meant to help.
 - [Troubleshooting](../troubleshooting.md) covers stale repository files,
   missing binaries, and backend startup issues.

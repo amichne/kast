@@ -143,6 +143,7 @@ gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.gz' || true
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.zst' || true
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.sha256' || true
+gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'openapi.yaml'
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'kast-runtime-manifest.json'
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'build-provenance.json'
 gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'SHA256SUMS'
