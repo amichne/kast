@@ -2714,6 +2714,185 @@ fn install_resource_gateways_support_force_and_current_versions() {
 }
 
 #[test]
+fn packaged_verifier_prefers_manifest_resource_checksums() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let skill_root = workspace.join(".agents/skills");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&workspace)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+
+    let repair = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["ready", "--fix"])
+        .output()
+        .expect("ready repair");
+    assert!(
+        repair.status.success(),
+        "ready --fix should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+
+    let install = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            skill_root.to_str().expect("skill target"),
+            "--force",
+        ])
+        .output()
+        .expect("install skill");
+    assert!(
+        install.status.success(),
+        "skill install should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+
+    let fake_skill_root = temp.path().join("fake-skill-root");
+    std::fs::create_dir_all(fake_skill_root.join("references")).expect("fake references");
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill/references/commands.json"),
+        fake_skill_root.join("references/commands.json"),
+    )
+    .expect("fake commands catalog");
+    std::fs::write(
+        fake_skill_root.join("references/workflows.md"),
+        "# Out-of-date workflow guidance\n",
+    )
+    .expect("fake stale workflow reference");
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(&fake_skill_root)
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run verifier");
+    assert!(
+        verify.status.success(),
+        "manifest-backed skill should verify despite stale source root: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let verify_json: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("verifier json");
+    assert!(
+        verify_json["warnings"]
+            .as_array()
+            .expect("warnings")
+            .iter()
+            .all(|warning| warning["code"] != "SKILLS_STALE"),
+        "{verify_json:#}"
+    );
+    let skill_target = verify_json["checks"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets")
+        .iter()
+        .find(|target| {
+            target["path"]
+                .as_str()
+                .expect("target path")
+                .ends_with(".agents/skills/kast")
+        })
+        .expect("manifest-backed skill target");
+    assert!(
+        skill_target["manifestResource"].is_object(),
+        "{skill_target:#}"
+    );
+    assert_eq!(
+        skill_target["contentMismatches"]
+            .as_array()
+            .expect("content mismatches")
+            .len(),
+        0
+    );
+    assert_eq!(
+        skill_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
+
+    std::fs::write(
+        workspace.join(".agents/skills/kast/SKILL.md"),
+        "tampered installed skill\n",
+    )
+    .expect("tamper installed skill");
+    let tampered = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(&fake_skill_root)
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .arg("--require-skill")
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run tampered verifier");
+    assert!(
+        !tampered.status.success(),
+        "tampered manifest-backed skill should fail: stdout={}, stderr={}",
+        String::from_utf8_lossy(&tampered.stdout),
+        String::from_utf8_lossy(&tampered.stderr)
+    );
+    let tampered_json: serde_json::Value =
+        serde_json::from_slice(&tampered.stdout).expect("tampered verifier json");
+    assert!(
+        tampered_json["issues"]
+            .as_array()
+            .expect("issues")
+            .iter()
+            .any(|issue| issue["code"] == "SKILLS_STALE"),
+        "{tampered_json:#}"
+    );
+    let tampered_target = tampered_json["checks"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets")
+        .iter()
+        .find(|target| {
+            target["path"]
+                .as_str()
+                .expect("target path")
+                .ends_with(".agents/skills/kast")
+        })
+        .expect("tampered skill target");
+    assert!(
+        !tampered_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .is_empty(),
+        "{tampered_target:#}"
+    );
+}
+
+#[test]
 fn idea_plugin_install_uses_profile_install_mode() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

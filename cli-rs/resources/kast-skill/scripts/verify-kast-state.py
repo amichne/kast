@@ -309,11 +309,37 @@ def resource_record_for_target(
     kind: str,
     target: Path,
 ) -> dict[str, Any] | None:
-    target_value = str(normalize(target))
+    target_value = normalize(target)
     for resource in manifest_resources(ready_json):
-        if resource.get("kind") == kind and resource.get("targetPath") == target_value:
+        resource_target = resource.get("targetPath")
+        if not isinstance(resource_target, str):
+            continue
+        if resource.get("kind") == kind and normalize(Path(resource_target)) == target_value:
             return resource
     return None
+
+
+def manifest_output_mismatches(resource: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(resource, dict):
+        return []
+    mismatches: list[dict[str, Any]] = []
+    for output in resource.get("outputChecksums", []):
+        if not isinstance(output, dict):
+            continue
+        path_value = output.get("path")
+        expected = output.get("sha256")
+        if not isinstance(path_value, str) or not isinstance(expected, str):
+            continue
+        actual = file_sha256(Path(path_value))
+        if actual != expected:
+            mismatches.append(
+                {
+                    "path": path_value,
+                    "expectedSha256": expected,
+                    "actualSha256": actual,
+                }
+            )
+    return mismatches
 
 
 def verify_workspace(result: dict[str, Any], workspace_root: Path, require_gradle: bool) -> None:
@@ -363,6 +389,7 @@ def verify_copilot(
     installed_hash = file_sha256(commands_path)
     retired_marker_exists = (github_dir / ".kast-copilot-version").exists()
     resource = resource_record_for_target(ready_json, "COPILOT_PACKAGE", github_dir)
+    output_mismatches = manifest_output_mismatches(resource)
     check = {
         "target": str(github_dir),
         "exists": github_dir.is_dir(),
@@ -370,6 +397,7 @@ def verify_copilot(
         "retiredMarkerExists": retired_marker_exists,
         "expectedVersion": expected_version,
         "manifestResource": resource,
+        "manifestOutputMismatches": output_mismatches,
         "versionMatchesExpected": bool(
             resource and expected_version and resource.get("primitiveVersion") == expected_version
         ),
@@ -377,7 +405,8 @@ def verify_copilot(
     }
     result["checks"]["copilotPackage"] = check
     missing = [relative for relative, info in files.items() if not info["exists"]]
-    stale = source_hash and installed_hash and source_hash != installed_hash
+    source_stale = source_hash and installed_hash and source_hash != installed_hash
+    stale = bool(output_mismatches) if resource else source_stale
     version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
     missing_record = github_dir.is_dir() and resource is None
     retired_marker = retired_marker_exists
@@ -418,8 +447,10 @@ def verify_resource_install(
     manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
     for target in resource_targets(workspace_root, kind):
         resource = resource_record_for_target(ready_json, manifest_kind, target)
+        output_mismatches = manifest_output_mismatches(resource)
+        retired_marker_exists = (target / ".kast-version").exists()
         content_mismatches: list[str] = []
-        if target.is_dir() and source_root and content_files:
+        if target.is_dir() and not resource and source_root and content_files:
             for relative in content_files:
                 source_hash = file_sha256(source_root / relative)
                 target_hash = file_sha256(target / relative)
@@ -429,9 +460,10 @@ def verify_resource_install(
             {
                 "path": str(target),
                 "exists": target.is_dir(),
-                "retiredMarkerExists": (target / ".kast-version").exists(),
+                "retiredMarkerExists": retired_marker_exists,
                 "expectedVersion": expected_version,
                 "manifestResource": resource,
+                "manifestOutputMismatches": output_mismatches,
                 "versionMatchesExpected": bool(
                     resource and expected_version and resource.get("primitiveVersion") == expected_version
                 ),
@@ -445,6 +477,8 @@ def verify_resource_install(
         for target in installed
         if (expected_version and not target["versionMatchesExpected"])
         or target["retiredMarkerExists"]
+        or not target["manifestResource"]
+        or target["manifestOutputMismatches"]
         or target["contentMismatches"]
     ]
     if required and (not installed or stale):
