@@ -64,6 +64,22 @@ When `--harness` is omitted, `kast agent setup auto` reads
 detection. Portable repository roots include `.agents/skills`,
 `.codex/skills`, `.agents/instructions`, and `.codex/instructions`.
 
+## Tool Discovery
+
+Use `kast agent tools` when a CLI-capable host needs the same tool surface that
+Copilot receives from the catalog, without loading a Copilot SDK, MCP adapter,
+or the full packaged skill. The command has no backend dependency and returns
+tool names, catalog methods, descriptions, default args, mutation metadata, and
+params JSON Schemas.
+
+```console title="List catalog-backed tools"
+kast agent tools
+```
+
+Invoke one of the returned specs through `kast agent call <method>` with a
+params object or `--params-file`. The `catalogSha256` field identifies the
+embedded command catalog used to build the tool list.
+
 ## Alias commands
 
 Use aliases for common shallow requests. They prepare the request object and

@@ -202,6 +202,8 @@ pub enum AgentCommand {
     Setup(AgentSetupArgs),
     /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
+    /// List catalog-backed tools for CLI-capable agent hosts.
+    Tools,
     /// Call any catalog method with params from flags, file, or stdin.
     Call(AgentCallArgs),
     /// Run a file-backed multi-step workflow.

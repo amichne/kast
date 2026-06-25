@@ -9,6 +9,7 @@ The skill is installed by the Kast binary, so the normal path is boring:
 command -v kast
 kast --help
 kast agent --help
+kast agent tools
 kast agent workflow --help
 ```
 
@@ -63,6 +64,11 @@ field-level notes live in `references/commands.yaml` for reading and
 `references/commands.json` for tooling. Treat that catalog as the method
 contract for requests sent through `kast agent call`, not as a replacement for
 the Rust CLI help.
+
+Use `kast agent tools` when an agent host can run CLI commands but cannot load
+the full skill or Copilot package. It emits the catalog-backed tool names,
+methods, descriptions, mutation metadata, default args, and params JSON Schemas
+that a generic host needs before calling `kast agent call <method>`.
 
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use

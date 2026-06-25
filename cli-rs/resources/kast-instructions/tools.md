@@ -11,6 +11,7 @@ Confirm the active binary exposes the current agent interface:
 ```sh
 command -v kast
 kast agent --help
+kast agent tools
 kast agent workflow --help
 ```
 
@@ -54,6 +55,10 @@ Resolve identity before asking for references, callers, hierarchy, rename, or
 edits. Use raw commands only when you already have exact files and offsets.
 
 ## File-Backed Tools
+
+Use `kast agent tools` when the host needs machine-readable tool names,
+catalog methods, descriptions, mutation metadata, default args, and params JSON
+Schemas. Then call the returned `method` through `kast agent call <method>`.
 
 Use `kast agent call <method>` for nested payloads, generated request samples,
 or catalog methods that do not have a shallow alias:

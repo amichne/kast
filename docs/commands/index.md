@@ -19,7 +19,7 @@ binary.
 | Group | Commands | Use when |
 |-------|----------|----------|
 | Readiness | `ready` | Prove the active binary, manifest, and task surface are usable |
-| Agent automation | `agent up`, `agent setup ...`, `agent workflow ...`, `agent ...` | Bring a repository up for agents, install resources, start LSP, and script semantic workflows |
+| Agent automation | `agent up`, `agent setup ...`, `agent tools`, `agent workflow ...`, `agent ...` | Bring a repository up for agents, install resources, discover tools, start LSP, and script semantic workflows |
 | Runtime | `runtime up`, `runtime status`, `runtime restart`, `runtime stop`, `runtime capabilities` | Start, inspect, refresh, or stop the workspace backend |
 | Inspect | `inspect paths`, `inspect metrics`, `inspect demo`, `inspect catalog` | Inspect paths, catalogs, demos, and source-index metrics |
 | Machine | `machine plugin`, `machine shell` | Manage local IDE plugin links and shell integration |

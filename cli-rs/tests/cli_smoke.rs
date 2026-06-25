@@ -349,9 +349,85 @@ fn smoke_core_cli_commands() {
     assert!(agent_help.status.success());
     let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
     assert!(agent_help_stdout.contains("up"));
+    assert!(agent_help_stdout.contains("tools"));
     assert!(agent_help_stdout.contains("call"));
     assert!(agent_help_stdout.contains("workflow"));
     assert!(agent_help_stdout.contains("raw-resolve"));
+
+    let agent_tools = kast(&home, &config_home)
+        .args(["agent", "tools"])
+        .output()
+        .expect("agent tools");
+    assert!(agent_tools.status.success());
+    let agent_tools_json: serde_json::Value =
+        serde_json::from_slice(&agent_tools.stdout).expect("agent tools json");
+    assert_eq!(agent_tools_json["ok"], true);
+    assert_eq!(agent_tools_json["method"], "agent/tools");
+    assert_eq!(agent_tools_json["result"]["type"], "KAST_AGENT_TOOLS");
+    assert_eq!(
+        agent_tools_json["result"]["catalogSha256"]
+            .as_str()
+            .expect("catalog checksum")
+            .len(),
+        64
+    );
+    assert_eq!(
+        agent_tools_json["result"]["invocation"]["command"],
+        "kast agent call"
+    );
+    let tools = agent_tools_json["result"]["tools"]
+        .as_array()
+        .expect("tools array");
+    let tool_names = tools
+        .iter()
+        .map(|tool| tool["name"].as_str().expect("tool name"))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        tool_names,
+        std::collections::BTreeSet::from([
+            "kast_callers",
+            "kast_diagnostics",
+            "kast_file_outline",
+            "kast_metrics",
+            "kast_references",
+            "kast_rename",
+            "kast_resolve",
+            "kast_scaffold",
+            "kast_symbol_discover",
+            "kast_workspace_files",
+            "kast_workspace_search",
+            "kast_workspace_symbol",
+            "kast_write_and_validate",
+        ])
+    );
+    assert_eq!(agent_tools_json["result"]["toolCount"], tools.len());
+    let resolve_tool = tools
+        .iter()
+        .find(|tool| tool["name"] == "kast_resolve")
+        .expect("resolve tool");
+    assert_eq!(resolve_tool["method"], "symbol/resolve");
+    assert_eq!(resolve_tool["mutates"], false);
+    assert!(
+        resolve_tool["parameters"]["required"]
+            .as_array()
+            .expect("resolve required")
+            .iter()
+            .any(|field| field == "symbol"),
+        "{resolve_tool:#}"
+    );
+    let rename_tool = tools
+        .iter()
+        .find(|tool| tool["name"] == "kast_rename")
+        .expect("rename tool");
+    assert_eq!(rename_tool["mutates"], true);
+    assert!(
+        rename_tool["parameters"]["oneOf"]
+            .as_array()
+            .expect("rename variants")
+            .len()
+            >= 2,
+        "{rename_tool:#}"
+    );
 
     let agent_up_help = kast(&home, &config_home)
         .args(["agent", "up", "--help"])

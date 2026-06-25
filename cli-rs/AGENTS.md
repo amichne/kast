@@ -9,10 +9,10 @@ resource trust, agent command surface, and bundled agent resources.
 - `src/cli.rs` defines the public and hidden CLI command surface.
 - Public CLI families are intent-first: `kast ready`, `kast agent`,
   `kast runtime`, `kast inspect`, `kast machine`, and `kast release`.
-- `src/agent.rs` owns `kast agent` aliases, `kast agent call`, and
-  `kast agent workflow`; `kast agent up`, `kast agent setup`, and
-  `kast agent lsp` dispatch through operator handlers before JSON-envelope
-  execution.
+- `src/agent.rs` owns `kast agent` aliases, `kast agent tools`,
+  `kast agent call`, and `kast agent workflow`; `kast agent up`,
+  `kast agent setup`, and `kast agent lsp` dispatch through operator handlers
+  before JSON-envelope execution.
 - `kast agent setup auto` is harness-aware: an explicit `--harness` value
   wins, then `projectOpen.agentHarness`, then repository detection.
   Its `--dry-run` mode must stay read-only and explain the selected harness.

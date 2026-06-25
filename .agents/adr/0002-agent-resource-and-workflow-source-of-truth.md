@@ -38,6 +38,7 @@ commands as the current source-of-truth model.
 | Installable instructions | `cli-rs/resources/kast-instructions/` | installed instruction directories | `kast agent setup instructions --force`, docs content contract |
 | Harness selection | `projectOpen.agentHarness` and `kast agent setup auto --harness ...` | Copilot, skill, or instruction resource installs | CLI smoke tests |
 | Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json ready`, verifier script |
+| Tool discovery | `cli-rs/resources/kast-skill/references/commands.json` | `kast agent tools` JSON specs for CLI-capable hosts | CLI smoke tests |
 | Semantic workflows | `kast agent workflow ...` in the active binary | workflow output directories with `input.json`, `stdout.json`, `stderr.txt`, and `workflow.json` | CLI smoke tests, workflow dry runs |
 
 Marker files such as `.kast-version` and `.github/.kast-copilot-version` are
@@ -56,6 +57,8 @@ Agent-facing changes must keep these requirements true:
 - `kast agent setup auto --dry-run` reports the selected harness, selection
   source, reason, and equivalent direct install command without writing files.
 - Copilot tools call `kast agent call`, not raw `kast rpc`.
+- CLI-capable hosts can discover catalog-backed tools through
+  `kast agent tools` without depending on a Copilot SDK or MCP adapter.
 - Raw `kast rpc` remains a hidden debug escape hatch, not the public agent
   integration contract.
 - Repo-installed resources are recorded in `install.json` with kind, target,

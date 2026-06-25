@@ -12,14 +12,16 @@ use crate::cli::{
     AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs, AgentWorkspaceSymbolArgs, RpcArgs,
 };
 use crate::error::{CliError, Result};
-use crate::{output, runtime, self_mgmt, validate};
+use crate::{catalog_schema, manifest, output, runtime, self_mgmt, validate};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, IsTerminal, Read};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+const TOOL_CATEGORY_ORDER: &[&str] = &["symbol", "database", "system", "raw"];
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +99,40 @@ struct AgentWorkflowStep {
     mutates: bool,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentToolsResult {
+    #[serde(rename = "type")]
+    result_type: &'static str,
+    catalog_sha256: String,
+    tool_count: usize,
+    invocation: AgentToolInvocation,
+    tools: Vec<AgentToolSpec>,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentToolInvocation {
+    command: &'static str,
+    method_argument: &'static str,
+    params_file_flag: &'static str,
+    workspace_root_flag: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentToolSpec {
+    name: String,
+    method: String,
+    category: String,
+    description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_args: Option<Value>,
+    parameters: Value,
+    mutates: bool,
+}
+
 pub fn run(args: AgentArgs) -> Result<i32> {
     let envelope = execute(args.command);
     let exit_code = if envelope.ok { 0 } else { 1 };
@@ -124,6 +160,9 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
     if let AgentCommand::Workflow(args) = command {
         return execute_workflow(args.command);
     }
+    if matches!(command, AgentCommand::Tools) {
+        return execute_tools();
+    }
     let request = match command {
         AgentCommand::Up(_)
         | AgentCommand::Ready(_)
@@ -131,6 +170,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         | AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before request prep")
         }
+        AgentCommand::Tools => unreachable!("agent tools is handled before request prep"),
         AgentCommand::Call(args) => prepare_call(args),
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         other => Ok(prepare_alias(other)),
@@ -140,6 +180,137 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         Err(error) => return error_envelope(error.method, error.request, error.error),
     };
     execute_request(request)
+}
+
+fn execute_tools() -> AgentEnvelope {
+    match agent_tools_result() {
+        Ok(result) => result_envelope("agent/tools".to_string(), result),
+        Err(error) => error_envelope(
+            "agent/tools".to_string(),
+            None,
+            AgentError::from_cli_error(error),
+        ),
+    }
+}
+
+fn agent_tools_result() -> Result<AgentToolsResult> {
+    let catalog = validate::embedded_catalog()?;
+    let tools = agent_tool_specs(&catalog)?;
+    Ok(AgentToolsResult {
+        result_type: "KAST_AGENT_TOOLS",
+        catalog_sha256: manifest::sha256_bytes(validate::embedded_catalog_source().as_bytes()),
+        tool_count: tools.len(),
+        invocation: AgentToolInvocation {
+            command: "kast agent call",
+            method_argument: "<method>",
+            params_file_flag: "--params-file",
+            workspace_root_flag: "--workspace-root",
+        },
+        tools,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn agent_tool_specs(catalog: &Value) -> Result<Vec<AgentToolSpec>> {
+    let commands = catalog
+        .get("commands")
+        .and_then(Value::as_object)
+        .ok_or_else(|| catalog_error("Command catalog must define a commands object."))?;
+    let categories = catalog
+        .get("categories")
+        .and_then(Value::as_object)
+        .ok_or_else(|| catalog_error("Command catalog must define a categories object."))?;
+    let mut seen = BTreeSet::new();
+    let mut tools = Vec::new();
+    for category in TOOL_CATEGORY_ORDER {
+        let Some(methods) = categories.get(*category).and_then(Value::as_array) else {
+            continue;
+        };
+        for method in methods {
+            let method = method.as_str().ok_or_else(|| {
+                catalog_error(format!(
+                    "Catalog category `{category}` contains a non-string method."
+                ))
+            })?;
+            if seen.contains(method) {
+                continue;
+            }
+            let Some(command) = commands.get(method) else {
+                return Err(catalog_error(format!(
+                    "Catalog category `{category}` references missing method `{method}`."
+                )));
+            };
+            if command.get("tool").is_some() {
+                tools.push(agent_tool_spec(catalog, method, command)?);
+                seen.insert(method.to_string());
+            }
+        }
+    }
+    for (method, command) in commands {
+        if command.get("tool").is_some() && !seen.contains(method) {
+            tools.push(agent_tool_spec(catalog, method, command)?);
+            seen.insert(method.clone());
+        }
+    }
+    Ok(tools)
+}
+
+fn agent_tool_spec(catalog: &Value, method: &str, command: &Value) -> Result<AgentToolSpec> {
+    let tool = command
+        .get("tool")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            catalog_error(format!(
+                "Catalog command `{method}` must define tool metadata."
+            ))
+        })?;
+    let name = tool.get("name").and_then(Value::as_str).ok_or_else(|| {
+        catalog_error(format!(
+            "Catalog command `{method}` tool.name must be a string."
+        ))
+    })?;
+    let description = tool
+        .get("description")
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            catalog_error(format!(
+                "Catalog command `{method}` tool.description must be a string."
+            ))
+        })?;
+    let category = command
+        .get("category")
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            catalog_error(format!(
+                "Catalog command `{method}` category must be a string."
+            ))
+        })?;
+    let request_schema = catalog_schema::request_schema(catalog, method)?;
+    let parameters = request_schema
+        .pointer("/properties/params")
+        .cloned()
+        .ok_or_else(|| {
+            catalog_error(format!(
+                "Generated schema for `{method}` is missing params."
+            ))
+        })?;
+    Ok(AgentToolSpec {
+        name: name.to_string(),
+        method: method.to_string(),
+        category: category.to_string(),
+        description: description.to_string(),
+        default_args: tool.get("defaultArgs").cloned(),
+        parameters,
+        mutates: agent_tool_mutates(method),
+    })
+}
+
+fn agent_tool_mutates(method: &str) -> bool {
+    matches!(method, "symbol/rename" | "symbol/write-and-validate")
+}
+
+fn catalog_error(message: impl Into<String>) -> CliError {
+    CliError::new("RPC_CATALOG_INVALID", message)
 }
 
 fn execute_request(request: AgentRequest) -> AgentEnvelope {
@@ -559,6 +730,19 @@ fn workflow_envelope(method: String, summary: AgentWorkflowSummary) -> AgentEnve
     }
 }
 
+fn result_envelope(method: String, result: impl Serialize) -> AgentEnvelope {
+    AgentEnvelope {
+        ok: true,
+        method,
+        request: None,
+        response: None,
+        result: Some(serde_json::to_value(result).unwrap_or(Value::Null)),
+        raw_response: None,
+        error: None,
+        schema_version: SCHEMA_VERSION,
+    }
+}
+
 fn workflow_out_dir(workflow: &str, requested: Option<&Path>) -> Result<PathBuf> {
     if let Some(path) = requested {
         return Ok(path.to_path_buf());
@@ -648,6 +832,7 @@ fn alias_parts(command: AgentCommand) -> AliasParts {
         | AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before alias prep")
         }
+        AgentCommand::Tools => unreachable!("agent tools is handled before alias prep"),
         AgentCommand::Call(_) => unreachable!("agent call is prepared separately"),
         AgentCommand::Workflow(_) => unreachable!("agent workflow is prepared separately"),
         AgentCommand::Health(runtime) => empty_alias("health", runtime),

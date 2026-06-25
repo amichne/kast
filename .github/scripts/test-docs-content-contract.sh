@@ -172,6 +172,7 @@ require_contains "$agent_doc" ".codex/skills" "Agent command docs must cover Cod
 require_contains "$agent_doc" ".codex/instructions" "Agent command docs must cover Codex instruction roots"
 require_contains "$agent_doc" "kast agent up --dry-run" "Agent command docs must cover agent bring-up planning"
 require_contains "$agent_doc" "kast agent setup auto --dry-run" "Agent command docs must cover setup planning"
+require_contains "$agent_doc" "kast agent tools" "Agent command docs must cover generic tool discovery"
 require_contains "$agent_doc" "kast agent workflow" "Agent command docs must cover workflows"
 require_contains "$agent_doc" 'Use raw `kast rpc` only' "Agent command docs must keep raw RPC as fallback only"
 require_contains "$metrics_doc" "kast inspect metrics fan-in" "Metrics docs must cover direct metrics"
