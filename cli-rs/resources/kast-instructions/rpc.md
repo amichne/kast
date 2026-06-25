@@ -7,8 +7,11 @@ tools or LSP custom methods. Request shapes are catalog-backed:
 - `references/commands.yaml` is easier to read by hand.
 - `references/requests/` contains generated request schemas and samples.
 
-When these instruction files are installed without the full skill, inspect the
-source repository or installed skill for those catalog files.
+When these instruction files are installed without the full skill, run
+`kast agent tools` first. It returns the same catalog-backed tool names,
+methods, descriptions, mutation metadata, default args, and params JSON
+Schemas that a CLI-capable host needs before calling
+`kast agent call <method>`.
 
 ## Agent Pipe Path
 

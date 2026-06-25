@@ -8,6 +8,8 @@ the command surface and then use it:
 command -v kast
 kast --help
 kast agent --help
+kast agent tools
+kast agent workflow --help
 ```
 
 For agent automation, prefer machine-readable output and explicit workspace
@@ -29,8 +31,9 @@ result will be parsed, stored, or used as evidence.
   `--force`.
 - Use `kast inspect demo --json` for snapshots; the default demo opens an interactive
   TUI when stdout is a terminal.
-- If `kast` or `kast agent` is missing, report a stale instruction/binary
-  install instead of falling back to Kotlin text search.
+- If `kast`, `kast agent tools`, or `kast agent workflow` is missing, report a
+  stale instruction/binary install instead of falling back to Kotlin text
+  search.
 
 ## Common Commands
 

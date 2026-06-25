@@ -4338,6 +4338,10 @@ fn packaged_skill_targets_rust_kast_only() {
         root.join("resources/kast-skill/references/routing-improvement.md"),
     )
     .expect("routing reference");
+    let instruction_cli = std::fs::read_to_string(root.join("resources/kast-instructions/cli.md"))
+        .expect("portable CLI instructions");
+    let instruction_rpc = std::fs::read_to_string(root.join("resources/kast-instructions/rpc.md"))
+        .expect("portable RPC instructions");
 
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
@@ -4382,6 +4386,11 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));
     assert!(quickstart.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
     assert!(routing_reference.contains("rust-kast-cli"));
+    assert!(instruction_cli.contains("kast agent tools"));
+    assert!(instruction_cli.contains("kast agent workflow --help"));
+    assert!(instruction_cli.contains("stale instruction/binary install"));
+    assert!(instruction_rpc.contains("kast agent tools"));
+    assert!(instruction_rpc.contains("catalog-backed tool names"));
     assert!(
         root.join("resources/kast-skill/references/workflows.md")
             .is_file(),
