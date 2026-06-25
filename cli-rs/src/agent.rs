@@ -269,7 +269,7 @@ fn agent_tool_spec(catalog: &Value, method: &str, command: &Value) -> Result<Age
             "Catalog command `{method}` tool.name must be a string."
         ))
     })?;
-    let description = tool
+    let tool_description = tool
         .get("description")
         .and_then(Value::as_str)
         .ok_or_else(|| {
@@ -298,11 +298,82 @@ fn agent_tool_spec(catalog: &Value, method: &str, command: &Value) -> Result<Age
         name: name.to_string(),
         method: method.to_string(),
         category: category.to_string(),
-        description: description.to_string(),
+        description: agent_tool_description(method, command, tool_description),
         default_args: tool.get("defaultArgs").cloned(),
         parameters,
         mutates: agent_tool_mutates(method),
     })
+}
+
+fn agent_tool_description(method: &str, command: &Value, tool_description: &str) -> String {
+    format!(
+        "{} {}{}",
+        agent_tool_policy_prefix(method),
+        tool_description,
+        agent_tool_variant_summary(command)
+    )
+}
+
+fn agent_tool_policy_prefix(method: &str) -> &'static str {
+    if method.starts_with("symbol/") {
+        return "Preferred Kotlin funnel tool. Use this before raw file or offset operations when a symbol name, target type, or intended refactor is known.";
+    }
+    if method.starts_with("database/") {
+        return "Preferred low-cost source-index tool. Use this before backend-wide traversal when index metrics can answer the question.";
+    }
+    if method.starts_with("raw/workspace-files") {
+        return "Secondary workspace inspection tool. Use only after symbol/query, workspace symbols, or workspace search cannot identify a bounded target.";
+    }
+    if method.starts_with("raw/") {
+        return "Bounded raw escape hatch. Use only with an exact file, offset, or explicit file list, or after the symbol-first path failed with a concrete blocker.";
+    }
+    "Kast system tool."
+}
+
+fn agent_tool_variant_summary(command: &Value) -> String {
+    let Some(variants) = command.get("variants").and_then(Value::as_object) else {
+        return String::new();
+    };
+    if variants.is_empty() {
+        return String::new();
+    }
+    let variant_descriptions = variants
+        .iter()
+        .map(|(name, request)| {
+            let required = request_required_fields(request)
+                .into_iter()
+                .filter(|field| field != "type")
+                .collect::<Vec<_>>();
+            format!(
+                "{name} requires {}",
+                if required.is_empty() {
+                    "no extra fields".to_string()
+                } else {
+                    required.join(", ")
+                }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ");
+    format!(" Variant type values: {variant_descriptions}.")
+}
+
+fn request_required_fields(request: &Value) -> Vec<String> {
+    if let Some(required) = request.get("required").and_then(Value::as_array) {
+        return required
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect();
+    }
+    request
+        .get("fields")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter(|(_, field)| field.get("optional").and_then(Value::as_bool) != Some(true))
+        .map(|(name, _)| name.clone())
+        .collect()
 }
 
 fn agent_tool_mutates(method: &str) -> bool {

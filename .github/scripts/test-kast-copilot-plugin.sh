@@ -91,6 +91,7 @@ assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missin
 assert(extension.includes('"runtime"') && extension.includes('"up"'), "extension must invoke kast runtime up for warmup");
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
 assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
+assert(extension.includes('"agent"') && extension.includes('"tools"'), "extension must load tool specs from kast agent tools");
 assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");
 assert(extension.includes("KAST_TOOLING_CONTEXT"), "extension must own runtime tooling guidance");
 assert(extension.includes("onUserPromptSubmitted"), "extension must inject prompt-time tooling guidance");
@@ -114,10 +115,13 @@ ensure_kast_bin() {
 ensure_kast_bin
 
 node --input-type=module - "$plugin_root" <<'NODE'
+import { execFileSync } from "node:child_process";
 const pluginRoot = process.argv[2];
 const toolsModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-tools.mjs`);
 const traceModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-trace.mjs`);
-const tools = toolsModule.makeKastTools((method, args) =>
+const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["agent", "tools"], { encoding: "utf8" }));
+const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
+const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
 );
 const names = new Set(tools.map((tool) => tool.name));
@@ -206,9 +210,12 @@ if (installed !== source) {
 NODE
 
 node --input-type=module - "$tmp_dir" <<'NODE'
+import { execFileSync } from "node:child_process";
 const target = process.argv[2];
 const toolsModule = await import(`file://${target}/.github/extensions/kast/_shared/kast-tools.mjs`);
-const tools = toolsModule.makeKastTools((method, args) =>
+const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["agent", "tools"], { encoding: "utf8" }));
+const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
+const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
 );
 const names = new Set(tools.map((tool) => tool.name));

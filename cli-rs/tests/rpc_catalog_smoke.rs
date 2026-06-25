@@ -504,9 +504,10 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         extension.contains("\"agent\"")
             && extension.contains("\"call\"")
+            && extension.contains("\"tools\"")
             && extension.contains("formattedAgentResult")
             && !extension.contains("rpcArgs("),
-        "extension tools must use the shared `kast agent call` envelope instead of raw rpc"
+        "extension tools must use `kast agent tools` discovery and the shared `kast agent call` envelope instead of raw rpc"
     );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
         .expect("local plugin installer");

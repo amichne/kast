@@ -189,7 +189,7 @@ function variantSummary(command) {
     .join("; ")}.`;
 }
 
-function buildToolSpecs(catalog) {
+function buildBundledToolSpecs(catalog) {
   return orderedCommands(catalog).map((command) => ({
     name: command.tool.name,
     method: command.method,
@@ -200,16 +200,58 @@ function buildToolSpecs(catalog) {
   }));
 }
 
-const TOOL_SPECS = buildToolSpecs(COMMAND_CATALOG);
+function collectNamedSchemas(schema, name, out = []) {
+  if (!schema || typeof schema !== "object") return out;
+  if (schema.properties?.[name]) out.push(schema.properties[name]);
+  for (const value of Object.values(schema.properties ?? {})) collectNamedSchemas(value, name, out);
+  if (schema.items && typeof schema.items === "object") collectNamedSchemas(schema.items, name, out);
+  for (const key of ["oneOf", "anyOf", "allOf"]) {
+    for (const candidate of schema[key] ?? []) collectNamedSchemas(candidate, name, out);
+  }
+  return out;
+}
 
-export const KAST_TOOL_NAMES = Object.freeze(new Set(TOOL_SPECS.map((spec) => spec.name)));
-export const KAST_WRITE_TOOL_NAMES = Object.freeze(new Set([
-  "kast_rename",
-  "kast_write_and_validate",
-]));
-export const KAST_READ_TOOL_NAMES = Object.freeze(new Set(
-  Array.from(KAST_TOOL_NAMES).filter((name) => !KAST_WRITE_TOOL_NAMES.has(name)),
-));
+function usesLowercaseKindFromParameters(parameters) {
+  return collectNamedSchemas(parameters, "kind").some((field) =>
+    Array.isArray(field.enum) && field.enum.some((value) => typeof value === "string" && value === value.toLowerCase()),
+  );
+}
+
+function normalizeToolSpec(spec) {
+  if (!spec || typeof spec !== "object") {
+    throw new Error("Kast tool spec must be an object");
+  }
+  for (const field of ["name", "method", "description"]) {
+    if (typeof spec[field] !== "string" || spec[field].trim() === "") {
+      throw new Error(`Kast tool spec is missing string field ${field}`);
+    }
+  }
+  return {
+    name: spec.name,
+    method: spec.method,
+    description: spec.description,
+    defaultArgs: spec.defaultArgs,
+    parameters: spec.parameters && typeof spec.parameters === "object"
+      ? spec.parameters
+      : { type: "object", additionalProperties: true },
+    lowercaseKind: spec.lowercaseKind ?? usesLowercaseKindFromParameters(spec.parameters),
+  };
+}
+
+export function toolSpecsFromAgentToolsResult(value) {
+  const result = value?.result ?? value;
+  if (result?.type !== "KAST_AGENT_TOOLS") {
+    throw new Error("Kast agent tools result must have type KAST_AGENT_TOOLS");
+  }
+  if (!Array.isArray(result.tools)) {
+    throw new Error("Kast agent tools result must include a tools array");
+  }
+  return result.tools.map(normalizeToolSpec);
+}
+
+export function bundledKastToolSpecs() {
+  return buildBundledToolSpecs(COMMAND_CATALOG).map(normalizeToolSpec);
+}
 
 function normalizeArgs(spec, args) {
   const normalized = { ...(args ?? {}) };
@@ -219,8 +261,8 @@ function normalizeArgs(spec, args) {
   return normalized;
 }
 
-export function makeKastTools(callFn) {
-  return TOOL_SPECS.map((spec) => ({
+export function makeKastTools(toolSpecs, callFn) {
+  return toolSpecs.map((spec) => normalizeToolSpec(spec)).map((spec) => ({
     name: spec.name,
     description: spec.description,
     parameters: spec.parameters,
