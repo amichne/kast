@@ -37,6 +37,7 @@ fn reads_metrics_directly_from_source_index_db() {
 
     let fan_in = kast(&home, &config_home)
         .args([
+            "inspect",
             "metrics",
             "fan-in",
             "--workspace-root",
@@ -62,6 +63,7 @@ fn reads_metrics_directly_from_source_index_db() {
         .args([
             "--output",
             "json",
+            "inspect",
             "metrics",
             "fan-in",
             "--workspace-root",
@@ -84,6 +86,7 @@ fn reads_metrics_directly_from_source_index_db() {
         .args([
             "--output",
             "json",
+            "inspect",
             "metrics",
             "search",
             "--workspace-root",
@@ -103,6 +106,7 @@ fn reads_metrics_directly_from_source_index_db() {
         .args([
             "--output",
             "json",
+            "inspect",
             "metrics",
             "search",
             "--workspace-root",
@@ -119,7 +123,7 @@ fn reads_metrics_directly_from_source_index_db() {
     assert!(String::from_utf8_lossy(&short_search.stdout).contains("\"lib.FooWidget\""));
 
     let metrics_help = kast(&home, &config_home)
-        .args(["metrics", "--help"])
+        .args(["inspect", "metrics", "--help"])
         .output()
         .expect("metrics help");
     assert!(
@@ -129,6 +133,7 @@ fn reads_metrics_directly_from_source_index_db() {
     );
     let demo = kast(&home, &config_home)
         .args([
+            "inspect",
             "demo",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
@@ -223,6 +228,7 @@ fn reads_metrics_directly_from_source_index_db() {
 
     let demo_symbol_view = kast(&home, &config_home)
         .args([
+            "inspect",
             "demo",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
@@ -251,7 +257,7 @@ fn reads_metrics_directly_from_source_index_db() {
     );
 
     let demo_help = kast(&home, &config_home)
-        .args(["demo", "--help"])
+        .args(["inspect", "demo", "--help"])
         .output()
         .expect("demo help");
     assert!(

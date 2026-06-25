@@ -319,14 +319,28 @@ fn smoke_core_cli_commands() {
     assert!(help.status.success());
     let help_stdout = String::from_utf8_lossy(&help.stdout);
     assert!(help_stdout.contains("Usage: kast"));
+    for command in ["ready", "agent", "runtime", "inspect", "machine", "release"] {
+        assert!(
+            help_stdout
+                .lines()
+                .any(|line| line.trim_start().starts_with(command)),
+            "top-level help should show {command}: {help_stdout}"
+        );
+    }
     assert!(
-        !help_stdout.contains("agent"),
-        "hidden agent command should not appear in top-level help: {help_stdout}"
-    );
-    assert!(
-        !help_stdout.contains("rpc"),
+        !help_stdout
+            .lines()
+            .any(|line| line.trim_start().starts_with("rpc")),
         "raw rpc transport should not appear in top-level help: {help_stdout}"
     );
+    for legacy in ["install", "doctor", "paths", "up", "status", "package"] {
+        assert!(
+            !help_stdout
+                .lines()
+                .any(|line| line.trim_start().starts_with(legacy)),
+            "legacy top-level command {legacy} should not appear in public help: {help_stdout}"
+        );
+    }
 
     let agent_help = kast(&home, &config_home)
         .args(["agent", "--help"])
@@ -334,9 +348,23 @@ fn smoke_core_cli_commands() {
         .expect("agent help");
     assert!(agent_help.status.success());
     let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
+    assert!(agent_help_stdout.contains("up"));
     assert!(agent_help_stdout.contains("call"));
     assert!(agent_help_stdout.contains("workflow"));
     assert!(agent_help_stdout.contains("raw-resolve"));
+
+    let agent_up_help = kast(&home, &config_home)
+        .args(["agent", "up", "--help"])
+        .output()
+        .expect("agent up help");
+    assert!(agent_up_help.status.success());
+    let agent_up_help_stdout = String::from_utf8_lossy(&agent_up_help.stdout);
+    for flag in ["--workspace-root", "--backend", "--harness", "--dry-run"] {
+        assert!(
+            agent_up_help_stdout.contains(flag),
+            "agent up help should expose {flag}: {agent_up_help_stdout}"
+        );
+    }
 
     let invalid_agent_call = kast(&home, &config_home)
         .args(["agent", "call", "symbol/resolve"])
@@ -352,67 +380,73 @@ fn smoke_core_cli_commands() {
     assert_eq!(invalid_agent_json["method"], "symbol/resolve");
     assert_eq!(invalid_agent_json["error"]["code"], "AGENT_REQUEST_INVALID");
 
-    let install_help = kast(&home, &config_home)
-        .args(["install", "--help"])
+    let setup_help = kast(&home, &config_home)
+        .args(["agent", "setup", "--help"])
         .output()
-        .expect("install help");
-    assert!(install_help.status.success());
-    let install_help_stdout = String::from_utf8_lossy(&install_help.stdout);
-    for command in [
-        "activate-bundle",
-        "plugin",
-        "skill",
-        "instructions",
-        "copilot",
-        "shell",
-        "completion",
-    ] {
+        .expect("agent setup help");
+    assert!(setup_help.status.success());
+    let setup_help_stdout = String::from_utf8_lossy(&setup_help.stdout);
+    for command in ["auto", "skill", "instructions", "copilot"] {
         assert!(
-            install_help_stdout.contains(command),
-            "install help should list {command}: {install_help_stdout}"
+            setup_help_stdout.contains(command),
+            "agent setup help should list {command}: {setup_help_stdout}"
         );
     }
-    let activate_bundle_help = kast(&home, &config_home)
-        .args(["install", "activate-bundle", "--help"])
+    let setup_auto_help = kast(&home, &config_home)
+        .args(["agent", "setup", "auto", "--help"])
         .output()
-        .expect("install activate-bundle help");
+        .expect("agent setup auto help");
+    assert!(setup_auto_help.status.success());
+    let setup_auto_help_stdout = String::from_utf8_lossy(&setup_auto_help.stdout);
+    assert!(
+        setup_auto_help_stdout.contains("--harness"),
+        "agent setup auto help should expose harness selection: {setup_auto_help_stdout}"
+    );
+    assert!(
+        setup_auto_help_stdout.contains("--dry-run"),
+        "agent setup auto help should expose no-write planning: {setup_auto_help_stdout}"
+    );
+    let activate_bundle_help = kast(&home, &config_home)
+        .args(["release", "activate", "bundle", "--help"])
+        .output()
+        .expect("release activate bundle help");
     assert!(activate_bundle_help.status.success());
     let activate_bundle_stdout = String::from_utf8_lossy(&activate_bundle_help.stdout);
     assert!(
         activate_bundle_stdout.contains("--verify-only"),
-        "install activate-bundle help should expose read-only verification: {activate_bundle_stdout}"
+        "release activate bundle help should expose read-only verification: {activate_bundle_stdout}"
     );
 
-    for command in ["plugin", "skill", "instructions", "copilot"] {
+    for command in ["skill", "instructions", "copilot"] {
         let help = kast(&home, &config_home)
-            .args(["install", command, "--help"])
+            .args(["agent", "setup", command, "--help"])
             .output()
-            .unwrap_or_else(|error| panic!("install {command} help: {error}"));
+            .unwrap_or_else(|error| panic!("agent setup {command} help: {error}"));
         assert!(
             help.status.success(),
-            "install {command} help should succeed"
+            "agent setup {command} help should succeed"
         );
         let stdout = String::from_utf8_lossy(&help.stdout);
         assert!(
             stdout.contains("-f, --force"),
-            "install {command} help should expose -f/--force: {stdout}"
+            "agent setup {command} help should expose -f/--force: {stdout}"
         );
     }
     let shell_help = kast(&home, &config_home)
-        .args(["install", "shell", "--help"])
+        .args(["machine", "shell", "--help"])
         .output()
-        .expect("install shell help");
+        .expect("machine shell help");
     assert!(shell_help.status.success());
     let shell_help_stdout = String::from_utf8_lossy(&shell_help.stdout);
     assert!(
         shell_help_stdout.contains("--shell"),
-        "install shell help should expose --shell: {shell_help_stdout}"
+        "machine shell help should expose --shell: {shell_help_stdout}"
     );
 
     let lsp_help = kast(&home, &config_home)
-        .args(["lsp", "--help"])
+        .args(["agent", "lsp", "--help"])
         .output()
-        .expect("lsp help");
+        .expect("agent lsp help");
     assert!(lsp_help.status.success());
     let lsp_help_stdout = String::from_utf8_lossy(&lsp_help.stdout);
     for visible in [
@@ -428,7 +462,7 @@ fn smoke_core_cli_commands() {
     }
 
     let lsp_without_stdio = kast(&home, &config_home)
-        .arg("lsp")
+        .args(["agent", "lsp"])
         .output()
         .expect("lsp without stdio");
     assert!(
@@ -436,16 +470,16 @@ fn smoke_core_cli_commands() {
         "lsp without --stdio should fail closed"
     );
     assert!(
-        String::from_utf8_lossy(&lsp_without_stdio.stderr).contains("kast lsp --stdio"),
+        String::from_utf8_lossy(&lsp_without_stdio.stderr).contains("kast agent lsp --stdio"),
         "lsp usage error should name the supported command: stderr={}",
         String::from_utf8_lossy(&lsp_without_stdio.stderr)
     );
     assert!(
         shell_help_stdout.contains("--profile"),
-        "install shell help should expose --profile: {shell_help_stdout}"
+        "machine shell help should expose --profile: {shell_help_stdout}"
     );
     let demo_help = kast(&home, &config_home)
-        .args(["demo", "--help"])
+        .args(["inspect", "demo", "--help"])
         .output()
         .expect("demo help");
     assert!(demo_help.status.success());
@@ -454,12 +488,12 @@ fn smoke_core_cli_commands() {
     assert!(demo_help_stdout.contains("compare"));
 
     let repair = kast(&home, &config_home)
-        .args(["doctor", "--repair"])
+        .args(["ready", "--fix"])
         .output()
-        .expect("doctor repair");
+        .expect("ready repair");
     assert!(
         repair.status.success(),
-        "doctor --repair should converge the install: stdout={}, stderr={}",
+        "ready --fix should converge the install: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
@@ -468,7 +502,8 @@ fn smoke_core_cli_commands() {
     let skill_dir = temp.path().join("skills");
     let skill = kast(&home, &config_home)
         .args([
-            "install",
+            "agent",
+            "setup",
             "skill",
             "--target-dir",
             skill_dir.to_str().expect("skill path"),
@@ -501,7 +536,8 @@ fn smoke_core_cli_commands() {
     let instructions_dir = temp.path().join("instructions");
     let instructions = kast(&home, &config_home)
         .args([
-            "install",
+            "agent",
+            "setup",
             "instructions",
             "--target-dir",
             instructions_dir.to_str().expect("instructions path"),
@@ -518,7 +554,8 @@ fn smoke_core_cli_commands() {
     let github_dir = temp.path().join(".github");
     let copilot = kast(&home, &config_home)
         .args([
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -535,6 +572,7 @@ fn smoke_core_cli_commands() {
         .args([
             "--output",
             "json",
+            "runtime",
             "status",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -557,7 +595,7 @@ fn paths_report_distinguishes_global_defaults_from_workspace_cache_env() {
 
     let global_paths = kast(&home, &config_home)
         .env("KAST_CACHE_HOME", &cache_home)
-        .args(["--output", "json", "paths"])
+        .args(["--output", "json", "inspect", "paths"])
         .output()
         .expect("global paths");
     assert!(
@@ -607,6 +645,7 @@ fn paths_report_distinguishes_global_defaults_from_workspace_cache_env() {
         .args([
             "--output",
             "json",
+            "inspect",
             "paths",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -650,9 +689,7 @@ fn top_level_help_exposes_release_commands() {
         .expect("help");
     assert!(help.status.success());
     let stdout = String::from_utf8_lossy(&help.stdout);
-    for command in [
-        "package", "up", "status", "stop", "restart", "paths", "install", "doctor",
-    ] {
+    for command in ["ready", "agent", "runtime", "inspect", "machine", "release"] {
         assert!(
             stdout
                 .lines()
@@ -661,7 +698,7 @@ fn top_level_help_exposes_release_commands() {
         );
     }
     let up_help = kast(&home, &config_home)
-        .args(["up", "--help"])
+        .args(["runtime", "up", "--help"])
         .output()
         .expect("up help");
     assert!(up_help.status.success());
@@ -674,18 +711,18 @@ fn top_level_help_exposes_release_commands() {
     }
 
     let install_help = kast(&home, &config_home)
-        .args(["install", "--help"])
+        .args(["release", "activate", "--help"])
         .output()
-        .expect("install help");
+        .expect("release activate help");
     assert!(install_help.status.success());
     let install_help_stdout = String::from_utf8_lossy(&install_help.stdout);
     assert!(
-        install_help_stdout.contains("activate-bundle"),
-        "install help should expose bundle activation: {install_help_stdout}"
+        install_help_stdout.contains("bundle"),
+        "release activate help should expose bundle activation: {install_help_stdout}"
     );
 
     let package_help = kast(&home, &config_home)
-        .args(["package", "--help"])
+        .args(["release", "package", "--help"])
         .output()
         .expect("package help");
     assert!(package_help.status.success());
@@ -695,15 +732,35 @@ fn top_level_help_exposes_release_commands() {
         "package help should expose Ubuntu/Debian bundle packaging: {package_help_stdout}"
     );
 
+    let machine_help = kast(&home, &config_home)
+        .args(["machine", "--help"])
+        .output()
+        .expect("machine help");
+    assert!(machine_help.status.success());
+    let machine_stdout = String::from_utf8_lossy(&machine_help.stdout);
+    assert!(
+        !machine_stdout.contains("doctor"),
+        "machine help should not expose retired doctor vocabulary: {machine_stdout}"
+    );
+
     let doctor_help = kast(&home, &config_home)
-        .args(["doctor", "--help"])
+        .args(["machine", "doctor", "--help"])
         .output()
         .expect("doctor help");
-    assert!(doctor_help.status.success());
-    let doctor_stdout = String::from_utf8_lossy(&doctor_help.stdout);
     assert!(
-        doctor_stdout.contains("--repair"),
-        "doctor help should expose the single repair surface: {doctor_stdout}"
+        !doctor_help.status.success(),
+        "machine doctor should be removed in favor of `kast ready --for machine --fix`"
+    );
+
+    let ready_help = kast(&home, &config_home)
+        .args(["ready", "--help"])
+        .output()
+        .expect("ready help");
+    assert!(ready_help.status.success());
+    let ready_stdout = String::from_utf8_lossy(&ready_help.stdout);
+    assert!(
+        ready_stdout.contains("--fix") && ready_stdout.contains("--for <TARGET>"),
+        "ready help should expose the single readiness and repair surface: {ready_stdout}"
     );
 }
 
@@ -715,7 +772,7 @@ fn install_completion_command_renders_shell_completion_scripts() {
     std::fs::create_dir_all(&home).expect("home");
 
     let bash = kast(&home, &config_home)
-        .args(["install", "completion", "bash"])
+        .args(["machine", "completion", "bash"])
         .output()
         .expect("bash completion");
     assert!(
@@ -735,7 +792,7 @@ fn install_completion_command_renders_shell_completion_scripts() {
     );
 
     let zsh = kast(&home, &config_home)
-        .args(["install", "completion", "zsh", "--command-name", "kast-dev"])
+        .args(["machine", "completion", "zsh", "--command-name", "kast-dev"])
         .output()
         .expect("zsh completion");
     assert!(
@@ -773,7 +830,7 @@ fn install_shell_writes_path_and_completion_profile_integration() {
         .args([
             "--output",
             "json",
-            "install",
+            "machine",
             "shell",
             "--shell",
             "zsh",
@@ -783,15 +840,15 @@ fn install_shell_writes_path_and_completion_profile_integration() {
             "kast-dev",
         ])
         .output()
-        .expect("install shell");
+        .expect("machine shell");
     assert!(
         install.status.success(),
-        "install shell should succeed: stdout={}, stderr={}",
+        "machine shell should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
     let stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("install shell json");
+        serde_json::from_slice(&install.stdout).expect("machine shell json");
     assert_eq!(stdout["shell"], "zsh");
     assert_eq!(stdout["commandName"], "kast-dev");
     assert_eq!(stdout["binDir"], expected_bin_dir.display().to_string());
@@ -818,7 +875,7 @@ fn install_shell_writes_path_and_completion_profile_integration() {
         "source file should prepend the configured bin directory: {source}"
     );
     assert!(
-        source.contains("kast-dev install completion zsh --command-name kast-dev"),
+        source.contains("kast-dev machine completion zsh --command-name kast-dev"),
         "source file should wire completions for kast-dev: {source}"
     );
 
@@ -861,7 +918,7 @@ binDir = "{}"
         .args([
             "--output",
             "json",
-            "install",
+            "machine",
             "shell",
             "--shell",
             "zsh",
@@ -869,16 +926,16 @@ binDir = "{}"
             profile.to_str().expect("profile path"),
         ])
         .output()
-        .expect("install shell");
+        .expect("machine shell");
 
     assert!(
         install.status.success(),
-        "install shell should succeed: stdout={}, stderr={}",
+        "machine shell should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
     let stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("install shell json");
+        serde_json::from_slice(&install.stdout).expect("machine shell json");
     let running_bin = Path::new(env!("CARGO_BIN_EXE_kast"))
         .parent()
         .expect("binary parent");
@@ -908,7 +965,7 @@ fn help_topic_dumps_selected_command_help() {
     std::fs::create_dir_all(&home).expect("home");
 
     let help = kast(&home, &config_home)
-        .args(["help", "install", "plugin"])
+        .args(["help", "machine", "plugin"])
         .output()
         .expect("help topic");
 
@@ -944,6 +1001,7 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
 
     let human = kast(&home, &config_home)
         .args([
+            "runtime",
             "status",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -983,6 +1041,7 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
         .args([
             "--output",
             "json",
+            "runtime",
             "status",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -1060,6 +1119,7 @@ fn stop_removes_every_matching_stale_headless_descriptor() {
         .args([
             "--output",
             "json",
+            "runtime",
             "stop",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -1210,6 +1270,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
         .args([
             "--output",
             "json",
+            "runtime",
             "stop",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -1354,6 +1415,7 @@ fn restart_requests_reachable_idea_backend_restart() {
         .args([
             "--output",
             "json",
+            "runtime",
             "restart",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -1427,7 +1489,7 @@ fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
         .current_dir(&nested)
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
-        .args(["--output", "json", "status"])
+        .args(["--output", "json", "runtime", "status"])
         .output()
         .expect("status");
 
@@ -1469,6 +1531,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         .args([
             "--output",
             "json",
+            "release",
             "package",
             "ubuntu-debian-bundle",
             "--repo-root",
@@ -1571,8 +1634,9 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             bundle.to_str().expect("bundle path"),
             "--install-root",
@@ -1632,8 +1696,9 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             bundle.to_str().expect("bundle path"),
             "--install-root",
@@ -1671,8 +1736,9 @@ fn activate_bundle_installs_from_tarball_source() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             tarball.to_str().expect("tarball path"),
             "--install-root",
@@ -1716,8 +1782,9 @@ fn activate_bundle_rejects_unsupported_manifest_without_mutation() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             bundle.to_str().expect("bundle path"),
             "--install-root",
@@ -1756,8 +1823,9 @@ fn activate_bundle_rejects_unsafe_manifest_version_without_mutation() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             bundle.to_str().expect("bundle path"),
             "--install-root",
@@ -1788,8 +1856,9 @@ fn activate_bundle_rejects_unsafe_tar_member_without_mutation() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             tarball.to_str().expect("tarball path"),
             "--install-root",
@@ -1817,8 +1886,9 @@ fn activate_bundle_verify_only_is_read_only_when_missing_install() {
         .args([
             "--output",
             "json",
-            "install",
-            "activate-bundle",
+            "release",
+            "activate",
+            "bundle",
             "--source",
             bundle.to_str().expect("bundle path"),
             "--install-root",
@@ -1847,6 +1917,7 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
 
     let up = kast(&home, &config_home)
         .args([
+            "runtime",
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -1885,6 +1956,7 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
 
     let up = kast(&home, &config_home)
         .args([
+            "runtime",
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -1921,6 +1993,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
 
     let up = kast(&home, &config_home)
         .args([
+            "runtime",
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
@@ -2028,7 +2101,7 @@ fn idea_plugin_install_requires_jetbrains_profiles_in_normalized_install_path() 
 
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
-        .args(["--output", "json", "install", "plugin", "--dry-run"])
+        .args(["--output", "json", "machine", "plugin", "--dry-run"])
         .output()
         .expect("install idea plugin");
 
@@ -2065,7 +2138,7 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
         .args([
             "--output",
             "json",
-            "install",
+            "machine",
             "plugin",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
@@ -2131,7 +2204,7 @@ fn plugin_install_repairs_stale_homebrew_profile_link() {
         .args([
             "--output",
             "json",
-            "install",
+            "machine",
             "plugin",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
@@ -2153,7 +2226,7 @@ fn plugin_install_repairs_stale_homebrew_profile_link() {
 }
 
 #[test]
-fn doctor_repair_writes_manifest_and_removes_install_owned_config() {
+fn ready_fix_writes_manifest_and_removes_install_owned_config() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -2197,28 +2270,28 @@ version = "0.7.35"
     .expect("config");
 
     let read_only = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
+        .args(["--output", "json", "ready"])
         .output()
-        .expect("doctor");
+        .expect("ready");
     assert!(
         !read_only.status.success(),
-        "plain doctor should remain read-only and report missing manifest"
+        "plain ready should remain read-only and report missing manifest"
     );
     assert!(!install_manifest_path(&home).exists());
     assert!(
         std::fs::read_to_string(config_home.join("config.toml"))
-            .expect("config after plain doctor")
+            .expect("config after plain ready")
             .contains("[install]")
     );
 
     let repair = kast(&home, &config_home)
-        .args(["--output", "json", "doctor", "--repair"])
+        .args(["--output", "json", "ready", "--fix"])
         .output()
-        .expect("doctor repair");
+        .expect("ready fix");
 
     assert!(
         repair.status.success(),
-        "doctor --repair should repair stale state: stdout={}, stderr={}",
+        "ready --fix should repair stale state: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
@@ -2230,7 +2303,7 @@ version = "0.7.35"
             .expect("actions")
             .iter()
             .any(|action| action["kind"] == "remove-install-owned-config"),
-        "doctor --repair should remove install-owned TOML keys: {stdout}"
+        "ready --fix should remove install-owned TOML keys: {stdout}"
     );
     assert_eq!(stdout["install"]["tool"], "kast");
     assert!(install_manifest_path(&home).is_file());
@@ -2245,7 +2318,87 @@ version = "0.7.35"
 }
 
 #[test]
-fn doctor_repair_recovers_malformed_global_config_with_backup() {
+fn ready_for_targets_apply_task_specific_readiness_checks() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+
+    let agent = kast(&home, &config_home)
+        .args(["--output", "json", "ready", "--fix"])
+        .output()
+        .expect("agent ready fix");
+    assert!(
+        agent.status.success(),
+        "default agent readiness should converge with --fix: stdout={}, stderr={}",
+        String::from_utf8_lossy(&agent.stdout),
+        String::from_utf8_lossy(&agent.stderr)
+    );
+    let agent_stdout: serde_json::Value =
+        serde_json::from_slice(&agent.stdout).expect("agent ready json");
+    assert_eq!(agent_stdout["target"], "agent", "{agent_stdout}");
+    assert_eq!(agent_stdout["ok"], true, "{agent_stdout}");
+
+    let kotlin = kast(&home, &config_home)
+        .args(["--output", "json", "ready", "--for", "kotlin"])
+        .output()
+        .expect("kotlin ready");
+    assert!(
+        !kotlin.status.success(),
+        "kotlin readiness should fail until a semantic backend is installed"
+    );
+    let kotlin_stdout: serde_json::Value =
+        serde_json::from_slice(&kotlin.stdout).expect("kotlin ready json");
+    assert_eq!(kotlin_stdout["target"], "kotlin", "{kotlin_stdout}");
+    assert_eq!(kotlin_stdout["ok"], false, "{kotlin_stdout}");
+    assert!(
+        kotlin_stdout["issues"]
+            .as_array()
+            .expect("kotlin issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .expect("kotlin issue")
+                .contains("installed semantic backend")),
+        "{kotlin_stdout}"
+    );
+
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            "[cli]\nbinaryPath = \"{}\"\n",
+            temp.path().join("missing-kast").display()
+        ),
+    )
+    .expect("machine config");
+    let machine = kast(&home, &config_home)
+        .args(["--output", "json", "ready", "--for", "machine"])
+        .output()
+        .expect("machine ready");
+    assert!(
+        !machine.status.success(),
+        "machine readiness should fail closed for a missing configured binary"
+    );
+    let machine_stdout: serde_json::Value =
+        serde_json::from_slice(&machine.stdout).expect("machine ready json");
+    assert_eq!(machine_stdout["target"], "machine", "{machine_stdout}");
+    assert_eq!(machine_stdout["ok"], false, "{machine_stdout}");
+    assert!(
+        machine_stdout["issues"]
+            .as_array()
+            .expect("machine issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .expect("machine issue")
+                .contains("configured kast binary")),
+        "{machine_stdout}"
+    );
+}
+
+#[test]
+fn ready_fix_recovers_malformed_global_config_with_backup() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -2254,13 +2407,13 @@ fn doctor_repair_recovers_malformed_global_config_with_backup() {
     std::fs::write(config_home.join("config.toml"), "[runtime\n").expect("malformed config");
 
     let read_only = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
+        .args(["--output", "json", "ready"])
         .output()
-        .expect("read-only doctor");
+        .expect("read-only ready");
 
     assert!(
         !read_only.status.success(),
-        "read-only doctor should report malformed config without changing files"
+        "read-only ready should report malformed config without changing files"
     );
     assert_eq!(
         std::fs::read_to_string(config_home.join("config.toml")).expect("config after read-only"),
@@ -2268,13 +2421,13 @@ fn doctor_repair_recovers_malformed_global_config_with_backup() {
     );
 
     let apply = kast(&home, &config_home)
-        .args(["--output", "json", "doctor", "--repair"])
+        .args(["--output", "json", "ready", "--fix"])
         .output()
-        .expect("doctor repair");
+        .expect("ready fix");
 
     assert!(
         apply.status.success(),
-        "doctor --repair should recover malformed config: stdout={}, stderr={}",
+        "ready --fix should recover malformed config: stdout={}, stderr={}",
         String::from_utf8_lossy(&apply.stdout),
         String::from_utf8_lossy(&apply.stderr)
     );
@@ -2345,7 +2498,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "skill",
             "--target-dir",
             skill_dir.to_str().expect("skill path"),
@@ -2381,7 +2535,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "skill",
             "--target-dir",
             skill_dir.to_str().expect("skill path"),
@@ -2405,7 +2560,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "instructions",
             "--target-dir",
             instructions_dir.to_str().expect("instructions path"),
@@ -2467,7 +2623,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -2575,7 +2732,7 @@ fn idea_plugin_install_uses_profile_install_mode() {
         .args([
             "--output",
             "json",
-            "install",
+            "machine",
             "plugin",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
@@ -2669,7 +2826,7 @@ version = "0.7.35"
         .args([
             "--output",
             "json",
-            "install",
+            "machine",
             "plugin",
             "--jetbrains-config-root",
             jetbrains_root.to_str().expect("jetbrains root"),
@@ -2694,6 +2851,247 @@ version = "0.7.35"
 }
 
 #[test]
+fn agent_setup_auto_honors_configured_harness_before_target_heuristics() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let target_root = temp.path().join("enterprise-agent");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::write(
+        config_home.join("config.toml"),
+        r#"[projectOpen]
+agentHarness = "instructions"
+"#,
+    )
+    .expect("config");
+
+    let install = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "auto",
+            "--target-dir",
+            target_root.to_str().expect("target path"),
+            "--force",
+        ])
+        .output()
+        .expect("agent setup auto instructions");
+
+    assert!(
+        install.status.success(),
+        "configured instructions harness should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("instructions install json");
+    assert_eq!(
+        stdout["installedAt"],
+        target_root.join("kast").display().to_string()
+    );
+    assert!(target_root.join("kast/README.md").is_file());
+    assert!(!target_root.join("lsp.json").exists());
+}
+
+#[test]
+fn agent_setup_auto_dry_run_explains_selection_without_writing() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let target_root = temp.path().join("enterprise-agent");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::write(
+        config_home.join("config.toml"),
+        r#"[projectOpen]
+agentHarness = "instructions"
+"#,
+    )
+    .expect("config");
+
+    let plan = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "auto",
+            "--target-dir",
+            target_root.to_str().expect("target path"),
+            "--dry-run",
+        ])
+        .output()
+        .expect("agent setup auto dry-run");
+
+    assert!(
+        plan.status.success(),
+        "dry-run should succeed without writing files: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
+    assert_eq!(stdout["harness"], "instructions", "{stdout}");
+    assert_eq!(stdout["selectionSource"], "config", "{stdout}");
+    assert_eq!(stdout["dryRun"], true, "{stdout}");
+    assert_eq!(
+        stdout["installCommand"],
+        serde_json::json!([
+            "kast",
+            "agent",
+            "setup",
+            "instructions",
+            "--target-dir",
+            target_root.display().to_string()
+        ]),
+        "{stdout}"
+    );
+    assert!(
+        stdout["reason"]
+            .as_str()
+            .expect("reason")
+            .contains("projectOpen.agentHarness"),
+        "{stdout}"
+    );
+    assert!(!target_root.exists(), "dry-run must not write target files");
+}
+
+#[test]
+fn agent_up_dry_run_uses_configured_harness_and_explicit_workspace_root() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    std::fs::write(
+        config_home.join("config.toml"),
+        r#"[projectOpen]
+agentHarness = "skill"
+"#,
+    )
+    .expect("config");
+
+    let plan = kast(&home, &config_home)
+        .current_dir(temp.path())
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "headless",
+            "--dry-run",
+        ])
+        .output()
+        .expect("agent up dry-run");
+
+    assert!(
+        plan.status.success(),
+        "agent up dry-run should succeed without writing files: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&plan.stdout).expect("agent up plan json");
+    assert_eq!(stdout["type"], "AGENT_UP", "{stdout}");
+    assert_eq!(stdout["ok"], true, "{stdout}");
+    assert_eq!(stdout["dryRun"], true, "{stdout}");
+    assert_eq!(stdout["setup"]["harness"], "skill", "{stdout}");
+    assert_eq!(stdout["setup"]["dryRun"], true, "{stdout}");
+    assert_eq!(stdout["setup"]["selectionSource"], "config", "{stdout}");
+    assert_eq!(
+        stdout["setup"]["targetDir"],
+        workspace.join(".agents/skills").display().to_string(),
+        "{stdout}"
+    );
+    assert_eq!(
+        stdout["setup"]["installCommand"],
+        serde_json::json!([
+            "kast",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            workspace.join(".agents/skills").display().to_string()
+        ]),
+        "{stdout}"
+    );
+    assert_eq!(
+        stdout["runtimeCommand"],
+        serde_json::json!([
+            "kast",
+            "runtime",
+            "up",
+            "--workspace-root",
+            workspace.display().to_string(),
+            "--backend",
+            "headless"
+        ]),
+        "{stdout}"
+    );
+    assert!(
+        !workspace.join(".agents/skills").exists(),
+        "agent up dry-run must not write setup files"
+    );
+}
+
+#[test]
+fn agent_setup_auto_cli_harness_overrides_configured_harness() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let target_root = temp.path().join("skills");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::write(
+        config_home.join("config.toml"),
+        r#"[projectOpen]
+agentHarness = "instructions"
+"#,
+    )
+    .expect("config");
+
+    let install = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "auto",
+            "--harness",
+            "skill",
+            "--target-dir",
+            target_root.to_str().expect("target path"),
+            "--force",
+        ])
+        .output()
+        .expect("agent setup auto skill");
+
+    assert!(
+        install.status.success(),
+        "explicit skill harness should override config: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("skill install json");
+    assert_eq!(
+        stdout["installedAt"],
+        target_root.join("kast").display().to_string()
+    );
+    assert!(target_root.join("kast/SKILL.md").is_file());
+    assert!(!target_root.join("kast/README.md").is_file());
+}
+
+#[test]
 fn copilot_package_install_preserves_existing_github_content() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -2712,7 +3110,8 @@ fn copilot_package_install_preserves_existing_github_content() {
 
     let copilot = kast(&home, &config_home)
         .args([
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -2793,7 +3192,8 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -2857,7 +3257,8 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -2902,7 +3303,8 @@ fn copilot_package_install_can_skip_git_info_exclude() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -2930,7 +3332,7 @@ fn copilot_package_install_can_skip_git_info_exclude() {
 }
 
 #[test]
-fn doctor_reports_tampered_manifest_backed_repo_resource() {
+fn ready_reports_tampered_manifest_backed_repo_resource() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -2955,7 +3357,8 @@ fn doctor_reports_tampered_manifest_backed_repo_resource() {
         .args([
             "--output",
             "json",
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             github_dir.to_str().expect("github path"),
@@ -2970,17 +3373,17 @@ fn doctor_reports_tampered_manifest_backed_repo_resource() {
     );
     std::fs::write(github_dir.join("lsp.json"), b"{\"tampered\":true}\n").expect("tamper lsp");
 
-    let doctor = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
+    let ready = kast(&home, &config_home)
+        .args(["--output", "json", "ready"])
         .output()
-        .expect("doctor");
+        .expect("ready");
     assert!(
-        !doctor.status.success(),
-        "doctor should fail closed for tampered managed resources: stdout={}, stderr={}",
-        String::from_utf8_lossy(&doctor.stdout),
-        String::from_utf8_lossy(&doctor.stderr),
+        !ready.status.success(),
+        "ready should fail closed for tampered managed resources: stdout={}, stderr={}",
+        String::from_utf8_lossy(&ready.stdout),
+        String::from_utf8_lossy(&ready.stderr),
     );
-    let stdout: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("ready json");
     assert_eq!(stdout["ok"], false, "{stdout}");
     assert!(
         stdout["issues"]
@@ -2996,7 +3399,7 @@ fn doctor_reports_tampered_manifest_backed_repo_resource() {
 }
 
 #[test]
-fn doctor_resolves_relative_managed_paths_under_install_root() {
+fn ready_resolves_relative_managed_paths_under_install_root() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -3044,18 +3447,18 @@ fn doctor_resolves_relative_managed_paths_under_install_root() {
     )
     .expect("manifest");
 
-    let doctor = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
+    let ready = kast(&home, &config_home)
+        .args(["--output", "json", "ready"])
         .output()
-        .expect("doctor");
+        .expect("ready");
 
     assert!(
-        doctor.status.success(),
-        "doctor should treat relative managed paths as install-root-relative: stdout={}, stderr={}",
-        String::from_utf8_lossy(&doctor.stdout),
-        String::from_utf8_lossy(&doctor.stderr),
+        ready.status.success(),
+        "ready should treat relative managed paths as install-root-relative: stdout={}, stderr={}",
+        String::from_utf8_lossy(&ready.stdout),
+        String::from_utf8_lossy(&ready.stderr),
     );
-    let stdout: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("ready json");
     assert_eq!(stdout["ok"], true, "{stdout}");
     assert_eq!(stdout["configuration"]["valid"], true, "{stdout}");
     assert_eq!(
@@ -3082,7 +3485,7 @@ fn doctor_resolves_relative_managed_paths_under_install_root() {
 }
 
 #[test]
-fn doctor_reports_invalid_config_without_crashing() {
+fn ready_reports_invalid_config_without_crashing() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -3091,18 +3494,18 @@ fn doctor_reports_invalid_config_without_crashing() {
     std::fs::write(config_home.join("config.toml"), "[paths\ninstallRoot =")
         .expect("invalid config");
 
-    let doctor = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
+    let ready = kast(&home, &config_home)
+        .args(["--output", "json", "ready"])
         .output()
-        .expect("doctor");
+        .expect("ready");
 
     assert!(
-        !doctor.status.success(),
-        "doctor should return unhealthy status for invalid config: stdout={}, stderr={}",
-        String::from_utf8_lossy(&doctor.stdout),
-        String::from_utf8_lossy(&doctor.stderr),
+        !ready.status.success(),
+        "ready should return unhealthy status for invalid config: stdout={}, stderr={}",
+        String::from_utf8_lossy(&ready.stdout),
+        String::from_utf8_lossy(&ready.stderr),
     );
-    let stdout: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("ready json");
     assert_eq!(stdout["ok"], false, "{stdout}");
     assert_eq!(stdout["configuration"]["exists"], true, "{stdout}");
     assert_eq!(stdout["configuration"]["valid"], false, "{stdout}");
@@ -3206,7 +3609,7 @@ fn agent_write_validate_workflow_requires_mutation_opt_in() {
 }
 
 #[test]
-fn doctor_flags_installed_backend_below_embedded_minimum() {
+fn ready_flags_installed_backend_below_embedded_minimum() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -3261,15 +3664,15 @@ fn doctor_flags_installed_backend_below_embedded_minimum() {
     )
     .expect("manifest");
 
-    let doctor = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
+    let ready = kast(&home, &config_home)
+        .args(["--output", "json", "ready"])
         .output()
-        .expect("doctor");
-    let stdout = String::from_utf8_lossy(&doctor.stdout);
+        .expect("ready");
+    let stdout = String::from_utf8_lossy(&ready.stdout);
 
     assert!(
-        !doctor.status.success(),
-        "doctor should fail for stale backend"
+        !ready.status.success(),
+        "ready should fail for stale backend"
     );
     assert!(stdout.contains("\"ok\": false"), "{stdout}");
     assert!(stdout.contains("\"minimumBackendVersion\""), "{stdout}");
@@ -3309,13 +3712,13 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("symbol/query"));
     assert!(skill.contains("raw/workspace-files"));
     assert!(skill.contains("includeFiles=false"));
-    assert!(skill.contains("kast metrics fan-in"));
-    assert!(skill.contains("kast demo"));
+    assert!(skill.contains("kast inspect metrics fan-in"));
+    assert!(skill.contains("kast inspect demo"));
     assert!(skill.contains("raw/type-hierarchy"));
     assert!(skill.contains("raw/semantic-insertion-point"));
     assert!(skill.contains("raw/completions"));
     assert!(skill.contains("raw/apply-edits"));
-    assert!(skill.contains("kast up --workspace-root \"$PWD\" --backend idea"));
+    assert!(skill.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("command -v kast"));
     assert!(quickstart.contains("kast agent --help"));
     assert!(quickstart.contains("kast agent workflow --help"));
@@ -3326,10 +3729,10 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("skill and active binary are"));
     assert!(quickstart.contains("incompatible. Upgrade or reinstall Kast"));
     assert!(quickstart.contains("raw transport/debug escape hatch"));
-    assert!(quickstart.contains("kast metrics impact"));
-    assert!(quickstart.contains("kast demo"));
+    assert!(quickstart.contains("kast inspect metrics impact"));
+    assert!(quickstart.contains("kast inspect demo"));
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));
-    assert!(quickstart.contains("kast up --workspace-root \"$PWD\" --backend idea"));
+    assert!(quickstart.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(
         root.join("resources/kast-skill/references/workflows.md")

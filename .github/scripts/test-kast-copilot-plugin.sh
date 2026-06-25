@@ -78,7 +78,7 @@ assert(
 
 const lsp = readJson("lsp.json");
 const server = lsp.lspServers["kotlin"];
-assertSameArray(server.args, ["lsp", "--stdio"], "LSP args");
+assertSameArray(server.args, ["agent", "lsp", "--stdio"], "LSP args");
 assert(server.initializationTimeoutMs >= 120000, "LSP timeout must allow startup");
 assert(server.initializationOptions.failOnStaleIndex === true, "LSP must fail on stale indexes");
 
@@ -88,7 +88,7 @@ assert(tools.includes("Bounded raw escape hatch"), "tool guidance must bound raw
 const extension = readText("extensions/kast/extension.mjs");
 assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
 assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
-assert(extension.includes('"up"'), "extension must invoke kast up for warmup");
+assert(extension.includes('"runtime"') && extension.includes('"up"'), "extension must invoke kast runtime up for warmup");
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
 assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
 assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");

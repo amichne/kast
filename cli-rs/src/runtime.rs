@@ -1094,14 +1094,14 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Headless => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then start with: kast up --backend=headless",
+                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then start with: kast runtime up --backend=headless",
                 workspace_root.display()
             ),
         ),
         BackendName::Idea => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No idea backend is installed or running for {}. Install the Kast IntelliJ plugin through Homebrew, open the project in IDEA or Android Studio, then start with: kast up --backend=idea",
+                "No idea backend is installed or running for {}. Install the Kast IntelliJ plugin through Homebrew, open the project in IDEA or Android Studio, then start with: kast runtime up --backend=idea",
                 workspace_root.display()
             ),
         ),
@@ -1211,7 +1211,7 @@ fn maybe_launch_idea_backend(
         ));
     }
     if launch_config.require_installed_plugin && !ops.plugin_installed()? {
-        let install_command = "kast install plugin".to_string();
+        let install_command = "kast machine plugin".to_string();
         let mut error = CliError::new(
             "IDEA_PLUGIN_NOT_INSTALLED",
             format!(
@@ -1515,7 +1515,7 @@ mod tests {
         assert!(ops.launches.borrow().is_empty());
         assert_eq!(
             error.details.get("installCommand").map(String::as_str),
-            Some("kast install plugin")
+            Some("kast machine plugin")
         );
     }
 

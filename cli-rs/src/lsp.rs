@@ -24,7 +24,7 @@ pub fn run(args: LspArgs) -> Result<i32> {
     if !args.stdio {
         return Err(CliError::new(
             "CLI_USAGE",
-            "lsp currently supports stdio only; run `kast lsp --stdio`",
+            "lsp currently supports stdio only; run `kast agent lsp --stdio`",
         ));
     }
     let client = RuntimeKastRpc::new(args);
@@ -187,7 +187,7 @@ impl<C: KastRpcClient> LspServer<C> {
 
         if id.is_none() {
             if let Err(error) = self.handle_notification(method, params) {
-                eprintln!("kast lsp notification error: {}", error.message);
+                eprintln!("kast agent lsp notification error: {}", error.message);
             }
             return None;
         }
@@ -912,7 +912,7 @@ fn initialization_options(params: &Value) -> LspResult<LspInitializationOptions>
         })?;
         if !prefer_compiler_facts {
             return Err(LspError::invalid_params(
-                "kast lsp requires compiler facts over text search",
+                "kast agent lsp requires compiler facts over text search",
             ));
         }
     }

@@ -57,6 +57,6 @@ fi
 
 github_dir="$target_root/.github"
 if [ "$force" = "true" ]; then
-  exec "$kast_bin" install copilot --target-dir "$github_dir" --force
+  exec "$kast_bin" agent setup copilot --target-dir "$github_dir" --force
 fi
-exec "$kast_bin" install copilot --target-dir "$github_dir"
+exec "$kast_bin" agent setup copilot --target-dir "$github_dir"

@@ -248,7 +248,7 @@ run_bundle_activation() {
   [[ -x "$bundled_kast" ]] || die "Bundle source missing executable bin/kast"
 
   local activation_args=(
-    install activate-bundle
+    release activate bundle
     --source "$bundle_source_dir"
     --install-root "$root_dir"
     --bin-dir "$bin_dir"
@@ -313,7 +313,7 @@ PY
 
   KAST_INSTALL_ROOT="$root_dir" \
   KAST_CONFIG_HOME="$config_home" \
-    "$bin_path" doctor >/dev/null
+    "$bin_path" ready >/dev/null
 }
 
 install_bundle() {

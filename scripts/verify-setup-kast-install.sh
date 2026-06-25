@@ -10,8 +10,8 @@ Verify a setup-kast installation in a CI runner, Devin snapshot, or local smoke.
 Options:
   --install-dir <path>              Installed current runtime directory. Defaults to $KAST_INSTALL_ROOT/current.
   --workspace-root <path>           Workspace root to start. Defaults to a temporary Kotlin workspace.
-  --source-root <path>              Kotlin source root for kast up. Defaults with temporary workspace.
-  --module-name <name>              Module name for kast up. Defaults to setup-kast-verify.
+  --source-root <path>              Kotlin source root for kast runtime up. Defaults with temporary workspace.
+  --module-name <name>              Module name for kast runtime up. Defaults to setup-kast-verify.
   --workspace-id <id>               KAST_WORKSPACE_ID for daemon state. Defaults to setup-kast-verify.
   --wait-timeout-ms <millis>        Startup wait timeout. Defaults to 120000.
   --gradle-root <path>              Run repo-level Gradle warm checks from this root.
@@ -130,7 +130,7 @@ actual_kast_bin="$(absolute_path "$kast_bin")"
   || die "kast on PATH does not match install-dir: expected ${expected_kast_bin}, got ${actual_kast_bin}"
 
 "$kast_bin" --version
-"$kast_bin" doctor
+"$kast_bin" ready
 
 if [[ "$require_gradle_cache" == "true" ]]; then
   [[ -n "${GRADLE_RO_DEP_CACHE:-}" ]] || die "GRADLE_RO_DEP_CACHE is unset"
@@ -199,6 +199,7 @@ if [[ "$start_daemon" == "true" ]]; then
   fi
 
   up_args=(
+    runtime
     up
     --backend=headless
     "--workspace-root=${workspace_root}"
@@ -211,16 +212,16 @@ if [[ "$start_daemon" == "true" ]]; then
   fi
 
   KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" "${up_args[@]}"
-  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" status \
+  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" runtime status \
     --backend=headless \
     "--workspace-root=${workspace_root}" \
     --no-auto-start=true
-  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" capabilities \
+  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" runtime capabilities \
     --backend=headless \
     "--workspace-root=${workspace_root}" \
     --accept-indexing=true \
     --no-auto-start=true
-  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" stop \
+  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" runtime stop \
     --backend=headless \
     "--workspace-root=${workspace_root}" || true
 

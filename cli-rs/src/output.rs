@@ -1,22 +1,25 @@
-use crate::cli::OutputFormat;
+use crate::cli::{AgentSetupHarness, OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ActivateBundleResult, InstallCopilotPackageResult, InstallIdeaPluginResult,
-    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
+    ActivateBundleResult, AgentSetupAutoPlan, AgentSetupSelectionSource,
+    InstallCopilotPackageResult, InstallIdeaPluginResult, InstallInstructionsResult, InstallResult,
+    InstallShellResult, InstallSkillResult,
 };
+use crate::orchestration::AgentUpResult;
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
     WorkspaceRestartResult, WorkspaceStatusResult,
 };
 use crate::self_mgmt::SelfDoctorResult;
-use glamour::{Renderer, Style};
+use glamour::{Renderer, Style as GlamourStyle};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, IsTerminal, Write as IoWrite};
+use tabled::{Table, Tabled, settings::Style as TableStyle};
 
 const SOURCE_MODULE_DISPLAY_LIMIT: usize = 30;
 
@@ -85,6 +88,11 @@ impl MarkdownDocument {
         self.text.push('\n');
     }
 
+    fn block(&mut self, block: &str) {
+        self.text.push_str(block);
+        self.text.push('\n');
+    }
+
     fn into_string(self) -> String {
         self.text
     }
@@ -128,7 +136,9 @@ fn terminal_render_style(is_terminal: bool) -> RenderStyle {
 fn render_markdown(markdown: &str, style: RenderStyle) -> String {
     match style {
         RenderStyle::Plain => render_plain_markdown(markdown),
-        RenderStyle::Ansi => Renderer::new().with_style(Style::Dark).render(markdown),
+        RenderStyle::Ansi => Renderer::new()
+            .with_style(GlamourStyle::Dark)
+            .render(markdown),
     }
 }
 
@@ -185,6 +195,137 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
     }
 }
 
+pub fn print_agent_setup_auto_plan(result: &AgentSetupAutoPlan) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast agent setup plan");
+    mdln!(document);
+    mdln!(
+        document,
+        "- Harness: `{}`",
+        agent_setup_harness_label(result.harness)
+    );
+    mdln!(
+        document,
+        "- Selection source: `{}`",
+        agent_setup_source_label(result.selection_source)
+    );
+    mdln!(document, "- Reason: {}", result.reason);
+    if let Some(target_dir) = &result.target_dir {
+        mdln!(document, "- Target directory: `{target_dir}`");
+    }
+    mdln!(
+        document,
+        "- Would run: `{}`",
+        result.install_command.join(" ")
+    );
+    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
+    print_markdown(&document.into_string())
+}
+
+pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast agent up");
+    mdln!(document);
+    mdln!(document, "- Ready: {}", yes_no(result.ok));
+    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
+    mdln!(
+        document,
+        "- Harness: `{}`",
+        agent_setup_harness_label(result.setup.harness)
+    );
+    mdln!(
+        document,
+        "- Selection source: `{}`",
+        agent_setup_source_label(result.setup.selection_source)
+    );
+    mdln!(document, "- Reason: {}", result.setup.reason);
+    if let Some(target_dir) = &result.setup.target_dir {
+        mdln!(document, "- Setup target: `{target_dir}`");
+    }
+    mdln!(
+        document,
+        "- Setup command: `{}`",
+        result.setup.install_command.join(" ")
+    );
+    mdln!(
+        document,
+        "- Runtime command: `{}`",
+        result.runtime_command.join(" ")
+    );
+    if let Some(install) = &result.install {
+        let summary = install_summary(install);
+        mdln!(
+            document,
+            "- Installed {}: `{}`",
+            summary.kind,
+            summary.target
+        );
+        if let Some(skipped) = summary.skipped {
+            mdln!(document, "- Setup skipped: {}", yes_no(skipped));
+        }
+    }
+    if let Some(runtime) = &result.runtime {
+        mdln!(document, "- Workspace: `{}`", runtime.workspace_root);
+        mdln!(
+            document,
+            "- Runtime backend: `{}`",
+            runtime.selected.descriptor.backend_name
+        );
+        mdln!(document, "- Started runtime: {}", yes_no(runtime.started));
+        if let Some(note) = &runtime.note {
+            mdln!(document, "- Runtime note: {note}");
+        }
+    }
+    if let Some(error) = &result.error {
+        mdln!(document);
+        mdln!(document, "## Error");
+        mdln!(document, "- Code: {}", error.code);
+        mdln!(document, "- Message: {}", error.message);
+    }
+    print_markdown(&document.into_string())
+}
+
+struct InstallSummary<'a> {
+    kind: &'static str,
+    target: &'a str,
+    skipped: Option<bool>,
+}
+
+fn install_summary(result: &InstallResult) -> InstallSummary<'_> {
+    match result {
+        InstallResult::ActivateBundle(result) => InstallSummary {
+            kind: "bundle",
+            target: &result.installed_at,
+            skipped: Some(result.skipped),
+        },
+        InstallResult::Skill(result) => InstallSummary {
+            kind: "skill",
+            target: &result.installed_at,
+            skipped: Some(result.skipped),
+        },
+        InstallResult::Instructions(result) => InstallSummary {
+            kind: "instructions",
+            target: &result.installed_at,
+            skipped: Some(result.skipped),
+        },
+        InstallResult::Copilot(result) => InstallSummary {
+            kind: "copilot",
+            target: &result.installed_at,
+            skipped: Some(result.skipped),
+        },
+        InstallResult::IdeaPlugin(result) => InstallSummary {
+            kind: "idea plugin",
+            target: &result.cask_token,
+            skipped: None,
+        },
+        InstallResult::Shell(result) => InstallSummary {
+            kind: "shell",
+            target: &result.source_file,
+            skipped: None,
+        },
+    }
+}
+
 pub fn print_package_result(result: &PackageResult) -> Result<()> {
     match result {
         PackageResult::UbuntuDebianBundle(result) => print_ubuntu_debian_bundle_package(result),
@@ -210,7 +351,7 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         mdln!(document, "No runtime candidates were found.");
         mdln!(document);
         mdln!(document, "## Next steps");
-        mdln!(document, "- Start a backend: `kast up`");
+        mdln!(document, "- Start a backend: `kast runtime up`");
         mdln!(
             document,
             "- For headless use, install the Linux headless tarball; for macOS IDE use, install Kast through Homebrew."
@@ -232,6 +373,33 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
+fn agent_setup_harness_label(harness: AgentSetupHarness) -> &'static str {
+    match harness {
+        AgentSetupHarness::Auto => "auto",
+        AgentSetupHarness::Copilot => "copilot",
+        AgentSetupHarness::Skill => "skill",
+        AgentSetupHarness::Instructions => "instructions",
+    }
+}
+
+fn agent_setup_source_label(source: AgentSetupSelectionSource) -> &'static str {
+    match source {
+        AgentSetupSelectionSource::Explicit => "explicit",
+        AgentSetupSelectionSource::Config => "config",
+        AgentSetupSelectionSource::TargetDirectory => "target-directory",
+        AgentSetupSelectionSource::Repository => "repository",
+    }
+}
+
+fn ready_target_label(target: ReadyTarget) -> &'static str {
+    match target {
+        ReadyTarget::Agent => "agent",
+        ReadyTarget::Kotlin => "kotlin",
+        ReadyTarget::Release => "release",
+        ReadyTarget::Machine => "machine",
+    }
+}
+
 pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast up");
@@ -249,8 +417,8 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     print_candidate(&mut document, "Selected runtime", &result.selected);
     mdln!(document);
     mdln!(document, "## Next steps");
-    mdln!(document, "- Check state again: `kast status`");
-    mdln!(document, "- Send analysis requests with `kast rpc`");
+    mdln!(document, "- Check state again: `kast runtime status`");
+    mdln!(document, "- Check agent health: `kast agent health`");
     print_markdown(&document.into_string())
 }
 
@@ -355,10 +523,19 @@ pub fn print_capabilities(value: &Value) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
-pub fn print_doctor(result: &SelfDoctorResult) -> Result<()> {
+pub fn print_ready(result: &SelfDoctorResult) -> Result<()> {
+    print_self_check("Kast ready", result)
+}
+
+fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast doctor");
+    mdln!(document, "# {title}");
     mdln!(document);
+    mdln!(
+        document,
+        "- Target: `{}`",
+        ready_target_label(result.target)
+    );
     mdln!(document, "- Healthy: {}", yes_no(result.ok));
     mdln!(document, "- Installed: {}", yes_no(result.installed));
     mdln!(
@@ -440,37 +617,74 @@ fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutio
     mdln!(document);
     mdln!(document, "## Path resolution");
     mdln!(document, "- Root: `{}`", report.root);
-    for config_file in &report.config_files {
-        mdln!(
-            document,
-            "- Config {}: `{}` ({})",
-            config_file.scope,
-            config_file.path,
-            if config_file.exists {
-                "exists"
-            } else {
-                "missing"
-            }
-        );
+    if !report.config_files.is_empty() {
+        mdln!(document);
+        mdln!(document, "Config files:");
+        document.block(&render_table(report.config_files.iter().map(
+            |config_file| PathConfigFileRow {
+                scope: config_file.scope.clone(),
+                state: exists_label(config_file.exists).to_string(),
+                path: config_file.path.clone(),
+            },
+        )));
     }
-    for entry in &report.entries {
-        let derived = entry
-            .derived_from
-            .as_deref()
-            .map(|parent| format!(", from {parent}"))
-            .unwrap_or_default();
-        mdln!(
-            document,
-            "- {} -> `{}` ({}, {}{}; {})",
-            entry.key,
-            entry.value,
-            entry.source,
-            entry.expected_kind,
-            derived,
-            if entry.exists { "exists" } else { "missing" }
-        );
+    if !report.entries.is_empty() {
+        mdln!(document);
+        mdln!(document, "Path entries:");
+        document.block(&render_table(report.entries.iter().map(|entry| {
+            PathEntryRow {
+                key: entry.key.clone(),
+                source: entry.source.to_string(),
+                kind: entry.expected_kind.clone(),
+                from: entry
+                    .derived_from
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                state: exists_label(entry.exists).to_string(),
+                value: entry.value.clone(),
+            }
+        })));
     }
     print_messages(document, "Path warnings", &report.warnings);
+}
+
+#[derive(Tabled)]
+struct PathConfigFileRow {
+    #[tabled(rename = "Scope")]
+    scope: String,
+    #[tabled(rename = "State")]
+    state: String,
+    #[tabled(rename = "Path")]
+    path: String,
+}
+
+#[derive(Tabled)]
+struct PathEntryRow {
+    #[tabled(rename = "Key")]
+    key: String,
+    #[tabled(rename = "Source")]
+    source: String,
+    #[tabled(rename = "Kind")]
+    kind: String,
+    #[tabled(rename = "From")]
+    from: String,
+    #[tabled(rename = "State")]
+    state: String,
+    #[tabled(rename = "Value")]
+    value: String,
+}
+
+fn render_table<Row>(rows: impl IntoIterator<Item = Row>) -> String
+where
+    Row: Tabled,
+{
+    let mut table = Table::new(rows);
+    table.with(TableStyle::ascii_rounded());
+    table.to_string()
+}
+
+fn exists_label(exists: bool) -> &'static str {
+    if exists { "exists" } else { "missing" }
 }
 
 pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
@@ -818,7 +1032,7 @@ mod tests {
     #[test]
     fn rendered_human_output_plain_text_does_not_dump_raw_markdown_tokens() {
         let rendered = render_markdown_for_test(
-            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast up`\n",
+            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast runtime up`\n",
             RenderStyle::Plain,
         );
 
@@ -854,6 +1068,43 @@ mod tests {
         assert!(
             !rendered.contains("# Kast status") && !rendered.contains("`/tmp/kast`"),
             "ANSI rendering should still remove raw Markdown control tokens: {rendered:?}"
+        );
+    }
+
+    #[test]
+    fn path_resolution_human_output_uses_tables_for_dense_rows() {
+        let report = crate::config::PathResolutionReport {
+            root: "/tmp/kast".to_string(),
+            config_files: vec![crate::config::PathResolutionConfigFile {
+                scope: "global".to_string(),
+                path: "/tmp/config.toml".to_string(),
+                exists: true,
+            }],
+            entries: vec![crate::config::PathResolutionEntry {
+                key: "paths.installRoot".to_string(),
+                value: "/tmp/kast".to_string(),
+                source: crate::config::PathResolutionSource::Manifest,
+                owner: "install".to_string(),
+                derived_from: None,
+                exists: true,
+                expected_kind: "directory".to_string(),
+                used_by_idea: true,
+            }],
+            warnings: vec![],
+            schema_version: 3,
+        };
+        let mut document = MarkdownDocument::default();
+        print_path_resolution(&mut document, &report);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Config files:"), "{rendered}");
+        assert!(rendered.contains("Path entries:"), "{rendered}");
+        assert!(rendered.contains("Scope"), "{rendered}");
+        assert!(rendered.contains("State"), "{rendered}");
+        assert!(rendered.contains("paths.installRoot"), "{rendered}");
+        assert!(
+            !rendered.contains("- paths.installRoot ->"),
+            "path entries should render as a table, not dense bullets: {rendered}"
         );
     }
 

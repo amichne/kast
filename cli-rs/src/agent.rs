@@ -1,4 +1,5 @@
 use crate::SCHEMA_VERSION;
+use crate::cli::ReadyTarget;
 use crate::cli::{
     AgentArgs, AgentCallArgs, AgentCommand, AgentDiscoverArgs, AgentFileOutlineArgs,
     AgentFilePathsArgs, AgentMetricsArgs, AgentOptionalFilePathsArgs, AgentPositionArgs,
@@ -104,10 +105,32 @@ pub fn run(args: AgentArgs) -> Result<i32> {
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {
+    if matches!(
+        command,
+        AgentCommand::Up(_)
+            | AgentCommand::Ready(_)
+            | AgentCommand::Setup(_)
+            | AgentCommand::Lsp(_)
+    ) {
+        return error_envelope(
+            "agent/operator".to_string(),
+            None,
+            agent_error(
+                "AGENT_COMMAND_UNSUPPORTED",
+                "`kast agent up`, `kast agent ready`, `kast agent setup`, and `kast agent lsp` are operator commands handled before JSON envelope dispatch.",
+            ),
+        );
+    }
     if let AgentCommand::Workflow(args) = command {
         return execute_workflow(args.command);
     }
     let request = match command {
+        AgentCommand::Up(_)
+        | AgentCommand::Ready(_)
+        | AgentCommand::Setup(_)
+        | AgentCommand::Lsp(_) => {
+            unreachable!("operator agent commands are handled before request prep")
+        }
         AgentCommand::Call(args) => prepare_call(args),
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         other => Ok(prepare_alias(other)),
@@ -242,7 +265,7 @@ fn workflow_steps(
             "package-verify".to_string(),
             args.common,
             vec![AgentWorkflowStep {
-                name: "doctor",
+                name: "ready",
                 method: "package/verify",
                 params: json!({}),
                 mutates: false,
@@ -488,7 +511,7 @@ fn run_workflow_step(
             }),
         )
     } else if step.method == "package/verify" {
-        let result = self_mgmt::doctor(false)?;
+        let result = self_mgmt::doctor(false, ReadyTarget::Agent)?;
         let exit_code = if result.ok { 0 } else { 1 };
         (exit_code, serde_json::to_value(result)?)
     } else {
@@ -619,6 +642,12 @@ struct AliasParts {
 
 fn alias_parts(command: AgentCommand) -> AliasParts {
     match command {
+        AgentCommand::Up(_)
+        | AgentCommand::Ready(_)
+        | AgentCommand::Setup(_)
+        | AgentCommand::Lsp(_) => {
+            unreachable!("operator agent commands are handled before alias prep")
+        }
         AgentCommand::Call(_) => unreachable!("agent call is prepared separately"),
         AgentCommand::Workflow(_) => unreachable!("agent workflow is prepared separately"),
         AgentCommand::Health(runtime) => empty_alias("health", runtime),

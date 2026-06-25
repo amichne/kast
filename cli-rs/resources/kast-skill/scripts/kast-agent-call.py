@@ -149,9 +149,9 @@ def recovery_from_text(text: str, workspace_root: Path) -> list[str]:
     if "unrecognized subcommand 'agent'" in text or "KAST_AGENT_UNAVAILABLE" in text:
         commands.append("./gradlew installDevelopmentLocal")
     if any(code in text for code in RECOVERABLE_BACKEND_CODES):
-        commands.append(f"kast up --workspace-root {json.dumps(str(workspace_root))} --backend idea")
+        commands.append(f"kast runtime up --workspace-root {json.dumps(str(workspace_root))} --backend idea")
     if "INSTALL_MANIFEST" in text or "install manifest" in text:
-        commands.append("kast doctor --repair")
+        commands.append("kast ready --fix")
     return commands
 
 

@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
-use crate::cli::InstallRepairArgs;
+use crate::cli::{InstallRepairArgs, ReadyTarget};
 use crate::config::{self, PathResolutionReport};
 use crate::error::Result;
 use crate::install::{self, InstallRepairResult};
@@ -56,6 +56,7 @@ pub struct DoctorBinaryDiagnostic {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
+    pub target: ReadyTarget,
     pub installed: bool,
     pub config_path: String,
     pub manifest_path: String,
@@ -74,7 +75,7 @@ pub struct SelfDoctorResult {
     pub schema_version: u32,
 }
 
-pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
+pub fn doctor(repair: bool, target: ReadyTarget) -> Result<SelfDoctorResult> {
     let config_path = config::global_config_path();
     let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
@@ -113,7 +114,7 @@ pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
     };
     let install_root = global_config.paths.install_root.clone();
     let canonical_directory = canonical_directory_diagnostic(&global_config.paths);
-    let binary = binary_diagnostic(&global_config.cli);
+    let binary = binary_diagnostic(&global_config.cli, install.as_ref());
     let path_resolution =
         config::path_resolution_report(&global_config, None, config::PathResolutionMode::Cli)?;
     if !binary.configured_exists {
@@ -173,7 +174,7 @@ pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
                     .any(|resource| resource.kind == ManagedResourceKind::CopilotPackage)
             {
                 issues.push(format!(
-                    "Managed repo {} uses retired copilotPackageVersion state, which is incompatible with manifest-backed resource verification; upgrade/reinstall Kast if needed, then run `kast doctor --repair` to refresh from the active binary bundles",
+                    "Managed repo {} uses retired copilotPackageVersion state, which is incompatible with manifest-backed resource verification; upgrade/reinstall Kast if needed, then run `kast ready --fix` to refresh from the active binary bundles",
                     repo.path
                 ));
             }
@@ -199,7 +200,9 @@ pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
             manifest_path.display()
         ));
     }
+    apply_ready_target_checks(target, install.as_ref(), &binary, &mut issues);
     Ok(SelfDoctorResult {
+        target,
         installed: install.is_some(),
         config_path: config_path.display().to_string(),
         manifest_path: manifest_path.display().to_string(),
@@ -215,6 +218,38 @@ pub fn doctor(repair: bool) -> Result<SelfDoctorResult> {
         warnings,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn apply_ready_target_checks(
+    target: ReadyTarget,
+    install: Option<&InstallState>,
+    binary: &DoctorBinaryDiagnostic,
+    issues: &mut Vec<String>,
+) {
+    match target {
+        ReadyTarget::Agent | ReadyTarget::Release => {}
+        ReadyTarget::Machine => {
+            if !binary.configured_exists {
+                issues.push(format!(
+                    "Machine readiness requires the configured kast binary to exist at {}",
+                    binary.configured_binary
+                ));
+            } else if !binary.configured_matches_running {
+                issues.push(format!(
+                    "Machine readiness requires the configured kast binary {} to resolve to the running binary {}",
+                    binary.configured_binary, binary.running_binary
+                ));
+            }
+        }
+        ReadyTarget::Kotlin => {
+            if install.is_none_or(|install| install.backends.is_empty()) {
+                issues.push(
+                    "Kotlin readiness requires an installed semantic backend in the manifest"
+                        .to_string(),
+                );
+            }
+        }
+    }
 }
 
 fn configuration_diagnostic(
@@ -247,17 +282,45 @@ fn canonical_directory_diagnostic(
     }
 }
 
-fn binary_diagnostic(cli: &config::CliConfig) -> DoctorBinaryDiagnostic {
+fn binary_diagnostic(
+    cli: &config::CliConfig,
+    install: Option<&InstallState>,
+) -> DoctorBinaryDiagnostic {
     let running_binary = env::current_exe().unwrap_or_else(|_| cli.binary_path.clone());
     let configured_binary = cli.binary_path.clone();
     let configured_exists = configured_binary.is_file();
+    let configured_matches_running = configured_exists
+        && configured_binary_matches_running(&configured_binary, &running_binary, install);
     DoctorBinaryDiagnostic {
         running_binary: running_binary.display().to_string(),
         configured_binary: configured_binary.display().to_string(),
         configured_exists,
-        configured_matches_running: configured_exists
-            && config::normalize(configured_binary) == config::normalize(running_binary),
+        configured_matches_running,
         schema_version: SCHEMA_VERSION,
+    }
+}
+
+fn configured_binary_matches_running(
+    configured_binary: &Path,
+    running_binary: &Path,
+    install: Option<&InstallState>,
+) -> bool {
+    same_binary_path(configured_binary, running_binary)
+        || install.is_some_and(|install| {
+            same_binary_path(
+                Path::new(&install.entrypoints.active_binary),
+                running_binary,
+            )
+        })
+}
+
+fn same_binary_path(left: &Path, right: &Path) -> bool {
+    if config::normalize(left.to_path_buf()) == config::normalize(right.to_path_buf()) {
+        return true;
+    }
+    match (fs::canonicalize(left), fs::canonicalize(right)) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
     }
 }
 
@@ -396,4 +459,28 @@ fn parse_version_triplet(value: &str) -> Option<(u64, u64, u64)> {
     let minor = parts.next()?.parse().ok()?;
     let patch = parts.next()?.parse().ok()?;
     Some((major, minor, patch))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn configured_binary_match_accepts_manifest_active_binary() {
+        let configured_binary = Path::new("/example/bin/kast");
+        let running_binary = Path::new("/example/versions/0.1.0/bin/kast");
+        let mut install = manifest::fresh_manifest();
+        install.entrypoints.active_binary = running_binary.display().to_string();
+
+        assert!(configured_binary_matches_running(
+            configured_binary,
+            running_binary,
+            Some(&install)
+        ));
+        assert!(!configured_binary_matches_running(
+            configured_binary,
+            Path::new("/other/bin/kast"),
+            Some(&install)
+        ));
+    }
 }

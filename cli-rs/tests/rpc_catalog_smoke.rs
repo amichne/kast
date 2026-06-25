@@ -147,7 +147,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
 
     let generator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args(["generate", "contract", "--check"])
+        .args(["release", "generate", "contract", "--check"])
         .output()
         .expect("contract generator check");
     assert!(
@@ -159,7 +159,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
 
     let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args(["validate", "--all-samples"])
+        .args(["release", "validate", "--all-samples"])
         .output()
         .expect("request sample validation");
     assert!(
@@ -547,7 +547,8 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
         .args([
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             target.to_str().expect("target path"),
