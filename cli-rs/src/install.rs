@@ -3629,6 +3629,7 @@ fn jetbrains_plugin_dirs(root: &Path) -> Result<Vec<PathBuf>> {
     Ok(dirs.into_iter().map(|dir| dir.path).collect())
 }
 
+#[cfg(target_os = "macos")]
 pub(crate) fn latest_jetbrains_ide_app_name() -> Result<Option<String>> {
     let jetbrains_config_root = env::var_os("KAST_JETBRAINS_CONFIG_ROOT")
         .filter(|value| !value.is_empty())
@@ -3638,6 +3639,7 @@ pub(crate) fn latest_jetbrains_ide_app_name() -> Result<Option<String>> {
     latest_jetbrains_ide_app_name_under(&jetbrains_config_root)
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn latest_jetbrains_ide_app_name_under(root: &Path) -> Result<Option<String>> {
     if !root.is_dir() {
         return Ok(None);
@@ -3679,6 +3681,7 @@ fn latest_jetbrains_ide_app_name_under(root: &Path) -> Result<Option<String>> {
         .map(|(_, _, _, _, app_name)| app_name.to_string()))
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn jetbrains_profile_app_name(product: &str) -> Option<&'static str> {
     match product {
         "IntelliJIdea" => Some("IntelliJ IDEA"),
@@ -3687,6 +3690,7 @@ fn jetbrains_profile_app_name(product: &str) -> Option<&'static str> {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn jetbrains_app_preference(product: &str) -> u8 {
     match product {
         "IntelliJIdea" => 0,
