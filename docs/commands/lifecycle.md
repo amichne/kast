@@ -22,7 +22,10 @@ kast runtime up --backend=idea
 
 `--backend=headless` starts the packaged headless runtime. `--backend=idea`
 uses the IDEA or Android Studio plugin backend when the project is open and the
-plugin is installed.
+plugin is installed. When `runtime.ideaLaunch.enabled` is true, Kast first
+reuses a matching open IDEA backend and otherwise launches the configured IDEA
+command. On macOS, the default `idea` command falls back to the latest known
+IntelliJ IDEA or Android Studio profile when the launcher is not on `PATH`.
 
 ## Inspect runtime state
 

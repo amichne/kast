@@ -38,6 +38,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Test terminal onboarding contract
+        shell: bash
+        run: ./.github/scripts/test-terminal-onboarding-contract.sh
+
       - name: Test Kast Copilot plugin package
         shell: bash
         run: ./.github/scripts/test-kast-copilot-plugin.sh

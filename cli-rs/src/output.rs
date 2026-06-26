@@ -6,7 +6,7 @@ use crate::install::{
     InstallCopilotPackageResult, InstallIdeaPluginResult, InstallInstructionsResult, InstallResult,
     InstallShellResult, InstallSkillResult,
 };
-use crate::orchestration::AgentUpResult;
+use crate::orchestration::{AgentUpNextAction, AgentUpResult, AgentUpStage};
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -71,6 +71,12 @@ pub(crate) enum RenderStyle {
     Ansi,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TableRenderStyle {
+    Ascii,
+    Modern,
+}
+
 #[derive(Default)]
 struct MarkdownDocument {
     text: String,
@@ -130,6 +136,20 @@ fn terminal_render_style(is_terminal: bool) -> RenderStyle {
         RenderStyle::Ansi
     } else {
         RenderStyle::Plain
+    }
+}
+
+fn stdout_table_render_style() -> TableRenderStyle {
+    terminal_table_render_style(io::stdout().is_terminal())
+}
+
+fn terminal_table_render_style(is_terminal: bool) -> TableRenderStyle {
+    let unicode_disabled =
+        std::env::var("TERM").is_ok_and(|terminal| terminal.eq_ignore_ascii_case("dumb"));
+    if is_terminal && !unicode_disabled {
+        TableRenderStyle::Modern
+    } else {
+        TableRenderStyle::Ascii
     }
 }
 
@@ -226,7 +246,13 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast agent up");
     mdln!(document);
+    mdln!(document, "## What happened");
     mdln!(document, "- Ready: {}", yes_no(result.ok));
+    mdln!(
+        document,
+        "- Stage: `{}`",
+        agent_up_stage_label(result.stage)
+    );
     mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
     mdln!(
         document,
@@ -282,7 +308,52 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
         mdln!(document, "- Code: {}", error.code);
         mdln!(document, "- Message: {}", error.message);
     }
+    print_agent_up_next_steps(&mut document, result);
     print_markdown(&document.into_string())
+}
+
+fn print_agent_up_next_steps(document: &mut MarkdownDocument, result: &AgentUpResult) {
+    if !result.next_actions.is_empty() {
+        mdln!(document);
+        mdln!(document, "## Next step");
+        for action in &result.next_actions {
+            print_agent_up_next_action(document, action);
+        }
+    } else if result.ok {
+        mdln!(document);
+        mdln!(document, "## Next step");
+        mdln!(
+            document,
+            "- Run semantic requests with `kast agent ... --workspace-root <repo>`."
+        );
+    }
+    if !result.manual_steps.is_empty() {
+        mdln!(document);
+        if result.ok {
+            mdln!(document, "## Manual steps");
+        } else {
+            mdln!(document, "## If that fails");
+        }
+        for step in &result.manual_steps {
+            mdln!(document, "- {step}");
+        }
+    }
+}
+
+fn print_agent_up_next_action(document: &mut MarkdownDocument, action: &AgentUpNextAction) {
+    mdln!(document, "- {}: `{}`", action.label, action.argv.join(" "));
+    mdln!(document, "  Reason: {}", action.reason);
+}
+
+fn agent_up_stage_label(stage: AgentUpStage) -> &'static str {
+    match stage {
+        AgentUpStage::Onboarding => "onboarding",
+        AgentUpStage::DryRun => "dry-run",
+        AgentUpStage::SetupDone => "setup-done",
+        AgentUpStage::RuntimeReady => "runtime-ready",
+        AgentUpStage::RuntimeBlocked => "runtime-blocked",
+        AgentUpStage::RepairRequired => "repair-required",
+    }
 }
 
 struct InstallSummary<'a> {
@@ -614,25 +685,37 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
 }
 
 fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutionReport) {
+    print_path_resolution_with_table_style(document, report, stdout_table_render_style());
+}
+
+fn print_path_resolution_with_table_style(
+    document: &mut MarkdownDocument,
+    report: &PathResolutionReport,
+    table_style: TableRenderStyle,
+) {
     mdln!(document);
     mdln!(document, "## Path resolution");
     mdln!(document, "- Root: `{}`", report.root);
     if !report.config_files.is_empty() {
         mdln!(document);
         mdln!(document, "Config files:");
-        document.block(&render_table(report.config_files.iter().map(
-            |config_file| PathConfigFileRow {
-                scope: config_file.scope.clone(),
-                state: exists_label(config_file.exists).to_string(),
-                path: config_file.path.clone(),
-            },
-        )));
+        document.block(&render_table_with_style(
+            report
+                .config_files
+                .iter()
+                .map(|config_file| PathConfigFileRow {
+                    scope: config_file.scope.clone(),
+                    state: exists_label(config_file.exists).to_string(),
+                    path: config_file.path.clone(),
+                }),
+            table_style,
+        ));
     }
     if !report.entries.is_empty() {
         mdln!(document);
         mdln!(document, "Path entries:");
-        document.block(&render_table(report.entries.iter().map(|entry| {
-            PathEntryRow {
+        document.block(&render_table_with_style(
+            report.entries.iter().map(|entry| PathEntryRow {
                 key: entry.key.clone(),
                 source: entry.source.to_string(),
                 kind: entry.expected_kind.clone(),
@@ -642,8 +725,9 @@ fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutio
                     .unwrap_or_else(|| "-".to_string()),
                 state: exists_label(entry.exists).to_string(),
                 value: entry.value.clone(),
-            }
-        })));
+            }),
+            table_style,
+        ));
     }
     print_messages(document, "Path warnings", &report.warnings);
 }
@@ -674,17 +758,49 @@ struct PathEntryRow {
     value: String,
 }
 
-fn render_table<Row>(rows: impl IntoIterator<Item = Row>) -> String
+#[derive(Tabled)]
+struct IdeaPluginInstallSummaryRow {
+    #[tabled(rename = "Item")]
+    item: String,
+    #[tabled(rename = "Value")]
+    value: String,
+}
+
+#[derive(Tabled)]
+struct IdeaPluginDirectoryRow {
+    #[tabled(rename = "JetBrains plugins directory")]
+    path: String,
+}
+
+fn render_table_with_style<Row>(
+    rows: impl IntoIterator<Item = Row>,
+    style: TableRenderStyle,
+) -> String
 where
     Row: Tabled,
 {
     let mut table = Table::new(rows);
-    table.with(TableStyle::ascii_rounded());
+    match style {
+        TableRenderStyle::Ascii => table.with(TableStyle::ascii()),
+        TableRenderStyle::Modern => table.with(TableStyle::modern()),
+    };
     table.to_string()
 }
 
 fn exists_label(exists: bool) -> &'static str {
     if exists { "exists" } else { "missing" }
+}
+
+fn format_bytes_for_output(bytes: u64) -> String {
+    const KIB: u64 = 1024;
+    const MIB: u64 = KIB * 1024;
+    if bytes >= MIB {
+        format!("{:.1} MiB", bytes as f64 / MIB as f64)
+    } else if bytes >= KIB {
+        format!("{:.1} KiB", bytes as f64 / KIB as f64)
+    } else {
+        format!("{bytes} B")
+    }
 }
 
 pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
@@ -767,35 +883,104 @@ fn print_copilot_install(title: &str, result: &InstallCopilotPackageResult) -> R
 
 fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
+    print_idea_plugin_install_with_table_style(&mut document, result, stdout_table_render_style());
+    print_markdown(&document.into_string())
+}
+
+fn print_idea_plugin_install_with_table_style(
+    document: &mut MarkdownDocument,
+    result: &InstallIdeaPluginResult,
+    table_style: TableRenderStyle,
+) {
     mdln!(document, "# Kast IDEA plugin install");
     mdln!(document);
-    mdln!(document, "- Cask token: `{}`", result.cask_token);
-    mdln!(document, "- Plugin version: `{}`", result.plugin_version);
-    mdln!(document, "- Download cache: `{}`", result.download_cache);
-    mdln!(document, "- Downloaded bytes: {}", result.downloaded_bytes);
-    mdln!(document, "- Homebrew action: `{}`", result.brew_action);
-    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
-    if !result.brew_command.is_empty() {
-        mdln!(
-            document,
-            "- Brew command: `{}`",
-            result.brew_command.join(" ")
-        );
-    }
-    print_optional(
-        &mut document,
-        "JetBrains config root",
-        result.jetbrains_config_root.as_deref(),
+    mdln!(
+        document,
+        "- Status: {}",
+        if result.dry_run { "planned" } else { "applied" }
     );
+    mdln!(document);
+    mdln!(document, "## Install summary");
+    let mut rows = vec![
+        IdeaPluginInstallSummaryRow {
+            item: "Cask token".to_string(),
+            value: result.cask_token.clone(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Plugin version".to_string(),
+            value: result.plugin_version.clone(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Homebrew action".to_string(),
+            value: result.brew_action.clone(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Download cache".to_string(),
+            value: result.download_cache.clone(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Downloaded".to_string(),
+            value: format_bytes_for_output(result.downloaded_bytes),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Dry run".to_string(),
+            value: yes_no(result.dry_run).to_string(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Homebrew prefix".to_string(),
+            value: result.brew_prefix.clone(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Formula prefix".to_string(),
+            value: result.formula_prefix.clone(),
+        },
+        IdeaPluginInstallSummaryRow {
+            item: "Running CLI".to_string(),
+            value: result.cli_path.clone(),
+        },
+    ];
+    if !result.brew_command.is_empty() {
+        rows.push(IdeaPluginInstallSummaryRow {
+            item: "Brew command".to_string(),
+            value: result.brew_command.join(" "),
+        });
+    }
+    if let Some(jetbrains_config_root) = &result.jetbrains_config_root {
+        rows.push(IdeaPluginInstallSummaryRow {
+            item: "JetBrains config root".to_string(),
+            value: jetbrains_config_root.clone(),
+        });
+    }
+    document.block(&render_table_with_style(rows, table_style));
     if !result.plugin_directories.is_empty() {
         mdln!(document);
-        mdln!(document, "## Plugin directories");
-        for path in &result.plugin_directories {
-            mdln!(document, "- `{path}`");
-        }
+        mdln!(document, "## JetBrains destinations");
+        document.block(&render_table_with_style(
+            result
+                .plugin_directories
+                .iter()
+                .map(|path| IdeaPluginDirectoryRow { path: path.clone() }),
+            table_style,
+        ));
     }
-    print_warnings(&mut document, &result.warnings);
-    print_markdown(&document.into_string())
+    print_warnings(document, &result.warnings);
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    if result.dry_run {
+        mdln!(
+            document,
+            "- Run `kast machine plugin` without `--dry-run` to install the Homebrew cask and link JetBrains profiles."
+        );
+    } else {
+        mdln!(
+            document,
+            "- Restart any open IntelliJ IDEA or Android Studio windows so JetBrains reloads the linked plugin."
+        );
+        mdln!(
+            document,
+            "- Reopen the project, then run `kast runtime status --backend idea` if the IDE backend still is not available."
+        );
+    }
 }
 
 fn print_shell_install(result: &InstallShellResult) -> Result<()> {
@@ -1072,8 +1257,133 @@ mod tests {
     }
 
     #[test]
-    fn path_resolution_human_output_uses_tables_for_dense_rows() {
-        let report = crate::config::PathResolutionReport {
+    fn path_resolution_human_output_uses_ascii_tables_for_plain_capture() {
+        let report = path_resolution_report_for_test();
+        let mut document = MarkdownDocument::default();
+        print_path_resolution_with_table_style(&mut document, &report, TableRenderStyle::Ascii);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Config files:"), "{rendered}");
+        assert!(rendered.contains("Path entries:"), "{rendered}");
+        assert!(rendered.contains("Scope"), "{rendered}");
+        assert!(rendered.contains("State"), "{rendered}");
+        assert!(rendered.contains("paths.installRoot"), "{rendered}");
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('+') && line.ends_with('+')),
+            "captured tables should use standard ASCII borders with '+' corners: {rendered}"
+        );
+        assert!(
+            !rendered
+                .lines()
+                .any(|line| line.starts_with('.') || line.starts_with('\'')),
+            "tables should not use rounded ASCII borders that look like raw glyphs: {rendered}"
+        );
+        assert!(
+            !rendered.contains("- paths.installRoot ->"),
+            "path entries should render as a table, not dense bullets: {rendered}"
+        );
+    }
+
+    #[test]
+    fn path_resolution_human_output_uses_modern_tables_for_terminals() {
+        let report = path_resolution_report_for_test();
+        let mut document = MarkdownDocument::default();
+        print_path_resolution_with_table_style(&mut document, &report, TableRenderStyle::Modern);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Config files:"), "{rendered}");
+        assert!(rendered.contains("Path entries:"), "{rendered}");
+        assert!(rendered.contains("Scope"), "{rendered}");
+        assert!(rendered.contains("State"), "{rendered}");
+        assert!(rendered.contains("paths.installRoot"), "{rendered}");
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('┌') && line.ends_with('┐')),
+            "terminal tables should use modern box-drawing borders: {rendered}"
+        );
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('└') && line.ends_with('┘')),
+            "terminal tables should close with modern box-drawing borders: {rendered}"
+        );
+        assert!(
+            !rendered
+                .lines()
+                .any(|line| line.starts_with('+') || line.starts_with('.')),
+            "terminal tables should not fall back to raw ASCII borders: {rendered}"
+        );
+    }
+
+    #[test]
+    fn idea_plugin_install_human_output_uses_summary_tables_and_next_steps() {
+        let result = idea_plugin_install_result_for_test(false);
+        let mut document = MarkdownDocument::default();
+        print_idea_plugin_install_with_table_style(&mut document, &result, TableRenderStyle::Ascii);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Kast IDEA plugin install"), "{rendered}");
+        assert!(rendered.contains("Status: applied"), "{rendered}");
+        assert!(rendered.contains("Install summary"), "{rendered}");
+        assert!(rendered.contains("JetBrains destinations"), "{rendered}");
+        assert!(rendered.contains("Homebrew action"), "{rendered}");
+        assert!(rendered.contains("Brew command"), "{rendered}");
+        assert!(
+            rendered.contains("Restart any open IntelliJ IDEA"),
+            "{rendered}"
+        );
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('+') && line.ends_with('+')),
+            "captured install summary should render as an ASCII table: {rendered}"
+        );
+    }
+
+    #[test]
+    fn idea_plugin_install_dry_run_output_keeps_install_guidance() {
+        let result = idea_plugin_install_result_for_test(true);
+        let mut document = MarkdownDocument::default();
+        print_idea_plugin_install_with_table_style(&mut document, &result, TableRenderStyle::Ascii);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Status: planned"), "{rendered}");
+        assert!(rendered.contains("Dry run"), "{rendered}");
+        assert!(
+            rendered.contains("without --dry-run to install the Homebrew cask"),
+            "{rendered}"
+        );
+    }
+
+    fn idea_plugin_install_result_for_test(dry_run: bool) -> InstallIdeaPluginResult {
+        InstallIdeaPluginResult {
+            cask_token: "amichne/kast/kast-plugin".to_string(),
+            plugin_version: "9.8.7".to_string(),
+            download_cache: "/tmp/000--kast-plugin.zip".to_string(),
+            downloaded_bytes: 15,
+            brew_action: "install".to_string(),
+            brew_command: vec![
+                "brew".to_string(),
+                "install".to_string(),
+                "--cask".to_string(),
+                "amichne/kast/kast-plugin".to_string(),
+            ],
+            brew_prefix: "/opt/homebrew".to_string(),
+            formula_prefix: "/opt/homebrew/Cellar/kast/9.8.7".to_string(),
+            cli_path: "/opt/homebrew/bin/kast".to_string(),
+            jetbrains_config_root: Some("/tmp/JetBrains".to_string()),
+            plugin_directories: vec!["/tmp/JetBrains/IntelliJIdea2026.1/plugins".to_string()],
+            dry_run,
+            warnings: vec![],
+            schema_version: 3,
+        }
+    }
+
+    fn path_resolution_report_for_test() -> crate::config::PathResolutionReport {
+        crate::config::PathResolutionReport {
             root: "/tmp/kast".to_string(),
             config_files: vec![crate::config::PathResolutionConfigFile {
                 scope: "global".to_string(),
@@ -1092,20 +1402,7 @@ mod tests {
             }],
             warnings: vec![],
             schema_version: 3,
-        };
-        let mut document = MarkdownDocument::default();
-        print_path_resolution(&mut document, &report);
-        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
-
-        assert!(rendered.contains("Config files:"), "{rendered}");
-        assert!(rendered.contains("Path entries:"), "{rendered}");
-        assert!(rendered.contains("Scope"), "{rendered}");
-        assert!(rendered.contains("State"), "{rendered}");
-        assert!(rendered.contains("paths.installRoot"), "{rendered}");
-        assert!(
-            !rendered.contains("- paths.installRoot ->"),
-            "path entries should render as a table, not dense bullets: {rendered}"
-        );
+        }
     }
 
     #[test]

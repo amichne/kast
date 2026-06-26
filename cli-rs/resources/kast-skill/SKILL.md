@@ -49,13 +49,17 @@ IDE-hosted backend directly when only runtime state is missing:
 
 ```console
 kast agent up --workspace-root "$PWD" --dry-run
+kast --output json agent up --workspace-root "$PWD" --no-onboard
 kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
-This may open IDEA or Android Studio only when `runtime.ideaLaunch.enabled` is
-set in Kast config; otherwise it reports that the project must be opened in the
-IDE. Treat the failure as a blocker only after this dynamic IDE warmup path has
-failed.
+Interactive human `kast agent up` may offer first-run IDEA/Copilot onboarding
+with global or repository-scoped defaults. Agents should use JSON output or
+`--no-onboard` so prompts cannot block execution. Runtime warmup may open IDEA
+or Android Studio only when
+`runtime.ideaLaunch.enabled` is set in Kast config; otherwise it reports that
+the project must be opened in the IDE. Treat the failure as a blocker only
+after this dynamic IDE warmup path has failed.
 
 ## Gradle File Routing
 
