@@ -2936,6 +2936,16 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
         "{verify_json:#}"
     );
     assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsInvocationArgv"][0],
+        env!("CARGO_BIN_EXE_kast"),
+        "{verify_json:#}"
+    );
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsInvocationArgvExpected"][0],
+        env!("CARGO_BIN_EXE_kast"),
+        "{verify_json:#}"
+    );
+    assert_eq!(
         verify_json["checks"]["commandSurface"]["agentToolsInvocationArgv"][1], "agent",
         "{verify_json:#}"
     );
@@ -3047,6 +3057,108 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
 }
 
 #[test]
+fn packaged_verifier_rejects_agent_tools_invocation_for_another_binary() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let workspace = temp.path().join("workspace");
+    let fake_bin = temp.path().join("kast");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        &fake_bin,
+        r#"#!/bin/sh
+if [ "$1" = "--help" ]; then
+  printf 'Usage: kast\nCommands:\n  ready\n  agent\n  runtime\n  inspect\n'
+  exit 0
+fi
+if [ "$1" = "ready" ] && [ "$2" = "--help" ]; then
+  printf 'Usage: kast ready\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
+  printf 'Usage: kast agent\nCommands:\n  setup\n  workflow\n  tools\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "setup" ] && [ "$3" = "--help" ]; then
+  printf 'Usage: kast agent setup\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "workflow" ] && [ "$3" = "--help" ]; then
+  printf 'Usage: kast agent workflow\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+  printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","invocation":{"argv":["/wrong/kast","agent","call","<method>"]},"tools":[]}}\n'
+  exit 0
+fi
+if [ "$1" = "version" ]; then
+  printf 'Kast CLI 0.1.0\n'
+  exit 0
+fi
+if [ "$1" = "install" ] && [ "$2" = "--help" ]; then
+  printf 'error: unrecognized subcommand install\n' >&2
+  exit 1
+fi
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "ready" ]; then
+  printf '{"ok":true,"issues":[],"warnings":[]}\n'
+  exit 0
+fi
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "inspect" ] && [ "$4" = "paths" ]; then
+  printf '{"root":"%s","warnings":[]}\n' "$PWD"
+  exit 0
+fi
+printf 'unexpected fake kast args:' >&2
+printf ' %s' "$@" >&2
+printf '\n' >&2
+exit 64
+"#,
+    )
+    .expect("fake kast");
+    set_executable_for_test(&fake_bin);
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--kast-bin")
+        .arg(&fake_bin)
+        .output()
+        .expect("run verifier");
+    assert!(
+        !verify.status.success(),
+        "verifier should reject agent tools argv for a different binary: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verifier json");
+    assert_eq!(
+        stdout["checks"]["commandSurface"]["agentToolsInvocationArgvOk"], false,
+        "{stdout:#}"
+    );
+    assert_eq!(
+        stdout["checks"]["commandSurface"]["agentToolsInvocationArgvExpected"][0],
+        fake_bin
+            .canonicalize()
+            .expect("canonical fake bin")
+            .display()
+            .to_string(),
+        "{stdout:#}"
+    );
+    assert!(
+        stdout["issues"]
+            .as_array()
+            .expect("issues")
+            .iter()
+            .any(|issue| issue["code"] == "KAST_AGENT_TOOLS_UNAVAILABLE"),
+        "{stdout:#}"
+    );
+    assert!(
+        !String::from_utf8_lossy(&verify.stderr).contains("unexpected fake kast args"),
+        "verifier should not dispatch unexpected fake commands"
+    );
+}
+
+#[test]
 fn packaged_agent_call_requires_agent_tools_preflight() {
     let temp = tempfile::tempdir().expect("tempdir");
     let workspace = temp.path().join("workspace");
@@ -3060,7 +3172,7 @@ if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
   exit 0
 fi
 if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
-  printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","tools":[]}}\n'
+  printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","invocation":{"argv":["/wrong/kast","agent","call","<method>"]},"tools":[]}}\n'
   exit 0
 fi
 printf 'unexpected fake kast args:' >&2

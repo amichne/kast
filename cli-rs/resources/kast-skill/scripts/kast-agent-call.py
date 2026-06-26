@@ -144,7 +144,7 @@ def envelope_summary(envelope: Any) -> dict[str, Any] | None:
     return summary
 
 
-def agent_tools_envelope_ok(value: Any) -> bool:
+def agent_tools_envelope_ok(value: Any, expected_executable: str) -> bool:
     if not isinstance(value, dict):
         return False
     result = value.get("result")
@@ -154,10 +154,7 @@ def agent_tools_envelope_ok(value: Any) -> bool:
     argv = invocation.get("argv") if isinstance(invocation, dict) else None
     invocation_argv_ok = (
         isinstance(argv, list)
-        and len(argv) == 4
-        and isinstance(argv[0], str)
-        and bool(argv[0])
-        and argv[1:] == ["agent", "call", "<method>"]
+        and argv == [expected_executable, "agent", "call", "<method>"]
     )
     return (
         value.get("ok") is True
@@ -273,7 +270,7 @@ def main() -> int:
         agent_tools_json = json.loads(agent_tools["stdout"])
     except json.JSONDecodeError:
         pass
-    if not agent_tools_envelope_ok(agent_tools_json):
+    if not agent_tools_envelope_ok(agent_tools_json, kast_bin):
         stdout_file.write_text(agent_tools["stdout"], encoding="utf-8")
         stderr_file.write_text(agent_tools["stderr"], encoding="utf-8")
         result["issues"].append(

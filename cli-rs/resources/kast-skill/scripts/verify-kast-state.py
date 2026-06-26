@@ -169,12 +169,10 @@ def verify_command_surface(
     agent_tools_invocation_argv = (
         agent_tools_invocation.get("argv") if isinstance(agent_tools_invocation, dict) else None
     )
+    expected_agent_tools_invocation_argv = [kast_command[0], "agent", "call", "<method>"]
     agent_tools_invocation_argv_ok = (
         isinstance(agent_tools_invocation_argv, list)
-        and len(agent_tools_invocation_argv) == 4
-        and isinstance(agent_tools_invocation_argv[0], str)
-        and bool(agent_tools_invocation_argv[0])
-        and agent_tools_invocation_argv[1:] == ["agent", "call", "<method>"]
+        and agent_tools_invocation_argv == expected_agent_tools_invocation_argv
     )
     agent_tools_envelope_ok = (
         agent_tools["exitCode"] == 0
@@ -203,6 +201,7 @@ def verify_command_surface(
         "agentToolsType": agent_tools_type,
         "agentToolsToolCount": len(agent_tools_specs) if isinstance(agent_tools_specs, list) else None,
         "agentToolsInvocationArgv": agent_tools_invocation_argv,
+        "agentToolsInvocationArgvExpected": expected_agent_tools_invocation_argv,
         "agentToolsInvocationArgvOk": agent_tools_invocation_argv_ok,
         "agentSetupAvailable": agent_setup_help["exitCode"] == 0,
         "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
