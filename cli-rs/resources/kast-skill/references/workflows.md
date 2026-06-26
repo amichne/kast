@@ -20,6 +20,11 @@ when that repository-local artifact is required for the task. The script emits
 JSON with command-surface evidence, readiness, paths, manifest-backed
 resource state, catalog hash comparisons, and recovery commands.
 
+Execute recovery commands exactly as emitted. When the verifier is run with
+`--kast-bin` or another absolute executable, recovery strings preserve the
+selected executable token; the owner table below names the state owner, not a
+command to rewrite back to bare `kast`.
+
 If the verifier reports stale state, use the one owner for that state:
 
 | Symptom | Owner |

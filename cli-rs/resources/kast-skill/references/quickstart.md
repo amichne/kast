@@ -180,5 +180,6 @@ kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json
 - For large result sets, narrow the query before post-processing.
 - If `kast agent` is unavailable, report a stale binary/skill installation.
 - If install, config, active binary, or package state is unclear, run
-  `scripts/verify-kast-state.py` and follow its recovery commands.
+  `scripts/verify-kast-state.py` and follow its recovery commands exactly; they
+  preserve the selected executable token when `--kast-bin` is used.
 - Never pivot to `grep` or `rg` for Kotlin identity.

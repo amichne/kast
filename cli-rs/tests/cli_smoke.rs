@@ -4792,6 +4792,9 @@ fn packaged_skill_targets_rust_kast_only() {
     let quickstart =
         std::fs::read_to_string(root.join("resources/kast-skill/references/quickstart.md"))
             .expect("packaged skill quickstart");
+    let workflows =
+        std::fs::read_to_string(root.join("resources/kast-skill/references/workflows.md"))
+            .expect("packaged skill workflows");
     let routing_reference = std::fs::read_to_string(
         root.join("resources/kast-skill/references/routing-improvement.md"),
     )
@@ -4847,6 +4850,10 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("kast inspect demo"));
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));
     assert!(quickstart.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
+    assert!(quickstart.contains("follow its recovery commands exactly"));
+    assert!(quickstart.contains("preserve the selected executable token"));
+    assert!(workflows.contains("Execute recovery commands exactly as emitted"));
+    assert!(workflows.contains("selected executable token"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(instruction_cli.contains("kast agent tools"));
     assert!(instruction_cli.contains("kast agent workflow --help"));
