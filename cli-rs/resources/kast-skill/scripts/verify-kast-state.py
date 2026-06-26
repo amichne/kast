@@ -60,6 +60,20 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--workspace-root", type=Path, default=Path.cwd())
     parser.add_argument("--skill-root", type=Path)
+    parser.add_argument(
+        "--skill-target-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional skill target directory passed to `kast agent setup skill --target-dir`.",
+    )
+    parser.add_argument(
+        "--instructions-target-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional instructions target directory passed to `kast agent setup instructions --target-dir`.",
+    )
     parser.add_argument("--kast-bin", type=Path)
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--require-gradle-project", action="store_true")
@@ -519,13 +533,28 @@ def verify_copilot(
         )
 
 
-def resource_targets(workspace_root: Path, kind: str) -> list[Path]:
-    return [
+def resource_target_from_target_dir(target_dir: Path) -> Path:
+    if target_dir.name == "kast":
+        return target_dir
+    return target_dir / "kast"
+
+
+def resource_targets(
+    workspace_root: Path,
+    kind: str,
+    target_dirs: list[Path] | None = None,
+) -> list[Path]:
+    targets = [
         workspace_root / ".agents" / kind / "kast",
         workspace_root / ".codex" / kind / "kast",
         workspace_root / ".github" / kind / "kast",
         workspace_root / ".claude" / kind / "kast",
     ]
+    for target_dir in target_dirs or []:
+        target = resource_target_from_target_dir(target_dir)
+        if target not in targets:
+            targets.append(target)
+    return targets
 
 
 def resource_recovery_command(
@@ -533,10 +562,13 @@ def resource_recovery_command(
     workspace_root: Path,
     kind: str,
     stale_targets: list[dict[str, Any]],
+    target_dirs: list[Path] | None = None,
 ) -> str:
     harness = "skill" if kind == "skills" else "instructions"
     if stale_targets:
         target_dir = Path(stale_targets[0]["path"]).parent
+    elif target_dirs:
+        target_dir = target_dirs[0]
     else:
         target_dir = resource_targets(workspace_root, kind)[0].parent
     return setup_recovery_command(kast_executable, harness, target_dir)
@@ -552,10 +584,11 @@ def verify_resource_install(
     content_files: list[str] | None = None,
     ready_json: dict[str, Any] | None = None,
     kast_executable: str | None = None,
+    target_dirs: list[Path] | None = None,
 ) -> None:
     targets = []
     manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
-    for target in resource_targets(workspace_root, kind):
+    for target in resource_targets(workspace_root, kind, target_dirs):
         resource = resource_record_for_target(ready_json, manifest_kind, target)
         output_mismatches = manifest_output_mismatches(resource)
         retired_marker_exists = (target / ".kast-version").exists()
@@ -592,7 +625,13 @@ def verify_resource_install(
         or target["contentMismatches"]
     ]
     if required and (not installed or stale):
-        recovery = resource_recovery_command(kast_executable, workspace_root, kind, stale)
+        recovery = resource_recovery_command(
+            kast_executable,
+            workspace_root,
+            kind,
+            stale,
+            target_dirs,
+        )
         add_issue(
             result,
             f"{kind.upper()}_STALE",
@@ -600,7 +639,13 @@ def verify_resource_install(
             recovery,
         )
     elif stale:
-        recovery = resource_recovery_command(kast_executable, workspace_root, kind, stale)
+        recovery = resource_recovery_command(
+            kast_executable,
+            workspace_root,
+            kind,
+            stale,
+            target_dirs,
+        )
         add_warning(
             result,
             f"{kind.upper()}_STALE",
@@ -614,6 +659,10 @@ def main() -> int:
     workspace_root = normalize(args.workspace_root)
     script_root = Path(__file__).resolve().parents[1]
     skill_root = normalize(args.skill_root) if args.skill_root else script_root
+    skill_target_dirs = [normalize(target_dir) for target_dir in args.skill_target_dir]
+    instructions_target_dirs = [
+        normalize(target_dir) for target_dir in args.instructions_target_dir
+    ]
     source_catalog = skill_root / "references" / "commands.json"
 
     which_kast = shutil.which("kast")
@@ -681,6 +730,7 @@ def main() -> int:
         ],
         ready_json,
         kast_bin,
+        skill_target_dirs,
     )
     verify_resource_install(
         result,
@@ -690,6 +740,7 @@ def main() -> int:
         args.require_instructions,
         ready_json=ready_json,
         kast_executable=kast_bin,
+        target_dirs=instructions_target_dirs,
     )
 
     result["ok"] = not result["issues"]

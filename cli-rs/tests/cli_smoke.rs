@@ -3356,6 +3356,59 @@ exit 64
             .any(|command| command == &expected_instruction_recovery),
         "{instructions_stdout:#}"
     );
+
+    let explicit_skill_target = workspace.join("host-agent/skills");
+    let verify_explicit_skill = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--kast-bin")
+        .arg(&fake_bin)
+        .arg("--require-skill")
+        .arg("--skill-target-dir")
+        .arg(&explicit_skill_target)
+        .output()
+        .expect("run verifier for explicit skill target");
+    assert!(
+        !verify_explicit_skill.status.success(),
+        "verifier should report missing explicit skill target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify_explicit_skill.stdout),
+        String::from_utf8_lossy(&verify_explicit_skill.stderr)
+    );
+    let explicit_skill_stdout: serde_json::Value =
+        serde_json::from_slice(&verify_explicit_skill.stdout).expect("verifier json");
+    let expected_explicit_skill_target_dir = Path::new(
+        explicit_skill_stdout["checks"]["skills"]["targets"]
+            .as_array()
+            .expect("skill targets")
+            .iter()
+            .find(|target| {
+                target["path"]
+                    .as_str()
+                    .expect("target path")
+                    .ends_with("host-agent/skills/kast")
+            })
+            .expect("explicit skill target")["path"]
+            .as_str()
+            .expect("explicit skill target path"),
+    )
+    .parent()
+    .expect("explicit skill target parent");
+    let expected_explicit_skill_recovery = format!(
+        "{} agent setup skill --target-dir {} --force",
+        expected_binary,
+        expected_explicit_skill_target_dir.display()
+    );
+    let explicit_skill_issue = explicit_skill_stdout["issues"]
+        .as_array()
+        .expect("issues")
+        .iter()
+        .find(|issue| issue["code"] == "SKILLS_STALE")
+        .unwrap_or_else(|| panic!("missing SKILLS_STALE issue: {explicit_skill_stdout:#}"));
+    assert_eq!(
+        explicit_skill_issue["recovery"], expected_explicit_skill_recovery,
+        "{explicit_skill_stdout:#}"
+    );
 }
 
 #[test]
@@ -4045,6 +4098,162 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
     );
     assert_eq!(
         codex_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
+}
+
+#[test]
+fn packaged_verifier_accepts_explicit_resource_target_dirs() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let skill_target_dir = workspace.join("host-agent/skills");
+    let instructions_target_dir = workspace.join("host-agent/instructions");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&workspace)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+    let repair = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["ready", "--fix"])
+        .output()
+        .expect("ready repair");
+    assert!(
+        repair.status.success(),
+        "ready --fix should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+
+    let skill = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            skill_target_dir.to_str().expect("skill target"),
+            "--force",
+        ])
+        .output()
+        .expect("install explicit skill");
+    assert!(
+        skill.status.success(),
+        "explicit skill target should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&skill.stdout),
+        String::from_utf8_lossy(&skill.stderr)
+    );
+    let instructions = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "instructions",
+            "--target-dir",
+            instructions_target_dir
+                .to_str()
+                .expect("instructions target"),
+            "--force",
+        ])
+        .output()
+        .expect("install explicit instructions");
+    assert!(
+        instructions.status.success(),
+        "explicit instructions target should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&instructions.stdout),
+        String::from_utf8_lossy(&instructions.stderr)
+    );
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill"))
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .arg("--require-gradle-project")
+        .arg("--require-skill")
+        .arg("--require-instructions")
+        .arg("--skill-target-dir")
+        .arg(&skill_target_dir)
+        .arg("--instructions-target-dir")
+        .arg(&instructions_target_dir)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run verifier");
+    assert!(
+        verify.status.success(),
+        "verifier should accept explicit manifest-backed resource targets: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let verify_json: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("verifier json");
+    let skill_target = verify_json["checks"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets")
+        .iter()
+        .find(|target| {
+            target["path"]
+                .as_str()
+                .expect("target path")
+                .ends_with("host-agent/skills/kast")
+        })
+        .expect("explicit skill target");
+    assert!(skill_target["exists"].as_bool().expect("exists"));
+    assert!(
+        skill_target["manifestResource"].is_object(),
+        "{skill_target:#}"
+    );
+    assert_eq!(
+        skill_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
+    let instructions_target = verify_json["checks"]["instructions"]["targets"]
+        .as_array()
+        .expect("instruction targets")
+        .iter()
+        .find(|target| {
+            target["path"]
+                .as_str()
+                .expect("target path")
+                .ends_with("host-agent/instructions/kast")
+        })
+        .expect("explicit instruction target");
+    assert!(instructions_target["exists"].as_bool().expect("exists"));
+    assert!(
+        instructions_target["manifestResource"].is_object(),
+        "{instructions_target:#}"
+    );
+    assert_eq!(
+        instructions_target["manifestOutputMismatches"]
             .as_array()
             .expect("manifest output mismatches")
             .len(),
@@ -5144,8 +5353,12 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
     assert!(quickstart.contains("follow its recovery commands exactly"));
     assert!(quickstart.contains("preserve the selected executable token"));
+    assert!(quickstart.contains("--skill-target-dir"));
+    assert!(quickstart.contains("--instructions-target-dir"));
     assert!(workflows.contains("Execute recovery commands exactly as emitted"));
     assert!(workflows.contains("selected executable token"));
+    assert!(workflows.contains("--skill-target-dir"));
+    assert!(workflows.contains("--instructions-target-dir"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(instruction_cli.contains("kast agent tools"));
     assert!(instruction_cli.contains("kast agent workflow --help"));

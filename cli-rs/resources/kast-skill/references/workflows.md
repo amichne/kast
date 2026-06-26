@@ -19,6 +19,10 @@ Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
 when that repository-local artifact is required for the task. The script emits
 JSON with command-surface evidence, readiness, paths, manifest-backed
 resource state, catalog hash comparisons, and recovery commands.
+When a skill or instruction package was installed into a nonstandard host root,
+pass the same setup target root with `--skill-target-dir` or
+`--instructions-target-dir` so manifest checks and recovery commands use that
+host-owned target instead of only the standard repository roots.
 
 Execute recovery commands exactly as emitted. When the verifier is run with
 `--kast-bin` or another absolute executable, recovery strings preserve the

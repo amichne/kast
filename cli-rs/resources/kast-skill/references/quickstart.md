@@ -21,6 +21,11 @@ ready:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
+If the skill or Markdown instructions were installed into a host-specific root,
+pass the same setup target root to the verifier, for example
+`--skill-target-dir "$PWD/.codex/skills"` or
+`--instructions-target-dir "$PWD/.agents/instructions"`.
+
 If `kast` is missing, `kast agent tools` fails, or `kast agent workflow --help`
 is unavailable in an installed skill session, stop and report that the skill
 and active binary are incompatible. Upgrade or reinstall Kast; do not switch to
