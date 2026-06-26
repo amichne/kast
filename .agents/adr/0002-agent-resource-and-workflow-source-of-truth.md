@@ -32,7 +32,7 @@ commands as the current source-of-truth model.
 
 | Surface | Source of truth | Installed or generated output | Verification |
 |---------|-----------------|-------------------------------|--------------|
-| Copilot package | `cli-rs/resources/plugin/` and `primitive-manifest.json` | `.github/lsp.json`, `.github/extensions/kast/**` | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh` |
+| Copilot package | `cli-rs/resources/plugin/` and `primitive-manifest.json` | `.github/lsp.json`, `.github/instructions/Kotlin.instructions.md`, `.github/extensions/kast/**` | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh` |
 | RPC and tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | request schemas, samples, LSP custom route metadata, Copilot shared catalog | `cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
 | Packaged skill | `cli-rs/resources/kast-skill/` | installed `kast` skill directories | `python3 cli-rs/resources/kast-skill/scripts/verify-kast-state.py`, CLI smoke tests |
 | Installable instructions | `cli-rs/resources/kast-instructions/` | installed instruction directories | `kast install instructions --force`, docs content contract |

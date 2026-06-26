@@ -67,10 +67,14 @@ runtime guidance, and catalog-backed tools at startup.
     The command writes managed files for the running CLI version:
 
     - `.github/lsp.json`
+    - `.github/instructions/Kotlin.instructions.md`
     - `.github/extensions/kast/extension.mjs`
     - `.github/extensions/kast/_shared/kast-tools.mjs`
     - `.github/extensions/kast/_shared/kast-trace.mjs`
     - `.github/extensions/kast/_shared/commands.json`
+
+    The instruction file is installed directly under `.github/instructions/`
+    because Copilot does not recursively traverse instruction subdirectories.
 
     The global `$HOME/.local/share/kast/install.json` manifest records the
     repository resource version, source bundle checksum, output checksums, and

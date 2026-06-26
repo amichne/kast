@@ -5,11 +5,19 @@
 - `cli-rs/resources/plugin/` is the primary Copilot package source for this
   repo. It owns the `kast-kotlin` LSP configuration and the SDK extension that
   injects runtime tooling guidance while exposing catalog-backed `kast_*`
-  tools. Static instruction files, hooks, custom agents, and standalone package
-  skills are not shipped by the package. Generated install copies under
-  `.github` are local outputs, not checked-in sources of truth.
-- Do not duplicate package tooling preferences in static Copilot instruction
-  files. Keep that operational guidance in the extension runtime hook.
+  tools. It also owns the distributed top-level
+  `.github/instructions/Kotlin.instructions.md` file; Copilot does not
+  recursively traverse instruction subdirectories. Hooks, custom agents, and
+  standalone package skills are not shipped by the package. Generated install copies
+  under `.github` are local outputs, not checked-in sources of truth.
+- When the Copilot package is installed, prefer the extension-provided
+  `kast_*` tools and `kast-kotlin` LSP for Kotlin symbol identity, references,
+  callers, hierarchy, diagnostics, and prepared edits. Use shell commands only
+  for validation, lifecycle operations, or a `kast agent` fallback when the
+  extension and LSP cannot cover the operation.
+- Do not duplicate the full Kast skill or generated command catalog in static
+  Copilot instruction files. Keep detailed runtime tooling guidance in the
+  extension runtime hook and catalog-backed package resources.
 - Read `AGENTS.md` at the repo root first, then any deeper `AGENTS.md` in the module you touch. The narrower file
   overrides the root guide.
 

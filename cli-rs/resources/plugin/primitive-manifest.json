@@ -11,6 +11,12 @@
     },
     {
       "type": "PACKAGE_FILE",
+      "source": "instructions/Kotlin.instructions.md",
+      "target": "instructions/Kotlin.instructions.md",
+      "executable": false
+    },
+    {
+      "type": "PACKAGE_FILE",
       "source": "extensions/kast/extension.mjs",
       "target": "extensions/kast/extension.mjs",
       "executable": true

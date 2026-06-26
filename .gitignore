@@ -147,6 +147,8 @@ kast-copilot-plugin/
 .github/.kast-copilot-version
 .github/hooks/
 .github/agents/
+.github/instructions/Kotlin.instructions.md
+.github/instructions/kotlin.instructions.md
 .github/instructions/kast-kotlin.md
 .github/instructions/kast-kotlin.instructions.md
 .github/extensions/kast/

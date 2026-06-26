@@ -71,3 +71,21 @@ For Kotlin symbol identity, references, hierarchy, and safe edits, use Kast
 semantic tooling when available instead of text search. Treat `.github/`,
 `.agents/`, and `site/` package or site material as generated unless a scoped
 guide says otherwise; edit the source tree and regenerate.
+
+## Installed Tooling Preference
+
+Codex reads this root `AGENTS.md` plus narrower `AGENTS.md` files. For Codex
+or any host that loads the Kast skill, use the `kast` skill first for Gradle
+project discovery, Kotlin symbol identity, references, callers, hierarchy,
+diagnostics, compiler-backed edits, and Kast install/package verification.
+
+If the skill or active binary is missing the expected `kast agent` surface,
+report stale Kast installation state and refresh or reinstall it. Do not replace
+missing semantic tooling with Kotlin text search, manual parsing, or generated
+command guesses.
+
+For GitHub Copilot, defer to `.github/copilot-instructions.md`,
+`.github/instructions/Kotlin.instructions.md`, the installed `.github/lsp.json`,
+and `.github/extensions/kast/**`; that package owns the Copilot instructions,
+extension, and LSP behavior. For hosts that can only load Markdown instructions,
+use the `kast install instructions` output as lightweight fallback guidance.

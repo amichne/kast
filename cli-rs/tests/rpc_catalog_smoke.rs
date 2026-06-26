@@ -469,14 +469,21 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
             "extensions/kast/_shared/kast-trace.mjs",
             "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
+            "instructions/Kotlin.instructions.md",
             "lsp.json",
         ])
+    );
+    assert!(
+        plugin_root
+            .join("instructions/Kotlin.instructions.md")
+            .is_file(),
+        "plugin source must distribute top-level GitHub Kotlin instructions"
     );
     assert!(
         !plugin_root
             .join("instructions/kast-kotlin.instructions.md")
             .exists(),
-        "plugin source must not expose static Kotlin instructions"
+        "plugin source must not expose the retired static Kotlin instruction filename"
     );
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
@@ -566,6 +573,15 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .expect("plugin lsp");
     let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
     assert_eq!(installed, source);
+
+    let source_instructions = std::fs::read_to_string(
+        manifest_dir.join("resources/plugin/instructions/Kotlin.instructions.md"),
+    )
+    .expect("plugin Kotlin instructions");
+    let installed_instructions =
+        std::fs::read_to_string(target.join("instructions/Kotlin.instructions.md"))
+            .expect("installed Kotlin instructions");
+    assert_eq!(installed_instructions, source_instructions);
 
     assert!(
         !target

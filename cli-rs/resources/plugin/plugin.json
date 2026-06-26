@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "kast-copilot-lsp",
   "version": "0.1.0",
-  "description": "Kast Copilot package for compiler-backed Kotlin work through LSP, runtime guidance, and catalog-backed tools.",
+  "description": "Kast Copilot package for compiler-backed Kotlin work through GitHub instructions, LSP, runtime guidance, and catalog-backed tools.",
   "requires": {
     "kast": ">=0.9.3",
     "copilotCli": ">=1.0.60"

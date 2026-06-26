@@ -19,17 +19,25 @@ Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
 
-## Generated Copilot package outputs
+## Generated package and instruction outputs
 
-These files are repository-local install outputs from `kast install copilot`:
+These files are repository-local install outputs from the active Kast resource
+installers:
 
-- `.github/lsp.json`
-- `.github/extensions/kast/**`
+- `.github/lsp.json` from `kast install copilot`
+- `.github/instructions/Kotlin.instructions.md` from `kast install copilot`
+- `.github/extensions/kast/**` from `kast install copilot`
+- ignored `.github/instructions/kast/**` fallback instruction copies from
+  `kast install instructions`
 
 Do not make these the source of truth for package behavior. Edit
 `cli-rs/resources/plugin/` first, then reinstall or regenerate the package
-outputs. The installed command catalog under
-`.github/extensions/kast/_shared/commands.json` comes from
+outputs. Keep Copilot package instructions as top-level
+`.github/instructions/*.instructions.md` files because Copilot does not
+recursively traverse instruction subdirectories. Edit
+`cli-rs/resources/kast-instructions/` first for fallback Markdown instruction
+wording, then reinstall instructions from the active binary. The installed
+command catalog under `.github/extensions/kast/_shared/commands.json` comes from
 `cli-rs/resources/kast-skill/references/commands.json`. The global
 `install.json` records installed resource versions and checksums. The durable
 agent-only contract is

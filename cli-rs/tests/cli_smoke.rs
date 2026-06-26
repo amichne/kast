@@ -527,6 +527,11 @@ fn smoke_core_cli_commands() {
         .expect("install copilot plugin");
     assert!(copilot.status.success());
     assert!(github_dir.join("lsp.json").is_file());
+    assert!(
+        github_dir
+            .join("instructions/Kotlin.instructions.md")
+            .is_file()
+    );
     assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
     assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
     assert!(!github_dir.join(".kast-copilot-version").exists());
@@ -2489,6 +2494,11 @@ fn install_resource_gateways_support_force_and_current_versions() {
     );
     assert!(github_dir.join("lsp.json").is_file());
     assert!(
+        github_dir
+            .join("instructions/Kotlin.instructions.md")
+            .is_file()
+    );
+    assert!(
         !github_dir
             .join("instructions/kast-kotlin.instructions.md")
             .exists()
@@ -2513,6 +2523,11 @@ fn install_resource_gateways_support_force_and_current_versions() {
         !github_dir
             .join("extensions/kast/_shared/kast-agents.mjs")
             .exists()
+    );
+    assert!(
+        github_dir
+            .join("instructions/Kotlin.instructions.md")
+            .is_file()
     );
     assert!(
         !github_dir
@@ -2744,6 +2759,11 @@ fn copilot_package_install_preserves_existing_github_content() {
     );
     assert!(github_dir.join("lsp.json").is_file());
     assert!(
+        github_dir
+            .join("instructions/Kotlin.instructions.md")
+            .is_file()
+    );
+    assert!(
         !github_dir
             .join("instructions/kast-kotlin.instructions.md")
             .exists()
@@ -2851,6 +2871,7 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
     assert!(exclude.contains("# >>> kast copilot package >>>"));
     assert!(!exclude.contains(".github/.kast-copilot-version"));
     assert!(exclude.contains(".github/lsp.json"));
+    assert!(exclude.contains(".github/instructions/Kotlin.instructions.md"));
     assert!(exclude.contains("# <<< kast copilot package <<<"));
 
     let rerun = kast(&home, &config_home)
@@ -2927,6 +2948,7 @@ fn copilot_package_install_can_skip_git_info_exclude() {
         std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
     assert!(!exclude.contains("# >>> kast copilot package >>>"));
     assert!(!exclude.contains(".github/lsp.json"));
+    assert!(!exclude.contains(".github/instructions/Kotlin.instructions.md"));
 }
 
 #[test]
@@ -3356,6 +3378,11 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(
         root.join("resources/plugin/lsp.json").is_file(),
         "packaged Copilot LSP plugin source must live under cli-rs/resources/plugin"
+    );
+    assert!(
+        root.join("resources/plugin/instructions/Kotlin.instructions.md")
+            .is_file(),
+        "packaged Copilot instructions must live under cli-rs/resources/plugin"
     );
 }
 

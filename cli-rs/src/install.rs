@@ -39,6 +39,7 @@ const DEFAULT_KAST_TAP: &str = "amichne/kast";
 const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
 const RESOURCE_MARKER: &str = ".kast-version";
 const RETIRED_COPILOT_PACKAGE_OUTPUTS: &[&str] = &[
+    "instructions/kotlin.instructions.md",
     "instructions/kast-kotlin.instructions.md",
     "agents/kast-reader.agent.md",
     "agents/kast-writer.agent.md",

@@ -46,7 +46,7 @@ assert(manifest.name === "kast-copilot-lsp", "unexpected plugin name");
 
 const entrypoints = manifest.entrypoints;
 assert(entrypoints.lsp === "lsp.json", "unexpected LSP entrypoint");
-assert(!("instructions" in entrypoints), "static instruction entrypoints must not be exposed");
+assert(!("instructions" in entrypoints), "GitHub instructions are copied as package files");
 assert(!("agents" in entrypoints), "custom agent entrypoints must not be exposed");
 assertSameArray(
   entrypoints.extensions,
@@ -65,6 +65,7 @@ assert(
 const targets = new Set(primitive.outputs.map((output) => output.target));
 const expectedTargets = new Set([
   "lsp.json",
+  "instructions/Kotlin.instructions.md",
   "extensions/kast/extension.mjs",
   "extensions/kast/_shared/kast-trace.mjs",
   "extensions/kast/_shared/kast-tools.mjs",
@@ -75,6 +76,9 @@ assert(
     [...expectedTargets].every((target) => targets.has(target)),
   "primitive manifest outputs mismatch",
 );
+
+const instructions = readText("instructions/Kotlin.instructions.md");
+assert(instructions.includes('applyTo: "**/kotlin/**/*.kt"'), "GitHub instructions must keep the Kotlin applyTo scope");
 
 const lsp = readJson("lsp.json");
 const server = lsp.lspServers["kotlin"];
@@ -152,6 +156,7 @@ NODE
 "${plugin_root}/scripts/install-local.sh" --target "$tmp_dir" --force >"${tmp_dir}/install.json"
 
 test -f "$tmp_dir/.github/lsp.json"
+test -f "$tmp_dir/.github/instructions/Kotlin.instructions.md"
 test -f "$tmp_dir/.github/extensions/kast/extension.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
@@ -176,6 +181,7 @@ if (!/^[a-f0-9]{64}$/.test(resource.sourceBundleSha256)) {
 const outputs = new Set(resource.outputPaths.map((outputPath) => realpathSync(outputPath)));
 for (const relative of [
   ".github/lsp.json",
+  ".github/instructions/Kotlin.instructions.md",
   ".github/extensions/kast/extension.mjs",
   ".github/extensions/kast/_shared/kast-tools.mjs",
   ".github/extensions/kast/_shared/kast-trace.mjs",
@@ -192,16 +198,34 @@ import { join } from "node:path";
 
 const repo = process.argv[2];
 const target = process.argv[3];
-const installed = readFileSync(
+const installedCatalog = readFileSync(
   join(target, ".github/extensions/kast/_shared/commands.json"),
   "utf8",
 );
-const source = readFileSync(
+const sourceCatalog = readFileSync(
   join(repo, "cli-rs/resources/kast-skill/references/commands.json"),
   "utf8",
 );
-if (installed !== source) {
+if (installedCatalog !== sourceCatalog) {
   throw new Error("installed commands.json must match the checked-in RPC catalog");
+}
+const installedInstructions = readFileSync(
+  join(target, ".github/instructions/Kotlin.instructions.md"),
+  "utf8",
+);
+const sourceInstructions = readFileSync(
+  join(repo, "cli-rs/resources/plugin/instructions/Kotlin.instructions.md"),
+  "utf8",
+);
+if (installedInstructions !== sourceInstructions) {
+  throw new Error("installed Kotlin.instructions.md must match the package source");
+}
+const repoInstructions = readFileSync(
+  join(repo, ".github/instructions/Kotlin.instructions.md"),
+  "utf8",
+);
+if (repoInstructions !== sourceInstructions) {
+  throw new Error("repo-local Kotlin.instructions.md must match the package source");
 }
 NODE
 
