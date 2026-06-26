@@ -131,29 +131,44 @@ if (toolsModule.isKastAgentToolsEnvelope({
 })) {
   throw new Error("source plugin must reject malformed agent tools envelopes");
 }
-if (toolsModule.isKastAgentToolsEnvelope({
-  ok: true,
-  method: "agent/tools",
-  result: { type: "KAST_AGENT_TOOLS", tools: [] },
-})) {
+const sourceValidInvocation = {
+  command: "kast agent call",
+  argv: ["kast", "agent", "call", "<method>"],
+  methodArgument: "<method>",
+  paramsFileFlag: "--params-file",
+  workspaceRootFlag: "--workspace-root",
+};
+function sourceEnvelopeWith(result) {
+  return {
+    ok: true,
+    method: "agent/tools",
+    result: {
+      type: "KAST_AGENT_TOOLS",
+      schemaVersion: 3,
+      catalogSha256: "0".repeat(64),
+      toolCount: 0,
+      invocation: sourceValidInvocation,
+      tools: [],
+      ...result,
+    },
+  };
+}
+if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ invocation: undefined }))) {
   throw new Error("source plugin must reject missing agent tool invocation");
 }
-if (toolsModule.isKastAgentToolsEnvelope({
-  ok: true,
-  method: "agent/tools",
-  result: {
-    type: "KAST_AGENT_TOOLS",
-    invocation: {
-      command: "kast agent call",
-      argv: ["kast", "rpc", "<method>"],
-      methodArgument: "<method>",
-      paramsFileFlag: "--params-file",
-      workspaceRootFlag: "--workspace-root",
-    },
-    tools: [],
-  },
-})) {
+if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({
+  invocation: { ...sourceValidInvocation, argv: ["kast", "rpc", "<method>"] },
+}))) {
   throw new Error("source plugin must reject malformed agent tool invocation");
+}
+if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ schemaVersion: 2 }))) {
+  throw new Error("source plugin must reject stale agent tool schema versions");
+}
+if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ catalogSha256: "not-a-checksum" }))) {
+  throw new Error("source plugin must reject malformed agent tool catalog checksums");
+}
+if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ toolCount: 1 }))) {
+  throw new Error("source plugin must reject mismatched agent tool counts");
 }
 const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
 const tools = toolsModule.makeKastTools(specs, (method, args) =>
@@ -250,29 +265,44 @@ if (toolsModule.isKastAgentToolsEnvelope({
 })) {
   throw new Error("installed plugin must reject malformed agent tools envelopes");
 }
-if (toolsModule.isKastAgentToolsEnvelope({
-  ok: true,
-  method: "agent/tools",
-  result: { type: "KAST_AGENT_TOOLS", tools: [] },
-})) {
+const installedValidInvocation = {
+  command: "kast agent call",
+  argv: ["kast", "agent", "call", "<method>"],
+  methodArgument: "<method>",
+  paramsFileFlag: "--params-file",
+  workspaceRootFlag: "--workspace-root",
+};
+function installedEnvelopeWith(result) {
+  return {
+    ok: true,
+    method: "agent/tools",
+    result: {
+      type: "KAST_AGENT_TOOLS",
+      schemaVersion: 3,
+      catalogSha256: "0".repeat(64),
+      toolCount: 0,
+      invocation: installedValidInvocation,
+      tools: [],
+      ...result,
+    },
+  };
+}
+if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ invocation: undefined }))) {
   throw new Error("installed plugin must reject missing agent tool invocation");
 }
-if (toolsModule.isKastAgentToolsEnvelope({
-  ok: true,
-  method: "agent/tools",
-  result: {
-    type: "KAST_AGENT_TOOLS",
-    invocation: {
-      command: "kast agent call",
-      argv: ["kast", "rpc", "<method>"],
-      methodArgument: "<method>",
-      paramsFileFlag: "--params-file",
-      workspaceRootFlag: "--workspace-root",
-    },
-    tools: [],
-  },
-})) {
+if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({
+  invocation: { ...installedValidInvocation, argv: ["kast", "rpc", "<method>"] },
+}))) {
   throw new Error("installed plugin must reject malformed agent tool invocation");
+}
+if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ schemaVersion: 2 }))) {
+  throw new Error("installed plugin must reject stale agent tool schema versions");
+}
+if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ catalogSha256: "not-a-checksum" }))) {
+  throw new Error("installed plugin must reject malformed agent tool catalog checksums");
+}
+if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ toolCount: 1 }))) {
+  throw new Error("installed plugin must reject mismatched agent tool counts");
 }
 const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
 const tools = toolsModule.makeKastTools(specs, (method, args) =>

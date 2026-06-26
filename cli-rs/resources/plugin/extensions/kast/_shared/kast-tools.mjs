@@ -1,3 +1,5 @@
+const CATALOG_SHA256_PATTERN = /^[a-f0-9]{64}$/;
+
 function collectNamedSchemas(schema, name, out = []) {
   if (!schema || typeof schema !== "object") return out;
   if (schema.properties?.[name]) out.push(schema.properties[name]);
@@ -63,10 +65,21 @@ function isKastAgentToolInvocation(value) {
     value.workspaceRootFlag === "--workspace-root";
 }
 
+function isKastAgentToolsMetadata(value) {
+  return Number.isInteger(value?.schemaVersion) &&
+    value.schemaVersion >= 3 &&
+    typeof value.catalogSha256 === "string" &&
+    CATALOG_SHA256_PATTERN.test(value.catalogSha256) &&
+    Array.isArray(value.tools) &&
+    Number.isInteger(value.toolCount) &&
+    value.toolCount === value.tools.length;
+}
+
 export function isKastAgentToolsEnvelope(value) {
   return value?.ok === true &&
     value?.method === "agent/tools" &&
     value?.result?.type === "KAST_AGENT_TOOLS" &&
+    isKastAgentToolsMetadata(value.result) &&
     isKastAgentToolInvocation(value.result.invocation) &&
     Array.isArray(value.result.tools);
 }
