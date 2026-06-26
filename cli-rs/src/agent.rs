@@ -8,11 +8,12 @@ use crate::cli::{
     AgentRawSemanticInsertionPointArgs, AgentRawTypeHierarchyArgs, AgentRuntimeArgs,
     AgentScaffoldArgs, AgentSymbolCallersArgs, AgentSymbolReferencesArgs, AgentSymbolResolveArgs,
     AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
-    AgentWorkflowSymbolArgs, AgentWorkflowWriteMode, AgentWorkflowWriteValidateArgs,
-    AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs, AgentWorkspaceSymbolArgs, RpcArgs,
+    AgentWorkflowPackageVerifyArgs, AgentWorkflowSymbolArgs, AgentWorkflowWriteMode,
+    AgentWorkflowWriteValidateArgs, AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs,
+    AgentWorkspaceSymbolArgs, RpcArgs,
 };
 use crate::error::{CliError, Result};
-use crate::{catalog_schema, manifest, output, runtime, self_mgmt, validate};
+use crate::{catalog_schema, config, manifest, output, runtime, self_mgmt, validate};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -97,6 +98,106 @@ struct AgentWorkflowStep {
     method: &'static str,
     params: Value,
     mutates: bool,
+    action: AgentWorkflowStepAction,
+}
+
+#[derive(Debug, Clone)]
+enum AgentWorkflowStepAction {
+    Catalog,
+    PackageVerify(AgentPackageVerifyOptions),
+}
+
+#[derive(Debug, Clone)]
+struct AgentPackageVerifyOptions {
+    require_copilot: bool,
+    require_skill: bool,
+    require_instructions: bool,
+    skill_target_dirs: Vec<PathBuf>,
+    instructions_target_dirs: Vec<PathBuf>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPackageRequiredResources {
+    ok: bool,
+    workspace_root: String,
+    copilot_package: AgentPackageResourceGroup,
+    skills: AgentPackageResourceGroup,
+    instructions: AgentPackageResourceGroup,
+    issues: Vec<AgentPackageResourceIssue>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPackageResourceGroup {
+    required: bool,
+    mode: &'static str,
+    targets: Vec<AgentPackageResourceTarget>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPackageResourceTarget {
+    kind: self_mgmt::ManagedResourceKind,
+    target_path: String,
+    exists: bool,
+    current: bool,
+    version_matches_current: bool,
+    manifest_resource: Option<self_mgmt::ManagedRepoResource>,
+    output_issues: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPackageResourceIssue {
+    code: String,
+    message: String,
+    kind: self_mgmt::ManagedResourceKind,
+    target_paths: Vec<String>,
+}
+
+impl AgentWorkflowStep {
+    fn catalog(name: &'static str, method: &'static str, params: Value, mutates: bool) -> Self {
+        Self {
+            name,
+            method,
+            params,
+            mutates,
+            action: AgentWorkflowStepAction::Catalog,
+        }
+    }
+
+    fn package_verify(options: AgentPackageVerifyOptions) -> Self {
+        Self {
+            name: "ready",
+            method: "package/verify",
+            params: options.params(),
+            mutates: false,
+            action: AgentWorkflowStepAction::PackageVerify(options),
+        }
+    }
+}
+
+impl AgentPackageVerifyOptions {
+    fn from_args(args: &AgentWorkflowPackageVerifyArgs) -> Self {
+        Self {
+            require_copilot: args.require_copilot,
+            require_skill: args.require_skill,
+            require_instructions: args.require_instructions,
+            skill_target_dirs: args.skill_target_dir.clone(),
+            instructions_target_dirs: args.instructions_target_dir.clone(),
+        }
+    }
+
+    fn params(&self) -> Value {
+        json!({
+            "requireCopilot": self.require_copilot,
+            "requireSkill": self.require_skill,
+            "requireInstructions": self.require_instructions,
+            "skillTargetDirs": path_values(&self.skill_target_dirs),
+            "instructionsTargetDirs": path_values(&self.instructions_target_dirs),
+        })
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -463,50 +564,35 @@ fn workflow_steps(
             "verify".to_string(),
             args.common,
             vec![
-                AgentWorkflowStep {
-                    name: "health",
-                    method: "health",
-                    params: json!({}),
-                    mutates: false,
-                },
-                AgentWorkflowStep {
-                    name: "runtime-status",
-                    method: "runtime/status",
-                    params: json!({}),
-                    mutates: false,
-                },
-                AgentWorkflowStep {
-                    name: "capabilities",
-                    method: "capabilities",
-                    params: json!({}),
-                    mutates: false,
-                },
+                AgentWorkflowStep::catalog("health", "health", json!({}), false),
+                AgentWorkflowStep::catalog("runtime-status", "runtime/status", json!({}), false),
+                AgentWorkflowStep::catalog("capabilities", "capabilities", json!({}), false),
             ],
         )),
         AgentWorkflowCommand::Symbol(args) => symbol_workflow_steps(args),
         AgentWorkflowCommand::Impact(args) => Ok((
             "impact".to_string(),
             args.common,
-            vec![AgentWorkflowStep {
-                name: "impact",
-                method: "database/metrics",
-                params: json!({
+            vec![AgentWorkflowStep::catalog(
+                "impact",
+                "database/metrics",
+                json!({
                     "metric": "impact",
                     "symbol": args.symbol,
                     "depth": args.depth,
                     "limit": args.limit,
                 }),
-                mutates: false,
-            }],
+                false,
+            )],
         )),
         AgentWorkflowCommand::Diagnostics(args) => diagnostics_workflow_steps(args),
         AgentWorkflowCommand::RenamePlan(args) => Ok((
             "rename-plan".to_string(),
             args.common,
-            vec![AgentWorkflowStep {
-                name: "rename-plan",
-                method: "raw/rename",
-                params: json!({
+            vec![AgentWorkflowStep::catalog(
+                "rename-plan",
+                "raw/rename",
+                json!({
                     "position": {
                         "filePath": args.file_path,
                         "offset": args.offset,
@@ -514,20 +600,18 @@ fn workflow_steps(
                     "newName": args.new_name,
                     "dryRun": true,
                 }),
-                mutates: false,
-            }],
+                false,
+            )],
         )),
         AgentWorkflowCommand::WriteValidate(args) => write_validate_workflow_steps(args),
-        AgentWorkflowCommand::PackageVerify(args) => Ok((
-            "package-verify".to_string(),
-            args.common,
-            vec![AgentWorkflowStep {
-                name: "ready",
-                method: "package/verify",
-                params: json!({}),
-                mutates: false,
-            }],
-        )),
+        AgentWorkflowCommand::PackageVerify(args) => {
+            let options = AgentPackageVerifyOptions::from_args(&args);
+            Ok((
+                "package-verify".to_string(),
+                args.common,
+                vec![AgentWorkflowStep::package_verify(options)],
+            ))
+        }
     }
 }
 
@@ -535,10 +619,10 @@ fn symbol_workflow_steps(
     args: AgentWorkflowSymbolArgs,
 ) -> std::result::Result<(String, AgentWorkflowCommonArgs, Vec<AgentWorkflowStep>), AgentError> {
     let mut steps = vec![
-        AgentWorkflowStep {
-            name: "symbol-query",
-            method: "symbol/query",
-            params: json!({
+        AgentWorkflowStep::catalog(
+            "symbol-query",
+            "symbol/query",
+            json!({
                 "query": args.symbol,
                 "modes": ["exact", "lexical"],
                 "filters": {},
@@ -546,12 +630,12 @@ fn symbol_workflow_steps(
                 "includeEvidence": true,
                 "includeNextRequests": true,
             }),
-            mutates: false,
-        },
-        AgentWorkflowStep {
-            name: "symbol-resolve",
-            method: "symbol/resolve",
-            params: drop_nulls(json!({
+            false,
+        ),
+        AgentWorkflowStep::catalog(
+            "symbol-resolve",
+            "symbol/resolve",
+            drop_nulls(json!({
                 "symbol": args.symbol,
                 "kind": args.kind.map(|kind| kind.canonical()),
                 "fileHint": args.file_hint,
@@ -561,28 +645,28 @@ fn symbol_workflow_steps(
                 "surroundingLines": 3,
                 "includeSurroundingMembers": true,
             })),
-            mutates: false,
-        },
+            false,
+        ),
     ];
     if args.references {
-        steps.push(AgentWorkflowStep {
-            name: "symbol-references",
-            method: "symbol/references",
-            params: drop_nulls(json!({
+        steps.push(AgentWorkflowStep::catalog(
+            "symbol-references",
+            "symbol/references",
+            drop_nulls(json!({
                 "symbol": args.symbol,
                 "kind": args.kind.map(|kind| kind.canonical()),
                 "fileHint": args.file_hint,
                 "containingType": args.containing_type,
                 "includeDeclaration": args.include_declaration,
             })),
-            mutates: false,
-        });
+            false,
+        ));
     }
     if let Some(direction) = args.callers {
-        steps.push(AgentWorkflowStep {
-            name: "symbol-callers",
-            method: "symbol/callers",
-            params: drop_nulls(json!({
+        steps.push(AgentWorkflowStep::catalog(
+            "symbol-callers",
+            "symbol/callers",
+            drop_nulls(json!({
                 "symbol": args.symbol,
                 "kind": args.kind.map(|kind| kind.canonical()),
                 "fileHint": args.file_hint,
@@ -590,8 +674,8 @@ fn symbol_workflow_steps(
                 "direction": direction.canonical(),
                 "depth": args.caller_depth,
             })),
-            mutates: false,
-        });
+            false,
+        ));
     }
     Ok(("symbol".to_string(), args.common, steps))
 }
@@ -601,19 +685,19 @@ fn diagnostics_workflow_steps(
 ) -> std::result::Result<(String, AgentWorkflowCommonArgs, Vec<AgentWorkflowStep>), AgentError> {
     let mut steps = Vec::new();
     if !args.skip_refresh {
-        steps.push(AgentWorkflowStep {
-            name: "workspace-refresh",
-            method: "raw/workspace-refresh",
-            params: json!({ "filePaths": args.file_paths }),
-            mutates: false,
-        });
+        steps.push(AgentWorkflowStep::catalog(
+            "workspace-refresh",
+            "raw/workspace-refresh",
+            json!({ "filePaths": args.file_paths }),
+            false,
+        ));
     }
-    steps.push(AgentWorkflowStep {
-        name: "diagnostics",
-        method: "raw/diagnostics",
-        params: json!({ "filePaths": args.file_paths }),
-        mutates: false,
-    });
+    steps.push(AgentWorkflowStep::catalog(
+        "diagnostics",
+        "raw/diagnostics",
+        json!({ "filePaths": args.file_paths }),
+        false,
+    ));
     Ok(("diagnostics".to_string(), args.common, steps))
 }
 
@@ -686,12 +770,12 @@ fn write_validate_workflow_steps(
     Ok((
         "write-validate".to_string(),
         args.common,
-        vec![AgentWorkflowStep {
-            name: "write-and-validate",
-            method: "symbol/write-and-validate",
+        vec![AgentWorkflowStep::catalog(
+            "write-and-validate",
+            "symbol/write-and-validate",
             params,
-            mutates: true,
-        }],
+            true,
+        )],
     ))
 }
 
@@ -710,7 +794,7 @@ fn run_workflow(
     let mut step_summaries = Vec::new();
     let mut issues = Vec::new();
     for step in steps {
-        let summary = run_workflow_step(&out_dir, common, &step)?;
+        let summary = run_workflow_step(&out_dir, common, &workspace_root, &step)?;
         let step_ok = summary.exit_code == 0
             && summary
                 .summary
@@ -747,6 +831,7 @@ fn run_workflow(
 fn run_workflow_step(
     out_dir: &Path,
     common: &AgentWorkflowCommonArgs,
+    workspace_root: &Path,
     step: &AgentWorkflowStep,
 ) -> Result<AgentWorkflowStepSummary> {
     let step_dir = out_dir.join(step.name);
@@ -767,18 +852,21 @@ fn run_workflow_step(
                 "schemaVersion": SCHEMA_VERSION,
             }),
         )
-    } else if step.method == "package/verify" {
-        let result = self_mgmt::doctor(false, ReadyTarget::Agent)?;
-        let exit_code = if result.ok { 0 } else { 1 };
-        (exit_code, serde_json::to_value(result)?)
     } else {
-        let envelope = execute_request(AgentRequest {
-            method: step.method.to_string(),
-            request: json_rpc_request(step.method, step.params.clone()),
-            runtime: common.runtime.clone(),
-        });
-        let exit_code = if envelope.ok { 0 } else { 1 };
-        (exit_code, serde_json::to_value(envelope)?)
+        match &step.action {
+            AgentWorkflowStepAction::PackageVerify(options) => {
+                run_package_verify_step(workspace_root, options)?
+            }
+            AgentWorkflowStepAction::Catalog => {
+                let envelope = execute_request(AgentRequest {
+                    method: step.method.to_string(),
+                    request: json_rpc_request(step.method, step.params.clone()),
+                    runtime: common.runtime.clone(),
+                });
+                let exit_code = if envelope.ok { 0 } else { 1 };
+                (exit_code, serde_json::to_value(envelope)?)
+            }
+        }
     };
     write_json_file(&stdout_file, &summary)?;
     fs::write(&stderr_file, "")?;
@@ -791,6 +879,270 @@ fn run_workflow_step(
         exit_code,
         summary,
     })
+}
+
+fn run_package_verify_step(
+    workspace_root: &Path,
+    options: &AgentPackageVerifyOptions,
+) -> Result<(i32, Value)> {
+    let doctor = self_mgmt::doctor(false, ReadyTarget::Agent)?;
+    let required_resources = required_package_resources(&doctor, workspace_root, options)?;
+    let mut summary = serde_json::to_value(&doctor)?;
+    let ok = doctor.ok && required_resources.ok;
+    if let Some(summary) = summary.as_object_mut() {
+        append_required_resource_issues(summary, &required_resources.issues);
+        summary.insert("ok".to_string(), Value::Bool(ok));
+        summary.insert(
+            "requiredResources".to_string(),
+            serde_json::to_value(required_resources)?,
+        );
+    }
+    let exit_code = if ok { 0 } else { 1 };
+    Ok((exit_code, summary))
+}
+
+fn required_package_resources(
+    doctor: &self_mgmt::SelfDoctorResult,
+    workspace_root: &Path,
+    options: &AgentPackageVerifyOptions,
+) -> Result<AgentPackageRequiredResources> {
+    let copilot_package = package_resource_group(
+        doctor.install.as_ref(),
+        workspace_root,
+        self_mgmt::ManagedResourceKind::CopilotPackage,
+        options.require_copilot,
+        Vec::new(),
+    )?;
+    let skills = package_resource_group(
+        doctor.install.as_ref(),
+        workspace_root,
+        self_mgmt::ManagedResourceKind::Skill,
+        options.require_skill,
+        options.skill_target_dirs.clone(),
+    )?;
+    let instructions = package_resource_group(
+        doctor.install.as_ref(),
+        workspace_root,
+        self_mgmt::ManagedResourceKind::Instructions,
+        options.require_instructions,
+        options.instructions_target_dirs.clone(),
+    )?;
+    let mut issues = Vec::new();
+    issues.extend(package_resource_group_issues(&copilot_package));
+    issues.extend(package_resource_group_issues(&skills));
+    issues.extend(package_resource_group_issues(&instructions));
+    Ok(AgentPackageRequiredResources {
+        ok: issues.is_empty(),
+        workspace_root: workspace_root.display().to_string(),
+        copilot_package,
+        skills,
+        instructions,
+        issues,
+    })
+}
+
+fn package_resource_group(
+    install: Option<&self_mgmt::InstallState>,
+    workspace_root: &Path,
+    kind: self_mgmt::ManagedResourceKind,
+    required: bool,
+    explicit_target_dirs: Vec<PathBuf>,
+) -> Result<AgentPackageResourceGroup> {
+    let has_explicit_targets = !explicit_target_dirs.is_empty();
+    let targets = if has_explicit_targets {
+        explicit_target_dirs
+            .into_iter()
+            .map(resource_target_from_target_dir)
+            .collect::<Vec<_>>()
+    } else if required {
+        standard_resource_targets(workspace_root, kind)
+    } else {
+        Vec::new()
+    };
+    let mut checks = Vec::new();
+    for target in targets {
+        checks.push(package_resource_target(
+            install,
+            kind,
+            config::normalize(target),
+        )?);
+    }
+    Ok(AgentPackageResourceGroup {
+        required,
+        mode: if has_explicit_targets {
+            "explicit"
+        } else {
+            "standard"
+        },
+        targets: checks,
+    })
+}
+
+fn package_resource_target(
+    install: Option<&self_mgmt::InstallState>,
+    kind: self_mgmt::ManagedResourceKind,
+    target: PathBuf,
+) -> Result<AgentPackageResourceTarget> {
+    let resource = managed_resource_for_target(install, kind, &target).cloned();
+    let output_issues = match &resource {
+        Some(resource) => manifest::verify_managed_resource_outputs(resource)?.issues,
+        None => Vec::new(),
+    };
+    let version_matches_current = resource
+        .as_ref()
+        .is_some_and(|resource| resource.primitive_version == crate::cli::version());
+    let current = resource.is_some() && version_matches_current && output_issues.is_empty();
+    Ok(AgentPackageResourceTarget {
+        kind,
+        target_path: target.display().to_string(),
+        exists: target.exists(),
+        current,
+        version_matches_current,
+        manifest_resource: resource,
+        output_issues,
+    })
+}
+
+fn package_resource_group_issues(
+    group: &AgentPackageResourceGroup,
+) -> Vec<AgentPackageResourceIssue> {
+    if !group.required {
+        return Vec::new();
+    }
+    if group.mode == "explicit" {
+        return group
+            .targets
+            .iter()
+            .filter(|target| !target.current)
+            .map(|target| required_resource_issue(target.kind, vec![target.target_path.clone()]))
+            .collect();
+    }
+    if group.targets.iter().any(|target| target.current) {
+        return Vec::new();
+    }
+    let Some(first) = group.targets.first() else {
+        return Vec::new();
+    };
+    vec![required_resource_issue(
+        first.kind,
+        group
+            .targets
+            .iter()
+            .map(|target| target.target_path.clone())
+            .collect(),
+    )]
+}
+
+fn required_resource_issue(
+    kind: self_mgmt::ManagedResourceKind,
+    target_paths: Vec<String>,
+) -> AgentPackageResourceIssue {
+    let label = required_resource_label(kind);
+    AgentPackageResourceIssue {
+        code: format!("AGENT_WORKFLOW_REQUIRED_{}_MISSING_OR_STALE", label),
+        message: format!(
+            "Required Kast {} resource is missing, stale, or not manifest-backed.",
+            label.to_ascii_lowercase().replace('_', " ")
+        ),
+        kind,
+        target_paths,
+    }
+}
+
+fn required_resource_label(kind: self_mgmt::ManagedResourceKind) -> &'static str {
+    match kind {
+        self_mgmt::ManagedResourceKind::CopilotPackage => "COPILOT_PACKAGE",
+        self_mgmt::ManagedResourceKind::Skill => "SKILL",
+        self_mgmt::ManagedResourceKind::Instructions => "INSTRUCTIONS",
+    }
+}
+
+fn append_required_resource_issues(
+    summary: &mut Map<String, Value>,
+    issues: &[AgentPackageResourceIssue],
+) {
+    if issues.is_empty() {
+        return;
+    }
+    let summary_issues = summary
+        .entry("issues".to_string())
+        .or_insert_with(|| Value::Array(Vec::new()));
+    let Some(summary_issues) = summary_issues.as_array_mut() else {
+        return;
+    };
+    for issue in issues {
+        summary_issues.push(Value::String(format!("{}: {}", issue.code, issue.message)));
+    }
+}
+
+fn managed_resource_for_target<'a>(
+    install: Option<&'a self_mgmt::InstallState>,
+    kind: self_mgmt::ManagedResourceKind,
+    target: &Path,
+) -> Option<&'a self_mgmt::ManagedRepoResource> {
+    let normalized_target = config::normalize(target.to_path_buf());
+    install.and_then(|install| {
+        install.repos.iter().find_map(|repo| {
+            repo.resources.iter().find(|resource| {
+                resource.kind == kind
+                    && config::normalize(PathBuf::from(&resource.target_path)) == normalized_target
+            })
+        })
+    })
+}
+
+fn standard_resource_targets(
+    workspace_root: &Path,
+    kind: self_mgmt::ManagedResourceKind,
+) -> Vec<PathBuf> {
+    match kind {
+        self_mgmt::ManagedResourceKind::CopilotPackage => vec![workspace_root.join(".github")],
+        self_mgmt::ManagedResourceKind::Skill => standard_named_resource_targets(
+            workspace_root,
+            &[
+                ".agents/skills",
+                ".codex/skills",
+                ".github/skills",
+                ".claude/skills",
+            ],
+        ),
+        self_mgmt::ManagedResourceKind::Instructions => standard_named_resource_targets(
+            workspace_root,
+            &[
+                ".agents/instructions",
+                ".codex/instructions",
+                ".github/instructions",
+                ".claude/instructions",
+            ],
+        ),
+    }
+}
+
+fn standard_named_resource_targets(workspace_root: &Path, roots: &[&str]) -> Vec<PathBuf> {
+    roots
+        .iter()
+        .map(|root| workspace_root.join(root).join("kast"))
+        .collect()
+}
+
+fn resource_target_from_target_dir(target_dir: PathBuf) -> PathBuf {
+    let target_dir = config::normalize(target_dir);
+    if target_dir
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "kast")
+    {
+        target_dir
+    } else {
+        target_dir.join("kast")
+    }
+}
+
+fn path_values(paths: &[PathBuf]) -> Vec<String> {
+    paths
+        .iter()
+        .map(|path| config::normalize(path.clone()).display().to_string())
+        .collect()
 }
 
 fn workflow_envelope(method: String, summary: AgentWorkflowSummary) -> AgentEnvelope {

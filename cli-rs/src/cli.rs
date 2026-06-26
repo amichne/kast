@@ -410,6 +410,21 @@ pub struct AgentWorkflowVerifyArgs {
 pub struct AgentWorkflowPackageVerifyArgs {
     #[command(flatten)]
     pub common: AgentWorkflowCommonArgs,
+    /// Require the repository-local Copilot package to be current.
+    #[arg(long)]
+    pub require_copilot: bool,
+    /// Require a manifest-backed Kast skill install to be current.
+    #[arg(long)]
+    pub require_skill: bool,
+    /// Require manifest-backed Markdown instructions to be current.
+    #[arg(long)]
+    pub require_instructions: bool,
+    /// Skill setup target root to verify. Pass the same directory used with `agent setup skill --target-dir`.
+    #[arg(long = "skill-target-dir")]
+    pub skill_target_dir: Vec<PathBuf>,
+    /// Instructions setup target root to verify. Pass the same directory used with `agent setup instructions --target-dir`.
+    #[arg(long = "instructions-target-dir")]
+    pub instructions_target_dir: Vec<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

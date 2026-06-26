@@ -15,6 +15,15 @@ python3 scripts/verify-kast-state.py --workspace-root "$PWD" \
   --require-gradle-project
 ```
 
+Hosts that can only call the CLI can run the equivalent manifest-backed
+workflow gate:
+
+```sh
+kast --output json agent workflow package-verify --workspace-root "$PWD" \
+  --require-skill --skill-target-dir "$PWD/.codex/skills" \
+  --require-instructions --instructions-target-dir "$PWD/.codex/instructions"
+```
+
 Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
 when that repository-local artifact is required for the task. The script emits
 JSON with command-surface evidence, readiness, paths, manifest-backed
@@ -22,7 +31,10 @@ resource state, catalog hash comparisons, and recovery commands.
 When a skill or instruction package was installed into a nonstandard host root,
 pass the same setup target root with `--skill-target-dir` or
 `--instructions-target-dir` so manifest checks and recovery commands use that
-host-owned target instead of only the standard repository roots.
+host-owned target instead of only the standard repository roots. The
+`package-verify` workflow accepts the same require and target-root flags and
+fails when an explicit required target is missing, stale, or not
+manifest-backed.
 
 Execute recovery commands exactly as emitted. When the verifier is run with
 `--kast-bin` or another absolute executable, recovery strings preserve the

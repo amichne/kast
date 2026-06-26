@@ -142,6 +142,10 @@ the backend.
 
 ```console title="Workflow evidence"
 kast agent workflow verify --out-dir .kast-workflows/verify
+kast --output json agent workflow package-verify \
+  --workspace-root "$PWD" \
+  --require-skill --skill-target-dir "$PWD/.codex/skills" \
+  --require-instructions --instructions-target-dir "$PWD/.codex/instructions"
 kast agent workflow symbol --symbol OrderService --references --out-dir .kast-workflows/symbol
 kast agent workflow rename-plan \
   --file-path "$PWD/src/main/kotlin/App.kt" \
@@ -149,6 +153,13 @@ kast agent workflow rename-plan \
   --new-name processOrderSafely \
   --out-dir .kast-workflows/rename
 ```
+
+Use `package-verify` when a script or agent must prove repository-local
+resources are current before relying on them. `--require-copilot`,
+`--require-skill`, and `--require-instructions` fail closed against the install
+manifest. When a skill or instructions package was installed into a nonstandard
+host root, pass the same setup target root with `--skill-target-dir` or
+`--instructions-target-dir`.
 
 Mutating workflow commands require explicit mutation opt-in. Do not treat a
 dry-run workflow as proof that files changed.

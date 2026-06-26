@@ -5255,6 +5255,236 @@ fn agent_workflow_dry_run_writes_stable_step_files() {
 }
 
 #[test]
+fn agent_package_verify_workflow_accepts_required_explicit_resource_targets() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let skill_target_dir = workspace.join("host-agent/skills");
+    let instructions_target_dir = workspace.join("host-agent/instructions");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&workspace)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+    let repair = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["ready", "--fix"])
+        .output()
+        .expect("ready repair");
+    assert!(
+        repair.status.success(),
+        "ready --fix should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+    let skill = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            skill_target_dir.to_str().expect("skill target"),
+            "--force",
+        ])
+        .output()
+        .expect("install explicit skill");
+    assert!(
+        skill.status.success(),
+        "explicit skill target should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&skill.stdout),
+        String::from_utf8_lossy(&skill.stderr)
+    );
+    let instructions = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "instructions",
+            "--target-dir",
+            instructions_target_dir
+                .to_str()
+                .expect("instructions target"),
+            "--force",
+        ])
+        .output()
+        .expect("install explicit instructions");
+    assert!(
+        instructions.status.success(),
+        "explicit instructions target should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&instructions.stdout),
+        String::from_utf8_lossy(&instructions.stderr)
+    );
+
+    let workflow = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workflow",
+            "package-verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--require-skill",
+            "--require-instructions",
+            "--skill-target-dir",
+            skill_target_dir.to_str().expect("skill target"),
+            "--instructions-target-dir",
+            instructions_target_dir
+                .to_str()
+                .expect("instructions target"),
+        ])
+        .output()
+        .expect("agent workflow package-verify");
+
+    assert!(
+        workflow.status.success(),
+        "package verify workflow should accept explicit resources: stdout={}, stderr={}",
+        String::from_utf8_lossy(&workflow.stdout),
+        String::from_utf8_lossy(&workflow.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&workflow.stdout).expect("workflow envelope json");
+    let summary = &stdout["result"]["steps"][0]["summary"];
+    assert_eq!(stdout["ok"], true, "{stdout}");
+    assert_eq!(summary["ok"], true, "{stdout}");
+    assert_eq!(summary["requiredResources"]["ok"], true, "{stdout}");
+    let skill_targets = summary["requiredResources"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets");
+    assert_eq!(skill_targets.len(), 1, "{stdout}");
+    assert_eq!(skill_targets[0]["current"], true, "{stdout}");
+    assert!(
+        skill_targets[0]["targetPath"]
+            .as_str()
+            .expect("skill target path")
+            .ends_with("host-agent/skills/kast"),
+        "{stdout}"
+    );
+    assert!(skill_targets[0]["manifestResource"].is_object(), "{stdout}");
+    let instruction_targets = summary["requiredResources"]["instructions"]["targets"]
+        .as_array()
+        .expect("instruction targets");
+    assert_eq!(instruction_targets.len(), 1, "{stdout}");
+    assert_eq!(instruction_targets[0]["current"], true, "{stdout}");
+    assert!(
+        instruction_targets[0]["targetPath"]
+            .as_str()
+            .expect("instruction target path")
+            .ends_with("host-agent/instructions/kast"),
+        "{stdout}"
+    );
+    assert!(
+        instruction_targets[0]["manifestResource"].is_object(),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn agent_package_verify_workflow_rejects_missing_required_explicit_skill_target() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let skill_target_dir = workspace.join("host-agent/skills");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let repair = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["ready", "--fix"])
+        .output()
+        .expect("ready repair");
+    assert!(
+        repair.status.success(),
+        "ready --fix should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr)
+    );
+
+    let workflow = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workflow",
+            "package-verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--require-skill",
+            "--skill-target-dir",
+            skill_target_dir.to_str().expect("skill target"),
+        ])
+        .output()
+        .expect("agent workflow package-verify");
+
+    assert!(
+        !workflow.status.success(),
+        "package verify workflow should reject the missing explicit skill target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&workflow.stdout),
+        String::from_utf8_lossy(&workflow.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&workflow.stdout).expect("workflow envelope json");
+    let summary = &stdout["result"]["steps"][0]["summary"];
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(summary["ok"], false, "{stdout}");
+    assert_eq!(summary["requiredResources"]["ok"], false, "{stdout}");
+    let skill_targets = summary["requiredResources"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets");
+    assert_eq!(skill_targets.len(), 1, "{stdout}");
+    assert_eq!(skill_targets[0]["current"], false, "{stdout}");
+    assert!(skill_targets[0]["manifestResource"].is_null(), "{stdout}");
+    assert!(
+        skill_targets[0]["targetPath"]
+            .as_str()
+            .expect("skill target path")
+            .ends_with("host-agent/skills/kast"),
+        "{stdout}"
+    );
+    assert!(
+        summary["requiredResources"]["issues"]
+            .as_array()
+            .expect("required resource issues")
+            .iter()
+            .any(|issue| issue["code"].as_str().expect("issue code")
+                == "AGENT_WORKFLOW_REQUIRED_SKILL_MISSING_OR_STALE"),
+        "{stdout}"
+    );
+    assert!(
+        summary["issues"]
+            .as_array()
+            .expect("summary issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .expect("issue")
+                .contains("AGENT_WORKFLOW_REQUIRED_SKILL_MISSING_OR_STALE")),
+        "{stdout}"
+    );
+}
+
+#[test]
 fn agent_write_validate_workflow_requires_mutation_opt_in() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

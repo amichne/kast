@@ -29,11 +29,19 @@ kast --output json agent setup auto --dry-run
 kast agent ready --output json
 kast --output json agent workflow verify --workspace-root "$PWD"
 kast --output json agent workflow package-verify --workspace-root "$PWD"
+kast --output json agent workflow package-verify --workspace-root "$PWD" \
+  --require-skill --skill-target-dir "$PWD/.codex/skills" \
+  --require-instructions --instructions-target-dir "$PWD/.codex/instructions"
 ```
 
 Use `--backend idea` or `--backend headless` when the runtime choice must be
 explicit. Keep `--workspace-root "$PWD"` or an absolute workspace path on every
 agent call so runtime and source-index state are tied to the intended project.
+Use package verification `--require-*` flags only for resources the task needs.
+When a skill or instruction package was installed with `agent setup ... --target-dir`,
+pass that same setup target root with `--skill-target-dir` or
+`--instructions-target-dir`; the workflow fails if the required target is not
+manifest-backed and current.
 When an `agent up` dry-run is used only to inspect setup, trust
 `setup.targetDir` and copy `setup.installCommand` exactly; it includes the
 selected executable and `--target-dir`. When only package selection matters,
