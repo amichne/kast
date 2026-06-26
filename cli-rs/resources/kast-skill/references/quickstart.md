@@ -193,5 +193,6 @@ kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json
 - If `kast agent` is unavailable, report a stale binary/skill installation.
 - If install, config, active binary, or package state is unclear, run
   `scripts/verify-kast-state.py` and follow its recovery commands exactly; they
-  preserve the selected executable token when `--kast-bin` is used.
+  preserve the selected executable token when `--kast-bin` is used and include
+  the stale skill or instruction target directory when one is known.
 - Never pivot to `grep` or `rg` for Kotlin identity.

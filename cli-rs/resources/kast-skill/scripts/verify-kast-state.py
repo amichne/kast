@@ -21,13 +21,26 @@ AGENT_TOOLS_SCHEMA_VERSION = 3
 CATALOG_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
+def setup_recovery_command(
+    kast_executable: str | None,
+    harness: str,
+    target_dir: Path | None = None,
+) -> str:
+    executable = kast_executable or "kast"
+    command = [executable, "agent", "setup", harness]
+    if target_dir is not None:
+        command.extend(["--target-dir", str(target_dir)])
+    command.append("--force")
+    return shlex.join(command)
+
+
 def recovery_commands(kast_executable: str | None) -> dict[str, str]:
     executable = kast_executable or "kast"
     return {
         "ready": shlex.join([executable, "ready", "--fix"]),
-        "skill": shlex.join([executable, "agent", "setup", "skill", "--force"]),
-        "instructions": shlex.join([executable, "agent", "setup", "instructions", "--force"]),
-        "copilot": shlex.join([executable, "agent", "setup", "copilot", "--force"]),
+        "skill": setup_recovery_command(kast_executable, "skill"),
+        "instructions": setup_recovery_command(kast_executable, "instructions"),
+        "copilot": setup_recovery_command(kast_executable, "copilot"),
         "development": "./gradlew installDevelopmentLocal",
     }
 
@@ -515,6 +528,20 @@ def resource_targets(workspace_root: Path, kind: str) -> list[Path]:
     ]
 
 
+def resource_recovery_command(
+    kast_executable: str | None,
+    workspace_root: Path,
+    kind: str,
+    stale_targets: list[dict[str, Any]],
+) -> str:
+    harness = "skill" if kind == "skills" else "instructions"
+    if stale_targets:
+        target_dir = Path(stale_targets[0]["path"]).parent
+    else:
+        target_dir = resource_targets(workspace_root, kind)[0].parent
+    return setup_recovery_command(kast_executable, harness, target_dir)
+
+
 def verify_resource_install(
     result: dict[str, Any],
     workspace_root: Path,
@@ -524,6 +551,7 @@ def verify_resource_install(
     source_root: Path | None = None,
     content_files: list[str] | None = None,
     ready_json: dict[str, Any] | None = None,
+    kast_executable: str | None = None,
 ) -> None:
     targets = []
     manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
@@ -564,7 +592,7 @@ def verify_resource_install(
         or target["contentMismatches"]
     ]
     if required and (not installed or stale):
-        recovery = RECOVERY["skill"] if kind == "skills" else RECOVERY["instructions"]
+        recovery = resource_recovery_command(kast_executable, workspace_root, kind, stale)
         add_issue(
             result,
             f"{kind.upper()}_STALE",
@@ -572,7 +600,7 @@ def verify_resource_install(
             recovery,
         )
     elif stale:
-        recovery = RECOVERY["skill"] if kind == "skills" else RECOVERY["instructions"]
+        recovery = resource_recovery_command(kast_executable, workspace_root, kind, stale)
         add_warning(
             result,
             f"{kind.upper()}_STALE",
@@ -652,6 +680,7 @@ def main() -> int:
             "scripts/kast-agent-call.py",
         ],
         ready_json,
+        kast_bin,
     )
     verify_resource_install(
         result,
@@ -660,6 +689,7 @@ def main() -> int:
         "instructions",
         args.require_instructions,
         ready_json=ready_json,
+        kast_executable=kast_bin,
     )
 
     result["ok"] = not result["issues"]

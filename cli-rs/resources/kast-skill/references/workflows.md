@@ -22,8 +22,9 @@ resource state, catalog hash comparisons, and recovery commands.
 
 Execute recovery commands exactly as emitted. When the verifier is run with
 `--kast-bin` or another absolute executable, recovery strings preserve the
-selected executable token; the owner table below names the state owner, not a
-command to rewrite back to bare `kast`.
+selected executable token. Stale skill and instruction recovery also preserves
+the target resource root when the verifier can identify one; the owner table
+below names the state owner, not a command to rewrite back to bare `kast`.
 
 If the verifier reports stale state, use the one owner for that state:
 

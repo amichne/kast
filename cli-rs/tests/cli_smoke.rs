@@ -3060,6 +3060,28 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
                 .ends_with(".agents/skills/kast")
         })
         .expect("tampered skill target");
+    let expected_tampered_target_dir = Path::new(
+        tampered_target["path"]
+            .as_str()
+            .expect("tampered target path"),
+    )
+    .parent()
+    .expect("tampered target parent");
+    let expected_tampered_recovery = format!(
+        "{} agent setup skill --target-dir {} --force",
+        env!("CARGO_BIN_EXE_kast"),
+        expected_tampered_target_dir.display()
+    );
+    let tampered_issue = tampered_json["issues"]
+        .as_array()
+        .expect("issues")
+        .iter()
+        .find(|issue| issue["code"] == "SKILLS_STALE")
+        .unwrap_or_else(|| panic!("missing SKILLS_STALE issue: {tampered_json:#}"));
+    assert_eq!(
+        tampered_issue["recovery"], expected_tampered_recovery,
+        "{tampered_json:#}"
+    );
     assert!(
         !tampered_target["manifestOutputMismatches"]
             .as_array()
@@ -3233,7 +3255,6 @@ exit 64
         .expect("canonical fake bin")
         .display()
         .to_string();
-    let expected_recovery = format!("{expected_binary} agent setup skill --force");
 
     let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("resources/kast-skill/scripts/verify-kast-state.py");
@@ -3253,6 +3274,18 @@ exit 64
         String::from_utf8_lossy(&verify.stderr)
     );
     let stdout: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verifier json");
+    let expected_skill_target_dir = Path::new(
+        stdout["checks"]["skills"]["targets"][0]["path"]
+            .as_str()
+            .expect("default skill target"),
+    )
+    .parent()
+    .expect("default skill target parent");
+    let expected_skill_recovery = format!(
+        "{} agent setup skill --target-dir {} --force",
+        expected_binary,
+        expected_skill_target_dir.display()
+    );
     assert_eq!(
         stdout["checks"]["commandSurface"]["agentToolsInvocationArgvOk"], true,
         "{stdout:#}"
@@ -3263,14 +3296,65 @@ exit 64
         .iter()
         .find(|issue| issue["code"] == "SKILLS_STALE")
         .unwrap_or_else(|| panic!("missing SKILLS_STALE issue: {stdout:#}"));
-    assert_eq!(skill_issue["recovery"], expected_recovery, "{stdout:#}");
+    assert_eq!(
+        skill_issue["recovery"], expected_skill_recovery,
+        "{stdout:#}"
+    );
     assert!(
         stdout["recovery"]
             .as_array()
             .expect("recovery")
             .iter()
-            .any(|command| command == &expected_recovery),
+            .any(|command| command == &expected_skill_recovery),
         "{stdout:#}"
+    );
+
+    let verify_instructions = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--kast-bin")
+        .arg(&fake_bin)
+        .arg("--require-instructions")
+        .output()
+        .expect("run verifier for instructions");
+    assert!(
+        !verify_instructions.status.success(),
+        "verifier should report missing required instructions: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify_instructions.stdout),
+        String::from_utf8_lossy(&verify_instructions.stderr)
+    );
+    let instructions_stdout: serde_json::Value =
+        serde_json::from_slice(&verify_instructions.stdout).expect("verifier json");
+    let expected_instruction_target_dir = Path::new(
+        instructions_stdout["checks"]["instructions"]["targets"][0]["path"]
+            .as_str()
+            .expect("default instruction target"),
+    )
+    .parent()
+    .expect("default instruction target parent");
+    let expected_instruction_recovery = format!(
+        "{} agent setup instructions --target-dir {} --force",
+        expected_binary,
+        expected_instruction_target_dir.display()
+    );
+    let instruction_issue = instructions_stdout["issues"]
+        .as_array()
+        .expect("issues")
+        .iter()
+        .find(|issue| issue["code"] == "INSTRUCTIONS_STALE")
+        .unwrap_or_else(|| panic!("missing INSTRUCTIONS_STALE issue: {instructions_stdout:#}"));
+    assert_eq!(
+        instruction_issue["recovery"], expected_instruction_recovery,
+        "{instructions_stdout:#}"
+    );
+    assert!(
+        instructions_stdout["recovery"]
+            .as_array()
+            .expect("recovery")
+            .iter()
+            .any(|command| command == &expected_instruction_recovery),
+        "{instructions_stdout:#}"
     );
 }
 
