@@ -131,6 +131,30 @@ if (toolsModule.isKastAgentToolsEnvelope({
 })) {
   throw new Error("source plugin must reject malformed agent tools envelopes");
 }
+if (toolsModule.isKastAgentToolsEnvelope({
+  ok: true,
+  method: "agent/tools",
+  result: { type: "KAST_AGENT_TOOLS", tools: [] },
+})) {
+  throw new Error("source plugin must reject missing agent tool invocation");
+}
+if (toolsModule.isKastAgentToolsEnvelope({
+  ok: true,
+  method: "agent/tools",
+  result: {
+    type: "KAST_AGENT_TOOLS",
+    invocation: {
+      command: "kast agent call",
+      argv: ["kast", "rpc", "<method>"],
+      methodArgument: "<method>",
+      paramsFileFlag: "--params-file",
+      workspaceRootFlag: "--workspace-root",
+    },
+    tools: [],
+  },
+})) {
+  throw new Error("source plugin must reject malformed agent tool invocation");
+}
 const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
 const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
@@ -225,6 +249,30 @@ if (toolsModule.isKastAgentToolsEnvelope({
   result: { type: "WRONG", tools: [] },
 })) {
   throw new Error("installed plugin must reject malformed agent tools envelopes");
+}
+if (toolsModule.isKastAgentToolsEnvelope({
+  ok: true,
+  method: "agent/tools",
+  result: { type: "KAST_AGENT_TOOLS", tools: [] },
+})) {
+  throw new Error("installed plugin must reject missing agent tool invocation");
+}
+if (toolsModule.isKastAgentToolsEnvelope({
+  ok: true,
+  method: "agent/tools",
+  result: {
+    type: "KAST_AGENT_TOOLS",
+    invocation: {
+      command: "kast agent call",
+      argv: ["kast", "rpc", "<method>"],
+      methodArgument: "<method>",
+      paramsFileFlag: "--params-file",
+      workspaceRootFlag: "--workspace-root",
+    },
+    tools: [],
+  },
+})) {
+  throw new Error("installed plugin must reject malformed agent tool invocation");
 }
 const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
 const tools = toolsModule.makeKastTools(specs, (method, args) =>

@@ -47,10 +47,27 @@ export function toolSpecsFromAgentToolsResult(value) {
   return result.tools.map(normalizeToolSpec);
 }
 
+function isKastAgentToolInvocation(value) {
+  const argv = value?.argv;
+  return typeof value?.command === "string" &&
+    value.command.trim() !== "" &&
+    Array.isArray(argv) &&
+    argv.length === 4 &&
+    typeof argv[0] === "string" &&
+    argv[0].trim() !== "" &&
+    argv[1] === "agent" &&
+    argv[2] === "call" &&
+    argv[3] === "<method>" &&
+    value.methodArgument === "<method>" &&
+    value.paramsFileFlag === "--params-file" &&
+    value.workspaceRootFlag === "--workspace-root";
+}
+
 export function isKastAgentToolsEnvelope(value) {
   return value?.ok === true &&
     value?.method === "agent/tools" &&
     value?.result?.type === "KAST_AGENT_TOOLS" &&
+    isKastAgentToolInvocation(value.result.invocation) &&
     Array.isArray(value.result.tools);
 }
 
