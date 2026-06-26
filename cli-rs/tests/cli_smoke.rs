@@ -5550,15 +5550,31 @@ fn agent_package_verify_workflow_rejects_missing_required_explicit_skill_target(
             .ends_with("host-agent/skills/kast"),
         "{stdout}"
     );
+    let required_issue = summary["requiredResources"]["issues"]
+        .as_array()
+        .expect("required resource issues")
+        .iter()
+        .find(|issue| {
+            issue["code"].as_str().expect("issue code")
+                == "AGENT_WORKFLOW_REQUIRED_SKILL_MISSING_OR_STALE"
+        })
+        .unwrap_or_else(|| panic!("missing required skill issue: {stdout}"));
+    let recovery_argv = required_issue["recoveryArgv"]
+        .as_array()
+        .expect("recovery argv");
+    assert_eq!(recovery_argv[0], env!("CARGO_BIN_EXE_kast"), "{stdout}");
+    assert_eq!(recovery_argv[1], "agent", "{stdout}");
+    assert_eq!(recovery_argv[2], "setup", "{stdout}");
+    assert_eq!(recovery_argv[3], "skill", "{stdout}");
+    assert_eq!(recovery_argv[4], "--target-dir", "{stdout}");
     assert!(
-        summary["requiredResources"]["issues"]
-            .as_array()
-            .expect("required resource issues")
-            .iter()
-            .any(|issue| issue["code"].as_str().expect("issue code")
-                == "AGENT_WORKFLOW_REQUIRED_SKILL_MISSING_OR_STALE"),
+        recovery_argv[5]
+            .as_str()
+            .expect("recovery target")
+            .ends_with("host-agent/skills"),
         "{stdout}"
     );
+    assert_eq!(recovery_argv[6], "--force", "{stdout}");
     assert!(
         summary["issues"]
             .as_array()

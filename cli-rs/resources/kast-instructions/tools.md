@@ -43,6 +43,8 @@ When a Copilot, skill, or instruction package was installed with
 `agent setup ... --target-dir`, pass that same setup target with
 `--copilot-target-dir`, `--skill-target-dir`, or `--instructions-target-dir`;
 the workflow fails if the required target is not manifest-backed and current.
+Failed required resource checks include `requiredResources.issues[].recoveryArgv`
+with the exact `kast agent setup ... --force` invocation to run.
 When an `agent up` dry-run is used only to inspect setup, trust
 `setup.targetDir` and copy `setup.installCommand` exactly; it includes the
 selected executable and `--target-dir`. When only package selection matters,

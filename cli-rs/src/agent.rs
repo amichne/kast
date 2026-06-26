@@ -155,6 +155,7 @@ struct AgentPackageResourceIssue {
     message: String,
     kind: self_mgmt::ManagedResourceKind,
     target_paths: Vec<String>,
+    recovery_argv: Vec<String>,
 }
 
 impl AgentWorkflowStep {
@@ -1048,7 +1049,49 @@ fn required_resource_issue(
             label.to_ascii_lowercase().replace('_', " ")
         ),
         kind,
+        recovery_argv: required_resource_recovery_argv(kind, &target_paths),
         target_paths,
+    }
+}
+
+fn required_resource_recovery_argv(
+    kind: self_mgmt::ManagedResourceKind,
+    target_paths: &[String],
+) -> Vec<String> {
+    let mut argv = vec![
+        current_executable_argument(),
+        "agent".to_string(),
+        "setup".to_string(),
+        required_resource_harness(kind).to_string(),
+    ];
+    if let Some(target_dir) = required_resource_recovery_target_dir(kind, target_paths) {
+        argv.push("--target-dir".to_string());
+        argv.push(target_dir);
+    }
+    argv.push("--force".to_string());
+    argv
+}
+
+fn required_resource_recovery_target_dir(
+    kind: self_mgmt::ManagedResourceKind,
+    target_paths: &[String],
+) -> Option<String> {
+    let target = target_paths.first()?;
+    match kind {
+        self_mgmt::ManagedResourceKind::CopilotPackage => Some(target.clone()),
+        self_mgmt::ManagedResourceKind::Skill | self_mgmt::ManagedResourceKind::Instructions => {
+            Path::new(target)
+                .parent()
+                .map(|parent| parent.display().to_string())
+        }
+    }
+}
+
+fn required_resource_harness(kind: self_mgmt::ManagedResourceKind) -> &'static str {
+    match kind {
+        self_mgmt::ManagedResourceKind::CopilotPackage => "copilot",
+        self_mgmt::ManagedResourceKind::Skill => "skill",
+        self_mgmt::ManagedResourceKind::Instructions => "instructions",
     }
 }
 

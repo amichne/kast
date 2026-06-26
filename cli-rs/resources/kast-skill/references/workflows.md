@@ -35,7 +35,9 @@ target root with `--copilot-target-dir`, `--skill-target-dir`, or
 host-owned target instead of only the standard repository roots. The
 `package-verify` workflow accepts the same require and target-root flags and
 fails when an explicit required target is missing, stale, or not
-manifest-backed.
+manifest-backed. Failed required resource checks include
+`requiredResources.issues[].recoveryArgv` with the exact
+`kast agent setup ... --force` invocation to run.
 
 Execute recovery commands exactly as emitted. When the verifier is run with
 `--kast-bin` or another absolute executable, recovery strings preserve the

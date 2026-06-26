@@ -161,6 +161,8 @@ resources are current before relying on them. `--require-copilot`,
 manifest. When a Copilot, skill, or instructions package was installed into a
 nonstandard host root, pass the same setup target root with
 `--copilot-target-dir`, `--skill-target-dir`, or `--instructions-target-dir`.
+Failed required resource checks include `requiredResources.issues[].recoveryArgv`
+with the exact `kast agent setup ... --force` invocation to run.
 
 Mutating workflow commands require explicit mutation opt-in. Do not treat a
 dry-run workflow as proof that files changed.
