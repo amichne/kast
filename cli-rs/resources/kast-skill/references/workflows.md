@@ -35,8 +35,8 @@ If the verifier reports stale state, use the one owner for that state:
 | Kotlin semantic backend absent from the manifest | `kast ready --for kotlin`, then install or activate a backend |
 | active binary lacks `kast agent`, shows top-level `kast rpc`, or shows `install affected` | refresh the active binary, in this repo `./gradlew installDevelopmentLocal` |
 | stale repository Copilot package files or manifest resource mismatch | `kast agent setup copilot --force` |
-| stale repository skill | `kast agent setup skill --force` |
-| stale Markdown instructions | `kast agent setup instructions --force` |
+| stale repository skill | emitted `kast agent setup skill ... --force` recovery |
+| stale Markdown instructions | emitted `kast agent setup instructions ... --force` recovery |
 
 Do not edit generated `.github` package files as source. The source owners are
 `cli-rs/resources/plugin/`, `cli-rs/resources/kast-instructions/`, and this
