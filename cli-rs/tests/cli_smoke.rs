@@ -375,6 +375,20 @@ fn smoke_core_cli_commands() {
         agent_tools_json["result"]["invocation"]["command"],
         "kast agent call"
     );
+    let invocation_argv = agent_tools_json["result"]["invocation"]["argv"]
+        .as_array()
+        .expect("agent invocation argv");
+    assert_eq!(invocation_argv.len(), 4, "{invocation_argv:#?}");
+    assert!(
+        !invocation_argv[0]
+            .as_str()
+            .expect("agent invocation executable")
+            .is_empty(),
+        "{invocation_argv:#?}"
+    );
+    assert_eq!(invocation_argv[1], "agent");
+    assert_eq!(invocation_argv[2], "call");
+    assert_eq!(invocation_argv[3], "<method>");
     let tools = agent_tools_json["result"]["tools"]
         .as_array()
         .expect("tools array");
@@ -658,6 +672,42 @@ fn smoke_core_cli_commands() {
         .expect("status");
     assert!(status.status.success());
     assert!(String::from_utf8_lossy(&status.stdout).contains("\"candidates\": []"));
+}
+
+#[test]
+fn agent_tools_invocation_argv_uses_invoked_binary_path() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let alternate_bin = temp.path().join("custom-kast");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &alternate_bin).expect("copy kast");
+    set_executable_for_test(&alternate_bin);
+
+    let agent_tools = Command::new(&alternate_bin)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .args(["agent", "tools"])
+        .output()
+        .expect("agent tools");
+    assert!(
+        agent_tools.status.success(),
+        "agent tools should succeed through alternate binary: stdout={}, stderr={}",
+        String::from_utf8_lossy(&agent_tools.stdout),
+        String::from_utf8_lossy(&agent_tools.stderr)
+    );
+
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&agent_tools.stdout).expect("agent tools json");
+    assert_eq!(stdout["result"]["invocation"]["command"], "kast agent call");
+    assert_eq!(
+        stdout["result"]["invocation"]["argv"],
+        serde_json::json!([
+            alternate_bin.display().to_string(),
+            "agent",
+            "call",
+            "<method>",
+        ])
+    );
 }
 
 #[test]
@@ -2881,6 +2931,22 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
         verify_json["checks"]["commandSurface"]["agentToolsType"], "KAST_AGENT_TOOLS",
         "{verify_json:#}"
     );
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsInvocationArgvOk"], true,
+        "{verify_json:#}"
+    );
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsInvocationArgv"][1], "agent",
+        "{verify_json:#}"
+    );
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsInvocationArgv"][2], "call",
+        "{verify_json:#}"
+    );
+    assert_eq!(
+        verify_json["checks"]["commandSurface"]["agentToolsInvocationArgv"][3], "<method>",
+        "{verify_json:#}"
+    );
     assert!(
         verify_json["checks"]["commandSurface"]["agentToolsToolCount"]
             .as_u64()
@@ -2994,7 +3060,7 @@ if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
   exit 0
 fi
 if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
-  printf '{"ok":true,"method":"agent/tools","result":{"type":"WRONG","tools":[]}}\n'
+  printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","tools":[]}}\n'
   exit 0
 fi
 printf 'unexpected fake kast args:' >&2
@@ -4431,6 +4497,9 @@ fn packaged_skill_targets_rust_kast_only() {
     .expect("routing reference");
     let instruction_cli = std::fs::read_to_string(root.join("resources/kast-instructions/cli.md"))
         .expect("portable CLI instructions");
+    let instruction_tools =
+        std::fs::read_to_string(root.join("resources/kast-instructions/tools.md"))
+            .expect("portable tool instructions");
     let instruction_rpc = std::fs::read_to_string(root.join("resources/kast-instructions/rpc.md"))
         .expect("portable RPC instructions");
 
@@ -4466,6 +4535,7 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("kast agent tools"));
     assert!(quickstart.contains("kast agent workflow --help"));
     assert!(quickstart.contains("kast agent call"));
+    assert!(quickstart.contains("result.invocation.argv"));
     assert!(quickstart.contains("scripts/verify-kast-state.py"));
     assert!(quickstart.contains("scripts/kast-agent-call.py"));
     assert!(!quickstart.contains("scripts/kast-semantic-workflow.py"));
@@ -4480,8 +4550,11 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(instruction_cli.contains("kast agent tools"));
     assert!(instruction_cli.contains("kast agent workflow --help"));
     assert!(instruction_cli.contains("stale instruction/binary install"));
+    assert!(instruction_tools.contains("kast agent tools"));
+    assert!(instruction_tools.contains("result.invocation.argv"));
     assert!(instruction_rpc.contains("kast agent tools"));
     assert!(instruction_rpc.contains("catalog-backed tool names"));
+    assert!(instruction_rpc.contains("result.invocation.argv"));
     assert!(
         root.join("resources/kast-skill/references/workflows.md")
             .is_file(),

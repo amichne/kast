@@ -61,7 +61,9 @@ Agent-facing changes must keep these requirements true:
   current, then call `kast agent call`; they do not synthesize a separate SDK
   tool contract or route through raw `kast rpc`.
 - CLI-capable hosts can discover catalog-backed tools through
-  `kast agent tools` without depending on a Copilot SDK or MCP adapter.
+  `kast agent tools` without depending on a Copilot SDK or MCP adapter, then
+  invoke the returned `result.invocation.argv` so alternate binary names and
+  absolute binary paths keep working.
 - Raw `kast rpc` remains a hidden debug escape hatch, not the public agent
   integration contract.
 - Repo-installed resources are recorded in `install.json` with kind, target,

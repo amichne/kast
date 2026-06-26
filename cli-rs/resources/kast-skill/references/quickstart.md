@@ -68,7 +68,8 @@ the Rust CLI help.
 Use `kast agent tools` when an agent host can run CLI commands but cannot load
 the full skill or Copilot package. It emits the catalog-backed tool names,
 methods, descriptions, mutation metadata, default args, and params JSON Schemas
-that a generic host needs before calling `kast agent call <method>`.
+plus `result.invocation.argv`, so a generic host can call the same executable it
+used for discovery with `<method>` replaced by the tool method.
 
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use

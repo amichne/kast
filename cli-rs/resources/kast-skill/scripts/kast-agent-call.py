@@ -150,11 +150,21 @@ def agent_tools_envelope_ok(value: Any) -> bool:
     result = value.get("result")
     if not isinstance(result, dict):
         return False
+    invocation = result.get("invocation")
+    argv = invocation.get("argv") if isinstance(invocation, dict) else None
+    invocation_argv_ok = (
+        isinstance(argv, list)
+        and len(argv) == 4
+        and isinstance(argv[0], str)
+        and bool(argv[0])
+        and argv[1:] == ["agent", "call", "<method>"]
+    )
     return (
         value.get("ok") is True
         and value.get("method") == "agent/tools"
         and result.get("type") == "KAST_AGENT_TOOLS"
         and isinstance(result.get("tools"), list)
+        and invocation_argv_ok
     )
 
 

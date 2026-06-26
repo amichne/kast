@@ -76,8 +76,11 @@ mutation metadata, and params JSON Schemas.
 kast agent tools
 ```
 
-Invoke one of the returned specs through `kast agent call <method>` with a
-params object or `--params-file`. The `catalogSha256` field identifies the
+Invoke one of the returned specs through the returned
+`result.invocation.argv`, replacing `<method>` with the spec's `method`, then
+pass a params object or `--params-file`. The legacy `command` field remains a
+readable `kast agent call` hint, while `argv` preserves the exact executable
+token used to discover the tools. The `catalogSha256` field identifies the
 embedded command catalog used to build the tool list.
 
 ## Alias commands

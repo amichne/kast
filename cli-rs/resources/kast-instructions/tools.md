@@ -58,7 +58,9 @@ edits. Use raw commands only when you already have exact files and offsets.
 
 Use `kast agent tools` when the host needs machine-readable tool names,
 catalog methods, descriptions, mutation metadata, default args, and params JSON
-Schemas. Then call the returned `method` through `kast agent call <method>`.
+Schemas. Then call `result.invocation.argv`, replacing `<method>` with the
+returned tool `method`; this keeps alternate binary names and absolute binary
+paths intact.
 
 Use `kast agent call <method>` for nested payloads, generated request samples,
 or catalog methods that do not have a shallow alias:

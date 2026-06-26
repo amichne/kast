@@ -163,6 +163,19 @@ def verify_command_surface(
     agent_tools_result = agent_tools_json.get("result") if isinstance(agent_tools_json, dict) else None
     agent_tools_specs = agent_tools_result.get("tools") if isinstance(agent_tools_result, dict) else None
     agent_tools_type = agent_tools_result.get("type") if isinstance(agent_tools_result, dict) else None
+    agent_tools_invocation = (
+        agent_tools_result.get("invocation") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_invocation_argv = (
+        agent_tools_invocation.get("argv") if isinstance(agent_tools_invocation, dict) else None
+    )
+    agent_tools_invocation_argv_ok = (
+        isinstance(agent_tools_invocation_argv, list)
+        and len(agent_tools_invocation_argv) == 4
+        and isinstance(agent_tools_invocation_argv[0], str)
+        and bool(agent_tools_invocation_argv[0])
+        and agent_tools_invocation_argv[1:] == ["agent", "call", "<method>"]
+    )
     agent_tools_envelope_ok = (
         agent_tools["exitCode"] == 0
         and isinstance(agent_tools_json, dict)
@@ -170,6 +183,7 @@ def verify_command_surface(
         and agent_tools_json.get("method") == "agent/tools"
         and agent_tools_type == "KAST_AGENT_TOOLS"
         and isinstance(agent_tools_specs, list)
+        and agent_tools_invocation_argv_ok
     )
     checks["commandSurface"] = {
         "helpExitCode": top_help["exitCode"],
@@ -188,6 +202,8 @@ def verify_command_surface(
         "agentToolsEnvelopeOk": agent_tools_envelope_ok,
         "agentToolsType": agent_tools_type,
         "agentToolsToolCount": len(agent_tools_specs) if isinstance(agent_tools_specs, list) else None,
+        "agentToolsInvocationArgv": agent_tools_invocation_argv,
+        "agentToolsInvocationArgvOk": agent_tools_invocation_argv_ok,
         "agentSetupAvailable": agent_setup_help["exitCode"] == 0,
         "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
         "rpcVisibleInTopHelp": help_lists_command(top_help_text, "rpc"),

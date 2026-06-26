@@ -115,6 +115,7 @@ struct AgentToolsResult {
 #[serde(rename_all = "camelCase")]
 struct AgentToolInvocation {
     command: &'static str,
+    argv: Vec<String>,
     method_argument: &'static str,
     params_file_flag: &'static str,
     workspace_root_flag: &'static str,
@@ -202,6 +203,12 @@ fn agent_tools_result() -> Result<AgentToolsResult> {
         tool_count: tools.len(),
         invocation: AgentToolInvocation {
             command: "kast agent call",
+            argv: vec![
+                current_executable_argument(),
+                "agent".to_string(),
+                "call".to_string(),
+                "<method>".to_string(),
+            ],
             method_argument: "<method>",
             params_file_flag: "--params-file",
             workspace_root_flag: "--workspace-root",
@@ -209,6 +216,14 @@ fn agent_tools_result() -> Result<AgentToolsResult> {
         tools,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn current_executable_argument() -> String {
+    std::env::args_os()
+        .next()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .filter(|arg| !arg.is_empty())
+        .unwrap_or_else(|| "kast".to_string())
 }
 
 fn agent_tool_specs(catalog: &Value) -> Result<Vec<AgentToolSpec>> {

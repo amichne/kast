@@ -10,8 +10,8 @@ tools or LSP custom methods. Request shapes are catalog-backed:
 When these instruction files are installed without the full skill, run
 `kast agent tools` first. It returns the same catalog-backed tool names,
 methods, descriptions, mutation metadata, default args, and params JSON
-Schemas that a CLI-capable host needs before calling
-`kast agent call <method>`.
+Schemas that a CLI-capable host needs before calling the returned
+`result.invocation.argv` with `<method>` replaced by the tool method.
 
 ## Agent Pipe Path
 
