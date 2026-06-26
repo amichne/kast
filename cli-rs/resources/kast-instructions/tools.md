@@ -61,6 +61,10 @@ catalog methods, descriptions, mutation metadata, default args, and params JSON
 Schemas. Then call `result.invocation.argv`, replacing `<method>` with the
 returned tool `method`; this keeps alternate binary names and absolute binary
 paths intact.
+Validate the discovery envelope first: `ok=true`, `method=agent/tools`,
+`result.type=KAST_AGENT_TOOLS`, `schemaVersion >= 3`, a SHA-256
+`catalogSha256`, matching `toolCount`, and an invocation argv shaped as
+`agent call <method>`. If that fails, report a stale binary or package install.
 
 Use `kast agent call <method>` for nested payloads, generated request samples,
 or catalog methods that do not have a shallow alias:

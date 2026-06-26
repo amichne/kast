@@ -4914,6 +4914,8 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("kast agent workflow --help"));
     assert!(quickstart.contains("kast agent call"));
     assert!(quickstart.contains("result.invocation.argv"));
+    assert!(quickstart.contains("schemaVersion >= 3"));
+    assert!(quickstart.contains("matching `toolCount`"));
     assert!(quickstart.contains("scripts/verify-kast-state.py"));
     assert!(quickstart.contains("scripts/kast-agent-call.py"));
     assert!(!quickstart.contains("scripts/kast-semantic-workflow.py"));
@@ -4934,9 +4936,13 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(instruction_cli.contains("stale instruction/binary install"));
     assert!(instruction_tools.contains("kast agent tools"));
     assert!(instruction_tools.contains("result.invocation.argv"));
+    assert!(instruction_tools.contains("schemaVersion >= 3"));
+    assert!(instruction_tools.contains("matching `toolCount`"));
     assert!(instruction_rpc.contains("kast agent tools"));
     assert!(instruction_rpc.contains("catalog-backed tool names"));
     assert!(instruction_rpc.contains("result.invocation.argv"));
+    assert!(instruction_rpc.contains("schemaVersion >= 3"));
+    assert!(instruction_rpc.contains("matching `toolCount`"));
     assert!(
         root.join("resources/kast-skill/references/workflows.md")
             .is_file(),

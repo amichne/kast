@@ -12,6 +12,11 @@ When these instruction files are installed without the full skill, run
 methods, descriptions, mutation metadata, default args, and params JSON
 Schemas that a CLI-capable host needs before calling the returned
 `result.invocation.argv` with `<method>` replaced by the tool method.
+Validate the discovery envelope before use: `ok=true`, `method=agent/tools`,
+`result.type=KAST_AGENT_TOOLS`, `schemaVersion >= 3`, a SHA-256
+`catalogSha256`, matching `toolCount`, and an invocation argv shaped as
+`agent call <method>`. A mismatch means the active binary or package install is
+stale.
 
 ## Agent Pipe Path
 

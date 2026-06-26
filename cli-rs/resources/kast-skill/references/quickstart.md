@@ -70,6 +70,11 @@ the full skill or Copilot package. It emits the catalog-backed tool names,
 methods, descriptions, mutation metadata, default args, and params JSON Schemas
 plus `result.invocation.argv`, so a generic host can call the same executable it
 used for discovery with `<method>` replaced by the tool method.
+Validate the discovery envelope before registering tools: `ok=true`,
+`method=agent/tools`, `result.type=KAST_AGENT_TOOLS`, `schemaVersion >= 3`, a
+SHA-256 `catalogSha256`, matching `toolCount`, and `result.invocation.argv`
+shaped as `agent call <method>`. If validation fails, upgrade or reinstall the
+active Kast binary instead of synthesizing tool specs from stale docs.
 
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use

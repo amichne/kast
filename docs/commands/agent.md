@@ -89,6 +89,13 @@ readable `kast agent call` hint, while `argv` preserves the exact executable
 token used to discover the tools. The `catalogSha256` field identifies the
 embedded command catalog used to build the tool list.
 
+Before registering or invoking returned tools, validate the discovery envelope:
+`ok` is true, `method` is `agent/tools`, `result.type` is `KAST_AGENT_TOOLS`,
+`schemaVersion` is at least 3, `catalogSha256` is a SHA-256 hex string,
+`toolCount` matches the returned tools length, and `result.invocation.argv`
+has the `agent call <method>` shape. Treat a failed validation as a stale
+binary or package install.
+
 ## Alias commands
 
 Use aliases for common shallow requests. They prepare the request object and
