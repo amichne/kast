@@ -24,7 +24,7 @@ brew tap amichne/kast
 brew install kast
 
 cd /path/to/your/repository
-kast install copilot
+kast agent setup copilot
 ```
 
 Use the Linux headless bundle instead when the machine is a CI runner, hosted
@@ -34,7 +34,7 @@ agent, server image, or other host without Homebrew or an open developer IDE.
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
 ./scripts/install-ubuntu-debian.sh verify
-kast up --backend=headless
+kast runtime up --backend=headless
 ```
 
 ## Command manual
@@ -66,8 +66,8 @@ choose, what it reads or writes, and how to verify the result.
 
     ---
 
-    Read the command groups: lifecycle, install and repair, agent automation,
-    metrics, and LSP.
+    Read the command groups: readiness, agent automation, runtime, inspect,
+    machine, and release.
 
     [:octicons-arrow-right-24: Command overview](commands/index.md)
 

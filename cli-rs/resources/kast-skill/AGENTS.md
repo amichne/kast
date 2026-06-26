@@ -1,8 +1,8 @@
 # Kast skill and RPC catalog guide
 
 This file applies to `cli-rs/resources/kast-skill/` and descendants. This tree
-is the packaged skill and command catalog used by agents, docs, the Copilot
-extension, and generated LSP custom route metadata.
+is the packaged skill and command catalog used by agents, docs, `kast agent
+tools`, and generated LSP custom route metadata.
 
 ## Local purpose
 
@@ -36,8 +36,8 @@ trust, and active-binary workflow support is
 - Keep recovery guidance resolve-first and compiler-backed; do not route
   Kotlin symbol work through text search.
 - Do not preserve workflow helpers solely for older binaries. If the active
-  binary lacks `kast agent workflow`, report the incompatibility and require
-  upgrade or reinstall.
+  binary lacks `kast agent tools` or `kast agent workflow`, report the
+  incompatibility and require upgrade or reinstall.
 - Prefer scripts for repeated verification or request-exchange workflows. Keep
   them JSON-emitting, eager about input validation, and read-only unless a
   future command explicitly documents mutation.
@@ -46,8 +46,6 @@ trust, and active-binary workflow support is
 
 Catalog changes can affect:
 
-- `cli-rs/resources/plugin/extensions/kast/_shared/commands.json` after
-  repository Copilot installation
 - `cli-rs/protocol/api-specification.md` generated summary block
 - `cli-rs/src/lsp.rs` generated custom method list and dispatch metadata
 - `docs/commands/agent.md`, `docs/commands/lsp.md`, and package tests when tool names
@@ -58,13 +56,13 @@ Catalog changes can affect:
 Run the catalog and docs checks after catalog changes:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check
 python3 .github/scripts/render-rpc-contract-summary.py --check
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 ```
 
-Use `kast validate --request-file <file>` for hand-authored request examples.
+Use `kast release validate --request-file <file>` for hand-authored request examples.
 Run the packaged helper dry run after script or workflow edits:
 
 ```console

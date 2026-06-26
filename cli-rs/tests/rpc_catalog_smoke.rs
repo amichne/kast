@@ -147,7 +147,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
 
     let generator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args(["generate", "contract", "--check"])
+        .args(["release", "generate", "contract", "--check"])
         .output()
         .expect("contract generator check");
     assert!(
@@ -159,7 +159,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
 
     let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args(["validate", "--all-samples"])
+        .args(["release", "validate", "--all-samples"])
         .output()
         .expect("request sample validation");
     assert!(
@@ -465,7 +465,6 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert_eq!(
         targets,
         BTreeSet::from([
-            "extensions/kast/_shared/commands.json",
             "extensions/kast/_shared/kast-trace.mjs",
             "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
@@ -504,9 +503,10 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         extension.contains("\"agent\"")
             && extension.contains("\"call\"")
+            && extension.contains("\"tools\"")
             && extension.contains("formattedAgentResult")
             && !extension.contains("rpcArgs("),
-        "extension tools must use the shared `kast agent call` envelope instead of raw rpc"
+        "extension tools must use `kast agent tools` discovery and the shared `kast agent call` envelope instead of raw rpc"
     );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
         .expect("local plugin installer");
@@ -547,7 +547,8 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
         .args([
-            "install",
+            "agent",
+            "setup",
             "copilot",
             "--target-dir",
             target.to_str().expect("target path"),
@@ -599,12 +600,4 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
             .join("extensions/kast/_shared/kast-agents.mjs")
             .exists()
     );
-
-    let catalog_source =
-        std::fs::read_to_string(manifest_dir.join("resources/kast-skill/references/commands.json"))
-            .expect("command catalog");
-    let installed_catalog =
-        std::fs::read_to_string(target.join("extensions/kast/_shared/commands.json"))
-            .expect("installed command catalog");
-    assert_eq!(installed_catalog, catalog_source);
 }

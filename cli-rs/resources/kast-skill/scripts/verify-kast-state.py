@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -16,19 +17,40 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
-RECOVERY = {
-    "doctor": "kast doctor --repair",
-    "skill": "kast install skill --force",
-    "instructions": "kast install instructions --force",
-    "copilot": "kast install copilot --force",
-    "development": "./gradlew installDevelopmentLocal",
-}
+AGENT_TOOLS_SCHEMA_VERSION = 3
+CATALOG_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
+def setup_recovery_command(
+    kast_executable: str | None,
+    harness: str,
+    target_dir: Path | None = None,
+) -> str:
+    executable = kast_executable or "kast"
+    command = [executable, "agent", "setup", harness]
+    if target_dir is not None:
+        command.extend(["--target-dir", str(target_dir)])
+    command.append("--force")
+    return shlex.join(command)
+
+
+def recovery_commands(kast_executable: str | None) -> dict[str, str]:
+    executable = kast_executable or "kast"
+    return {
+        "ready": shlex.join([executable, "ready", "--fix"]),
+        "skill": setup_recovery_command(kast_executable, "skill"),
+        "instructions": setup_recovery_command(kast_executable, "instructions"),
+        "copilot": setup_recovery_command(kast_executable, "copilot"),
+        "development": "./gradlew installDevelopmentLocal",
+    }
+
+
+RECOVERY = recovery_commands("kast")
 COPILOT_FILES = [
     "lsp.json",
     "extensions/kast/extension.mjs",
     "extensions/kast/_shared/kast-tools.mjs",
     "extensions/kast/_shared/kast-trace.mjs",
-    "extensions/kast/_shared/commands.json",
 ]
 
 
@@ -38,6 +60,27 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--workspace-root", type=Path, default=Path.cwd())
     parser.add_argument("--skill-root", type=Path)
+    parser.add_argument(
+        "--skill-target-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional skill target directory passed to `kast agent setup skill --target-dir`.",
+    )
+    parser.add_argument(
+        "--copilot-target-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional Copilot package target directory passed to `kast agent setup copilot --target-dir`.",
+    )
+    parser.add_argument(
+        "--instructions-target-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional instructions target directory passed to `kast agent setup instructions --target-dir`.",
+    )
     parser.add_argument("--kast-bin", type=Path)
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--require-gradle-project", action="store_true")
@@ -93,6 +136,25 @@ def parse_json_output(record: dict[str, Any]) -> Any | None:
         return None
 
 
+def is_non_bool_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def agent_tools_metadata_ok(result: dict[str, Any], tools: Any) -> bool:
+    schema_version = result.get("schemaVersion")
+    catalog_sha256 = result.get("catalogSha256")
+    tool_count = result.get("toolCount")
+    return (
+        is_non_bool_int(schema_version)
+        and schema_version >= AGENT_TOOLS_SCHEMA_VERSION
+        and isinstance(catalog_sha256, str)
+        and CATALOG_SHA256_RE.fullmatch(catalog_sha256) is not None
+        and isinstance(tools, list)
+        and is_non_bool_int(tool_count)
+        and tool_count == len(tools)
+    )
+
+
 def help_lists_command(help_text: str, command: str) -> bool:
     for line in help_text.splitlines():
         stripped = line.strip()
@@ -146,7 +208,10 @@ def verify_command_surface(
 ) -> None:
     checks = result["checks"]
     top_help = command_record(kast_command + ["--help"], workspace_root, timeout)
+    ready_help = command_record(kast_command + ["ready", "--help"], workspace_root, timeout)
     agent_help = command_record(kast_command + ["agent", "--help"], workspace_root, timeout)
+    agent_tools = command_record(kast_command + ["agent", "tools"], workspace_root, timeout)
+    agent_setup_help = command_record(kast_command + ["agent", "setup", "--help"], workspace_root, timeout)
     agent_workflow_help = command_record(
         kast_command + ["agent", "workflow", "--help"],
         workspace_root,
@@ -157,17 +222,73 @@ def verify_command_surface(
 
     top_help_text = top_help["stdout"] + top_help["stderr"]
     install_help_text = install_help["stdout"] + install_help["stderr"]
+    agent_tools_json = parse_json_output(agent_tools)
+    agent_tools_result = agent_tools_json.get("result") if isinstance(agent_tools_json, dict) else None
+    agent_tools_specs = agent_tools_result.get("tools") if isinstance(agent_tools_result, dict) else None
+    agent_tools_type = agent_tools_result.get("type") if isinstance(agent_tools_result, dict) else None
+    agent_tools_schema_version = (
+        agent_tools_result.get("schemaVersion") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_catalog_sha256 = (
+        agent_tools_result.get("catalogSha256") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_declared_tool_count = (
+        agent_tools_result.get("toolCount") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_metadata_valid = (
+        agent_tools_metadata_ok(agent_tools_result, agent_tools_specs)
+        if isinstance(agent_tools_result, dict)
+        else False
+    )
+    agent_tools_invocation = (
+        agent_tools_result.get("invocation") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_invocation_argv = (
+        agent_tools_invocation.get("argv") if isinstance(agent_tools_invocation, dict) else None
+    )
+    expected_agent_tools_invocation_argv = [kast_command[0], "agent", "call", "<method>"]
+    agent_tools_invocation_argv_ok = (
+        isinstance(agent_tools_invocation_argv, list)
+        and agent_tools_invocation_argv == expected_agent_tools_invocation_argv
+    )
+    agent_tools_envelope_ok = (
+        agent_tools["exitCode"] == 0
+        and isinstance(agent_tools_json, dict)
+        and agent_tools_json.get("ok") is True
+        and agent_tools_json.get("method") == "agent/tools"
+        and agent_tools_type == "KAST_AGENT_TOOLS"
+        and isinstance(agent_tools_specs, list)
+        and agent_tools_metadata_valid
+        and agent_tools_invocation_argv_ok
+    )
     checks["commandSurface"] = {
         "helpExitCode": top_help["exitCode"],
+        "readyHelpExitCode": ready_help["exitCode"],
         "agentHelpExitCode": agent_help["exitCode"],
+        "agentToolsExitCode": agent_tools["exitCode"],
+        "agentSetupHelpExitCode": agent_setup_help["exitCode"],
         "agentWorkflowHelpExitCode": agent_workflow_help["exitCode"],
         "installHelpExitCode": install_help["exitCode"],
         "versionExitCode": version["exitCode"],
         "version": version["stdout"].strip(),
         "cliVersion": parse_cli_version(version["stdout"]),
+        "readyAvailable": ready_help["exitCode"] == 0,
         "agentAvailable": agent_help["exitCode"] == 0,
+        "agentToolsAvailable": agent_tools["exitCode"] == 0,
+        "agentToolsEnvelopeOk": agent_tools_envelope_ok,
+        "agentToolsType": agent_tools_type,
+        "agentToolsSchemaVersion": agent_tools_schema_version,
+        "agentToolsCatalogSha256": agent_tools_catalog_sha256,
+        "agentToolsDeclaredToolCount": agent_tools_declared_tool_count,
+        "agentToolsToolCount": len(agent_tools_specs) if isinstance(agent_tools_specs, list) else None,
+        "agentToolsMetadataValid": agent_tools_metadata_valid,
+        "agentToolsInvocationArgv": agent_tools_invocation_argv,
+        "agentToolsInvocationArgvExpected": expected_agent_tools_invocation_argv,
+        "agentToolsInvocationArgvOk": agent_tools_invocation_argv_ok,
+        "agentSetupAvailable": agent_setup_help["exitCode"] == 0,
         "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
         "rpcVisibleInTopHelp": help_lists_command(top_help_text, "rpc"),
+        "installVisibleInTopHelp": help_lists_command(top_help_text, "install"),
         "installAffectedVisible": help_lists_command(install_help_text, "affected"),
     }
 
@@ -178,6 +299,27 @@ def verify_command_surface(
             result,
             "KAST_AGENT_UNAVAILABLE",
             "`kast agent --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            RECOVERY["development"],
+        )
+    if ready_help["exitCode"] != 0:
+        add_issue(
+            result,
+            "KAST_READY_UNAVAILABLE",
+            "`kast ready --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            RECOVERY["development"],
+        )
+    if not agent_tools_envelope_ok:
+        add_issue(
+            result,
+            "KAST_AGENT_TOOLS_UNAVAILABLE",
+            "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            RECOVERY["development"],
+        )
+    if agent_setup_help["exitCode"] != 0:
+        add_issue(
+            result,
+            "KAST_AGENT_SETUP_UNAVAILABLE",
+            "`kast agent setup --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
     if agent_workflow_help["exitCode"] != 0:
@@ -194,46 +336,53 @@ def verify_command_surface(
             "`kast rpc` is visible in top-level help; expected the agent-first hidden surface.",
             RECOVERY["development"],
         )
+    if checks["commandSurface"]["installVisibleInTopHelp"]:
+        add_issue(
+            result,
+            "KAST_INSTALL_FIRST_CLASS",
+            "`kast install` is visible in top-level help; expected the intent-first `kast agent setup` surface.",
+            RECOVERY["development"],
+        )
     if checks["commandSurface"]["installAffectedVisible"]:
         add_issue(
             result,
             "KAST_INSTALL_AFFECTED_RETIRED",
-            "`kast install affected` is visible; expected the v1 install surface.",
+            "`kast install affected` is visible; expected the intent-first command surface.",
             RECOVERY["development"],
         )
 
 
-def verify_doctor_and_paths(
+def verify_ready_and_paths(
     result: dict[str, Any],
     kast_command: list[str],
     workspace_root: Path,
     timeout: int,
 ) -> dict[str, Any] | None:
-    doctor = command_record(kast_command + ["--output", "json", "doctor"], workspace_root, timeout)
-    doctor_json = parse_json_output(doctor)
-    result["checks"]["doctor"] = {
-        "exitCode": doctor["exitCode"],
-        "parsed": doctor_json is not None,
-        "ok": doctor_json.get("ok") if isinstance(doctor_json, dict) else None,
-        "manifestPath": doctor_json.get("manifestPath") if isinstance(doctor_json, dict) else None,
-        "binary": doctor_json.get("binary") if isinstance(doctor_json, dict) else None,
-        "issues": doctor_json.get("issues", []) if isinstance(doctor_json, dict) else [],
-        "warnings": doctor_json.get("warnings", []) if isinstance(doctor_json, dict) else [],
+    ready = command_record(kast_command + ["--output", "json", "ready"], workspace_root, timeout)
+    ready_json = parse_json_output(ready)
+    result["checks"]["ready"] = {
+        "exitCode": ready["exitCode"],
+        "parsed": ready_json is not None,
+        "ok": ready_json.get("ok") if isinstance(ready_json, dict) else None,
+        "manifestPath": ready_json.get("manifestPath") if isinstance(ready_json, dict) else None,
+        "binary": ready_json.get("binary") if isinstance(ready_json, dict) else None,
+        "issues": ready_json.get("issues", []) if isinstance(ready_json, dict) else [],
+        "warnings": ready_json.get("warnings", []) if isinstance(ready_json, dict) else [],
     }
-    if doctor["exitCode"] != 0 or not isinstance(doctor_json, dict) or not doctor_json.get("ok", False):
-        message = "`kast --output json doctor` did not prove a healthy install."
-        if isinstance(doctor_json, dict) and doctor_json.get("issues"):
-            message = f"{message} Issues: {doctor_json['issues']}"
-        add_issue(result, "KAST_DOCTOR_UNHEALTHY", message, RECOVERY["doctor"])
-    elif isinstance(doctor_json, dict) and doctor_json.get("warnings"):
+    if ready["exitCode"] != 0 or not isinstance(ready_json, dict) or not ready_json.get("ok", False):
+        message = "`kast --output json ready` did not prove a healthy install."
+        if isinstance(ready_json, dict) and ready_json.get("issues"):
+            message = f"{message} Issues: {ready_json['issues']}"
+        add_issue(result, "KAST_READY_UNHEALTHY", message, RECOVERY["ready"])
+    elif isinstance(ready_json, dict) and ready_json.get("warnings"):
         add_warning(
             result,
-            "KAST_DOCTOR_WARNINGS",
-            f"`kast --output json doctor` reported warnings: {doctor_json['warnings']}",
+            "KAST_READY_WARNINGS",
+            f"`kast --output json ready` reported warnings: {ready_json['warnings']}",
         )
 
     paths = command_record(
-        kast_command + ["--output", "json", "paths", "--workspace-root", str(workspace_root)],
+        kast_command + ["--output", "json", "inspect", "paths", "--workspace-root", str(workspace_root)],
         workspace_root,
         timeout,
     )
@@ -248,20 +397,20 @@ def verify_doctor_and_paths(
         add_issue(
             result,
             "KAST_PATHS_UNAVAILABLE",
-            "`kast --output json paths` failed; active binary may predate manifest-backed path inspection.",
+            "`kast --output json inspect paths` failed; active binary may predate manifest-backed path inspection.",
             RECOVERY["development"],
         )
     elif paths_json.get("warnings"):
         add_warning(
             result,
             "KAST_PATHS_WARNINGS",
-            f"`kast --output json paths` reported warnings: {paths_json['warnings']}",
+            f"`kast --output json inspect paths` reported warnings: {paths_json['warnings']}",
         )
-    return doctor_json if isinstance(doctor_json, dict) else None
+    return ready_json if isinstance(ready_json, dict) else None
 
 
-def manifest_resources(doctor_json: dict[str, Any] | None) -> list[dict[str, Any]]:
-    install = doctor_json.get("install") if isinstance(doctor_json, dict) else None
+def manifest_resources(ready_json: dict[str, Any] | None) -> list[dict[str, Any]]:
+    install = ready_json.get("install") if isinstance(ready_json, dict) else None
     if not isinstance(install, dict):
         return []
     resources: list[dict[str, Any]] = []
@@ -277,15 +426,41 @@ def manifest_resources(doctor_json: dict[str, Any] | None) -> list[dict[str, Any
 
 
 def resource_record_for_target(
-    doctor_json: dict[str, Any] | None,
+    ready_json: dict[str, Any] | None,
     kind: str,
     target: Path,
 ) -> dict[str, Any] | None:
-    target_value = str(normalize(target))
-    for resource in manifest_resources(doctor_json):
-        if resource.get("kind") == kind and resource.get("targetPath") == target_value:
+    target_value = normalize(target)
+    for resource in manifest_resources(ready_json):
+        resource_target = resource.get("targetPath")
+        if not isinstance(resource_target, str):
+            continue
+        if resource.get("kind") == kind and normalize(Path(resource_target)) == target_value:
             return resource
     return None
+
+
+def manifest_output_mismatches(resource: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(resource, dict):
+        return []
+    mismatches: list[dict[str, Any]] = []
+    for output in resource.get("outputChecksums", []):
+        if not isinstance(output, dict):
+            continue
+        path_value = output.get("path")
+        expected = output.get("sha256")
+        if not isinstance(path_value, str) or not isinstance(expected, str):
+            continue
+        actual = file_sha256(Path(path_value))
+        if actual != expected:
+            mismatches.append(
+                {
+                    "path": path_value,
+                    "expectedSha256": expected,
+                    "actualSha256": actual,
+                }
+            )
+    return mismatches
 
 
 def verify_workspace(result: dict[str, Any], workspace_root: Path, require_gradle: bool) -> None:
@@ -317,12 +492,53 @@ def verify_workspace(result: dict[str, Any], workspace_root: Path, require_gradl
 def verify_copilot(
     result: dict[str, Any],
     workspace_root: Path,
-    source_catalog: Path,
     expected_version: str | None,
     required: bool,
-    doctor_json: dict[str, Any] | None,
+    ready_json: dict[str, Any] | None,
+    kast_executable: str | None = None,
+    target_dirs: list[Path] | None = None,
 ) -> None:
-    github_dir = workspace_root / ".github"
+    target_dirs = target_dirs or [workspace_root / ".github"]
+    targets = [
+        copilot_target_check(github_dir, expected_version, ready_json)
+        for github_dir in target_dirs
+    ]
+    check = dict(targets[0]) if targets else {"targets": []}
+    check["targets"] = targets
+    result["checks"]["copilotPackage"] = check
+    stale_targets = [target for target in targets if not target["current"]]
+    stale_installed_targets = [
+        target
+        for target in targets
+        if target["exists"]
+        and (
+            target["manifestOutputMismatches"]
+            or not target["versionMatchesExpected"]
+            or not target["manifestResource"]
+            or target["retiredMarkerExists"]
+        )
+    ]
+    if required and stale_targets:
+        recovery = copilot_recovery_command(kast_executable, workspace_root, stale_targets, target_dirs)
+        add_issue(
+            result,
+            "COPILOT_PACKAGE_STALE",
+            f"Repository Copilot package is missing or stale under {stale_targets[0]['target']}.",
+            recovery,
+        )
+    elif stale_installed_targets:
+        add_warning(
+            result,
+            "COPILOT_PACKAGE_STALE",
+            f"Repository Copilot package differs from the manifest-backed expected state under {stale_installed_targets[0]['target']}.",
+        )
+
+
+def copilot_target_check(
+    github_dir: Path,
+    expected_version: str | None,
+    ready_json: dict[str, Any] | None,
+) -> dict[str, Any]:
     files = {
         relative: {
             "path": str(github_dir / relative),
@@ -330,50 +546,82 @@ def verify_copilot(
         }
         for relative in COPILOT_FILES
     }
-    commands_path = github_dir / "extensions/kast/_shared/commands.json"
-    source_hash = file_sha256(source_catalog)
-    installed_hash = file_sha256(commands_path)
     retired_marker_exists = (github_dir / ".kast-copilot-version").exists()
-    resource = resource_record_for_target(doctor_json, "COPILOT_PACKAGE", github_dir)
-    check = {
+    resource = resource_record_for_target(ready_json, "COPILOT_PACKAGE", github_dir)
+    output_mismatches = manifest_output_mismatches(resource)
+    missing = [relative for relative, info in files.items() if not info["exists"]]
+    stale = bool(output_mismatches) if resource else False
+    version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
+    missing_record = github_dir.is_dir() and resource is None
+    retired_marker = retired_marker_exists
+    current = not (missing or stale or version_mismatch or missing_record or retired_marker)
+    return {
         "target": str(github_dir),
         "exists": github_dir.is_dir(),
+        "current": current,
         "files": files,
         "retiredMarkerExists": retired_marker_exists,
         "expectedVersion": expected_version,
         "manifestResource": resource,
+        "manifestOutputMismatches": output_mismatches,
         "versionMatchesExpected": bool(
             resource and expected_version and resource.get("primitiveVersion") == expected_version
         ),
-        "commandsHashMatchesSource": bool(source_hash and installed_hash and source_hash == installed_hash),
     }
-    result["checks"]["copilotPackage"] = check
-    missing = [relative for relative, info in files.items() if not info["exists"]]
-    stale = source_hash and installed_hash and source_hash != installed_hash
-    version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
-    missing_record = github_dir.is_dir() and resource is None
-    retired_marker = retired_marker_exists
-    if required and (missing or stale or version_mismatch or missing_record or retired_marker):
-        add_issue(
-            result,
-            "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package is missing or stale under {github_dir}.",
-            RECOVERY["copilot"],
-        )
-    elif github_dir.is_dir() and (stale or version_mismatch or missing_record or retired_marker):
-        add_warning(
-            result,
-            "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package differs from the manifest-backed expected state under {github_dir}.",
-        )
 
 
-def resource_targets(workspace_root: Path, kind: str) -> list[Path]:
-    return [
+def copilot_recovery_command(
+    kast_executable: str | None,
+    workspace_root: Path,
+    stale_targets: list[dict[str, Any]],
+    target_dirs: list[Path],
+) -> str:
+    default_target = workspace_root / ".github"
+    target = Path(stale_targets[0]["target"]) if stale_targets else default_target
+    if target_dirs and normalize(target_dirs[0]) != normalize(default_target):
+        return setup_recovery_command(kast_executable, "copilot", target)
+    return setup_recovery_command(kast_executable, "copilot")
+
+
+def resource_target_from_target_dir(target_dir: Path) -> Path:
+    if target_dir.name == "kast":
+        return target_dir
+    return target_dir / "kast"
+
+
+def resource_targets(
+    workspace_root: Path,
+    kind: str,
+    target_dirs: list[Path] | None = None,
+) -> list[Path]:
+    targets = [
         workspace_root / ".agents" / kind / "kast",
+        workspace_root / ".codex" / kind / "kast",
         workspace_root / ".github" / kind / "kast",
         workspace_root / ".claude" / kind / "kast",
     ]
+    for target_dir in target_dirs or []:
+        target = resource_target_from_target_dir(target_dir)
+        if target not in targets:
+            targets.append(target)
+    return targets
+
+
+def resource_recovery_command(
+    kast_executable: str | None,
+    workspace_root: Path,
+    kind: str,
+    stale_targets: list[dict[str, Any]],
+    target_dirs: list[Path] | None = None,
+) -> str:
+    harness = "skill" if kind == "skills" else "instructions"
+    if stale_targets:
+        target_dir = Path(stale_targets[0]["path"]).parent
+    elif target_dirs:
+        target_dir = target_dirs[0]
+    else:
+        target_dir = resource_targets(workspace_root, kind)[0].parent
+    return setup_recovery_command(kast_executable, harness, target_dir)
 
 
 def verify_resource_install(
@@ -384,14 +632,18 @@ def verify_resource_install(
     required: bool,
     source_root: Path | None = None,
     content_files: list[str] | None = None,
-    doctor_json: dict[str, Any] | None = None,
+    ready_json: dict[str, Any] | None = None,
+    kast_executable: str | None = None,
+    target_dirs: list[Path] | None = None,
 ) -> None:
     targets = []
     manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
-    for target in resource_targets(workspace_root, kind):
-        resource = resource_record_for_target(doctor_json, manifest_kind, target)
+    for target in resource_targets(workspace_root, kind, target_dirs):
+        resource = resource_record_for_target(ready_json, manifest_kind, target)
+        output_mismatches = manifest_output_mismatches(resource)
+        retired_marker_exists = (target / ".kast-version").exists()
         content_mismatches: list[str] = []
-        if target.is_dir() and source_root and content_files:
+        if target.is_dir() and not resource and source_root and content_files:
             for relative in content_files:
                 source_hash = file_sha256(source_root / relative)
                 target_hash = file_sha256(target / relative)
@@ -401,9 +653,10 @@ def verify_resource_install(
             {
                 "path": str(target),
                 "exists": target.is_dir(),
-                "retiredMarkerExists": (target / ".kast-version").exists(),
+                "retiredMarkerExists": retired_marker_exists,
                 "expectedVersion": expected_version,
                 "manifestResource": resource,
+                "manifestOutputMismatches": output_mismatches,
                 "versionMatchesExpected": bool(
                     resource and expected_version and resource.get("primitiveVersion") == expected_version
                 ),
@@ -417,10 +670,18 @@ def verify_resource_install(
         for target in installed
         if (expected_version and not target["versionMatchesExpected"])
         or target["retiredMarkerExists"]
+        or not target["manifestResource"]
+        or target["manifestOutputMismatches"]
         or target["contentMismatches"]
     ]
     if required and (not installed or stale):
-        recovery = RECOVERY["skill"] if kind == "skills" else RECOVERY["instructions"]
+        recovery = resource_recovery_command(
+            kast_executable,
+            workspace_root,
+            kind,
+            stale,
+            target_dirs,
+        )
         add_issue(
             result,
             f"{kind.upper()}_STALE",
@@ -428,7 +689,13 @@ def verify_resource_install(
             recovery,
         )
     elif stale:
-        recovery = RECOVERY["skill"] if kind == "skills" else RECOVERY["instructions"]
+        recovery = resource_recovery_command(
+            kast_executable,
+            workspace_root,
+            kind,
+            stale,
+            target_dirs,
+        )
         add_warning(
             result,
             f"{kind.upper()}_STALE",
@@ -437,10 +704,16 @@ def verify_resource_install(
 
 
 def main() -> int:
+    global RECOVERY
     args = parse_args()
     workspace_root = normalize(args.workspace_root)
     script_root = Path(__file__).resolve().parents[1]
     skill_root = normalize(args.skill_root) if args.skill_root else script_root
+    copilot_target_dirs = [normalize(target_dir) for target_dir in args.copilot_target_dir]
+    skill_target_dirs = [normalize(target_dir) for target_dir in args.skill_target_dir]
+    instructions_target_dirs = [
+        normalize(target_dir) for target_dir in args.instructions_target_dir
+    ]
     source_catalog = skill_root / "references" / "commands.json"
 
     which_kast = shutil.which("kast")
@@ -450,6 +723,7 @@ def main() -> int:
         kast_bin = which_kast
     else:
         kast_bin = None
+    RECOVERY = recovery_commands(kast_bin)
 
     result: dict[str, Any] = {
         "type": "KAST_STATE_VERIFICATION",
@@ -479,16 +753,24 @@ def main() -> int:
         "selected": kast_bin,
     }
     if not kast_bin:
-        add_issue(result, "KAST_NOT_FOUND", "`kast` was not found on PATH.", RECOVERY["doctor"])
-        doctor_json = None
+        add_issue(result, "KAST_NOT_FOUND", "`kast` was not found on PATH.", RECOVERY["ready"])
+        ready_json = None
     else:
         kast_command = [kast_bin]
         verify_command_surface(result, kast_command, workspace_root, args.timeout)
-        doctor_json = verify_doctor_and_paths(result, kast_command, workspace_root, args.timeout)
+        ready_json = verify_ready_and_paths(result, kast_command, workspace_root, args.timeout)
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
-    verify_copilot(result, workspace_root, source_catalog, expected_version, args.require_copilot, doctor_json)
+    verify_copilot(
+        result,
+        workspace_root,
+        expected_version,
+        args.require_copilot,
+        ready_json,
+        kast_bin,
+        copilot_target_dirs,
+    )
     verify_resource_install(
         result,
         workspace_root,
@@ -505,7 +787,9 @@ def main() -> int:
             "scripts/verify-kast-state.py",
             "scripts/kast-agent-call.py",
         ],
-        doctor_json,
+        ready_json,
+        kast_bin,
+        skill_target_dirs,
     )
     verify_resource_install(
         result,
@@ -513,7 +797,9 @@ def main() -> int:
         expected_version,
         "instructions",
         args.require_instructions,
-        doctor_json=doctor_json,
+        ready_json=ready_json,
+        kast_executable=kast_bin,
+        target_dirs=instructions_target_dirs,
     )
 
     result["ok"] = not result["issues"]

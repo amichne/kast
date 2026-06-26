@@ -13,7 +13,7 @@ const rpcCatalog = JSON.parse(await readFile(rpcCatalogPath, "utf8"));
 
 assert(server, "lspServers.kotlin is required");
 assert(server.command === "kast", "kotlin.command must be kast");
-assertArrayEquals(server.args, ["lsp", "--stdio"], "kotlin.args");
+assertArrayEquals(server.args, ["agent", "lsp", "--stdio"], "kotlin.args");
 assert(server.fileExtensions?.[".kt"] === "kotlin", ".kt must map to kotlin");
 assert(server.fileExtensions?.[".kts"] === "kotlin", ".kts must map to kotlin");
 assert(server.rootUri === ".", "kotlin.rootUri must be .");
@@ -180,7 +180,7 @@ writeMessage(child, {
 child.stdin.end();
 
 const exitCode = await waitForExit(child);
-assert(exitCode === 0, `kast lsp exited with ${exitCode}: ${stderr.toString("utf8")}`);
+assert(exitCode === 0, `kast agent lsp exited with ${exitCode}: ${stderr.toString("utf8")}`);
 
 console.log(JSON.stringify({
   ok: true,
@@ -255,7 +255,7 @@ async function readOneMessage(childProcess, getBuffer, setBuffer) {
       }
     }
     if (childProcess.exitCode !== null) {
-      throw new Error(`kast lsp exited before response with ${childProcess.exitCode}`);
+      throw new Error(`kast agent lsp exited before response with ${childProcess.exitCode}`);
     }
     await new Promise((resolveTimeout) => setTimeout(resolveTimeout, 10));
   }

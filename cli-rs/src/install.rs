@@ -43,6 +43,7 @@ const RETIRED_COPILOT_PACKAGE_OUTPUTS: &[&str] = &[
     "agents/kast-reader.agent.md",
     "agents/kast-writer.agent.md",
     "extensions/kast/_shared/kast-agents.mjs",
+    "extensions/kast/_shared/commands.json",
 ];
 const COPILOT_PRIMITIVE_MANIFEST: &str = "primitive-manifest.json";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
@@ -198,6 +199,48 @@ pub struct InstallCopilotPackageResult {
     pub schema_version: u32,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSetupAutoPlan {
+    pub harness: cli::AgentSetupHarness,
+    pub selection_source: AgentSetupSelectionSource,
+    pub reason: String,
+    pub install_command: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_dir: Option<String>,
+    pub dry_run: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentSetupSelectionSource {
+    Explicit,
+    Config,
+    TargetDirectory,
+    Repository,
+}
+
+impl AgentSetupAutoPlan {
+    pub fn new(
+        harness: cli::AgentSetupHarness,
+        selection_source: AgentSetupSelectionSource,
+        reason: String,
+        install_command: Vec<String>,
+        target_dir: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            harness,
+            selection_source,
+            reason,
+            install_command,
+            target_dir: target_dir.map(|path| path.display().to_string()),
+            dry_run: true,
+            schema_version: SCHEMA_VERSION,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GitExcludeResult {
@@ -336,7 +379,7 @@ pub fn install(args: InstallArgs, reporter: &mut dyn InstallReporter) -> Result<
         InstallCommand::Shell(shell_args) => install_shell(shell_args).map(InstallResult::Shell),
         InstallCommand::Completion(_) => Err(CliError::new(
             "CLI_USAGE",
-            "`kast install completion` must be handled as raw completion output",
+            "`kast machine completion` must be handled as raw completion output",
         )),
     }
 }
@@ -892,23 +935,23 @@ fn verify_activated_bundle(
         ));
     }
     let output = ProcessCommand::new(&targets.resolved.shim_path)
-        .arg("doctor")
+        .arg("ready")
         .env("KAST_INSTALL_ROOT", &targets.resolved.install_root)
         .env("KAST_CONFIG_HOME", &targets.resolved.config_root)
         .output()
         .map_err(|error| {
             CliError::new(
-                "BUNDLE_DOCTOR_FAILED",
-                format!("Could not run installed kast doctor: {error}"),
+                "BUNDLE_READY_FAILED",
+                format!("Could not run installed kast ready: {error}"),
             )
         })?;
     if output.status.success() {
         Ok(())
     } else {
         Err(command_error(
-            "BUNDLE_DOCTOR_FAILED",
-            "Installed bundle did not pass kast doctor",
-            &["doctor".to_string()],
+            "BUNDLE_READY_FAILED",
+            "Installed bundle did not pass kast ready",
+            &["ready".to_string()],
             &output,
         ))
     }
@@ -1192,7 +1235,7 @@ fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResul
     let mut result = InstallRepairResult {
         applied: args.apply,
         config_path: config_path.display().to_string(),
-        apply_command: "kast doctor --repair".to_string(),
+        apply_command: "kast ready --fix".to_string(),
         actions: vec![],
         backups: vec![],
         warnings: vec![],
@@ -1247,7 +1290,7 @@ fn load_global_config_for_repair(
                 "recover-invalid-config",
                 &config_path,
                 "Back up the invalid global Kast config and restore safe defaults.",
-                Some("kast doctor --repair".to_string()),
+                Some("kast ready --fix".to_string()),
             );
             if !args.apply {
                 result.warnings.push(format!(
@@ -1505,7 +1548,7 @@ fn repair_install_copilot_repos(
             &github_dir,
             "Refresh a stale managed Copilot LSP package install from the active binary bundles.",
             Some(format!(
-                "kast install copilot --target-dir {} --force",
+                "kast agent setup copilot --target-dir {} --force",
                 shell_quote_path(&github_dir)
             )),
         );
@@ -1556,7 +1599,9 @@ fn repair_install_shell_sources(
         };
         validate_shell_command_name(command_name)?;
         let content = fs::read_to_string(&path)?;
-        if !content.contains("Managed by `kast install shell`") {
+        if !content.contains("Managed by `kast machine shell`")
+            && !content.contains("Managed by `kast install shell`")
+        {
             continue;
         }
         let Some(bin_dir) = resolve_command_bin_dir(command_name)? else {
@@ -1580,7 +1625,7 @@ fn repair_install_shell_sources(
                 "Back up and rewrite managed shell integration for `{command_name}` to use {}.",
                 bin_dir.display()
             ),
-            Some("kast doctor --repair".to_string()),
+            Some("kast ready --fix".to_string()),
         );
         if args.apply {
             backup_existing_path(&path, backup_root, result)?;
@@ -1625,7 +1670,7 @@ fn repair_install_jetbrains_profiles(
                 "Back up and relink a stale IDEA or Android Studio profile plugin to {}.",
                 expected_plugin_target.display()
             ),
-            Some("kast install plugin --force".to_string()),
+            Some("kast machine plugin --force".to_string()),
         );
         if args.apply {
             backup_existing_path(&plugin_link, backup_root, result)?;
@@ -1912,6 +1957,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         Some(repo_root) => update_resource_git_exclude(
             ManagedResourceKind::Skill,
             repo_root,
+            &target,
             &outcome.output_paths,
             args.no_auto_exclude_git,
         )?,
@@ -1959,6 +2005,7 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
         Some(repo_root) => update_resource_git_exclude(
             ManagedResourceKind::Instructions,
             repo_root,
+            &target,
             &outcome.output_paths,
             args.no_auto_exclude_git,
         )?,
@@ -2016,6 +2063,7 @@ pub fn install_copilot(args: CopilotInstallArgs) -> Result<InstallCopilotPackage
         Some(repo_root) => update_resource_git_exclude(
             ManagedResourceKind::CopilotPackage,
             repo_root,
+            &target,
             &outcome.output_paths,
             args.no_auto_exclude_git,
         )?,
@@ -2125,7 +2173,7 @@ fn detect_shell() -> Result<ShellKind> {
         "zsh" => Ok(ShellKind::Zsh),
         _ => Err(CliError::new(
             "CLI_USAGE",
-            "Could not infer a supported shell from SHELL. Pass `kast install shell --shell bash` or `--shell zsh`.",
+            "Could not infer a supported shell from SHELL. Pass `kast machine shell --shell bash` or `--shell zsh`.",
         )),
     }
 }
@@ -2187,7 +2235,7 @@ fn shell_source_content(
     config_home: &Path,
 ) -> String {
     format!(
-        r#"# Managed by `kast install shell`; re-run that command after moving Kast.
+        r#"# Managed by `kast machine shell`; re-run that command after moving Kast.
 export KAST_CONFIG_HOME={}
 _kast_bin_dir={}
 case ":${{PATH}}:" in
@@ -2197,7 +2245,7 @@ esac
 unset _kast_bin_dir
 
 if command -v {command_name} >/dev/null 2>&1; then
-  source <({command_name} install completion {} --command-name {command_name})
+  source <({command_name} machine completion {} --command-name {command_name})
 fi
 "#,
         shell_quote(&config_home.display().to_string()),
@@ -2208,7 +2256,7 @@ fi
 
 fn patch_shell_profile(profile: &Path, source_line: &str, dry_run: bool) -> Result<bool> {
     let block = format!(
-        "{SHELL_BLOCK_START}\n# Managed by `kast install shell`; edit the generated source file instead.\n{source_line}\n{SHELL_BLOCK_END}\n"
+        "{SHELL_BLOCK_START}\n# Managed by `kast machine shell`; edit the generated source file instead.\n{source_line}\n{SHELL_BLOCK_END}\n"
     );
     let original = match fs::read_to_string(profile) {
         Ok(content) => content,
@@ -2394,7 +2442,7 @@ fn ensure_homebrew_plugin_profile_link(
     if path_exists_or_symlink(plugin_link) {
         let Some(current_target) = fs::read_link(plugin_link).ok() else {
             warnings.push(format!(
-                "Not replacing existing JetBrains plugin path {}; run `kast doctor --repair` for backed-up repair",
+                "Not replacing existing JetBrains plugin path {}; run `kast ready --fix` for backed-up repair",
                 plugin_link.display()
             ));
             return Ok(());
@@ -2409,7 +2457,7 @@ fn ensure_homebrew_plugin_profile_link(
                 .contains("/kast-plugin/")
         {
             warnings.push(format!(
-                "Not replacing existing JetBrains plugin link {} -> {}; run `kast doctor --repair` for backed-up repair",
+                "Not replacing existing JetBrains plugin link {} -> {}; run `kast ready --fix` for backed-up repair",
                 plugin_link.display(),
                 current_target.display()
             ));
@@ -2472,7 +2520,9 @@ fn install_embedded_resource(
         .collect::<Vec<_>>();
     let outputs_match = resource_outputs_match(target, files)?;
     let markers_present = retired_marker_paths.iter().any(|path| path.exists());
-    if !force && outputs_match && !markers_present {
+    let retired_outputs_present = matches!(kind, ManagedResourceKind::CopilotPackage)
+        && retired_copilot_package_outputs_present(target);
+    if !force && outputs_match && !markers_present && !retired_outputs_present {
         return Ok(EmbeddedResourceInstallOutcome {
             skipped: true,
             source_bundle_sha256,
@@ -2507,7 +2557,7 @@ fn install_embedded_resource(
             }
         }
         ResourceReplaceMode::ManagedFilesOnly => {
-            if force || manifest_managed || retired_marker_managed {
+            if force || manifest_managed || retired_marker_managed || retired_outputs_present {
                 remove_managed_resource_outputs(&output_paths)?;
                 remove_retired_copilot_package_outputs(target)?;
             }
@@ -2538,7 +2588,9 @@ fn collect_embedded_dir_files(
         match entry {
             DirEntry::Dir(dir) => collect_embedded_dir_files(dir.entries(), files)?,
             DirEntry::File(file) => {
-                if is_retired_resource_marker(file.path()) {
+                if is_retired_resource_marker(file.path())
+                    || is_generated_resource_cache_file(file.path())
+                {
                     continue;
                 }
                 files.push(EmbeddedResourceFile {
@@ -2550,6 +2602,20 @@ fn collect_embedded_dir_files(
         }
     }
     Ok(())
+}
+
+fn is_generated_resource_cache_file(path: &Path) -> bool {
+    path.components().any(|component| {
+        component
+            .as_os_str()
+            .to_str()
+            .is_some_and(|value| value == "__pycache__")
+    }) || path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+            matches!(name, ".DS_Store") || name.ends_with(".pyc") || name.ends_with(".pyo")
+        })
 }
 
 fn is_retired_resource_marker(path: &Path) -> bool {
@@ -2664,6 +2730,12 @@ fn remove_retired_copilot_package_outputs(github_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+fn retired_copilot_package_outputs_present(github_dir: &Path) -> bool {
+    RETIRED_COPILOT_PACKAGE_OUTPUTS
+        .iter()
+        .any(|relative| github_dir.join(relative).exists())
+}
+
 fn record_managed_resource(
     kind: ManagedResourceKind,
     repo_root: &Path,
@@ -2692,6 +2764,7 @@ fn record_managed_resource(
 fn update_resource_git_exclude(
     kind: ManagedResourceKind,
     repo_root: &Path,
+    target: &Path,
     output_paths: &[PathBuf],
     disabled: bool,
 ) -> Result<GitExcludeResult> {
@@ -2713,7 +2786,8 @@ fn update_resource_git_exclude(
             schema_version: SCHEMA_VERSION,
         });
     };
-    let entries = git_exclude_entries(repo_root, output_paths)?;
+    let paths = resource_git_exclude_paths(kind, repo_root, target, output_paths)?;
+    let entries = git_exclude_entries(repo_root, &paths)?;
     let (start_marker, end_marker) = git_exclude_markers(kind);
     let block = format!("{start_marker}\n{}\n{end_marker}\n", entries.join("\n"));
     let original = match fs::read_to_string(&exclude_file) {
@@ -2737,6 +2811,33 @@ fn update_resource_git_exclude(
         reason: None,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn resource_git_exclude_paths(
+    kind: ManagedResourceKind,
+    repo_root: &Path,
+    target: &Path,
+    output_paths: &[PathBuf],
+) -> Result<Vec<PathBuf>> {
+    let normalized_repo = config::normalize(repo_root.to_path_buf());
+    let normalized_target = config::normalize(target.to_path_buf());
+    let mut paths = output_paths.to_vec();
+    if let Some(install) = self_mgmt::read_global_install_state()? {
+        for repo in install
+            .repos
+            .iter()
+            .filter(|repo| config::normalize(PathBuf::from(&repo.path)) == normalized_repo)
+        {
+            for resource in &repo.resources {
+                if resource.kind == kind
+                    && config::normalize(PathBuf::from(&resource.target_path)) != normalized_target
+                {
+                    paths.extend(resource.output_paths.iter().map(PathBuf::from));
+                }
+            }
+        }
+    }
+    Ok(paths)
 }
 
 fn git_exclude_not_repository() -> GitExcludeResult {
@@ -2851,7 +2952,6 @@ fn copilot_package_outputs() -> Result<Vec<CopilotPackageOutput>> {
         let source_path = source.to_string_lossy();
         let contents = match output_type {
             "PACKAGE_FILE" => embedded_file_contents(&COPILOT_PLUGIN, &source_path)?,
-            "KAST_SKILL_FILE" => embedded_file_contents(&KAST_SKILL, &source_path)?,
             other => {
                 return Err(CliError::new(
                     "COPILOT_PACKAGE_MANIFEST_INVALID",
@@ -2974,7 +3074,7 @@ fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
     let mut error = CliError::new(
         "HOMEBREW_INSTALL_REQUIRED",
         format!(
-            "`kast install plugin` must be run from the Homebrew-installed kast binary under {}",
+            "`kast machine plugin` must be run from the Homebrew-installed kast binary under {}",
             homebrew.formula_prefix.display()
         ),
     );
@@ -3340,7 +3440,12 @@ fn cask_name(cask_token: &str) -> String {
 
 fn default_skill_target_dir() -> PathBuf {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for candidate in [".agents/skills", ".github/skills", ".claude/skills"] {
+    for candidate in [
+        ".agents/skills",
+        ".codex/skills",
+        ".github/skills",
+        ".claude/skills",
+    ] {
         let path = cwd.join(candidate);
         if path.is_dir() {
             return config::normalize(path);
@@ -3356,6 +3461,7 @@ fn default_instructions_target_dir() -> PathBuf {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     for candidate in [
         ".agents/instructions",
+        ".codex/instructions",
         ".github/instructions",
         ".claude/instructions",
     ] {
@@ -3432,11 +3538,29 @@ mod tests {
         assert!(!first.skipped);
         assert!(temp.path().join("kast/README.md").is_file());
         assert!(temp.path().join("kast/cli.md").is_file());
+        assert!(temp.path().join("kast/tools.md").is_file());
         assert!(temp.path().join("kast/rpc.md").is_file());
         assert!(temp.path().join("kast/lsp.md").is_file());
         assert!(!temp.path().join("kast/.kast-version").exists());
         let second = install_instructions(args).unwrap();
         assert!(second.skipped);
+    }
+
+    #[test]
+    fn generated_resource_cache_files_are_not_packaged() {
+        assert!(is_generated_resource_cache_file(Path::new(
+            "scripts/__pycache__/verify-kast-state.cpython-314.pyc"
+        )));
+        assert!(is_generated_resource_cache_file(Path::new(
+            "scripts/__pycache__/helper.pyo"
+        )));
+        assert!(is_generated_resource_cache_file(Path::new(".DS_Store")));
+        assert!(!is_generated_resource_cache_file(Path::new(
+            "scripts/verify-kast-state.py"
+        )));
+        assert!(!is_generated_resource_cache_file(Path::new(
+            "references/commands.json"
+        )));
     }
 
     #[test]

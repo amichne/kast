@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -14,6 +16,8 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
+AGENT_TOOLS_SCHEMA_VERSION = 3
+CATALOG_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 RECOVERABLE_BACKEND_CODES = {
     "NO_BACKEND_AVAILABLE",
     "INDEX_UNAVAILABLE",
@@ -144,14 +148,68 @@ def envelope_summary(envelope: Any) -> dict[str, Any] | None:
     return summary
 
 
-def recovery_from_text(text: str, workspace_root: Path) -> list[str]:
+def is_non_bool_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def agent_tools_metadata_ok(result: dict[str, Any]) -> bool:
+    tools = result.get("tools")
+    schema_version = result.get("schemaVersion")
+    catalog_sha256 = result.get("catalogSha256")
+    tool_count = result.get("toolCount")
+    return (
+        is_non_bool_int(schema_version)
+        and schema_version >= AGENT_TOOLS_SCHEMA_VERSION
+        and isinstance(catalog_sha256, str)
+        and CATALOG_SHA256_RE.fullmatch(catalog_sha256) is not None
+        and isinstance(tools, list)
+        and is_non_bool_int(tool_count)
+        and tool_count == len(tools)
+    )
+
+
+def agent_tools_envelope_ok(value: Any, expected_executable: str) -> bool:
+    if not isinstance(value, dict):
+        return False
+    result = value.get("result")
+    if not isinstance(result, dict):
+        return False
+    invocation = result.get("invocation")
+    argv = invocation.get("argv") if isinstance(invocation, dict) else None
+    invocation_argv_ok = (
+        isinstance(argv, list)
+        and argv == [expected_executable, "agent", "call", "<method>"]
+    )
+    return (
+        value.get("ok") is True
+        and value.get("method") == "agent/tools"
+        and result.get("type") == "KAST_AGENT_TOOLS"
+        and isinstance(result.get("tools"), list)
+        and agent_tools_metadata_ok(result)
+        and invocation_argv_ok
+    )
+
+
+def recovery_from_text(text: str, workspace_root: Path, kast_bin: str) -> list[str]:
     commands = []
     if "unrecognized subcommand 'agent'" in text or "KAST_AGENT_UNAVAILABLE" in text:
         commands.append("./gradlew installDevelopmentLocal")
     if any(code in text for code in RECOVERABLE_BACKEND_CODES):
-        commands.append(f"kast up --workspace-root {json.dumps(str(workspace_root))} --backend idea")
+        commands.append(
+            shlex.join(
+                [
+                    kast_bin,
+                    "runtime",
+                    "up",
+                    "--workspace-root",
+                    str(workspace_root),
+                    "--backend",
+                    "idea",
+                ]
+            )
+        )
     if "INSTALL_MANIFEST" in text or "install manifest" in text:
-        commands.append("kast doctor --repair")
+        commands.append(shlex.join([kast_bin, "ready", "--fix"]))
     return commands
 
 
@@ -243,6 +301,32 @@ def main() -> int:
         sys.stdout.write("\n")
         return 1
 
+    agent_tools = command_record([kast_bin, "agent", "tools"], workspace_root, args.timeout)
+    agent_tools_json = None
+    try:
+        agent_tools_json = json.loads(agent_tools["stdout"])
+    except json.JSONDecodeError:
+        pass
+    if not agent_tools_envelope_ok(agent_tools_json, kast_bin):
+        stdout_file.write_text(agent_tools["stdout"], encoding="utf-8")
+        stderr_file.write_text(agent_tools["stderr"], encoding="utf-8")
+        result["issues"].append(
+            issue(
+                "KAST_AGENT_TOOLS_UNAVAILABLE",
+                "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+                "./gradlew installDevelopmentLocal",
+            )
+        )
+        result["process"] = {
+            "exitCode": agent_tools["exitCode"],
+            "timedOut": agent_tools["timedOut"],
+            "preflight": "agent tools",
+        }
+        result["recovery"] = ["./gradlew installDevelopmentLocal"]
+        json.dump(result, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
+        return 1
+
     completed = command_record(command, workspace_root, args.timeout)
     stdout_file.write_text(completed["stdout"], encoding="utf-8")
     stderr_file.write_text(completed["stderr"], encoding="utf-8")
@@ -259,7 +343,7 @@ def main() -> int:
     result["envelope"] = envelope_summary(envelope)
 
     text = completed["stdout"] + "\n" + completed["stderr"]
-    result["recovery"] = recovery_from_text(text, workspace_root)
+    result["recovery"] = recovery_from_text(text, workspace_root, kast_bin)
     if completed["exitCode"] != 0:
         result["issues"].append(issue("KAST_AGENT_FAILED", "`kast agent call` exited non-zero."))
     if isinstance(envelope, dict) and envelope.get("ok") is False:

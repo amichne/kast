@@ -33,10 +33,12 @@ commands as the current source-of-truth model.
 | Surface | Source of truth | Installed or generated output | Verification |
 |---------|-----------------|-------------------------------|--------------|
 | Copilot package | `cli-rs/resources/plugin/` and `primitive-manifest.json` | `.github/lsp.json`, `.github/extensions/kast/**` | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh` |
-| RPC and tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | request schemas, samples, LSP custom route metadata, Copilot shared catalog | `cargo run --manifest-path cli-rs/Cargo.toml -- generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
+| RPC and tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | request schemas, samples, LSP custom route metadata, `kast agent tools` specs | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
 | Packaged skill | `cli-rs/resources/kast-skill/` | installed `kast` skill directories | `python3 cli-rs/resources/kast-skill/scripts/verify-kast-state.py`, CLI smoke tests |
-| Installable instructions | `cli-rs/resources/kast-instructions/` | installed instruction directories | `kast install instructions --force`, docs content contract |
-| Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json doctor`, verifier script |
+| Installable instructions | `cli-rs/resources/kast-instructions/` | installed instruction directories | `kast agent setup instructions --force`, docs content contract |
+| Harness selection | `projectOpen.agentHarness` and `kast agent setup auto --harness ...` | Copilot, skill, or instruction resource installs | CLI smoke tests |
+| Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json ready`, verifier script |
+| Tool discovery | `cli-rs/resources/kast-skill/references/commands.json` | `kast agent tools` JSON specs for CLI-capable hosts and Copilot adapter loading | CLI smoke tests, Copilot package tests |
 | Semantic workflows | `kast agent workflow ...` in the active binary | workflow output directories with `input.json`, `stdout.json`, `stderr.txt`, and `workflow.json` | CLI smoke tests, workflow dry runs |
 
 Marker files such as `.kast-version` and `.github/.kast-copilot-version` are
@@ -47,13 +49,28 @@ current install signal.
 
 Agent-facing changes must keep these requirements true:
 
-- The active `kast` binary provides `kast agent` and `kast agent workflow`.
-- Copilot tools call `kast agent call`, not raw `kast rpc`.
+- The active `kast` binary provides `kast agent`, `kast agent tools`, and
+  `kast agent workflow`.
+- `kast agent setup auto` is harness-aware: explicit `--harness` wins,
+  `projectOpen.agentHarness` wins over repository detection, and auto-detection
+  is only the fallback. The portable skill and instruction harnesses must not
+  require MCP availability.
+- `kast agent setup auto --dry-run` reports the selected harness, selection
+  source, reason, and equivalent direct install command without writing files.
+  The reported command starts with the executable token used for the dry run,
+  so `kast-dev`, copied test binaries, and absolute CLI paths remain valid.
+- Copilot tools load specs from `kast agent tools` when the active binary is
+  current, then call `kast agent call`; they do not synthesize a separate SDK
+  tool contract or route through raw `kast rpc`.
+- CLI-capable hosts can discover catalog-backed tools through
+  `kast agent tools` without depending on a Copilot SDK or MCP adapter, then
+  invoke the returned `result.invocation.argv` so alternate binary names and
+  absolute binary paths keep working.
 - Raw `kast rpc` remains a hidden debug escape hatch, not the public agent
   integration contract.
 - Repo-installed resources are recorded in `install.json` with kind, target,
   primitive version, source bundle checksum, output paths, and output checksums.
-- `kast doctor` and `verify-kast-state.py` fail closed on missing, stale, or
+- `kast ready` and `verify-kast-state.py` fail closed on missing, stale, or
   tampered manifest-backed resources.
 - Mutating workflows require explicit mutation opt-in; dry runs only create
   evidence files.

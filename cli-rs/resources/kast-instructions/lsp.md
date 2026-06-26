@@ -1,15 +1,16 @@
 # Kast LSP Instructions
 
-Use `kast lsp --stdio` when an agent host understands Language Server Protocol
+Use `kast agent lsp --stdio` when an agent host understands Language Server Protocol
 and needs Kotlin semantic operations through a standard LSP adapter.
 
 ```sh
-kast lsp --stdio
+kast agent lsp --stdio --workspace-root "$PWD"
 ```
 
 The adapter speaks LSP over stdio and forwards semantic requests to the active
 Kast backend. These instructions assume the installed `kast` binary is on
-`PATH`; the workspace must have a ready backend.
+`PATH`; the workspace must have a ready backend. Pass an absolute
+`--workspace-root` when the LSP host launches outside the repository root.
 
 ## Startup
 
@@ -17,14 +18,14 @@ For local developer machines, warm the IDEA backend before LSP startup if
 semantic state is missing:
 
 ```sh
-kast up --workspace-root "$PWD" --backend idea
+kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
 For hosted Linux agents, warm the headless backend after installing the Linux
 headless bundle:
 
 ```sh
-kast up --workspace-root "$PWD" --backend headless
+kast runtime up --workspace-root "$PWD" --backend headless
 ```
 
 ## Capabilities

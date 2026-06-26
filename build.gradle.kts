@@ -209,7 +209,7 @@ val installDevelopmentShell: TaskProvider<Exec> by tasks.registering(Exec::class
             kastDevBinary.absolutePath,
             "--output",
             "json",
-            "install",
+            "machine",
             "shell",
             "--shell",
             defaultDevelopmentShell(),

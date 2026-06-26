@@ -6,7 +6,7 @@ icon: lucide/plug
 
 # LSP Command
 
-`kast lsp --stdio` starts the Language Server Protocol adapter. It is the
+`kast agent lsp --stdio` starts the Language Server Protocol adapter. It is the
 command used by repository Copilot package files and other LSP-aware hosts.
 
 ## Start the adapter
@@ -15,9 +15,9 @@ The adapter reuses the same backend selection model as the rest of the CLI.
 Pass `--workspace-root` when the host launches outside the repository root.
 
 ```console title="Run LSP over stdio"
-kast lsp --stdio --workspace-root "$PWD"
-kast lsp --stdio --workspace-root "$PWD" --backend=headless
-kast lsp --stdio --workspace-root "$PWD" --backend=idea
+kast agent lsp --stdio --workspace-root "$PWD"
+kast agent lsp --stdio --workspace-root "$PWD" --backend=headless
+kast agent lsp --stdio --workspace-root "$PWD" --backend=idea
 ```
 
 The command writes LSP-framed messages on stdout. Do not wrap it in tools that
@@ -26,15 +26,15 @@ expect normal human text output.
 ## Repository integration
 
 Most developers should not hand-write LSP configuration. Run
-`kast install copilot` from the repository root and let Kast write the managed
+`kast agent setup copilot` from the repository root and let Kast write the managed
 `.github/lsp.json` and extension files for the active CLI version.
 
 ```console title="Install the managed LSP package"
 cd /path/to/your/repository
-kast install copilot --force
+kast agent setup copilot --force
 ```
 
-Use `kast doctor` after installation when a host cannot find the binary,
+Use `kast ready` after installation when a host cannot find the binary,
 repository files, or expected plugin/backend state.
 
 ## Troubleshooting
@@ -43,8 +43,8 @@ LSP startup failures are usually install or backend failures. Verify the same
 workspace outside the host first.
 
 ```console title="Verify outside the LSP host"
-kast doctor
-kast status --workspace-root "$PWD"
+kast ready
+kast runtime status --workspace-root "$PWD"
 kast agent health --workspace-root "$PWD"
 ```
 

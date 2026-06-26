@@ -97,10 +97,12 @@ pub fn validate_samples(samples_root: &Path, catalog: &Value) -> Result<Validate
     })
 }
 
+pub fn embedded_catalog_source() -> &'static str {
+    include_str!("../resources/kast-skill/references/commands.json")
+}
+
 pub fn embedded_catalog() -> Result<Value> {
-    Ok(serde_json::from_str(include_str!(
-        "../resources/kast-skill/references/commands.json"
-    ))?)
+    Ok(serde_json::from_str(embedded_catalog_source())?)
 }
 
 fn load_request(raw: Option<&str>, request_file: Option<&Path>) -> Result<(Value, Option<String>)> {

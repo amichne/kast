@@ -15,20 +15,50 @@ python3 scripts/verify-kast-state.py --workspace-root "$PWD" \
   --require-gradle-project
 ```
 
+Hosts that can only call the CLI can run the equivalent manifest-backed
+workflow gate:
+
+```sh
+kast --output json agent workflow package-verify --workspace-root "$PWD" \
+  --require-copilot --copilot-target-dir "$PWD/.github" \
+  --require-skill --skill-target-dir "$PWD/.codex/skills" \
+  --require-instructions --instructions-target-dir "$PWD/.codex/instructions"
+```
+
 Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
 when that repository-local artifact is required for the task. The script emits
-JSON with command-surface evidence, `doctor`, `paths`, manifest-backed
+JSON with command-surface evidence, readiness, paths, manifest-backed
 resource state, catalog hash comparisons, and recovery commands.
+When a package was installed into a nonstandard host root, pass the same setup
+target root with `--copilot-target-dir`, `--skill-target-dir`, or
+`--instructions-target-dir` so manifest checks and recovery commands use that
+host-owned target instead of only the standard repository roots. The
+`package-verify` workflow accepts the same require and target-root flags and
+fails when an explicit required target is missing, stale, or not
+manifest-backed. Failed required resource checks include
+`requiredResources.issues[].recoveryArgv` with the exact
+`kast agent setup ... --force` invocation to run.
+In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
+`package-verify` reports `nextCommandArgv` because it is native CLI
+verification, not a backend JSON-RPC method.
+
+Execute recovery commands exactly as emitted. When the verifier is run with
+`--kast-bin` or another absolute executable, recovery strings preserve the
+selected executable token. Stale skill and instruction recovery also preserves
+the target resource root when the verifier can identify one; the owner table
+below names the state owner, not a command to rewrite back to bare `kast`.
 
 If the verifier reports stale state, use the one owner for that state:
 
 | Symptom | Owner |
 | --- | --- |
-| `kast` missing, bad manifest, install-owned config drift | `kast doctor --repair` |
+| `kast` missing, bad manifest, install-owned config drift | `kast ready --fix` |
+| configured binary missing or not the running binary | `kast ready --for machine --fix` |
+| Kotlin semantic backend absent from the manifest | `kast ready --for kotlin`, then install or activate a backend |
 | active binary lacks `kast agent`, shows top-level `kast rpc`, or shows `install affected` | refresh the active binary, in this repo `./gradlew installDevelopmentLocal` |
-| stale repository Copilot files or catalog mismatch | `kast install copilot --force` |
-| stale repository skill | `kast install skill --force` |
-| stale Markdown instructions | `kast install instructions --force` |
+| stale repository Copilot package files or manifest resource mismatch | `kast agent setup copilot --force` |
+| stale repository skill | emitted `kast agent setup skill ... --force` recovery |
+| stale Markdown instructions | emitted `kast agent setup instructions ... --force` recovery |
 
 Do not edit generated `.github` package files as source. The source owners are
 `cli-rs/resources/plugin/`, `cli-rs/resources/kast-instructions/`, and this
@@ -43,15 +73,27 @@ Before semantic work, prove three things:
    Kotlin/Gradle semantics;
 3. backend or index failures have a recovery attempt or a clear blocker.
 
+Use `kast agent up --dry-run --workspace-root "$PWD"` when harness setup and
+runtime readiness both matter. The dry run reports the selected harness,
+workspace-root-derived setup target, and runtime command without writing files
+or starting a backend. In JSON output, `setup.targetDir` is the resolved package
+target and `setup.installCommand` is the exact install-only command, including
+the executable token and `--target-dir`.
+
+Use `kast agent setup auto --dry-run` when only harness package selection
+matters. It derives the default target from the current directory unless
+`--target-dir` is passed, and JSON output reports `targetDir` with the matching
+`installCommand`.
+
 For `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a
 missing source-index database, warm the runtime:
 
 ```sh
-kast up --workspace-root "$PWD" --backend idea
+kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
-Use `kast restart --workspace-root "$PWD"` when daemon/config drift is likely,
-then re-run the failed request. Use `kast status --workspace-root "$PWD"` to
+Use `kast runtime restart --workspace-root "$PWD"` when daemon/config drift is likely,
+then re-run the failed request. Use `kast runtime status --workspace-root "$PWD"` to
 quote runtime evidence.
 
 ## File-backed request exchange
@@ -65,7 +107,8 @@ python3 scripts/kast-agent-call.py symbol/query \
 ```
 
 For large payloads, put JSON in a file and pass `--params-file`. The script
-validates that the method exists in the shipped catalog, writes `params.json`,
+validates that the method exists in the shipped catalog, checks that the active
+binary exposes a valid `kast agent tools` envelope, writes `params.json`,
 `stdout.json`, and `stderr.txt`, and fails if the agent envelope or nested
 result reports failure.
 

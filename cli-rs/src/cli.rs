@@ -35,40 +35,40 @@ pub enum Command {
     /// Raw JSON-RPC transport escape hatch.
     #[command(hide = true)]
     Rpc(RpcArgs),
-    /// Hidden agent-oriented pipe surface.
+    /// Verify that Kast is ready for a task.
+    Ready(ReadyArgs),
+    /// Backward-compatible alias for `ready`. Used by kast-action v2.
     #[command(hide = true)]
+    Doctor(ReadyArgs),
+    /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
     Agent(AgentArgs),
-    /// Validate a JSON-RPC request payload against the command catalog.
-    Validate(ValidateArgs),
-    /// Generate checked-in catalog-derived artifacts.
-    Generate(GenerateArgs),
-    /// Package distribution artifacts.
-    Package(PackageArgs),
-    /// Start or warm the workspace daemon.
-    Up(RuntimeArgs),
-    /// Check what backends are running.
-    Status(RuntimeArgs),
-    /// Stop the workspace daemon.
-    Stop(RuntimeArgs),
-    /// Stop every matching runtime and start it again.
-    Restart(RuntimeArgs),
-    /// Print the advertised capabilities for the workspace backend.
-    Capabilities(RuntimeArgs),
-    /// Run the Language Server Protocol adapter over stdio.
-    Lsp(LspArgs),
-    /// Open the interactive source-index demo backed by source-index.db.
-    Demo(DemoArgs),
-    /// Query source-index metrics directly from SQLite.
-    Metrics {
-        #[command(subcommand)]
-        command: MetricsCommand,
-    },
-    /// Inspect manifest-backed Kast path resolution.
-    Paths(PathsArgs),
-    /// Install scoped Kast resources.
-    Install(InstallArgs),
-    /// Verify the global Kast install is still healthy.
-    Doctor(DoctorArgs),
+    /// Manage backend runtime lifecycle.
+    Runtime(RuntimeCommandArgs),
+    /// Inspect local Kast state, catalogs, demos, and source-index metrics.
+    Inspect(InspectArgs),
+    /// Manage machine-local Kast integrations.
+    Machine(MachineArgs),
+    /// Build, activate, and validate release artifacts.
+    Release(ReleaseArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct ReadyArgs {
+    /// Task surface to verify.
+    #[arg(long = "for", value_enum, default_value = "agent")]
+    pub target: ReadyTarget,
+    /// Apply safe install-state repairs before checking readiness.
+    #[arg(long)]
+    pub fix: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReadyTarget {
+    Agent,
+    Kotlin,
+    Release,
+    Machine,
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -189,6 +189,7 @@ pub struct RpcArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
 pub struct AgentArgs {
     #[command(subcommand)]
     pub command: AgentCommand,
@@ -196,6 +197,16 @@ pub struct AgentArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentCommand {
+    /// Prepare agent resources and warm the workspace runtime.
+    Up(AgentUpArgs),
+    /// Verify Kast readiness for agent and semantic workflows.
+    Ready(ReadyArgs),
+    /// Install repo-local or portable agent resources.
+    Setup(AgentSetupArgs),
+    /// Run the Language Server Protocol adapter over stdio.
+    Lsp(LspArgs),
+    /// List catalog-backed tools for CLI-capable agent hosts.
+    Tools,
     /// Call any catalog method with params from flags, file, or stdin.
     Call(AgentCallArgs),
     /// Run a file-backed multi-step workflow.
@@ -250,6 +261,80 @@ pub enum AgentCommand {
     RawCompletions(AgentRawCompletionsArgs),
     /// Query source-index metrics through the RPC catalog.
     Metrics(AgentMetricsArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentUpArgs {
+    #[command(flatten)]
+    pub runtime: RuntimeArgs,
+    /// Agent harness resource to install. Defaults to projectOpen.agentHarness, then repository detection.
+    #[arg(long, value_enum)]
+    pub harness: Option<AgentSetupHarness>,
+    /// Target directory for the selected harness. Defaults under the resolved workspace root.
+    #[arg(long)]
+    pub target_dir: Option<PathBuf>,
+    /// Overwrite existing managed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Do not add managed package paths to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
+    /// Explain setup and runtime actions without writing files or starting a backend.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
+pub struct AgentSetupArgs {
+    #[command(subcommand)]
+    pub command: AgentSetupCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum AgentSetupCommand {
+    /// Install the best agent resource package for the current repository.
+    Auto(AgentSetupAutoArgs),
+    /// Install the repository-local Copilot LSP package and extension tools.
+    Copilot(CopilotInstallArgs),
+    /// Install the packaged Kast skill.
+    Skill(ResourceInstallArgs),
+    /// Install portable Markdown agent instructions.
+    Instructions(ResourceInstallArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentSetupAutoArgs {
+    /// Agent harness resource to install. Defaults to projectOpen.agentHarness, then repository detection.
+    #[arg(long, value_enum)]
+    pub harness: Option<AgentSetupHarness>,
+    /// Target directory for the selected harness.
+    #[arg(long)]
+    pub target_dir: Option<PathBuf>,
+    /// Overwrite existing managed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Do not add managed package paths to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
+    /// Explain the selected harness without writing files.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentSetupHarness {
+    Auto,
+    Copilot,
+    Skill,
+    Instructions,
+}
+
+impl AgentSetupHarness {
+    pub fn is_auto(self) -> bool {
+        matches!(self, Self::Auto)
+    }
 }
 
 #[derive(Debug, Args, Clone, Default)]
@@ -328,6 +413,24 @@ pub struct AgentWorkflowVerifyArgs {
 pub struct AgentWorkflowPackageVerifyArgs {
     #[command(flatten)]
     pub common: AgentWorkflowCommonArgs,
+    /// Require the repository-local Copilot package to be current.
+    #[arg(long)]
+    pub require_copilot: bool,
+    /// Require a manifest-backed Kast skill install to be current.
+    #[arg(long)]
+    pub require_skill: bool,
+    /// Require manifest-backed Markdown instructions to be current.
+    #[arg(long)]
+    pub require_instructions: bool,
+    /// Skill setup target root to verify. Pass the same directory used with `agent setup skill --target-dir`.
+    #[arg(long = "skill-target-dir")]
+    pub skill_target_dir: Vec<PathBuf>,
+    /// Copilot setup target directory to verify. Pass the same directory used with `agent setup copilot --target-dir`.
+    #[arg(long = "copilot-target-dir")]
+    pub copilot_target_dir: Option<PathBuf>,
+    /// Instructions setup target root to verify. Pass the same directory used with `agent setup instructions --target-dir`.
+    #[arg(long = "instructions-target-dir")]
+    pub instructions_target_dir: Vec<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -1043,6 +1146,99 @@ pub struct LspArgs {
     pub request_timeout_ms: u64,
 }
 
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
+pub struct RuntimeCommandArgs {
+    #[command(subcommand)]
+    pub command: RuntimeCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum RuntimeCommand {
+    /// Start or warm the workspace daemon.
+    Up(RuntimeArgs),
+    /// Check what backends are running.
+    Status(RuntimeArgs),
+    /// Stop the workspace daemon.
+    Stop(RuntimeArgs),
+    /// Stop every matching runtime and start it again.
+    Restart(RuntimeArgs),
+    /// Print the advertised capabilities for the workspace backend.
+    Capabilities(RuntimeArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
+pub struct InspectArgs {
+    #[command(subcommand)]
+    pub command: InspectCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum InspectCommand {
+    /// Inspect manifest-backed Kast path resolution.
+    Paths(PathsArgs),
+    /// Query source-index metrics directly from SQLite.
+    Metrics {
+        #[command(subcommand)]
+        command: MetricsCommand,
+    },
+    /// Open the interactive source-index demo backed by source-index.db.
+    Demo(DemoArgs),
+    /// Validate catalog requests and checked-in sample payloads.
+    Catalog(ValidateArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
+pub struct MachineArgs {
+    #[command(subcommand)]
+    pub command: MachineCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum MachineCommand {
+    /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
+    Plugin(IdeaPluginInstallArgs),
+    /// Install shell PATH and completion integration.
+    Shell(ShellInstallArgs),
+    /// Print shell completion scripts.
+    #[command(hide = true)]
+    Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
+pub struct ReleaseArgs {
+    #[command(subcommand)]
+    pub command: ReleaseCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum ReleaseCommand {
+    /// Build distribution artifacts.
+    Package(PackageArgs),
+    /// Activate a released install artifact.
+    Activate(ReleaseActivateArgs),
+    /// Regenerate catalog-derived contract artifacts.
+    Generate(GenerateArgs),
+    /// Validate JSON-RPC request payloads or catalog samples.
+    Validate(ValidateArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
+pub struct ReleaseActivateArgs {
+    #[command(subcommand)]
+    pub command: ReleaseActivateCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum ReleaseActivateCommand {
+    /// Activate a portable Kast install bundle from its bundled manifest.
+    Bundle(ActivateBundleArgs),
+}
+
 impl From<RuntimeArgs> for DaemonStartArgs {
     fn from(value: RuntimeArgs) -> Self {
         Self {
@@ -1077,13 +1273,6 @@ pub struct PathsArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct DoctorArgs {
-    /// Repair the install manifest and managed install state. Plain doctor is read-only.
-    #[arg(long)]
-    pub repair: bool,
-}
-
-#[derive(Debug, Args, Clone)]
 pub struct InstallArgs {
     #[command(subcommand)]
     pub command: InstallCommand,
@@ -1098,13 +1287,14 @@ pub enum InstallCommand {
     Skill(ResourceInstallArgs),
     /// Install portable agent instruction files.
     Instructions(ResourceInstallArgs),
-    /// Install the packaged Copilot LSP, instructions, agents, and extension tools.
+    /// Install the repository-local Copilot LSP package and extension tools.
     Copilot(CopilotInstallArgs),
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
     Plugin(IdeaPluginInstallArgs),
     /// Install shell PATH and completion integration.
     Shell(ShellInstallArgs),
     /// Print shell completion scripts.
+    #[command(hide = true)]
     Completion(CompletionArgs),
 }
 
@@ -1190,7 +1380,7 @@ pub struct ResourceInstallArgs {
     /// Target root directory.
     #[arg(long)]
     pub target_dir: Option<PathBuf>,
-    /// Directory name for the installed skill. Defaults to kast.
+    /// Directory name for the installed resource. Defaults to kast.
     #[arg(long)]
     pub name: Option<String>,
     /// Overwrite existing managed resources.

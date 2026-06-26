@@ -9,6 +9,7 @@ The skill is installed by the Kast binary, so the normal path is boring:
 command -v kast
 kast --help
 kast agent --help
+kast agent tools
 kast agent workflow --help
 ```
 
@@ -20,17 +21,22 @@ ready:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
-If `kast` is missing or `kast agent workflow --help` is unavailable in an
-installed skill session, stop and report that the skill and active binary are
-incompatible. Upgrade or reinstall Kast; do not switch to non-semantic Kotlin
-search.
+If the skill or Markdown instructions were installed into a host-specific root,
+pass the same setup target root to the verifier, for example
+`--skill-target-dir "$PWD/.codex/skills"` or
+`--instructions-target-dir "$PWD/.agents/instructions"`.
+
+If `kast` is missing, `kast agent tools` fails, or `kast agent workflow --help`
+is unavailable in an installed skill session, stop and report that the skill
+and active binary are incompatible. Upgrade or reinstall Kast; do not switch to
+non-semantic Kotlin search.
 
 If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index
 database, warm the IDEA backend before using non-semantic file tools:
 
 ```console
-kast up --workspace-root "$PWD" --backend idea
+kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Kast opens IDEA or Android Studio dynamically only when
@@ -41,12 +47,24 @@ installed. That is the blocker; do not stop at the first missing-index result.
 ## Contract reference
 
 The Rust `kast` command tree is the operator surface. Use `kast --help` and
-`kast <command> --help` for direct CLI commands such as `metrics`, `demo`,
-`up`, and `status`. Agent and raw transport commands are hidden from top-level
-help but still have scoped help, such as `kast agent --help` and
-`kast rpc --help`.
+`kast <command> --help` for direct CLI families such as `agent`, `runtime`,
+`inspect`, `machine`, and `release`. `kast agent --help` is the public
+agent-oriented entrypoint; `kast rpc --help` remains available as a raw
+transport/debug topic.
 
-For shell pipelines, use the hidden `kast agent` surface instead of hand-written
+Use `kast agent up --dry-run --workspace-root "$PWD"` when you need to inspect
+both the selected harness package and the runtime warmup command before writing
+files or launching a backend. In JSON dry runs, read `setup.targetDir` and copy
+`setup.installCommand` exactly when you want to install only the selected agent
+resource; it includes the executable token and `--target-dir` chosen for that
+workspace. Use `kast agent up --workspace-root "$PWD"` when the repository
+should be prepared and warmed in one operator step.
+
+Use `kast agent setup auto --dry-run` when only package selection matters. It
+derives its default target from the current directory unless `--target-dir` is
+passed, and JSON output reports `targetDir` plus an executable `installCommand`.
+
+For shell pipelines, use the public `kast agent` surface instead of hand-written
 JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
 and either `result` or `error`; `kast agent call <method>` accepts params,
 full JSON-RPC requests, previous envelopes, and `nextRequest` objects through
@@ -58,6 +76,17 @@ field-level notes live in `references/commands.yaml` for reading and
 `references/commands.json` for tooling. Treat that catalog as the method
 contract for requests sent through `kast agent call`, not as a replacement for
 the Rust CLI help.
+
+Use `kast agent tools` when an agent host can run CLI commands but cannot load
+the full skill or Copilot package. It emits the catalog-backed tool names,
+methods, descriptions, mutation metadata, default args, and params JSON Schemas
+plus `result.invocation.argv`, so a generic host can call the same executable it
+used for discovery with `<method>` replaced by the tool method.
+Validate the discovery envelope before registering tools: `ok=true`,
+`method=agent/tools`, `result.type=KAST_AGENT_TOOLS`, `schemaVersion >= 3`, a
+SHA-256 `catalogSha256`, matching `toolCount`, and `result.invocation.argv`
+shaped as `agent call <method>`. If validation fails, upgrade or reinstall the
+active Kast binary instead of synthesizing tool specs from stale docs.
 
 Read `commands.yaml` when you need exact field names, types, required vs
 optional, enum values, or variant discriminators. Use
@@ -152,11 +181,11 @@ kast agent call raw/apply-edits --params-file "$KAST_PARAMS" \
   --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Direct source-index metrics
-kast metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
+kast inspect metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 # Agent-readable symbol graph snapshot
-kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
+kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 
@@ -168,5 +197,7 @@ kast demo --workspace-root "$PWD" --view symbol --query EventBean --json \
 - For large result sets, narrow the query before post-processing.
 - If `kast agent` is unavailable, report a stale binary/skill installation.
 - If install, config, active binary, or package state is unclear, run
-  `scripts/verify-kast-state.py` and follow its recovery commands.
+  `scripts/verify-kast-state.py` and follow its recovery commands exactly; they
+  preserve the selected executable token when `--kast-bin` is used and include
+  the stale skill or instruction target directory when one is known.
 - Never pivot to `grep` or `rg` for Kotlin identity.

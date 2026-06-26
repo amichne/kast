@@ -11,21 +11,21 @@ not require a running JVM backend when the database already exists.
 
 ## Direct metrics
 
-Use `kast metrics ...` for human-readable summaries or `--output json` for
+Use `kast inspect metrics ...` for human-readable summaries or `--output json` for
 automation. Pass `--database` only when you need to read a specific index file
 instead of the current workspace cache.
 
 ```console title="Source-index metrics"
-kast metrics fan-in --limit 20
-kast metrics fan-out --limit 20
-kast metrics dead-code --file-glob 'src/main/**/*.kt'
-kast metrics impact io.example.OrderService.process --depth 3
-kast metrics coupling
-kast metrics search OrderService --limit 25
+kast inspect metrics fan-in --limit 20
+kast inspect metrics fan-out --limit 20
+kast inspect metrics dead-code --file-glob 'src/main/**/*.kt'
+kast inspect metrics impact io.example.OrderService.process --depth 3
+kast inspect metrics coupling
+kast inspect metrics search OrderService --limit 25
 ```
 
 These commands are useful after indexing has produced a source-index database.
-Run `kast up` first when the workspace has not been indexed yet.
+Run `kast runtime up` first when the workspace has not been indexed yet.
 
 ## Agent metrics
 
@@ -48,8 +48,8 @@ small enough to review.
 
 | Need | Prefer |
 |------|--------|
-| Search declarations by name | `kast metrics search <query>` |
-| Rank highly used symbols | `kast metrics fan-in --limit <n>` |
-| Find files with broad dependencies | `kast metrics fan-out --limit <n>` |
-| Estimate blast radius | `kast metrics impact <fq-name> --depth <n>` |
-| Inspect module coupling | `kast metrics coupling` |
+| Search declarations by name | `kast inspect metrics search <query>` |
+| Rank highly used symbols | `kast inspect metrics fan-in --limit <n>` |
+| Find files with broad dependencies | `kast inspect metrics fan-out --limit <n>` |
+| Estimate blast radius | `kast inspect metrics impact <fq-name> --depth <n>` |
+| Inspect module coupling | `kast inspect metrics coupling` |

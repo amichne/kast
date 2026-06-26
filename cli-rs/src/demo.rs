@@ -456,7 +456,7 @@ impl DemoDatabase {
             return Err(CliError::new(
                 "DEMO_SOURCE_INDEX_MISSING",
                 format!(
-                    "No source-index database exists at {}. Run `kast up` for this workspace first.",
+                    "No source-index database exists at {}. Run `kast runtime up` for this workspace first.",
                     request.database.display()
                 ),
             ));

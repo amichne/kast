@@ -3,6 +3,7 @@
     "kotlin": {
       "command": "kast",
       "args": [
+        "agent",
         "lsp",
         "--stdio"
       ],

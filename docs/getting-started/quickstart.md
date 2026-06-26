@@ -17,8 +17,8 @@ machine install on macOS, or the Linux headless bundle on CI runners, hosted
 agents, and server images.
 
 ```console title="Check the active install"
-kast doctor
-kast paths
+kast ready
+kast inspect paths
 ```
 
 Run the remaining commands from the repository root or any subdirectory below
@@ -32,14 +32,14 @@ servers and CI. The IDEA backend reuses an already-open IDEA or Android Studio
 project on developer machines.
 
 ```console title="Start or warm a backend"
-kast up --backend=headless
-kast status --backend=headless
+kast runtime up --backend=headless
+kast runtime status --backend=headless
 ```
 
 Use JSON output for automation:
 
 ```console title="Machine-readable status"
-kast --output json status --backend=headless
+kast --output json runtime status --backend=headless
 ```
 
 ## Step 2: resolve a symbol
@@ -97,7 +97,7 @@ Stop the backend when you want to free local resources. Long-lived developer
 machines can keep a warm backend running.
 
 ```console title="Stop the backend"
-kast stop --backend=headless
+kast runtime stop --backend=headless
 ```
 
 ## Next commands

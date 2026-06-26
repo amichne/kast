@@ -8,7 +8,7 @@ icon: lucide/book-open
 
 Recipes combine the command groups into short workflows. They assume Kast is
 installed, the command runs inside a Kotlin workspace, and a backend can be
-started with `kast up`.
+started with `kast runtime up`.
 
 ## Find usages of a symbol
 
@@ -18,7 +18,7 @@ scope before using the result as evidence.
 ```console title="Resolve and find references"
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-kast up --backend=headless
+kast runtime up --backend=headless
 kast agent raw-resolve --file-path "$APP_FILE" --offset 42 --backend=headless
 kast agent raw-references \
   --file-path "$APP_FILE" \
@@ -113,9 +113,9 @@ Use metrics when the question is about indexed relationships rather than live
 cursor position.
 
 ```console title="Impact and coupling"
-kast metrics impact io.example.OrderService.process --depth 3
-kast metrics coupling
-kast metrics fan-in --limit 20
+kast inspect metrics impact io.example.OrderService.process --depth 3
+kast inspect metrics coupling
+kast inspect metrics fan-in --limit 20
 ```
 
 For scripts or agents, use the envelope-shaped metric command.
@@ -133,10 +133,10 @@ When Copilot or an LSP host cannot find Kast files, verify the install, then
 refresh the managed repository package.
 
 ```console title="Repair repository-local files"
-kast doctor
-kast install copilot --force
-kast doctor
+kast ready
+kast agent setup copilot --force
+kast ready
 ```
 
-Use [Troubleshooting](troubleshooting.md) when doctor reports a missing binary,
+Use [Troubleshooting](troubleshooting.md) when readiness reports a missing binary,
 plugin, manifest, or repository resource.

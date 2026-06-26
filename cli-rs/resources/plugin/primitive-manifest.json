@@ -26,12 +26,6 @@
       "source": "extensions/kast/_shared/kast-trace.mjs",
       "target": "extensions/kast/_shared/kast-trace.mjs",
       "executable": false
-    },
-    {
-      "type": "KAST_SKILL_FILE",
-      "source": "references/commands.json",
-      "target": "extensions/kast/_shared/commands.json",
-      "executable": false
     }
   ]
 }

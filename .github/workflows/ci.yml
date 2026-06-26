@@ -291,7 +291,7 @@ jobs:
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
 
           cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
-            package ubuntu-debian-bundle \
+            release package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$KAST_RUST_CLI_ASSET" \
             --backend-archive "$backend_asset" \

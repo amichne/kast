@@ -44,8 +44,8 @@ function assertSameJson(actual, expected, label) {
 
 const pluginLsp = readJson("cli-rs/resources/plugin/lsp.json");
 const pluginServer = pluginLsp.lspServers["kotlin"];
-if (pluginServer.command !== "kast" || JSON.stringify(pluginServer.args) !== JSON.stringify(["lsp", "--stdio"])) {
-  fail("kotlin must launch kast lsp --stdio");
+if (pluginServer.command !== "kast" || JSON.stringify(pluginServer.args) !== JSON.stringify(["agent", "lsp", "--stdio"])) {
+  fail("kotlin must launch kast agent lsp --stdio");
 }
 if (pluginServer.initializationOptions.failOnStaleIndex !== true) {
   fail("kotlin must fail closed on stale indexes");

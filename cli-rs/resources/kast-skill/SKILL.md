@@ -26,6 +26,7 @@ Kotlin or Gradle project facts:
 command -v kast
 kast --help
 kast agent --help
+kast agent tools
 kast agent workflow --help
 ```
 
@@ -36,17 +37,19 @@ install, package, config, active-binary, and project-readiness evidence:
 python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
 ```
 
-If the binary is missing or does not expose the expected agent workflow
+If the binary is missing or does not expose the expected agent tool/workflow
 surface, report that the installed skill and active binary are incompatible and
 require a CLI upgrade/reinstall. Do not replace the missing compiler-backed path
 with non-semantic Kotlin search.
 
 If a command reports `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`,
 `METRICS_DB_UNAVAILABLE`, or a missing source-index database, warm the
-IDE-hosted backend before falling back:
+repository with `kast agent up` when setup state may also be stale, or warm the
+IDE-hosted backend directly when only runtime state is missing:
 
 ```console
-kast up --workspace-root "$PWD" --backend idea
+kast agent up --workspace-root "$PWD" --dry-run
+kast runtime up --workspace-root "$PWD" --backend idea
 ```
 
 This may open IDEA or Android Studio only when `runtime.ideaLaunch.enabled` is
@@ -74,8 +77,8 @@ failed.
   `raw/apply-edits`, `raw/optimize-imports`; still run Kast before external
   patches and diagnostics after.
 - Impact/proof: `raw/type-hierarchy`, `raw/implementations`,
-  `database/metrics`, `kast metrics fan-in`, other `kast metrics` subcommands,
-  `kast demo --json`, `raw/workspace-refresh`, `raw/diagnostics`, then the
+  `database/metrics`, `kast inspect metrics fan-in`, other `kast inspect metrics` subcommands,
+  `kast inspect demo --json`, `raw/workspace-refresh`, `raw/diagnostics`, then the
   narrowest Gradle task.
 
 ## Request Discipline

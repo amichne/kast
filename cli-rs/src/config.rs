@@ -1,5 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{BackendName, DaemonStartArgs};
+use crate::cli::{AgentSetupHarness, BackendName, DaemonStartArgs};
 use crate::error::{CliError, Result};
 use crate::manifest;
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,7 @@ impl Default for IdeaLaunchConfig {
 pub struct ProjectOpenConfig {
     pub profile_auto_init: bool,
     pub profile: ProjectOpenProfile,
+    pub agent_harness: AgentSetupHarness,
     pub auto_exclude_git: bool,
 }
 
@@ -124,6 +125,7 @@ impl ProjectOpenConfig {
     fn is_default(&self) -> bool {
         !self.profile_auto_init
             && self.profile == ProjectOpenProfile::CopilotLsp
+            && self.agent_harness.is_auto()
             && self.auto_exclude_git
     }
 }
@@ -133,6 +135,7 @@ impl Default for ProjectOpenConfig {
         Self {
             profile_auto_init: false,
             profile: ProjectOpenProfile::CopilotLsp,
+            agent_harness: AgentSetupHarness::Auto,
             auto_exclude_git: true,
         }
     }
@@ -416,6 +419,7 @@ struct PartialIdeaLaunch {
 struct PartialProjectOpen {
     profile_auto_init: Option<bool>,
     profile: Option<ProjectOpenProfile>,
+    agent_harness: Option<AgentSetupHarness>,
     auto_exclude_git: Option<bool>,
 }
 
@@ -651,6 +655,9 @@ impl KastConfig {
             }
             if let Some(value) = project_open.profile {
                 self.project_open.profile = value;
+            }
+            if let Some(value) = project_open.agent_harness {
+                self.project_open.agent_harness = value;
             }
             if let Some(value) = project_open.auto_exclude_git {
                 self.project_open.auto_exclude_git = value;
@@ -1098,7 +1105,7 @@ pub fn backend_runtime_libs_dir(
     override_dir.map(normalize).or(configured).ok_or_else(|| {
         CliError::new(
             "DAEMON_START_ERROR",
-            "Cannot locate backend runtime-libs. Install or repair the manifest-backed headless runtime with `kast doctor --repair`, or pass --runtime-libs-dir for this launch.",
+            "Cannot locate backend runtime-libs. Install or repair the manifest-backed headless runtime with `kast ready --fix`, or pass --runtime-libs-dir for this launch.",
         )
     })
 }
@@ -1963,6 +1970,7 @@ requireInstalledPlugin = false
 
         assert!(!config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
+        assert_eq!(config.project_open.agent_harness, AgentSetupHarness::Auto);
         assert!(config.project_open.auto_exclude_git);
     }
 
@@ -1975,6 +1983,7 @@ requireInstalledPlugin = false
             r#"[projectOpen]
 profileAutoInit = true
 profile = "copilot-lsp"
+agentHarness = "instructions"
 autoExcludeGit = false
 "#,
         )
@@ -1985,7 +1994,30 @@ autoExcludeGit = false
 
         assert!(config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
+        assert_eq!(
+            config.project_open.agent_harness,
+            AgentSetupHarness::Instructions
+        );
         assert!(!config.project_open.auto_exclude_git);
+    }
+
+    #[test]
+    fn rejects_invalid_project_open_agent_harness() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[projectOpen]
+agentHarness = "mcp"
+"#,
+        )
+        .unwrap();
+
+        let error = read_partial_config(&config_file).unwrap_err();
+
+        assert_eq!(error.code, "CONFIG_ERROR");
+        assert!(error.message.contains("mcp"), "{}", error.message);
+        assert!(error.message.contains("instructions"), "{}", error.message);
     }
 
     #[test]

@@ -147,7 +147,7 @@ else
   cli_bin="${repo_root}/cli-rs/target/debug/kast"
 fi
 [[ -x "$cli_bin" ]] || die "Rust CLI binary was not built at ${cli_bin}"
-packager_command=("$cli_bin" package ubuntu-debian-bundle --repo-root "$repo_root")
+packager_command=("$cli_bin" release package ubuntu-debian-bundle --repo-root "$repo_root")
 cp "$cli_bin" "${cli_tree}/kast"
 chmod +x "${cli_tree}/kast"
 

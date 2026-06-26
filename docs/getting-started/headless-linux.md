@@ -24,7 +24,7 @@ runtime together.
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
 ./scripts/install-ubuntu-debian.sh verify
-kast up --backend=headless
+kast runtime up --backend=headless
 ```
 
 The release asset is
@@ -85,7 +85,7 @@ Use the Rust packager when building the release bundle from local CLI and
 backend artifacts:
 
 ```bash title="Package a local Ubuntu/Debian bundle"
-kast package ubuntu-debian-bundle \
+kast release package ubuntu-debian-bundle \
   --cli-archive dist/kast-<version>-linux-x64.zip \
   --backend-archive backend-headless/build/distributions/backend-headless-<version>-portable.zip \
   --version <version> \
