@@ -28,7 +28,7 @@ If the verifier reports stale state, use the one owner for that state:
 | configured binary missing or not the running binary | `kast ready --for machine --fix` |
 | Kotlin semantic backend absent from the manifest | `kast ready --for kotlin`, then install or activate a backend |
 | active binary lacks `kast agent`, shows top-level `kast rpc`, or shows `install affected` | refresh the active binary, in this repo `./gradlew installDevelopmentLocal` |
-| stale repository Copilot files or catalog mismatch | `kast agent setup copilot --force` |
+| stale repository Copilot package files or manifest resource mismatch | `kast agent setup copilot --force` |
 | stale repository skill | `kast agent setup skill --force` |
 | stale Markdown instructions | `kast agent setup instructions --force` |
 

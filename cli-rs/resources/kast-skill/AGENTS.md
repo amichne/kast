@@ -1,8 +1,8 @@
 # Kast skill and RPC catalog guide
 
 This file applies to `cli-rs/resources/kast-skill/` and descendants. This tree
-is the packaged skill and command catalog used by agents, docs, the Copilot
-extension, and generated LSP custom route metadata.
+is the packaged skill and command catalog used by agents, docs, `kast agent
+tools`, and generated LSP custom route metadata.
 
 ## Local purpose
 

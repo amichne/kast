@@ -66,11 +66,11 @@ detection. Portable repository roots include `.agents/skills`,
 
 ## Tool Discovery
 
-Use `kast agent tools` when a CLI-capable host needs the same tool surface that
-Copilot receives from the catalog, without loading a Copilot SDK, MCP adapter,
-or the full packaged skill. The command has no backend dependency and returns
-tool names, catalog methods, descriptions, default args, mutation metadata, and
-params JSON Schemas.
+Use `kast agent tools` when a CLI-capable host needs the same catalog-derived
+tool surface that Copilot loads from the active CLI, without loading a Copilot
+SDK, MCP adapter, or the full packaged skill. The command has no backend
+dependency and returns tool names, catalog methods, descriptions, default args,
+mutation metadata, and params JSON Schemas.
 
 ```console title="List catalog-backed tools"
 kast agent tools
