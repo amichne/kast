@@ -43,6 +43,7 @@ const RETIRED_COPILOT_PACKAGE_OUTPUTS: &[&str] = &[
     "agents/kast-reader.agent.md",
     "agents/kast-writer.agent.md",
     "extensions/kast/_shared/kast-agents.mjs",
+    "extensions/kast/_shared/commands.json",
 ];
 const COPILOT_PRIMITIVE_MANIFEST: &str = "primitive-manifest.json";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
@@ -2516,7 +2517,9 @@ fn install_embedded_resource(
         .collect::<Vec<_>>();
     let outputs_match = resource_outputs_match(target, files)?;
     let markers_present = retired_marker_paths.iter().any(|path| path.exists());
-    if !force && outputs_match && !markers_present {
+    let retired_outputs_present = matches!(kind, ManagedResourceKind::CopilotPackage)
+        && retired_copilot_package_outputs_present(target);
+    if !force && outputs_match && !markers_present && !retired_outputs_present {
         return Ok(EmbeddedResourceInstallOutcome {
             skipped: true,
             source_bundle_sha256,
@@ -2551,7 +2554,7 @@ fn install_embedded_resource(
             }
         }
         ResourceReplaceMode::ManagedFilesOnly => {
-            if force || manifest_managed || retired_marker_managed {
+            if force || manifest_managed || retired_marker_managed || retired_outputs_present {
                 remove_managed_resource_outputs(&output_paths)?;
                 remove_retired_copilot_package_outputs(target)?;
             }
@@ -2722,6 +2725,12 @@ fn remove_retired_copilot_package_outputs(github_dir: &Path) -> Result<()> {
         remove_existing_path(&github_dir.join(relative))?;
     }
     Ok(())
+}
+
+fn retired_copilot_package_outputs_present(github_dir: &Path) -> bool {
+    RETIRED_COPILOT_PACKAGE_OUTPUTS
+        .iter()
+        .any(|relative| github_dir.join(relative).exists())
 }
 
 fn record_managed_resource(

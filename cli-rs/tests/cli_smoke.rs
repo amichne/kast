@@ -3889,6 +3889,9 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
     assert!(exclude.contains(".github/lsp.json"));
     assert!(exclude.contains("# <<< kast copilot package <<<"));
 
+    let retired_catalog = github_dir.join("extensions/kast/_shared/commands.json");
+    std::fs::write(&retired_catalog, b"old generated catalog\n").expect("retired catalog");
+
     let rerun = kast(&home, &config_home)
         .args([
             "--output",
@@ -3911,6 +3914,10 @@ fn copilot_package_install_adds_managed_git_info_exclude_block() {
         serde_json::from_slice(&rerun.stdout).expect("copilot reinstall json");
     assert_eq!(rerun_stdout["gitExclude"]["attempted"], true);
     assert_eq!(rerun_stdout["gitExclude"]["updated"], false);
+    assert!(
+        !retired_catalog.exists(),
+        "reinstall should remove retired generated Copilot catalog output"
+    );
 }
 
 #[test]
