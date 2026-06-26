@@ -19,6 +19,13 @@ Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
 
+Publishable CI artifacts are single-producer per commit. Producer jobs must
+write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
+built, and downstream packaging or publication jobs must verify that receipt
+against the exact downloaded file before consuming it. Do not add a publishing
+job that rebuilds a receipt-owned artifact; add a new producer receipt or make
+the publisher consume an existing one.
+
 ## Generated Copilot package outputs
 
 These files are repository-local install outputs from

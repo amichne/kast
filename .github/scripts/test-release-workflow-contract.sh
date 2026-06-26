@@ -55,6 +55,7 @@ published_library_plugin="${repo_root}/build-logic/src/main/kotlin/kast.publishe
 publishing_conventions="${repo_root}/build-logic/src/main/kotlin/KastPublishingConventions.kt"
 homebrew_test="${repo_root}/packaging/homebrew/scripts/test-formulas.py"
 release_provenance_assembler="${repo_root}/scripts/assemble-release-provenance.py"
+ci_artifact_ledger_verifier="${repo_root}/scripts/verify-ci-artifact-ledger.py"
 release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
 maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
@@ -67,6 +68,7 @@ ci_gradle_retry="${repo_root}/scripts/ci-gradle-retry.sh"
 ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
 devin_packager_test="${repo_root}/.github/scripts/test-devin-artifact-packagers.sh"
 devin_snapshot_build_verifier_test="${repo_root}/.github/scripts/test-devin-snapshot-build-verifier.sh"
+ci_artifact_ledger_test="${repo_root}/.github/scripts/test-ci-artifact-ledger.sh"
 runtime_artifact_contract="${repo_root}/docs/distribution/runtime-artifact-contract.md"
 kast_script="${repo_root}/kast.sh"
 
@@ -85,6 +87,7 @@ for path in \
   "$publishing_conventions" \
   "$homebrew_test" \
   "$release_provenance_assembler" \
+  "$ci_artifact_ledger_verifier" \
   "$release_asset_verifier" \
   "$release_state_verifier" \
   "$maven_central_verifier" \
@@ -97,6 +100,7 @@ for path in \
   "$ci_gradle_retry_test" \
   "$devin_packager_test" \
   "$devin_snapshot_build_verifier_test" \
+  "$ci_artifact_ledger_test" \
   "$runtime_artifact_contract" \
   "$kast_script"
 do
@@ -133,6 +137,13 @@ require_not_contains "${repo_root}/backend-idea/build.gradle.kts" "kastPublishin
 require_not_contains "${repo_root}/backend-headless/build.gradle.kts" "reinstall with kast.sh" "Headless launcher hints must not point at retired kast.sh install behavior"
 
 require_contains "$ci_workflow" "Maven publication metadata" "CI must validate Maven publication metadata"
+require_contains "$ci_workflow" 'group: ci-${{ github.event.pull_request.number || github.ref }}' "CI must cancel superseded branch or PR validation runs"
+require_contains "$ci_workflow" "Test CI artifact ledger" "CI must test artifact ledger recording and verification"
+require_contains "$ci_workflow" "ci-artifact-ledger-maven-publication" "CI must upload the Maven publication validation ledger"
+require_contains "$ci_workflow" "ci-artifact-ledger-rust-cli-linux-x64" "CI must upload the Rust CLI build ledger"
+require_contains "$ci_workflow" 'ci-artifact-ledger-headless-${{ matrix.os }}' "CI must upload headless backend build ledgers"
+require_contains "$ci_workflow" "ci-artifact-ledger-idea-plugin" "CI must upload the IDEA plugin build ledger"
+require_contains "$ci_workflow" "scripts/verify-ci-artifact-ledger.py verify" "CI consumers must verify producer ledgers before packaging downloaded artifacts"
 require_contains "$ci_workflow" "Rust CLI" "CI must validate the in-repo Rust CLI"
 require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must build on an Ubuntu 22.04 glibc baseline"
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
@@ -144,6 +155,8 @@ require_contains "$ci_workflow" "v0.7.11-ci" "CI bundle tests must use a bundle 
 require_contains "$ci_workflow" 'bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"' "CI bundle tests must name the bundle from the ready-compatible bundle version"
 require_contains "$ci_workflow" '--version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG"' "CI bundle tests must write the ready-compatible version into the bundle manifest"
 require_not_contains "$ci_workflow" '--version "$KAST_RUST_CLI_TAG"' "CI bundle tests must not write the synthetic Rust CLI tag into the backend manifest"
+require_contains "$ci_workflow" '"$packager_bin"' "CI bundle tests must execute the verified CLI artifact"
+require_not_contains "$ci_workflow" "cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked --" "CI bundle tests must not rebuild the CLI to invoke the packager"
 require_contains "$ubuntu_debian_validator" "docker pull --platform linux/amd64" "Ubuntu/Debian container validation must pre-pull matrix images with retry before docker run"
 require_contains "$ci_workflow" "Test Devin artifact packagers" "CI must test Devin runtime and Gradle cache packagers"
 require_not_contains "$ci_workflow" "npm --prefix setup-kast" "CI must not build a deleted in-repo setup-kast action"
@@ -168,9 +181,15 @@ require_not_contains "$ci_workflow" "Smoke Devin headless runtime contract" "CI 
 require_not_contains "$ci_workflow" "devin-headless-runtime" "CI must not publish a separate Devin headless runtime artifact"
 
 require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must exist"
+require_contains "$snapshot_workflow" "workflow_run:" "Snapshot publication must run after CI instead of racing main push builds"
+require_contains "$snapshot_workflow" "- CI" "Snapshot workflow_run trigger must consume CI results"
+require_contains "$snapshot_workflow" "Download CI Maven publication ledger" "Snapshot publication must consume CI's Maven validation ledger"
+require_contains "$snapshot_workflow" "snapshot-artifact-ledger-maven-publication" "Snapshot publish jobs must consume a validation ledger artifact"
+require_contains "$snapshot_workflow" "Verify snapshot publication ledger" "Snapshot publish jobs must verify Maven validation ledgers"
 require_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository" "Snapshot workflow must publish GitHub Packages snapshots"
 require_contains "$snapshot_workflow" "publishToMavenCentral" "Snapshot workflow must publish Maven Central snapshots"
 require_contains "$snapshot_workflow" "-Pkast.publish.target=snapshot" "Snapshot workflow must use the snapshot publish target"
+require_not_contains "$snapshot_workflow" 'elif [[ "${GITHUB_EVENT_NAME}" == "push"' "Snapshot workflow must not publish directly from a raw push event"
 require_not_contains "$snapshot_workflow" "Check GitHub Packages signing secrets" "Snapshot GitHub Packages publishing must not be gated on Maven signing secrets"
 require_not_contains "$snapshot_workflow" "publishAllPublicationsToGitHubPackagesRepository \"\${signing_args[@]}\"" "Snapshot GitHub Packages publishing must not pass Maven signing credentials"
 require_not_contains "$snapshot_workflow" "gh release" "Snapshot workflow must not create GitHub releases"
@@ -185,10 +204,13 @@ require_contains "$seed_gradle_ro_cache_workflow" "(cd dist && sha256sum -c grad
 require_contains "$seed_gradle_ro_cache_workflow" "Ensure zstd is available" "Gradle cache seed workflow must install zstd when the runner image lacks it"
 
 require_contains "$release_workflow" "Validate JVM and Maven publications" "Release must validate JVM and Maven publications"
+require_contains "$release_workflow" "release-artifact-ledger-maven-publication" "Release must pass Maven validation by ledger artifact"
+require_contains "$release_workflow" "Verify release Maven validation ledger" "Release Maven publication must verify the validation ledger before publishing"
 require_contains "$release_workflow" "Build OpenAPI spec" "Release must build the generated OpenAPI artifact"
 require_contains "$release_workflow" "stageOpenApiSpec" "Release must stage OpenAPI from the generated protocol source"
 require_contains "$release_workflow" "dist/openapi.yaml" "Release must publish the OpenAPI YAML asset"
 require_contains "$release_workflow" "build-provenance-openapi.json" "Release must produce OpenAPI provenance"
+require_contains "$release_workflow" "build-ledger-openapi.json" "Release must produce an OpenAPI build ledger"
 require_contains "$release_workflow" "openapi-spec-" "Release must upload the OpenAPI workflow artifact for provenance assembly"
 require_contains "$release_workflow" '- "v*.*.*"' "Release workflow tag trigger must ignore setup-kast action major tags"
 require_contains "$release_workflow" "Publish Maven Central" "Release must publish public modules to Maven Central"
@@ -196,6 +218,7 @@ require_contains "$release_workflow" "Maven Central already has all public modul
 require_contains "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "Release Maven Central gate must continue checking after the private key secret"
 require_order "$release_workflow" "SIGNING_GPG_PRIVATE_KEY \\" "SIGNING_GPG_PASSPHRASE" "Release Maven Central gate must require the GPG passphrase secret before signing"
 require_contains "$release_workflow" "Build Rust CLI asset" "Release must build CLI assets from cli-rs"
+require_contains "$release_workflow" "build-ledger-cli-\${{ matrix.asset_id }}.json" "Release CLI builds must emit per-platform ledgers"
 require_contains "$release_workflow" "working-directory: cli-rs" "Release CLI build must run from cli-rs"
 require_contains "$release_workflow" "Render and push Homebrew tap" "Release must render and push the Homebrew tap"
 require_contains "$release_workflow" "packaging/homebrew/scripts/update-formulas.py" "Release must use the monorepo Homebrew renderer"
@@ -226,7 +249,12 @@ require_not_contains "$release_workflow" 'action_tag="v1"' "Kast releases must n
 require_not_contains "$release_workflow" "needs.publish-setup-kast-action.result" "Final release verification must not depend on the separate action repo"
 require_not_contains "$release_workflow" "needs.publish-maven-central.result == 'success' && needs.build-cli" "GitHub release publication must not depend on raw Maven Central job success"
 require_contains "$release_workflow" "build-linux-headless-tarball:" "Default release must build the Linux headless tarball"
-require_contains "$release_workflow" "cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked --" "Release workflow must name the Rust CLI binary explicitly"
+require_contains "$release_workflow" "Download Linux CLI release artifact" "Default release must consume the CLI artifact produced by build-cli"
+require_contains "$release_workflow" 'name: rust-cli-linux-x64-${{ github.run_id }}' "Linux headless tarball packaging must use the build-cli artifact"
+require_contains "$release_workflow" "release-assets/build-ledger-cli-linux-x64.json" "Linux headless tarball packaging must verify the CLI build ledger"
+require_contains "$release_workflow" '"$packager_bin"' "Linux headless tarball packaging must execute the verified CLI artifact"
+require_not_contains "$release_workflow" 'gh release download "$tag" --dir release-assets --pattern "kast-${tag}-linux-x64.zip"' "Linux headless tarball packaging must not consume the unledgered uploaded release asset"
+require_not_contains "$release_workflow" "cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked --" "Linux headless tarball packaging must not rebuild the CLI to invoke the packager"
 require_contains "$release_workflow" "package ubuntu-debian-bundle" "Default release must package the Linux headless tarball through the Rust packager"
 require_contains "$release_workflow" "scripts/package-devin-runtime.sh" "Default release must package the Devin-compatible headless runtime"
 require_contains "$release_workflow" "Ensure zstd is available" "Release workflow must install zstd when the runner image lacks it"
@@ -237,6 +265,9 @@ require_contains "$release_workflow" 'GRADLE_USER_HOME="$gradle_user_home" ./scr
 require_contains "$release_workflow" 'GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew buildEnvironment --no-daemon' "Release workflow must warm buildscript metadata for the Gradle read-only cache"
 require_contains "$release_workflow" "2147483647" "Release workflow must reject Gradle cache assets above the GitHub release asset size limit"
 require_contains "$release_workflow" "build-provenance-gradle-ro-cache.json" "Release workflow must produce provenance for the Gradle read-only cache"
+require_contains "$release_workflow" "build-ledger-headless-backend.json" "Release workflow must ledger the reusable headless backend artifact"
+require_contains "$release_workflow" "build-ledger-gradle-ro-cache.json" "Release workflow must ledger the Gradle read-only cache artifact"
+require_contains "$release_workflow" "Verify release build ledgers" "Release publication must verify build ledgers before publishing checksums"
 require_contains "$release_workflow" "Upload Gradle read-only cache release asset" "Release publication must promote the packaged Gradle read-only cache"
 require_contains "$release_workflow" "provenance-linux-headless/gradle-ro-dep-cache.tar.zst" "Release publication must upload the exact Gradle cache artifact from workflow artifacts"
 require_contains "$release_workflow" "kast-headless-linux-x64.tar.zst" "Default release must publish the Devin-compatible runtime tarball"
@@ -251,6 +282,9 @@ require_contains "$release_workflow" "provenance-linux-headless" "Default releas
 require_contains "$release_workflow" "headless-linux-x64" "Default release provenance must include the Devin-compatible runtime tarball"
 require_contains "$release_workflow" "runtime-manifest" "Default release provenance must include the runtime manifest sidecar"
 require_contains "$release_workflow" "gradle-ro-cache" "Default release provenance must include the Gradle read-only cache"
+require_contains "$release_workflow" "release-ubuntu-debian-headless-x86_64" "Default release ledgers must include the Linux headless tarball"
+require_contains "$release_workflow" "release-headless-linux-x64" "Default release ledgers must include the Devin-compatible runtime tarball"
+require_contains "$release_workflow" "release-runtime-manifest" "Default release ledgers must include the runtime manifest"
 require_contains "$release_workflow" "needs.build-linux-headless-tarball.result == 'success'" "Release publication must require Linux headless tarball packaging"
 require_not_contains "$release_workflow" 'kast-headless-${tag}.zip' "Release must not publish a standalone headless backend zip"
 require_not_contains "$release_workflow" "Upload headless backend asset" "Release must not expose a standalone headless backend asset"
@@ -275,6 +309,11 @@ require_contains "$release_provenance_assembler" '"runtime-manifest"' "Release p
 require_contains "$release_provenance_assembler" '"ubuntu-debian-headless-x86_64"' "Release provenance must include the Linux headless tarball"
 require_not_contains "$release_provenance_assembler" '"headless"' "Release provenance must not include a standalone headless backend asset"
 require_not_contains "$release_provenance_assembler" '"devin-headless-linux-x64"' "Release provenance must not support a separate Devin headless runtime asset"
+require_contains "$ci_artifact_ledger_verifier" "schemaVersion" "CI artifact ledger verifier must enforce schema versions"
+require_contains "$ci_artifact_ledger_verifier" "duplicate artifactKind" "CI artifact ledger verifier must reject duplicate artifact kinds"
+require_contains "$ci_artifact_ledger_verifier" "sha256 mismatch" "CI artifact ledger verifier must reject digest drift"
+require_contains "$ci_artifact_ledger_test" "tampered artifact unexpectedly verified" "CI artifact ledger test must cover digest drift"
+require_contains "$ci_artifact_ledger_test" "duplicate artifact kind unexpectedly verified" "CI artifact ledger test must cover duplicate artifact kinds"
 require_contains "$release_asset_verifier" '"cli-linux-x64"' "Release verifier must require CLI assets"
 require_contains "$release_asset_verifier" 'kast-{tag}-macos-arm64.zip' "Release verifier must require macOS CLI assets"
 require_contains "$release_asset_verifier" 'gradle-ro-dep-cache.tar.zst' "Release verifier must require the Gradle read-only cache tarball"
@@ -325,6 +364,7 @@ require_contains "$runtime_artifact_contract" "kast release package ubuntu-debia
 require_contains "$runtime_artifact_contract" "kast release activate bundle" "Runtime artifact docs must document bundle activation"
 require_contains "$runtime_artifact_contract" "scripts/install-ubuntu-debian.sh" "Runtime artifact docs must document the server installer"
 require_contains "$runtime_artifact_contract" "scripts/verify-release-assets.sh" "Runtime artifact docs must document release asset verification"
+require_contains "$runtime_artifact_contract" "scripts/verify-ci-artifact-ledger.py verify" "Runtime artifact docs must document build receipt verification"
 require_not_contains "$runtime_artifact_contract" "setup-kast action" "Runtime artifact docs must not publish setup-kast as the action name"
 require_not_contains "$runtime_artifact_contract" "amichne/kast-action@v1" "Runtime artifact docs must not document the old action line"
 require_not_contains "$runtime_artifact_contract" "Copilot Setup Steps" "Runtime artifact docs must not document obsolete GitHub coding-agent setup"
