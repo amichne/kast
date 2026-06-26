@@ -9,6 +9,8 @@ the `kast` binary that installed them is available to the agent.
 - `rpc.md` explains the pipe-friendly `kast agent` path and raw RPC fallback.
 - `lsp.md` explains the standard LSP adapter contract.
 
-Prefer `kast agent setup copilot` for Copilot repositories and `kast agent setup skill`
-for hosts that understand skills. Use this instruction set only when the host
-needs portable Markdown operating rules.
+Prefer `kast agent setup auto --dry-run` when the host or repository should
+choose the package shape from configured preferences and existing resource
+roots. Pin the harness only when it is known: `copilot` for the repository
+Copilot package, `skill` for skill-aware hosts, and `instructions` for portable
+Markdown operating rules.

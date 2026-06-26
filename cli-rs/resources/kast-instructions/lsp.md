@@ -4,12 +4,13 @@ Use `kast agent lsp --stdio` when an agent host understands Language Server Prot
 and needs Kotlin semantic operations through a standard LSP adapter.
 
 ```sh
-kast agent lsp --stdio
+kast agent lsp --stdio --workspace-root "$PWD"
 ```
 
 The adapter speaks LSP over stdio and forwards semantic requests to the active
 Kast backend. These instructions assume the installed `kast` binary is on
-`PATH`; the workspace must have a ready backend.
+`PATH`; the workspace must have a ready backend. Pass an absolute
+`--workspace-root` when the LSP host launches outside the repository root.
 
 ## Startup
 
