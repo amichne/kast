@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import shutil
 import subprocess
 import sys
@@ -165,14 +166,26 @@ def agent_tools_envelope_ok(value: Any, expected_executable: str) -> bool:
     )
 
 
-def recovery_from_text(text: str, workspace_root: Path) -> list[str]:
+def recovery_from_text(text: str, workspace_root: Path, kast_bin: str) -> list[str]:
     commands = []
     if "unrecognized subcommand 'agent'" in text or "KAST_AGENT_UNAVAILABLE" in text:
         commands.append("./gradlew installDevelopmentLocal")
     if any(code in text for code in RECOVERABLE_BACKEND_CODES):
-        commands.append(f"kast runtime up --workspace-root {json.dumps(str(workspace_root))} --backend idea")
+        commands.append(
+            shlex.join(
+                [
+                    kast_bin,
+                    "runtime",
+                    "up",
+                    "--workspace-root",
+                    str(workspace_root),
+                    "--backend",
+                    "idea",
+                ]
+            )
+        )
     if "INSTALL_MANIFEST" in text or "install manifest" in text:
-        commands.append("kast ready --fix")
+        commands.append(shlex.join([kast_bin, "ready", "--fix"]))
     return commands
 
 
@@ -306,7 +319,7 @@ def main() -> int:
     result["envelope"] = envelope_summary(envelope)
 
     text = completed["stdout"] + "\n" + completed["stderr"]
-    result["recovery"] = recovery_from_text(text, workspace_root)
+    result["recovery"] = recovery_from_text(text, workspace_root, kast_bin)
     if completed["exitCode"] != 0:
         result["issues"].append(issue("KAST_AGENT_FAILED", "`kast agent call` exited non-zero."))
     if isinstance(envelope, dict) and envelope.get("ok") is False:

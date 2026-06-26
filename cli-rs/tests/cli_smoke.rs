@@ -3159,6 +3159,109 @@ exit 64
 }
 
 #[test]
+fn packaged_verifier_uses_selected_binary_in_resource_recovery() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let workspace = temp.path().join("workspace");
+    let fake_bin = temp.path().join("kast");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        &fake_bin,
+        r#"#!/bin/sh
+if [ "$1" = "--help" ]; then
+  printf 'Usage: kast\nCommands:\n  ready\n  agent\n  runtime\n  inspect\n'
+  exit 0
+fi
+if [ "$1" = "ready" ] && [ "$2" = "--help" ]; then
+  printf 'Usage: kast ready\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
+  printf 'Usage: kast agent\nCommands:\n  setup\n  workflow\n  tools\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "setup" ] && [ "$3" = "--help" ]; then
+  printf 'Usage: kast agent setup\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "workflow" ] && [ "$3" = "--help" ]; then
+  printf 'Usage: kast agent workflow\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+  printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","invocation":{"argv":["%s","agent","call","<method>"]},"tools":[]}}\n' "$0"
+  exit 0
+fi
+if [ "$1" = "version" ]; then
+  printf 'Kast CLI 0.1.0\n'
+  exit 0
+fi
+if [ "$1" = "install" ] && [ "$2" = "--help" ]; then
+  printf 'error: unrecognized subcommand install\n' >&2
+  exit 1
+fi
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "ready" ]; then
+  printf '{"ok":true,"issues":[],"warnings":[]}\n'
+  exit 0
+fi
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "inspect" ] && [ "$4" = "paths" ]; then
+  printf '{"root":"%s","warnings":[]}\n' "$PWD"
+  exit 0
+fi
+printf 'unexpected fake kast args:' >&2
+printf ' %s' "$@" >&2
+printf '\n' >&2
+exit 64
+"#,
+    )
+    .expect("fake kast");
+    set_executable_for_test(&fake_bin);
+    let expected_binary = fake_bin
+        .canonicalize()
+        .expect("canonical fake bin")
+        .display()
+        .to_string();
+    let expected_recovery = format!("{expected_binary} agent setup skill --force");
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--kast-bin")
+        .arg(&fake_bin)
+        .arg("--require-skill")
+        .output()
+        .expect("run verifier");
+    assert!(
+        !verify.status.success(),
+        "verifier should report missing required skill: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verifier json");
+    assert_eq!(
+        stdout["checks"]["commandSurface"]["agentToolsInvocationArgvOk"], true,
+        "{stdout:#}"
+    );
+    let skill_issue = stdout["issues"]
+        .as_array()
+        .expect("issues")
+        .iter()
+        .find(|issue| issue["code"] == "SKILLS_STALE")
+        .unwrap_or_else(|| panic!("missing SKILLS_STALE issue: {stdout:#}"));
+    assert_eq!(skill_issue["recovery"], expected_recovery, "{stdout:#}");
+    assert!(
+        stdout["recovery"]
+            .as_array()
+            .expect("recovery")
+            .iter()
+            .any(|command| command == &expected_recovery),
+        "{stdout:#}"
+    );
+}
+
+#[test]
 fn packaged_agent_call_requires_agent_tools_preflight() {
     let temp = tempfile::tempdir().expect("tempdir");
     let workspace = temp.path().join("workspace");
@@ -3216,6 +3319,78 @@ exit 64
     assert!(
         !String::from_utf8_lossy(&call.stderr).contains("unexpected fake kast args"),
         "helper should not dispatch after invalid agent tools preflight"
+    );
+}
+
+#[test]
+fn packaged_agent_call_uses_selected_binary_in_backend_recovery() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let workspace = temp.path().join("workspace");
+    let fake_bin = temp.path().join("kast");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        &fake_bin,
+        r#"#!/bin/sh
+if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
+  printf 'Usage: kast agent\nCommands:\n  call\n  tools\n'
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+  printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","invocation":{"argv":["%s","agent","call","<method>"]},"tools":[]}}\n' "$0"
+  exit 0
+fi
+if [ "$1" = "agent" ] && [ "$2" = "call" ]; then
+  printf '{"ok":false,"method":"symbol/query","error":{"code":"NO_BACKEND_AVAILABLE","message":"backend missing"}}\n'
+  exit 1
+fi
+printf 'unexpected fake kast args:' >&2
+printf ' %s' "$@" >&2
+printf '\n' >&2
+exit 64
+"#,
+    )
+    .expect("fake kast");
+    set_executable_for_test(&fake_bin);
+    let expected_binary = fake_bin
+        .canonicalize()
+        .expect("canonical fake bin")
+        .display()
+        .to_string();
+    let expected_recovery = format!(
+        "{expected_binary} runtime up --workspace-root {} --backend idea",
+        workspace
+            .canonicalize()
+            .expect("canonical workspace")
+            .display()
+    );
+
+    let script = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/kast-agent-call.py");
+    let call = Command::new("python3")
+        .arg(&script)
+        .arg("symbol/query")
+        .arg("--params-json")
+        .arg(r#"{"query":"Widget"}"#)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--kast-bin")
+        .arg(&fake_bin)
+        .output()
+        .expect("run packaged call helper");
+    assert!(
+        !call.status.success(),
+        "backend failure should be reported with recovery: stdout={}, stderr={}",
+        String::from_utf8_lossy(&call.stdout),
+        String::from_utf8_lossy(&call.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&call.stdout).expect("call helper json");
+    assert!(
+        stdout["recovery"]
+            .as_array()
+            .expect("recovery")
+            .iter()
+            .any(|command| command == &expected_recovery),
+        "{stdout:#}"
     );
 }
 

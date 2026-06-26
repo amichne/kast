@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -16,13 +17,18 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
-RECOVERY = {
-    "ready": "kast ready --fix",
-    "skill": "kast agent setup skill --force",
-    "instructions": "kast agent setup instructions --force",
-    "copilot": "kast agent setup copilot --force",
-    "development": "./gradlew installDevelopmentLocal",
-}
+def recovery_commands(kast_executable: str | None) -> dict[str, str]:
+    executable = kast_executable or "kast"
+    return {
+        "ready": shlex.join([executable, "ready", "--fix"]),
+        "skill": shlex.join([executable, "agent", "setup", "skill", "--force"]),
+        "instructions": shlex.join([executable, "agent", "setup", "instructions", "--force"]),
+        "copilot": shlex.join([executable, "agent", "setup", "copilot", "--force"]),
+        "development": "./gradlew installDevelopmentLocal",
+    }
+
+
+RECOVERY = recovery_commands("kast")
 COPILOT_FILES = [
     "lsp.json",
     "extensions/kast/extension.mjs",
@@ -533,6 +539,7 @@ def verify_resource_install(
 
 
 def main() -> int:
+    global RECOVERY
     args = parse_args()
     workspace_root = normalize(args.workspace_root)
     script_root = Path(__file__).resolve().parents[1]
@@ -546,6 +553,7 @@ def main() -> int:
         kast_bin = which_kast
     else:
         kast_bin = None
+    RECOVERY = recovery_commands(kast_bin)
 
     result: dict[str, Any] = {
         "type": "KAST_STATE_VERIFICATION",
