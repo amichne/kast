@@ -422,6 +422,9 @@ pub struct AgentWorkflowPackageVerifyArgs {
     /// Skill setup target root to verify. Pass the same directory used with `agent setup skill --target-dir`.
     #[arg(long = "skill-target-dir")]
     pub skill_target_dir: Vec<PathBuf>,
+    /// Copilot setup target directory to verify. Pass the same directory used with `agent setup copilot --target-dir`.
+    #[arg(long = "copilot-target-dir")]
+    pub copilot_target_dir: Option<PathBuf>,
     /// Instructions setup target root to verify. Pass the same directory used with `agent setup instructions --target-dir`.
     #[arg(long = "instructions-target-dir")]
     pub instructions_target_dir: Vec<PathBuf>,

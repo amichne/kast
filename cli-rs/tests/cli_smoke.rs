@@ -4111,6 +4111,7 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let copilot_target_dir = workspace.join("host-agent/github");
     let skill_target_dir = workspace.join("host-agent/skills");
     let instructions_target_dir = workspace.join("host-agent/instructions");
     std::fs::create_dir_all(&home).expect("home");
@@ -4183,6 +4184,26 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
         String::from_utf8_lossy(&instructions.stdout),
         String::from_utf8_lossy(&instructions.stderr)
     );
+    let copilot = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "copilot",
+            "--target-dir",
+            copilot_target_dir.to_str().expect("copilot target"),
+            "--force",
+        ])
+        .output()
+        .expect("install explicit copilot");
+    assert!(
+        copilot.status.success(),
+        "explicit copilot target should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&copilot.stdout),
+        String::from_utf8_lossy(&copilot.stderr)
+    );
 
     let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("resources/kast-skill/scripts/verify-kast-state.py");
@@ -4195,8 +4216,11 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
         .arg("--kast-bin")
         .arg(env!("CARGO_BIN_EXE_kast"))
         .arg("--require-gradle-project")
+        .arg("--require-copilot")
         .arg("--require-skill")
         .arg("--require-instructions")
+        .arg("--copilot-target-dir")
+        .arg(&copilot_target_dir)
         .arg("--skill-target-dir")
         .arg(&skill_target_dir)
         .arg("--instructions-target-dir")
@@ -4213,6 +4237,30 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
     );
     let verify_json: serde_json::Value =
         serde_json::from_slice(&verify.stdout).expect("verifier json");
+    let copilot_target = verify_json["checks"]["copilotPackage"]["targets"]
+        .as_array()
+        .expect("copilot targets")
+        .iter()
+        .find(|target| {
+            target["target"]
+                .as_str()
+                .expect("target path")
+                .ends_with("host-agent/github")
+        })
+        .expect("explicit copilot target");
+    assert!(copilot_target["exists"].as_bool().expect("exists"));
+    assert!(copilot_target["current"].as_bool().expect("current"));
+    assert!(
+        copilot_target["manifestResource"].is_object(),
+        "{copilot_target:#}"
+    );
+    assert_eq!(
+        copilot_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
     let skill_target = verify_json["checks"]["skills"]["targets"]
         .as_array()
         .expect("skill targets")
@@ -5260,6 +5308,7 @@ fn agent_package_verify_workflow_accepts_required_explicit_resource_targets() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let copilot_target_dir = workspace.join("host-agent/github");
     let skill_target_dir = workspace.join("host-agent/skills");
     let instructions_target_dir = workspace.join("host-agent/instructions");
     std::fs::create_dir_all(&home).expect("home");
@@ -5331,6 +5380,26 @@ fn agent_package_verify_workflow_accepts_required_explicit_resource_targets() {
         String::from_utf8_lossy(&instructions.stdout),
         String::from_utf8_lossy(&instructions.stderr)
     );
+    let copilot = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "copilot",
+            "--target-dir",
+            copilot_target_dir.to_str().expect("copilot target"),
+            "--force",
+        ])
+        .output()
+        .expect("install explicit copilot");
+    assert!(
+        copilot.status.success(),
+        "explicit copilot target should install: stdout={}, stderr={}",
+        String::from_utf8_lossy(&copilot.stdout),
+        String::from_utf8_lossy(&copilot.stderr)
+    );
 
     let workflow = kast(&home, &config_home)
         .current_dir(&workspace)
@@ -5342,8 +5411,11 @@ fn agent_package_verify_workflow_accepts_required_explicit_resource_targets() {
             "package-verify",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
+            "--require-copilot",
             "--require-skill",
             "--require-instructions",
+            "--copilot-target-dir",
+            copilot_target_dir.to_str().expect("copilot target"),
             "--skill-target-dir",
             skill_target_dir.to_str().expect("skill target"),
             "--instructions-target-dir",
@@ -5366,6 +5438,22 @@ fn agent_package_verify_workflow_accepts_required_explicit_resource_targets() {
     assert_eq!(stdout["ok"], true, "{stdout}");
     assert_eq!(summary["ok"], true, "{stdout}");
     assert_eq!(summary["requiredResources"]["ok"], true, "{stdout}");
+    let copilot_targets = summary["requiredResources"]["copilotPackage"]["targets"]
+        .as_array()
+        .expect("copilot targets");
+    assert_eq!(copilot_targets.len(), 1, "{stdout}");
+    assert_eq!(copilot_targets[0]["current"], true, "{stdout}");
+    assert!(
+        copilot_targets[0]["targetPath"]
+            .as_str()
+            .expect("copilot target path")
+            .ends_with("host-agent/github"),
+        "{stdout}"
+    );
+    assert!(
+        copilot_targets[0]["manifestResource"].is_object(),
+        "{stdout}"
+    );
     let skill_targets = summary["requiredResources"]["skills"]["targets"]
         .as_array()
         .expect("skill targets");
@@ -5670,6 +5758,7 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(quickstart.contains("--instructions-target-dir"));
     assert!(workflows.contains("Execute recovery commands exactly as emitted"));
     assert!(workflows.contains("selected executable token"));
+    assert!(workflows.contains("--copilot-target-dir"));
     assert!(workflows.contains("--skill-target-dir"));
     assert!(workflows.contains("--instructions-target-dir"));
     assert!(routing_reference.contains("rust-kast-cli"));
@@ -5677,6 +5766,7 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(instruction_cli.contains("kast agent workflow --help"));
     assert!(instruction_cli.contains("stale instruction/binary install"));
     assert!(instruction_tools.contains("kast agent tools"));
+    assert!(instruction_tools.contains("--copilot-target-dir"));
     assert!(instruction_tools.contains("result.invocation.argv"));
     assert!(instruction_tools.contains("schemaVersion >= 3"));
     assert!(instruction_tools.contains("matching `toolCount`"));

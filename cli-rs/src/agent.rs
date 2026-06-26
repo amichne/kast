@@ -112,6 +112,7 @@ struct AgentPackageVerifyOptions {
     require_copilot: bool,
     require_skill: bool,
     require_instructions: bool,
+    copilot_target_dir: Option<PathBuf>,
     skill_target_dirs: Vec<PathBuf>,
     instructions_target_dirs: Vec<PathBuf>,
 }
@@ -184,6 +185,7 @@ impl AgentPackageVerifyOptions {
             require_copilot: args.require_copilot,
             require_skill: args.require_skill,
             require_instructions: args.require_instructions,
+            copilot_target_dir: args.copilot_target_dir.clone(),
             skill_target_dirs: args.skill_target_dir.clone(),
             instructions_target_dirs: args.instructions_target_dir.clone(),
         }
@@ -194,6 +196,7 @@ impl AgentPackageVerifyOptions {
             "requireCopilot": self.require_copilot,
             "requireSkill": self.require_skill,
             "requireInstructions": self.require_instructions,
+            "copilotTargetDir": self.copilot_target_dir.as_ref().map(|path| config::normalize(path.clone()).display().to_string()),
             "skillTargetDirs": path_values(&self.skill_target_dirs),
             "instructionsTargetDirs": path_values(&self.instructions_target_dirs),
         })
@@ -911,7 +914,7 @@ fn required_package_resources(
         workspace_root,
         self_mgmt::ManagedResourceKind::CopilotPackage,
         options.require_copilot,
-        Vec::new(),
+        options.copilot_target_dir.clone().into_iter().collect(),
     )?;
     let skills = package_resource_group(
         doctor.install.as_ref(),
@@ -952,7 +955,7 @@ fn package_resource_group(
     let targets = if has_explicit_targets {
         explicit_target_dirs
             .into_iter()
-            .map(resource_target_from_target_dir)
+            .map(|target_dir| resource_target_from_target_dir(kind, target_dir))
             .collect::<Vec<_>>()
     } else if required {
         standard_resource_targets(workspace_root, kind)
@@ -1125,8 +1128,14 @@ fn standard_named_resource_targets(workspace_root: &Path, roots: &[&str]) -> Vec
         .collect()
 }
 
-fn resource_target_from_target_dir(target_dir: PathBuf) -> PathBuf {
+fn resource_target_from_target_dir(
+    kind: self_mgmt::ManagedResourceKind,
+    target_dir: PathBuf,
+) -> PathBuf {
     let target_dir = config::normalize(target_dir);
+    if kind == self_mgmt::ManagedResourceKind::CopilotPackage {
+        return target_dir;
+    }
     if target_dir
         .file_name()
         .and_then(|name| name.to_str())

@@ -68,6 +68,13 @@ def parse_args() -> argparse.Namespace:
         help="Additional skill target directory passed to `kast agent setup skill --target-dir`.",
     )
     parser.add_argument(
+        "--copilot-target-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="Additional Copilot package target directory passed to `kast agent setup copilot --target-dir`.",
+    )
+    parser.add_argument(
         "--instructions-target-dir",
         type=Path,
         action="append",
@@ -488,8 +495,50 @@ def verify_copilot(
     expected_version: str | None,
     required: bool,
     ready_json: dict[str, Any] | None,
+    kast_executable: str | None = None,
+    target_dirs: list[Path] | None = None,
 ) -> None:
-    github_dir = workspace_root / ".github"
+    target_dirs = target_dirs or [workspace_root / ".github"]
+    targets = [
+        copilot_target_check(github_dir, expected_version, ready_json)
+        for github_dir in target_dirs
+    ]
+    check = dict(targets[0]) if targets else {"targets": []}
+    check["targets"] = targets
+    result["checks"]["copilotPackage"] = check
+    stale_targets = [target for target in targets if not target["current"]]
+    stale_installed_targets = [
+        target
+        for target in targets
+        if target["exists"]
+        and (
+            target["manifestOutputMismatches"]
+            or not target["versionMatchesExpected"]
+            or not target["manifestResource"]
+            or target["retiredMarkerExists"]
+        )
+    ]
+    if required and stale_targets:
+        recovery = copilot_recovery_command(kast_executable, workspace_root, stale_targets, target_dirs)
+        add_issue(
+            result,
+            "COPILOT_PACKAGE_STALE",
+            f"Repository Copilot package is missing or stale under {stale_targets[0]['target']}.",
+            recovery,
+        )
+    elif stale_installed_targets:
+        add_warning(
+            result,
+            "COPILOT_PACKAGE_STALE",
+            f"Repository Copilot package differs from the manifest-backed expected state under {stale_installed_targets[0]['target']}.",
+        )
+
+
+def copilot_target_check(
+    github_dir: Path,
+    expected_version: str | None,
+    ready_json: dict[str, Any] | None,
+) -> dict[str, Any]:
     files = {
         relative: {
             "path": str(github_dir / relative),
@@ -500,9 +549,16 @@ def verify_copilot(
     retired_marker_exists = (github_dir / ".kast-copilot-version").exists()
     resource = resource_record_for_target(ready_json, "COPILOT_PACKAGE", github_dir)
     output_mismatches = manifest_output_mismatches(resource)
-    check = {
+    missing = [relative for relative, info in files.items() if not info["exists"]]
+    stale = bool(output_mismatches) if resource else False
+    version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
+    missing_record = github_dir.is_dir() and resource is None
+    retired_marker = retired_marker_exists
+    current = not (missing or stale or version_mismatch or missing_record or retired_marker)
+    return {
         "target": str(github_dir),
         "exists": github_dir.is_dir(),
+        "current": current,
         "files": files,
         "retiredMarkerExists": retired_marker_exists,
         "expectedVersion": expected_version,
@@ -512,25 +568,19 @@ def verify_copilot(
             resource and expected_version and resource.get("primitiveVersion") == expected_version
         ),
     }
-    result["checks"]["copilotPackage"] = check
-    missing = [relative for relative, info in files.items() if not info["exists"]]
-    stale = bool(output_mismatches) if resource else False
-    version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
-    missing_record = github_dir.is_dir() and resource is None
-    retired_marker = retired_marker_exists
-    if required and (missing or stale or version_mismatch or missing_record or retired_marker):
-        add_issue(
-            result,
-            "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package is missing or stale under {github_dir}.",
-            RECOVERY["copilot"],
-        )
-    elif github_dir.is_dir() and (stale or version_mismatch or missing_record or retired_marker):
-        add_warning(
-            result,
-            "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package differs from the manifest-backed expected state under {github_dir}.",
-        )
+
+
+def copilot_recovery_command(
+    kast_executable: str | None,
+    workspace_root: Path,
+    stale_targets: list[dict[str, Any]],
+    target_dirs: list[Path],
+) -> str:
+    default_target = workspace_root / ".github"
+    target = Path(stale_targets[0]["target"]) if stale_targets else default_target
+    if target_dirs and normalize(target_dirs[0]) != normalize(default_target):
+        return setup_recovery_command(kast_executable, "copilot", target)
+    return setup_recovery_command(kast_executable, "copilot")
 
 
 def resource_target_from_target_dir(target_dir: Path) -> Path:
@@ -659,6 +709,7 @@ def main() -> int:
     workspace_root = normalize(args.workspace_root)
     script_root = Path(__file__).resolve().parents[1]
     skill_root = normalize(args.skill_root) if args.skill_root else script_root
+    copilot_target_dirs = [normalize(target_dir) for target_dir in args.copilot_target_dir]
     skill_target_dirs = [normalize(target_dir) for target_dir in args.skill_target_dir]
     instructions_target_dirs = [
         normalize(target_dir) for target_dir in args.instructions_target_dir
@@ -711,7 +762,15 @@ def main() -> int:
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
-    verify_copilot(result, workspace_root, expected_version, args.require_copilot, ready_json)
+    verify_copilot(
+        result,
+        workspace_root,
+        expected_version,
+        args.require_copilot,
+        ready_json,
+        kast_bin,
+        copilot_target_dirs,
+    )
     verify_resource_install(
         result,
         workspace_root,

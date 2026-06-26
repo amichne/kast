@@ -20,6 +20,7 @@ workflow gate:
 
 ```sh
 kast --output json agent workflow package-verify --workspace-root "$PWD" \
+  --require-copilot --copilot-target-dir "$PWD/.github" \
   --require-skill --skill-target-dir "$PWD/.codex/skills" \
   --require-instructions --instructions-target-dir "$PWD/.codex/instructions"
 ```
@@ -28,8 +29,8 @@ Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
 when that repository-local artifact is required for the task. The script emits
 JSON with command-surface evidence, readiness, paths, manifest-backed
 resource state, catalog hash comparisons, and recovery commands.
-When a skill or instruction package was installed into a nonstandard host root,
-pass the same setup target root with `--skill-target-dir` or
+When a package was installed into a nonstandard host root, pass the same setup
+target root with `--copilot-target-dir`, `--skill-target-dir`, or
 `--instructions-target-dir` so manifest checks and recovery commands use that
 host-owned target instead of only the standard repository roots. The
 `package-verify` workflow accepts the same require and target-root flags and
