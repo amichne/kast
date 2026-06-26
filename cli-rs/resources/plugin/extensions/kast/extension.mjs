@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { joinSession } from "@github/copilot-sdk/extension";
 import { createTraceEmitter, traceFieldsFromParams } from "./_shared/kast-trace.mjs";
-import { bundledKastToolSpecs, isKastAgentToolsEnvelope, makeKastTools, toolSpecsFromAgentToolsResult } from "./_shared/kast-tools.mjs";
+import { isKastAgentToolsEnvelope, makeKastTools, toolSpecsFromAgentToolsResult } from "./_shared/kast-tools.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT_MARKER = "workspace.repos.toml";
@@ -232,20 +232,19 @@ async function loadKastToolSpecs() {
       });
     }
   }
-  const specs = bundledKastToolSpecs();
-  trace.emit("copilot.tool_specs.loaded", {
+  trace.emit("copilot.tool_specs.unavailable", {
     sdkRegistrationScope: "extension-session",
-    outcome: "completed",
+    outcome: "failed",
     detail: {
-      source: "bundled-catalog-fallback",
-      toolCount: specs.length,
+      source: "kast-agent-tools",
+      resolveError,
     },
   });
   return {
-    source: "bundled-catalog-fallback",
+    source: "unavailable",
     bin: null,
     catalogSha256: null,
-    specs,
+    specs: [],
   };
 }
 
@@ -480,7 +479,7 @@ trace.emit("copilot.session.joined", {
 const bin = toolSpecLoad.bin ?? await resolveKastBinary();
 if (!bin) {
   await session.log(
-    `kast extension: failed to resolve kast binary (${resolveError}). Tools will return structured errors until kast is installed or built.`,
+    `kast extension: failed to resolve a kast binary with agent tools (${resolveError}). No Kast tools were registered; install, build, or reinstall Kast and reload the Copilot session.`,
     { level: "warning" },
   );
 } else {

@@ -83,8 +83,7 @@ assert(server.initializationTimeoutMs >= 120000, "LSP timeout must allow startup
 assert(server.initializationOptions.failOnStaleIndex === true, "LSP must fail on stale indexes");
 
 const tools = readText("extensions/kast/_shared/kast-tools.mjs");
-assert(tools.includes("Preferred Kotlin funnel tool"), "tool guidance must prefer funnel tools");
-assert(tools.includes("Bounded raw escape hatch"), "tool guidance must bound raw escape hatches");
+assert(!tools.includes("buildBundledToolSpecs"), "extension must not reconstruct tool specs from a bundled catalog");
 const extension = readText("extensions/kast/extension.mjs");
 assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
 assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
@@ -93,6 +92,8 @@ assert(extension.includes("createTraceEmitter"), "extension must wire structured
 assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
 assert(extension.includes('"agent"') && extension.includes('"tools"'), "extension must load tool specs from kast agent tools");
 assert(extension.includes("isKastAgentToolsEnvelope"), "extension must validate the full KAST_AGENT_TOOLS envelope");
+assert(!extension.includes("bundled-catalog-fallback"), "extension must not fall back to reconstructed tool specs");
+assert(!extension.includes("bundledKastToolSpecs"), "extension must not import reconstructed tool specs");
 assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");
 assert(extension.includes("KAST_TOOLING_CONTEXT"), "extension must own runtime tooling guidance");
 assert(extension.includes("onUserPromptSubmitted"), "extension must inject prompt-time tooling guidance");
@@ -138,6 +139,18 @@ const tools = toolsModule.makeKastTools(specs, (method, args) =>
 const names = new Set(tools.map((tool) => tool.name));
 for (const required of ["kast_resolve", "kast_references", "kast_workspace_search", "kast_metrics"]) {
   if (!names.has(required)) throw new Error(`source plugin import missing ${required}`);
+}
+const sourceResolveTool = tools.find((tool) => tool.name === "kast_resolve");
+if (!sourceResolveTool.description.includes("Preferred Kotlin funnel tool")) {
+  throw new Error("source symbol tools must use CLI-provided funnel guidance");
+}
+const sourceScaffoldTool = tools.find((tool) => tool.name === "kast_scaffold");
+if (!sourceScaffoldTool.parameters.properties.kind.type.includes("null")) {
+  throw new Error("source tool schemas must preserve nullable fields from kast agent tools");
+}
+const sourceRenameTool = tools.find((tool) => tool.name === "kast_rename");
+if (!Array.isArray(sourceRenameTool.parameters.oneOf) || sourceRenameTool.parameters.oneOf.length < 2) {
+  throw new Error("source tool schemas must preserve variant oneOf schemas from kast agent tools");
 }
 const trace = traceModule.createTraceEmitter({
   env: { KAST_COPILOT_TRACE: "1" },
@@ -250,6 +263,14 @@ if (!resolveTool.description.includes("Preferred Kotlin funnel tool")) {
 const workspaceFiles = tools.find((tool) => tool.name === "kast_workspace_files");
 if (!workspaceFiles.description.includes("Secondary workspace inspection tool")) {
   throw new Error("workspace files must be secondary");
+}
+const scaffoldTool = tools.find((tool) => tool.name === "kast_scaffold");
+if (!scaffoldTool.parameters.properties.kind.type.includes("null")) {
+  throw new Error("installed tool schemas must preserve nullable fields from kast agent tools");
+}
+const renameTool = tools.find((tool) => tool.name === "kast_rename");
+if (!Array.isArray(renameTool.parameters.oneOf) || renameTool.parameters.oneOf.length < 2) {
+  throw new Error("installed tool schemas must preserve variant oneOf schemas from kast agent tools");
 }
 NODE
 
