@@ -5303,6 +5303,118 @@ fn agent_workflow_dry_run_writes_stable_step_files() {
 }
 
 #[test]
+fn agent_package_verify_workflow_dry_run_writes_native_command_argv() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let out_dir = temp.path().join("package-verify-workflow");
+    let copilot_target_dir = workspace.join("host-agent/github");
+    let skill_target_dir = workspace.join("host-agent/skills");
+    let instructions_target_dir = workspace.join("host-agent/instructions");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let workflow = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workflow",
+            "package-verify",
+            "--dry-run",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--out-dir",
+            out_dir.to_str().expect("workflow out dir"),
+            "--require-copilot",
+            "--copilot-target-dir",
+            copilot_target_dir.to_str().expect("copilot target"),
+            "--require-skill",
+            "--skill-target-dir",
+            skill_target_dir.to_str().expect("skill target"),
+            "--require-instructions",
+            "--instructions-target-dir",
+            instructions_target_dir
+                .to_str()
+                .expect("instructions target"),
+        ])
+        .output()
+        .expect("agent workflow package-verify dry-run");
+
+    assert!(
+        workflow.status.success(),
+        "package verify dry-run should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&workflow.stdout),
+        String::from_utf8_lossy(&workflow.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&workflow.stdout).expect("workflow envelope json");
+    let summary = &stdout["result"]["steps"][0]["summary"];
+    assert_eq!(stdout["ok"], true, "{stdout}");
+    assert_eq!(summary["ok"], true, "{stdout}");
+    assert_eq!(summary["dryRun"], true, "{stdout}");
+    assert_eq!(summary["method"], "package/verify", "{stdout}");
+    assert!(
+        summary.get("nextRequest").is_none(),
+        "native package verification must not advertise a backend JSON-RPC request: {stdout}"
+    );
+    let next_argv = summary["nextCommandArgv"]
+        .as_array()
+        .expect("next command argv");
+    assert_eq!(next_argv[0], env!("CARGO_BIN_EXE_kast"), "{stdout}");
+    assert_eq!(next_argv[1], "--output", "{stdout}");
+    assert_eq!(next_argv[2], "json", "{stdout}");
+    assert_eq!(next_argv[3], "agent", "{stdout}");
+    assert_eq!(next_argv[4], "workflow", "{stdout}");
+    assert_eq!(next_argv[5], "package-verify", "{stdout}");
+    assert!(
+        next_argv.iter().any(|arg| arg == "--require-copilot"),
+        "{stdout}"
+    );
+    assert!(
+        next_argv.iter().any(|arg| arg == "--require-skill"),
+        "{stdout}"
+    );
+    assert!(
+        next_argv.iter().any(|arg| arg == "--require-instructions"),
+        "{stdout}"
+    );
+    assert!(
+        next_argv.iter().any(|arg| arg
+            .as_str()
+            .is_some_and(|value| value.ends_with("host-agent/github"))),
+        "{stdout}"
+    );
+    assert!(
+        next_argv.iter().any(|arg| arg
+            .as_str()
+            .is_some_and(|value| value.ends_with("host-agent/skills"))),
+        "{stdout}"
+    );
+    assert!(
+        next_argv.iter().any(|arg| arg
+            .as_str()
+            .is_some_and(|value| value.ends_with("host-agent/instructions"))),
+        "{stdout}"
+    );
+    let input: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out_dir.join("ready/input.json")).unwrap())
+            .expect("package verify input json");
+    assert_eq!(input["requireCopilot"], true, "{input}");
+    assert_eq!(input["requireSkill"], true, "{input}");
+    assert_eq!(input["requireInstructions"], true, "{input}");
+    assert!(
+        input["copilotTargetDir"]
+            .as_str()
+            .expect("copilot target")
+            .ends_with("host-agent/github"),
+        "{input}"
+    );
+}
+
+#[test]
 fn agent_package_verify_workflow_accepts_required_explicit_resource_targets() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -5777,12 +5889,14 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(workflows.contains("--copilot-target-dir"));
     assert!(workflows.contains("--skill-target-dir"));
     assert!(workflows.contains("--instructions-target-dir"));
+    assert!(workflows.contains("nextCommandArgv"));
     assert!(routing_reference.contains("rust-kast-cli"));
     assert!(instruction_cli.contains("kast agent tools"));
     assert!(instruction_cli.contains("kast agent workflow --help"));
     assert!(instruction_cli.contains("stale instruction/binary install"));
     assert!(instruction_tools.contains("kast agent tools"));
     assert!(instruction_tools.contains("--copilot-target-dir"));
+    assert!(instruction_tools.contains("nextCommandArgv"));
     assert!(instruction_tools.contains("result.invocation.argv"));
     assert!(instruction_tools.contains("schemaVersion >= 3"));
     assert!(instruction_tools.contains("matching `toolCount`"));

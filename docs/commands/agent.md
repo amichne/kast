@@ -163,6 +163,9 @@ nonstandard host root, pass the same setup target root with
 `--copilot-target-dir`, `--skill-target-dir`, or `--instructions-target-dir`.
 Failed required resource checks include `requiredResources.issues[].recoveryArgv`
 with the exact `kast agent setup ... --force` invocation to run.
+In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
+`package-verify` reports `nextCommandArgv` because it is native CLI verification,
+not a backend JSON-RPC method.
 
 Mutating workflow commands require explicit mutation opt-in. Do not treat a
 dry-run workflow as proof that files changed.

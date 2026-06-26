@@ -845,9 +845,8 @@ fn run_workflow_step(
     let stderr_file = step_dir.join("stderr.txt");
     write_json_file(&params_file, &step.params)?;
     let (exit_code, summary) = if common.dry_run {
-        (
-            0,
-            json!({
+        let summary = match &step.action {
+            AgentWorkflowStepAction::Catalog => json!({
                 "ok": true,
                 "dryRun": true,
                 "method": step.method,
@@ -855,7 +854,17 @@ fn run_workflow_step(
                 "nextRequest": json_rpc_request(step.method, step.params.clone()),
                 "schemaVersion": SCHEMA_VERSION,
             }),
-        )
+            AgentWorkflowStepAction::PackageVerify(options) => json!({
+                "ok": true,
+                "dryRun": true,
+                "method": step.method,
+                "mutates": step.mutates,
+                "params": step.params,
+                "nextCommandArgv": package_verify_command_argv(workspace_root, common, options),
+                "schemaVersion": SCHEMA_VERSION,
+            }),
+        };
+        (0, summary)
     } else {
         match &step.action {
             AgentWorkflowStepAction::PackageVerify(options) => {
@@ -903,6 +912,49 @@ fn run_package_verify_step(
     }
     let exit_code = if ok { 0 } else { 1 };
     Ok((exit_code, summary))
+}
+
+fn package_verify_command_argv(
+    workspace_root: &Path,
+    common: &AgentWorkflowCommonArgs,
+    options: &AgentPackageVerifyOptions,
+) -> Vec<String> {
+    let mut argv = vec![
+        current_executable_argument(),
+        "--output".to_string(),
+        "json".to_string(),
+        "agent".to_string(),
+        "workflow".to_string(),
+        "package-verify".to_string(),
+        "--workspace-root".to_string(),
+        workspace_root.display().to_string(),
+    ];
+    if let Some(backend) = common.runtime.backend_name {
+        argv.push("--backend".to_string());
+        argv.push(backend.canonical().to_string());
+    }
+    if options.require_copilot {
+        argv.push("--require-copilot".to_string());
+    }
+    if let Some(target_dir) = &options.copilot_target_dir {
+        argv.push("--copilot-target-dir".to_string());
+        argv.push(config::normalize(target_dir.clone()).display().to_string());
+    }
+    if options.require_skill {
+        argv.push("--require-skill".to_string());
+    }
+    for target_dir in &options.skill_target_dirs {
+        argv.push("--skill-target-dir".to_string());
+        argv.push(config::normalize(target_dir.clone()).display().to_string());
+    }
+    if options.require_instructions {
+        argv.push("--require-instructions".to_string());
+    }
+    for target_dir in &options.instructions_target_dirs {
+        argv.push("--instructions-target-dir".to_string());
+        argv.push(config::normalize(target_dir.clone()).display().to_string());
+    }
+    argv
 }
 
 fn required_package_resources(

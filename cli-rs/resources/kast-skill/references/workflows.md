@@ -38,6 +38,9 @@ fails when an explicit required target is missing, stale, or not
 manifest-backed. Failed required resource checks include
 `requiredResources.issues[].recoveryArgv` with the exact
 `kast agent setup ... --force` invocation to run.
+In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
+`package-verify` reports `nextCommandArgv` because it is native CLI
+verification, not a backend JSON-RPC method.
 
 Execute recovery commands exactly as emitted. When the verifier is run with
 `--kast-bin` or another absolute executable, recovery strings preserve the

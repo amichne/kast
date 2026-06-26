@@ -45,6 +45,9 @@ When a Copilot, skill, or instruction package was installed with
 the workflow fails if the required target is not manifest-backed and current.
 Failed required resource checks include `requiredResources.issues[].recoveryArgv`
 with the exact `kast agent setup ... --force` invocation to run.
+In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
+`package-verify` reports `nextCommandArgv` because it is native CLI
+verification, not a backend JSON-RPC method.
 When an `agent up` dry-run is used only to inspect setup, trust
 `setup.targetDir` and copy `setup.installCommand` exactly; it includes the
 selected executable and `--target-dir`. When only package selection matters,
