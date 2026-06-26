@@ -32,7 +32,7 @@ brew tap amichne/kast
 brew install kast
 
 cd /path/to/your/repository
-kast agent setup copilot
+kast agent up
 ```
 
 `brew install kast` installs or refreshes the matching `kast-plugin` cask as
@@ -41,6 +41,14 @@ part of the Homebrew formula install, using the same cask path as
 Homebrew links or refreshes the plugin, then restart after installing
 repository files so Copilot and IDE-hosted tooling discover `.github/lsp.json`,
 runtime guidance, and catalog-backed tools at startup.
+
+On the first eligible run in a smart interactive terminal, `kast agent up`
+offers automatic IDEA setup for IDEA-backed agent workflows. Accepting lets
+you save IDEA as the default backend, automatic IDEA launch, the Copilot
+harness, and project-open auto-init either globally or for this repository only.
+It also installs or refreshes the JetBrains plugin, installs repository
+agent resources, and warms the workspace runtime. Scripts and repeatable setup
+should use `kast agent up --no-onboard` or `kast --output json agent up ...`.
 
 ??? success "Homebrew machine install"
     `brew install kast` is machine-level. It installs one `kast` executable
@@ -56,11 +64,13 @@ runtime guidance, and catalog-backed tools at startup.
     ```
 
 ??? tip "Repository Copilot integration"
-    `kast agent setup copilot` is repository-level. By default, it targets the
-    current working directory's `.github` directory. Run it from the repository
-    root, or pass an explicit `.github` target:
+    `kast agent up` is the normal repository bring-up command. When only the
+    repository package should be installed, `kast agent setup copilot` targets
+    the current working directory's `.github` directory. Run it from the
+    repository root, or pass an explicit `.github` target:
 
     ```console title="Install into another repository"
+    kast agent up --workspace-root /Users/alex/work/project --no-onboard
     kast agent setup copilot --target-dir=/Users/alex/work/project/.github --force
     ```
 

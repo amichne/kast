@@ -17,6 +17,7 @@ roots:
 
 ```sh
 kast --output json agent up --workspace-root "$PWD" --dry-run
+kast --output json agent up --workspace-root "$PWD" --no-onboard
 kast --output json agent setup auto --dry-run
 kast --output json runtime status --workspace-root "$PWD"
 kast --output json runtime up --workspace-root "$PWD" --backend idea
@@ -32,6 +33,8 @@ runtime warmup step.
 ## Non-Interactive Rules
 
 - Prefer `--output json` for agent-run operator commands.
+- Pass `--no-onboard` to `kast agent up` when a human TTY may be present but
+  automation must not prompt.
 - Pass command-specific mutation controls explicitly, such as `--dry-run` or
   `--force`.
 - Use `kast inspect demo --json` for snapshots; the default demo opens an interactive

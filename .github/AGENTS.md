@@ -18,6 +18,8 @@ change:
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
+For CLI terminal onboarding or command-example changes, run
+`.github/scripts/test-terminal-onboarding-contract.sh`.
 
 Publishable CI artifacts are single-producer per commit. Producer jobs must
 write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
@@ -58,4 +60,10 @@ For docs contract changes, run:
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean
+```
+
+For terminal onboarding and executable command examples, run:
+
+```console
+.github/scripts/test-terminal-onboarding-contract.sh
 ```

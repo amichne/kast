@@ -391,11 +391,26 @@ pub fn update_global_config(
     mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
 ) -> Result<PathBuf> {
     let path = config::global_config_path();
+    update_config_file(&path, mutator)
+}
+
+pub fn update_workspace_config(
+    workspace_root: &Path,
+    mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
+) -> Result<PathBuf> {
+    let path = config::workspace_data_directory(workspace_root)?.join("config.toml");
+    update_config_file(&path, mutator)
+}
+
+fn update_config_file(
+    path: &Path,
+    mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
+) -> Result<PathBuf> {
     let mut document = default_config_document()?;
-    merge_config_document(&mut document, read_config_document(&path)?);
+    merge_config_document(&mut document, read_config_document(path)?);
     mutator(&mut document)?;
-    write_config_document(&path, &document)?;
-    Ok(path)
+    write_config_document(path, &document)?;
+    Ok(path.to_path_buf())
 }
 
 pub fn remove_global_install_state() -> Result<bool> {

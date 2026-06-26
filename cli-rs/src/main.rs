@@ -12,6 +12,7 @@ mod lsp;
 mod manifest;
 mod metrics;
 mod metrics_database;
+mod onboarding;
 mod orchestration;
 mod output;
 mod package;
@@ -133,8 +134,10 @@ fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
     }
 }
 
-fn run_agent_up(args: cli::AgentUpArgs, output_format: OutputFormat) -> Result<i32> {
+fn run_agent_up(mut args: cli::AgentUpArgs, output_format: OutputFormat) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(args.runtime.workspace_root.clone())?;
+    let onboarding =
+        onboarding::maybe_run_agent_up_onboarding(&mut args, output_format, &workspace_root)?;
     let selection_args = agent_up_selection_args(&args);
     let selection = agent_setup_auto_selection(&workspace_root, &selection_args)?;
     let setup_args = agent_up_setup_args(args.clone(), &selection, &workspace_root);
@@ -182,6 +185,15 @@ fn run_agent_up(args: cli::AgentUpArgs, output_format: OutputFormat) -> Result<i
     };
     let result =
         orchestration::AgentUpResult::success(setup_plan, install, runtime, runtime_command);
+    let result = match onboarding {
+        onboarding::AgentUpOnboardingOutcome::Applied => result.with_onboarding_stage(),
+        onboarding::AgentUpOnboardingOutcome::Declined => result.with_manual_step(format!(
+            "Automatic IDEA onboarding was skipped. To configure IDEA manually, run `kast machine plugin`, open `{}` in IntelliJ IDEA or Android Studio, then run `kast runtime up --workspace-root {} --backend idea`.",
+            workspace_root.display(),
+            workspace_root.display()
+        )),
+        onboarding::AgentUpOnboardingOutcome::NotEligible => result,
+    };
     print_agent_up_result(&result, output_format)?;
     Ok(0)
 }

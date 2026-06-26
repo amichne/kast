@@ -1148,17 +1148,25 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
     }
 
     fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
-        let mut error = match Command::new(command).arg(workspace_root).spawn() {
+        let launch_error = match Command::new(command).arg(workspace_root).spawn() {
             Ok(_) => return Ok(()),
-            Err(error) => CliError::new(
-                "IDEA_LAUNCH_FAILED",
-                format!(
-                    "Failed to launch IDEA with `{}` for {}: {error}",
-                    command.display(),
-                    workspace_root.display()
-                ),
-            ),
+            Err(error) => error,
         };
+        if launch_error.kind() == std::io::ErrorKind::NotFound
+            && command == Path::new("idea")
+            && launch_default_jetbrains_app(workspace_root)
+        {
+            return Ok(());
+        }
+        let mut error = CliError::new(
+            "IDEA_LAUNCH_FAILED",
+            format!(
+                "Failed to launch IDEA with `{}` for {}: {error}",
+                command.display(),
+                workspace_root.display(),
+                error = launch_error
+            ),
+        );
         error
             .details
             .insert("command".to_string(), command.display().to_string());
@@ -1182,6 +1190,26 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
             wait_timeout_ms,
         )
     }
+}
+
+#[cfg(target_os = "macos")]
+fn launch_default_jetbrains_app(workspace_root: &Path) -> bool {
+    let Ok(Some(app_name)) = install::latest_jetbrains_ide_app_name() else {
+        return false;
+    };
+    let output = Command::new("open")
+        .args(["-g", "-a", &app_name])
+        .arg(workspace_root)
+        .output();
+    let Ok(output) = output else {
+        return false;
+    };
+    output.status.success()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn launch_default_jetbrains_app(_workspace_root: &Path) -> bool {
+    false
 }
 
 fn maybe_launch_idea_backend(

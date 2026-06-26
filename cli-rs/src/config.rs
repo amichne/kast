@@ -18,6 +18,8 @@ pub struct KastConfig {
     pub runtime: RuntimeConfig,
     #[serde(skip_serializing_if = "ProjectOpenConfig::is_default")]
     pub project_open: ProjectOpenConfig,
+    #[serde(skip_serializing_if = "OnboardingConfig::is_default")]
+    pub onboarding: OnboardingConfig,
     pub indexing: IndexingConfig,
     pub cache: CacheConfig,
     pub watcher: WatcherConfig,
@@ -138,6 +140,18 @@ impl Default for ProjectOpenConfig {
             agent_harness: AgentSetupHarness::Auto,
             auto_exclude_git: true,
         }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OnboardingConfig {
+    pub agent_up_completed: bool,
+}
+
+impl OnboardingConfig {
+    fn is_default(&self) -> bool {
+        !self.agent_up_completed
     }
 }
 
@@ -381,6 +395,7 @@ struct PartialConfig {
     server: Option<PartialServer>,
     runtime: Option<PartialRuntime>,
     project_open: Option<PartialProjectOpen>,
+    onboarding: Option<PartialOnboarding>,
     indexing: Option<PartialIndexing>,
     cache: Option<PartialCache>,
     watcher: Option<PartialWatcher>,
@@ -421,6 +436,12 @@ struct PartialProjectOpen {
     profile: Option<ProjectOpenProfile>,
     agent_harness: Option<AgentSetupHarness>,
     auto_exclude_git: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialOnboarding {
+    agent_up_completed: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -514,6 +535,7 @@ impl KastConfig {
             },
             runtime: RuntimeConfig::default(),
             project_open: ProjectOpenConfig::default(),
+            onboarding: OnboardingConfig::default(),
             indexing: IndexingConfig {
                 phase2_enabled: true,
                 phase2_batch_size: 50,
@@ -595,6 +617,12 @@ impl KastConfig {
         Ok(config)
     }
 
+    pub fn can_run_agent_up_onboarding(&self) -> bool {
+        !self.onboarding.agent_up_completed
+            && self.runtime.is_default()
+            && self.project_open.is_default()
+    }
+
     fn apply_workspace_cache_environment(&mut self, workspace_root: &Path) {
         let Some(cache_home) = env_path("KAST_CACHE_HOME") else {
             return;
@@ -662,6 +690,11 @@ impl KastConfig {
             if let Some(value) = project_open.auto_exclude_git {
                 self.project_open.auto_exclude_git = value;
             }
+        }
+        if let Some(onboarding) = partial.onboarding
+            && let Some(value) = onboarding.agent_up_completed
+        {
+            self.onboarding.agent_up_completed = value;
         }
         if let Some(indexing) = partial.indexing {
             if let Some(value) = indexing.phase2_enabled {
@@ -1972,6 +2005,8 @@ requireInstalledPlugin = false
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
         assert_eq!(config.project_open.agent_harness, AgentSetupHarness::Auto);
         assert!(config.project_open.auto_exclude_git);
+        assert!(!config.onboarding.agent_up_completed);
+        assert!(config.can_run_agent_up_onboarding());
     }
 
     #[test]
@@ -1999,6 +2034,26 @@ autoExcludeGit = false
             AgentSetupHarness::Instructions
         );
         assert!(!config.project_open.auto_exclude_git);
+        assert!(!config.can_run_agent_up_onboarding());
+    }
+
+    #[test]
+    fn parses_agent_up_onboarding_state() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[onboarding]
+agentUpCompleted = true
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert!(config.onboarding.agent_up_completed);
+        assert!(!config.can_run_agent_up_onboarding());
     }
 
     #[test]

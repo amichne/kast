@@ -27,13 +27,21 @@ stale repository outputs.
 Use `kast agent up` when setup and runtime warmup should happen together. Start
 with `--dry-run` to inspect the selected harness and workspace-root-derived
 targets before writing files or starting a backend.
+In a smart interactive terminal, the first eligible non-JSON run can ask
+whether to apply automatic IDEA setup. Accepting lets the user save IDEA
+launch, the Copilot harness, and project-open auto-init as global machine
+defaults or for this repository only. The flow installs or refreshes the
+JetBrains plugin, then warms the repository runtime. Use `--no-onboard` when
+an interactive terminal should behave like automation.
 In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
 the executable token used for the dry run, so copied binaries and absolute CLI
 paths remain directly callable.
 
 ```console title="Bring a repository up for agents"
 kast agent up --dry-run
+kast agent up --workspace-root "$PWD"
 kast agent up --workspace-root "$PWD" --backend=headless
+kast agent up --workspace-root "$PWD" --no-onboard
 ```
 
 Use `kast agent setup auto` when a repository or enterprise environment should
