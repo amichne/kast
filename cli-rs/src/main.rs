@@ -104,6 +104,7 @@ fn run(cli: Cli) -> Result<i32> {
             Ok(0)
         }
         Command::Ready(args) => run_ready(args, output_format),
+        Command::Doctor(args) => run_ready(args, output_format),
         Command::Agent(args) => run_agent(args, output_format),
         Command::Runtime(args) => run_runtime(args.command, output_format),
         Command::Inspect(args) => run_inspect(args.command, output_format),

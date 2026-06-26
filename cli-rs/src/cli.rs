@@ -37,6 +37,9 @@ pub enum Command {
     Rpc(RpcArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
+    /// Backward-compatible alias for `ready`. Used by kast-action v2.
+    #[command(hide = true)]
+    Doctor(ReadyArgs),
     /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
     Agent(AgentArgs),
     /// Manage backend runtime lifecycle.
