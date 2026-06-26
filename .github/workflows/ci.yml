@@ -338,9 +338,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
       - name: Download headless backend distribution
         uses: actions/download-artifact@v7
         with:
@@ -391,7 +388,15 @@ jobs:
             --artifact "ci-headless-ubuntu-latest=${backend_asset}"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
 
-          cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
+          packager_dir="${RUNNER_TEMP}/kast-ci-packager"
+          rm -rf "$packager_dir"
+          mkdir -p "$packager_dir"
+          python3 -m zipfile -e "$KAST_RUST_CLI_ASSET" "$packager_dir"
+          packager_bin="${packager_dir}/kast"
+          [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
+          chmod 755 "$packager_bin"
+
+          "$packager_bin" \
             release package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$KAST_RUST_CLI_ASSET" \

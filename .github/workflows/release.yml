@@ -813,25 +813,17 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
       - name: Download headless backend artifact
         uses: actions/download-artifact@v7
         with:
           name: headless-backend-${{ github.run_id }}
           path: headless-backend
 
-      - name: Download release inputs
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          rm -rf release-assets dist
-          mkdir -p release-assets dist
-          gh release download "$tag" --dir release-assets --pattern "kast-${tag}-linux-x64.zip"
+      - name: Download Linux CLI release artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: rust-cli-linux-x64-${{ github.run_id }}
+          path: release-assets
 
       - name: Ensure zstd is available
         shell: bash
@@ -855,19 +847,32 @@ jobs:
           gradle_cache_sidecar="${gradle_cache_dir}/gradle-ro-dep-cache.sha256"
           gradle_cache_provenance="${gradle_cache_dir}/build-provenance-gradle-ro-cache.json"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+          rm -rf dist
+          mkdir -p dist
           [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
           [[ -f "$gradle_cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${gradle_cache_asset}" >&2; exit 1; }
           [[ -f "$gradle_cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${gradle_cache_sidecar}" >&2; exit 1; }
           [[ -f "$gradle_cache_provenance" ]] || { echo "Missing Gradle read-only cache provenance: ${gradle_cache_provenance}" >&2; exit 1; }
           scripts/verify-ci-artifact-ledger.py verify \
+            --ledger release-assets/build-ledger-cli-linux-x64.json \
             --ledger headless-backend/build-ledger-headless-backend.json \
             --ledger "${gradle_cache_dir}/build-ledger-gradle-ro-cache.json" \
             --git-sha "$GITHUB_SHA" \
+            --require-kind release-cli-linux-x64 \
             --require-kind release-headless-backend \
             --require-kind release-gradle-ro-cache \
+            --artifact "release-cli-linux-x64=${cli_asset}" \
             --artifact "release-headless-backend=${backend_asset}" \
             --artifact "release-gradle-ro-cache=${gradle_cache_asset}"
-          cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
+          packager_dir="${RUNNER_TEMP}/kast-release-packager"
+          rm -rf "$packager_dir"
+          mkdir -p "$packager_dir"
+          python3 -m zipfile -e "$cli_asset" "$packager_dir"
+          packager_bin="${packager_dir}/kast"
+          [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
+          chmod 755 "$packager_bin"
+
+          "$packager_bin" \
             release package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$cli_asset" \
