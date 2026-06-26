@@ -21,19 +21,20 @@ For release workflow changes, run `.github/scripts/test-release-workflow-contrac
 
 ## Generated Copilot package outputs
 
-These files are repository-local install outputs from `kast install copilot`:
+These files are repository-local install outputs from
+`kast agent setup copilot`:
 
 - `.github/lsp.json`
-- `.github/extensions/kast/**`
+- `.github/extensions/kast/extension.mjs`
+- `.github/extensions/kast/_shared/kast-tools.mjs`
+- `.github/extensions/kast/_shared/kast-trace.mjs`
 
 Do not make these the source of truth for package behavior. Edit
 `cli-rs/resources/plugin/` first, then reinstall or regenerate the package
-outputs. The installed command catalog under
-`.github/extensions/kast/_shared/commands.json` comes from
-`cli-rs/resources/kast-skill/references/commands.json`. The global
+outputs. Copilot loads catalog-derived tool specs from the active CLI through
+`kast agent tools`; no command catalog is copied into `.github`. The global
 `install.json` records installed resource versions and checksums. The durable
-agent-only contract is
-`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+agent-only contract is `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
 
 ## Verify
 
