@@ -17,6 +17,10 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
+AGENT_TOOLS_SCHEMA_VERSION = 3
+CATALOG_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
 def recovery_commands(kast_executable: str | None) -> dict[str, str]:
     executable = kast_executable or "kast"
     return {
@@ -98,6 +102,25 @@ def parse_json_output(record: dict[str, Any]) -> Any | None:
         return None
 
 
+def is_non_bool_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def agent_tools_metadata_ok(result: dict[str, Any], tools: Any) -> bool:
+    schema_version = result.get("schemaVersion")
+    catalog_sha256 = result.get("catalogSha256")
+    tool_count = result.get("toolCount")
+    return (
+        is_non_bool_int(schema_version)
+        and schema_version >= AGENT_TOOLS_SCHEMA_VERSION
+        and isinstance(catalog_sha256, str)
+        and CATALOG_SHA256_RE.fullmatch(catalog_sha256) is not None
+        and isinstance(tools, list)
+        and is_non_bool_int(tool_count)
+        and tool_count == len(tools)
+    )
+
+
 def help_lists_command(help_text: str, command: str) -> bool:
     for line in help_text.splitlines():
         stripped = line.strip()
@@ -169,6 +192,20 @@ def verify_command_surface(
     agent_tools_result = agent_tools_json.get("result") if isinstance(agent_tools_json, dict) else None
     agent_tools_specs = agent_tools_result.get("tools") if isinstance(agent_tools_result, dict) else None
     agent_tools_type = agent_tools_result.get("type") if isinstance(agent_tools_result, dict) else None
+    agent_tools_schema_version = (
+        agent_tools_result.get("schemaVersion") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_catalog_sha256 = (
+        agent_tools_result.get("catalogSha256") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_declared_tool_count = (
+        agent_tools_result.get("toolCount") if isinstance(agent_tools_result, dict) else None
+    )
+    agent_tools_metadata_valid = (
+        agent_tools_metadata_ok(agent_tools_result, agent_tools_specs)
+        if isinstance(agent_tools_result, dict)
+        else False
+    )
     agent_tools_invocation = (
         agent_tools_result.get("invocation") if isinstance(agent_tools_result, dict) else None
     )
@@ -187,6 +224,7 @@ def verify_command_surface(
         and agent_tools_json.get("method") == "agent/tools"
         and agent_tools_type == "KAST_AGENT_TOOLS"
         and isinstance(agent_tools_specs, list)
+        and agent_tools_metadata_valid
         and agent_tools_invocation_argv_ok
     )
     checks["commandSurface"] = {
@@ -205,7 +243,11 @@ def verify_command_surface(
         "agentToolsAvailable": agent_tools["exitCode"] == 0,
         "agentToolsEnvelopeOk": agent_tools_envelope_ok,
         "agentToolsType": agent_tools_type,
+        "agentToolsSchemaVersion": agent_tools_schema_version,
+        "agentToolsCatalogSha256": agent_tools_catalog_sha256,
+        "agentToolsDeclaredToolCount": agent_tools_declared_tool_count,
         "agentToolsToolCount": len(agent_tools_specs) if isinstance(agent_tools_specs, list) else None,
+        "agentToolsMetadataValid": agent_tools_metadata_valid,
         "agentToolsInvocationArgv": agent_tools_invocation_argv,
         "agentToolsInvocationArgvExpected": expected_agent_tools_invocation_argv,
         "agentToolsInvocationArgvOk": agent_tools_invocation_argv_ok,

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import shutil
 import subprocess
@@ -15,6 +16,8 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
+AGENT_TOOLS_SCHEMA_VERSION = 3
+CATALOG_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 RECOVERABLE_BACKEND_CODES = {
     "NO_BACKEND_AVAILABLE",
     "INDEX_UNAVAILABLE",
@@ -145,6 +148,26 @@ def envelope_summary(envelope: Any) -> dict[str, Any] | None:
     return summary
 
 
+def is_non_bool_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def agent_tools_metadata_ok(result: dict[str, Any]) -> bool:
+    tools = result.get("tools")
+    schema_version = result.get("schemaVersion")
+    catalog_sha256 = result.get("catalogSha256")
+    tool_count = result.get("toolCount")
+    return (
+        is_non_bool_int(schema_version)
+        and schema_version >= AGENT_TOOLS_SCHEMA_VERSION
+        and isinstance(catalog_sha256, str)
+        and CATALOG_SHA256_RE.fullmatch(catalog_sha256) is not None
+        and isinstance(tools, list)
+        and is_non_bool_int(tool_count)
+        and tool_count == len(tools)
+    )
+
+
 def agent_tools_envelope_ok(value: Any, expected_executable: str) -> bool:
     if not isinstance(value, dict):
         return False
@@ -162,6 +185,7 @@ def agent_tools_envelope_ok(value: Any, expected_executable: str) -> bool:
         and value.get("method") == "agent/tools"
         and result.get("type") == "KAST_AGENT_TOOLS"
         and isinstance(result.get("tools"), list)
+        and agent_tools_metadata_ok(result)
         and invocation_argv_ok
     )
 
