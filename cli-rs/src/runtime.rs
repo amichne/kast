@@ -1154,7 +1154,7 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
         };
         if launch_error.kind() == std::io::ErrorKind::NotFound
             && command == Path::new("idea")
-            && launch_default_jetbrains_app(workspace_root)?
+            && launch_default_jetbrains_app(workspace_root)
         {
             return Ok(());
         }
@@ -1193,23 +1193,23 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
 }
 
 #[cfg(target_os = "macos")]
-fn launch_default_jetbrains_app(workspace_root: &Path) -> Result<bool> {
-    let Some(app_name) = install::latest_jetbrains_ide_app_name()? else {
-        return Ok(false);
+fn launch_default_jetbrains_app(workspace_root: &Path) -> bool {
+    let Ok(Some(app_name)) = install::latest_jetbrains_ide_app_name() else {
+        return false;
     };
     let output = Command::new("open")
         .args(["-g", "-a", &app_name])
         .arg(workspace_root)
         .output();
     let Ok(output) = output else {
-        return Ok(false);
+        return false;
     };
-    Ok(output.status.success())
+    output.status.success()
 }
 
 #[cfg(not(target_os = "macos"))]
-fn launch_default_jetbrains_app(_workspace_root: &Path) -> Result<bool> {
-    Ok(false)
+fn launch_default_jetbrains_app(_workspace_root: &Path) -> bool {
+    false
 }
 
 fn maybe_launch_idea_backend(
