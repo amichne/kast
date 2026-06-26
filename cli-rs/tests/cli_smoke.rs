@@ -4793,7 +4793,9 @@ fn skill_and_instruction_installs_add_managed_git_info_exclude_blocks() {
     let config_home = temp.path().join("config");
     let repo = temp.path().join("repo");
     let skill_dir = repo.join(".agents/skills");
+    let codex_skill_dir = repo.join(".codex/skills");
     let instructions_dir = repo.join(".agents/instructions");
+    let codex_instructions_dir = repo.join(".codex/instructions");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&repo).expect("repo");
     let init = Command::new("git")
@@ -4832,6 +4834,29 @@ fn skill_and_instruction_installs_add_managed_git_info_exclude_blocks() {
     assert_eq!(skill_stdout["gitExclude"]["attempted"], true);
     assert_eq!(skill_stdout["gitExclude"]["updated"], true);
 
+    let codex_skill = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            codex_skill_dir.to_str().expect("codex skill path"),
+        ])
+        .output()
+        .expect("install codex skill");
+    assert!(
+        codex_skill.status.success(),
+        "second skill install should preserve existing skill resource: stdout={}, stderr={}",
+        String::from_utf8_lossy(&codex_skill.stdout),
+        String::from_utf8_lossy(&codex_skill.stderr),
+    );
+    let codex_skill_stdout: serde_json::Value =
+        serde_json::from_slice(&codex_skill.stdout).expect("codex skill install json");
+    assert_eq!(codex_skill_stdout["gitExclude"]["attempted"], true);
+    assert_eq!(codex_skill_stdout["gitExclude"]["updated"], true);
+
     let instructions = kast(&home, &config_home)
         .args([
             "--output",
@@ -4855,28 +4880,86 @@ fn skill_and_instruction_installs_add_managed_git_info_exclude_blocks() {
     assert_eq!(instructions_stdout["gitExclude"]["attempted"], true);
     assert_eq!(instructions_stdout["gitExclude"]["updated"], true);
 
+    let codex_instructions = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "instructions",
+            "--target-dir",
+            codex_instructions_dir
+                .to_str()
+                .expect("codex instructions path"),
+        ])
+        .output()
+        .expect("install codex instructions");
+    assert!(
+        codex_instructions.status.success(),
+        "second instructions install should preserve existing instructions resource: stdout={}, stderr={}",
+        String::from_utf8_lossy(&codex_instructions.stdout),
+        String::from_utf8_lossy(&codex_instructions.stderr),
+    );
+    let codex_instructions_stdout: serde_json::Value =
+        serde_json::from_slice(&codex_instructions.stdout)
+            .expect("codex instructions install json");
+    assert_eq!(codex_instructions_stdout["gitExclude"]["attempted"], true);
+    assert_eq!(codex_instructions_stdout["gitExclude"]["updated"], true);
+
     let exclude =
         std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
     assert!(exclude.contains("# >>> kast skill >>>"));
     assert!(exclude.contains(".agents/skills/kast/SKILL.md"));
+    assert!(exclude.contains(".codex/skills/kast/SKILL.md"));
     assert!(exclude.contains("# <<< kast skill <<<"));
     assert!(exclude.contains("# >>> kast instructions >>>"));
     assert!(exclude.contains(".agents/instructions/kast/README.md"));
+    assert!(exclude.contains(".codex/instructions/kast/README.md"));
     assert!(exclude.contains("# <<< kast instructions <<<"));
 
     let manifest: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(install_manifest_path(&home)).expect("install manifest"),
     )
     .expect("manifest json");
-    let resource_kinds = manifest["repos"][0]["resources"]
+    let resources = manifest["repos"][0]["resources"]
         .as_array()
-        .expect("resources")
+        .expect("resources");
+    assert_eq!(resources.len(), 4, "{manifest}");
+    let resource_targets = resources
+        .iter()
+        .map(|resource| resource["targetPath"].as_str().expect("target path"))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(
+        resource_targets
+            .iter()
+            .any(|target| target.ends_with(".agents/skills/kast")),
+        "{manifest}"
+    );
+    assert!(
+        resource_targets
+            .iter()
+            .any(|target| target.ends_with(".codex/skills/kast")),
+        "{manifest}"
+    );
+    assert!(
+        resource_targets
+            .iter()
+            .any(|target| target.ends_with(".agents/instructions/kast")),
+        "{manifest}"
+    );
+    assert!(
+        resource_targets
+            .iter()
+            .any(|target| target.ends_with(".codex/instructions/kast")),
+        "{manifest}"
+    );
+    let resource_kinds = resources
         .iter()
         .map(|resource| resource["kind"].as_str().expect("resource kind"))
-        .collect::<std::collections::BTreeSet<_>>();
+        .collect::<Vec<_>>();
     assert_eq!(
         resource_kinds,
-        std::collections::BTreeSet::from(["INSTRUCTIONS", "SKILL"])
+        vec!["SKILL", "SKILL", "INSTRUCTIONS", "INSTRUCTIONS"]
     );
 }
 

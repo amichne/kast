@@ -348,11 +348,11 @@ pub fn record_repo_resource(repo_root: &Path, mut resource: ManagedRepoResource)
     if resource.kind == ManagedResourceKind::CopilotPackage {
         repo.copilot_package_version.clear();
     }
-    if let Some(existing_index) = repo
-        .resources
-        .iter()
-        .position(|existing| existing.kind == resource.kind)
-    {
+    let normalized_target = config::normalize(PathBuf::from(&resource.target_path));
+    if let Some(existing_index) = repo.resources.iter().position(|existing| {
+        existing.kind == resource.kind
+            && config::normalize(PathBuf::from(&existing.target_path)) == normalized_target
+    }) {
         let existing = repo.resources.remove(existing_index);
         let mut history = existing.history;
         history.insert(
@@ -368,7 +368,11 @@ pub fn record_repo_resource(repo_root: &Path, mut resource: ManagedRepoResource)
         resource.history = history;
     }
     repo.resources.push(resource);
-    repo.resources.sort_by_key(|resource| resource.kind);
+    repo.resources.sort_by(|left, right| {
+        left.kind
+            .cmp(&right.kind)
+            .then_with(|| left.target_path.cmp(&right.target_path))
+    });
     install.version = install.version.trim().to_string();
     if install.version.is_empty() {
         install.version = cli::version().to_string();

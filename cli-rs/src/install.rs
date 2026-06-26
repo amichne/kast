@@ -1957,6 +1957,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         Some(repo_root) => update_resource_git_exclude(
             ManagedResourceKind::Skill,
             repo_root,
+            &target,
             &outcome.output_paths,
             args.no_auto_exclude_git,
         )?,
@@ -2004,6 +2005,7 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
         Some(repo_root) => update_resource_git_exclude(
             ManagedResourceKind::Instructions,
             repo_root,
+            &target,
             &outcome.output_paths,
             args.no_auto_exclude_git,
         )?,
@@ -2061,6 +2063,7 @@ pub fn install_copilot(args: CopilotInstallArgs) -> Result<InstallCopilotPackage
         Some(repo_root) => update_resource_git_exclude(
             ManagedResourceKind::CopilotPackage,
             repo_root,
+            &target,
             &outcome.output_paths,
             args.no_auto_exclude_git,
         )?,
@@ -2761,6 +2764,7 @@ fn record_managed_resource(
 fn update_resource_git_exclude(
     kind: ManagedResourceKind,
     repo_root: &Path,
+    target: &Path,
     output_paths: &[PathBuf],
     disabled: bool,
 ) -> Result<GitExcludeResult> {
@@ -2782,7 +2786,8 @@ fn update_resource_git_exclude(
             schema_version: SCHEMA_VERSION,
         });
     };
-    let entries = git_exclude_entries(repo_root, output_paths)?;
+    let paths = resource_git_exclude_paths(kind, repo_root, target, output_paths)?;
+    let entries = git_exclude_entries(repo_root, &paths)?;
     let (start_marker, end_marker) = git_exclude_markers(kind);
     let block = format!("{start_marker}\n{}\n{end_marker}\n", entries.join("\n"));
     let original = match fs::read_to_string(&exclude_file) {
@@ -2806,6 +2811,33 @@ fn update_resource_git_exclude(
         reason: None,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn resource_git_exclude_paths(
+    kind: ManagedResourceKind,
+    repo_root: &Path,
+    target: &Path,
+    output_paths: &[PathBuf],
+) -> Result<Vec<PathBuf>> {
+    let normalized_repo = config::normalize(repo_root.to_path_buf());
+    let normalized_target = config::normalize(target.to_path_buf());
+    let mut paths = output_paths.to_vec();
+    if let Some(install) = self_mgmt::read_global_install_state()? {
+        for repo in install
+            .repos
+            .iter()
+            .filter(|repo| config::normalize(PathBuf::from(&repo.path)) == normalized_repo)
+        {
+            for resource in &repo.resources {
+                if resource.kind == kind
+                    && config::normalize(PathBuf::from(&resource.target_path)) != normalized_target
+                {
+                    paths.extend(resource.output_paths.iter().map(PathBuf::from));
+                }
+            }
+        }
+    }
+    Ok(paths)
 }
 
 fn git_exclude_not_repository() -> GitExcludeResult {
