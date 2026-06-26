@@ -64,8 +64,11 @@ kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructi
 
 When `--harness` is omitted, `kast agent setup auto` reads
 `projectOpen.agentHarness` from config before falling back to repository
-detection. Portable repository roots include `.agents/skills`,
-`.codex/skills`, `.agents/instructions`, and `.codex/instructions`.
+detection. Existing portable skill roots include `.agents/skills`,
+`.codex/skills`, `.github/skills`, and `.claude/skills`; existing instruction
+roots include `.agents/instructions`, `.codex/instructions`,
+`.github/instructions`, and `.claude/instructions`. Those roots win before the
+default Copilot package path.
 In JSON dry-runs, `installCommand` starts with the executable token used for
 the dry run, so copied binaries and absolute CLI paths remain directly
 callable.

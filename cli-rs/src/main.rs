@@ -399,24 +399,24 @@ fn agent_setup_auto_detected_harness(
     .iter()
     .any(|candidate| cwd.join(candidate).is_dir());
 
-    if cwd.join(".github").is_dir() || !has_skill_root && !has_instruction_root {
-        AgentSetupAutoSelection {
-            harness: cli::AgentSetupHarness::Copilot,
-            source: install::AgentSetupSelectionSource::Repository,
-            reason: "Repository detection found `.github` or no skill/instruction roots."
-                .to_string(),
-        }
-    } else if has_skill_root {
+    if has_skill_root {
         AgentSetupAutoSelection {
             harness: cli::AgentSetupHarness::Skill,
             source: install::AgentSetupSelectionSource::Repository,
             reason: "Repository detection found a skill root.".to_string(),
         }
-    } else {
+    } else if has_instruction_root {
         AgentSetupAutoSelection {
             harness: cli::AgentSetupHarness::Instructions,
             source: install::AgentSetupSelectionSource::Repository,
             reason: "Repository detection found an instruction root.".to_string(),
+        }
+    } else {
+        AgentSetupAutoSelection {
+            harness: cli::AgentSetupHarness::Copilot,
+            source: install::AgentSetupSelectionSource::Repository,
+            reason: "Repository detection found `.github` or no skill/instruction roots."
+                .to_string(),
         }
     }
 }

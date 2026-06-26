@@ -3969,6 +3969,98 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
 }
 
 #[test]
+fn github_instruction_root_wins_over_generic_github_detection() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let github_instructions = workspace.join(".github/instructions");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&github_instructions).expect("github instructions");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+
+    let plan = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["--output", "json", "agent", "setup", "auto", "--dry-run"])
+        .output()
+        .expect("agent setup auto dry-run");
+
+    assert!(
+        plan.status.success(),
+        "GitHub instruction root should be selected by auto setup: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
+    assert_eq!(stdout["harness"], "instructions", "{stdout}");
+    assert_eq!(stdout["selectionSource"], "repository", "{stdout}");
+    assert_eq!(
+        stdout["installCommand"],
+        serde_json::json!([env!("CARGO_BIN_EXE_kast"), "agent", "setup", "instructions"]),
+        "{stdout}"
+    );
+    assert_eq!(stdout["targetDir"], serde_json::Value::Null, "{stdout}");
+    assert!(
+        stdout["reason"]
+            .as_str()
+            .expect("reason")
+            .contains("instruction root"),
+        "{stdout}"
+    );
+    assert!(
+        !github_instructions.join("kast").exists(),
+        "dry-run must not install instructions"
+    );
+}
+
+#[test]
+fn plain_github_repo_defaults_to_copilot_when_no_agent_roots_exist() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(workspace.join(".github/workflows")).expect("github workflows");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+
+    let plan = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args(["--output", "json", "agent", "setup", "auto", "--dry-run"])
+        .output()
+        .expect("agent setup auto dry-run");
+
+    assert!(
+        plan.status.success(),
+        "plain GitHub repo should keep Copilot default: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
+    assert_eq!(stdout["harness"], "copilot", "{stdout}");
+    assert_eq!(stdout["selectionSource"], "repository", "{stdout}");
+    assert_eq!(
+        stdout["installCommand"],
+        serde_json::json!([env!("CARGO_BIN_EXE_kast"), "agent", "setup", "copilot"]),
+        "{stdout}"
+    );
+    assert!(
+        stdout["reason"]
+            .as_str()
+            .expect("reason")
+            .contains(".github"),
+        "{stdout}"
+    );
+    assert!(
+        !workspace.join(".github/lsp.json").exists(),
+        "dry-run must not install the Copilot package"
+    );
+}
+
+#[test]
 fn agent_setup_auto_dry_run_explains_selection_without_writing() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

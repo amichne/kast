@@ -54,9 +54,11 @@ kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instruct
 kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
 ```
 
-Repository auto-detection treats `.codex/skills` and `.codex/instructions` as
-portable Codex roots alongside `.agents`, `.github`, and `.claude` skill or
-instruction roots.
+Repository auto-detection treats existing `.agents/skills`, `.codex/skills`,
+`.github/skills`, `.claude/skills`, `.agents/instructions`,
+`.codex/instructions`, `.github/instructions`, and `.claude/instructions`
+roots as portable roots. These roots win before the default Copilot package
+path.
 
 ```toml title="$HOME/.config/kast/config.toml"
 [projectOpen]

@@ -94,9 +94,11 @@ runtime guidance, and catalog-backed tools at startup.
     kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
     ```
 
-    Repository auto-detection recognizes `.codex/skills` and
-    `.codex/instructions` as Codex-native portable roots, while Copilot
-    repositories continue to use the `.github` package by default.
+    Repository auto-detection recognizes existing `.agents/skills`,
+    `.codex/skills`, `.github/skills`, `.claude/skills`,
+    `.agents/instructions`, `.codex/instructions`, `.github/instructions`,
+    and `.claude/instructions` roots as portable roots. These roots win before
+    the default Copilot package path.
 
     Set a machine or workspace preference when the same harness should win
     over repository auto-detection:
