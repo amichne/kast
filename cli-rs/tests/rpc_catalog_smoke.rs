@@ -465,7 +465,6 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert_eq!(
         targets,
         BTreeSet::from([
-            "extensions/kast/_shared/commands.json",
             "extensions/kast/_shared/kast-trace.mjs",
             "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
@@ -601,12 +600,4 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
             .join("extensions/kast/_shared/kast-agents.mjs")
             .exists()
     );
-
-    let catalog_source =
-        std::fs::read_to_string(manifest_dir.join("resources/kast-skill/references/commands.json"))
-            .expect("command catalog");
-    let installed_catalog =
-        std::fs::read_to_string(target.join("extensions/kast/_shared/commands.json"))
-            .expect("installed command catalog");
-    assert_eq!(installed_catalog, catalog_source);
 }

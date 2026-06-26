@@ -31,17 +31,7 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "oneOf": [
-          {
-            "$ref": "#/$defs/packageFileOutput"
-          },
-          {
-            "$ref": "#/$defs/kastSkillFileOutput"
-          }
-        ],
-        "discriminator": {
-          "propertyName": "type"
-        }
+        "$ref": "#/$defs/packageFileOutput"
       },
       "examples": [
         [
@@ -108,46 +98,6 @@
           "source": "extensions/kast/extension.mjs",
           "target": "extensions/kast/extension.mjs",
           "executable": true
-        }
-      ]
-    },
-    "kastSkillFileOutput": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "KAST_SKILL_FILE"
-          ],
-          "examples": [
-            "KAST_SKILL_FILE"
-          ]
-        },
-        "source": {
-          "$ref": "#/$defs/relativePath"
-        },
-        "target": {
-          "$ref": "#/$defs/relativePath"
-        },
-        "executable": {
-          "type": "boolean",
-          "examples": [
-            false
-          ]
-        }
-      },
-      "required": [
-        "type",
-        "source",
-        "target"
-      ],
-      "additionalProperties": false,
-      "examples": [
-        {
-          "type": "KAST_SKILL_FILE",
-          "source": "references/commands.json",
-          "target": "extensions/kast/_shared/commands.json",
-          "executable": false
         }
       ]
     }

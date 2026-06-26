@@ -2911,7 +2911,6 @@ fn copilot_package_outputs() -> Result<Vec<CopilotPackageOutput>> {
         let source_path = source.to_string_lossy();
         let contents = match output_type {
             "PACKAGE_FILE" => embedded_file_contents(&COPILOT_PLUGIN, &source_path)?,
-            "KAST_SKILL_FILE" => embedded_file_contents(&KAST_SKILL, &source_path)?,
             other => {
                 return Err(CliError::new(
                     "COPILOT_PACKAGE_MANIFEST_INVALID",

@@ -46,8 +46,6 @@ trust, and active-binary workflow support is
 
 Catalog changes can affect:
 
-- `cli-rs/resources/plugin/extensions/kast/_shared/commands.json` after
-  repository Copilot installation
 - `cli-rs/protocol/api-specification.md` generated summary block
 - `cli-rs/src/lsp.rs` generated custom method list and dispatch metadata
 - `docs/commands/agent.md`, `docs/commands/lsp.md`, and package tests when tool names

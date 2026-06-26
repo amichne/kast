@@ -68,7 +68,6 @@ const expectedTargets = new Set([
   "extensions/kast/extension.mjs",
   "extensions/kast/_shared/kast-trace.mjs",
   "extensions/kast/_shared/kast-tools.mjs",
-  "extensions/kast/_shared/commands.json",
 ]);
 assert(
   targets.size === expectedTargets.size &&
@@ -183,7 +182,6 @@ test -f "$tmp_dir/.github/lsp.json"
 test -f "$tmp_dir/.github/extensions/kast/extension.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
 test -f "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
-test -f "$tmp_dir/.github/extensions/kast/_shared/commands.json"
 test ! -e "$tmp_dir/.github/.kast-copilot-version"
 
 node --input-type=module - "$HOME/.local/share/kast/install.json" "$tmp_dir" <<'NODE'
@@ -207,29 +205,9 @@ for (const relative of [
   ".github/extensions/kast/extension.mjs",
   ".github/extensions/kast/_shared/kast-tools.mjs",
   ".github/extensions/kast/_shared/kast-trace.mjs",
-  ".github/extensions/kast/_shared/commands.json",
 ]) {
   const expected = join(target, relative);
   if (!outputs.has(expected)) throw new Error(`missing output path ${expected}`);
-}
-NODE
-
-node --input-type=module - "$repo_root" "$tmp_dir" <<'NODE'
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
-const repo = process.argv[2];
-const target = process.argv[3];
-const installed = readFileSync(
-  join(target, ".github/extensions/kast/_shared/commands.json"),
-  "utf8",
-);
-const source = readFileSync(
-  join(repo, "cli-rs/resources/kast-skill/references/commands.json"),
-  "utf8",
-);
-if (installed !== source) {
-  throw new Error("installed commands.json must match the checked-in RPC catalog");
 }
 NODE
 

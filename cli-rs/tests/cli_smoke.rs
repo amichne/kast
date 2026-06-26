@@ -2740,11 +2740,6 @@ fn install_resource_gateways_support_force_and_current_versions() {
             .is_file()
     );
     assert!(
-        github_dir
-            .join("extensions/kast/_shared/commands.json")
-            .is_file()
-    );
-    assert!(
         !github_dir
             .join("extensions/kast/_shared/kast-agents.mjs")
             .exists()
@@ -3796,11 +3791,6 @@ fn copilot_package_install_preserves_existing_github_content() {
     assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
     assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
     assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
-    assert!(
-        github_dir
-            .join("extensions/kast/_shared/commands.json")
-            .is_file()
-    );
     assert!(
         github_dir
             .join("extensions/kast/_shared/kast-trace.mjs")

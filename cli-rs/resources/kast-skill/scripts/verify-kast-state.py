@@ -28,7 +28,6 @@ COPILOT_FILES = [
     "extensions/kast/extension.mjs",
     "extensions/kast/_shared/kast-tools.mjs",
     "extensions/kast/_shared/kast-trace.mjs",
-    "extensions/kast/_shared/commands.json",
 ]
 
 
@@ -396,7 +395,6 @@ def verify_workspace(result: dict[str, Any], workspace_root: Path, require_gradl
 def verify_copilot(
     result: dict[str, Any],
     workspace_root: Path,
-    source_catalog: Path,
     expected_version: str | None,
     required: bool,
     ready_json: dict[str, Any] | None,
@@ -409,9 +407,6 @@ def verify_copilot(
         }
         for relative in COPILOT_FILES
     }
-    commands_path = github_dir / "extensions/kast/_shared/commands.json"
-    source_hash = file_sha256(source_catalog)
-    installed_hash = file_sha256(commands_path)
     retired_marker_exists = (github_dir / ".kast-copilot-version").exists()
     resource = resource_record_for_target(ready_json, "COPILOT_PACKAGE", github_dir)
     output_mismatches = manifest_output_mismatches(resource)
@@ -426,12 +421,10 @@ def verify_copilot(
         "versionMatchesExpected": bool(
             resource and expected_version and resource.get("primitiveVersion") == expected_version
         ),
-        "commandsHashMatchesSource": bool(source_hash and installed_hash and source_hash == installed_hash),
     }
     result["checks"]["copilotPackage"] = check
     missing = [relative for relative, info in files.items() if not info["exists"]]
-    source_stale = source_hash and installed_hash and source_hash != installed_hash
-    stale = bool(output_mismatches) if resource else source_stale
+    stale = bool(output_mismatches) if resource else False
     version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
     missing_record = github_dir.is_dir() and resource is None
     retired_marker = retired_marker_exists
@@ -576,7 +569,7 @@ def main() -> int:
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
-    verify_copilot(result, workspace_root, source_catalog, expected_version, args.require_copilot, ready_json)
+    verify_copilot(result, workspace_root, expected_version, args.require_copilot, ready_json)
     verify_resource_install(
         result,
         workspace_root,

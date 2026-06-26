@@ -70,7 +70,6 @@ runtime guidance, and catalog-backed tools at startup.
     - `.github/extensions/kast/extension.mjs`
     - `.github/extensions/kast/_shared/kast-tools.mjs`
     - `.github/extensions/kast/_shared/kast-trace.mjs`
-    - `.github/extensions/kast/_shared/commands.json`
 
     The global `$HOME/.local/share/kast/install.json` manifest records the
     repository resource version, source bundle checksum, output checksums, and
