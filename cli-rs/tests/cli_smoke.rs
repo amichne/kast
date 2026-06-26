@@ -3996,12 +3996,32 @@ fn github_instruction_root_wins_over_generic_github_detection() {
         serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
     assert_eq!(stdout["harness"], "instructions", "{stdout}");
     assert_eq!(stdout["selectionSource"], "repository", "{stdout}");
+    let install_command = stdout["installCommand"]
+        .as_array()
+        .expect("install command");
+    assert_eq!(install_command.len(), 6, "{stdout}");
+    assert_eq!(install_command[0], env!("CARGO_BIN_EXE_kast"), "{stdout}");
+    assert_eq!(install_command[1], "agent", "{stdout}");
+    assert_eq!(install_command[2], "setup", "{stdout}");
+    assert_eq!(install_command[3], "instructions", "{stdout}");
+    assert_eq!(install_command[4], "--target-dir", "{stdout}");
+    let expected_github_instructions = github_instructions
+        .canonicalize()
+        .expect("canonical github instructions");
     assert_eq!(
-        stdout["installCommand"],
-        serde_json::json!([env!("CARGO_BIN_EXE_kast"), "agent", "setup", "instructions"]),
+        PathBuf::from(install_command[5].as_str().expect("install command target"))
+            .canonicalize()
+            .expect("canonical install command target"),
+        expected_github_instructions,
         "{stdout}"
     );
-    assert_eq!(stdout["targetDir"], serde_json::Value::Null, "{stdout}");
+    assert_eq!(
+        PathBuf::from(stdout["targetDir"].as_str().expect("target dir"))
+            .canonicalize()
+            .expect("canonical target dir"),
+        expected_github_instructions,
+        "{stdout}"
+    );
     assert!(
         stdout["reason"]
             .as_str()
@@ -4042,9 +4062,29 @@ fn plain_github_repo_defaults_to_copilot_when_no_agent_roots_exist() {
         serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
     assert_eq!(stdout["harness"], "copilot", "{stdout}");
     assert_eq!(stdout["selectionSource"], "repository", "{stdout}");
+    let expected_github = workspace.join(".github");
+    let install_command = stdout["installCommand"]
+        .as_array()
+        .expect("install command");
+    assert_eq!(install_command.len(), 6, "{stdout}");
+    assert_eq!(install_command[0], env!("CARGO_BIN_EXE_kast"), "{stdout}");
+    assert_eq!(install_command[1], "agent", "{stdout}");
+    assert_eq!(install_command[2], "setup", "{stdout}");
+    assert_eq!(install_command[3], "copilot", "{stdout}");
+    assert_eq!(install_command[4], "--target-dir", "{stdout}");
+    let expected_github = expected_github.canonicalize().expect("canonical github");
     assert_eq!(
-        stdout["installCommand"],
-        serde_json::json!([env!("CARGO_BIN_EXE_kast"), "agent", "setup", "copilot"]),
+        PathBuf::from(install_command[5].as_str().expect("install command target"))
+            .canonicalize()
+            .expect("canonical install command target"),
+        expected_github,
+        "{stdout}"
+    );
+    assert_eq!(
+        PathBuf::from(stdout["targetDir"].as_str().expect("target dir"))
+            .canonicalize()
+            .expect("canonical target dir"),
+        expected_github,
         "{stdout}"
     );
     assert!(

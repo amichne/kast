@@ -137,7 +137,7 @@ fn run_agent_up(args: cli::AgentUpArgs, output_format: OutputFormat) -> Result<i
     let selection_args = agent_up_selection_args(&args);
     let selection = agent_setup_auto_selection(&workspace_root, &selection_args)?;
     let setup_args = agent_up_setup_args(args.clone(), &selection, &workspace_root);
-    let setup_plan = agent_setup_auto_plan(&selection, &setup_args);
+    let setup_plan = agent_setup_auto_plan(&selection, &setup_args, &workspace_root);
     let runtime_args = agent_up_runtime_args(args.runtime, &workspace_root);
     let runtime_command = agent_up_runtime_command(&runtime_args);
     if args.dry_run {
@@ -307,7 +307,7 @@ fn run_agent_setup_auto(args: cli::AgentSetupAutoArgs, output_format: OutputForm
     let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
     let selection = agent_setup_auto_selection(&cwd, &args)?;
     if args.dry_run {
-        let plan = agent_setup_auto_plan(&selection, &args);
+        let plan = agent_setup_auto_plan(&selection, &args, &cwd);
         if output_format == OutputFormat::Json {
             output::print_json(&plan)?;
         } else {
@@ -424,13 +424,19 @@ fn agent_setup_auto_detected_harness(
 fn agent_setup_auto_plan(
     selection: &AgentSetupAutoSelection,
     args: &cli::AgentSetupAutoArgs,
+    cwd: &Path,
 ) -> install::AgentSetupAutoPlan {
+    let target_dir = args
+        .target_dir
+        .clone()
+        .or_else(|| Some(default_agent_up_target_dir(selection.harness, cwd)));
+    let command = agent_setup_install_command(selection.harness, args, target_dir.as_ref());
     let mut plan = install::AgentSetupAutoPlan::new(
         selection.harness,
         selection.source,
         selection.reason.clone(),
-        agent_setup_install_command(selection.harness, args),
-        args.target_dir.clone(),
+        command,
+        target_dir,
     );
     plan.dry_run = args.dry_run;
     plan
@@ -439,6 +445,7 @@ fn agent_setup_auto_plan(
 fn agent_setup_install_command(
     harness: cli::AgentSetupHarness,
     args: &cli::AgentSetupAutoArgs,
+    target_dir: Option<&PathBuf>,
 ) -> Vec<String> {
     let mut command = vec![
         current_executable_argument(),
@@ -452,7 +459,7 @@ fn agent_setup_install_command(
         }
         .to_string(),
     ];
-    if let Some(target_dir) = &args.target_dir {
+    if let Some(target_dir) = target_dir {
         command.push("--target-dir".to_string());
         command.push(target_dir.display().to_string());
     }

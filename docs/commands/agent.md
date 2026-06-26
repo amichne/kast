@@ -69,9 +69,9 @@ detection. Existing portable skill roots include `.agents/skills`,
 roots include `.agents/instructions`, `.codex/instructions`,
 `.github/instructions`, and `.claude/instructions`. Those roots win before the
 default Copilot package path.
-In JSON dry-runs, `installCommand` starts with the executable token used for
-the dry run, so copied binaries and absolute CLI paths remain directly
-callable.
+In JSON dry-runs, `targetDir` reports the resolved package target and
+`installCommand` includes that target plus the executable token used for the dry
+run, so copied binaries and absolute CLI paths remain directly callable.
 
 ## Tool Discovery
 

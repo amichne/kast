@@ -41,9 +41,9 @@ choose a harness-neutral package without assuming Copilot. `--harness` is the
 most explicit selector. When it is omitted, Kast reads
 `projectOpen.agentHarness` from config before falling back to repository
 detection.
-In JSON dry-runs, `installCommand` starts with the executable token used for
-the dry run, so copied binaries and absolute CLI paths remain directly
-callable.
+In JSON dry-runs, `targetDir` reports the resolved package target and
+`installCommand` includes that target plus the executable token used for the dry
+run, so copied binaries and absolute CLI paths remain directly callable.
 
 ```console title="Install the selected harness package"
 kast agent setup auto --dry-run
