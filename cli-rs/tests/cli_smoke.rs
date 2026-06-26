@@ -3396,7 +3396,11 @@ agentHarness = "skill"
         .as_array()
         .expect("install command");
     assert_eq!(install_command.len(), 6, "{up_stdout}");
-    assert_eq!(install_command[0], "kast", "{up_stdout}");
+    assert_eq!(
+        install_command[0],
+        env!("CARGO_BIN_EXE_kast"),
+        "{up_stdout}"
+    );
     assert_eq!(install_command[1], "agent", "{up_stdout}");
     assert_eq!(install_command[2], "setup", "{up_stdout}");
     assert_eq!(install_command[3], "skill", "{up_stdout}");
@@ -3609,6 +3613,9 @@ fn agent_setup_auto_dry_run_explains_selection_without_writing() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let target_root = temp.path().join("enterprise-agent");
+    let alternate_bin = temp.path().join("enterprise-kast");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &alternate_bin).expect("copy kast");
+    set_executable_for_test(&alternate_bin);
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
@@ -3619,7 +3626,9 @@ agentHarness = "instructions"
     )
     .expect("config");
 
-    let plan = kast(&home, &config_home)
+    let plan = Command::new(&alternate_bin)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
         .args([
             "--output",
             "json",
@@ -3647,7 +3656,7 @@ agentHarness = "instructions"
     assert_eq!(
         stdout["installCommand"],
         serde_json::json!([
-            "kast",
+            alternate_bin.display().to_string(),
             "agent",
             "setup",
             "instructions",
@@ -3672,6 +3681,9 @@ fn agent_up_dry_run_uses_configured_harness_and_explicit_workspace_root() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let alternate_bin = temp.path().join("enterprise-kast");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &alternate_bin).expect("copy kast");
+    set_executable_for_test(&alternate_bin);
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
@@ -3684,7 +3696,9 @@ agentHarness = "skill"
     )
     .expect("config");
 
-    let plan = kast(&home, &config_home)
+    let plan = Command::new(&alternate_bin)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
         .current_dir(temp.path())
         .args([
             "--output",
@@ -3722,7 +3736,7 @@ agentHarness = "skill"
     assert_eq!(
         stdout["setup"]["installCommand"],
         serde_json::json!([
-            "kast",
+            alternate_bin.display().to_string(),
             "agent",
             "setup",
             "skill",
@@ -3734,7 +3748,7 @@ agentHarness = "skill"
     assert_eq!(
         stdout["runtimeCommand"],
         serde_json::json!([
-            "kast",
+            alternate_bin.display().to_string(),
             "runtime",
             "up",
             "--workspace-root",

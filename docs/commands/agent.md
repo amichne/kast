@@ -42,6 +42,9 @@ kast agent up --harness instructions --workspace-root "$PWD" --dry-run
 When `--workspace-root` is supplied, setup targets that repository instead of
 the shell's current directory. The command reports the selected setup command
 and runtime command in both human and JSON output.
+In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
+the executable token used for the dry run, so copied binaries and absolute CLI
+paths remain directly callable.
 
 ## Setup
 
@@ -63,6 +66,9 @@ When `--harness` is omitted, `kast agent setup auto` reads
 `projectOpen.agentHarness` from config before falling back to repository
 detection. Portable repository roots include `.agents/skills`,
 `.codex/skills`, `.agents/instructions`, and `.codex/instructions`.
+In JSON dry-runs, `installCommand` starts with the executable token used for
+the dry run, so copied binaries and absolute CLI paths remain directly
+callable.
 
 ## Tool Discovery
 

@@ -27,6 +27,9 @@ stale repository outputs.
 Use `kast agent up` when setup and runtime warmup should happen together. Start
 with `--dry-run` to inspect the selected harness and workspace-root-derived
 targets before writing files or starting a backend.
+In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
+the executable token used for the dry run, so copied binaries and absolute CLI
+paths remain directly callable.
 
 ```console title="Bring a repository up for agents"
 kast agent up --dry-run
@@ -38,6 +41,9 @@ choose a harness-neutral package without assuming Copilot. `--harness` is the
 most explicit selector. When it is omitted, Kast reads
 `projectOpen.agentHarness` from config before falling back to repository
 detection.
+In JSON dry-runs, `installCommand` starts with the executable token used for
+the dry run, so copied binaries and absolute CLI paths remain directly
+callable.
 
 ```console title="Install the selected harness package"
 kast agent setup auto --dry-run

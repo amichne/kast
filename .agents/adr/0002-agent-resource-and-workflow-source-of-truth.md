@@ -57,6 +57,8 @@ Agent-facing changes must keep these requirements true:
   require MCP availability.
 - `kast agent setup auto --dry-run` reports the selected harness, selection
   source, reason, and equivalent direct install command without writing files.
+  The reported command starts with the executable token used for the dry run,
+  so `kast-dev`, copied test binaries, and absolute CLI paths remain valid.
 - Copilot tools load specs from `kast agent tools` when the active binary is
   current, then call `kast agent call`; they do not synthesize a separate SDK
   tool contract or route through raw `kast rpc`.

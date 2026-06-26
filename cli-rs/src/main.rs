@@ -258,13 +258,25 @@ fn first_existing_or_default(workspace_root: &Path, candidates: &[&str], default
         .unwrap_or_else(|| workspace_root.join(default))
 }
 
+fn current_executable_argument() -> String {
+    env::args_os()
+        .next()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .filter(|arg| !arg.is_empty())
+        .unwrap_or_else(|| "kast".to_string())
+}
+
 fn agent_up_runtime_args(mut args: cli::RuntimeArgs, workspace_root: &Path) -> cli::RuntimeArgs {
     args.workspace_root = Some(workspace_root.to_path_buf());
     args
 }
 
 fn agent_up_runtime_command(args: &cli::RuntimeArgs) -> Vec<String> {
-    let mut command = vec!["kast".to_string(), "runtime".to_string(), "up".to_string()];
+    let mut command = vec![
+        current_executable_argument(),
+        "runtime".to_string(),
+        "up".to_string(),
+    ];
     if let Some(workspace_root) = &args.workspace_root {
         command.push("--workspace-root".to_string());
         command.push(workspace_root.display().to_string());
@@ -429,7 +441,7 @@ fn agent_setup_install_command(
     args: &cli::AgentSetupAutoArgs,
 ) -> Vec<String> {
     let mut command = vec![
-        "kast".to_string(),
+        current_executable_argument(),
         "agent".to_string(),
         "setup".to_string(),
         match harness {
