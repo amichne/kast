@@ -17,12 +17,17 @@ roots:
 
 ```sh
 kast --output json agent up --workspace-root "$PWD" --dry-run
+kast --output json agent setup auto --dry-run
 kast --output json runtime status --workspace-root "$PWD"
 kast --output json runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Use human output only for operator-facing summaries. Use `--output json` when a
-result will be parsed, stored, or used as evidence.
+result will be parsed, stored, or used as evidence. For `agent up` dry-runs,
+`setup.targetDir` is the resolved package target and `setup.installCommand` is
+the install-only command to copy exactly. For `agent setup auto --dry-run`,
+`targetDir` and `installCommand` describe the selected package target without a
+runtime warmup step.
 
 ## Non-Interactive Rules
 

@@ -25,6 +25,7 @@ Use JSON output when a result will drive later steps:
 
 ```sh
 kast --output json agent up --workspace-root "$PWD" --dry-run
+kast --output json agent setup auto --dry-run
 kast agent ready --output json
 kast --output json agent workflow verify --workspace-root "$PWD"
 kast --output json agent workflow package-verify --workspace-root "$PWD"
@@ -33,6 +34,12 @@ kast --output json agent workflow package-verify --workspace-root "$PWD"
 Use `--backend idea` or `--backend headless` when the runtime choice must be
 explicit. Keep `--workspace-root "$PWD"` or an absolute workspace path on every
 agent call so runtime and source-index state are tied to the intended project.
+When an `agent up` dry-run is used only to inspect setup, trust
+`setup.targetDir` and copy `setup.installCommand` exactly; it includes the
+selected executable and `--target-dir`. When only package selection matters,
+`agent setup auto --dry-run` derives the target from the current directory
+unless `--target-dir` is passed, and reports `targetDir` with a matching
+`installCommand`.
 
 ## Shallow Tools
 

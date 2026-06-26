@@ -53,7 +53,14 @@ Before semantic work, prove three things:
 Use `kast agent up --dry-run --workspace-root "$PWD"` when harness setup and
 runtime readiness both matter. The dry run reports the selected harness,
 workspace-root-derived setup target, and runtime command without writing files
-or starting a backend.
+or starting a backend. In JSON output, `setup.targetDir` is the resolved package
+target and `setup.installCommand` is the exact install-only command, including
+the executable token and `--target-dir`.
+
+Use `kast agent setup auto --dry-run` when only harness package selection
+matters. It derives the default target from the current directory unless
+`--target-dir` is passed, and JSON output reports `targetDir` with the matching
+`installCommand`.
 
 For `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a
 missing source-index database, warm the runtime:

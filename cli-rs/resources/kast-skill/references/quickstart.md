@@ -49,8 +49,15 @@ transport/debug topic.
 
 Use `kast agent up --dry-run --workspace-root "$PWD"` when you need to inspect
 both the selected harness package and the runtime warmup command before writing
-files or launching a backend. Use `kast agent up --workspace-root "$PWD"` when
-the repository should be prepared and warmed in one operator step.
+files or launching a backend. In JSON dry runs, read `setup.targetDir` and copy
+`setup.installCommand` exactly when you want to install only the selected agent
+resource; it includes the executable token and `--target-dir` chosen for that
+workspace. Use `kast agent up --workspace-root "$PWD"` when the repository
+should be prepared and warmed in one operator step.
+
+Use `kast agent setup auto --dry-run` when only package selection matters. It
+derives its default target from the current directory unless `--target-dir` is
+passed, and JSON output reports `targetDir` plus an executable `installCommand`.
 
 For shell pipelines, use the public `kast agent` surface instead of hand-written
 JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
