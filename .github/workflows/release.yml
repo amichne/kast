@@ -211,6 +211,35 @@ jobs:
           --no-daemon
           --stacktrace
 
+      - name: Record release Maven validation ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers
+          printf 'gitSha=%s\nreleaseTag=%s\nworkflowRunId=%s\n' \
+            "$GITHUB_SHA" \
+            "${{ needs.prepare-release.outputs.release_tag }}" \
+            "$GITHUB_RUN_ID" \
+            > dist/ci-ledgers/release-maven-publication-validation.txt
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/release-maven-publication.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-maven-publication-validation \
+            --artifact-name release-maven-publication-validation \
+            --artifact-path dist/ci-ledgers/release-maven-publication-validation.txt \
+            --producer-job validate-jvm \
+            --build-command-id release-maven-publish-to-local
+
+      - name: Upload release Maven validation ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-artifact-ledger-maven-publication
+          path: dist/ci-ledgers/release-maven-publication.json
+          if-no-files-found: error
+          retention-days: 7
+
   build-openapi-spec:
     name: Build OpenAPI spec
     needs:
@@ -266,6 +295,16 @@ jobs:
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-openapi.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-openapi \
+            --artifact-name openapi.yaml \
+            --artifact-path dist/openapi.yaml \
+            --producer-job build-openapi-spec \
+            --build-command-id release-stage-openapi-spec
 
       - name: Upload OpenAPI release asset
         env:
@@ -274,6 +313,11 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger dist/build-ledger-openapi.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind release-openapi \
+            --artifact release-openapi=dist/openapi.yaml
           gh release upload "$tag" dist/openapi.yaml --clobber
 
       - name: Upload OpenAPI workflow artifact
@@ -304,6 +348,20 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+
+      - name: Download release Maven validation ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: release-artifact-ledger-maven-publication
+          path: ci-ledgers
+
+      - name: Verify release Maven validation ledger
+        shell: bash
+        run: >
+          scripts/verify-ci-artifact-ledger.py verify
+          --ledger ci-ledgers/release-maven-publication.json
+          --git-sha "$GITHUB_SHA"
+          --require-kind release-maven-publication-validation
 
       - name: Check Maven Central publication state
         id: maven-state
@@ -505,6 +563,16 @@ jobs:
           }
           output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
+          scripts/verify-ci-artifact-ledger.py record \
+            --output "dist/build-ledger-cli-${{ matrix.asset_id }}.json" \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind "release-cli-${{ matrix.asset_id }}" \
+            --artifact-name "$asset_name" \
+            --artifact-path "dist/${asset_name}" \
+            --producer-job "build-cli-${{ matrix.asset_id }}" \
+            --build-command-id "release-rust-cli-${{ matrix.asset_id }}"
 
       - name: Upload CLI asset
         env:
@@ -513,6 +581,11 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger "dist/build-ledger-cli-${{ matrix.asset_id }}.json" \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind "release-cli-${{ matrix.asset_id }}" \
+            --artifact "release-cli-${{ matrix.asset_id }}=dist/kast-${tag}-${{ matrix.asset_id }}.zip"
           gh release upload "$tag" "dist/kast-${tag}-${{ matrix.asset_id }}.zip" --clobber
 
       - name: Upload CLI build artifact
@@ -568,7 +641,6 @@ jobs:
           [[ -n "$source_zip" ]] || { echo "No IDEA plugin zip found" >&2; exit 1; }
           mkdir -p dist
           cp "$source_zip" "dist/${asset_name}"
-          gh release upload "$tag" "dist/${asset_name}" --clobber
           python3 - "dist/${asset_name}" "dist/build-provenance-idea.json" <<'PY'
           import hashlib, json, os, sys
           from pathlib import Path
@@ -587,6 +659,22 @@ jobs:
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-idea.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-idea \
+            --artifact-name "$asset_name" \
+            --artifact-path "dist/${asset_name}" \
+            --producer-job build-idea-plugin \
+            --build-command-id release-idea-plugin-build
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger dist/build-ledger-idea.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind release-idea \
+            --artifact "release-idea=dist/${asset_name}"
+          gh release upload "$tag" "dist/${asset_name}" --clobber
 
       - name: Upload plugin artifact
         if: always()
@@ -680,6 +768,27 @@ jobs:
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
+          [[ -f dist/headless.zip ]] || { echo "Missing headless backend artifact: dist/headless.zip" >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-headless-backend.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-headless-backend \
+            --artifact-name headless.zip \
+            --artifact-path dist/headless.zip \
+            --producer-job build-headless-backend \
+            --build-command-id release-headless-backend-build
+          scripts/verify-ci-artifact-ledger.py record \
+            --output "${cache_dir}/build-ledger-gradle-ro-cache.json" \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-gradle-ro-cache \
+            --artifact-name gradle-ro-dep-cache.tar.zst \
+            --artifact-path "${cache_dir}/gradle-ro-dep-cache.tar.zst" \
+            --producer-job build-headless-backend \
+            --build-command-id release-gradle-ro-cache
 
       - name: Upload headless backend artifact
         if: always()
@@ -741,8 +850,23 @@ jobs:
           version="${{ needs.prepare-release.outputs.release_version }}"
           cli_asset="release-assets/kast-${tag}-linux-x64.zip"
           backend_asset="headless-backend/headless.zip"
+          gradle_cache_dir="headless-backend/gradle-ro-cache"
+          gradle_cache_asset="${gradle_cache_dir}/gradle-ro-dep-cache.tar.zst"
+          gradle_cache_sidecar="${gradle_cache_dir}/gradle-ro-dep-cache.sha256"
+          gradle_cache_provenance="${gradle_cache_dir}/build-provenance-gradle-ro-cache.json"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
           [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
+          [[ -f "$gradle_cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${gradle_cache_asset}" >&2; exit 1; }
+          [[ -f "$gradle_cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${gradle_cache_sidecar}" >&2; exit 1; }
+          [[ -f "$gradle_cache_provenance" ]] || { echo "Missing Gradle read-only cache provenance: ${gradle_cache_provenance}" >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger headless-backend/build-ledger-headless-backend.json \
+            --ledger "${gradle_cache_dir}/build-ledger-gradle-ro-cache.json" \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind release-headless-backend \
+            --require-kind release-gradle-ro-cache \
+            --artifact "release-headless-backend=${backend_asset}" \
+            --artifact "release-gradle-ro-cache=${gradle_cache_asset}"
           cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
             release package ubuntu-debian-bundle \
             --repo-root "$PWD" \
@@ -757,13 +881,6 @@ jobs:
             --output "dist/kast-headless-linux-x64.tar.zst" \
             --manifest-output "dist/kast-runtime-manifest.json"
           mkdir -p dist/provenance
-          gradle_cache_dir="headless-backend/gradle-ro-cache"
-          gradle_cache_asset="${gradle_cache_dir}/gradle-ro-dep-cache.tar.zst"
-          gradle_cache_sidecar="${gradle_cache_dir}/gradle-ro-dep-cache.sha256"
-          gradle_cache_provenance="${gradle_cache_dir}/build-provenance-gradle-ro-cache.json"
-          [[ -f "$gradle_cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${gradle_cache_asset}" >&2; exit 1; }
-          [[ -f "$gradle_cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${gradle_cache_sidecar}" >&2; exit 1; }
-          [[ -f "$gradle_cache_provenance" ]] || { echo "Missing Gradle read-only cache provenance: ${gradle_cache_provenance}" >&2; exit 1; }
           cp "$gradle_cache_asset" dist/gradle-ro-dep-cache.tar.zst
           cp "$gradle_cache_sidecar" dist/gradle-ro-dep-cache.sha256
           cp "$gradle_cache_provenance" dist/provenance/build-provenance-gradle-ro-cache.json
@@ -822,6 +939,46 @@ jobs:
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-ubuntu-debian-headless.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-ubuntu-debian-headless-x86_64 \
+            --artifact-name "$(basename -- "$bundle_asset")" \
+            --artifact-path "$bundle_asset" \
+            --producer-job build-linux-headless-tarball \
+            --build-command-id release-ubuntu-debian-headless-package
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-headless-linux-x64.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-headless-linux-x64 \
+            --artifact-name kast-headless-linux-x64.tar.zst \
+            --artifact-path dist/kast-headless-linux-x64.tar.zst \
+            --producer-job build-linux-headless-tarball \
+            --build-command-id release-headless-linux-x64-package
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-runtime-manifest.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-runtime-manifest \
+            --artifact-name kast-runtime-manifest.json \
+            --artifact-path dist/kast-runtime-manifest.json \
+            --producer-job build-linux-headless-tarball \
+            --build-command-id release-runtime-manifest
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-gradle-ro-cache.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-gradle-ro-cache \
+            --artifact-name gradle-ro-dep-cache.tar.zst \
+            --artifact-path dist/gradle-ro-dep-cache.tar.zst \
+            --producer-job build-linux-headless-tarball \
+            --build-command-id release-gradle-ro-cache-promote
 
       - name: Validate Linux headless tarball
         shell: bash
@@ -863,6 +1020,20 @@ jobs:
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger dist/build-ledger-ubuntu-debian-headless.json \
+            --ledger dist/build-ledger-headless-linux-x64.json \
+            --ledger dist/build-ledger-runtime-manifest.json \
+            --ledger dist/build-ledger-gradle-ro-cache.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind release-ubuntu-debian-headless-x86_64 \
+            --require-kind release-headless-linux-x64 \
+            --require-kind release-runtime-manifest \
+            --require-kind release-gradle-ro-cache \
+            --artifact "release-ubuntu-debian-headless-x86_64=${bundle_asset}" \
+            --artifact release-headless-linux-x64=dist/kast-headless-linux-x64.tar.zst \
+            --artifact release-runtime-manifest=dist/kast-runtime-manifest.json \
+            --artifact release-gradle-ro-cache=dist/gradle-ro-dep-cache.tar.zst
           gh release upload "$tag" \
             "$bundle_asset" \
             "${bundle_asset}.sha256" \
@@ -923,6 +1094,44 @@ jobs:
           path: provenance-openapi
           pattern: openapi-spec-*
           merge-multiple: true
+
+      - name: Verify release build ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger provenance-cli/build-ledger-cli-linux-x64.json \
+            --ledger provenance-cli/build-ledger-cli-linux-arm64.json \
+            --ledger provenance-cli/build-ledger-cli-macos-x64.json \
+            --ledger provenance-cli/build-ledger-cli-macos-arm64.json \
+            --ledger provenance-idea/build-ledger-idea.json \
+            --ledger provenance-linux-headless/build-ledger-ubuntu-debian-headless.json \
+            --ledger provenance-linux-headless/build-ledger-headless-linux-x64.json \
+            --ledger provenance-linux-headless/build-ledger-runtime-manifest.json \
+            --ledger provenance-linux-headless/build-ledger-gradle-ro-cache.json \
+            --ledger provenance-openapi/build-ledger-openapi.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind release-cli-linux-x64 \
+            --require-kind release-cli-linux-arm64 \
+            --require-kind release-cli-macos-x64 \
+            --require-kind release-cli-macos-arm64 \
+            --require-kind release-idea \
+            --require-kind release-ubuntu-debian-headless-x86_64 \
+            --require-kind release-headless-linux-x64 \
+            --require-kind release-runtime-manifest \
+            --require-kind release-gradle-ro-cache \
+            --require-kind release-openapi \
+            --artifact "release-cli-linux-x64=provenance-cli/kast-${tag}-linux-x64.zip" \
+            --artifact "release-cli-linux-arm64=provenance-cli/kast-${tag}-linux-arm64.zip" \
+            --artifact "release-cli-macos-x64=provenance-cli/kast-${tag}-macos-x64.zip" \
+            --artifact "release-cli-macos-arm64=provenance-cli/kast-${tag}-macos-arm64.zip" \
+            --artifact "release-idea=provenance-idea/kast-idea-${tag}.zip" \
+            --artifact "release-ubuntu-debian-headless-x86_64=provenance-linux-headless/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
+            --artifact "release-headless-linux-x64=provenance-linux-headless/kast-headless-linux-x64.tar.zst" \
+            --artifact "release-runtime-manifest=provenance-linux-headless/kast-runtime-manifest.json" \
+            --artifact "release-gradle-ro-cache=provenance-linux-headless/gradle-ro-dep-cache.tar.zst" \
+            --artifact "release-openapi=provenance-openapi/openapi.yaml"
 
       - name: Upload Gradle read-only cache release asset
         env:

@@ -12,6 +12,10 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   workflow-contracts:
     name: Workflow release contracts
@@ -53,6 +57,10 @@ jobs:
       - name: Test release provenance assembler
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
+
+      - name: Test CI artifact ledger
+        shell: bash
+        run: ./.github/scripts/test-ci-artifact-ledger.sh
 
       - name: Ensure zstd is available
         shell: bash
@@ -110,6 +118,35 @@ jobs:
           -Pkast.publish.target=local
           -Pversion=0.0.0-ci
 
+      - name: Record Maven publication validation ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers
+          printf 'gitSha=%s\nsourceRef=%s\nworkflowRunId=%s\n' \
+            "$GITHUB_SHA" \
+            "$GITHUB_REF" \
+            "$GITHUB_RUN_ID" \
+            > dist/ci-ledgers/maven-publication-validation.txt
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/maven-publication.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-maven-publication-validation \
+            --artifact-name ci-maven-publication-validation \
+            --artifact-path dist/ci-ledgers/maven-publication-validation.txt \
+            --producer-job maven-publication-contract \
+            --build-command-id ci-maven-publish-to-local
+
+      - name: Upload Maven publication validation ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-maven-publication
+          path: dist/ci-ledgers/maven-publication.json
+          if-no-files-found: error
+          retention-days: 3
+
   rust-cli:
     name: Rust CLI
     runs-on: ubuntu-22.04
@@ -158,6 +195,16 @@ jobs:
           cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
           chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
           (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" kast)
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/rust-cli-linux-x64.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-rust-cli-linux-x64 \
+            --artifact-name kast-rust-cli-linux-x64 \
+            --artifact-path dist/kast-v0.0.0-ci-linux-x64.zip \
+            --producer-job rust-cli \
+            --build-command-id ci-rust-cli-release-build
 
       - name: Upload Rust CLI CI asset
         uses: actions/upload-artifact@v6
@@ -166,6 +213,14 @@ jobs:
           path: dist/kast-v0.0.0-ci-linux-x64.zip
           if-no-files-found: error
           retention-days: 1
+
+      - name: Upload Rust CLI CI ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-rust-cli-linux-x64
+          path: dist/ci-ledgers/rust-cli-linux-x64.json
+          if-no-files-found: error
+          retention-days: 3
 
   build-and-test:
     name: Build & test (${{ matrix.os }})
@@ -236,6 +291,32 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Record headless backend ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers
+          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
+          [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py record \
+            --output "dist/ci-ledgers/headless-${{ matrix.os }}.json" \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind "ci-headless-${{ matrix.os }}" \
+            --artifact-name "kast-headless-${{ matrix.os }}" \
+            --artifact-path "$backend_asset" \
+            --producer-job build-and-test-${{ matrix.os }} \
+            --build-command-id ci-headless-portable-dist
+
+      - name: Upload headless backend ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-headless-${{ matrix.os }}
+          path: dist/ci-ledgers/headless-${{ matrix.os }}.json
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Build agent headless backend distribution
         if: matrix.os == 'ubuntu-latest'
         run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent
@@ -272,6 +353,18 @@ jobs:
           name: kast-rust-cli-linux-x64
           path: dist
 
+      - name: Download Rust CLI CI ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-rust-cli-linux-x64
+          path: ci-ledgers
+
+      - name: Download headless backend ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-headless-ubuntu-latest
+          path: ci-ledgers
+
       - name: Resolve Rust CLI CI asset
         shell: bash
         run: |
@@ -288,6 +381,14 @@ jobs:
           set -euo pipefail
           backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
           [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger ci-ledgers/rust-cli-linux-x64.json \
+            --ledger ci-ledgers/headless-ubuntu-latest.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-rust-cli-linux-x64 \
+            --require-kind ci-headless-ubuntu-latest \
+            --artifact "ci-rust-cli-linux-x64=${KAST_RUST_CLI_ASSET}" \
+            --artifact "ci-headless-ubuntu-latest=${backend_asset}"
           bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
 
           cargo run --manifest-path cli-rs/Cargo.toml --bin kast --locked -- \
@@ -346,6 +447,18 @@ jobs:
           name: kast-rust-cli-linux-x64
           path: dist
 
+      - name: Download Rust CLI CI ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-rust-cli-linux-x64
+          path: ci-ledgers
+
+      - name: Download headless backend ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-headless-ubuntu-latest
+          path: ci-ledgers
+
       - name: Package kast-action runtime inputs
         id: package-runtime
         shell: bash
@@ -356,6 +469,14 @@ jobs:
           backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
           [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
           [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger ci-ledgers/rust-cli-linux-x64.json \
+            --ledger ci-ledgers/headless-ubuntu-latest.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-rust-cli-linux-x64 \
+            --require-kind ci-headless-ubuntu-latest \
+            --artifact "ci-rust-cli-linux-x64=${cli_asset}" \
+            --artifact "ci-headless-ubuntu-latest=${backend_asset}"
 
           ./scripts/package-devin-runtime.sh \
             --cli-archive "$cli_asset" \
@@ -483,6 +604,32 @@ jobs:
           path: backend-idea/build/distributions/*.zip
           if-no-files-found: error
           retention-days: 1
+
+      - name: Record IDEA plugin ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers
+          plugin_asset="$(find backend-idea/build/distributions -maxdepth 1 -name '*.zip' -print -quit)"
+          [[ -n "$plugin_asset" ]] || { echo "Missing IDEA plugin zip" >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/idea-plugin.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-idea-plugin \
+            --artifact-name kast-idea-plugin \
+            --artifact-path "$plugin_asset" \
+            --producer-job test-idea-plugin \
+            --build-command-id ci-idea-plugin-build
+
+      - name: Upload IDEA plugin ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-idea-plugin
+          path: dist/ci-ledgers/idea-plugin.json
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Run IDEA plugin performance baselines
         run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-idea:test -PincludeTags=performance

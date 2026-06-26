@@ -86,6 +86,23 @@ installable.
 ./scripts/smoke-ubuntu-debian-bundle.sh
 ```
 
+## Build receipts
+
+Release and snapshot automation builds each publishable artifact once for a
+commit, then records a CI artifact ledger with the artifact kind, producer job,
+build command, source SHA, and SHA-256 digest. Packaging and publication jobs
+must verify the ledger against the exact downloaded file before using it.
+
+Use the ledger verifier for local checks or workflow contract fixtures:
+
+```console title="Verify a CI artifact ledger"
+scripts/verify-ci-artifact-ledger.py verify \
+  --ledger dist/build-ledger-cli-linux-x64.json \
+  --git-sha <commit-sha> \
+  --require-kind release-cli-linux-x64 \
+  --artifact release-cli-linux-x64=dist/kast-<version>-linux-x64.zip
+```
+
 ## Runtime manifest
 
 Bundle and hosted-agent runtime artifacts include a manifest that describes the
