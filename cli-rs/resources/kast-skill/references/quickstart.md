@@ -59,6 +59,10 @@ files or launching a backend. In JSON dry runs, read `setup.targetDir` and copy
 resource; it includes the executable token and `--target-dir` chosen for that
 workspace. Use `kast agent up --workspace-root "$PWD"` when the repository
 should be prepared and warmed in one operator step.
+In a smart human terminal, the first eligible non-JSON `kast agent up` may ask
+whether to apply IDEA/Copilot onboarding globally or for the repository only.
+Agents and scripts should use `kast --output json agent up ...` or pass
+`--no-onboard` so prompts cannot block execution.
 
 Use `kast agent setup auto --dry-run` when only package selection matters. It
 derives its default target from the current directory unless `--target-dir` is

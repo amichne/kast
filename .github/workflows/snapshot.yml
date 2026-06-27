@@ -1,9 +1,13 @@
 name: Publish Snapshot
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI
     branches:
       - main
+    types:
+      - completed
   pull_request:
     branches:
       - main
@@ -15,21 +19,29 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+concurrency:
+  group: snapshot-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   validate:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.value }}
       publish-snapshot: ${{ steps.snapshot-version.outputs.publish }}
+      source-sha: ${{ steps.snapshot-version.outputs.source-sha }}
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
       - uses: actions/setup-java@v5
@@ -47,9 +59,13 @@ jobs:
           version="${{ github.event.inputs.snapshot-version }}"
           require_snapshot=false
           publish_snapshot=false
+          source_sha="$GITHUB_SHA"
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             require_snapshot=true
+          fi
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            source_sha="${{ github.event.workflow_run.head_sha }}"
           fi
 
           if [[ -z "$version" ]]; then
@@ -64,14 +80,25 @@ jobs:
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             publish_snapshot=true
-          elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "main" && "$version" == *-SNAPSHOT ]]; then
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" && "$version" == *-SNAPSHOT ]]; then
             publish_snapshot=true
           fi
 
           printf 'value=%s\n' "$version" >> "$GITHUB_OUTPUT"
           printf 'publish=%s\n' "$publish_snapshot" >> "$GITHUB_OUTPUT"
+          printf 'source-sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Run tests and local publication checks
+      - name: Download CI Maven publication ledger
+        if: github.event_name == 'workflow_run' && steps.snapshot-version.outputs.publish == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-maven-publication
+          path: ci-ledgers
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Run local publication checks for manual snapshot
+        if: github.event_name == 'workflow_dispatch' && steps.snapshot-version.outputs.publish == 'true'
         run: >
           ./gradlew
           test
@@ -83,12 +110,54 @@ jobs:
           --no-daemon
           --stacktrace
 
+      - name: Record manual snapshot publication ledger
+        if: github.event_name == 'workflow_dispatch' && steps.snapshot-version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci-ledgers
+          printf 'gitSha=%s\nsourceRef=%s\nworkflowRunId=%s\n' \
+            "$GITHUB_SHA" \
+            "$GITHUB_REF" \
+            "$GITHUB_RUN_ID" \
+            > ci-ledgers/maven-publication-validation.txt
+          scripts/verify-ci-artifact-ledger.py record \
+            --output ci-ledgers/maven-publication.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-maven-publication-validation \
+            --artifact-name ci-maven-publication-validation \
+            --artifact-path ci-ledgers/maven-publication-validation.txt \
+            --producer-job snapshot-validate \
+            --build-command-id snapshot-manual-publish-to-local
+
+      - name: Verify snapshot publication ledger
+        if: steps.snapshot-version.outputs.publish == 'true'
+        shell: bash
+        run: >
+          scripts/verify-ci-artifact-ledger.py verify
+          --ledger ci-ledgers/maven-publication.json
+          --git-sha "${{ steps.snapshot-version.outputs.source-sha }}"
+          --require-kind ci-maven-publication-validation
+
+      - name: Upload snapshot publication ledger
+        if: steps.snapshot-version.outputs.publish == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: snapshot-artifact-ledger-maven-publication
+          path: ci-ledgers/maven-publication.json
+          if-no-files-found: error
+          retention-days: 3
+
   publish-github-packages:
     runs-on: ubuntu-latest
     needs: validate
     if: needs.validate.outputs.publish-snapshot == 'true'
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.validate.outputs.source-sha }}
 
       - uses: actions/setup-java@v5
         with:
@@ -96,6 +165,20 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+
+      - name: Download snapshot publication ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: snapshot-artifact-ledger-maven-publication
+          path: ci-ledgers
+
+      - name: Verify snapshot publication ledger
+        shell: bash
+        run: >
+          scripts/verify-ci-artifact-ledger.py verify
+          --ledger ci-ledgers/maven-publication.json
+          --git-sha "${{ needs.validate.outputs.source-sha }}"
+          --require-kind ci-maven-publication-validation
 
       - name: Publish to GitHub Packages
         env:
@@ -117,6 +200,8 @@ jobs:
     if: needs.validate.outputs.publish-snapshot == 'true'
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.validate.outputs.source-sha }}
 
       - uses: actions/setup-java@v5
         with:
@@ -124,6 +209,20 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v5
+
+      - name: Download snapshot publication ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: snapshot-artifact-ledger-maven-publication
+          path: ci-ledgers
+
+      - name: Verify snapshot publication ledger
+        shell: bash
+        run: >
+          scripts/verify-ci-artifact-ledger.py verify
+          --ledger ci-ledgers/maven-publication.json
+          --git-sha "${{ needs.validate.outputs.source-sha }}"
+          --require-kind ci-maven-publication-validation
 
       - name: Check Maven Central and signing secrets
         id: gate

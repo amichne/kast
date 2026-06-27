@@ -279,6 +279,9 @@ pub struct AgentUpArgs {
     /// Explain setup and runtime actions without writing files or starting a backend.
     #[arg(long)]
     pub dry_run: bool,
+    /// Skip first-run interactive onboarding even in a smart terminal.
+    #[arg(long)]
+    pub no_onboard: bool,
 }
 
 #[derive(Debug, Args, Clone)]

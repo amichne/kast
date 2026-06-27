@@ -36,16 +36,27 @@ root.
 
 ```console title="Plan and run agent bring-up"
 kast agent up --dry-run
+kast agent up --workspace-root "$PWD"
 kast agent up --workspace-root "$PWD" --backend=headless
 kast agent up --agents-md "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
 ```
+
+In a smart interactive terminal, the first eligible `kast agent up` can offer
+automatic IDEA setup. If accepted, choose whether Kast saves IDEA as the
+default backend, automatic IDEA launch, and project-open auto-init as global
+machine defaults or for this repository only. The JetBrains plugin is still
+installed or refreshed at machine scope, and harness-agnostic guidance is still
+written under the workspace. Use `--no-onboard` to skip that first-run prompt,
+and use `--output json` in
+scripts so onboarding never prompts.
 
 When `--workspace-root` is supplied, setup targets that repository instead of
 the shell's current directory. The command reports the selected setup command
 and runtime command in both human and JSON output.
 In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
 the executable token used for the dry run, so copied binaries and absolute CLI
-paths remain directly callable.
+paths remain directly callable. `stage`, `nextActions`, and `manualSteps`
+explain what happened and what the user should do next.
 
 ## Setup
 

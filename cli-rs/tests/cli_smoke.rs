@@ -449,7 +449,13 @@ fn smoke_core_cli_commands() {
         .expect("agent up help");
     assert!(agent_up_help.status.success());
     let agent_up_help_stdout = String::from_utf8_lossy(&agent_up_help.stdout);
-    for flag in ["--workspace-root", "--backend", "--agents-md", "--dry-run"] {
+    for flag in [
+        "--workspace-root",
+        "--backend",
+        "--agents-md",
+        "--dry-run",
+        "--no-onboard",
+    ] {
         assert!(
             agent_up_help_stdout.contains(flag),
             "agent up help should expose {flag}: {agent_up_help_stdout}"
@@ -2516,6 +2522,69 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
         std::fs::read_link(jetbrains_root.join("IntelliJIdea2026.1/plugins/kast"))
             .expect("plugin symlink"),
         Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
+    );
+}
+
+#[test]
+fn plugin_install_human_output_reports_progress_and_summary_tables() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "plugin install should succeed with human progress: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let stderr = String::from_utf8_lossy(&install.stderr);
+    assert!(
+        stderr.contains("Resolving Homebrew-installed Kast"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("Kast IDEA plugin install"), "{stderr}");
+    assert!(stderr.contains("Fetching Homebrew cask"), "{stderr}");
+    assert!(stderr.contains("Running Homebrew install"), "{stderr}");
+    assert!(
+        stderr.contains("Linking Kast plugin into 1 JetBrains profile"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("Homebrew install complete"), "{stderr}");
+
+    let stdout = String::from_utf8_lossy(&install.stdout);
+    assert!(stdout.contains("Kast IDEA plugin install"), "{stdout}");
+    assert!(stdout.contains("Install summary"), "{stdout}");
+    assert!(stdout.contains("JetBrains destinations"), "{stdout}");
+    assert!(stdout.contains("Homebrew action"), "{stdout}");
+    assert!(stdout.contains("Brew command"), "{stdout}");
+    assert!(
+        stdout
+            .lines()
+            .any(|line| line.starts_with('+') && line.ends_with('+')),
+        "captured summary should use ASCII table borders: {stdout}"
+    );
+    assert!(
+        stdout.contains("Restart any open IntelliJ IDEA or Android Studio windows"),
+        "{stdout}"
     );
 }
 
@@ -4715,7 +4784,7 @@ agentHarness = "instructions"
 }
 
 #[test]
-fn agent_up_dry_run_uses_configured_harness_and_explicit_workspace_root() {
+fn agent_up_dry_run_uses_guidance_setup_and_explicit_workspace_root() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -4763,6 +4832,7 @@ agentHarness = "skill"
         serde_json::from_slice(&plan.stdout).expect("agent up plan json");
     assert_eq!(stdout["type"], "AGENT_UP", "{stdout}");
     assert_eq!(stdout["ok"], true, "{stdout}");
+    assert_eq!(stdout["stage"], "DRY_RUN", "{stdout}");
     assert_eq!(stdout["dryRun"], true, "{stdout}");
     assert_eq!(stdout["setup"]["type"], "AGENT_SETUP_PLAN", "{stdout}");
     assert_eq!(stdout["setup"]["dryRun"], true, "{stdout}");
@@ -4787,6 +4857,23 @@ agentHarness = "skill"
         serde_json::json!([
             alternate_bin.display().to_string(),
             "runtime",
+            "up",
+            "--workspace-root",
+            workspace.display().to_string(),
+            "--backend",
+            "headless"
+        ]),
+        "{stdout}"
+    );
+    assert_eq!(
+        stdout["nextActions"][0]["label"], "Run repository bring-up",
+        "{stdout}"
+    );
+    assert_eq!(
+        stdout["nextActions"][0]["argv"],
+        serde_json::json!([
+            alternate_bin.display().to_string(),
+            "agent",
             "up",
             "--workspace-root",
             workspace.display().to_string(),

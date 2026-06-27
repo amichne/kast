@@ -78,7 +78,10 @@ runtime readiness both matter. The dry run reports the selected harness,
 workspace-root-derived setup target, and runtime command without writing files
 or starting a backend. In JSON output, `setup.targetDir` is the resolved package
 target and `setup.installCommand` is the exact install-only command, including
-the executable token and `--target-dir`.
+the executable token and `--target-dir`. For agent-run flows, prefer
+`kast --output json agent up --workspace-root "$PWD" --no-onboard` when the
+command may inherit a human terminal; interactive onboarding is for operators
+choosing global or repository-scoped defaults, not unattended agents.
 
 Use `kast agent setup auto --dry-run` when only harness package selection
 matters. It derives the default target from the current directory unless

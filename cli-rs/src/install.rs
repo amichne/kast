@@ -18,13 +18,14 @@ use crate::manifest::{
 use crate::self_mgmt;
 use flate2::read::GzDecoder;
 use include_dir::{Dir, DirEntry, include_dir};
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command as ProcessCommand, Output, Stdio};
 use std::thread;
@@ -55,6 +56,15 @@ const KAST_MANAGED_FENCE_START: &str = "<!-- BEGIN KAST MANAGED -->";
 const KAST_MANAGED_FENCE_END: &str = "<!-- END KAST MANAGED -->";
 
 pub trait InstallReporter {
+    fn idea_plugin_step_started(&mut self, _message: &str) -> Result<()> {
+        Ok(())
+    }
+    fn idea_plugin_step_finished(&mut self, _message: &str) -> Result<()> {
+        Ok(())
+    }
+    fn idea_plugin_step_failed(&mut self, _message: &str) -> Result<()> {
+        Ok(())
+    }
     fn idea_plugin_plan(&mut self, _plan: &IdeaPluginDownloadPlan) -> Result<()> {
         Ok(())
     }
@@ -71,16 +81,54 @@ pub struct NoopInstallReporter;
 impl InstallReporter for NoopInstallReporter {}
 
 pub struct HumanInstallReporter {
-    last_downloaded_bytes: Option<u64>,
-    download_frame: usize,
+    active_spinner: Option<ProgressBar>,
 }
 
 impl HumanInstallReporter {
     pub fn new() -> Self {
         Self {
-            last_downloaded_bytes: None,
-            download_frame: 0,
+            active_spinner: None,
         }
+    }
+
+    fn start_spinner(&mut self, message: &str) {
+        self.clear_spinner();
+        if progress_draw_target_is_visible() {
+            let spinner =
+                ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr_with_hz(12));
+            spinner.set_style(spinner_style());
+            spinner.set_message(message.to_string());
+            spinner.enable_steady_tick(Duration::from_millis(80));
+            self.active_spinner = Some(spinner);
+        } else {
+            eprintln!("-> {message}");
+        }
+    }
+
+    fn finish_spinner(&mut self, message: &str) {
+        match self.active_spinner.take() {
+            Some(spinner) => spinner.finish_with_message(format!("✓ {message}")),
+            None => eprintln!("✓ {message}"),
+        }
+    }
+
+    fn fail_spinner(&mut self, message: &str) {
+        match self.active_spinner.take() {
+            Some(spinner) => spinner.abandon_with_message(format!("! {message}")),
+            None => eprintln!("! {message}"),
+        }
+    }
+
+    fn clear_spinner(&mut self) {
+        if let Some(spinner) = self.active_spinner.take() {
+            spinner.finish_and_clear();
+        }
+    }
+}
+
+impl Drop for HumanInstallReporter {
+    fn drop(&mut self) {
+        self.clear_spinner();
     }
 }
 
@@ -104,62 +152,64 @@ fn format_bytes(bytes: u64) -> String {
     }
 }
 
-fn indeterminate_progress_bar(frame: usize) -> String {
-    const WIDTH: usize = 16;
-    const SEGMENT: usize = 5;
-    let max_start = WIDTH.saturating_sub(SEGMENT);
-    let start = frame % (max_start + 1);
-    let mut bar = String::with_capacity(WIDTH + 2);
-    bar.push('[');
-    for index in 0..WIDTH {
-        bar.push(if index >= start && index < start + SEGMENT {
-            '#'
-        } else {
-            ' '
-        });
-    }
-    bar.push(']');
-    bar
+fn progress_draw_target_is_visible() -> bool {
+    io::stderr().is_terminal()
+        && !env::var("TERM").is_ok_and(|terminal| terminal.eq_ignore_ascii_case("dumb"))
+}
+
+fn spinner_style() -> ProgressStyle {
+    ProgressStyle::with_template("{spinner} {msg}")
+        .expect("static spinner template should be valid")
+        .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
 }
 
 impl InstallReporter for HumanInstallReporter {
+    fn idea_plugin_step_started(&mut self, message: &str) -> Result<()> {
+        self.start_spinner(message);
+        Ok(())
+    }
+
+    fn idea_plugin_step_finished(&mut self, message: &str) -> Result<()> {
+        self.finish_spinner(message);
+        Ok(())
+    }
+
+    fn idea_plugin_step_failed(&mut self, message: &str) -> Result<()> {
+        self.fail_spinner(message);
+        Ok(())
+    }
+
     fn idea_plugin_plan(&mut self, plan: &IdeaPluginDownloadPlan) -> Result<()> {
+        self.clear_spinner();
         eprintln!();
-        eprintln!("## Installing Kast IDEA plugin");
-        eprintln!("- Cask token: `{}`", plan.cask_token);
-        eprintln!("- Plugin version: `{}`", plan.plugin_version);
-        eprintln!("- Download cache: `{}`", plan.download_cache.display());
+        eprintln!("Kast IDEA plugin install");
+        eprintln!("  cask token:      {}", plan.cask_token);
+        eprintln!("  plugin version:  {}", plan.plugin_version);
+        eprintln!("  download cache:  {}", plan.download_cache.display());
         if !plan.plugin_directories.is_empty() {
-            eprintln!("- JetBrains profile destinations:");
+            eprintln!("  destinations:");
             for directory in &plan.plugin_directories {
-                eprintln!("  - `{}`", directory.display());
+                eprintln!("    - {}", directory.display());
             }
         }
         Ok(())
     }
 
     fn idea_plugin_download_progress(&mut self, downloaded_bytes: u64) -> Result<()> {
-        self.last_downloaded_bytes = Some(downloaded_bytes);
-        let bar = indeterminate_progress_bar(self.download_frame);
-        self.download_frame = self.download_frame.wrapping_add(1);
-        eprint!(
-            "\r[download] {} pending Homebrew cask fetch: {}",
-            bar,
-            format_bytes(downloaded_bytes)
-        );
-        io::stderr().flush()?;
+        if let Some(spinner) = &self.active_spinner {
+            spinner.set_message(format!(
+                "Fetching Homebrew cask ({})",
+                format_bytes(downloaded_bytes)
+            ));
+        }
         Ok(())
     }
 
     fn idea_plugin_download_finished(&mut self, downloaded_bytes: u64) -> Result<()> {
-        if self.last_downloaded_bytes.is_some() {
-            eprintln!(
-                "\r[download] [################] Homebrew cask fetch complete: {}",
-                format_bytes(downloaded_bytes)
-            );
-        }
-        self.last_downloaded_bytes = None;
-        self.download_frame = 0;
+        self.finish_spinner(&format!(
+            "Fetched Homebrew cask ({})",
+            format_bytes(downloaded_bytes)
+        ));
         Ok(())
     }
 }
@@ -2422,16 +2472,37 @@ pub fn install_idea_plugin(
     args: IdeaPluginInstallArgs,
     reporter: &mut dyn InstallReporter,
 ) -> Result<InstallIdeaPluginResult> {
-    let homebrew = discover_homebrew_context()?;
-    verify_homebrew_cli(&homebrew)?;
+    let homebrew = run_reported_step(
+        reporter,
+        "Resolving Homebrew-installed Kast",
+        |homebrew: &HomebrewContext| {
+            format!(
+                "Resolved Homebrew-installed Kast at {}",
+                homebrew.cli_path.display()
+            )
+        },
+        "Could not resolve a Homebrew-installed Kast",
+        || {
+            let homebrew = discover_homebrew_context()?;
+            verify_homebrew_cli(&homebrew)?;
+            Ok(homebrew)
+        },
+    )?;
     let mut warnings = vec![];
+    reporter.idea_plugin_step_started("Resolving Kast Homebrew tap")?;
     let formula_tap = match homebrew_formula_tap() {
-        Ok(tap) => tap,
+        Ok(tap) => {
+            reporter.idea_plugin_step_finished(&format!("Resolved Kast Homebrew tap {tap}"))?;
+            tap
+        }
         Err(error) => {
             warnings.push(format!(
                 "Could not resolve the Homebrew tap for kast; using {DEFAULT_KAST_TAP}: {}",
                 error.message
             ));
+            reporter.idea_plugin_step_finished(&format!(
+                "Using default Kast Homebrew tap {DEFAULT_KAST_TAP}"
+            ))?;
             DEFAULT_KAST_TAP.to_string()
         }
     };
@@ -2651,7 +2722,30 @@ fn install_idea_plugin_into_jetbrains_profiles(
         .jetbrains_config_root
         .map(config::normalize)
         .unwrap_or_else(default_jetbrains_config_root);
-    let plugin_directories = jetbrains_plugin_dirs(&jetbrains_config_root)?;
+    reporter.idea_plugin_step_started(&format!(
+        "Finding JetBrains profiles under {}",
+        jetbrains_config_root.display()
+    ))?;
+    let plugin_directories = match jetbrains_plugin_dirs(&jetbrains_config_root) {
+        Ok(plugin_directories) if !plugin_directories.is_empty() => {
+            reporter.idea_plugin_step_finished(&format!(
+                "Found {}",
+                jetbrains_profile_count_label(plugin_directories.len())
+            ))?;
+            plugin_directories
+        }
+        Ok(_) => {
+            reporter.idea_plugin_step_failed(&format!(
+                "No JetBrains profiles found under {}",
+                jetbrains_config_root.display()
+            ))?;
+            Vec::new()
+        }
+        Err(error) => {
+            reporter.idea_plugin_step_failed("Could not read JetBrains profiles")?;
+            return Err(error);
+        }
+    };
     if plugin_directories.is_empty() {
         let mut error = CliError::new(
             "JETBRAINS_CONFIG_NOT_FOUND",
@@ -2668,23 +2762,40 @@ fn install_idea_plugin_into_jetbrains_profiles(
     }
 
     let cask_name = cask_name(&cask_token);
-    let cask_installed = homebrew_cask_installed(&cask_name)?;
-    let brew_action = if cask_installed {
-        "reinstall"
-    } else {
-        "install"
-    };
-    let mut brew_args = vec![
-        brew_action.to_string(),
-        "--cask".to_string(),
-        cask_token.clone(),
-    ];
-    if args.force {
-        brew_args.insert(2, "--force".to_string());
-    }
-    let download_plan = homebrew_cask_download_plan(&cask_token, &plugin_directories)?;
+    let cask_installed = run_reported_step(
+        reporter,
+        &format!("Checking installed Homebrew cask {cask_name}"),
+        |installed| {
+            if *installed {
+                "Existing Homebrew cask found; reinstall will refresh it".to_string()
+            } else {
+                "Homebrew cask is not installed yet".to_string()
+            }
+        },
+        "Could not check installed Homebrew cask",
+        || homebrew_cask_installed(&cask_name),
+    )?;
+    let brew_action = HomebrewCaskInstallAction::for_installed_cask(cask_installed);
+    let brew_args = brew_action.brew_args(&cask_token, args.force);
+    let download_plan = run_reported_step(
+        reporter,
+        &format!("Reading Homebrew cask metadata for {cask_token}"),
+        |plan: &IdeaPluginDownloadPlan| {
+            format!(
+                "Resolved plugin version {} and cache {}",
+                plan.plugin_version,
+                plan.download_cache.display()
+            )
+        },
+        "Could not read Homebrew cask metadata",
+        || homebrew_cask_download_plan(&cask_token, &plugin_directories),
+    )?;
     reporter.idea_plugin_plan(&download_plan)?;
     let downloaded_bytes = if args.dry_run {
+        reporter.idea_plugin_step_started(
+            "Dry run requested; skipping fetch, Homebrew install, and profile links",
+        )?;
+        reporter.idea_plugin_step_finished("Dry run complete; no files changed")?;
         file_size(&download_plan.download_cache).unwrap_or(0)
     } else {
         prefetch_homebrew_cask(
@@ -2695,8 +2806,20 @@ fn install_idea_plugin_into_jetbrains_profiles(
         )?
     };
     if !args.dry_run {
-        let output = run_brew_with_jetbrains_root(&brew_args, &jetbrains_config_root)?;
+        reporter.idea_plugin_step_started(&format!(
+            "Running Homebrew {} ({})",
+            brew_action.as_brew_arg(),
+            brew_command_display(&brew_args)
+        ))?;
+        let output = match run_brew_with_jetbrains_root(&brew_args, &jetbrains_config_root) {
+            Ok(output) => output,
+            Err(error) => {
+                reporter.idea_plugin_step_failed("Could not start Homebrew")?;
+                return Err(error);
+            }
+        };
         if !output.status.success() {
+            reporter.idea_plugin_step_failed(brew_action.failure_label())?;
             return Err(command_error(
                 "HOMEBREW_CASK_INSTALL_FAILED",
                 "Homebrew failed to install the Kast IDEA plugin cask",
@@ -2704,12 +2827,26 @@ fn install_idea_plugin_into_jetbrains_profiles(
                 &output,
             ));
         }
-        ensure_homebrew_plugin_profile_links(
+        reporter.idea_plugin_step_finished(brew_action.completion_label())?;
+        reporter.idea_plugin_step_started(&format!(
+            "Linking Kast plugin into {}",
+            jetbrains_profile_count_label(plugin_directories.len())
+        ))?;
+        match ensure_homebrew_plugin_profile_links(
             &homebrew,
             &cask_name,
             &plugin_directories,
             &mut warnings,
-        )?;
+        ) {
+            Ok(()) => reporter.idea_plugin_step_finished(&format!(
+                "Linked Kast plugin into {}",
+                jetbrains_profile_count_label(plugin_directories.len())
+            ))?,
+            Err(error) => {
+                reporter.idea_plugin_step_failed("Could not link JetBrains profile plugins")?;
+                return Err(error);
+            }
+        }
     }
 
     Ok(InstallIdeaPluginResult {
@@ -2717,7 +2854,7 @@ fn install_idea_plugin_into_jetbrains_profiles(
         plugin_version: download_plan.plugin_version,
         download_cache: download_plan.download_cache.display().to_string(),
         downloaded_bytes,
-        brew_action: brew_action.to_string(),
+        brew_action: brew_action.as_brew_arg().to_string(),
         brew_command: std::iter::once("brew".to_string())
             .chain(brew_args)
             .collect(),
@@ -3386,6 +3523,86 @@ struct JetBrainsPluginDir {
     path: PathBuf,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HomebrewCaskInstallAction {
+    Install,
+    Reinstall,
+}
+
+impl HomebrewCaskInstallAction {
+    fn for_installed_cask(installed: bool) -> Self {
+        if installed {
+            Self::Reinstall
+        } else {
+            Self::Install
+        }
+    }
+
+    fn as_brew_arg(self) -> &'static str {
+        match self {
+            Self::Install => "install",
+            Self::Reinstall => "reinstall",
+        }
+    }
+
+    fn completion_label(self) -> &'static str {
+        match self {
+            Self::Install => "Homebrew install complete",
+            Self::Reinstall => "Homebrew reinstall complete",
+        }
+    }
+
+    fn failure_label(self) -> &'static str {
+        match self {
+            Self::Install => "Homebrew install failed",
+            Self::Reinstall => "Homebrew reinstall failed",
+        }
+    }
+
+    fn brew_args(self, cask_token: &str, force: bool) -> Vec<String> {
+        let mut args = vec![
+            self.as_brew_arg().to_string(),
+            "--cask".to_string(),
+            cask_token.to_string(),
+        ];
+        if force {
+            args.insert(2, "--force".to_string());
+        }
+        args
+    }
+}
+
+fn run_reported_step<T>(
+    reporter: &mut dyn InstallReporter,
+    started: &str,
+    finished: impl FnOnce(&T) -> String,
+    failed: &str,
+    action: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    reporter.idea_plugin_step_started(started)?;
+    match action() {
+        Ok(value) => {
+            reporter.idea_plugin_step_finished(&finished(&value))?;
+            Ok(value)
+        }
+        Err(error) => {
+            reporter.idea_plugin_step_failed(failed)?;
+            Err(error)
+        }
+    }
+}
+
+fn brew_command_display(args: &[String]) -> String {
+    format!("brew {}", args.join(" "))
+}
+
+fn jetbrains_profile_count_label(count: usize) -> String {
+    match count {
+        1 => "1 JetBrains profile".to_string(),
+        count => format!("{count} JetBrains profiles"),
+    }
+}
+
 fn discover_homebrew_context() -> Result<HomebrewContext> {
     let brew_prefix = homebrew_prefix(&["--prefix"])?;
     let formula_prefix = homebrew_prefix(&["--prefix", KAST_FORMULA_NAME])?;
@@ -3569,37 +3786,54 @@ fn prefetch_homebrew_cask(
     }
     args.push(cask_token.to_string());
 
-    let mut child = ProcessCommand::new("brew")
+    reporter.idea_plugin_step_started(&format!(
+        "Fetching Homebrew cask ({})",
+        brew_command_display(&args)
+    ))?;
+    let mut child = match ProcessCommand::new("brew")
         .args(&args)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|error| {
-            CliError::new(
+    {
+        Ok(child) => child,
+        Err(error) => {
+            reporter.idea_plugin_step_failed("Could not start Homebrew fetch")?;
+            return Err(CliError::new(
                 "HOMEBREW_NOT_FOUND",
                 format!("Unable to run `brew`: {error}"),
-            )
-        })?;
+            ));
+        }
+    };
 
     loop {
-        if let Some(status) = child.try_wait()? {
+        let status = match child.try_wait() {
+            Ok(Some(status)) => status,
+            Ok(None) => {
+                reporter.idea_plugin_download_progress(file_size(download_cache).unwrap_or(0))?;
+                thread::sleep(Duration::from_millis(100));
+                continue;
+            }
+            Err(error) => {
+                reporter.idea_plugin_step_failed("Could not monitor Homebrew fetch")?;
+                return Err(error.into());
+            }
+        };
+        if status.success() {
             let downloaded_bytes = file_size(download_cache).unwrap_or(0);
             reporter.idea_plugin_download_progress(downloaded_bytes)?;
             reporter.idea_plugin_download_finished(downloaded_bytes)?;
-            if !status.success() {
-                let mut error = CliError::new(
-                    "HOMEBREW_CASK_FETCH_FAILED",
-                    "Homebrew failed to fetch the Kast IDEA plugin cask.",
-                );
-                error
-                    .details
-                    .insert("command".to_string(), format!("brew {}", args.join(" ")));
-                return Err(error);
-            }
             return Ok(downloaded_bytes);
         }
-        reporter.idea_plugin_download_progress(file_size(download_cache).unwrap_or(0))?;
-        thread::sleep(Duration::from_millis(100));
+        reporter.idea_plugin_step_failed("Homebrew cask fetch failed")?;
+        let mut error = CliError::new(
+            "HOMEBREW_CASK_FETCH_FAILED",
+            "Homebrew failed to fetch the Kast IDEA plugin cask.",
+        );
+        error
+            .details
+            .insert("command".to_string(), brew_command_display(&args));
+        return Err(error);
     }
 }
 
@@ -3723,6 +3957,76 @@ fn jetbrains_plugin_dirs(root: &Path) -> Result<Vec<PathBuf>> {
             })
     });
     Ok(dirs.into_iter().map(|dir| dir.path).collect())
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn latest_jetbrains_ide_app_name() -> Result<Option<String>> {
+    let jetbrains_config_root = env::var_os("KAST_JETBRAINS_CONFIG_ROOT")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .map(config::normalize)
+        .unwrap_or_else(default_jetbrains_config_root);
+    latest_jetbrains_ide_app_name_under(&jetbrains_config_root)
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn latest_jetbrains_ide_app_name_under(root: &Path) -> Result<Option<String>> {
+    if !root.is_dir() {
+        return Ok(None);
+    }
+    let mut candidates = vec![];
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        let Some((product, year, minor, patch)) = parse_jetbrains_profile_name(name) else {
+            continue;
+        };
+        let Some(app_name) = jetbrains_profile_app_name(&product) else {
+            continue;
+        };
+        candidates.push((
+            jetbrains_app_preference(&product),
+            year,
+            minor,
+            patch,
+            app_name,
+        ));
+    }
+    candidates.sort_by(|left, right| {
+        left.0
+            .cmp(&right.0)
+            .then_with(|| right.1.cmp(&left.1))
+            .then_with(|| right.2.cmp(&left.2))
+            .then_with(|| right.3.cmp(&left.3))
+            .then_with(|| left.4.cmp(right.4))
+    });
+    Ok(candidates
+        .first()
+        .map(|(_, _, _, _, app_name)| app_name.to_string()))
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn jetbrains_profile_app_name(product: &str) -> Option<&'static str> {
+    match product {
+        "IntelliJIdea" => Some("IntelliJ IDEA"),
+        "AndroidStudio" => Some("Android Studio"),
+        _ => None,
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn jetbrains_app_preference(product: &str) -> u8 {
+    match product {
+        "IntelliJIdea" => 0,
+        "AndroidStudio" => 1,
+        _ => 2,
+    }
 }
 
 fn parse_jetbrains_profile_name(name: &str) -> Option<(String, u32, u32, u32)> {
@@ -3923,6 +4227,37 @@ mod tests {
                 "GoLand2024.2/plugins",
                 "PyCharmCE2024.1/plugins",
             ]
+        );
+    }
+
+    #[test]
+    fn latest_jetbrains_ide_app_name_prefers_newest_intellij_then_android_studio() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        for dir in [
+            "AndroidStudio2026.2",
+            "IntelliJIdea2025.1",
+            "IntelliJIdea2026.1",
+            "GoLand2026.3",
+        ] {
+            fs::create_dir_all(root.join(dir)).unwrap();
+        }
+
+        assert_eq!(
+            latest_jetbrains_ide_app_name_under(root)
+                .unwrap()
+                .as_deref(),
+            Some("IntelliJ IDEA")
+        );
+
+        fs::remove_dir_all(root.join("IntelliJIdea2025.1")).unwrap();
+        fs::remove_dir_all(root.join("IntelliJIdea2026.1")).unwrap();
+
+        assert_eq!(
+            latest_jetbrains_ide_app_name_under(root)
+                .unwrap()
+                .as_deref(),
+            Some("Android Studio")
         );
     }
 

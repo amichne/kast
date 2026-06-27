@@ -25,6 +25,7 @@ Use JSON output when a result will drive later steps:
 
 ```sh
 kast --output json agent up --workspace-root "$PWD" --dry-run
+kast --output json agent up --workspace-root "$PWD" --no-onboard
 kast --output json agent setup auto --dry-run
 kast agent ready --output json
 kast --output json agent workflow verify --workspace-root "$PWD"
@@ -38,6 +39,8 @@ kast --output json agent workflow package-verify --workspace-root "$PWD" \
 Use `--backend idea` or `--backend headless` when the runtime choice must be
 explicit. Keep `--workspace-root "$PWD"` or an absolute workspace path on every
 agent call so runtime and source-index state are tied to the intended project.
+Use `--no-onboard` for `agent up` in automation when a human terminal might be
+attached; first-run interactive onboarding is an operator flow.
 Use package verification `--require-*` flags only for resources the task needs.
 When a Copilot, skill, or instruction package was installed with
 `agent setup ... --target-dir`, pass that same setup target with
