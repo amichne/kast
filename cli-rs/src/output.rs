@@ -2,9 +2,9 @@ use crate::cli::{AgentSetupHarness, OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ActivateBundleResult, AgentSetupAutoPlan, AgentSetupSelectionSource,
-    InstallCopilotPackageResult, InstallIdeaPluginResult, InstallInstructionsResult, InstallResult,
-    InstallShellResult, InstallSkillResult,
+    ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult, AgentSetupAutoPlan,
+    AgentSetupSelectionSource, InstallCopilotPackageResult, InstallIdeaPluginResult,
+    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
 };
 use crate::orchestration::AgentUpResult;
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
@@ -187,12 +187,71 @@ fn render_markdown_for_test(markdown: &str, style: RenderStyle) -> String {
 pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
         InstallResult::ActivateBundle(result) => print_activate_bundle_install(result),
+        InstallResult::AgentGuidance(result) => print_agent_guidance_setup_result(result),
         InstallResult::Skill(result) => print_skill_install(result),
         InstallResult::Instructions(result) => print_instructions_install(result),
         InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
     }
+}
+
+pub fn print_agent_guidance_setup_plan(result: &AgentGuidanceSetupPlan) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast agent setup plan");
+    mdln!(document);
+    mdln!(document, "- Skill target: `{}`", result.skill_target);
+    mdln!(
+        document,
+        "- Would run: `{}`",
+        result.install_command.join(" ")
+    );
+    mdln!(document, "- Force: {}", yes_no(result.force));
+    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
+    if !result.agents_md_targets.is_empty() {
+        mdln!(document);
+        mdln!(document, "## AGENTS.md targets");
+        for target in &result.agents_md_targets {
+            mdln!(
+                document,
+                "- `{}` exists {} will create {} will modify {}: {}",
+                target.path,
+                yes_no(target.exists),
+                yes_no(target.will_create),
+                yes_no(target.will_modify),
+                target.reason
+            );
+        }
+    }
+    print_markdown(&document.into_string())
+}
+
+pub fn print_agent_guidance_setup_result(result: &AgentGuidanceSetupResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast agent setup");
+    mdln!(document);
+    mdln!(document, "- Skill target: `{}`", result.skill.installed_at);
+    mdln!(
+        document,
+        "- Reused existing skill install: {}",
+        yes_no(result.skill.skipped)
+    );
+    mdln!(document, "- Setup skipped: {}", yes_no(result.skipped));
+    if !result.agents_md_targets.is_empty() {
+        mdln!(document);
+        mdln!(document, "## AGENTS.md targets");
+        for target in &result.agents_md_targets {
+            mdln!(
+                document,
+                "- `{}` created {} updated {} skipped {}",
+                target.path,
+                yes_no(target.created),
+                yes_no(target.updated),
+                yes_no(target.skipped)
+            );
+        }
+    }
+    print_markdown(&document.into_string())
 }
 
 pub fn print_agent_setup_auto_plan(result: &AgentSetupAutoPlan) -> Result<()> {
@@ -228,25 +287,19 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
     mdln!(document);
     mdln!(document, "- Ready: {}", yes_no(result.ok));
     mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
-    mdln!(
-        document,
-        "- Harness: `{}`",
-        agent_setup_harness_label(result.setup.harness)
-    );
-    mdln!(
-        document,
-        "- Selection source: `{}`",
-        agent_setup_source_label(result.setup.selection_source)
-    );
-    mdln!(document, "- Reason: {}", result.setup.reason);
-    if let Some(target_dir) = &result.setup.target_dir {
-        mdln!(document, "- Setup target: `{target_dir}`");
-    }
+    mdln!(document, "- Skill target: `{}`", result.setup.skill_target);
     mdln!(
         document,
         "- Setup command: `{}`",
         result.setup.install_command.join(" ")
     );
+    if !result.setup.agents_md_targets.is_empty() {
+        mdln!(
+            document,
+            "- AGENTS.md targets: {}",
+            result.setup.agents_md_targets.len()
+        );
+    }
     mdln!(
         document,
         "- Runtime command: `{}`",
@@ -296,6 +349,11 @@ fn install_summary(result: &InstallResult) -> InstallSummary<'_> {
         InstallResult::ActivateBundle(result) => InstallSummary {
             kind: "bundle",
             target: &result.installed_at,
+            skipped: Some(result.skipped),
+        },
+        InstallResult::AgentGuidance(result) => InstallSummary {
+            kind: "agent guidance",
+            target: &result.skill.installed_at,
             skipped: Some(result.skipped),
         },
         InstallResult::Skill(result) => InstallSummary {

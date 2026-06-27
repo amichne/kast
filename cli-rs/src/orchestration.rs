@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::error::{CliError, CliErrorResponse};
-use crate::install::{AgentSetupAutoPlan, InstallResult};
+use crate::install::{AgentGuidanceSetupPlan, InstallResult};
 use crate::runtime::WorkspaceEnsureResult;
 use serde::Serialize;
 
@@ -11,7 +11,7 @@ pub struct AgentUpResult {
     pub result_type: &'static str,
     pub ok: bool,
     pub dry_run: bool,
-    pub setup: AgentSetupAutoPlan,
+    pub setup: AgentGuidanceSetupPlan,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -23,7 +23,7 @@ pub struct AgentUpResult {
 }
 
 impl AgentUpResult {
-    pub fn dry_run(setup: AgentSetupAutoPlan, runtime_command: Vec<String>) -> Self {
+    pub fn dry_run(setup: AgentGuidanceSetupPlan, runtime_command: Vec<String>) -> Self {
         Self {
             result_type: "AGENT_UP",
             ok: true,
@@ -38,7 +38,7 @@ impl AgentUpResult {
     }
 
     pub fn success(
-        setup: AgentSetupAutoPlan,
+        setup: AgentGuidanceSetupPlan,
         install: InstallResult,
         runtime: WorkspaceEnsureResult,
         runtime_command: Vec<String>,
@@ -57,7 +57,7 @@ impl AgentUpResult {
     }
 
     pub fn failure(
-        setup: AgentSetupAutoPlan,
+        setup: AgentGuidanceSetupPlan,
         install: Option<InstallResult>,
         runtime: Option<WorkspaceEnsureResult>,
         runtime_command: Vec<String>,

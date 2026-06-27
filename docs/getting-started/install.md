@@ -76,37 +76,23 @@ runtime guidance, and catalog-backed tools at startup.
     install time. `kast ready` verifies those manifest-backed files and fails
     closed when an installed output is missing or tampered.
 
-??? tip "Harness-neutral agent setup"
-    Copilot is the default developer-machine path, but some enterprise
-    environments need portable skills or Markdown instructions instead of the
+??? tip "Harness-agnostic agent setup"
+    Some enterprise environments need guidance and tooling exposure without a
     Copilot package or any MCP-dependent integration. Use
     `kast agent up --dry-run` to inspect setup plus runtime warmup, or
-    `kast agent setup auto --harness ...` when only the resource package should
-    be installed:
+    `kast agent setup --dry-run` when only the skill and `AGENTS.md` guidance
+    should be installed:
 
-    ```console title="Select the repository agent harness"
+    ```console title="Install repository agent guidance"
     kast agent up --dry-run
-    kast agent setup auto --dry-run
-    kast agent setup auto --harness copilot
-    kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
-    kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
-    kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
-    kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
+    kast agent setup --dry-run
+    kast agent setup
+    kast agent setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
     ```
 
-    Repository auto-detection recognizes existing `.agents/skills`,
-    `.codex/skills`, `.github/skills`, `.claude/skills`,
-    `.agents/instructions`, `.codex/instructions`, `.github/instructions`,
-    and `.claude/instructions` roots as portable roots. These roots win before
-    the default Copilot package path.
-
-    Set a machine or workspace preference when the same harness should win
-    over repository auto-detection:
-
-    ```toml title="$HOME/.config/kast/config.toml"
-    [projectOpen]
-    agentHarness = "instructions"
-    ```
+    The command installs `.agents/skills/kast` and, when root `AGENTS.md`
+    already exists, patches only a `<!-- BEGIN KAST MANAGED -->` fenced region.
+    Pass `--agents-md` for additional explicit scoped `AGENTS.md` targets.
 
 ??? info "Homebrew-managed IDE plugin"
     The IDEA or Android Studio plugin is part of the macOS developer install.

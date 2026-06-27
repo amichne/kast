@@ -267,16 +267,13 @@ pub enum AgentCommand {
 pub struct AgentUpArgs {
     #[command(flatten)]
     pub runtime: RuntimeArgs,
-    /// Agent harness resource to install. Defaults to projectOpen.agentHarness, then repository detection.
-    #[arg(long, value_enum)]
-    pub harness: Option<AgentSetupHarness>,
-    /// Target directory for the selected harness. Defaults under the resolved workspace root.
-    #[arg(long)]
-    pub target_dir: Option<PathBuf>,
+    /// Additional AGENTS.md files to patch with Kast managed guidance.
+    #[arg(long = "agents-md")]
+    pub agents_md: Vec<PathBuf>,
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
-    /// Do not add managed package paths to Git info/exclude.
+    /// Do not add the managed skill path to Git info/exclude.
     #[arg(long)]
     pub no_auto_exclude_git: bool,
     /// Explain setup and runtime actions without writing files or starting a backend.
@@ -288,7 +285,28 @@ pub struct AgentUpArgs {
 #[command(disable_help_subcommand = true)]
 pub struct AgentSetupArgs {
     #[command(subcommand)]
-    pub command: AgentSetupCommand,
+    pub command: Option<AgentSetupCommand>,
+    #[command(flatten)]
+    pub guidance: AgentGuidanceSetupArgs,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+pub struct AgentGuidanceSetupArgs {
+    /// Absolute workspace root for harness-agnostic agent resource setup.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
+    /// Additional AGENTS.md files to patch with Kast managed guidance.
+    #[arg(long = "agents-md")]
+    pub agents_md: Vec<PathBuf>,
+    /// Overwrite modified Kast managed regions.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Do not add the managed skill path to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
+    /// Explain setup without writing files.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Subcommand, Clone)]
