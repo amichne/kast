@@ -1,7 +1,7 @@
-# Kast
-[![CI](https://github.com/amichne/kast/actions/workflows/ci.yml/badge.svg)](https://github.com/amichne/kast/actions/workflows/ci.yml)
+<a href="https://deepwiki.com/amichne/kast"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a> [![CI](https://github.com/amichne/kast/actions/workflows/ci.yml/badge.svg)](https://github.com/amichne/kast/actions/workflows/ci.yml)
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/amichne/kast)
+# Kast
+
 
 `kast` gives Copilot, terminal workflows, CI jobs, and hosted agents
 compiler-backed Kotlin answers. Use it when text search can show where a name
