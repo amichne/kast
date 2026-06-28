@@ -52,7 +52,7 @@ class IdeaBackendPerformanceTest {
 
         // Warmup
         repeat(100) {
-            telemetry.inSpan(IdeaTelemetryScope.RESOLVE, "warmup") { 42 }
+            assertEquals(42, telemetry.inSpan(IdeaTelemetryScope.RESOLVE, "warmup") { 42 })
         }
 
         val elapsed = measureTimeMillis {
@@ -103,7 +103,7 @@ class IdeaBackendPerformanceTest {
         val iterations = 100
 
         repeat(20) {
-            telemetry.inSpan(IdeaTelemetryScope.RESOLVE, "warmup") { 42 }
+            assertEquals(42, telemetry.inSpan(IdeaTelemetryScope.RESOLVE, "warmup") { 42 })
         }
 
         val elapsed = measureTimeMillis {
@@ -176,6 +176,8 @@ class IdeaBackendOperationPerformanceTest {
         )
 
         private const val FIND_REFERENCES_BUDGET_MS = 5_000L
+        private const val FIND_REFERENCES_P95_BUDGET_MS = 1_000L
+        private const val FIND_REFERENCES_P95_ITERATIONS = 10
         private const val DIAGNOSTICS_BUDGET_MS = 10_000L
         private const val WORKSPACE_SYMBOL_SEARCH_BUDGET_MS = 5_000L
 
@@ -299,6 +301,42 @@ class IdeaBackendOperationPerformanceTest {
         println("findReferences_public_ms: $elapsed")
         assertTrue(elapsed < FIND_REFERENCES_BUDGET_MS) {
             "findReferences for public symbol took ${elapsed}ms, exceeds ${FIND_REFERENCES_BUDGET_MS}ms budget"
+        }
+    }
+
+    @Test
+    fun `findReferences for warm public symbol stays under p95 budget`() = runBlocking {
+        ensureProjectReady()
+
+        val (filePath, offset) = readAction {
+            publicFileFixture.get().virtualFile.path to
+                publicFileFixture.get().text.indexOf("publicHelper")
+        }
+        val backend = backend()
+        val query = ReferencesQuery(
+            position = FilePosition(filePath = filePath, offset = offset),
+            includeDeclaration = false,
+        )
+
+        backend.findReferences(query)
+        val durations = List(FIND_REFERENCES_P95_ITERATIONS) {
+            var candidateFileCount = Int.MAX_VALUE
+            val elapsed = measureTimeMillis {
+                val result = backend.findReferences(query)
+                assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
+                candidateFileCount = result.searchScope?.candidateFileCount ?: Int.MAX_VALUE
+            }
+            assertTrue(candidateFileCount <= 1) {
+                "Expected text-index candidate discovery to avoid broad public search, got $candidateFileCount candidates"
+            }
+            elapsed
+        }.sorted()
+        val p95Index = ((durations.size * 95 + 99) / 100 - 1).coerceIn(0, durations.lastIndex)
+        val p95 = durations[p95Index]
+
+        println("findReferences_public_warm_p95_ms: $p95 durations=$durations")
+        assertTrue(p95 < FIND_REFERENCES_P95_BUDGET_MS) {
+            "findReferences warm public p95 was ${p95}ms, exceeds ${FIND_REFERENCES_P95_BUDGET_MS}ms budget"
         }
     }
 

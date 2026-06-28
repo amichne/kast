@@ -1,5 +1,6 @@
 package io.github.amichne.kast.server
 
+import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
@@ -52,6 +53,7 @@ import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.testing.FakeAnalysisBackend
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.serializer
 import kotlinx.serialization.json.Json
@@ -66,6 +68,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 import kotlin.io.path.readText
 
 class AnalysisDispatcherTest {
@@ -345,6 +348,43 @@ class AnalysisDispatcherTest {
 
         assertEquals("sample.greet", result.declaration?.fqName)
         assertEquals(1, result.references.size)
+    }
+
+    @Test
+    fun `dispatcher maps request timeout to timeout api error`() {
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = DispatcherTimeoutHealthBackend(FakeAnalysisBackend.sample(tempDir), delayMillis = 100),
+            config = AnalysisServerConfig(requestTimeoutMillis = 1),
+        )
+        val raw = runBlocking {
+            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "health"))
+        }
+
+        val response = json.parseToJsonElement(raw).jsonObject
+        val error = json.decodeFromJsonElement(JsonRpcErrorResponse.serializer(), response)
+
+        assertEquals("TIMEOUT", error.error.data?.code)
+        assertEquals(true, error.error.data?.retryable)
+        assertEquals("health", error.error.data?.details?.get("method"))
+        assertEquals("1", error.error.data?.details?.get("timeoutMillis"))
+    }
+
+    @Test
+    fun `dispatcher maps backend cancellation to timeout api error`() {
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = DispatcherCancellationHealthBackend(FakeAnalysisBackend.sample(tempDir)),
+            config = AnalysisServerConfig(requestTimeoutMillis = 1),
+        )
+        val raw = runBlocking {
+            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "health"))
+        }
+
+        val response = json.parseToJsonElement(raw).jsonObject
+        val error = json.decodeFromJsonElement(JsonRpcErrorResponse.serializer(), response)
+
+        assertEquals("TIMEOUT", error.error.data?.code)
+        assertEquals(true, error.error.data?.retryable)
+        assertEquals("health", error.error.data?.details?.get("method"))
     }
 
     @Test
@@ -889,4 +929,20 @@ class AnalysisDispatcherTest {
             String(input.readBytes(), StandardCharsets.ISO_8859_1)
         }
 
+}
+
+private class DispatcherTimeoutHealthBackend(
+    private val delegate: AnalysisBackend,
+    private val delayMillis: Long,
+) : AnalysisBackend by delegate {
+    override suspend fun health() = run {
+        delay(delayMillis)
+        delegate.health()
+    }
+}
+
+private class DispatcherCancellationHealthBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    override suspend fun health() = throw CancellationException("backend cancelled")
 }
