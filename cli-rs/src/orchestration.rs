@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::error::{CliError, CliErrorResponse};
-use crate::install::{AgentSetupAutoPlan, InstallResult};
+use crate::install::{AgentGuidanceSetupPlan, InstallResult};
 use crate::runtime::WorkspaceEnsureResult;
 use serde::Serialize;
 
@@ -12,7 +12,7 @@ pub struct AgentUpResult {
     pub ok: bool,
     pub stage: AgentUpStage,
     pub dry_run: bool,
-    pub setup: AgentSetupAutoPlan,
+    pub setup: AgentGuidanceSetupPlan,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,7 +48,7 @@ pub struct AgentUpNextAction {
 }
 
 impl AgentUpResult {
-    pub fn dry_run(setup: AgentSetupAutoPlan, runtime_command: Vec<String>) -> Self {
+    pub fn dry_run(setup: AgentGuidanceSetupPlan, runtime_command: Vec<String>) -> Self {
         let next_actions = vec![
             AgentUpNextAction {
                 label: "Run repository bring-up".to_string(),
@@ -81,7 +81,7 @@ impl AgentUpResult {
     }
 
     pub fn success(
-        setup: AgentSetupAutoPlan,
+        setup: AgentGuidanceSetupPlan,
         install: InstallResult,
         runtime: WorkspaceEnsureResult,
         runtime_command: Vec<String>,
@@ -105,7 +105,7 @@ impl AgentUpResult {
     }
 
     pub fn failure(
-        setup: AgentSetupAutoPlan,
+        setup: AgentGuidanceSetupPlan,
         install: Option<InstallResult>,
         runtime: Option<WorkspaceEnsureResult>,
         runtime_command: Vec<String>,
@@ -156,17 +156,23 @@ fn runtime_command_for_agent_up(
 }
 
 fn append_setup_args(command: &mut Vec<String>, install_command: &[String]) {
-    for window in install_command.windows(2) {
-        if window[0] == "--target-dir" {
-            command.push("--target-dir".to_string());
-            command.push(window[1].clone());
+    let mut index = 0;
+    while index < install_command.len() {
+        match install_command[index].as_str() {
+            "--agents-md" => {
+                if let Some(value) = install_command.get(index + 1) {
+                    command.push("--agents-md".to_string());
+                    command.push(value.clone());
+                    index += 2;
+                    continue;
+                }
+            }
+            "--force" | "--no-auto-exclude-git" => {
+                command.push(install_command[index].clone());
+            }
+            _ => {}
         }
-    }
-    if let Some(harness) = install_command.get(3)
-        && matches!(harness.as_str(), "copilot" | "skill" | "instructions")
-    {
-        command.push("--harness".to_string());
-        command.push(harness.clone());
+        index += 1;
     }
 }
 
@@ -198,7 +204,7 @@ fn failure_stage(code: &'static str) -> AgentUpStage {
 
 fn failure_guidance(
     error: &CliError,
-    setup: &AgentSetupAutoPlan,
+    setup: &AgentGuidanceSetupPlan,
     runtime_command: &[String],
 ) -> (Vec<AgentUpNextAction>, Vec<String>) {
     if let Some(command) = error.details.get("installCommand") {
@@ -249,7 +255,7 @@ fn failure_guidance(
     }
 }
 
-fn forced_setup_command(setup: &AgentSetupAutoPlan) -> Vec<String> {
+fn forced_setup_command(setup: &AgentGuidanceSetupPlan) -> Vec<String> {
     let mut argv = setup.install_command.clone();
     if !argv.iter().any(|arg| arg == "--force" || arg == "-f") {
         argv.push("--force".to_string());

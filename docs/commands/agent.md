@@ -30,23 +30,24 @@ parse stdout and keep stderr for diagnostics.
 ## Bring Up A Repository
 
 Use `kast agent up` when a repository should be ready for an agent in one
-step. It selects the agent harness, installs the selected resource package, and
-warms the runtime for the resolved workspace root.
+step. It installs harness-agnostic agent guidance, installs the packaged skill
+under `.agents/skills/kast`, and warms the runtime for the resolved workspace
+root.
 
 ```console title="Plan and run agent bring-up"
 kast agent up --dry-run
 kast agent up --workspace-root "$PWD"
 kast agent up --workspace-root "$PWD" --backend=headless
-kast agent up --harness instructions --workspace-root "$PWD" --dry-run
+kast agent up --agents-md "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
 ```
 
 In a smart interactive terminal, the first eligible `kast agent up` can offer
 automatic IDEA setup. If accepted, choose whether Kast saves IDEA as the
-default backend, automatic IDEA launch, the Copilot agent harness, and
-project-open auto-init as global machine defaults or for this repository only.
-The JetBrains plugin is still installed or refreshed at machine scope, and the
-selected agent resource package is still written under the workspace. Use
-`--no-onboard` to skip that first-run prompt, and use `--output json` in
+default backend, automatic IDEA launch, and project-open auto-init as global
+machine defaults or for this repository only. The JetBrains plugin is still
+installed or refreshed at machine scope, and harness-agnostic guidance is still
+written under the workspace. Use `--no-onboard` to skip that first-run prompt,
+and use `--output json` in
 scripts so onboarding never prompts.
 
 When `--workspace-root` is supplied, setup targets that repository instead of
@@ -59,30 +60,21 @@ explain what happened and what the user should do next.
 
 ## Setup
 
-Use `kast agent setup` to install repository-local agent resources. Copilot
-repositories usually use the full LSP package, while enterprise or portable
-harnesses can select skills or Markdown instructions without relying on a
-Copilot extension or MCP availability.
+Use `kast agent setup` to install harness-agnostic agent resources. The default
+setup writes the packaged skill to `.agents/skills/kast` and patches an
+existing root `AGENTS.md` with a Kast-managed fenced region. User guidance
+outside that fence remains authored repository text.
 
-```console title="Choose an agent harness"
-kast agent setup copilot
-kast agent setup auto --dry-run
-kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
-kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
-kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
-kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
+```console title="Install harness-agnostic agent guidance"
+kast agent setup --dry-run
+kast agent setup
+kast agent setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
 ```
 
-When `--harness` is omitted, `kast agent setup auto` reads
-`projectOpen.agentHarness` from config before falling back to repository
-detection. Existing portable skill roots include `.agents/skills`,
-`.codex/skills`, `.github/skills`, and `.claude/skills`; existing instruction
-roots include `.agents/instructions`, `.codex/instructions`,
-`.github/instructions`, and `.claude/instructions`. Those roots win before the
-default Copilot package path.
-In JSON dry-runs, `targetDir` reports the resolved package target and
-`installCommand` includes that target plus the executable token used for the dry
-run, so copied binaries and absolute CLI paths remain directly callable.
+When root `AGENTS.md` is missing, default setup installs only the skill.
+Pass `--agents-md <path/to/AGENTS.md>` to explicitly create or patch a scoped
+guidance file. In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and
+`installCommand` report the exact writes and equivalent command.
 
 ## Tool Discovery
 

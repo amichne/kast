@@ -1110,6 +1110,19 @@ fn required_resource_recovery_argv(
     kind: self_mgmt::ManagedResourceKind,
     target_paths: &[String],
 ) -> Vec<String> {
+    if kind == self_mgmt::ManagedResourceKind::AgentGuidance {
+        let mut argv = vec![
+            current_executable_argument(),
+            "agent".to_string(),
+            "setup".to_string(),
+        ];
+        if let Some(target) = target_paths.first() {
+            argv.push("--agents-md".to_string());
+            argv.push(target.clone());
+        }
+        argv.push("--force".to_string());
+        return argv;
+    }
     let mut argv = vec![
         current_executable_argument(),
         "agent".to_string(),
@@ -1136,6 +1149,7 @@ fn required_resource_recovery_target_dir(
                 .parent()
                 .map(|parent| parent.display().to_string())
         }
+        self_mgmt::ManagedResourceKind::AgentGuidance => Some(target.clone()),
     }
 }
 
@@ -1144,6 +1158,7 @@ fn required_resource_harness(kind: self_mgmt::ManagedResourceKind) -> &'static s
         self_mgmt::ManagedResourceKind::CopilotPackage => "copilot",
         self_mgmt::ManagedResourceKind::Skill => "skill",
         self_mgmt::ManagedResourceKind::Instructions => "instructions",
+        self_mgmt::ManagedResourceKind::AgentGuidance => "agent-guidance",
     }
 }
 
@@ -1152,6 +1167,7 @@ fn required_resource_label(kind: self_mgmt::ManagedResourceKind) -> &'static str
         self_mgmt::ManagedResourceKind::CopilotPackage => "COPILOT_PACKAGE",
         self_mgmt::ManagedResourceKind::Skill => "SKILL",
         self_mgmt::ManagedResourceKind::Instructions => "INSTRUCTIONS",
+        self_mgmt::ManagedResourceKind::AgentGuidance => "AGENT_GUIDANCE",
     }
 }
 
@@ -1213,6 +1229,7 @@ fn standard_resource_targets(
                 ".claude/instructions",
             ],
         ),
+        self_mgmt::ManagedResourceKind::AgentGuidance => vec![workspace_root.join("AGENTS.md")],
     }
 }
 

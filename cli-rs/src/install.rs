@@ -12,7 +12,8 @@ use crate::cli::{
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::manifest::{
-    self, ManagedRepoResource, ManagedResourceKind, ManagedResourceOutputChecksum,
+    self, ManagedRepoResource, ManagedResourceChecksumRegion, ManagedResourceKind,
+    ManagedResourceOutputChecksum,
 };
 use crate::self_mgmt;
 use flate2::read::GzDecoder;
@@ -51,6 +52,8 @@ const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
 const COPILOT_GIT_EXCLUDE_BLOCK_START: &str = "# >>> kast copilot package >>>";
 const COPILOT_GIT_EXCLUDE_BLOCK_END: &str = "# <<< kast copilot package <<<";
+const KAST_MANAGED_FENCE_START: &str = "<!-- BEGIN KAST MANAGED -->";
+const KAST_MANAGED_FENCE_END: &str = "<!-- END KAST MANAGED -->";
 
 pub trait InstallReporter {
     fn idea_plugin_step_started(&mut self, _message: &str) -> Result<()> {
@@ -223,6 +226,52 @@ pub struct InstallSkillResult {
     pub schema_version: u32,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentGuidanceSetupPlan {
+    #[serde(rename = "type")]
+    pub result_type: &'static str,
+    pub skill_target: String,
+    pub agents_md_targets: Vec<AgentsMdTargetPlan>,
+    pub install_command: Vec<String>,
+    pub force: bool,
+    pub dry_run: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentsMdTargetPlan {
+    pub path: String,
+    pub exists: bool,
+    pub will_create: bool,
+    pub managed_region_present: bool,
+    pub will_modify: bool,
+    pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentGuidanceSetupResult {
+    #[serde(rename = "type")]
+    pub result_type: &'static str,
+    pub skill: InstallSkillResult,
+    pub agents_md_targets: Vec<AgentsMdTargetResult>,
+    pub install_command: Vec<String>,
+    pub skipped: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentsMdTargetResult {
+    pub path: String,
+    pub created: bool,
+    pub updated: bool,
+    pub skipped: bool,
+    pub managed_region_sha256: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallInstructionsResult {
@@ -367,6 +416,7 @@ pub struct InstallRepairResult {
 #[serde(untagged)]
 pub enum InstallResult {
     ActivateBundle(ActivateBundleResult),
+    AgentGuidance(AgentGuidanceSetupResult),
     Skill(InstallSkillResult),
     Instructions(InstallInstructionsResult),
     Copilot(InstallCopilotPackageResult),
@@ -453,6 +503,281 @@ pub fn activate_bundle(args: ActivateBundleArgs) -> Result<ActivateBundleResult>
     install_validated_bundle(&bundle, &targets)?;
     verify_activated_bundle(&bundle, &targets)?;
     Ok(activate_bundle_result(&bundle, &targets, false, false))
+}
+
+pub fn agent_guidance_setup_plan(
+    args: &cli::AgentGuidanceSetupArgs,
+    install_command: Vec<String>,
+) -> Result<AgentGuidanceSetupPlan> {
+    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
+    let skill_target = workspace_root.join(".agents/skills/kast");
+    let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args.agents_md)?;
+    let agents_md_targets = agents_md_targets
+        .iter()
+        .map(agents_md_target_plan)
+        .collect::<Result<Vec<_>>>()?;
+    Ok(AgentGuidanceSetupPlan {
+        result_type: "AGENT_SETUP_PLAN",
+        skill_target: skill_target.display().to_string(),
+        agents_md_targets,
+        install_command,
+        force: args.force,
+        dry_run: args.dry_run,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub fn install_agent_guidance(
+    args: cli::AgentGuidanceSetupArgs,
+    install_command: Vec<String>,
+) -> Result<AgentGuidanceSetupResult> {
+    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
+    let skill = install_skill(ResourceInstallArgs {
+        target_dir: Some(workspace_root.join(".agents/skills")),
+        name: Some("kast".to_string()),
+        force: args.force,
+        no_auto_exclude_git: args.no_auto_exclude_git,
+    })?;
+    let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args.agents_md)?;
+    let mut agent_results = Vec::with_capacity(agents_md_targets.len());
+    for target in &agents_md_targets {
+        agent_results.push(install_agents_md_guidance(target, args.force)?);
+    }
+    let skipped = skill.skipped && agent_results.iter().all(|target| target.skipped);
+    Ok(AgentGuidanceSetupResult {
+        result_type: "AGENT_SETUP",
+        skill,
+        agents_md_targets: agent_results,
+        install_command,
+        skipped,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+#[derive(Debug, Clone)]
+struct AgentsMdTarget {
+    path: PathBuf,
+    explicit: bool,
+}
+
+fn resolve_agents_md_targets(
+    workspace_root: &Path,
+    explicit_targets: &[PathBuf],
+) -> Result<Vec<AgentsMdTarget>> {
+    let mut targets = Vec::new();
+    let root_agents = workspace_root.join("AGENTS.md");
+    if root_agents.is_file() {
+        targets.push(AgentsMdTarget {
+            path: config::normalize(root_agents),
+            explicit: false,
+        });
+    }
+    for target in explicit_targets {
+        let path = if target.is_absolute() {
+            target.clone()
+        } else {
+            workspace_root.join(target)
+        };
+        let path = config::normalize(path);
+        if path.file_name().and_then(|name| name.to_str()) != Some("AGENTS.md") {
+            return Err(CliError::new(
+                "AGENT_GUIDANCE_TARGET_INVALID",
+                format!(
+                    "Kast agent guidance targets must be AGENTS.md files: {}",
+                    path.display()
+                ),
+            ));
+        }
+        if !targets.iter().any(|existing| existing.path == path) {
+            targets.push(AgentsMdTarget {
+                path,
+                explicit: true,
+            });
+        }
+    }
+    Ok(targets)
+}
+
+fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> {
+    let exists = target.path.exists();
+    let content = if exists {
+        Some(fs::read_to_string(&target.path)?)
+    } else {
+        None
+    };
+    let managed_region_present = content
+        .as_deref()
+        .is_some_and(|content| find_kast_managed_fence(content).is_some());
+    let expected = render_agents_md_guidance_block();
+    let will_modify = match content.as_deref() {
+        Some(content) => find_kast_managed_fence(content)
+            .map(|range| content[range] != expected)
+            .unwrap_or(true),
+        None => target.explicit,
+    };
+    let reason = if exists {
+        if target.explicit {
+            "explicit AGENTS.md target".to_string()
+        } else {
+            "root AGENTS.md exists".to_string()
+        }
+    } else if target.explicit {
+        "explicit AGENTS.md target will be created".to_string()
+    } else {
+        "root AGENTS.md does not exist".to_string()
+    };
+    Ok(AgentsMdTargetPlan {
+        path: target.path.display().to_string(),
+        exists,
+        will_create: !exists && target.explicit,
+        managed_region_present,
+        will_modify,
+        reason,
+    })
+}
+
+fn install_agents_md_guidance(
+    target: &AgentsMdTarget,
+    force: bool,
+) -> Result<AgentsMdTargetResult> {
+    let expected = render_agents_md_guidance_block();
+    let existed = target.path.exists();
+    let original = if existed {
+        fs::read_to_string(&target.path)?
+    } else {
+        String::new()
+    };
+    let current_region =
+        find_kast_managed_fence(&original).map(|range| original[range].to_string());
+    if let Some(region) = &current_region {
+        let current_sha = manifest::sha256_bytes(region.as_bytes());
+        let expected_sha = manifest::sha256_bytes(expected.as_bytes());
+        let manifest_sha = managed_region_manifest_checksum(&target.path)?;
+        let changed_from_manifest = manifest_sha
+            .as_deref()
+            .is_some_and(|recorded| recorded != current_sha);
+        let unmanaged_different_region = manifest_sha.is_none() && current_sha != expected_sha;
+        if (changed_from_manifest || unmanaged_different_region) && !force {
+            return Err(CliError::new(
+                "INSTALL_MANAGED_OUTPUT_MODIFIED",
+                format!(
+                    "Kast managed guidance in {} was modified. Move custom content outside the Kast fence or pass --force to replace only the fenced region.",
+                    target.path.display()
+                ),
+            ));
+        }
+    }
+
+    let updated_content = replace_or_append_kast_managed_fence(&original, &expected);
+    let updated = updated_content != original;
+    if updated {
+        write_file_atomically(&target.path, updated_content.as_bytes())?;
+    } else if !existed && target.explicit {
+        write_file_atomically(&target.path, expected.as_bytes())?;
+    }
+    let region_sha = manifest::kast_managed_fence_sha256(&target.path)?;
+    if let Some(repo_root) = resource_repo_root(&target.path) {
+        self_mgmt::record_repo_resource(
+            &repo_root,
+            ManagedRepoResource {
+                kind: ManagedResourceKind::AgentGuidance,
+                target_path: target.path.display().to_string(),
+                primitive_version: cli::version().to_string(),
+                source_bundle_sha256: manifest::sha256_bytes(expected.as_bytes()),
+                output_paths: vec![target.path.display().to_string()],
+                output_checksums: vec![ManagedResourceOutputChecksum {
+                    path: target.path.display().to_string(),
+                    sha256: region_sha.clone(),
+                    region: Some(ManagedResourceChecksumRegion::KastManagedFence),
+                }],
+                installed_at: current_timestamp(),
+                history: vec![],
+            },
+        )?;
+    }
+    Ok(AgentsMdTargetResult {
+        path: target.path.display().to_string(),
+        created: !existed,
+        updated,
+        skipped: !updated,
+        managed_region_sha256: region_sha,
+    })
+}
+
+fn managed_region_manifest_checksum(path: &Path) -> Result<Option<String>> {
+    let normalized = config::normalize(path.to_path_buf());
+    Ok(self_mgmt::read_global_install_state()?.and_then(|install| {
+        install.repos.into_iter().find_map(|repo| {
+            repo.resources.into_iter().find_map(|resource| {
+                if resource.kind == ManagedResourceKind::AgentGuidance
+                    && config::normalize(PathBuf::from(&resource.target_path)) == normalized
+                {
+                    resource.output_checksums.into_iter().find_map(|checksum| {
+                        (checksum.region == Some(ManagedResourceChecksumRegion::KastManagedFence))
+                            .then_some(checksum.sha256)
+                    })
+                } else {
+                    None
+                }
+            })
+        })
+    }))
+}
+
+fn render_agents_md_guidance_block() -> String {
+    [
+        KAST_MANAGED_FENCE_START,
+        "## Kast Agent Guidance",
+        "",
+        "- Use `.agents/skills/kast/SKILL.md` as the first-stop Kast guidance for Kotlin, Gradle, and repository semantic work.",
+        "- Confirm the active CLI exposes `kast agent tools` and `kast agent workflow --help` before relying on installed guidance.",
+        "- Use `kast agent tools` for harness-agnostic tool discovery, then invoke the returned `result.invocation.argv` for catalog-backed calls.",
+        "- Use `kast agent workflow ...` for repeated semantic sequences and `kast agent up --workspace-root \"$PWD\" --dry-run` to inspect setup/runtime actions.",
+        "- Verify managed resources with the packaged skill verifier or `kast agent workflow package-verify` before trusting stale installed state.",
+        KAST_MANAGED_FENCE_END,
+    ]
+    .join("\n")
+}
+
+fn find_kast_managed_fence(content: &str) -> Option<std::ops::Range<usize>> {
+    let start = content.find(KAST_MANAGED_FENCE_START)?;
+    let after_start = start + KAST_MANAGED_FENCE_START.len();
+    let relative_end = content[after_start..].find(KAST_MANAGED_FENCE_END)?;
+    let end = after_start + relative_end + KAST_MANAGED_FENCE_END.len();
+    Some(start..end)
+}
+
+fn replace_or_append_kast_managed_fence(original: &str, block: &str) -> String {
+    if let Some(range) = find_kast_managed_fence(original) {
+        let mut updated = String::with_capacity(original.len() + block.len());
+        updated.push_str(&original[..range.start]);
+        updated.push_str(block.trim_end());
+        updated.push_str(&original[range.end..]);
+        return updated;
+    }
+    let mut updated = original.to_string();
+    if !updated.is_empty() && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+    if !updated.is_empty() {
+        updated.push('\n');
+    }
+    updated.push_str(block);
+    updated
+}
+
+fn write_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("AGENTS.md");
+    let tmp = path.with_file_name(format!(".{file_name}.kast-tmp-{}", std::process::id()));
+    fs::write(&tmp, contents)?;
+    fs::rename(&tmp, path)?;
+    Ok(())
 }
 
 fn bundle_source_root(source: &Path, scratch_root: &Path) -> Result<PathBuf> {
@@ -2826,6 +3151,7 @@ fn resource_output_checksums(paths: &[PathBuf]) -> Result<Vec<ManagedResourceOut
             Ok(ManagedResourceOutputChecksum {
                 path: path.display().to_string(),
                 sha256: manifest::sha256_file(path)?,
+                region: None,
             })
         })
         .collect()
@@ -3059,6 +3385,10 @@ fn git_exclude_markers(kind: ManagedResourceKind) -> (&'static str, &'static str
         ManagedResourceKind::Instructions => {
             ("# >>> kast instructions >>>", "# <<< kast instructions <<<")
         }
+        ManagedResourceKind::AgentGuidance => (
+            "# >>> kast agent guidance >>>",
+            "# <<< kast agent guidance <<<",
+        ),
     }
 }
 

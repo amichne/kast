@@ -1,6 +1,4 @@
-use crate::cli::{
-    AgentSetupHarness, AgentUpArgs, BackendName, IdeaPluginInstallArgs, OutputFormat,
-};
+use crate::cli::{AgentUpArgs, BackendName, IdeaPluginInstallArgs, OutputFormat};
 use crate::error::{CliError, Result};
 use crate::{config, install, self_mgmt};
 use dialoguer::{Confirm, Select};
@@ -145,9 +143,6 @@ fn prepare_current_invocation_for_idea(args: &mut AgentUpArgs) {
     if args.runtime.backend_name.is_none() {
         args.runtime.backend_name = Some(BackendName::Idea);
     }
-    if args.harness.is_none() {
-        args.harness = Some(AgentSetupHarness::Copilot);
-    }
 }
 
 fn mark_agent_up_onboarding_completed() -> Result<()> {
@@ -183,7 +178,6 @@ fn write_agent_up_onboarding_defaults(document: &mut toml::Table) -> Result<()> 
     idea_launch.insert("requireInstalledPlugin".to_string(), true.into());
 
     let project_open = table(document, "projectOpen")?;
-    project_open.insert("agentHarness".to_string(), "copilot".into());
     project_open.insert("profileAutoInit".to_string(), true.into());
 
     table(document, "onboarding")?.insert("agentUpCompleted".to_string(), true.into());
@@ -340,11 +334,9 @@ mod tests {
             .get("projectOpen")
             .and_then(toml::Value::as_table)
             .expect("project open");
-        assert_eq!(
-            project_open
-                .get("agentHarness")
-                .and_then(toml::Value::as_str),
-            Some("copilot")
+        assert!(
+            !project_open.contains_key("agentHarness"),
+            "onboarding must not force a harness-specific setup path"
         );
         assert_eq!(
             project_open

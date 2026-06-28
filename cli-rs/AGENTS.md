@@ -13,10 +13,11 @@ resource trust, agent command surface, and bundled agent resources.
   `kast agent call`, and `kast agent workflow`; `kast agent up`,
   `kast agent setup`, and `kast agent lsp` dispatch through operator handlers
   before JSON-envelope execution.
-- `kast agent setup auto` is harness-aware: an explicit `--harness` value
-  wins, then `projectOpen.agentHarness`, then repository detection.
-  Its `--dry-run` mode must stay read-only and explain the selected harness.
-- `kast agent up` composes harness-aware setup with `kast runtime up`.
+- `kast agent setup` installs harness-agnostic agent exposure: the packaged
+  skill under `.agents/skills/kast` plus Kast-managed fenced regions in
+  selected `AGENTS.md` files. Its `--dry-run` mode must stay read-only and
+  explain skill and `AGENTS.md` targets.
+- `kast agent up` composes harness-agnostic setup with `kast runtime up`.
   Its explicit `--workspace-root` must stay authoritative for setup targets,
   and `--dry-run` must not write resources or start a backend.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
@@ -36,6 +37,8 @@ The durable decision record for agent resources and workflows is
   or catalog schema validation with ad hoc string handling.
 - Treat generated or installed resource copies as outputs. Edit the authored
   resource source, then regenerate or reinstall from the active binary.
+- Treat `AGENTS.md` files as authored guidance. Kast may own only fenced
+  `<!-- BEGIN KAST MANAGED -->` regions inside explicitly targeted files.
 - Do not maintain compatibility helpers only for older binaries. Missing
   `kast agent` or `kast agent workflow` support is an incompatibility that
   requires upgrade or reinstall.

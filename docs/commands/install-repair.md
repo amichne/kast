@@ -11,28 +11,29 @@ Install commands write managed files. Run them deliberately, then use
 
 ## Repository resources
 
-Use `kast agent setup copilot` once per repository where Copilot should use Kast.
-The command targets the repository's `.github` directory and records managed
-resource checksums in the install manifest.
+Use `kast agent setup` once per repository where agents should discover Kast
+guidance without depending on a harness-specific package. The command installs
+the packaged skill under `.agents/skills/kast` and patches selected
+`AGENTS.md` files with a Kast-managed fenced region.
 
-```console title="Install repository-local Copilot files"
+```console title="Install harness-agnostic agent guidance"
 cd /path/to/your/repository
-kast agent setup copilot
-kast agent setup copilot --force
+kast agent setup
+kast agent setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
 ```
 
-Use `--force` after upgrading the machine binary or when `kast ready` reports
-stale repository outputs.
+Use `--force` after upgrading the machine binary or when a managed fenced
+region was intentionally reset to the active binary's guidance.
 
 Use `kast agent up` when setup and runtime warmup should happen together. Start
-with `--dry-run` to inspect the selected harness and workspace-root-derived
-targets before writing files or starting a backend.
+with `--dry-run` to inspect the skill target, `AGENTS.md` targets, and runtime
+command before writing files or starting a backend.
 In a smart interactive terminal, the first eligible non-JSON run can ask
 whether to apply automatic IDEA setup. Accepting lets the user save IDEA
-launch, the Copilot harness, and project-open auto-init as global machine
-defaults or for this repository only. The flow installs or refreshes the
-JetBrains plugin, then warms the repository runtime. Use `--no-onboard` when
-an interactive terminal should behave like automation.
+launch and project-open auto-init as global machine defaults or for this
+repository only. The flow installs or refreshes the JetBrains plugin, prepares
+harness-agnostic agent guidance, then warms the repository runtime. Use
+`--no-onboard` when an interactive terminal should behave like automation.
 In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
 the executable token used for the dry run, so copied binaries and absolute CLI
 paths remain directly callable.
@@ -44,43 +45,9 @@ kast agent up --workspace-root "$PWD" --backend=headless
 kast agent up --workspace-root "$PWD" --no-onboard
 ```
 
-Use `kast agent setup auto` when a repository or enterprise environment should
-choose a harness-neutral package without assuming Copilot. `--harness` is the
-most explicit selector. When it is omitted, Kast reads
-`projectOpen.agentHarness` from config before falling back to repository
-detection.
-In JSON dry-runs, `targetDir` reports the resolved package target and
-`installCommand` includes that target plus the executable token used for the dry
-run, so copied binaries and absolute CLI paths remain directly callable.
-
-```console title="Install the selected harness package"
-kast agent setup auto --dry-run
-kast agent setup auto --harness copilot
-kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
-kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
-kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
-kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
-```
-
-Repository auto-detection treats existing `.agents/skills`, `.codex/skills`,
-`.github/skills`, `.claude/skills`, `.agents/instructions`,
-`.codex/instructions`, `.github/instructions`, and `.claude/instructions`
-roots as portable roots. These roots win before the default Copilot package
-path.
-
-```toml title="$HOME/.config/kast/config.toml"
-[projectOpen]
-agentHarness = "instructions"
-```
-
-`kast agent setup instructions` and `kast agent setup skill` install lighter-weight
-agent resources for hosts that load Markdown instructions or skills instead of
-the full repository Copilot package.
-
-```console title="Install lightweight agent resources"
-kast agent setup instructions --target-dir "$PWD" --force
-kast agent setup skill --target-dir "$PWD" --force
-```
+In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and `installCommand`
+include the target paths plus the executable token used for the dry run, so
+copied binaries and absolute CLI paths remain directly callable.
 
 ## Machine repair
 

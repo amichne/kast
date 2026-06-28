@@ -1,21 +1,21 @@
 ---
 title: Install
 description: Install the macOS Homebrew CLI and IDEA plugin, then add
-  repository-local Copilot integrations where agents should use it.
+  repository-local agent guidance where agents should use it.
 icon: lucide/download
 ---
 
 # Developer Machine Install
 
 This page is the macOS developer-machine path. Homebrew owns the developer
-machine's CLI and IDEA or Android Studio plugin, while Copilot integration
-files belong to each repository.
+machine's CLI and IDEA or Android Studio plugin, while shared agent guidance
+belongs to each repository.
 
 | Scope | Command | Writes to | Repeat when |
 |-------|---------|-----------|-------------|
 | Machine CLI + IDE plugin | `brew install kast` | Homebrew-managed global binary on `PATH` and version-coupled `kast-plugin` cask | A macOS developer machine needs Kast |
 | Machine IDE plugin repair | `brew reinstall --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | Local IDE profile links need repair |
-| Repository | `kast agent setup copilot` | The current repository's `.github` directory | A repository should expose Kast to Copilot |
+| Repository | `kast agent setup` | The current repository's `.agents/skills/kast` and managed `AGENTS.md` fence | A repository should expose Kast guidance to agents |
 
 Linux CI, hosted agents, and server images use the separate
 [Headless Linux server](headless-linux.md) install path.
@@ -24,10 +24,10 @@ Linux CI, hosted agents, and server images use the separate
 
 Use this path on a macOS developer machine. A functional Homebrew install
 includes the global `kast` binary and the Homebrew-managed IDEA or Android
-Studio plugin, then the repository install adds Copilot package files to one
+Studio plugin, then the repository install adds shared agent guidance to one
 repository.
 
-```console title="Global binary, then repository Copilot files"
+```console title="Global binary, then repository agent guidance"
 brew tap amichne/kast
 brew install kast
 
@@ -39,15 +39,15 @@ kast agent up
 part of the Homebrew formula install, using the same cask path as
 `brew install --cask kast-plugin`. Restart IDEA or Android Studio after
 Homebrew links or refreshes the plugin, then restart after installing
-repository files so Copilot and IDE-hosted tooling discover `.github/lsp.json`,
-runtime guidance, and catalog-backed tools at startup.
+repository files so agents discover `.agents/skills/kast`, managed
+`AGENTS.md` guidance, runtime guidance, and catalog-backed tools at startup.
 
 On the first eligible run in a smart interactive terminal, `kast agent up`
 offers automatic IDEA setup for IDEA-backed agent workflows. Accepting lets
-you save IDEA as the default backend, automatic IDEA launch, the Copilot
-harness, and project-open auto-init either globally or for this repository only.
-It also installs or refreshes the JetBrains plugin, installs repository
-agent resources, and warms the workspace runtime. Scripts and repeatable setup
+you save IDEA as the default backend, automatic IDEA launch, and project-open
+auto-init either globally or for this repository only. It also installs or
+refreshes the JetBrains plugin, installs repository agent guidance, and warms
+the workspace runtime. Scripts and repeatable setup
 should use `kast agent up --no-onboard` or `kast --output json agent up ...`.
 
 ??? success "Homebrew machine install"
@@ -63,60 +63,46 @@ should use `kast agent up --no-onboard` or `kast --output json agent up ...`.
     kast ready
     ```
 
-??? tip "Repository Copilot integration"
+??? tip "Repository agent guidance"
     `kast agent up` is the normal repository bring-up command. When only the
-    repository package should be installed, `kast agent setup copilot` targets
-    the current working directory's `.github` directory. Run it from the
-    repository root, or pass an explicit `.github` target:
+    repository guidance should be installed, `kast agent setup` installs the
+    shared Kast skill and updates the selected `AGENTS.md` managed fences. Run
+    it from the repository root, or pass explicit targets:
 
     ```console title="Install into another repository"
     kast agent up --workspace-root /Users/alex/work/project --no-onboard
-    kast agent setup copilot --target-dir=/Users/alex/work/project/.github --force
+    kast agent setup --workspace-root /Users/alex/work/project --force
+    kast agent setup --workspace-root /Users/alex/work/project --agents-md /Users/alex/work/project/cli-rs/AGENTS.md --force
     ```
 
     The command writes managed files for the running CLI version:
 
-    - `.github/lsp.json`
-    - `.github/extensions/kast/extension.mjs`
-    - `.github/extensions/kast/_shared/kast-tools.mjs`
-    - `.github/extensions/kast/_shared/kast-trace.mjs`
+    - `.agents/skills/kast/SKILL.md`
+    - `.agents/skills/kast/references/quickstart.md`
+    - `.agents/skills/kast/references/workflows.md`
+    - `<!-- BEGIN KAST MANAGED -->` fenced regions in selected `AGENTS.md` files
 
     The global `$HOME/.local/share/kast/install.json` manifest records the
     repository resource version, source bundle checksum, output checksums, and
     install time. `kast ready` verifies those manifest-backed files and fails
     closed when an installed output is missing or tampered.
 
-??? tip "Harness-neutral agent setup"
-    Copilot is the default developer-machine path, but some enterprise
-    environments need portable skills or Markdown instructions instead of the
-    Copilot package or any MCP-dependent integration. Use
-    `kast agent up --dry-run` to inspect setup plus runtime warmup, or
-    `kast agent setup auto --harness ...` when only the resource package should
-    be installed:
+??? tip "Harness-agnostic agent setup"
+    Some enterprise environments need guidance and tooling exposure without an
+    MCP-dependent integration. Use `kast agent up --dry-run` to inspect setup
+    plus runtime warmup, or `kast agent setup --dry-run` when only the skill
+    and `AGENTS.md` guidance should be installed:
 
-    ```console title="Select the repository agent harness"
+    ```console title="Install repository agent guidance"
     kast agent up --dry-run
-    kast agent setup auto --dry-run
-    kast agent setup auto --harness copilot
-    kast agent setup auto --harness skill --target-dir "$PWD/.agents/skills" --force
-    kast agent setup auto --harness skill --target-dir "$PWD/.codex/skills" --force
-    kast agent setup auto --harness instructions --target-dir "$PWD/.agents/instructions" --force
-    kast agent setup auto --harness instructions --target-dir "$PWD/.codex/instructions" --force
+    kast agent setup --dry-run
+    kast agent setup
+    kast agent setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
     ```
 
-    Repository auto-detection recognizes existing `.agents/skills`,
-    `.codex/skills`, `.github/skills`, `.claude/skills`,
-    `.agents/instructions`, `.codex/instructions`, `.github/instructions`,
-    and `.claude/instructions` roots as portable roots. These roots win before
-    the default Copilot package path.
-
-    Set a machine or workspace preference when the same harness should win
-    over repository auto-detection:
-
-    ```toml title="$HOME/.config/kast/config.toml"
-    [projectOpen]
-    agentHarness = "instructions"
-    ```
+    The command installs `.agents/skills/kast` and, when root `AGENTS.md`
+    already exists, patches only a `<!-- BEGIN KAST MANAGED -->` fenced region.
+    Pass `--agents-md` for additional explicit scoped `AGENTS.md` targets.
 
 ??? info "Homebrew-managed IDE plugin"
     The IDEA or Android Studio plugin is part of the macOS developer install.

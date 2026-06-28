@@ -102,6 +102,14 @@ pub struct ManagedRepoResource {
 pub struct ManagedResourceOutputChecksum {
     pub path: String,
     pub sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region: Option<ManagedResourceChecksumRegion>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ManagedResourceChecksumRegion {
+    KastManagedFence,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -119,6 +127,7 @@ pub enum ManagedResourceKind {
     CopilotPackage,
     Skill,
     Instructions,
+    AgentGuidance,
 }
 
 impl fmt::Display for ManagedResourceKind {
@@ -127,6 +136,7 @@ impl fmt::Display for ManagedResourceKind {
             Self::CopilotPackage => "COPILOT_PACKAGE",
             Self::Skill => "SKILL",
             Self::Instructions => "INSTRUCTIONS",
+            Self::AgentGuidance => "AGENT_GUIDANCE",
         })
     }
 }
@@ -599,6 +609,27 @@ pub(crate) fn sha256_file(path: &Path) -> Result<String> {
     Ok(hex::encode(digest.finalize()))
 }
 
+pub(crate) fn kast_managed_fence_sha256(path: &Path) -> Result<String> {
+    let content = fs::read_to_string(path)?;
+    let region = extract_kast_managed_fence(&content).ok_or_else(|| {
+        CliError::new(
+            "INSTALL_MANAGED_REGION_MISSING",
+            format!("Kast managed fence was not found in {}", path.display()),
+        )
+    })?;
+    Ok(sha256_bytes(region.as_bytes()))
+}
+
+fn extract_kast_managed_fence(content: &str) -> Option<&str> {
+    const START: &str = "<!-- BEGIN KAST MANAGED -->";
+    const END: &str = "<!-- END KAST MANAGED -->";
+    let start = content.find(START)?;
+    let after_start = start + START.len();
+    let relative_end = content[after_start..].find(END)?;
+    let end = after_start + relative_end + END.len();
+    Some(&content[start..end])
+}
+
 pub fn verify_managed_resource_outputs(
     resource: &ManagedRepoResource,
 ) -> Result<ManagedResourceVerification> {
@@ -613,7 +644,12 @@ pub fn verify_managed_resource_outputs(
             ));
             continue;
         }
-        let actual = sha256_file(path)?;
+        let actual = match output.region {
+            Some(ManagedResourceChecksumRegion::KastManagedFence) => {
+                kast_managed_fence_sha256(path)?
+            }
+            None => sha256_file(path)?,
+        };
         if actual != output.sha256 {
             issues.push(format!(
                 "{} output checksum mismatch at {}",

@@ -57,7 +57,9 @@ assert payload["type"] == "AGENT_UP", payload
 assert payload["ok"] is True, payload
 assert payload["stage"] == "DRY_RUN", payload
 assert payload["dryRun"] is True, payload
-assert payload["setup"]["targetDir"] == f"{workspace}/.github", payload
+assert payload["setup"]["type"] == "AGENT_SETUP_PLAN", payload
+assert payload["setup"]["skillTarget"] == f"{workspace}/.agents/skills/kast", payload
+assert payload["setup"]["agentsMdTargets"] == [], payload
 assert payload["nextActions"][0]["label"] == "Run repository bring-up", payload
 assert "--workspace-root" in payload["nextActions"][0]["argv"], payload
 assert "--backend" in payload["nextActions"][0]["argv"], payload
