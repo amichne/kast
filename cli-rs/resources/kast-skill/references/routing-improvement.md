@@ -15,7 +15,9 @@ intentionally promotes sanitized outputs to a shipped reference.
 
 The package smoke tests validate the checked corpus against the catalog and
 agent tool metadata so promoted cases cannot drift away from the public
-navigation surface.
+navigation surface. The repository routing gate also captures the active
+`kast agent tools` envelope and scores that live public tool surface against
+the routing contract.
 
 Run `.github/scripts/test-kast-routing-evals.sh` after routing changes. When
 `plugin-eval` is available, run

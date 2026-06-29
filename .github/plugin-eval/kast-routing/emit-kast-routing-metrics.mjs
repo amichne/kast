@@ -7,6 +7,7 @@ const [, , rawTargetPath, targetKind = "directory"] = process.argv;
 const manifestDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(manifestDir, "../../..");
 const targetPath = rawTargetPath ? resolve(rawTargetPath) : join(repoRoot, "cli-rs/resources/kast-skill");
+const agentToolsFile = process.env.KAST_AGENT_TOOLS_FILE ? resolve(process.env.KAST_AGENT_TOOLS_FILE) : null;
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -55,6 +56,68 @@ function collectStrings(value, strings = []) {
 
 function failIf(condition, message, failures) {
   if (condition) failures.push(message);
+}
+
+function checkToolEnvelope(path) {
+  const failures = [];
+  const payload = readJson(path);
+  const result = payload.result ?? {};
+  const tools = Array.isArray(result.tools) ? result.tools : [];
+  const toolByName = new Map(tools.map((tool) => [tool.name, tool]));
+  const methodByName = new Map(tools.map((tool) => [tool.method, tool]));
+  const catalogHash = result.catalogSha256 ?? "";
+
+  failIf(payload.ok !== true, "agent tools envelope must have ok=true", failures);
+  failIf(payload.method !== "agent/tools", "agent tools envelope method must be agent/tools", failures);
+  failIf(result.type !== "KAST_AGENT_TOOLS", "agent tools result.type must be KAST_AGENT_TOOLS", failures);
+  failIf(result.schemaVersion < 3, "agent tools schemaVersion must be at least 3", failures);
+  failIf(result.toolCount !== tools.length, "agent tools toolCount must match tools.length", failures);
+  failIf(!/^[a-f0-9]{64}$/.test(catalogHash), "agent tools catalogSha256 must be a 64-character lowercase hex digest", failures);
+
+  const requiredTools = [
+    "kast_symbol_query",
+    "kast_callers",
+    "kast_metrics",
+    "kast_scaffold",
+    "kast_write_and_validate",
+  ];
+  for (const name of requiredTools) {
+    failIf(!toolByName.has(name), `agent tools envelope missing ${name}`, failures);
+  }
+
+  const requiredMethods = ["symbol/query", "symbol/callers", "database/metrics"];
+  for (const method of requiredMethods) {
+    failIf(!methodByName.has(method), `agent tools envelope missing method ${method}`, failures);
+  }
+
+  const symbolQuery = toolByName.get("kast_symbol_query")?.description ?? "";
+  failIf(!symbolQuery.includes("unknown symbols"), "kast_symbol_query must mention unknown symbols", failures);
+  failIf(!symbolQuery.includes(".kt/.kts"), "kast_symbol_query must mention .kt/.kts discovery", failures);
+
+  const metrics = toolByName.get("kast_metrics")?.description ?? "";
+  failIf(!metrics.includes("source-index metrics"), "kast_metrics must mention source-index metrics", failures);
+  failIf(!metrics.includes("database-backed view"), "kast_metrics must mention database-backed view", failures);
+
+  const leakedTools = [];
+  for (const tool of tools) {
+    for (const needle of leakNeedles) {
+      if ((tool.description ?? "").includes(needle)) {
+        leakedTools.push(`${tool.name}:${needle}`);
+      }
+    }
+  }
+  failures.push(...leakedTools);
+
+  return check(
+    "routing-agent-tools-envelope",
+    failures.length === 0 ? "pass" : "fail",
+    failures.length === 0 ? "info" : "error",
+    failures.length === 0
+      ? "Live agent tool discovery exposes the same public navigation surface as the routing corpus."
+      : "Live agent tool discovery drifted from the routing contract.",
+    failures.length === 0 ? [`tools=${tools.length}`, `catalogSha256=${catalogHash}`] : failures,
+    ["Keep kast agent tools aligned with the routing corpus and public catalog metadata."],
+  );
 }
 
 const skill = readText(join(targetPath, "SKILL.md"));
@@ -256,6 +319,10 @@ checks.push(
     ["Keep generated protocol paths, LSP internals, and implementation routing out of public skill/tool descriptions."],
   ),
 );
+
+if (agentToolsFile) {
+  checks.push(checkToolEnvelope(agentToolsFile));
+}
 
 const localPathNeedles = ["/Users/", "/home/", "/private/", "C:\\"];
 const localPathHits = collectStrings(routing).filter((text) =>
