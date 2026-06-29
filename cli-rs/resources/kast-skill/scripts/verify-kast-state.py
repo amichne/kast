@@ -25,11 +25,14 @@ def setup_recovery_command(
     kast_executable: str | None,
     harness: str,
     target_dir: Path | None = None,
+    source_dir: Path | None = None,
 ) -> str:
     executable = kast_executable or "kast"
     command = [executable, "agent", "setup", harness]
     if target_dir is not None:
         command.extend(["--target-dir", str(target_dir)])
+    if source_dir is not None:
+        command.extend(["--source-dir", str(source_dir)])
     command.append("--force")
     return shlex.join(command)
 
@@ -357,23 +360,38 @@ def verify_ready_and_paths(
     kast_command: list[str],
     workspace_root: Path,
     timeout: int,
+    tolerate_resource_output_issues: bool = False,
 ) -> dict[str, Any] | None:
     ready = command_record(kast_command + ["--output", "json", "ready"], workspace_root, timeout)
     ready_json = parse_json_output(ready)
+    ready_issues = ready_json.get("issues", []) if isinstance(ready_json, dict) else []
+    tolerated_resource_issues = (
+        tolerate_resource_output_issues
+        and isinstance(ready_json, dict)
+        and resource_output_ready_issues(ready_issues)
+    )
     result["checks"]["ready"] = {
         "exitCode": ready["exitCode"],
         "parsed": ready_json is not None,
         "ok": ready_json.get("ok") if isinstance(ready_json, dict) else None,
         "manifestPath": ready_json.get("manifestPath") if isinstance(ready_json, dict) else None,
         "binary": ready_json.get("binary") if isinstance(ready_json, dict) else None,
-        "issues": ready_json.get("issues", []) if isinstance(ready_json, dict) else [],
+        "issues": ready_issues,
         "warnings": ready_json.get("warnings", []) if isinstance(ready_json, dict) else [],
+        "resourceOutputIssuesTolerated": tolerated_resource_issues,
     }
     if ready["exitCode"] != 0 or not isinstance(ready_json, dict) or not ready_json.get("ok", False):
-        message = "`kast --output json ready` did not prove a healthy install."
-        if isinstance(ready_json, dict) and ready_json.get("issues"):
-            message = f"{message} Issues: {ready_json['issues']}"
-        add_issue(result, "KAST_READY_UNHEALTHY", message, RECOVERY["ready"])
+        if tolerated_resource_issues:
+            add_warning(
+                result,
+                "KAST_READY_RESOURCE_OUTPUTS",
+                "`kast --output json ready` reported manifest resource output issues; explicit --skill-root verification checks the selected skill target separately.",
+            )
+        else:
+            message = "`kast --output json ready` did not prove a healthy install."
+            if isinstance(ready_json, dict) and ready_json.get("issues"):
+                message = f"{message} Issues: {ready_json['issues']}"
+            add_issue(result, "KAST_READY_UNHEALTHY", message, RECOVERY["ready"])
     elif isinstance(ready_json, dict) and ready_json.get("warnings"):
         add_warning(
             result,
@@ -407,6 +425,18 @@ def verify_ready_and_paths(
             f"`kast --output json inspect paths` reported warnings: {paths_json['warnings']}",
         )
     return ready_json if isinstance(ready_json, dict) else None
+
+
+def resource_output_ready_issues(issues: Any) -> bool:
+    if not isinstance(issues, list) or not issues:
+        return False
+    return all(is_resource_output_ready_issue(issue) for issue in issues)
+
+
+def is_resource_output_ready_issue(issue: Any) -> bool:
+    if not isinstance(issue, str):
+        return False
+    return " output checksum mismatch at " in issue or " output is missing: " in issue
 
 
 def manifest_resources(ready_json: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -613,6 +643,7 @@ def resource_recovery_command(
     kind: str,
     stale_targets: list[dict[str, Any]],
     target_dirs: list[Path] | None = None,
+    source_dir: Path | None = None,
 ) -> str:
     harness = "skill" if kind == "skills" else "instructions"
     if stale_targets:
@@ -621,7 +652,7 @@ def resource_recovery_command(
         target_dir = target_dirs[0]
     else:
         target_dir = resource_targets(workspace_root, kind)[0].parent
-    return setup_recovery_command(kast_executable, harness, target_dir)
+    return setup_recovery_command(kast_executable, harness, target_dir, source_dir)
 
 
 def verify_resource_install(
@@ -635,6 +666,7 @@ def verify_resource_install(
     ready_json: dict[str, Any] | None = None,
     kast_executable: str | None = None,
     target_dirs: list[Path] | None = None,
+    recovery_source_dir: Path | None = None,
 ) -> None:
     targets = []
     manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
@@ -681,6 +713,7 @@ def verify_resource_install(
             kind,
             stale,
             target_dirs,
+            recovery_source_dir,
         )
         add_issue(
             result,
@@ -695,6 +728,7 @@ def verify_resource_install(
             kind,
             stale,
             target_dirs,
+            recovery_source_dir,
         )
         add_warning(
             result,
@@ -708,7 +742,8 @@ def main() -> int:
     args = parse_args()
     workspace_root = normalize(args.workspace_root)
     script_root = Path(__file__).resolve().parents[1]
-    skill_root = normalize(args.skill_root) if args.skill_root else script_root
+    explicit_skill_root = normalize(args.skill_root) if args.skill_root else None
+    skill_root = explicit_skill_root or script_root
     copilot_target_dirs = [normalize(target_dir) for target_dir in args.copilot_target_dir]
     skill_target_dirs = [normalize(target_dir) for target_dir in args.skill_target_dir]
     instructions_target_dirs = [
@@ -744,6 +779,7 @@ def main() -> int:
             "verifyKastState": str(skill_root / "scripts/verify-kast-state.py"),
             "kastAgentCall": str(skill_root / "scripts/kast-agent-call.py"),
         },
+        "explicitOverride": explicit_skill_root is not None,
     }
     if not source_catalog.is_file():
         add_issue(result, "SOURCE_CATALOG_MISSING", f"Missing skill command catalog: {source_catalog}", None)
@@ -758,7 +794,13 @@ def main() -> int:
     else:
         kast_command = [kast_bin]
         verify_command_surface(result, kast_command, workspace_root, args.timeout)
-        ready_json = verify_ready_and_paths(result, kast_command, workspace_root, args.timeout)
+        ready_json = verify_ready_and_paths(
+            result,
+            kast_command,
+            workspace_root,
+            args.timeout,
+            explicit_skill_root is not None,
+        )
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
@@ -790,6 +832,7 @@ def main() -> int:
         ready_json,
         kast_bin,
         skill_target_dirs,
+        explicit_skill_root,
     )
     verify_resource_install(
         result,

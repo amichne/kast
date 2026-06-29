@@ -98,6 +98,71 @@ fn embedded_dir_resource_files(dir: &'static Dir<'static>) -> Result<Vec<Embedde
     Ok(files)
 }
 
+fn resource_install_files(
+    source_dir: Option<&Path>,
+    embedded_dir: &'static Dir<'static>,
+) -> Result<Vec<EmbeddedResourceFile>> {
+    match source_dir {
+        Some(source_dir) => filesystem_resource_files(source_dir),
+        None => embedded_dir_resource_files(embedded_dir),
+    }
+}
+
+fn filesystem_resource_files(source_dir: &Path) -> Result<Vec<EmbeddedResourceFile>> {
+    if !source_dir.is_dir() {
+        return Err(CliError::new(
+            "RESOURCE_SOURCE_MISSING",
+            format!(
+                "Resource source directory does not exist: {}",
+                source_dir.display()
+            ),
+        ));
+    }
+    let mut files = Vec::new();
+    collect_filesystem_resource_files(source_dir, source_dir, &mut files)?;
+    files.sort_by(|left, right| left.relative.cmp(&right.relative));
+    Ok(files)
+}
+
+fn collect_filesystem_resource_files(
+    root: &Path,
+    current: &Path,
+    files: &mut Vec<EmbeddedResourceFile>,
+) -> Result<()> {
+    for entry in fs::read_dir(current)? {
+        let entry = entry?;
+        let path = entry.path();
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            collect_filesystem_resource_files(root, &path, files)?;
+        } else if file_type.is_file() {
+            let relative = path
+                .strip_prefix(root)
+                .map_err(|_| {
+                    CliError::new(
+                        "RESOURCE_SOURCE_PATH",
+                        format!(
+                            "Resource source file is not under source directory: {}",
+                            path.display()
+                        ),
+                    )
+                })?
+                .to_path_buf();
+            if is_retired_resource_marker(&relative) || is_generated_resource_cache_file(&relative)
+            {
+                continue;
+            }
+            let contents = fs::read(&path)?;
+            files.push(EmbeddedResourceFile {
+                relative,
+                executable: is_script_contents(&contents),
+                contents,
+            });
+        }
+    }
+    Ok(())
+}
+
 fn collect_embedded_dir_files(
     entries: &[DirEntry<'static>],
     files: &mut Vec<EmbeddedResourceFile>,

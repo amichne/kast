@@ -578,6 +578,7 @@ fn agent_setup_command_for_harness(
         cli::AgentSetupHarness::Skill => cli::InstallCommand::Skill(cli::ResourceInstallArgs {
             target_dir: args.target_dir,
             name: None,
+            source_dir: None,
             force: args.force,
             no_auto_exclude_git: args.no_auto_exclude_git,
             dry_run: false,
@@ -586,6 +587,7 @@ fn agent_setup_command_for_harness(
             cli::InstallCommand::Instructions(cli::ResourceInstallArgs {
                 target_dir: args.target_dir,
                 name: None,
+                source_dir: None,
                 force: args.force,
                 no_auto_exclude_git: args.no_auto_exclude_git,
                 dry_run: false,
@@ -765,6 +767,7 @@ fn install_dry_run_plan(command: &cli::InstallCommand) -> Option<install::AgentS
             cli::AgentSetupHarness::Copilot,
             args.target_dir.clone(),
             None,
+            None,
             args.force,
             args.no_auto_exclude_git,
         )),
@@ -772,6 +775,7 @@ fn install_dry_run_plan(command: &cli::InstallCommand) -> Option<install::AgentS
             cli::AgentSetupHarness::Skill,
             args.target_dir.clone(),
             args.name.clone(),
+            args.source_dir.clone(),
             args.force,
             args.no_auto_exclude_git,
         )),
@@ -779,6 +783,7 @@ fn install_dry_run_plan(command: &cli::InstallCommand) -> Option<install::AgentS
             cli::AgentSetupHarness::Instructions,
             args.target_dir.clone(),
             args.name.clone(),
+            args.source_dir.clone(),
             args.force,
             args.no_auto_exclude_git,
         )),
@@ -790,6 +795,7 @@ fn resource_install_plan(
     harness: cli::AgentSetupHarness,
     target_dir: Option<PathBuf>,
     name: Option<String>,
+    source_dir: Option<PathBuf>,
     force: bool,
     no_auto_exclude_git: bool,
 ) -> install::AgentSetupAutoPlan {
@@ -797,6 +803,7 @@ fn resource_install_plan(
         harness,
         target_dir.as_ref(),
         name.as_deref(),
+        source_dir.as_ref(),
         force,
         no_auto_exclude_git,
     );
@@ -815,6 +822,7 @@ fn resource_install_command(
     harness: cli::AgentSetupHarness,
     target_dir: Option<&PathBuf>,
     name: Option<&str>,
+    source_dir: Option<&PathBuf>,
     force: bool,
     no_auto_exclude_git: bool,
 ) -> Vec<String> {
@@ -837,6 +845,10 @@ fn resource_install_command(
     if let Some(name) = name {
         command.push("--name".to_string());
         command.push(name.to_string());
+    }
+    if let Some(source_dir) = source_dir {
+        command.push("--source-dir".to_string());
+        command.push(source_dir.display().to_string());
     }
     if force {
         command.push("--force".to_string());

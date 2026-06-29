@@ -8,7 +8,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let files = embedded_dir_resource_files(&KAST_SKILL)?;
+    let files = resource_install_files(args.source_dir.as_deref(), &KAST_SKILL)?;
     let outcome = install_embedded_resource(
         ManagedResourceKind::Skill,
         &target,
@@ -28,9 +28,8 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         )?,
         None => git_exclude_not_repository(),
     };
-    if let Some(repo_root) = &repo_root {
-        record_managed_resource(ManagedResourceKind::Skill, repo_root, &target, &outcome)?;
-    }
+    let record_root = repo_root.as_ref().unwrap_or(&target_root);
+    record_managed_resource(ManagedResourceKind::Skill, record_root, &target, &outcome)?;
     Ok(InstallSkillResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),
@@ -56,7 +55,7 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let files = embedded_dir_resource_files(&KAST_INSTRUCTIONS)?;
+    let files = resource_install_files(args.source_dir.as_deref(), &KAST_INSTRUCTIONS)?;
     let outcome = install_embedded_resource(
         ManagedResourceKind::Instructions,
         &target,
@@ -76,14 +75,13 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
         )?,
         None => git_exclude_not_repository(),
     };
-    if let Some(repo_root) = &repo_root {
-        record_managed_resource(
-            ManagedResourceKind::Instructions,
-            repo_root,
-            &target,
-            &outcome,
-        )?;
-    }
+    let record_root = repo_root.as_ref().unwrap_or(&target_root);
+    record_managed_resource(
+        ManagedResourceKind::Instructions,
+        record_root,
+        &target,
+        &outcome,
+    )?;
     Ok(InstallInstructionsResult {
         installed_at: target.display().to_string(),
         version: cli::version().to_string(),

@@ -181,6 +181,69 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
         0
     );
 
+    let missing_target = temp.path().join("missing-resource/kast");
+    let missing_output = missing_target.join("SKILL.md");
+    let manifest_path = install_manifest_path(&home);
+    let mut install_manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path).expect("install manifest"))
+            .expect("install manifest json");
+    install_manifest["repos"]
+        .as_array_mut()
+        .expect("manifest repos")
+        .push(serde_json::json!({
+            "path": temp.path().join("missing-resource").display().to_string(),
+            "resources": [{
+                "kind": "SKILL",
+                "targetPath": missing_target.display().to_string(),
+                "primitiveVersion": "0.1.0",
+                "sourceBundleSha256": "0".repeat(64),
+                "outputPaths": [missing_output.display().to_string()],
+                "outputChecksums": [{
+                    "path": missing_output.display().to_string(),
+                    "sha256": "0".repeat(64)
+                }],
+                "installedAt": "2026-01-01T00:00:00Z"
+            }]
+        }));
+    std::fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&install_manifest).expect("serialize manifest"),
+    )
+    .expect("write install manifest");
+    let unrelated_stale = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(&fake_skill_root)
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .arg("--require-skill")
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run verifier with unrelated stale resource");
+    assert!(
+        unrelated_stale.status.success(),
+        "explicit skill verification should tolerate unrelated ready resource output issues: stdout={}, stderr={}",
+        String::from_utf8_lossy(&unrelated_stale.stdout),
+        String::from_utf8_lossy(&unrelated_stale.stderr)
+    );
+    let unrelated_stale_json: serde_json::Value =
+        serde_json::from_slice(&unrelated_stale.stdout).expect("unrelated stale verifier json");
+    assert_eq!(
+        unrelated_stale_json["checks"]["ready"]["resourceOutputIssuesTolerated"], true,
+        "{unrelated_stale_json:#}"
+    );
+    assert!(
+        unrelated_stale_json["warnings"]
+            .as_array()
+            .expect("warnings")
+            .iter()
+            .any(|warning| warning["code"] == "KAST_READY_RESOURCE_OUTPUTS"),
+        "{unrelated_stale_json:#}"
+    );
+
     std::fs::write(
         workspace.join(".agents/skills/kast/SKILL.md"),
         "tampered installed skill\n",
@@ -234,9 +297,13 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
     .parent()
     .expect("tampered target parent");
     let expected_tampered_recovery = format!(
-        "{} agent setup skill --target-dir {} --force",
+        "{} agent setup skill --target-dir {} --source-dir {} --force",
         env!("CARGO_BIN_EXE_kast"),
-        expected_tampered_target_dir.display()
+        expected_tampered_target_dir.display(),
+        fake_skill_root
+            .canonicalize()
+            .expect("canonical fake skill root")
+            .display()
     );
     let tampered_issue = tampered_json["issues"]
         .as_array()

@@ -47,6 +47,9 @@ Execute recovery commands exactly as emitted. When the verifier is run with
 selected executable token. Stale skill and instruction recovery also preserves
 the target resource root when the verifier can identify one; the owner table
 below names the state owner, not a command to rewrite back to bare `kast`.
+When the verifier is run with `--skill-root`, stale skill recovery also includes
+`--source-dir <skill-root>` so the selected binary installs the same skill tree
+that was verified instead of only its embedded skill bundle.
 
 If the verifier reports stale state, use the one owner for that state:
 
