@@ -1410,6 +1410,9 @@ pub struct ResourceInstallArgs {
     /// Do not add managed resource paths to Git info/exclude.
     #[arg(long)]
     pub no_auto_exclude_git: bool,
+    /// Print the planned install without writing files.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -1423,6 +1426,9 @@ pub struct CopilotInstallArgs {
     /// Do not add managed package paths to Git info/exclude.
     #[arg(long)]
     pub no_auto_exclude_git: bool,
+    /// Print the planned install without writing files.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]

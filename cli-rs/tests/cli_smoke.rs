@@ -4784,6 +4784,136 @@ agentHarness = "instructions"
 }
 
 #[test]
+fn agent_setup_concrete_parent_dry_run_does_not_install_resources() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let cases = [
+        (
+            "skill",
+            workspace.join("agent/skills"),
+            workspace.join("agent/skills/kast/SKILL.md"),
+        ),
+        (
+            "instructions",
+            workspace.join("agent/instructions"),
+            workspace.join("agent/instructions/kast/README.md"),
+        ),
+        (
+            "copilot",
+            workspace.join("agent/github"),
+            workspace.join("agent/github/lsp.json"),
+        ),
+    ];
+
+    for (command, target_dir, expected_output) in cases {
+        let plan = kast(&home, &config_home)
+            .current_dir(&workspace)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "setup",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+                "--dry-run",
+                command,
+                "--target-dir",
+                target_dir.to_str().expect("target dir"),
+                "--force",
+            ])
+            .output()
+            .unwrap_or_else(|error| panic!("agent setup {command} dry-run: {error}"));
+
+        assert!(
+            plan.status.success(),
+            "agent setup {command} parent dry-run should succeed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&plan.stdout),
+            String::from_utf8_lossy(&plan.stderr)
+        );
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&plan.stdout).expect("setup plan json");
+        assert_eq!(stdout["harness"], command, "{stdout}");
+        assert_eq!(stdout["selectionSource"], "explicit", "{stdout}");
+        assert_eq!(stdout["dryRun"], true, "{stdout}");
+        assert_eq!(
+            stdout["targetDir"],
+            target_dir.display().to_string(),
+            "{stdout}"
+        );
+        let install_command = stdout["installCommand"]
+            .as_array()
+            .expect("install command");
+        assert!(install_command.iter().any(|arg| arg == command), "{stdout}");
+        assert!(
+            !install_command.iter().any(|arg| arg == "--dry-run"),
+            "planned install command should omit dry-run: {stdout}"
+        );
+        assert!(
+            !expected_output.exists(),
+            "agent setup {command} parent dry-run must not write {}",
+            expected_output.display()
+        );
+    }
+
+    assert!(
+        !install_manifest_path(&home).exists(),
+        "dry-run must not record manifest resources"
+    );
+}
+
+#[test]
+fn agent_setup_concrete_subcommand_dry_run_does_not_install_skill() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let target_dir = workspace.join("agent/skills");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let plan = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            target_dir.to_str().expect("target dir"),
+            "--force",
+            "--dry-run",
+        ])
+        .output()
+        .expect("agent setup skill subcommand dry-run");
+
+    assert!(
+        plan.status.success(),
+        "agent setup skill subcommand dry-run should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr)
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("setup plan json");
+    assert_eq!(stdout["harness"], "skill", "{stdout}");
+    assert_eq!(stdout["dryRun"], true, "{stdout}");
+    assert!(
+        !target_dir.join("kast/SKILL.md").exists(),
+        "subcommand dry-run must not install the skill"
+    );
+    assert!(
+        !install_manifest_path(&home).exists(),
+        "subcommand dry-run must not record manifest resources"
+    );
+}
+
+#[test]
 fn agent_up_dry_run_uses_guidance_setup_and_explicit_workspace_root() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
