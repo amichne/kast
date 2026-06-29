@@ -251,19 +251,60 @@ fn agent_up_runtime_command(args: &cli::RuntimeArgs) -> Vec<String> {
 }
 
 fn run_agent_setup(args: cli::AgentSetupArgs, output_format: OutputFormat) -> Result<i32> {
-    match args.command {
-        None => run_agent_guidance_setup(args.guidance, output_format),
-        Some(cli::AgentSetupCommand::Auto(args)) => run_agent_setup_auto(args, output_format),
-        Some(cli::AgentSetupCommand::Copilot(args)) => {
+    let cli::AgentSetupArgs { command, guidance } = args;
+    match command {
+        None => run_agent_guidance_setup(guidance, output_format),
+        Some(cli::AgentSetupCommand::Auto(mut args)) => {
+            args.force |= guidance.force;
+            args.no_auto_exclude_git |= guidance.no_auto_exclude_git;
+            args.dry_run |= guidance.dry_run;
+            run_agent_setup_auto(args, output_format, guidance.workspace_root)
+        }
+        Some(cli::AgentSetupCommand::Copilot(mut args)) => {
+            merge_copilot_guidance(&mut args, &guidance);
             run_install(cli::InstallCommand::Copilot(args), output_format)
         }
-        Some(cli::AgentSetupCommand::Skill(args)) => {
+        Some(cli::AgentSetupCommand::Skill(mut args)) => {
+            merge_resource_guidance(&mut args, &guidance, cli::AgentSetupHarness::Skill);
             run_install(cli::InstallCommand::Skill(args), output_format)
         }
-        Some(cli::AgentSetupCommand::Instructions(args)) => {
+        Some(cli::AgentSetupCommand::Instructions(mut args)) => {
+            merge_resource_guidance(&mut args, &guidance, cli::AgentSetupHarness::Instructions);
             run_install(cli::InstallCommand::Instructions(args), output_format)
         }
     }
+}
+
+fn merge_resource_guidance(
+    args: &mut cli::ResourceInstallArgs,
+    guidance: &cli::AgentGuidanceSetupArgs,
+    harness: cli::AgentSetupHarness,
+) {
+    if args.target_dir.is_none()
+        && let Some(workspace_root) = &guidance.workspace_root
+    {
+        args.target_dir = Some(default_agent_up_target_dir(harness, workspace_root));
+    }
+    args.force |= guidance.force;
+    args.no_auto_exclude_git |= guidance.no_auto_exclude_git;
+    args.dry_run |= guidance.dry_run;
+}
+
+fn merge_copilot_guidance(
+    args: &mut cli::CopilotInstallArgs,
+    guidance: &cli::AgentGuidanceSetupArgs,
+) {
+    if args.target_dir.is_none()
+        && let Some(workspace_root) = &guidance.workspace_root
+    {
+        args.target_dir = Some(default_agent_up_target_dir(
+            cli::AgentSetupHarness::Copilot,
+            workspace_root,
+        ));
+    }
+    args.force |= guidance.force;
+    args.no_auto_exclude_git |= guidance.no_auto_exclude_git;
+    args.dry_run |= guidance.dry_run;
 }
 
 fn run_agent_guidance_setup(
@@ -312,8 +353,12 @@ fn agent_guidance_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<Strin
     command
 }
 
-fn run_agent_setup_auto(args: cli::AgentSetupAutoArgs, output_format: OutputFormat) -> Result<i32> {
-    let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+fn run_agent_setup_auto(
+    args: cli::AgentSetupAutoArgs,
+    output_format: OutputFormat,
+    workspace_root: Option<PathBuf>,
+) -> Result<i32> {
+    let cwd = workspace_root.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()));
     let selection = agent_setup_auto_selection(&cwd, &args)?;
     if args.dry_run {
         let plan = agent_setup_auto_plan(&selection, &args, &cwd);
@@ -528,12 +573,14 @@ fn agent_setup_command_for_harness(
             target_dir: args.target_dir,
             force: args.force,
             no_auto_exclude_git: args.no_auto_exclude_git,
+            dry_run: false,
         }),
         cli::AgentSetupHarness::Skill => cli::InstallCommand::Skill(cli::ResourceInstallArgs {
             target_dir: args.target_dir,
             name: None,
             force: args.force,
             no_auto_exclude_git: args.no_auto_exclude_git,
+            dry_run: false,
         }),
         cli::AgentSetupHarness::Instructions => {
             cli::InstallCommand::Instructions(cli::ResourceInstallArgs {
@@ -541,6 +588,7 @@ fn agent_setup_command_for_harness(
                 name: None,
                 force: args.force,
                 no_auto_exclude_git: args.no_auto_exclude_git,
+                dry_run: false,
             })
         }
     }
@@ -693,6 +741,14 @@ fn run_install(command: cli::InstallCommand, output_format: OutputFormat) -> Res
         print_completion(completion_args);
         return Ok(0);
     }
+    if let Some(plan) = install_dry_run_plan(&command) {
+        if output_format == OutputFormat::Json {
+            output::print_json(&plan)?;
+        } else {
+            output::print_agent_setup_auto_plan(&plan)?;
+        }
+        return Ok(0);
+    }
     let mut reporter = install_reporter(output_format);
     let result = install::install(cli::InstallArgs { command }, reporter.as_mut())?;
     if output_format == OutputFormat::Json {
@@ -701,6 +757,94 @@ fn run_install(command: cli::InstallCommand, output_format: OutputFormat) -> Res
         output::print_install_result(&result)?;
     }
     Ok(0)
+}
+
+fn install_dry_run_plan(command: &cli::InstallCommand) -> Option<install::AgentSetupAutoPlan> {
+    match command {
+        cli::InstallCommand::Copilot(args) if args.dry_run => Some(resource_install_plan(
+            cli::AgentSetupHarness::Copilot,
+            args.target_dir.clone(),
+            None,
+            args.force,
+            args.no_auto_exclude_git,
+        )),
+        cli::InstallCommand::Skill(args) if args.dry_run => Some(resource_install_plan(
+            cli::AgentSetupHarness::Skill,
+            args.target_dir.clone(),
+            args.name.clone(),
+            args.force,
+            args.no_auto_exclude_git,
+        )),
+        cli::InstallCommand::Instructions(args) if args.dry_run => Some(resource_install_plan(
+            cli::AgentSetupHarness::Instructions,
+            args.target_dir.clone(),
+            args.name.clone(),
+            args.force,
+            args.no_auto_exclude_git,
+        )),
+        _ => None,
+    }
+}
+
+fn resource_install_plan(
+    harness: cli::AgentSetupHarness,
+    target_dir: Option<PathBuf>,
+    name: Option<String>,
+    force: bool,
+    no_auto_exclude_git: bool,
+) -> install::AgentSetupAutoPlan {
+    let command = resource_install_command(
+        harness,
+        target_dir.as_ref(),
+        name.as_deref(),
+        force,
+        no_auto_exclude_git,
+    );
+    let mut plan = install::AgentSetupAutoPlan::new(
+        harness,
+        install::AgentSetupSelectionSource::Explicit,
+        "Concrete agent resource setup command selected.".to_string(),
+        command,
+        target_dir,
+    );
+    plan.dry_run = true;
+    plan
+}
+
+fn resource_install_command(
+    harness: cli::AgentSetupHarness,
+    target_dir: Option<&PathBuf>,
+    name: Option<&str>,
+    force: bool,
+    no_auto_exclude_git: bool,
+) -> Vec<String> {
+    let mut command = vec![
+        current_executable_argument(),
+        "agent".to_string(),
+        "setup".to_string(),
+        match harness {
+            cli::AgentSetupHarness::Auto => unreachable!("auto harness must be resolved"),
+            cli::AgentSetupHarness::Copilot => "copilot",
+            cli::AgentSetupHarness::Skill => "skill",
+            cli::AgentSetupHarness::Instructions => "instructions",
+        }
+        .to_string(),
+    ];
+    if let Some(target_dir) = target_dir {
+        command.push("--target-dir".to_string());
+        command.push(target_dir.display().to_string());
+    }
+    if let Some(name) = name {
+        command.push("--name".to_string());
+        command.push(name.to_string());
+    }
+    if force {
+        command.push("--force".to_string());
+    }
+    if no_auto_exclude_git {
+        command.push("--no-auto-exclude-git".to_string());
+    }
+    command
 }
 
 fn install_reporter(output_format: OutputFormat) -> Box<dyn install::InstallReporter> {

@@ -537,6 +537,7 @@ pub fn install_agent_guidance(
         name: Some("kast".to_string()),
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
+        dry_run: false,
     })?;
     let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args.agents_md)?;
     let mut agent_results = Vec::with_capacity(agents_md_targets.len());
@@ -1932,6 +1933,7 @@ fn repair_install_copilot_repos(
                 target_dir: Some(github_dir),
                 force: true,
                 no_auto_exclude_git: false,
+                dry_run: false,
             })?;
         }
     }
@@ -4150,6 +4152,7 @@ mod tests {
             name: Some("kast".to_string()),
             force: false,
             no_auto_exclude_git: false,
+            dry_run: false,
         };
         let first = install_skill(args.clone()).unwrap();
         assert!(!first.skipped);
@@ -4167,6 +4170,7 @@ mod tests {
             name: Some("kast".to_string()),
             force: false,
             no_auto_exclude_git: false,
+            dry_run: false,
         };
         let first = install_instructions(args.clone()).unwrap();
         assert!(!first.skipped);
