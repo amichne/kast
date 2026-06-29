@@ -65,7 +65,11 @@ Finally review `promotion-candidates.json`. These are suggested additions to
 
 When a prompt pattern recurs, add a sanitized entry to
 `fixtures/maintenance/evals/routing.json`.
-Use the existing examples in that file as the canonical schema.
+Validate it against `fixtures/maintenance/evals/routing.schema.json` and use
+the existing examples in that file as the canonical case shape.
+The packaged content smoke test validates that this corpus exists, routes every
+case to the `kast` skill, forbids text-search fallbacks for Kotlin semantics,
+and references catalog methods that are present in the public agent surface.
 
 Good routing evals:
 

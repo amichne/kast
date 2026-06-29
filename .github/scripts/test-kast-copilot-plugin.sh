@@ -175,7 +175,7 @@ const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
 );
 const names = new Set(tools.map((tool) => tool.name));
-for (const required of ["kast_resolve", "kast_references", "kast_workspace_search", "kast_metrics"]) {
+for (const required of ["kast_symbol_query", "kast_resolve", "kast_references", "kast_workspace_search", "kast_metrics"]) {
   if (!names.has(required)) throw new Error(`source plugin import missing ${required}`);
 }
 const sourceResolveTool = tools.find((tool) => tool.name === "kast_resolve");
@@ -309,7 +309,7 @@ const tools = toolsModule.makeKastTools(specs, (method, args) =>
   Promise.resolve(JSON.stringify({ ok: true, method, args })),
 );
 const names = new Set(tools.map((tool) => tool.name));
-for (const required of ["kast_resolve", "kast_references", "kast_workspace_files", "kast_metrics"]) {
+for (const required of ["kast_symbol_query", "kast_resolve", "kast_references", "kast_workspace_files", "kast_metrics"]) {
   if (!names.has(required)) throw new Error(`missing ${required}`);
 }
 const resolveTool = tools.find((tool) => tool.name === "kast_resolve");

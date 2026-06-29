@@ -114,6 +114,7 @@ fn smoke_core_cli_commands() {
             "kast_resolve",
             "kast_scaffold",
             "kast_symbol_discover",
+            "kast_symbol_query",
             "kast_workspace_files",
             "kast_workspace_search",
             "kast_workspace_symbol",
