@@ -101,9 +101,11 @@ need to move together.
 
 After any routing change:
 
-1. Re-run the skill routing/evaluation command for the current harness.
-2. Compare against the previous baseline.
-3. Re-run the corpus builder on fresh sessions
+1. Re-run `.github/scripts/test-kast-routing-evals.sh`.
+2. When `plugin-eval` is available, run
+   `plugin-eval analyze cli-rs/resources/kast-skill --metric-pack .github/plugin-eval/kast-routing/manifest.json`.
+3. Compare against the previous baseline.
+4. Re-run the corpus builder on fresh sessions.
 
 The goal is not only a better static score. The goal is fewer fresh cases in
 `trigger-miss` and `loaded-but-bypassed`.

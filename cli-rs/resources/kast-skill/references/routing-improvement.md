@@ -16,3 +16,8 @@ intentionally promotes sanitized outputs to a shipped reference.
 The package smoke tests validate the checked corpus against the catalog and
 agent tool metadata so promoted cases cannot drift away from the public
 navigation surface.
+
+Run `.github/scripts/test-kast-routing-evals.sh` after routing changes. When
+`plugin-eval` is available, run
+`plugin-eval analyze cli-rs/resources/kast-skill --metric-pack .github/plugin-eval/kast-routing/manifest.json`
+to include the Kast routing metric pack in the skill report.
