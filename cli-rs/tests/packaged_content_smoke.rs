@@ -1,6 +1,32 @@
 mod support;
 
+use serde_json::Value;
+use std::collections::BTreeSet;
 use support::*;
+
+fn assert_no_local_paths(value: &Value, label: &str) {
+    match value {
+        Value::String(text) => {
+            for forbidden in ["/Users/", "/home/", "/private/", "C:\\"] {
+                assert!(
+                    !text.contains(forbidden),
+                    "{label} should not contain local absolute path marker {forbidden}: {text}"
+                );
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                assert_no_local_paths(item, label);
+            }
+        }
+        Value::Object(fields) => {
+            for value in fields.values() {
+                assert_no_local_paths(value, label);
+            }
+        }
+        _ => {}
+    }
+}
 
 #[test]
 fn packaged_skill_targets_rust_kast_only() {
@@ -80,7 +106,9 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(workflows.contains("--skill-target-dir"));
     assert!(workflows.contains("--instructions-target-dir"));
     assert!(workflows.contains("nextCommandArgv"));
-    assert!(routing_reference.contains("rust-kast-cli"));
+    assert!(routing_reference.contains("fixtures/maintenance/evals/routing.json"));
+    assert!(routing_reference.contains("fixtures/maintenance/evals/routing.schema.json"));
+    assert!(routing_reference.contains("allowedActions"));
     assert!(instruction_cli.contains("kast agent tools"));
     assert!(instruction_cli.contains("kast agent workflow --help"));
     assert!(instruction_cli.contains("stale instruction/binary install"));
@@ -99,6 +127,11 @@ fn packaged_skill_targets_rust_kast_only() {
         root.join("resources/kast-skill/references/workflows.md")
             .is_file(),
         "packaged skill must include workflow ownership reference"
+    );
+    assert!(
+        root.join("resources/kast-skill/fixtures/maintenance/evals/routing.schema.json")
+            .is_file(),
+        "packaged skill must include a schema for routing evals"
     );
     assert!(
         root.join("resources/kast-skill/scripts/verify-kast-state.py")
@@ -132,5 +165,191 @@ fn repo_local_copilot_plugin_content_is_generated_not_tracked() {
     assert!(
         root.join("cli-rs/resources/plugin/plugin.json").is_file(),
         "repo-local plugin source must live under cli-rs/resources/plugin"
+    );
+}
+
+#[test]
+fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let skill = std::fs::read_to_string(root.join("resources/kast-skill/SKILL.md"))
+        .expect("packaged skill");
+    let routing_eval_path =
+        root.join("resources/kast-skill/fixtures/maintenance/evals/routing.json");
+    let routing_eval: Value = serde_json::from_str(
+        &std::fs::read_to_string(&routing_eval_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", routing_eval_path.display())),
+    )
+    .expect("routing eval json");
+    let routing_schema_path =
+        root.join("resources/kast-skill/fixtures/maintenance/evals/routing.schema.json");
+    let routing_schema: Value = serde_json::from_str(
+        &std::fs::read_to_string(&routing_schema_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", routing_schema_path.display())),
+    )
+    .expect("routing eval schema json");
+    let routing_validator = jsonschema::validator_for(&routing_schema).expect("routing schema");
+    routing_validator
+        .validate(&routing_eval)
+        .unwrap_or_else(|error| panic!("routing eval schema validation failed: {error}"));
+    let catalog: Value = serde_json::from_str(include_str!(
+        "../resources/kast-skill/references/commands.json"
+    ))
+    .expect("commands catalog");
+    let commands = catalog["commands"].as_object().expect("catalog commands");
+    let tool_names = commands
+        .values()
+        .filter_map(|command| command.get("tool"))
+        .map(|tool| tool["name"].as_str().expect("tool name"))
+        .collect::<BTreeSet<_>>();
+    let cases = routing_eval["cases"]
+        .as_array()
+        .expect("routing eval cases");
+    assert!(
+        cases.len() >= 5,
+        "routing eval should cover Kotlin files, symbol calls, database access, workflows, and public API boundaries"
+    );
+
+    let case_ids = cases
+        .iter()
+        .map(|case| case["id"].as_str().expect("case id"))
+        .collect::<BTreeSet<_>>();
+    for required in [
+        "kotlin-file-trigger-all-kt-kts",
+        "unknown-symbol-navigation",
+        "relationship-navigation",
+        "source-index-database-access",
+        "agent-workflow-public-surface",
+        "public-api-boundary",
+    ] {
+        assert!(
+            case_ids.contains(required),
+            "routing eval should include {required}"
+        );
+    }
+
+    for case in cases {
+        assert_no_local_paths(case, case["id"].as_str().expect("case id"));
+        assert_eq!(
+            case["expectedPrimitive"]["name"], "kast",
+            "every case should route to the Kast skill: {case:#}"
+        );
+        let forbidden = case["forbiddenActions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("case {} should list forbidden fallbacks", case["id"]));
+        assert!(
+            forbidden.iter().any(|value| value == "grep")
+                && forbidden.iter().any(|value| value == "rg"),
+            "case {} should forbid raw text search for Kotlin semantics",
+            case["id"]
+        );
+        assert!(
+            case["verificationEvidence"]
+                .as_array()
+                .expect("verification evidence")
+                .len()
+                >= 2,
+            "case {} should include concrete verification evidence",
+            case["id"]
+        );
+        for action in case["allowedActions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("case {} should list allowed actions", case["id"]))
+        {
+            let kind = action["kind"].as_str().expect("action kind");
+            let name = action["name"].as_str().expect("action name");
+            match kind {
+                "method" => {
+                    let command = commands.get(name).unwrap_or_else(|| {
+                        panic!("eval case {} references missing method {name}", case["id"])
+                    });
+                    if matches!(
+                        name,
+                        "symbol/query"
+                            | "symbol/scaffold"
+                            | "symbol/resolve"
+                            | "symbol/references"
+                            | "symbol/callers"
+                            | "database/metrics"
+                            | "raw/file-outline"
+                    ) {
+                        assert!(
+                            command.get("tool").is_some(),
+                            "eval case {} expects {name} to be available through agent tools",
+                            case["id"]
+                        );
+                    }
+                }
+                "tool" => {
+                    assert!(
+                        tool_names.contains(name),
+                        "eval case {} references missing tool {name}",
+                        case["id"]
+                    );
+                }
+                "command" => {
+                    assert!(
+                        name.starts_with("kast agent") || name.starts_with("kast inspect metrics"),
+                        "eval case {} should use public Kast commands, got {name}",
+                        case["id"]
+                    );
+                }
+                other => panic!("unexpected action kind {other}"),
+            }
+        }
+    }
+    let action_names = cases
+        .iter()
+        .flat_map(|case| {
+            case["allowedActions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|action| action["name"].as_str().expect("action name"))
+        })
+        .collect::<BTreeSet<_>>();
+    for required in [
+        "symbol/query",
+        "symbol/callers",
+        "database/metrics",
+        "kast agent workflow diagnostics",
+        "kast agent tools",
+    ] {
+        assert!(
+            action_names.contains(required),
+            "routing eval should cover public action {required}"
+        );
+    }
+    let forbidden_names = cases
+        .iter()
+        .flat_map(|case| {
+            case["forbiddenActions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|action| action.as_str().expect("forbidden action"))
+        })
+        .collect::<BTreeSet<_>>();
+    for required in [
+        "generated protocol endpoints",
+        "capabilities.experimental.kastMethods",
+    ] {
+        assert!(
+            forbidden_names.contains(required),
+            "routing eval should reject public API leak {required}"
+        );
+    }
+
+    assert!(
+        (skill.contains(".kt") || skill.contains("`.kt`"))
+            && (skill.contains(".kts") || skill.contains("`.kts`")),
+        "skill trigger text must explicitly cover Kotlin source and script files"
+    );
+    assert!(
+        skill.contains("only navigation surface"),
+        "skill should state that Kast can be the sole navigation surface"
+    );
+    assert!(
+        !skill.contains("/rpc/") && !skill.contains("capabilities.experimental.kastMethods"),
+        "skill must not teach generated protocol endpoints or LSP internals as the public API"
     );
 }

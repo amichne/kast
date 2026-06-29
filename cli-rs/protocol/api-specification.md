@@ -54,7 +54,7 @@ The families below are the top-level namespaces accepted by `kast rpc`.
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
-| `database` | Rust-owned SQLite source-index queries for metrics and impact views. | sqlite | `database/metrics` |
+| `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
 #### Composition building blocks
 
@@ -69,7 +69,7 @@ Each method listed here is validated against the generated catalog.
 | Trace relationships | Move from one declaration to usages, callers, callees, and type relationships. | `symbol/references`<br>`raw/references`<br>`symbol/callers`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy` |
 | Plan changes | Ask Kast to derive edit plans or generation context before mutating files. | `symbol/scaffold`<br>`symbol/rename`<br>`raw/rename`<br>`raw/optimize-imports` |
 | Apply and validate | Write prepared changes, refresh affected workspace state, and re-run diagnostics. | `symbol/write-and-validate`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/diagnostics` |
-| Read the index | Use the Rust source-index reader for coupling, dead-code, search, graph, and impact questions. | `database/metrics` |
+| Read the index | Use the source-index metrics reader for coupling, dead-code, search, graph, and impact questions. | `database/metrics` |
 
 #### Command catalog
 
@@ -109,7 +109,7 @@ uses a discriminated response envelope.
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
-| `database/metrics` | `database` | sqlite | Query Rust-owned source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
+| `database/metrics` | `database` | sqlite | Query source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
 
 #### Command field details
 
@@ -222,13 +222,13 @@ Result variants: `SYMBOL_QUERY_SUCCESS`, `SYMBOL_QUERY_FAILURE`.
 
 Notes:
 
-- Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.
-- Hard filters are enforced by SQLite/compiler facts, never by semantic score.
+- Use this as the public source-index search surface before file reads or raw offset calls.
+- Hard filters are enforced by source-index and compiler facts, never by semantic score.
 - Nested filters include gradleProject, relativePathPrefix, productionOnly, excludePatterns, and usageFacets.
 - usageFacets is the supported public filter for computed declaration facets; symbol/query does not expose clusterKinds.
-- Token matching is computed by the Rust CLI from query text and indexed declaration fields without persisted token tables.
+- Token matching is computed from query text and indexed declaration fields.
 - Graph depth defaults to 1 and is capped at 2 in the first implementation.
-- Semantic discovery is represented in the response shape but reports available=false until a sidecar exists.
+- Semantic discovery reports available=false when no semantic candidate provider is configured.
 
 </details>
 
@@ -548,7 +548,7 @@ Response type: `CompletionsResult`.
 </details>
 
 <details markdown="1">
-<summary><code>database/metrics</code> - Query Rust-owned source-index metrics</summary>
+<summary><code>database/metrics</code> - Query source-index metrics</summary>
 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
@@ -565,8 +565,8 @@ Result variants: `METRICS_SUCCESS`, `METRICS_FAILURE`.
 
 Notes:
 
-- Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.
-- Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for the v1 Rust metrics reader.
+- Use this as the public source-index database surface through kast agent call or kast inspect metrics.
+- Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for supported metrics.
 
 </details>
 

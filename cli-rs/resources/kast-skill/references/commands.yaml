@@ -50,8 +50,8 @@ commands:
     failureType: METRICS_FAILURE
     method: database/metrics
     notes:
-    - Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.
-    - Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for the v1 Rust metrics reader.
+    - Use this as the public source-index database surface through kast agent call or kast inspect metrics.
+    - Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for supported metrics.
     request:
       fields:
         depth:
@@ -90,9 +90,9 @@ commands:
       - metric
     responseType: RustMetricsResponse
     successType: METRICS_SUCCESS
-    summary: Query Rust-owned source-index metrics
+    summary: Query source-index metrics
     tool:
-      description: 'Query Rust-owned source-index metrics: fanIn, fanOut, deadCode, impact, coupling, search, graph. The CLI handles this before daemon passthrough.'
+      description: 'Query source-index metrics: fanIn, fanOut, deadCode, impact, coupling, search, graph. Use this database-backed view for architecture, blast-radius, and impact questions before wider semantic traversal.'
       name: kast_metrics
   health:
     category: system
@@ -677,13 +677,13 @@ commands:
     failureType: SYMBOL_QUERY_FAILURE
     method: symbol/query
     notes:
-    - Handled by the Rust CLI before daemon passthrough; JVM backends do not read this SQLite surface.
-    - Hard filters are enforced by SQLite/compiler facts, never by semantic score.
+    - Use this as the public source-index search surface before file reads or raw offset calls.
+    - Hard filters are enforced by source-index and compiler facts, never by semantic score.
     - Nested filters include gradleProject, relativePathPrefix, productionOnly, excludePatterns, and usageFacets.
     - usageFacets is the supported public filter for computed declaration facets; symbol/query does not expose clusterKinds.
-    - Token matching is computed by the Rust CLI from query text and indexed declaration fields without persisted token tables.
+    - Token matching is computed from query text and indexed declaration fields.
     - Graph depth defaults to 1 and is capped at 2 in the first implementation.
-    - Semantic discovery is represented in the response shape but reports available=false until a sidecar exists.
+    - Semantic discovery reports available=false when no semantic candidate provider is configured.
     request:
       fields:
         anchor:
@@ -865,6 +865,9 @@ commands:
     responseType: KastSymbolQueryResponse
     successType: SYMBOL_QUERY_SUCCESS
     summary: Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence
+    tool:
+      description: Search the Kotlin source index for declarations by name, lexical text, graph evidence, and hard filters. Start here for unknown symbols, broad navigation, and .kt/.kts discovery before reading files or using raw offset tools.
+      name: kast_symbol_query
   symbol/references:
     category: symbol
     dataSource: backend

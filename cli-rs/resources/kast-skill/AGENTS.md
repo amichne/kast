@@ -58,6 +58,7 @@ Run the catalog and docs checks after catalog changes:
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check
 python3 .github/scripts/render-rpc-contract-summary.py --check
+.github/scripts/test-kast-routing-evals.sh
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 ```

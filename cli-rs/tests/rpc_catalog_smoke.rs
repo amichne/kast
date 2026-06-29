@@ -418,12 +418,56 @@ fn command_catalog_owns_copilot_tool_surface() {
         "kast_resolve",
         "kast_scaffold",
         "kast_symbol_discover",
+        "kast_symbol_query",
         "kast_workspace_files",
         "kast_workspace_search",
         "kast_workspace_symbol",
         "kast_write_and_validate",
     ]);
     assert_eq!(tool_names, expected);
+}
+
+#[test]
+fn agent_tool_surface_exposes_navigation_without_internal_transport_leaks() {
+    let catalog = catalog();
+    let commands = catalog["commands"].as_object().expect("commands object");
+    for (method, expected_name) in [
+        ("symbol/query", "kast_symbol_query"),
+        ("symbol/callers", "kast_callers"),
+        ("database/metrics", "kast_metrics"),
+    ] {
+        let tool = commands[method]
+            .get("tool")
+            .unwrap_or_else(|| panic!("{method} should be exposed as an agent tool"));
+        assert_eq!(tool["name"], expected_name);
+        let description = tool["description"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{method} tool description"));
+        assert!(
+            !description.contains("Rust-owned")
+                && !description.contains("daemon passthrough")
+                && !description.contains("JVM")
+                && !description.contains("/rpc/")
+                && !description.contains("capabilities.experimental.kastMethods"),
+            "{method} tool description should not expose implementation routing details: {description}"
+        );
+    }
+
+    let query_description = commands["symbol/query"]["tool"]["description"]
+        .as_str()
+        .expect("symbol/query tool description");
+    assert!(
+        query_description.contains("unknown symbols") && query_description.contains(".kt/.kts"),
+        "symbol/query should be disclosed as the first navigation step for Kotlin files: {query_description}"
+    );
+    let metrics_description = commands["database/metrics"]["tool"]["description"]
+        .as_str()
+        .expect("database/metrics tool description");
+    assert!(
+        metrics_description.contains("database-backed")
+            && metrics_description.contains("impact questions"),
+        "database/metrics should disclose source-index database access: {metrics_description}"
+    );
 }
 
 #[test]

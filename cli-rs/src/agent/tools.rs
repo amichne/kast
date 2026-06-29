@@ -149,7 +149,7 @@ fn agent_tool_policy_prefix(method: &str) -> &'static str {
         return "Preferred Kotlin funnel tool. Use this before raw file or offset operations when a symbol name, target type, or intended refactor is known.";
     }
     if method.starts_with("database/") {
-        return "Preferred low-cost source-index tool. Use this before backend-wide traversal when index metrics can answer the question.";
+        return "Preferred low-cost source-index tool. Use this before wide semantic traversal when index metrics can answer the question.";
     }
     if method.starts_with("raw/workspace-files") {
         return "Secondary workspace inspection tool. Use only after symbol/query, workspace symbols, or workspace search cannot identify a bounded target.";

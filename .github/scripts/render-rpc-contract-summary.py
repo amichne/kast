@@ -26,7 +26,7 @@ CATEGORY_PURPOSES = {
     "system": "Runtime readiness, backend state, and capability discovery.",
     "symbol": "Name-based orchestration for agent and script workflows.",
     "raw": "Position- and file-based backend primitives.",
-    "database": "Rust-owned SQLite source-index queries for metrics and impact views.",
+    "database": "Source-index queries for metrics and impact views.",
 }
 
 FLOW_BLOCKS = [
@@ -81,7 +81,7 @@ FLOW_BLOCKS = [
     ),
     (
         "Read the index",
-        "Use the Rust source-index reader for coupling, dead-code, search, graph, and impact questions.",
+        "Use the source-index metrics reader for coupling, dead-code, search, graph, and impact questions.",
         ["database/metrics"],
     ),
 ]

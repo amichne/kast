@@ -1,0 +1,12 @@
+{
+  "name": "kast-routing-surface",
+  "version": "1.0.0",
+  "supportedTargetKinds": [
+    "skill",
+    "directory"
+  ],
+  "command": [
+    "node",
+    "./emit-kast-routing-metrics.mjs"
+  ]
+}

@@ -65,7 +65,11 @@ Finally review `promotion-candidates.json`. These are suggested additions to
 
 When a prompt pattern recurs, add a sanitized entry to
 `fixtures/maintenance/evals/routing.json`.
-Use the existing examples in that file as the canonical schema.
+Validate it against `fixtures/maintenance/evals/routing.schema.json` and use
+the existing examples in that file as the canonical case shape.
+The packaged content smoke test validates that this corpus exists, routes every
+case to the `kast` skill, forbids text-search fallbacks for Kotlin semantics,
+and references catalog methods that are present in the public agent surface.
 
 Good routing evals:
 
@@ -97,9 +101,12 @@ need to move together.
 
 After any routing change:
 
-1. Re-run the skill routing/evaluation command for the current harness.
-2. Compare against the previous baseline.
-3. Re-run the corpus builder on fresh sessions
+1. Re-run `.github/scripts/test-kast-routing-evals.sh`, which validates the
+   static routing corpus and the active `kast agent tools` envelope.
+2. When `plugin-eval` is available, run
+   `plugin-eval analyze cli-rs/resources/kast-skill --metric-pack .github/plugin-eval/kast-routing/manifest.json`.
+3. Compare against the previous baseline.
+4. Re-run the corpus builder on fresh sessions.
 
 The goal is not only a better static score. The goal is fewer fresh cases in
 `trigger-miss` and `loaded-but-bypassed`.

@@ -46,6 +46,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-terminal-onboarding-contract.sh
 
+      - name: Test Kast routing evals
+        shell: bash
+        run: ./.github/scripts/test-kast-routing-evals.sh
+
       - name: Test Kast Copilot plugin package
         shell: bash
         run: ./.github/scripts/test-kast-copilot-plugin.sh

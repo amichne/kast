@@ -2,11 +2,11 @@
 name: kast
 description: >
   Use when an agent works in a Gradle project and needs the Rust `kast` CLI for
-  file discovery, Kotlin source reads or edits, symbol identity, references,
-  callers, hierarchy, diagnostics, source-index metrics, install/config/package
-  verification, file-backed Kast calls, or focused Gradle validation. Prefer
-  Kast before generic text or file tools for Kotlin and broad Gradle project
-  exploration.
+  file discovery, all Kotlin `.kt` and `.kts` source reads or edits, symbol
+  identity, references, callers, hierarchy, diagnostics, source-index metrics,
+  install/config/package verification, file-backed Kast calls, or focused
+  Gradle validation. Prefer Kast before generic text or file tools for Kotlin
+  and broad Gradle project exploration.
 ---
 
 # Kast
@@ -15,7 +15,10 @@ Kast is the installed Rust `kast` CLI semantic surface for Kotlin and Gradle
 repositories. When this skill is present, assume the binary installed it and use
 `kast` directly for file discovery, Kotlin context, symbol identity,
 relationships, diagnostics, edits, and focused validation. Default to Kast for
-Gradle project file operations that need semantic or install-state evidence.
+every `.kt` and `.kts` file and for Gradle project file operations that need
+semantic or install-state evidence. Treat Kast as the only navigation surface
+for Kotlin semantics until it returns a concrete blocker or a bounded
+non-semantic task remains.
 
 ## First Move
 
@@ -64,6 +67,10 @@ after this dynamic IDE warmup path has failed.
 ## Gradle File Routing
 
 - Use for Gradle project file work, not only direct Kotlin edits.
+- Any `.kt` or `.kts` file: start with `symbol/scaffold` when you need content
+  plus declaration context, or `raw/file-outline` when only structure is needed.
+  Do not open Kotlin files with generic readers before Kast has provided the
+  bounded target and semantic context.
 - Unknown symbol: start with `kast agent call symbol/query`; use tight `query`, `limit`,
   `modes`, and filters such as `relativePathPrefix`, `gradleProject`,
   `sourceSet`, or `kinds`.
@@ -84,6 +91,17 @@ after this dynamic IDE warmup path has failed.
   `database/metrics`, `kast inspect metrics fan-in`, other `kast inspect metrics` subcommands,
   `kast inspect demo --json`, `raw/workspace-refresh`, `raw/diagnostics`, then the
   narrowest Gradle task.
+
+## Public Surface
+
+Use the public agent surfaces first: `kast agent`, `kast agent tools`,
+`kast agent workflow`, `kast inspect metrics`, and the catalog method names in
+`references/commands.json`. Named tools such as `kast_symbol_query`,
+`kast_resolve`, `kast_references`, `kast_callers`, and `kast_metrics` are the
+host-facing way to expose navigation, relationships, source-index database
+access, and edits. Do not teach generated protocol paths, LSP capability
+internals, daemon routing details, or implementation class names as the public
+API for agents.
 
 ## Request Discipline
 
