@@ -6,20 +6,29 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
+import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
+import com.intellij.psi.search.PsiSearchHelper
+import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.util.Processor
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
@@ -67,6 +76,7 @@ import io.github.amichne.kast.shared.analysis.declarationEdit
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.supertypeNames
+import io.github.amichne.kast.shared.analysis.targetFqNameAndPackage
 import io.github.amichne.kast.shared.analysis.toApiDiagnostics
 import io.github.amichne.kast.shared.analysis.toKastLocation
 import io.github.amichne.kast.shared.analysis.toSymbolModel
@@ -78,6 +88,7 @@ import io.github.amichne.kast.shared.hierarchy.TypeHierarchyBudget
 import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -94,6 +105,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import java.nio.file.FileSystems
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 
 @OptIn(KaExperimentalApi::class)
 internal class KastPluginBackend(
@@ -103,6 +115,8 @@ internal class KastPluginBackend(
     private val telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
     private val backendName: String? = null,
     private val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
+    private val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
+    private val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
 ) : AnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
@@ -115,6 +129,15 @@ internal class KastPluginBackend(
 
     private fun kotlinFileType(): FileType? =
         FileTypeManager.getInstance().findFileTypeByName("Kotlin")
+
+    private fun kotlinCandidateFiles(scope: GlobalSearchScope): List<VirtualFile> =
+        kotlinFileType()?.let { fileType ->
+            FileTypeIndex.getFiles(fileType, scope)
+                .asSequence()
+                .filter { file -> file.isValid && !file.isDirectory && isWorkspaceFile(file.path) }
+                .sortedBy { file -> file.path }
+                .toList()
+        } ?: emptyList()
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = backendName ?: defaultBackendName(),
@@ -201,63 +224,381 @@ internal class KastPluginBackend(
     }
 
     override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult = withContext(readDispatcher) {
-        telemetry.inSpan(IdeaTelemetryScope.REFERENCES, "kast.idea.findReferences") {
-        val (snapshot, references) = collectInShortReadActions(
-            collectSnapshot = {
+        telemetry.inSpan(IdeaTelemetryScope.REFERENCES, "kast.idea.findReferences") { span ->
+            val plan = referenceSearchPlan(query, span)
+            val outcome = indexedReferenceSearch(query, plan, span)
+                ?: ideaReferenceSearch(query, plan, span)
+            val sortedReferences = outcome.references
+                .distinctBy { reference -> ReferenceLocationKey(reference.filePath, reference.startOffset, reference.endOffset) }
+                .sortedWith(compareBy({ it.filePath }, { it.startOffset }, { it.endOffset }))
+
+            span.setAttribute("kast.references.source", outcome.source.name.lowercase())
+            span.setAttribute("kast.references.visibility", plan.visibility.name)
+            span.setAttribute("kast.references.scope", plan.scopeKind.name)
+            span.setAttribute("kast.references.candidateFileCount", outcome.candidateFileCount)
+            span.setAttribute("kast.references.searchedFileCount", outcome.searchedFileCount)
+            span.setAttribute("kast.references.resultCount", sortedReferences.size)
+            span.setAttribute("kast.references.exhaustive", outcome.completion.exhaustive)
+            span.setAttribute("kast.references.partialReason", outcome.completion.partialReason)
+
+            ReferencesResult(
+                declaration = plan.declaration,
+                references = sortedReferences,
+                searchScope = SearchScope(
+                    visibility = plan.visibility,
+                    scope = plan.scopeKind,
+                    exhaustive = outcome.completion.exhaustive,
+                    candidateFileCount = outcome.candidateFileCount,
+                    searchedFileCount = outcome.searchedFileCount,
+                ),
+            )
+        }
+    }
+
+    private suspend fun referenceSearchPlan(
+        query: ParsedReferencesQuery,
+        span: IdeaTelemetrySpan,
+    ): ReferenceSearchPlan {
+        val target = span.child("kast.idea.findReferences.targetResolution") {
+            timedReadAction(
+                telemetry = telemetry,
+                scope = IdeaTelemetryScope.REFERENCES,
+                name = "kast.idea.findReferences.targetResolution.readAction",
+            ) {
                 val file = findKtFile(query.position.filePath.value)
-                val target = resolveTarget(file, query.position.offset.value)
-                val visibility = target.visibility()
-                val (searchScope, scopeKind) = visibilityScopedSearch(target, visibility)
-                val refs = mutableListOf<PsiReference>()
-                ReferencesSearch.search(target, searchScope).forEach { ref ->
-                    ProgressManager.checkCanceled()
-                    refs.add(ref)
-                    true
-                }
-                ReferenceSearchSnapshot(
+                val element = resolveTarget(file, query.position.offset.value)
+                val targetFqName = element.targetFqNameAndPackage()?.first?.value
+                ReferenceResolvedTarget(
+                    pointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(element),
+                    targetFqName = targetFqName,
+                    searchNeedle = ReferenceSearchNeedle.from(element, targetFqName),
                     declaration = if (query.includeDeclaration) {
-                        analyze(file) { target.toSymbolModel(containingDeclaration = null) }
+                        analyze(file) { element.toSymbolModel(containingDeclaration = null) }
                     } else {
                         null
                     },
-                    visibility = visibility,
+                    visibility = element.visibility(),
+                )
+            }
+        }
+        val scope = span.child("kast.idea.findReferences.scopeCalculation") {
+            timedReadAction(
+                telemetry = telemetry,
+                scope = IdeaTelemetryScope.REFERENCES,
+                name = "kast.idea.findReferences.scopeCalculation.readAction",
+            ) {
+                val element = target.pointer.element
+                    ?: throw NotFoundException(
+                        "Cannot resolve symbol at ${query.position.filePath.value}:${query.position.offset.value}",
+                    )
+                val (searchScope, scopeKind) = visibilityScopedSearch(element, target.visibility)
+                ReferenceScopePlan(
+                    searchScope = searchScope,
                     scopeKind = scopeKind,
-                    candidateFileCount = searchScope.let { scope ->
-                        kotlinFileType()?.let { fileType ->
-                            FileTypeIndex.getFiles(fileType, scope)
-                                .count { isWorkspaceFile(it.path) }
-                        } ?: 0
-                    },
-                ) to refs
-            },
-            processItem = { ref ->
-                val element = ref.element
-                if (!element.isValid) return@collectInShortReadActions null
-                val baseLocation = element.toKastLocation()
-                val location = if (query.includeUsageSiteScope) {
-                    baseLocation.copy(usageSiteScope = element.usageSiteDeclarationScope())
-                } else {
-                    baseLocation
-                }
-                if (isWorkspaceFile(location.filePath)) location else null
-            },
-            runInitialReadAction = { action -> runIdeaReadAction(action) },
-            runBatchReadAction = { action -> runIdeaReadAction(action) },
-        )
-        val sortedReferences = references.sortedWith(compareBy({ it.filePath }, { it.startOffset }))
-        val searchedFileCount = snapshot.candidateFileCount
+                )
+            }
+        }
 
-        ReferencesResult(
-            declaration = snapshot.declaration,
-            references = sortedReferences,
-            searchScope = SearchScope(
-                visibility = snapshot.visibility,
-                scope = snapshot.scopeKind,
-                exhaustive = true,
-                candidateFileCount = snapshot.candidateFileCount,
-                searchedFileCount = searchedFileCount,
-            ),
+        return ReferenceSearchPlan(
+            target = target.pointer,
+            targetFqName = target.targetFqName,
+            searchNeedle = target.searchNeedle,
+            declaration = target.declaration,
+            visibility = target.visibility,
+            searchScope = scope.searchScope,
+            scopeKind = scope.scopeKind,
         )
+    }
+
+    private fun indexedReferenceSearch(
+        query: ParsedReferencesQuery,
+        plan: ReferenceSearchPlan,
+        span: IdeaTelemetrySpan,
+    ): ReferenceSearchOutcome? = span.child("kast.idea.findReferences.indexLookup") { indexSpan ->
+        val targetFqName = plan.targetFqName ?: return@child null
+        when (val lookup = referenceIndexLookup.referencesTo(targetFqName)) {
+            IndexedReferenceLookupResult.NotReady -> {
+                indexSpan.setAttribute("kast.references.indexReady", false)
+                null
+            }
+            is IndexedReferenceLookupResult.Ready -> {
+                val indexedRows = runIdeaReadAction {
+                    lookup.references
+                        .filter { row -> indexedReferenceRowInScope(row, plan.searchScope) }
+                        .sortedWith(compareBy({ it.sourcePath }, { it.sourceOffset }))
+                }
+                val indexedSourcePathCount = indexedRows.mapTo(mutableSetOf()) { row -> row.sourcePath }.size
+                val locations = indexedReferenceLocations(
+                    rows = indexedRows,
+                    includeUsageSiteScope = query.includeUsageSiteScope,
+                )
+                indexSpan.setAttribute("kast.references.indexReady", true)
+                indexSpan.setAttribute("kast.references.indexRowCount", indexedRows.size)
+                indexSpan.setAttribute("kast.references.indexLocationCount", locations.size)
+                ReferenceSearchOutcome(
+                    source = ReferenceSearchSource.INDEX,
+                    references = locations,
+                    candidateFileCount = indexedSourcePathCount,
+                    searchedFileCount = indexedSourcePathCount,
+                    completion = if (indexedRows.size == locations.size) {
+                        ReferenceSearchCompletion.Exhaustive
+                    } else {
+                        ReferenceSearchCompletion.Partial(ReferencePartialReason.INDEX_LOCATION_UNRESOLVED)
+                    },
+                )
+            }
+        }
+    }
+
+    private fun indexedReferenceRowInScope(
+        row: SymbolReferenceRow,
+        searchScope: GlobalSearchScope,
+    ): Boolean {
+        if (!isWorkspaceFile(row.sourcePath)) return false
+        val virtualFile = LocalFileSystem.getInstance().findFileByPath(row.sourcePath) ?: return false
+        return virtualFile.isValid && !virtualFile.isDirectory && searchScope.contains(virtualFile)
+    }
+
+    private fun indexedReferenceLocations(
+        rows: List<SymbolReferenceRow>,
+        includeUsageSiteScope: Boolean,
+    ): List<Location> {
+        val locations = mutableListOf<Location>()
+        for (batch in rows.chunked(READ_ACTION_BATCH_SIZE)) {
+            val batchLocations = runIdeaReadAction {
+                batch.mapNotNull { row -> indexedReferenceLocationOrNull(row, includeUsageSiteScope) }
+            }
+            locations.addAll(batchLocations)
+        }
+        return locations
+    }
+
+    private fun indexedReferenceLocationOrNull(
+        row: SymbolReferenceRow,
+        includeUsageSiteScope: Boolean,
+    ): Location? = try {
+        indexedReferenceLocation(row, includeUsageSiteScope)
+    } catch (error: ProcessCanceledException) {
+        throw error
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun indexedReferenceLocation(
+        row: SymbolReferenceRow,
+        includeUsageSiteScope: Boolean,
+    ): Location? {
+        if (!isWorkspaceFile(row.sourcePath)) return null
+        val file = findKtFile(row.sourcePath)
+        val sourceOffset = row.sourceOffset.coerceIn(0, file.textLength)
+        val anchor = file.findElementAt(sourceOffset) ?: return null
+        val reference = anchor.referenceAtOffset(sourceOffset)
+        val element = reference?.element ?: anchor
+        if (!element.isValid) return null
+        val range = reference?.absoluteTextRange() ?: indexedFallbackRange(file, row)
+        val location = element.toKastLocation(range)
+        return if (includeUsageSiteScope) {
+            location.copy(usageSiteScope = element.usageSiteDeclarationScope())
+        } else {
+            location
+        }
+    }
+
+    private fun indexedFallbackRange(
+        file: KtFile,
+        row: SymbolReferenceRow,
+    ): TextRange {
+        val start = row.sourceOffset.coerceIn(0, file.textLength)
+        val nameLength = row.targetFqName.substringAfterLast('.').length.coerceAtLeast(1)
+        val end = (start + nameLength).coerceAtMost(file.textLength)
+        return TextRange(start, end)
+    }
+
+    private fun ideaReferenceSearch(
+        query: ParsedReferencesQuery,
+        plan: ReferenceSearchPlan,
+        span: IdeaTelemetrySpan,
+    ): ReferenceSearchOutcome = span.child("kast.idea.findReferences.findUsagesFallback") { fallbackSpan ->
+        val budget = ReferenceSearchBudget.start(limits, referenceSearchClock)
+        fallbackSpan.setAttribute("kast.references.fallbackApi", "PsiSearchHelper.processCandidateFilesForText")
+        fallbackSpan.setAttribute("kast.references.resolutionApi", "ReferencesSearch.search(fileScope)")
+
+        val candidateDiscovery = referenceCandidateFiles(plan, budget, fallbackSpan)
+        val resolution = fallbackSpan.child("kast.idea.findReferences.referenceResolution") { resolutionSpan ->
+            val locations = mutableListOf<Location>()
+            var searchedFileCount = 0
+            var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
+
+            for (candidateFile in candidateDiscovery.files) {
+                ProgressManager.checkCanceled()
+                if (budget.requestExhausted()) {
+                    completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                    break
+                }
+                val fileStartedNanos = budget.fileStarted()
+                val fileOutcome = runIdeaReadAction {
+                    val target = plan.target.element
+                        ?: return@runIdeaReadAction ReferenceFileSearchOutcome(
+                            references = emptyList(),
+                            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.TARGET_INVALIDATED),
+                        )
+                    val fileLocations = mutableListOf<Location>()
+                    var fileCompletion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
+                    ReferencesSearch.search(target, GlobalSearchScope.fileScope(project, candidateFile)).forEach(
+                        object : Processor<PsiReference> {
+                            override fun process(ref: PsiReference): Boolean {
+                                ProgressManager.checkCanceled()
+                                fileCompletion = when {
+                                    budget.requestExhausted() ->
+                                        ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                                    budget.fileExhausted(fileStartedNanos) ->
+                                        ReferenceSearchCompletion.Partial(ReferencePartialReason.FILE_BUDGET_EXHAUSTED)
+                                    else -> ReferenceSearchCompletion.Exhaustive
+                                }
+                                if (!fileCompletion.exhaustive) {
+                                    return false
+                                }
+                                ref.toReferenceLocation(query.includeUsageSiteScope)?.let(fileLocations::add)
+                                return true
+                            }
+                        }
+                    )
+                    ReferenceFileSearchOutcome(
+                        references = fileLocations,
+                        completion = fileCompletion,
+                    )
+                }
+
+                searchedFileCount += 1
+                locations.addAll(fileOutcome.references)
+                if (!fileOutcome.completion.exhaustive) {
+                    completion = fileOutcome.completion
+                    break
+                }
+            }
+
+            resolutionSpan.setAttribute("kast.references.resolvedFileCount", searchedFileCount)
+            ReferenceResolutionOutcome(
+                references = locations,
+                searchedFileCount = searchedFileCount,
+                completion = completion,
+            )
+        }
+
+        val completion = candidateDiscovery.completion.combine(resolution.completion)
+        fallbackSpan.setAttribute("kast.references.candidateFileCount", candidateDiscovery.candidateFileCount)
+        fallbackSpan.setAttribute("kast.references.searchedFileCount", resolution.searchedFileCount)
+        fallbackSpan.setAttribute("kast.references.partialReason", completion.partialReason)
+
+        ReferenceSearchOutcome(
+            source = ReferenceSearchSource.IDEA,
+            references = resolution.references,
+            candidateFileCount = candidateDiscovery.candidateFileCount,
+            searchedFileCount = resolution.searchedFileCount,
+            completion = completion,
+        )
+    }
+
+    private fun referenceCandidateFiles(
+        plan: ReferenceSearchPlan,
+        budget: ReferenceSearchBudget,
+        span: IdeaTelemetrySpan,
+    ): ReferenceCandidateDiscovery = span.child("kast.idea.findReferences.candidateDiscovery") { discoverySpan ->
+        val needle = plan.searchNeedle
+        discoverySpan.setAttribute("kast.references.candidateApi", if (needle == null) "FileTypeIndex.getFiles" else "PsiSearchHelper.processCandidateFilesForText")
+        discoverySpan.setAttribute("kast.references.searchNeedle", needle?.value)
+
+        val discovery = if (needle == null) {
+            fileTypeCandidateFiles(plan, budget)
+        } else {
+            textIndexedCandidateFiles(plan, budget, needle)
+        }
+
+        discoverySpan.setAttribute("kast.references.candidateFileCount", discovery.candidateFileCount)
+        discoverySpan.setAttribute("kast.references.candidateDiscoveryExhaustive", discovery.completion.exhaustive)
+        discoverySpan.setAttribute("kast.references.partialReason", discovery.completion.partialReason)
+        discovery
+    }
+
+    private fun textIndexedCandidateFiles(
+        plan: ReferenceSearchPlan,
+        budget: ReferenceSearchBudget,
+        needle: ReferenceSearchNeedle,
+    ): ReferenceCandidateDiscovery {
+        val files = mutableListOf<VirtualFile>()
+        var candidateFileCount = 0
+        var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
+        val helper = PsiSearchHelper.getInstance(project)
+        val processor = object : Processor<VirtualFile> {
+            override fun process(file: VirtualFile): Boolean {
+                ProgressManager.checkCanceled()
+                candidateFileCount += 1
+                if (budget.requestExhausted()) {
+                    completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                    return false
+                }
+                if (file.isValid && !file.isDirectory && isWorkspaceFile(file.path)) {
+                    files += file
+                }
+                return true
+            }
+        }
+        val continued = runIdeaReadAction {
+            helper.processCandidateFilesForText(
+                plan.searchScope,
+                UsageSearchContext.IN_CODE,
+                false,
+                needle.value,
+                processor,
+            )
+        }
+        if (!continued && completion.exhaustive) {
+            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.CANDIDATE_DISCOVERY_STOPPED)
+        }
+        return ReferenceCandidateDiscovery(
+            files = files.sortedBy { file -> file.path },
+            candidateFileCount = candidateFileCount,
+            completion = completion,
+        )
+    }
+
+    private fun fileTypeCandidateFiles(
+        plan: ReferenceSearchPlan,
+        budget: ReferenceSearchBudget,
+    ): ReferenceCandidateDiscovery {
+        val files = mutableListOf<VirtualFile>()
+        var candidateFileCount = 0
+        var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
+        val allKotlinFiles = runIdeaReadAction {
+            kotlinCandidateFiles(plan.searchScope)
+        }
+        for (file in allKotlinFiles) {
+            ProgressManager.checkCanceled()
+            candidateFileCount += 1
+            if (budget.requestExhausted()) {
+                completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                break
+            }
+            files += file
+        }
+        return ReferenceCandidateDiscovery(
+            files = files,
+            candidateFileCount = candidateFileCount,
+            completion = completion,
+        )
+    }
+
+    private fun PsiReference.toReferenceLocation(includeUsageSiteScope: Boolean): Location? {
+        val referenceElement = element
+        if (!referenceElement.isValid) return null
+        val location = referenceElement.toKastLocation(absoluteTextRange())
+        if (!isWorkspaceFile(location.filePath)) return null
+        return if (includeUsageSiteScope) {
+            location.copy(usageSiteScope = referenceElement.usageSiteDeclarationScope())
+        } else {
+            location
         }
     }
 
@@ -537,11 +878,15 @@ internal class KastPluginBackend(
                         .count { isWorkspaceFile(it.path) }
                 } ?: 0
                 val refs = mutableListOf<PsiReference>()
-                ReferencesSearch.search(target, searchScope).forEach { ref ->
-                    ProgressManager.checkCanceled()
-                    refs.add(ref)
-                    true
-                }
+                ReferencesSearch.search(target, searchScope).forEach(
+                    object : Processor<PsiReference> {
+                        override fun process(ref: PsiReference): Boolean {
+                            ProgressManager.checkCanceled()
+                            refs.add(ref)
+                            return true
+                        }
+                    },
+                )
                 RenameSnapshot(
                     declarationEdit = target.declarationEdit(query.newName.value),
                     visibility = visibility,
@@ -831,27 +1176,19 @@ internal class KastPluginBackend(
             val vf = file.virtualFile
             GlobalSearchScope.fileScope(project, vf) to SearchScopeKind.FILE
         }
-        SymbolVisibility.INTERNAL -> {
-            val file = target.containingFile as? KtFile
-                ?: return GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
-            val vf = file.virtualFile
-            val module = ProjectFileIndex.getInstance(project).getModuleForFile(vf)
-            if (module != null) {
-                GlobalSearchScope.moduleWithDependentsScope(module) to SearchScopeKind.DEPENDENT_MODULES
-            } else {
-                GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
-            }
-        }
-        SymbolVisibility.PUBLIC, SymbolVisibility.PROTECTED, SymbolVisibility.UNKNOWN ->
+        SymbolVisibility.INTERNAL, SymbolVisibility.PUBLIC, SymbolVisibility.PROTECTED ->
+            (moduleWithDependentsScope(target) ?: GlobalSearchScope.projectScope(project)) to
+                SearchScopeKind.DEPENDENT_MODULES
+        SymbolVisibility.UNKNOWN ->
             GlobalSearchScope.projectScope(project) to SearchScopeKind.DEPENDENT_MODULES
     }
 
-    private data class ReferenceSearchSnapshot(
-        val declaration: Symbol?,
-        val visibility: SymbolVisibility,
-        val scopeKind: SearchScopeKind,
-        val candidateFileCount: Int,
-    )
+    private fun moduleWithDependentsScope(target: PsiElement): GlobalSearchScope? {
+        val file = target.containingFile as? KtFile ?: return null
+        val virtualFile = file.virtualFile ?: return null
+        val module = ProjectFileIndex.getInstance(project).getModuleForFile(virtualFile) ?: return null
+        return GlobalSearchScope.moduleWithDependentsScope(module)
+    }
 
     private data class RenameSnapshot(
         val declarationEdit: TextEdit,
@@ -872,6 +1209,169 @@ internal class KastPluginBackend(
     }
 }
 
+private data class ReferenceResolvedTarget(
+    val pointer: SmartPsiElementPointer<PsiElement>,
+    val targetFqName: String?,
+    val searchNeedle: ReferenceSearchNeedle?,
+    val declaration: Symbol?,
+    val visibility: SymbolVisibility,
+)
+
+private data class ReferenceScopePlan(
+    val searchScope: GlobalSearchScope,
+    val scopeKind: SearchScopeKind,
+)
+
+private data class ReferenceSearchPlan(
+    val target: SmartPsiElementPointer<PsiElement>,
+    val targetFqName: String?,
+    val searchNeedle: ReferenceSearchNeedle?,
+    val declaration: Symbol?,
+    val visibility: SymbolVisibility,
+    val searchScope: GlobalSearchScope,
+    val scopeKind: SearchScopeKind,
+)
+
+private data class ReferenceSearchOutcome(
+    val source: ReferenceSearchSource,
+    val references: List<Location>,
+    val candidateFileCount: Int,
+    val searchedFileCount: Int,
+    val completion: ReferenceSearchCompletion,
+)
+
+private data class ReferenceCandidateDiscovery(
+    val files: List<VirtualFile>,
+    val candidateFileCount: Int,
+    val completion: ReferenceSearchCompletion,
+)
+
+private data class ReferenceResolutionOutcome(
+    val references: List<Location>,
+    val searchedFileCount: Int,
+    val completion: ReferenceSearchCompletion,
+)
+
+private data class ReferenceFileSearchOutcome(
+    val references: List<Location>,
+    val completion: ReferenceSearchCompletion,
+)
+
+private data class ReferenceLocationKey(
+    val filePath: String,
+    val startOffset: Int,
+    val endOffset: Int,
+)
+
+private enum class ReferenceSearchSource {
+    INDEX,
+    IDEA,
+}
+
+@JvmInline
+private value class ReferenceSearchNeedle private constructor(val value: String) {
+    companion object {
+        fun from(
+            target: PsiElement,
+            targetFqName: String?,
+        ): ReferenceSearchNeedle? {
+            val candidate = (target as? PsiNamedElement)?.name
+                ?: targetFqName?.substringAfterLast('.')
+                ?: target.text?.takeIf { text -> text.length in 1..MAX_NEEDLE_LENGTH }
+            return candidate
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+                ?.let(::ReferenceSearchNeedle)
+        }
+
+        private const val MAX_NEEDLE_LENGTH = 128
+    }
+}
+
+private sealed interface ReferenceSearchCompletion {
+    val exhaustive: Boolean
+    val partialReason: String?
+
+    object Exhaustive : ReferenceSearchCompletion {
+        override val exhaustive: Boolean = true
+        override val partialReason: String? = null
+    }
+
+    data class Partial(
+        val reason: ReferencePartialReason,
+    ) : ReferenceSearchCompletion {
+        override val exhaustive: Boolean = false
+        override val partialReason: String = reason.name.lowercase()
+    }
+}
+
+private fun ReferenceSearchCompletion.combine(
+    other: ReferenceSearchCompletion,
+): ReferenceSearchCompletion =
+    if (this.exhaustive) other else this
+
+private enum class ReferencePartialReason {
+    REQUEST_BUDGET_EXHAUSTED,
+    FILE_BUDGET_EXHAUSTED,
+    TARGET_INVALIDATED,
+    CANDIDATE_DISCOVERY_STOPPED,
+    INDEX_LOCATION_UNRESOLVED,
+}
+
+internal fun interface ReferenceSearchClock {
+    fun nanoTime(): Long
+
+    companion object {
+        val System: ReferenceSearchClock = ReferenceSearchClock { java.lang.System.nanoTime() }
+    }
+}
+
+private class ReferenceSearchBudget(
+    private val requestStartedNanos: Long,
+    private val requestBudgetNanos: Long,
+    private val perFileBudgetNanos: Long,
+    private val clock: ReferenceSearchClock,
+) {
+    fun requestExhausted(): Boolean =
+        clock.nanoTime() - requestStartedNanos >= requestBudgetNanos
+
+    fun fileStarted(): Long = clock.nanoTime()
+
+    fun fileExhausted(fileStartedNanos: Long): Boolean =
+        clock.nanoTime() - fileStartedNanos >= perFileBudgetNanos
+
+    companion object {
+        fun start(
+            limits: ServerLimits,
+            clock: ReferenceSearchClock,
+        ): ReferenceSearchBudget = ReferenceSearchBudget(
+            requestStartedNanos = clock.nanoTime(),
+            requestBudgetNanos = limits.requestTimeoutMillis.toBudgetNanos(),
+            perFileBudgetNanos = limits.perFileScanBudgetMillis.toBudgetNanos(),
+            clock = clock,
+        )
+    }
+}
+
+private fun Long.toBudgetNanos(): Long {
+    val millis = coerceAtLeast(1L)
+    return if (millis > Long.MAX_VALUE / NANOS_PER_MILLI) {
+        Long.MAX_VALUE
+    } else {
+        millis * NANOS_PER_MILLI
+    }
+}
+
+private fun PsiElement.referenceAtOffset(offset: Int): PsiReference? =
+    generateSequence(this as PsiElement?) { element -> element.parent }
+        .flatMap { element -> element.references.asSequence() }
+        .filter { reference -> reference.absoluteTextRange().containsOffset(offset) }
+        .minByOrNull { reference -> reference.absoluteTextRange().length }
+
+private fun PsiReference.absoluteTextRange(): TextRange =
+    rangeInElement.shiftRight(element.textRange.startOffset)
+
+private const val NANOS_PER_MILLI = 1_000_000L
 private const val READ_ACTION_BATCH_SIZE = 50
 
 internal inline fun <S, T, R : Any> collectInShortReadActions(

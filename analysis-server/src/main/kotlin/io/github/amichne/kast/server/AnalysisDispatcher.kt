@@ -66,7 +66,11 @@ import kotlinx.serialization.json.JsonNull
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CancellationException
 
 class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
@@ -119,6 +123,21 @@ class RpcAnalysisDispatcher(
                         code = JSON_RPC_METHOD_NOT_FOUND,
                         message = exception.message ?: "Unknown JSON-RPC method",
                     ),
+                ),
+            )
+        } catch (_: TimeoutCancellationException) {
+            json.encodeToString(
+                JsonRpcErrorResponse(
+                    id = request.id,
+                    error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
+                ),
+            )
+        } catch (exception: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw exception
+            json.encodeToString(
+                JsonRpcErrorResponse(
+                    id = request.id,
+                    error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
                 ),
             )
         } catch (exception: Throwable) {
@@ -446,6 +465,24 @@ private class UnknownRpcMethodException(
     method: String,
 ) : RuntimeException("Unknown JSON-RPC method: $method")
 
+private fun timeoutJsonRpcError(
+    request: JsonRpcRequest,
+    timeoutMillis: Long,
+): JsonRpcErrorObject = JsonRpcErrorObject(
+    code = JSON_RPC_SERVER_ERROR_BASE - REQUEST_TIMEOUT_STATUS_CODE,
+    message = "Request timed out after ${timeoutMillis}ms",
+    data = ApiErrorResponse(
+        requestId = requestId(request.id),
+        code = "TIMEOUT",
+        message = "Request timed out after ${timeoutMillis}ms",
+        retryable = true,
+        details = mapOf(
+            "method" to request.method,
+            "timeoutMillis" to timeoutMillis.toString(),
+        ),
+    ),
+)
+
 private fun AnalysisException.toJsonRpcError(id: JsonElement): JsonRpcErrorObject = JsonRpcErrorObject(
     code = JSON_RPC_SERVER_ERROR_BASE - statusCode,
     message = message,
@@ -471,6 +508,8 @@ private fun diagnosticPageToken(diagnostic: io.github.amichne.kast.api.contract.
     diagnostic.location.startOffset.toString()
 
 private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
+
+private const val REQUEST_TIMEOUT_STATUS_CODE = 504
 
 @Suppress("UNCHECKED_CAST")
 private fun <T, R : PageableResult<T>> R.withLimit(

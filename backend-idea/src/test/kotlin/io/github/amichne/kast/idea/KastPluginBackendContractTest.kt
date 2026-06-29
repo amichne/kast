@@ -6,6 +6,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.junit5.TestApplication
@@ -24,11 +25,14 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.nio.file.Files
 import java.nio.file.Path
 
 @TestApplication
@@ -100,10 +104,19 @@ class KastPluginBackendContractTest {
     private val hierarchyFile: PsiFile
         get() = hierarchyFileFixture.get()
 
-    private fun backend(workspaceRoot: Path = Path.of(project.basePath!!)): KastPluginBackend = KastPluginBackend(
+    private fun backend(
+        workspaceRoot: Path = Path.of(project.basePath!!),
+        limits: ServerLimits = defaultLimits,
+        telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
+        referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
+        referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
+    ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
-        limits = defaultLimits,
+        limits = limits,
+        telemetry = telemetry,
+        referenceIndexLookup = referenceIndexLookup,
+        referenceSearchClock = referenceSearchClock,
     )
 
     private fun ensureProjectReady() {
@@ -253,6 +266,169 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `fallback candidate discovery uses text index before reference resolution`() = runBlocking {
+        ensureProjectReady()
+        createIrrelevantKotlinFiles(count = 25)
+
+        val (workspaceRoot, filePath, offset) = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+
+        val result = backend(workspaceRoot).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+            ),
+        )
+
+        val searchScope = checkNotNull(result.searchScope)
+        assertTrue(searchScope.candidateFileCount <= 2) {
+            "Expected text-index candidate discovery to skip irrelevant Kotlin files, got ${searchScope.candidateFileCount}"
+        }
+        assertTrue(searchScope.searchedFileCount <= searchScope.candidateFileCount)
+        assertTrue(result.references.any { reference -> reference.preview.contains("greet(\"idea\")") })
+    }
+
+    @Test
+    fun `find references trace includes fallback candidate and resolution spans`() = runBlocking {
+        ensureProjectReady()
+
+        val traceFile = Files.createTempFile("kast-references-trace", ".jsonl")
+        val telemetry = IdeaBackendTelemetry.create(
+            IdeaTelemetryConfig(
+                enabled = true,
+                scopes = setOf(IdeaTelemetryScope.REFERENCES),
+                detail = IdeaTelemetryDetail.BASIC,
+                outputFile = traceFile,
+            ),
+        )
+        val (workspaceRoot, filePath, offset) = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+
+        backend(
+            workspaceRoot = workspaceRoot,
+            telemetry = telemetry,
+        ).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+            ),
+        )
+
+        val trace = Files.readString(traceFile)
+        listOf(
+            "kast.idea.findReferences.indexLookup",
+            "kast.idea.findReferences.findUsagesFallback",
+            "kast.idea.findReferences.candidateDiscovery",
+            "kast.idea.findReferences.referenceResolution",
+        ).forEach { spanName ->
+            assertTrue(trace.contains("\"name\":\"$spanName\"")) {
+                "Expected trace span $spanName in:\n$trace"
+            }
+        }
+    }
+
+    @Test
+    fun `find references uses ready source index before IDEA enumeration`() = runBlocking {
+        ensureProjectReady()
+
+        val referenceData = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            IndexedReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFilePath = sampleFile.virtualFile.path,
+                declarationOffset = sampleFile.text.indexOf("greet"),
+                usageFilePath = usageFile.virtualFile.path,
+                usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
+            )
+        }
+        var lookedUpFqName: String? = null
+        val referenceIndexLookup = ReferenceIndexLookup { targetFqName ->
+            lookedUpFqName = targetFqName
+            IndexedReferenceLookupResult.Ready(
+                listOf(
+                    SymbolReferenceRow(
+                        sourcePath = referenceData.usageFilePath,
+                        sourceOffset = referenceData.usageOffset,
+                        targetFqName = targetFqName,
+                        targetPath = referenceData.declarationFilePath,
+                        targetOffset = referenceData.declarationOffset,
+                    ),
+                ),
+            )
+        }
+
+        val result = backend(
+            workspaceRoot = referenceData.workspaceRoot,
+            referenceIndexLookup = referenceIndexLookup,
+        ).findReferences(
+            ReferencesQuery(
+                position = FilePosition(
+                    filePath = referenceData.declarationFilePath,
+                    offset = referenceData.declarationOffset,
+                ),
+                includeDeclaration = false,
+                includeUsageSiteScope = true,
+            ),
+        )
+
+        assertEquals("demo.greet", lookedUpFqName)
+        val reference = result.references.single()
+        assertEquals(referenceData.usageFilePath, reference.filePath)
+        assertTrue(reference.preview.contains("greet(\"idea\")"))
+        assertNotNull(reference.usageSiteScope)
+        assertEquals(true, result.searchScope?.exhaustive)
+        assertEquals(result.searchScope?.candidateFileCount, result.searchScope?.searchedFileCount)
+    }
+
+    @Test
+    fun `find references reports non exhaustive scope when fallback budget is exhausted`() = runBlocking {
+        ensureProjectReady()
+
+        val (workspaceRoot, filePath, offset) = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+        var currentNanos = 0L
+        val exhaustedClock = ReferenceSearchClock {
+            currentNanos += 2_000_000L
+            currentNanos
+        }
+
+        val result = backend(
+            workspaceRoot = workspaceRoot,
+            limits = defaultLimits.copy(requestTimeoutMillis = 1L),
+            referenceSearchClock = exhaustedClock,
+        ).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+            ),
+        )
+
+        assertFalse(result.searchScope?.exhaustive ?: true)
+        assertTrue(
+            (result.searchScope?.searchedFileCount ?: Int.MAX_VALUE) <
+                (result.searchScope?.candidateFileCount ?: 0),
+        )
+    }
+
+    @Test
     fun `find references for internal symbol searches declaring module dependents`() = runBlocking {
         ensureInternalVisibilityProjectReady()
 
@@ -290,6 +466,28 @@ class KastPluginBackendContractTest {
         val secondPath = Path.of(second).toAbsolutePath().normalize()
         return generateSequence(firstPath.parent) { it.parent }
             .first { candidate -> secondPath.startsWith(candidate) }
+    }
+
+    private fun createIrrelevantKotlinFiles(count: Int) {
+        val suffix = System.nanoTime().toString()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val sourceRoot = mainSourceRootFixture.get().virtualFile
+                repeat(count) { index ->
+                    val file = sourceRoot.createChildData(this, "Irrelevant${suffix}_$index.kt")
+                    VfsUtil.saveText(
+                        file,
+                        """
+                        package demo
+
+                        fun unrelated${suffix}_$index(): Int = $index
+                        """.trimIndent(),
+                    )
+                }
+            }
+        }
+        waitUntilIndexesAreReady(project)
     }
 
     @Test
@@ -352,3 +550,11 @@ class KastPluginBackendContractTest {
         assertEquals(expectedVersion, backend().capabilities().backendVersion)
     }
 }
+
+private data class IndexedReferenceTestData(
+    val workspaceRoot: Path,
+    val declarationFilePath: String,
+    val declarationOffset: Int,
+    val usageFilePath: String,
+    val usageOffset: Int,
+)
