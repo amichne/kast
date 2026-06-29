@@ -1,0 +1,251 @@
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rendered_human_output_plain_text_does_not_dump_raw_markdown_tokens() {
+        let rendered = render_markdown_for_test(
+            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast runtime up`\n",
+            RenderStyle::Plain,
+        );
+
+        assert!(
+            rendered.starts_with("Kast status\n==========="),
+            "primary heading should be rendered as text with an underline: {rendered}"
+        );
+        assert!(
+            rendered.contains("Workspace: /tmp/kast"),
+            "inline code markers should be rendered away: {rendered}"
+        );
+        assert!(
+            rendered.contains("Next steps\n----------"),
+            "secondary headings should be rendered as sections: {rendered}"
+        );
+        assert!(
+            !rendered.contains("# Kast status") && !rendered.contains("`/tmp/kast`"),
+            "raw Markdown control tokens should not leak into rendered output: {rendered}"
+        );
+    }
+
+    #[test]
+    fn rendered_human_output_ansi_styles_headings_and_inline_code() {
+        let rendered = render_markdown_for_test(
+            "# Kast status\n- Workspace: `/tmp/kast`\n",
+            RenderStyle::Ansi,
+        );
+
+        assert!(
+            rendered.contains("\x1b["),
+            "ANSI rendering should style headings or inline code: {rendered:?}"
+        );
+        assert!(
+            !rendered.contains("# Kast status") && !rendered.contains("`/tmp/kast`"),
+            "ANSI rendering should still remove raw Markdown control tokens: {rendered:?}"
+        );
+    }
+
+    #[test]
+    fn path_resolution_human_output_uses_ascii_tables_for_plain_capture() {
+        let report = path_resolution_report_for_test();
+        let mut document = MarkdownDocument::default();
+        print_path_resolution_with_table_style(&mut document, &report, TableRenderStyle::Ascii);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Config files:"), "{rendered}");
+        assert!(rendered.contains("Path entries:"), "{rendered}");
+        assert!(rendered.contains("Scope"), "{rendered}");
+        assert!(rendered.contains("State"), "{rendered}");
+        assert!(rendered.contains("paths.installRoot"), "{rendered}");
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('+') && line.ends_with('+')),
+            "captured tables should use standard ASCII borders with '+' corners: {rendered}"
+        );
+        assert!(
+            !rendered
+                .lines()
+                .any(|line| line.starts_with('.') || line.starts_with('\'')),
+            "tables should not use rounded ASCII borders that look like raw glyphs: {rendered}"
+        );
+        assert!(
+            !rendered.contains("- paths.installRoot ->"),
+            "path entries should render as a table, not dense bullets: {rendered}"
+        );
+    }
+
+    #[test]
+    fn path_resolution_human_output_uses_modern_tables_for_terminals() {
+        let report = path_resolution_report_for_test();
+        let mut document = MarkdownDocument::default();
+        print_path_resolution_with_table_style(&mut document, &report, TableRenderStyle::Modern);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Config files:"), "{rendered}");
+        assert!(rendered.contains("Path entries:"), "{rendered}");
+        assert!(rendered.contains("Scope"), "{rendered}");
+        assert!(rendered.contains("State"), "{rendered}");
+        assert!(rendered.contains("paths.installRoot"), "{rendered}");
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('┌') && line.ends_with('┐')),
+            "terminal tables should use modern box-drawing borders: {rendered}"
+        );
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('└') && line.ends_with('┘')),
+            "terminal tables should close with modern box-drawing borders: {rendered}"
+        );
+        assert!(
+            !rendered
+                .lines()
+                .any(|line| line.starts_with('+') || line.starts_with('.')),
+            "terminal tables should not fall back to raw ASCII borders: {rendered}"
+        );
+    }
+
+    #[test]
+    fn idea_plugin_install_human_output_uses_summary_tables_and_next_steps() {
+        let result = idea_plugin_install_result_for_test(false);
+        let mut document = MarkdownDocument::default();
+        print_idea_plugin_install_with_table_style(&mut document, &result, TableRenderStyle::Ascii);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Kast IDEA plugin install"), "{rendered}");
+        assert!(rendered.contains("Status: applied"), "{rendered}");
+        assert!(rendered.contains("Install summary"), "{rendered}");
+        assert!(rendered.contains("JetBrains destinations"), "{rendered}");
+        assert!(rendered.contains("Homebrew action"), "{rendered}");
+        assert!(rendered.contains("Brew command"), "{rendered}");
+        assert!(
+            rendered.contains("Restart any open IntelliJ IDEA"),
+            "{rendered}"
+        );
+        assert!(
+            rendered
+                .lines()
+                .any(|line| line.starts_with('+') && line.ends_with('+')),
+            "captured install summary should render as an ASCII table: {rendered}"
+        );
+    }
+
+    #[test]
+    fn idea_plugin_install_dry_run_output_keeps_install_guidance() {
+        let result = idea_plugin_install_result_for_test(true);
+        let mut document = MarkdownDocument::default();
+        print_idea_plugin_install_with_table_style(&mut document, &result, TableRenderStyle::Ascii);
+        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
+
+        assert!(rendered.contains("Status: planned"), "{rendered}");
+        assert!(rendered.contains("Dry run"), "{rendered}");
+        assert!(
+            rendered.contains("without --dry-run to install the Homebrew cask"),
+            "{rendered}"
+        );
+    }
+
+    fn idea_plugin_install_result_for_test(dry_run: bool) -> InstallIdeaPluginResult {
+        InstallIdeaPluginResult {
+            cask_token: "amichne/kast/kast-plugin".to_string(),
+            plugin_version: "9.8.7".to_string(),
+            download_cache: "/tmp/000--kast-plugin.zip".to_string(),
+            downloaded_bytes: 15,
+            brew_action: "install".to_string(),
+            brew_command: vec![
+                "brew".to_string(),
+                "install".to_string(),
+                "--cask".to_string(),
+                "amichne/kast/kast-plugin".to_string(),
+            ],
+            brew_prefix: "/opt/homebrew".to_string(),
+            formula_prefix: "/opt/homebrew/Cellar/kast/9.8.7".to_string(),
+            cli_path: "/opt/homebrew/bin/kast".to_string(),
+            jetbrains_config_root: Some("/tmp/JetBrains".to_string()),
+            plugin_directories: vec!["/tmp/JetBrains/IntelliJIdea2026.1/plugins".to_string()],
+            dry_run,
+            warnings: vec![],
+            schema_version: 3,
+        }
+    }
+
+    fn path_resolution_report_for_test() -> crate::config::PathResolutionReport {
+        crate::config::PathResolutionReport {
+            root: "/tmp/kast".to_string(),
+            config_files: vec![crate::config::PathResolutionConfigFile {
+                scope: "global".to_string(),
+                path: "/tmp/config.toml".to_string(),
+                exists: true,
+            }],
+            entries: vec![crate::config::PathResolutionEntry {
+                key: "paths.installRoot".to_string(),
+                value: "/tmp/kast".to_string(),
+                source: crate::config::PathResolutionSource::Manifest,
+                owner: "install".to_string(),
+                derived_from: None,
+                exists: true,
+                expected_kind: "directory".to_string(),
+                used_by_idea: true,
+            }],
+            warnings: vec![],
+            schema_version: 3,
+        }
+    }
+
+    #[test]
+    fn source_modules_render_as_plain_text_tree() {
+        let rendered = render_source_modules_for_test(&[
+            ":backend:idea",
+            ":analysis-api",
+            ":backend:headless",
+            "secondary",
+        ]);
+
+        assert!(
+            rendered.contains(
+                "Source modules\n--------------\n- analysis-api\n- backend\n  - headless\n  - idea\n- secondary\n"
+            ),
+            "source modules should render as a sorted tree: {rendered}"
+        );
+        assert!(
+            !rendered.contains("Source modules:"),
+            "source modules should not render as a comma-separated list: {rendered}"
+        );
+    }
+
+    #[test]
+    fn source_modules_truncate_after_display_limit() {
+        let modules = (0..32)
+            .map(|index| format!(":module-{index:02}"))
+            .collect::<Vec<_>>();
+        let rendered = render_source_modules_for_owned_test(&modules);
+
+        assert!(
+            rendered.contains("- module-29"),
+            "the thirtieth module should still render: {rendered}"
+        );
+        assert!(
+            !rendered.contains("- module-30"),
+            "modules after the display limit should be omitted: {rendered}"
+        );
+        assert!(
+            rendered.contains("- ... 2 more modules"),
+            "truncation summary should report hidden modules: {rendered}"
+        );
+    }
+
+    fn render_source_modules_for_test(module_names: &[&str]) -> String {
+        let module_names = module_names
+            .iter()
+            .map(|module_name| module_name.to_string())
+            .collect::<Vec<_>>();
+        render_source_modules_for_owned_test(&module_names)
+    }
+
+    fn render_source_modules_for_owned_test(module_names: &[String]) -> String {
+        let mut document = MarkdownDocument::default();
+        print_source_modules(&mut document, module_names);
+        render_markdown_for_test(&document.into_string(), RenderStyle::Plain)
+    }
+}

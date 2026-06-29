@@ -1,0 +1,200 @@
+pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let config = KastConfig::load(&workspace_root)?;
+    let path_resolution = config::path_resolution_report(
+        &config,
+        Some(&workspace_root),
+        config::PathResolutionMode::Cli,
+    )?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, false)?;
+    Ok(WorkspaceStatusResult {
+        workspace_root: workspace_root.display().to_string(),
+        descriptor_directory: inspection.descriptor_directory.display().to_string(),
+        path_resolution,
+        selected: inspection.selected,
+        candidates: inspection.candidates,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let config = KastConfig::load(&workspace_root)?;
+    let path_resolution = config::path_resolution_report(
+        &config,
+        Some(&workspace_root),
+        config::PathResolutionMode::Cli,
+    )?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, true)?;
+    if let Some(selected) = select_servable(
+        &inspection.candidates,
+        preference.backend_filter(),
+        args.accept_indexing.unwrap_or(false),
+    ) {
+        return Ok(WorkspaceEnsureResult {
+            workspace_root: workspace_root.display().to_string(),
+            descriptor_directory: inspection.descriptor_directory.display().to_string(),
+            path_resolution,
+            started: false,
+            log_file: None,
+            selected,
+            note: None,
+            schema_version: SCHEMA_VERSION,
+        });
+    }
+
+    let idea_launch_ops = SystemIdeaBackendLaunchOps;
+    if let Some(selected) = maybe_launch_idea_backend(
+        &workspace_root,
+        &config,
+        preference,
+        args.accept_indexing.unwrap_or(false),
+        &idea_launch_ops,
+    )? {
+        return Ok(WorkspaceEnsureResult {
+            workspace_root: workspace_root.display().to_string(),
+            descriptor_directory: inspection.descriptor_directory.display().to_string(),
+            path_resolution,
+            started: true,
+            log_file: None,
+            selected,
+            note: Some("Started IDEA with the configured runtime.ideaLaunch command.".to_string()),
+            schema_version: SCHEMA_VERSION,
+        });
+    }
+
+    let Some(launch_backend) = fallback_launch_backend(preference) else {
+        return Err(CliError::new(
+            "IDEA_NOT_RUNNING",
+            format!(
+                "No IDEA backend is available for {}. Open the project in IDEA with the Kast plugin installed.",
+                workspace_root.display()
+            ),
+        ));
+    };
+
+    if args.no_auto_start.unwrap_or(false) {
+        return Err(no_backend_error(
+            &workspace_root,
+            preference.backend_filter(),
+        ));
+    }
+
+    if launch_backend == BackendName::Headless {
+        if select_servable(&inspection.candidates, Some(launch_backend), true).is_some()
+            && let Ok(selected) = wait_for_servable(
+                &workspace_root,
+                Some(launch_backend),
+                args.accept_indexing.unwrap_or(false),
+                args.wait_timeout_ms,
+            )
+        {
+            return Ok(WorkspaceEnsureResult {
+                workspace_root: workspace_root.display().to_string(),
+                descriptor_directory: inspection.descriptor_directory.display().to_string(),
+                path_resolution,
+                started: false,
+                log_file: None,
+                selected,
+                note: Some(
+                    "Reused an existing headless runtime after it became ready.".to_string(),
+                ),
+                schema_version: SCHEMA_VERSION,
+            });
+        }
+        let _ = stop_backend_candidates(
+            &workspace_root,
+            RuntimeBackendPreference::Fixed(launch_backend),
+            true,
+            None,
+        )?;
+    }
+
+    let runtime_libs_dir = match config
+        .backends
+        .headless
+        .runtime_libs_dir
+        .clone()
+        .filter(|path| path.is_dir())
+    {
+        Some(path) => path,
+        None => return Err(no_backend_error(&workspace_root, Some(launch_backend))),
+    };
+    let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
+    let daemon_args = DaemonStartArgs {
+        workspace_root: Some(workspace_root.clone()),
+        backend_name: Some(launch_backend),
+        runtime_libs_dir: Some(runtime_libs_dir),
+        ..DaemonStartArgs::from(args.clone())
+    };
+    daemon::spawn_background(daemon_args, &log_file)?;
+    let selected = match wait_for_servable(
+        &workspace_root,
+        Some(launch_backend),
+        args.accept_indexing.unwrap_or(false),
+        args.wait_timeout_ms,
+    ) {
+        Ok(selected) => selected,
+        Err(error) => {
+            if launch_backend == BackendName::Headless {
+                let _ = stop_backend_candidates(
+                    &workspace_root,
+                    RuntimeBackendPreference::Fixed(launch_backend),
+                    true,
+                    None,
+                );
+            }
+            return Err(error);
+        }
+    };
+    Ok(WorkspaceEnsureResult {
+        workspace_root: workspace_root.display().to_string(),
+        descriptor_directory: inspection.descriptor_directory.display().to_string(),
+        path_resolution,
+        started: true,
+        log_file: Some(log_file.display().to_string()),
+        selected,
+        note: None,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let config = KastConfig::load(&workspace_root)?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
+    stop_backend_candidates(
+        &workspace_root,
+        RuntimeBackendPreference::Fixed(backend_name),
+        true,
+        Some("runtime/shutdown"),
+    )
+}
+
+pub fn workspace_restart(args: RuntimeArgs) -> Result<WorkspaceRestartResult> {
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let config = KastConfig::load(&workspace_root)?;
+    let preference = runtime_backend_preference(&config, args.backend_name);
+    let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
+    if backend_name == BackendName::Idea
+        && let Some(result) = restart_idea_backend_candidates(&workspace_root, &config, &args)?
+    {
+        return Ok(result);
+    }
+    let mut stop_args = args.clone();
+    stop_args.backend_name = Some(backend_name);
+    let stop = workspace_stop(stop_args)?;
+    let mut ensure_args = args;
+    ensure_args.backend_name = Some(backend_name);
+    let ensure = workspace_ensure(ensure_args)?;
+    Ok(WorkspaceRestartResult {
+        workspace_root: workspace_root.display().to_string(),
+        backend_name: backend_name.canonical().to_string(),
+        stop,
+        ensure,
+        schema_version: SCHEMA_VERSION,
+    })
+}

@@ -36,6 +36,14 @@ function requireText(path, needles) {
   return text;
 }
 
+function requireCombinedText(label, paths, needles) {
+  const text = paths.map((path) => readText(path)).join("\n");
+  for (const [needleLabel, needle] of Object.entries(needles)) {
+    if (!text.includes(needle)) fail(`${label} missing ${needleLabel}: ${needle}`);
+  }
+  return text;
+}
+
 function assertSameJson(actual, expected, label) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     fail(`${label} mismatch`);
@@ -62,7 +70,25 @@ assertSameJson(
   "plugin manifest entrypoints",
 );
 
-const lsp = requireText("cli-rs/src/lsp.rs", {
+const lspSourcePaths = [
+  "cli-rs/src/lsp.rs",
+  "cli-rs/src/lsp/capabilities_and_routes.rs",
+  "cli-rs/src/lsp/conversions.rs",
+  "cli-rs/src/lsp/entrypoint_and_client.rs",
+  "cli-rs/src/lsp/protocol.rs",
+  "cli-rs/src/lsp/route_model.rs",
+  "cli-rs/src/lsp/server.rs",
+  "cli-rs/src/lsp/symbol_mapping.rs",
+  "cli-rs/src/lsp/tests.rs",
+  "cli-rs/src/lsp/tests/failure_modes.rs",
+  "cli-rs/src/lsp/tests/hierarchy.rs",
+  "cli-rs/src/lsp/tests/initialize_and_routes.rs",
+  "cli-rs/src/lsp/tests/protocol.rs",
+  "cli-rs/src/lsp/tests/read_operations.rs",
+  "cli-rs/src/lsp/tests/rename.rs",
+  "cli-rs/src/lsp/tests/support.rs",
+];
+const lsp = requireCombinedText("cli-rs/src/lsp split sources", lspSourcePaths, {
   "bounded result cap": "const MAX_LSP_RESULTS",
   "bounded result application": ".take(MAX_LSP_RESULTS)",
   "generated custom route include": "lsp_custom_routes.rs",
