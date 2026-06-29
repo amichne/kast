@@ -16,6 +16,17 @@ You need Kast installed and a Kotlin workspace on disk. Use the developer
 machine install on macOS, or the Linux headless bundle on CI runners, hosted
 agents, and server images.
 
+```mermaid
+flowchart TD
+    ready["1. Check the install<br/>kast ready"]
+    start["2. Start or warm backend<br/>kast runtime up"]
+    resolve["3. Resolve symbol identity<br/>kast agent raw-resolve"]
+    refs["4. Find references<br/>kast agent raw-references"]
+    scope["5. Check completeness<br/>result.searchScope"]
+
+    ready --> start --> resolve --> refs --> scope
+```
+
 ```console title="Check the active install"
 kast ready
 kast inspect paths
@@ -31,10 +42,19 @@ Use the backend that matches the machine. The headless backend works well for
 servers and CI. The IDEA backend reuses an already-open IDEA or Android Studio
 project on developer machines.
 
-```console title="Start or warm a backend"
-kast runtime up --backend=headless
-kast runtime status --backend=headless
-```
+=== "Headless"
+
+    ```console title="Start or warm a headless backend"
+    kast runtime up --backend=headless
+    kast runtime status --backend=headless
+    ```
+
+=== "IDEA"
+
+    ```console title="Reuse an open IDEA or Android Studio project"
+    kast runtime up --backend=idea
+    kast runtime status --backend=idea
+    ```
 
 Use JSON output for automation:
 
@@ -59,6 +79,13 @@ kast agent raw-resolve \
 The important fields are in `result`: fully qualified name, kind, signature,
 and source location. That is compiler-backed symbol identity, not a text match.
 
+| Field | Why it matters |
+|-------|----------------|
+| `result.fqName` | Names the declaration the Kotlin analysis engine resolved |
+| `result.kind` | Distinguishes classes, functions, properties, and other declaration shapes |
+| `result.signature` | Gives scripts a stable comparison point when overloads exist |
+| `result.location` | Feeds the next command without falling back to text search |
+
 ## Step 3: find references
 
 Use the same file and offset to ask for usages. Include the declaration when
@@ -74,6 +101,11 @@ kast agent raw-references \
 
 Read `result.searchScope.exhaustive` before claiming the list is complete. If
 it is false, compare the candidate and searched file counts in the payload.
+
+!!! warning "Completeness is data, not intent"
+    Treat partial reference results as bounded evidence. A successful command
+    proves that the request ran; only an exhaustive search scope proves that the
+    returned list is complete for the selected backend and workspace state.
 
 ## Step 4: bridge from a name to an offset
 

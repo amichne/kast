@@ -27,6 +27,28 @@ as a failed operation even when the process exited cleanly.
 Stderr may contain human-readable startup or progress messages. Scripts should
 parse stdout and keep stderr for diagnostics.
 
+```mermaid
+flowchart LR
+    command["kast agent ..."]
+    envelope["JSON envelope"]
+    ok["ok: true<br/>result"]
+    error["ok: false<br/>error"]
+    next["nextRequest or workflow files"]
+
+    command --> envelope
+    envelope --> ok
+    envelope --> error
+    ok --> next
+```
+
+| Envelope field | Contract |
+|----------------|----------|
+| `ok` | Boolean success signal for scripts; do not rely on process exit alone |
+| `method` | Catalog or alias method actually invoked |
+| `request` | Normalized request payload after CLI flag parsing |
+| `result` | Present only when `ok` is true |
+| `error` | Present when the operation failed or the backend rejected the request |
+
 ## Bring Up A Repository
 
 Use `kast agent up` when a repository should be ready for an agent in one
@@ -58,6 +80,11 @@ the executable token used for the dry run, so copied binaries and absolute CLI
 paths remain directly callable. `stage`, `nextActions`, and `manualSteps`
 explain what happened and what the user should do next.
 
+!!! tip "Plan before mutating a repository"
+    Use `kast agent up --dry-run` when the harness, setup target, or backend is
+    not obvious. The dry run reports the resource install command and runtime
+    warmup command without writing repository files.
+
 ## Setup
 
 Use `kast agent setup` to install harness-agnostic agent resources. The default
@@ -75,6 +102,13 @@ When root `AGENTS.md` is missing, default setup installs only the skill.
 Pass `--agents-md <path/to/AGENTS.md>` to explicitly create or patch a scoped
 guidance file. In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and
 `installCommand` report the exact writes and equivalent command.
+
+| Harness | Typical target | Use when |
+|---------|----------------|----------|
+| `copilot` | `.github` | The repository should expose the Copilot LSP package and tool catalog |
+| `skill` | `.agents/skills` or `.codex/skills` | The host loads reusable skills but not the Copilot package |
+| `instructions` | `.agents/instructions` or `.codex/instructions` | The host reads Markdown instructions without a skill runtime |
+| `auto` | Detected from config or existing roots | The same command should adapt across repositories |
 
 ## Tool Discovery
 
@@ -101,6 +135,23 @@ Before registering or invoking returned tools, validate the discovery envelope:
 `toolCount` matches the returned tools length, and `result.invocation.argv`
 has the `agent call <method>` shape. Treat a failed validation as a stale
 binary or package install.
+
+```mermaid
+sequenceDiagram
+    participant Host as Agent host
+    participant CLI as kast CLI
+    participant Catalog as Embedded catalog
+    participant Backend as Workspace backend
+
+    Host->>CLI: kast agent tools
+    CLI->>Catalog: Read catalog-backed specs
+    Catalog-->>CLI: Tool schemas and invocation argv
+    CLI-->>Host: KAST_AGENT_TOOLS envelope
+    Host->>CLI: kast agent call <method>
+    CLI->>Backend: Normalized request
+    Backend-->>CLI: Semantic result or typed error
+    CLI-->>Host: JSON envelope
+```
 
 ## Alias commands
 
