@@ -33,9 +33,9 @@ commands as the current source-of-truth model.
 | Surface | Source of truth | Installed or generated output | Verification |
 |---------|-----------------|-------------------------------|--------------|
 | Copilot package | `cli-rs/resources/plugin/` and `primitive-manifest.json` | `.github/lsp.json`, `.github/extensions/kast/**` | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh` |
-| RPC and tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | request schemas, samples, LSP custom route metadata, `kast agent tools` specs | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
-| Packaged skill | `cli-rs/resources/kast-skill/` | installed `kast` skill directories | `python3 cli-rs/resources/kast-skill/scripts/verify-kast-state.py`, CLI smoke tests |
-| Installable instructions | `cli-rs/resources/kast-instructions/` | installed instruction directories | `kast agent setup instructions --force`, docs content contract |
+| RPC and tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | internal request schemas, samples, LSP custom route metadata, `kast agent tools` specs | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
+| Packaged skill | `cli-rs/resources/kast-skill/SKILL.md` | thin installed `kast` skill entrypoint only | `kast agent workflow package-verify`, CLI smoke tests |
+| Installable instructions | `cli-rs/resources/kast-instructions/` | thin installed instruction directories: `README.md`, `cli.md`, `tools.md`, `lsp.md` | `kast agent setup instructions --force`, docs content contract |
 | Harness selection | `projectOpen.agentHarness` and `kast agent setup auto --harness ...` | Copilot, skill, or instruction resource installs | CLI smoke tests |
 | Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json ready`, verifier script |
 | Tool discovery | `cli-rs/resources/kast-skill/references/commands.json` | `kast agent tools` JSON specs for CLI-capable hosts and Copilot adapter loading | CLI smoke tests, Copilot package tests |
@@ -67,11 +67,15 @@ Agent-facing changes must keep these requirements true:
   invoke the returned `result.invocation.argv` so alternate binary names and
   absolute binary paths keep working.
 - Raw `kast rpc` remains a hidden debug escape hatch, not the public agent
-  integration contract.
+  integration contract or installable instruction topic.
 - Repo-installed resources are recorded in `install.json` with kind, target,
   primitive version, source bundle checksum, output paths, and output checksums.
-- `kast ready` and `verify-kast-state.py` fail closed on missing, stale, or
-  tampered manifest-backed resources.
+- `kast ready`, `kast agent workflow package-verify`, and the source-tree
+  verifier fail closed on missing, stale, or tampered manifest-backed
+  resources.
+- `kast agent setup skill` installs only `SKILL.md`; source-only references,
+  generated request samples, routing fixtures, and helper scripts stay under
+  `cli-rs/resources/kast-skill/` for CLI, docs, tests, and validation.
 - Mutating workflows require explicit mutation opt-in; dry runs only create
   evidence files.
 - Stale active-binary/resource combinations report incompatibility and require

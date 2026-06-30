@@ -382,7 +382,7 @@ fn smoke_core_cli_commands() {
     assert!(!skill_dir.join("kast/AGENTS.md").exists());
     assert!(!skill_dir.join("kast/references").exists());
     assert!(!skill_dir.join("kast/scripts").exists());
-
+    assert!(!skill_dir.join("kast/fixtures").exists());
     let instructions_dir = temp.path().join("instructions");
     let instructions = kast(&home, &config_home)
         .args([
@@ -400,6 +400,7 @@ fn smoke_core_cli_commands() {
     assert!(instructions_dir.join("kast/cli.md").is_file());
     assert!(instructions_dir.join("kast/tools.md").is_file());
     assert!(instructions_dir.join("kast/lsp.md").is_file());
+    assert!(!instructions_dir.join("kast/AGENTS.md").exists());
     assert!(!instructions_dir.join("kast/rpc.md").exists());
 
     let github_dir = temp.path().join(".github");
