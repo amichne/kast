@@ -37,8 +37,8 @@ mod tests {
         assert!(temp.path().join("kast/README.md").is_file());
         assert!(temp.path().join("kast/cli.md").is_file());
         assert!(temp.path().join("kast/tools.md").is_file());
-        assert!(temp.path().join("kast/rpc.md").is_file());
         assert!(temp.path().join("kast/lsp.md").is_file());
+        assert!(!temp.path().join("kast/rpc.md").exists());
         assert!(!temp.path().join("kast/.kast-version").exists());
         let second = install_instructions(args).unwrap();
         assert!(second.skipped);

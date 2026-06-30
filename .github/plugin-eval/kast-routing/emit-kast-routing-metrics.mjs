@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -189,23 +189,16 @@ const actionNames = new Set();
 for (const item of cases) {
   for (const action of item.allowedActions ?? []) {
     actionNames.add(action.name);
-    if (action.kind === "method" && !commands[action.name]) {
-      actionFailures.push(`${item.id}: missing method ${action.name}`);
-    } else if (action.kind === "tool" && !toolNames.has(action.name)) {
-      actionFailures.push(`${item.id}: missing tool ${action.name}`);
-    } else if (
-      action.kind === "command" &&
-      !action.name.startsWith("kast agent") &&
-      !action.name.startsWith("kast inspect metrics")
-    ) {
+    if (action.kind === "method") {
+      actionFailures.push(`${item.id}: allowedActions must use kast agent commands, not method ${action.name}`);
+    } else if (action.kind === "tool") {
+      actionFailures.push(`${item.id}: allowedActions must use kast agent commands, not tool ${action.name}`);
+    } else if (action.kind === "command" && !action.name.startsWith("kast agent")) {
       actionFailures.push(`${item.id}: non-public command ${action.name}`);
-    } else if (action.kind === "script") {
-      const scriptPath = join(targetPath, action.name);
-      if (!existsSync(scriptPath)) {
-        actionFailures.push(`${item.id}: missing script ${action.name}`);
-      }
     } else if (action.kind === "generic" && !isNegativeCase(item)) {
       actionFailures.push(`${item.id}: generic action is only valid for negative routing cases`);
+    } else if (!["method", "tool", "command", "generic"].includes(action.kind)) {
+      actionFailures.push(`${item.id}: unsupported public action kind ${action.kind}`);
     }
   }
 }
@@ -215,18 +208,19 @@ checks.push(
     actionFailures.length === 0 ? "pass" : "fail",
     actionFailures.length === 0 ? "info" : "error",
     actionFailures.length === 0
-      ? "All routing actions resolve to public Kast methods, tools, commands, packaged scripts, or negative generic actions."
+      ? "All routing actions resolve to kast agent commands or negative generic actions."
       : "Some routing actions do not resolve.",
     actionFailures.length === 0 ? [...actionNames].sort() : actionFailures,
-    ["Keep allowedActions aligned with references/commands.json, kast agent tools, and packaged scripts."],
+    ["Keep allowedActions aligned with the public kast agent command surface."],
   ),
 );
 
 const triggerEvidence = [
-  "all Kotlin `.kt` and `.kts`",
-  "every `.kt` and `.kts` file",
-  "only navigation surface",
-  "Any `.kt` or `.kts` file",
+  "Use when working on Kotlin or Gradle semantics",
+  "`.kt`",
+  "`.kts`",
+  "Route all Kast work through",
+  "only first-class Kast",
 ];
 checks.push(
   check(
@@ -242,8 +236,8 @@ checks.push(
 );
 
 const continuityEvidence = [
-  "Keep using Kast after the first successful call",
-  "A first Kast result is not a handoff back to generic file reads",
+  "Keep using `kast agent` after the first successful call",
+  "not a handoff back to generic file reads",
 ];
 checks.push(
   check(
@@ -259,9 +253,11 @@ checks.push(
 );
 
 const referenceRouterEvidence = [
-  "Normal use loads only SKILL.md",
-  "Do not pre-load the full catalog",
-  "Load `references/runbook.md` only",
+  "Normal installed use loads only `SKILL.md`",
+  "Do not pre-load the full source catalog",
+  "Discover method schemas",
+  "`kast agent tools`",
+  "`kast agent workflow --help`",
 ];
 checks.push(
   check(
@@ -269,10 +265,10 @@ checks.push(
     includesAll(skill, referenceRouterEvidence) ? "pass" : "fail",
     includesAll(skill, referenceRouterEvidence) ? "info" : "error",
     includesAll(skill, referenceRouterEvidence)
-      ? "Skill routes reference loading by need instead of encouraging eager reference reads."
-      : "Skill does not provide a strict enough reference-loading router.",
+      ? "Skill routes option discovery through the CLI instead of encouraging eager source-reference reads."
+      : "Skill does not provide a strict enough progressive-disclosure router.",
     referenceRouterEvidence,
-    ["Keep SKILL.md as trigger/router text and push detail into references only when needed."],
+    ["Keep installed SKILL.md as trigger/router text and push detail discovery through kast agent tools."],
   ),
 );
 
@@ -327,16 +323,17 @@ checks.push(
 );
 
 const requiredActions = [
-  "symbol/query",
-  "symbol/callers",
-  "database/metrics",
-  "kast_symbol_query",
-  "kast_callers",
-  "kast_metrics",
+  "kast agent scaffold",
+  "kast agent file-outline",
+  "kast agent call symbol/query",
+  "kast agent references",
+  "kast agent callers",
+  "kast agent raw-diagnostics",
+  "kast agent call database/metrics",
   "kast agent workflow diagnostics",
+  "kast agent workflow package-verify",
   "kast agent setup skill --source-dir",
   "kast agent tools",
-  "scripts/verify-kast-state.py",
 ];
 const missingActions = requiredActions.filter((name) => !actionNames.has(name));
 checks.push(
@@ -345,10 +342,10 @@ checks.push(
     missingActions.length === 0 ? "pass" : "fail",
     missingActions.length === 0 ? "info" : "error",
     missingActions.length === 0
-      ? "Routing eval exposes symbol calls, database metrics, high-level workflows, source-override recovery, and agent tool discovery."
+      ? "Routing eval exposes symbol calls, database metrics, high-level workflows, package verification, source-override recovery, and agent tool discovery through kast agent commands."
       : "Routing eval is missing required public action coverage.",
     missingActions.length === 0 ? requiredActions : missingActions,
-    ["Add allowedActions for missing public methods, tools, or workflow commands."],
+    ["Add allowedActions for missing public kast agent commands."],
   ),
 );
 
@@ -361,9 +358,9 @@ for (const item of referenceCases) {
   const forbiddenReferences = new Set(expectation.forbiddenReferences ?? []);
   failIf(!alwaysLoaded.has("SKILL.md"), `${item.id}: referenceExpectation.alwaysLoaded must include SKILL.md`, referenceFailures);
   for (const required of [
-    "references/commands.json before exact field lookup",
-    "references/requests/ before sample need",
-    "references/runbook.md for ordinary symbol lookup",
+    "static references/commands.json lookup before tool discovery",
+    "static references/requests/ lookup before tool discovery",
+    "source-only runbook for ordinary symbol lookup",
   ]) {
     failIf(!forbiddenReferences.has(required), `${item.id}: referenceExpectation must forbid ${required}`, referenceFailures);
   }

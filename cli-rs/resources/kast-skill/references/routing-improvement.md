@@ -1,20 +1,21 @@
 # Kast routing improvement
 
-The packaged skill, `references/commands.json`, `references/requests/`, and
-`fixtures/maintenance/evals/routing.json` are the canonical shipped routing
-surface for the Kast skill. Validate routing cases against
+The installed skill entrypoint, source catalog, and
+`fixtures/maintenance/evals/routing.json` are the canonical routing surface for
+the Kast skill. Validate routing cases against
 `fixtures/maintenance/evals/routing.schema.json`. Keep positive cases centered
 on the public agent surface: `expectedPrimitive.name` should be `kast`,
-`allowedActions` should name catalog methods, named tools, packaged scripts, or
-`kast agent` / `kast inspect metrics` commands, and `forbiddenActions` should
-cover generic Kotlin tools such as `grep`, `rg`, and generic file reads.
+`allowedActions` should name `kast agent ...` commands, and
+`forbiddenActions` should cover generic Kotlin tools such as `grep`, `rg`, and
+generic file reads.
 Negative over-trigger cases should set `expectedPrimitive.name` to `none`, use
 only generic allowed actions, and forbid Kast semantic actions that should not
 run for unrelated work.
 
-Keep session exports, benchmark runs, generated candidate corpora, and any
-local routing-analysis tools outside the installed skill tree unless a release
-intentionally promotes sanitized outputs to a shipped reference.
+Keep session exports, benchmark runs, generated candidate corpora, source-only
+catalog fixtures, and any local routing-analysis tools outside the installed
+skill tree unless a release intentionally promotes sanitized output into
+`SKILL.md`.
 
 The package smoke tests validate the checked corpus against the catalog and
 agent tool metadata so promoted cases cannot drift away from the public

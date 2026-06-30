@@ -8,7 +8,7 @@ pub fn install_skill(args: ResourceInstallArgs) -> Result<InstallSkillResult> {
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let files = resource_install_files(args.source_dir.as_deref(), &KAST_SKILL)?;
+    let files = thin_skill_install_files(args.source_dir.as_deref())?;
     let outcome = install_embedded_resource(
         ManagedResourceKind::Skill,
         &target,
@@ -55,7 +55,7 @@ pub fn install_instructions(args: ResourceInstallArgs) -> Result<InstallInstruct
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "kast".to_string());
     let target = target_root.join(name);
-    let files = resource_install_files(args.source_dir.as_deref(), &KAST_INSTRUCTIONS)?;
+    let files = thin_instruction_install_files(args.source_dir.as_deref(), &KAST_INSTRUCTIONS)?;
     let outcome = install_embedded_resource(
         ManagedResourceKind::Instructions,
         &target,

@@ -11,6 +11,11 @@ enum ResourceReplaceMode {
     ManagedFilesOnly,
 }
 
+const THIN_SKILL_OUTPUTS: &[&str] = &["SKILL.md"];
+const THIN_INSTRUCTION_OUTPUTS: &[&str] = &["README.md", "cli.md", "tools.md", "lsp.md"];
+const RETIRED_SKILL_PACKAGE_OUTPUTS: &[&str] = &["AGENTS.md", "fixtures", "references", "scripts"];
+const RETIRED_INSTRUCTION_OUTPUTS: &[&str] = &["AGENTS.md", "rpc.md"];
+
 #[derive(Debug)]
 struct EmbeddedResourceInstallOutcome {
     skipped: bool,
@@ -38,8 +43,8 @@ fn install_embedded_resource(
         .collect::<Vec<_>>();
     let outputs_match = resource_outputs_match(target, files)?;
     let markers_present = retired_marker_paths.iter().any(|path| path.exists());
-    let retired_outputs_present = matches!(kind, ManagedResourceKind::CopilotPackage)
-        && retired_copilot_package_outputs_present(target);
+    let retired_outputs_present = retired_resource_outputs_present(kind, target);
+    let manifest_managed = manifest_has_resource(kind, target)?;
     if !force && outputs_match && !markers_present && !retired_outputs_present {
         return Ok(EmbeddedResourceInstallOutcome {
             skipped: true,
@@ -49,8 +54,26 @@ fn install_embedded_resource(
         });
     }
 
-    let manifest_managed = manifest_has_resource(kind, target)?;
     let retired_marker_managed = markers_present;
+    if target.exists()
+        && !force
+        && retired_outputs_present
+        && matches!(
+            kind,
+            ManagedResourceKind::Skill | ManagedResourceKind::Instructions
+        )
+        && !manifest_managed
+        && !retired_marker_managed
+    {
+        return Err(CliError::new(
+            "INSTALL_TARGET_EXISTS",
+            format!(
+                "{} contains unmanaged retired Kast {} files. Pass --force to replace them.",
+                target.display(),
+                kind
+            ),
+        ));
+    }
     if target.exists()
         && !force
         && !outputs_match
@@ -106,6 +129,69 @@ fn resource_install_files(
         Some(source_dir) => filesystem_resource_files(source_dir),
         None => embedded_dir_resource_files(embedded_dir),
     }
+}
+
+fn thin_skill_install_files(
+    source_dir: Option<&Path>,
+) -> Result<Vec<EmbeddedResourceFile>> {
+    let files = match source_dir {
+        Some(source_dir) => filesystem_resource_files(source_dir).map(|files| {
+            filter_resource_install_files(files, |relative| {
+                relative_matches_any(relative, THIN_SKILL_OUTPUTS)
+            })
+        })?,
+        None => vec![EmbeddedResourceFile {
+            relative: PathBuf::from("SKILL.md"),
+            contents: include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/kast-skill/SKILL.md"
+            ))
+            .to_vec(),
+            executable: false,
+        }],
+    };
+    require_resource_outputs(files, THIN_SKILL_OUTPUTS)
+}
+
+fn thin_instruction_install_files(
+    source_dir: Option<&Path>,
+    embedded_dir: &'static Dir<'static>,
+) -> Result<Vec<EmbeddedResourceFile>> {
+    let files = resource_install_files(source_dir, embedded_dir).map(|files| {
+        filter_resource_install_files(files, |relative| {
+            relative_matches_any(relative, THIN_INSTRUCTION_OUTPUTS)
+        })
+    })?;
+    require_resource_outputs(files, THIN_INSTRUCTION_OUTPUTS)
+}
+
+fn filter_resource_install_files(
+    files: Vec<EmbeddedResourceFile>,
+    include: impl Fn(&Path) -> bool,
+) -> Vec<EmbeddedResourceFile> {
+    files
+        .into_iter()
+        .filter(|file| include(&file.relative))
+        .collect()
+}
+
+fn relative_matches_any(path: &Path, candidates: &[&str]) -> bool {
+    candidates.iter().any(|candidate| path == Path::new(candidate))
+}
+
+fn require_resource_outputs(
+    files: Vec<EmbeddedResourceFile>,
+    required: &[&str],
+) -> Result<Vec<EmbeddedResourceFile>> {
+    for relative in required {
+        if !files.iter().any(|file| file.relative == Path::new(relative)) {
+            return Err(CliError::new(
+                "RESOURCE_SOURCE_INCOMPLETE",
+                format!("Resource source is missing required installed file: {relative}"),
+            ));
+        }
+    }
+    Ok(files)
 }
 
 fn filesystem_resource_files(source_dir: &Path) -> Result<Vec<EmbeddedResourceFile>> {
@@ -318,6 +404,19 @@ fn retired_copilot_package_outputs_present(github_dir: &Path) -> bool {
     RETIRED_COPILOT_PACKAGE_OUTPUTS
         .iter()
         .any(|relative| github_dir.join(relative).exists())
+}
+
+fn retired_resource_outputs_present(kind: ManagedResourceKind, target: &Path) -> bool {
+    match kind {
+        ManagedResourceKind::CopilotPackage => retired_copilot_package_outputs_present(target),
+        ManagedResourceKind::Skill => RETIRED_SKILL_PACKAGE_OUTPUTS
+            .iter()
+            .any(|relative| target.join(relative).exists()),
+        ManagedResourceKind::Instructions => RETIRED_INSTRUCTION_OUTPUTS
+            .iter()
+            .any(|relative| target.join(relative).exists()),
+        ManagedResourceKind::AgentGuidance => false,
+    }
 }
 
 fn record_managed_resource(

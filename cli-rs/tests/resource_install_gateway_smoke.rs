@@ -121,8 +121,8 @@ fn install_resource_gateways_support_force_and_current_versions() {
     assert!(stale_instructions.join("README.md").is_file());
     assert!(stale_instructions.join("cli.md").is_file());
     assert!(stale_instructions.join("tools.md").is_file());
-    assert!(stale_instructions.join("rpc.md").is_file());
     assert!(stale_instructions.join("lsp.md").is_file());
+    assert!(!stale_instructions.join("rpc.md").exists());
     assert_eq!(
         instructions_stdout["sourceBundleSha256"]
             .as_str()
