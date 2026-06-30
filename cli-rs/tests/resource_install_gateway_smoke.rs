@@ -53,6 +53,10 @@ fn install_resource_gateways_support_force_and_current_versions() {
     let skill_stdout: serde_json::Value =
         serde_json::from_slice(&skill.stdout).expect("skill install json");
     assert!(stale_skill.join("SKILL.md").is_file());
+    assert!(!stale_skill.join("AGENTS.md").exists());
+    assert!(!stale_skill.join("references").exists());
+    assert!(!stale_skill.join("scripts").exists());
+    assert!(!stale_skill.join("fixtures").exists());
     assert_eq!(
         skill_stdout["sourceBundleSha256"]
             .as_str()
@@ -121,8 +125,9 @@ fn install_resource_gateways_support_force_and_current_versions() {
     assert!(stale_instructions.join("README.md").is_file());
     assert!(stale_instructions.join("cli.md").is_file());
     assert!(stale_instructions.join("tools.md").is_file());
-    assert!(stale_instructions.join("rpc.md").is_file());
     assert!(stale_instructions.join("lsp.md").is_file());
+    assert!(!stale_instructions.join("AGENTS.md").exists());
+    assert!(!stale_instructions.join("rpc.md").exists());
     assert_eq!(
         instructions_stdout["sourceBundleSha256"]
             .as_str()

@@ -1,22 +1,21 @@
 # Kast workflow ownership
 
 Use this file when a task needs an install/config/package check, a project
-readiness gate, or a repeatable semantic request sequence. Keep exact request
-fields in `commands.json` and `references/requests/`; this file owns the
-decision points.
+readiness gate, or a repeatable semantic request sequence. Discover exact
+request fields with `kast agent tools`; this file owns the decision points.
 
 ## Install and package verification
 
-Run the read-only verifier before claiming the active package, skill,
-instructions, config, or binary are current:
+Run the native package verification workflow before claiming the active
+package, skill, instructions, config, or binary are current:
 
 ```sh
-python3 scripts/verify-kast-state.py --workspace-root "$PWD" \
+kast --output json agent workflow package-verify --workspace-root "$PWD" \
   --require-gradle-project
 ```
 
-Hosts that can only call the CLI can run the equivalent manifest-backed
-workflow gate:
+Pass explicit require and target-root flags when a host-specific resource must
+be checked:
 
 ```sh
 kast --output json agent workflow package-verify --workspace-root "$PWD" \
@@ -26,8 +25,8 @@ kast --output json agent workflow package-verify --workspace-root "$PWD" \
 ```
 
 Add `--require-copilot`, `--require-skill`, or `--require-instructions` only
-when that repository-local artifact is required for the task. The script emits
-JSON with command-surface evidence, readiness, paths, manifest-backed
+when that repository-local artifact is required for the task. The workflow
+emits JSON with command-surface evidence, readiness, paths, manifest-backed
 resource state, catalog hash comparisons, and recovery commands.
 When a package was installed into a nonstandard host root, pass the same setup
 target root with `--copilot-target-dir`, `--skill-target-dir`, or
@@ -40,18 +39,14 @@ manifest-backed. Failed required resource checks include
 `kast agent setup ... --force` invocation to run.
 In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
 `package-verify` reports `nextCommandArgv` because it is native CLI
-verification, not a backend JSON-RPC method.
+verification, not a backend method.
 
-Execute recovery commands exactly as emitted. When the verifier is run with
-`--kast-bin` or another absolute executable, recovery strings preserve the
-selected executable token. Stale skill and instruction recovery also preserves
-the target resource root when the verifier can identify one; the owner table
-below names the state owner, not a command to rewrite back to bare `kast`.
-When the verifier is run with `--skill-root`, stale skill recovery also includes
-`--source-dir <skill-root>` so the selected binary installs the same skill tree
-that was verified instead of only its embedded skill bundle.
+Execute recovery commands exactly as emitted. Stale skill and instruction
+recovery preserves the target resource root when package verification can
+identify one; the owner table below names the state owner, not a command to
+rewrite back to bare `kast`.
 
-If the verifier reports stale state, use the one owner for that state:
+If package verification reports stale state, use the one owner for that state:
 
 | Symptom | Owner |
 | --- | --- |
@@ -107,27 +102,29 @@ quote runtime evidence.
 For any nontrivial call, build the params file and preserve stdout/stderr:
 
 ```sh
-python3 scripts/kast-agent-call.py symbol/query \
-  --params-json '{"query":"EventBean","modes":["exact","lexical"],"limit":10}' \
-  --workspace-root "$PWD"
+KAST_TMP="$(mktemp -d)"
+trap 'rm -rf "$KAST_TMP"' EXIT
+KAST_PARAMS="$KAST_TMP/params.json"
+KAST_RESULT="$KAST_TMP/stdout.json"
+KAST_STDERR="$KAST_TMP/stderr.txt"
+printf '%s\n' '{"query":"EventBean","modes":["exact","lexical"],"limit":10}' >"$KAST_PARAMS"
+kast agent call symbol/query --params-file "$KAST_PARAMS" \
+  --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 
-For large payloads, put JSON in a file and pass `--params-file`. The script
-validates that the method exists in the shipped catalog, checks that the active
-binary exposes a valid `kast agent tools` envelope, writes `params.json`,
-`stdout.json`, and `stderr.txt`, and fails if the agent envelope or nested
-result reports failure.
+For large payloads, put JSON in a file and pass `--params-file`. Check
+`kast agent tools` first when the method or params shape is unknown. The call
+fails the operation if the agent envelope or nested result reports failure.
 
-Use `--dry-run` to construct and validate the params file without contacting a
-backend. Mutating methods such as `symbol/write-and-validate`, `symbol/rename`,
-`raw/rename`, `raw/optimize-imports`, and `raw/apply-edits` require
-`--allow-mutation`.
+Mutating methods such as `symbol/write-and-validate`, `symbol/rename`,
+`raw/rename`, `raw/optimize-imports`, and `raw/apply-edits` require explicit
+mutation controls on their workflow or command surface.
 
 ## Semantic workflow patterns
 
 Use `kast agent workflow ...` for common identity-first sequences. For catalog
-methods outside these patterns, use `scripts/kast-agent-call.py` as the
-file-backed request harness:
+methods outside these patterns, use `kast agent call <method> --params-file`
+as the file-backed request harness:
 
 ```sh
 kast agent workflow symbol --workspace-root "$PWD" \
@@ -156,13 +153,12 @@ have:
 | rename | prefer `symbol/rename` or `raw/rename` dry-run evidence before applying edits |
 | structured edit | `symbol/write-and-validate` when it can express the change; otherwise `raw/apply-edits` with hashes, then diagnostics |
 
-Read `references/requests/<category>/<method>/minimal.json` and
-`maximal.json` for sample payloads. Read `commands.yaml` for field names and
-variant discriminators.
+Use `kast agent tools` for sample schema shape, field names, and variant
+discriminators.
 
 ## Hook candidate
 
 No hook ships in the compact skill. If a host supports hooks, use
-`scripts/verify-kast-state.py --require-gradle-project` as the read-only gate
-before Kotlin semantic tasks and add `--require-copilot` only for Copilot
+`kast agent workflow package-verify --require-gradle-project` as the read-only
+gate before Kotlin semantic tasks and add `--require-copilot` only for Copilot
 package publication checks.

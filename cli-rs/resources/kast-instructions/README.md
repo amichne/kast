@@ -6,7 +6,6 @@ the `kast` binary that installed them is available to the agent.
 
 - `cli.md` explains non-interactive command-line usage.
 - `tools.md` maps common agent tasks to portable `kast agent` commands.
-- `rpc.md` explains the pipe-friendly `kast agent` path and raw RPC fallback.
 - `lsp.md` explains the standard LSP adapter contract.
 
 Prefer `kast agent setup auto --dry-run` when the host or repository should

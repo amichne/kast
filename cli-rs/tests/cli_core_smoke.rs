@@ -316,26 +316,10 @@ fn smoke_core_cli_commands() {
         .expect("install skill");
     assert!(skill.status.success());
     assert!(skill_dir.join("kast/SKILL.md").is_file());
-    assert!(skill_dir.join("kast/references/commands.json").is_file());
-    assert!(skill_dir.join("kast/references/quickstart.md").is_file());
-    assert!(skill_dir.join("kast/references/runbook.md").is_file());
-    assert!(skill_dir.join("kast/references/workflows.md").is_file());
-    assert!(
-        skill_dir
-            .join("kast/scripts/verify-kast-state.py")
-            .is_file()
-    );
-    assert!(skill_dir.join("kast/scripts/kast-agent-call.py").is_file());
-    assert!(
-        !skill_dir
-            .join("kast/scripts/kast-semantic-workflow.py")
-            .exists()
-    );
-    assert!(
-        skill_dir
-            .join("kast/references/requests/symbol/query/request.schema.json")
-            .is_file()
-    );
+    assert!(!skill_dir.join("kast/AGENTS.md").exists());
+    assert!(!skill_dir.join("kast/references").exists());
+    assert!(!skill_dir.join("kast/scripts").exists());
+    assert!(!skill_dir.join("kast/fixtures").exists());
     let instructions_dir = temp.path().join("instructions");
     let instructions = kast(&home, &config_home)
         .args([
@@ -352,8 +336,9 @@ fn smoke_core_cli_commands() {
     assert!(instructions_dir.join("kast/README.md").is_file());
     assert!(instructions_dir.join("kast/cli.md").is_file());
     assert!(instructions_dir.join("kast/tools.md").is_file());
-    assert!(instructions_dir.join("kast/rpc.md").is_file());
     assert!(instructions_dir.join("kast/lsp.md").is_file());
+    assert!(!instructions_dir.join("kast/AGENTS.md").exists());
+    assert!(!instructions_dir.join("kast/rpc.md").exists());
 
     let github_dir = temp.path().join(".github");
     let copilot = kast(&home, &config_home)

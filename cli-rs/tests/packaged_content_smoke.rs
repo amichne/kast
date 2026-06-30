@@ -48,16 +48,16 @@ fn packaged_skill_targets_rust_kast_only() {
     let instruction_tools =
         std::fs::read_to_string(root.join("resources/kast-instructions/tools.md"))
             .expect("portable tool instructions");
-    let instruction_rpc = std::fs::read_to_string(root.join("resources/kast-instructions/rpc.md"))
-        .expect("portable RPC instructions");
 
     assert!(skill.contains("Rust `kast` CLI"));
     assert!(skill.contains("command -v kast"));
     assert!(skill.contains("kast agent --help"));
     assert!(skill.contains("kast agent tools"));
     assert!(skill.contains("kast agent workflow --help"));
-    assert!(skill.contains("scripts/verify-kast-state.py"));
-    assert!(skill.contains("scripts/kast-agent-call.py"));
+    assert!(skill.contains("kast --output json agent workflow package-verify"));
+    assert!(skill.contains("kast agent call <method> --params-file"));
+    assert!(!skill.contains("scripts/verify-kast-state.py"));
+    assert!(!skill.contains("scripts/kast-agent-call.py"));
     assert!(!skill.contains("scripts/kast-semantic-workflow.py"));
     assert!(skill.contains("kast agent workflow ..."));
     assert!(skill.contains("Use for Gradle project file work"));
@@ -78,34 +78,41 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(skill.contains("raw/completions"));
     assert!(skill.contains("raw/apply-edits"));
     assert!(skill.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
+    assert!(skill.contains("Normal installed use loads only `SKILL.md`"));
+    assert!(skill.contains("Discover available methods"));
+    assert!(!skill.contains("references/commands.json"));
+    assert!(!skill.contains("references/requests/"));
     assert!(quickstart.contains("command -v kast"));
     assert!(quickstart.contains("kast agent --help"));
     assert!(quickstart.contains("kast agent tools"));
     assert!(quickstart.contains("kast agent workflow --help"));
     assert!(quickstart.contains("kast agent call"));
+    assert!(quickstart.contains("kast --output json agent workflow package-verify"));
     assert!(quickstart.contains("result.invocation.argv"));
     assert!(quickstart.contains("schemaVersion >= 3"));
     assert!(quickstart.contains("matching `toolCount`"));
-    assert!(quickstart.contains("scripts/verify-kast-state.py"));
-    assert!(quickstart.contains("scripts/kast-agent-call.py"));
+    assert!(!quickstart.contains("scripts/verify-kast-state.py"));
+    assert!(!quickstart.contains("scripts/kast-agent-call.py"));
     assert!(!quickstart.contains("scripts/kast-semantic-workflow.py"));
     assert!(quickstart.contains("active binary are incompatible"));
     assert!(quickstart.contains("incompatible. Upgrade or reinstall Kast"));
-    assert!(quickstart.contains("raw transport/debug escape hatch"));
+    assert!(!quickstart.contains("raw transport/debug escape hatch"));
     assert!(quickstart.contains("kast inspect metrics impact"));
     assert!(quickstart.contains("kast inspect demo"));
     assert!(quickstart.contains("INDEX_UNAVAILABLE"));
     assert!(quickstart.contains("kast runtime up --workspace-root \"$PWD\" --backend idea"));
-    assert!(quickstart.contains("follow its recovery commands exactly"));
+    assert!(quickstart.contains("follow its recovery commands"));
     assert!(quickstart.contains("preserve the selected executable token"));
     assert!(quickstart.contains("--skill-target-dir"));
     assert!(quickstart.contains("--instructions-target-dir"));
     assert!(workflows.contains("Execute recovery commands exactly as emitted"));
-    assert!(workflows.contains("selected executable token"));
     assert!(workflows.contains("--copilot-target-dir"));
     assert!(workflows.contains("--skill-target-dir"));
     assert!(workflows.contains("--instructions-target-dir"));
     assert!(workflows.contains("nextCommandArgv"));
+    assert!(workflows.contains("kast agent call <method> --params-file"));
+    assert!(!workflows.contains("scripts/verify-kast-state.py"));
+    assert!(!workflows.contains("scripts/kast-agent-call.py"));
     assert!(routing_reference.contains("fixtures/maintenance/evals/routing.json"));
     assert!(routing_reference.contains("fixtures/maintenance/evals/routing.schema.json"));
     assert!(routing_reference.contains("allowedActions"));
@@ -121,30 +128,19 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(instruction_tools.contains("schemaVersion >= 3"));
     assert!(instruction_tools.contains("matching `toolCount`"));
     assert!(instruction_tools.contains("Keep using Kast after the first successful call"));
-    assert!(instruction_rpc.contains("kast agent tools"));
-    assert!(instruction_rpc.contains("catalog-backed tool names"));
-    assert!(instruction_rpc.contains("result.invocation.argv"));
-    assert!(instruction_rpc.contains("schemaVersion >= 3"));
-    assert!(instruction_rpc.contains("matching `toolCount`"));
+    assert!(
+        !root.join("resources/kast-instructions/rpc.md").exists(),
+        "installable instructions must not ship a raw RPC guide"
+    );
     assert!(
         root.join("resources/kast-skill/references/workflows.md")
             .is_file(),
-        "packaged skill must include workflow ownership reference"
+        "source skill tree must include workflow ownership reference"
     );
     assert!(
         root.join("resources/kast-skill/fixtures/maintenance/evals/routing.schema.json")
             .is_file(),
         "packaged skill must include a schema for routing evals"
-    );
-    assert!(
-        root.join("resources/kast-skill/scripts/verify-kast-state.py")
-            .is_file(),
-        "packaged skill must include state verifier"
-    );
-    assert!(
-        root.join("resources/kast-skill/scripts/kast-agent-call.py")
-            .is_file(),
-        "packaged skill must include file-backed call harness"
     );
     assert!(
         !root
@@ -315,13 +311,6 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
                         case["id"]
                     );
                 }
-                "script" => {
-                    assert!(
-                        root.join("resources/kast-skill").join(name).is_file(),
-                        "eval case {} references missing packaged script {name}",
-                        case["id"]
-                    );
-                }
                 "generic" => {
                     assert!(
                         expects_none,
@@ -348,9 +337,9 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         "symbol/callers",
         "database/metrics",
         "kast agent workflow diagnostics",
+        "kast agent workflow package-verify",
         "kast agent setup skill --source-dir",
         "kast agent tools",
-        "scripts/verify-kast-state.py",
     ] {
         assert!(
             action_names.contains(required),
@@ -397,8 +386,13 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
     );
     assert!(
         skill.contains("Normal use loads only SKILL.md")
-            && skill.contains("Do not pre-load the full catalog")
-            && skill.contains("Load `references/runbook.md` only"),
-        "skill should route reference loading by need"
+            || skill.contains("Normal installed use loads only `SKILL.md`"),
+        "skill should keep normal installed use to the entrypoint"
+    );
+    assert!(
+        skill.contains("Do not pre-load the full catalog")
+            && skill.contains("Discover available methods")
+            && skill.contains("not part of the installed skill payload"),
+        "skill should use CLI-owned progressive disclosure instead of installed references"
     );
 }

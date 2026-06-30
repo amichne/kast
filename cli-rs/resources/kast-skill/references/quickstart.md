@@ -13,16 +13,15 @@ kast agent tools
 kast agent workflow --help
 ```
 
-When the installed skill includes `scripts/`, run the read-only verifier before
-claiming the active binary, install manifest, package files, or workspace are
-ready:
+Run the native package verification workflow before claiming the active binary,
+install manifest, package files, or workspace are ready:
 
 ```console
-python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
+kast --output json agent workflow package-verify --workspace-root "$PWD" --require-gradle-project
 ```
 
 If the skill or Markdown instructions were installed into a host-specific root,
-pass the same setup target root to the verifier, for example
+pass the same setup target root to package verification, for example
 `--skill-target-dir "$PWD/.codex/skills"` or
 `--instructions-target-dir "$PWD/.agents/instructions"`.
 
@@ -49,8 +48,7 @@ installed. That is the blocker; do not stop at the first missing-index result.
 The Rust `kast` command tree is the operator surface. Use `kast --help` and
 `kast <command> --help` for direct CLI families such as `agent`, `runtime`,
 `inspect`, `machine`, and `release`. `kast agent --help` is the public
-agent-oriented entrypoint; `kast rpc --help` remains available as a raw
-transport/debug topic.
+agent-oriented entrypoint.
 
 Use `kast agent up --dry-run --workspace-root "$PWD"` when you need to inspect
 both the selected harness package and the runtime warmup command before writing
@@ -69,17 +67,15 @@ derives its default target from the current directory unless `--target-dir` is
 passed, and JSON output reports `targetDir` plus an executable `installCommand`.
 
 For shell pipelines, use the public `kast agent` surface instead of hand-written
-JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
+protocol plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
 and either `result` or `error`; `kast agent call <method>` accepts params,
-full JSON-RPC requests, previous envelopes, and `nextRequest` objects through
-stdin or `--params-file`. `kast rpc` remains a raw transport/debug escape hatch,
-not the workflow agents should copy first.
+full requests, previous envelopes, and `nextRequest` objects through stdin or
+`--params-file`.
 
-JSON-RPC request schemas, response types, discriminated variants, and
-field-level notes live in `references/commands.yaml` for reading and
-`references/commands.json` for tooling. Treat that catalog as the method
-contract for requests sent through `kast agent call`, not as a replacement for
-the Rust CLI help.
+JSON request schemas, response types, discriminated variants, and field-level
+notes are exposed through `kast agent tools`. Treat the discovered method
+contract as the shape for requests sent through `kast agent call`, not as a
+replacement for the Rust CLI help.
 
 Use `kast agent tools` when an agent host can run CLI commands but cannot load
 the full skill or Copilot package. It emits the catalog-backed tool names,
@@ -92,24 +88,25 @@ SHA-256 `catalogSha256`, matching `toolCount`, and `result.invocation.argv`
 shaped as `agent call <method>`. If validation fails, upgrade or reinstall the
 active Kast binary instead of synthesizing tool specs from stale docs.
 
-Read `commands.yaml` when you need exact field names, types, required vs
-optional, enum values, or variant discriminators. Use
-`references/requests/<category>/<method>/minimal.json` and `maximal.json` for
-walkable sample payloads. Keep raw JSON-RPC validation in `runbook.md` for
-transport debugging.
+Use `kast agent tools` when you need exact field names, types, required vs
+optional, enum values, variant discriminators, mutation metadata, default
+arguments, or invocation argv. Keep raw transport debugging out of normal agent
+workflows.
 
 ## Common patterns
 
-Prefer the script-backed file exchange for nontrivial calls:
+Prefer native file-backed CLI calls for nontrivial methods:
 
 ```sh
-python3 scripts/kast-agent-call.py symbol/query \
-  --params-json '{"query":"EventBean","modes":["exact","lexical"],"limit":10}' \
-  --workspace-root "$PWD"
+KAST_TMP="$(mktemp -d)"
+trap 'rm -rf "$KAST_TMP"' EXIT
+KAST_PARAMS="$KAST_TMP/params.json"
+KAST_RESULT="$KAST_TMP/stdout.json"
+KAST_STDERR="$KAST_TMP/stderr.txt"
+printf '%s\n' '{"query":"EventBean","modes":["exact","lexical"],"limit":10}' >"$KAST_PARAMS"
+kast agent call symbol/query --params-file "$KAST_PARAMS" \
+  --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
-
-The script writes `params.json`, `stdout.json`, and `stderr.txt`, then emits a
-small JSON summary with the file paths and recovery guidance.
 
 For common multi-step evidence gathering, use the first-class workflow
 commands. They preserve each step under one output directory:
@@ -201,7 +198,7 @@ kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json
 - For large result sets, narrow the query before post-processing.
 - If `kast agent` is unavailable, report a stale binary/skill installation.
 - If install, config, active binary, or package state is unclear, run
-  `scripts/verify-kast-state.py` and follow its recovery commands exactly; they
-  preserve the selected executable token when `--kast-bin` is used and include
-  the stale skill or instruction target directory when one is known.
+  `kast agent workflow package-verify` and follow its recovery commands
+  exactly; they preserve the selected executable token and include the stale
+  skill or instruction target directory when one is known.
 - Never pivot to `grep` or `rg` for Kotlin identity.

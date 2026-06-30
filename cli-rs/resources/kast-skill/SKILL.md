@@ -42,11 +42,11 @@ kast agent tools
 kast agent workflow --help
 ```
 
-When the installed skill exposes `scripts/`, prefer the read-only verifier for
-install, package, config, active-binary, and project-readiness evidence:
+For install, package, config, active-binary, and project-readiness evidence,
+use the native package verification workflow:
 
 ```console
-python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
+kast --output json agent workflow package-verify --workspace-root "$PWD" --require-gradle-project
 ```
 
 If the binary is missing or does not expose the expected agent tool/workflow
@@ -104,32 +104,32 @@ after this dynamic IDE warmup path has failed.
 ## Public Surface
 
 Use the public agent surfaces first: `kast agent`, `kast agent tools`,
-`kast agent workflow`, `kast inspect metrics`, and the catalog method names in
-`references/commands.json`. Named tools such as `kast_symbol_query`,
+`kast agent workflow`, `kast inspect metrics`, and the catalog method names
+disclosed by `kast agent tools`. Named tools such as `kast_symbol_query`,
 `kast_resolve`, `kast_references`, `kast_callers`, and `kast_metrics` are the
 host-facing way to expose navigation, relationships, source-index database
 access, and edits. Do not teach generated protocol paths, LSP capability
-internals, daemon routing details, or implementation class names as the public
-API for agents.
+internals, daemon routing details, raw transport, or implementation class names
+as the public API for agents.
 
 ## Request Discipline
 
 For repeated semantic sequences, use `kast agent workflow ...`; the active CLI
-must provide this command. For one nontrivial catalog call, use
-`scripts/kast-agent-call.py` so params, stdout, and stderr are preserved as
-files. Send catalog methods through `kast agent call <method> --params-file
-"$KAST_PARAMS"` with `--workspace-root "$PWD"` when scripting manually. Use
-camelCase fields, absolute paths, and check the agent envelope `ok` plus the
-nested result status; validation errors, `ok=false`, dirty diagnostics, hash
-mismatches, and failed Gradle tasks fail the operation.
-Normal use loads only SKILL.md. Do not pre-load the full catalog, generated
-request samples, or raw transport runbook before a concrete call needs them.
-Load `references/workflows.md` for install/refresh/verify ownership, project
-readiness gates, file-backed request exchange, semantic request sequences, and
-failure recovery. Load `references/commands.yaml`, `references/commands.json`,
-or `references/requests/` only for exact fields, variants, enum values, or
-samples. Load `references/runbook.md` only when debugging raw transport or
-preserving a full JSON-RPC envelope matters.
+must provide this command. For one nontrivial catalog call, send the method
+through `kast agent call <method> --params-file "$KAST_PARAMS"` with
+`--workspace-root "$PWD"` and keep the params, stdout, and stderr as files when
+evidence needs to be preserved. Use camelCase fields, absolute paths, and check
+the agent envelope `ok` plus the nested result status; validation errors,
+`ok=false`, dirty diagnostics, hash mismatches, and failed Gradle tasks fail the
+operation.
+
+Normal installed use loads only `SKILL.md`. Do not pre-load the full catalog,
+generated request samples, raw transport notes, or source-only references before
+a concrete call needs them. Discover available methods, request schemas,
+default arguments, mutation metadata, and invocation argv through
+`kast agent tools`; use `kast agent workflow --help` for supported multi-step
+operations. The Kast source tree keeps generated catalogs and request fixtures
+for CLI validation, but they are not part of the installed skill payload.
 
 ## Boundaries
 

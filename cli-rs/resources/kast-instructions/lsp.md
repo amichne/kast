@@ -31,8 +31,9 @@ kast runtime up --workspace-root "$PWD" --backend headless
 ## Capabilities
 
 During initialization, Kast exposes normal LSP capabilities plus custom
-`kast/*` methods under `capabilities.experimental.kastMethods`. Those custom
-methods are generated from `cli-rs/resources/kast-skill/references/commands.json`.
+`kast/*` methods under `capabilities.experimental.kastMethods`. CLI-capable
+hosts should prefer `kast agent tools` for the same catalog-backed method
+metadata unless they specifically need LSP transport.
 
 Use the built-in LSP methods for standard editor flows such as definition,
 references, hover, document symbols, implementations, call hierarchy, type

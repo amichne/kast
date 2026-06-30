@@ -10,8 +10,6 @@ This tree is the authored source for Markdown instructions installed by
 - `cli.md` covers non-interactive CLI usage.
 - `tools.md` maps common agent tasks to portable `kast agent` commands and
   workflows.
-- `rpc.md` covers `kast agent`, file-backed request exchange, and the raw RPC
-  debug escape hatch.
 - `lsp.md` covers `kast agent lsp --stdio` and custom `kast/*` method discovery.
 
 The durable source-of-truth contract for agent resources and workflows is
@@ -24,7 +22,6 @@ The durable source-of-truth contract for agent resources and workflows is
 - Prefer `kast agent` and `kast agent workflow` as the current agent surface.
   If an active binary lacks those commands, instruct agents to upgrade or
   reinstall Kast instead of preserving older-binary instructions.
-- Keep raw RPC language explicitly debug-oriented.
 - When installed filenames or defaults change, update `src/install.rs`, docs,
   and smoke tests that assert the installed instruction shape.
 

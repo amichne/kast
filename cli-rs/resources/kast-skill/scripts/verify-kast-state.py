@@ -775,10 +775,7 @@ def main() -> int:
     result["checks"]["sourceSkill"] = {
         "catalog": str(source_catalog),
         "catalogExists": source_catalog.is_file(),
-        "scripts": {
-            "verifyKastState": str(skill_root / "scripts/verify-kast-state.py"),
-            "kastAgentCall": str(skill_root / "scripts/kast-agent-call.py"),
-        },
+        "installedContent": ["SKILL.md"],
         "explicitOverride": explicit_skill_root is not None,
     }
     if not source_catalog.is_file():
@@ -820,15 +817,7 @@ def main() -> int:
         "skills",
         args.require_skill,
         skill_root,
-        [
-            "SKILL.md",
-            "references/commands.json",
-            "references/quickstart.md",
-            "references/runbook.md",
-            "references/workflows.md",
-            "scripts/verify-kast-state.py",
-            "scripts/kast-agent-call.py",
-        ],
+        ["SKILL.md"],
         ready_json,
         kast_bin,
         skill_target_dirs,

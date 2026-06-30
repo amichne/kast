@@ -55,7 +55,7 @@ Failed required resource checks include `requiredResources.issues[].recoveryArgv
 with the exact `kast agent setup ... --force` invocation to run.
 In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
 `package-verify` reports `nextCommandArgv` because it is native CLI
-verification, not a backend JSON-RPC method.
+verification, not a backend method.
 When an `agent up` dry-run is used only to inspect setup, trust
 `setup.targetDir` and copy `setup.installCommand` exactly; it includes the
 selected executable and `--target-dir`. When only package selection matters,
@@ -104,7 +104,7 @@ kast agent call raw/apply-edits --params-file request.json --workspace-root "$PW
 kast agent call symbol/write-and-validate --params-file request.json --workspace-root "$PWD"
 ```
 
-The params file may contain a params object, full JSON-RPC request, prior agent
+The params file may contain a params object, full request, prior agent
 envelope, or object with `nextRequest`. Use camelCase fields and absolute file
 paths. A successful transport still fails the operation when the outer envelope
 has `ok=false` or a nested result reports `ok=false`.

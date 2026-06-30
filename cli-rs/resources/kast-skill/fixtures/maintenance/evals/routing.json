@@ -194,7 +194,7 @@
       "source": {
         "kind": "synthetic-regression",
         "capturedAt": "2026-06-29",
-        "note": "Regression guard for agents copying raw JSON-RPC snippets instead of using workflow commands."
+        "note": "Regression guard for agents copying raw protocol snippets instead of using workflow commands."
       },
       "prompt": "Create a repeatable evidence bundle for a rename and diagnostics pass.",
       "expectedPrimitive": {
@@ -222,7 +222,7 @@
       "forbiddenActions": [
         "grep",
         "rg",
-        "ad hoc JSON-RPC transport",
+        "ad hoc protocol transport",
         "manual edit without diagnostics"
       ],
       "recoveryExpectation": "If workflow help is unavailable, report active binary and skill incompatibility and require upgrade or reinstall.",
@@ -300,10 +300,6 @@
       },
       "allowedActions": [
         {
-          "kind": "script",
-          "name": "scripts/verify-kast-state.py"
-        },
-        {
           "kind": "command",
           "name": "kast agent setup skill --source-dir"
         },
@@ -321,8 +317,8 @@
       ],
       "recoveryExpectation": "Run the emitted `kast agent setup skill --target-dir ... --source-dir <skill-root> --force` recovery, then rerun the verifier or package-verify gate.",
       "verificationEvidence": [
-        "verify-kast-state.py emits stale skill recovery with --source-dir when --skill-root is provided.",
-        "package_verifier_smoke covers source-root recovery for tampered manifest-backed skills."
+        "kast agent workflow package-verify emits stale skill recovery for manifest-backed package drift.",
+        "package_verifier_smoke covers recovery for tampered manifest-backed skills."
       ],
       "notes": "This case keeps stale installed skill recovery tied to the verified source tree."
     },
@@ -356,9 +352,9 @@
       "forbiddenActions": [
         "grep",
         "rg",
-        "references/commands.json before exact field lookup",
-        "references/requests/ before sample need",
-        "references/runbook.md for ordinary symbol lookup"
+        "static references/commands.json lookup before tool discovery",
+        "static references/requests/ lookup before tool discovery",
+        "source-only runbook for ordinary symbol lookup"
       ],
       "recoveryExpectation": "If symbol/query needs exact request fields, load only the relevant catalog or request sample instead of the full reference tree.",
       "verificationEvidence": [
@@ -370,13 +366,12 @@
           "SKILL.md"
         ],
         "allowedReferences": [
-          "references/commands.yaml",
-          "references/requests/symbol/query/minimal.json"
+          "kast agent tools"
         ],
         "forbiddenReferences": [
-          "references/commands.json before exact field lookup",
-          "references/requests/ before sample need",
-          "references/runbook.md for ordinary symbol lookup"
+          "static references/commands.json lookup before tool discovery",
+          "static references/requests/ lookup before tool discovery",
+          "source-only runbook for ordinary symbol lookup"
         ]
       },
       "notes": "This case makes reference-loading efficiency part of the shipped routing contract."

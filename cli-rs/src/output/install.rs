@@ -20,9 +20,10 @@ fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
     mdln!(document, "## Next steps");
     mdln!(
         document,
-        "- Read the installed quickstart: `{}/references/quickstart.md`",
+        "- Read the installed skill entrypoint: `{}/SKILL.md`",
         result.installed_at
     );
+    mdln!(document, "- Discover callable tools with: `kast agent tools`");
     print_markdown(&document.into_string())
 }
 
