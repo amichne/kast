@@ -147,7 +147,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
 
     let generator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args(["release", "generate", "contract", "--check"])
+        .args(["developer", "release", "generate", "contract", "--check"])
         .output()
         .expect("contract generator check");
     assert!(
@@ -159,7 +159,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
 
     let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(root)
-        .args(["release", "validate", "--all-samples"])
+        .args(["developer", "release", "validate", "--all-samples"])
         .output()
         .expect("request sample validation");
     assert!(

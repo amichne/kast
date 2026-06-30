@@ -28,24 +28,41 @@ pub enum Command {
     },
     /// Print the packaged CLI version.
     Version,
-    /// Raw JSON-RPC transport escape hatch.
-    #[command(hide = true)]
-    Rpc(RpcArgs),
+    /// Set up Kast for this repository.
+    Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
+    /// Check the current workspace status.
+    Status(RuntimeArgs),
+    /// Developer and release-engineering commands.
+    Developer(DeveloperArgs),
     /// Backward-compatible alias for `ready`. Used by kast-action v2.
     #[command(hide = true)]
     Doctor(ReadyArgs),
     /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
+    #[command(hide = true)]
     Agent(AgentArgs),
-    /// Manage backend runtime lifecycle.
-    Runtime(RuntimeCommandArgs),
-    /// Inspect local Kast state, catalogs, demos, and source-index metrics.
-    Inspect(InspectArgs),
-    /// Manage machine-local Kast integrations.
-    Machine(MachineArgs),
-    /// Build, activate, and validate release artifacts.
-    Release(ReleaseArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct SetupArgs {
+    #[command(flatten)]
+    pub runtime: RuntimeArgs,
+    /// Additional AGENTS.md files to patch with Kast managed guidance.
+    #[arg(long = "agents-md")]
+    pub agents_md: Vec<PathBuf>,
+    /// Overwrite existing managed resources.
+    #[arg(short = 'f', long)]
+    pub force: bool,
+    /// Do not add managed resource paths to Git info/exclude.
+    #[arg(long)]
+    pub no_auto_exclude_git: bool,
+    /// Explain setup and runtime actions without writing files or starting a backend.
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Skip automatic IDE onboarding/opening steps.
+    #[arg(long = "no-open-ide", alias = "no-onboard")]
+    pub no_open_ide: bool,
 }
 
 #[derive(Debug, Args, Clone)]

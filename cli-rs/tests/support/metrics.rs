@@ -30,22 +30,37 @@ pub(crate) fn run_symbol_query(
         "params": params,
         "id": id
     });
-    let body = request.to_string();
+    let (success, envelope, stderr) =
+        run_agent_call(home, config_home, workspace, "symbol/query", request);
+    assert!(success, "stderr: {stderr}\nenvelope: {envelope:#}");
+    envelope["response"].clone()
+}
+
+pub(crate) fn run_agent_call(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    method: &str,
+    input: Value,
+) -> (bool, Value, String) {
+    let body = input.to_string();
     let output = kast(home, config_home)
         .args([
-            "rpc",
+            "agent",
+            "call",
+            method,
+            "--params",
             body.as_str(),
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
         .output()
-        .expect("symbol query rpc");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    serde_json::from_slice(&output.stdout).expect("symbol query json")
+        .unwrap_or_else(|error| panic!("agent call {method}: {error}"));
+    let success = output.status.success();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let envelope: Value = serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|error| panic!("agent call {method} json: {error}\nstderr: {stderr}"));
+    (success, envelope, stderr)
 }
 
 pub(crate) fn result_fq_names(response: &Value) -> Vec<String> {

@@ -99,18 +99,44 @@ fn run(cli: Cli) -> Result<i32> {
             println!("Kast CLI {}", cli::version());
             Ok(0)
         }
-        Command::Rpc(args) => {
-            let response = runtime::rpc_passthrough(args)?;
-            println!("{response}");
-            Ok(0)
-        }
+        Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
+        Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
+        Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args, output_format),
         Command::Agent(args) => run_agent(args, output_format),
-        Command::Runtime(args) => run_runtime(args.command, output_format),
-        Command::Inspect(args) => run_inspect(args.command, output_format),
-        Command::Machine(args) => run_machine(args.command, output_format),
-        Command::Release(args) => run_release(args.command, output_format),
+    }
+}
+
+fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
+    if !args.dry_run {
+        let readiness = self_mgmt::doctor(true, cli::ReadyTarget::Agent)?;
+        if !readiness.ok {
+            let mut error = CliError::new(
+                "SETUP_READY_FAILED",
+                "Setup could not repair Kast install readiness.",
+            );
+            error
+                .details
+                .insert("issues".to_string(), readiness.issues.join("; "));
+            return Err(error);
+        }
+    }
+    run_agent_up_with_surface(
+        setup_to_agent_up_args(args),
+        output_format,
+        AgentUpCommandSurface::RootSetup,
+    )
+}
+
+fn setup_to_agent_up_args(args: cli::SetupArgs) -> cli::AgentUpArgs {
+    cli::AgentUpArgs {
+        runtime: args.runtime,
+        agents_md: args.agents_md,
+        force: args.force,
+        no_auto_exclude_git: args.no_auto_exclude_git,
+        dry_run: args.dry_run,
+        no_onboard: args.no_open_ide,
     }
 }
 
@@ -126,7 +152,9 @@ fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
     match args.command {
-        cli::AgentCommand::Up(args) => run_agent_up(args, output_format),
+        cli::AgentCommand::Up(args) => {
+            run_agent_up_with_surface(args, output_format, AgentUpCommandSurface::AgentUp)
+        }
         cli::AgentCommand::Ready(args) => run_ready(args, output_format),
         cli::AgentCommand::Setup(args) => run_agent_setup(args, output_format),
         cli::AgentCommand::Lsp(args) => lsp::run(args),
@@ -134,15 +162,31 @@ fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
     }
 }
 
-fn run_agent_up(mut args: cli::AgentUpArgs, output_format: OutputFormat) -> Result<i32> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AgentUpCommandSurface {
+    RootSetup,
+    AgentUp,
+}
+
+fn run_agent_up_with_surface(
+    mut args: cli::AgentUpArgs,
+    output_format: OutputFormat,
+    surface: AgentUpCommandSurface,
+) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(args.runtime.workspace_root.clone())?;
     let onboarding =
         onboarding::maybe_run_agent_up_onboarding(&mut args, output_format, &workspace_root)?;
     let setup_args = agent_up_setup_args(&args, &workspace_root);
-    let setup_command = agent_guidance_setup_command(&setup_args);
-    let setup_plan = install::agent_guidance_setup_plan(&setup_args, setup_command.clone())?;
+    let no_onboard = args.no_onboard;
     let runtime_args = agent_up_runtime_args(args.runtime, &workspace_root);
-    let runtime_command = agent_up_runtime_command(&runtime_args);
+    let setup_command = match surface {
+        AgentUpCommandSurface::RootSetup => {
+            root_setup_command(&setup_args, &runtime_args, no_onboard)
+        }
+        AgentUpCommandSurface::AgentUp => agent_guidance_setup_command(&setup_args),
+    };
+    let setup_plan = install::agent_guidance_setup_plan(&setup_args, setup_command.clone())?;
+    let runtime_command = agent_up_runtime_command(&runtime_args, surface, no_onboard);
     if args.dry_run {
         let result = orchestration::AgentUpResult::dry_run(setup_plan, runtime_command);
         print_agent_up_result(&result, output_format)?;
@@ -186,7 +230,7 @@ fn run_agent_up(mut args: cli::AgentUpArgs, output_format: OutputFormat) -> Resu
     let result = match onboarding {
         onboarding::AgentUpOnboardingOutcome::Applied => result.with_onboarding_stage(),
         onboarding::AgentUpOnboardingOutcome::Declined => result.with_manual_step(format!(
-            "Automatic IDEA onboarding was skipped. To configure IDEA manually, run `kast machine plugin`, open `{}` in IntelliJ IDEA or Android Studio, then run `kast runtime up --workspace-root {} --backend idea`.",
+            "Automatic IDEA onboarding was skipped. To configure IDEA manually, run `kast developer machine plugin`, open `{}` in IntelliJ IDEA or Android Studio, then run `kast setup --workspace-root {} --backend idea`.",
             workspace_root.display(),
             workspace_root.display()
         )),
@@ -233,12 +277,21 @@ fn agent_up_runtime_args(mut args: cli::RuntimeArgs, workspace_root: &Path) -> c
     args
 }
 
-fn agent_up_runtime_command(args: &cli::RuntimeArgs) -> Vec<String> {
-    let mut command = vec![
-        current_executable_argument(),
-        "runtime".to_string(),
-        "up".to_string(),
-    ];
+fn agent_up_runtime_command(
+    args: &cli::RuntimeArgs,
+    surface: AgentUpCommandSurface,
+    no_onboard: bool,
+) -> Vec<String> {
+    let mut command = match surface {
+        AgentUpCommandSurface::RootSetup => {
+            vec![current_executable_argument(), "setup".to_string()]
+        }
+        AgentUpCommandSurface::AgentUp => vec![
+            current_executable_argument(),
+            "runtime".to_string(),
+            "up".to_string(),
+        ],
+    };
     if let Some(workspace_root) = &args.workspace_root {
         command.push("--workspace-root".to_string());
         command.push(workspace_root.display().to_string());
@@ -246,6 +299,9 @@ fn agent_up_runtime_command(args: &cli::RuntimeArgs) -> Vec<String> {
     if let Some(backend) = args.backend_name {
         command.push("--backend".to_string());
         command.push(backend.canonical().to_string());
+    }
+    if surface == AgentUpCommandSurface::RootSetup && no_onboard {
+        command.push("--no-open-ide".to_string());
     }
     command
 }
@@ -349,6 +405,39 @@ fn agent_guidance_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<Strin
     }
     if args.no_auto_exclude_git {
         command.push("--no-auto-exclude-git".to_string());
+    }
+    command
+}
+
+fn root_setup_command(
+    setup_args: &cli::AgentGuidanceSetupArgs,
+    runtime_args: &cli::RuntimeArgs,
+    no_onboard: bool,
+) -> Vec<String> {
+    let mut command = vec![current_executable_argument(), "setup".to_string()];
+    if let Some(workspace_root) = &runtime_args.workspace_root {
+        command.push("--workspace-root".to_string());
+        command.push(workspace_root.display().to_string());
+    } else if let Some(workspace_root) = &setup_args.workspace_root {
+        command.push("--workspace-root".to_string());
+        command.push(workspace_root.display().to_string());
+    }
+    if let Some(backend) = runtime_args.backend_name {
+        command.push("--backend".to_string());
+        command.push(backend.canonical().to_string());
+    }
+    for target in &setup_args.agents_md {
+        command.push("--agents-md".to_string());
+        command.push(target.display().to_string());
+    }
+    if setup_args.force {
+        command.push("--force".to_string());
+    }
+    if setup_args.no_auto_exclude_git {
+        command.push("--no-auto-exclude-git".to_string());
+    }
+    if no_onboard {
+        command.push("--no-open-ide".to_string());
     }
     command
 }
@@ -643,6 +732,15 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
             }
             Ok(0)
         }
+    }
+}
+
+fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) -> Result<i32> {
+    match command {
+        cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
+        cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
+        cli::DeveloperCommand::Machine(args) => run_machine(args.command, output_format),
+        cli::DeveloperCommand::Release(args) => run_release(args.command, output_format),
     }
 }
 

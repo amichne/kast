@@ -233,7 +233,7 @@ def render_summary(catalog: dict[str, Any]) -> str:
         "",
         f"This section is generated from {COMMANDS_PATH_LABEL}",
         "so the page exposes the same method catalog used by installed agent",
-        "skills and `kast rpc`. It embeds the command families, flow-oriented",
+        "skills and `kast agent call`. It embeds the command families, flow-oriented",
         "building blocks, and request fields that callers compose into larger",
         "automation flows.",
         "",
@@ -241,7 +241,7 @@ def render_summary(catalog: dict[str, Any]) -> str:
         "",
         "#### Method families",
         "",
-        "The families below are the top-level namespaces accepted by `kast rpc`.",
+        "The families below are the top-level namespaces accepted by `kast agent call`.",
         "",
     ]
 

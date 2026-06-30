@@ -68,21 +68,21 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         action="append",
         default=[],
-        help="Additional skill target directory passed to `kast agent setup skill --target-dir`.",
+        help="Additional manifest-backed skill target directory to verify.",
     )
     parser.add_argument(
         "--copilot-target-dir",
         type=Path,
         action="append",
         default=[],
-        help="Additional Copilot package target directory passed to `kast agent setup copilot --target-dir`.",
+        help="Additional manifest-backed Copilot package target directory to verify.",
     )
     parser.add_argument(
         "--instructions-target-dir",
         type=Path,
         action="append",
         default=[],
-        help="Additional instructions target directory passed to `kast agent setup instructions --target-dir`.",
+        help="Additional manifest-backed instructions target directory to verify.",
     )
     parser.add_argument("--kast-bin", type=Path)
     parser.add_argument("--timeout", type=int, default=30)
@@ -214,7 +214,7 @@ def verify_command_surface(
     ready_help = command_record(kast_command + ["ready", "--help"], workspace_root, timeout)
     agent_help = command_record(kast_command + ["agent", "--help"], workspace_root, timeout)
     agent_tools = command_record(kast_command + ["agent", "tools"], workspace_root, timeout)
-    agent_setup_help = command_record(kast_command + ["agent", "setup", "--help"], workspace_root, timeout)
+    setup_help = command_record(kast_command + ["setup", "--help"], workspace_root, timeout)
     agent_workflow_help = command_record(
         kast_command + ["agent", "workflow", "--help"],
         workspace_root,
@@ -269,7 +269,7 @@ def verify_command_surface(
         "readyHelpExitCode": ready_help["exitCode"],
         "agentHelpExitCode": agent_help["exitCode"],
         "agentToolsExitCode": agent_tools["exitCode"],
-        "agentSetupHelpExitCode": agent_setup_help["exitCode"],
+        "setupHelpExitCode": setup_help["exitCode"],
         "agentWorkflowHelpExitCode": agent_workflow_help["exitCode"],
         "installHelpExitCode": install_help["exitCode"],
         "versionExitCode": version["exitCode"],
@@ -288,7 +288,7 @@ def verify_command_surface(
         "agentToolsInvocationArgv": agent_tools_invocation_argv,
         "agentToolsInvocationArgvExpected": expected_agent_tools_invocation_argv,
         "agentToolsInvocationArgvOk": agent_tools_invocation_argv_ok,
-        "agentSetupAvailable": agent_setup_help["exitCode"] == 0,
+        "setupAvailable": setup_help["exitCode"] == 0,
         "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
         "rpcVisibleInTopHelp": help_lists_command(top_help_text, "rpc"),
         "installVisibleInTopHelp": help_lists_command(top_help_text, "install"),
@@ -318,11 +318,11 @@ def verify_command_surface(
             "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
-    if agent_setup_help["exitCode"] != 0:
+    if setup_help["exitCode"] != 0:
         add_issue(
             result,
-            "KAST_AGENT_SETUP_UNAVAILABLE",
-            "`kast agent setup --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            "KAST_SETUP_UNAVAILABLE",
+            "`kast setup --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
     if agent_workflow_help["exitCode"] != 0:
@@ -336,14 +336,14 @@ def verify_command_surface(
         add_issue(
             result,
             "KAST_RPC_FIRST_CLASS",
-            "`kast rpc` is visible in top-level help; expected the agent-first hidden surface.",
+            "`kast rpc` is visible in top-level help; expected the removed shell RPC surface to stay unavailable.",
             RECOVERY["development"],
         )
     if checks["commandSurface"]["installVisibleInTopHelp"]:
         add_issue(
             result,
             "KAST_INSTALL_FIRST_CLASS",
-            "`kast install` is visible in top-level help; expected the intent-first `kast agent setup` surface.",
+            "`kast install` is visible in top-level help; expected the intent-first `kast setup` surface.",
             RECOVERY["development"],
         )
     if checks["commandSurface"]["installAffectedVisible"]:
@@ -400,7 +400,7 @@ def verify_ready_and_paths(
         )
 
     paths = command_record(
-        kast_command + ["--output", "json", "inspect", "paths", "--workspace-root", str(workspace_root)],
+        kast_command + ["--output", "json", "developer", "inspect", "paths", "--workspace-root", str(workspace_root)],
         workspace_root,
         timeout,
     )
@@ -415,14 +415,14 @@ def verify_ready_and_paths(
         add_issue(
             result,
             "KAST_PATHS_UNAVAILABLE",
-            "`kast --output json inspect paths` failed; active binary may predate manifest-backed path inspection.",
+            "`kast --output json developer inspect paths` failed; active binary may predate manifest-backed path inspection.",
             RECOVERY["development"],
         )
     elif paths_json.get("warnings"):
         add_warning(
             result,
             "KAST_PATHS_WARNINGS",
-            f"`kast --output json inspect paths` reported warnings: {paths_json['warnings']}",
+            f"`kast --output json developer inspect paths` reported warnings: {paths_json['warnings']}",
         )
     return ready_json if isinstance(ready_json, dict) else None
 

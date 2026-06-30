@@ -323,7 +323,7 @@ fn repair_install_copilot_repos(
             &github_dir,
             "Refresh a stale managed Copilot LSP package install from the active binary bundles.",
             Some(format!(
-                "kast agent setup copilot --target-dir {} --force",
+                "kast setup --force # refresh managed resources under {}",
                 shell_quote_path(&github_dir)
             )),
         );
@@ -446,7 +446,7 @@ fn repair_install_jetbrains_profiles(
                 "Back up and relink a stale IDEA or Android Studio profile plugin to {}.",
                 expected_plugin_target.display()
             ),
-            Some("kast machine plugin --force".to_string()),
+            Some("kast developer machine plugin --force".to_string()),
         );
         if args.apply {
             backup_existing_path(&plugin_link, backup_root, result)?;

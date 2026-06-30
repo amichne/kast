@@ -18,7 +18,7 @@ pub fn install(args: InstallArgs, reporter: &mut dyn InstallReporter) -> Result<
         InstallCommand::Shell(shell_args) => install_shell(shell_args).map(InstallResult::Shell),
         InstallCommand::Completion(_) => Err(CliError::new(
             "CLI_USAGE",
-            "`kast machine completion` must be handled as raw completion output",
+            "`kast developer machine completion` must be handled as raw completion output",
         )),
     }
 }

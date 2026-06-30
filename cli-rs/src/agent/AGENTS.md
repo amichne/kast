@@ -8,6 +8,6 @@ verification, request input normalization, response envelopes, and alias
 expansion in separate part files. A new agent command must land in the part that
 owns its contract, with request and response shape kept typed and explicit.
 
-Do not route new behavior through raw `kast rpc` unless it is explicitly a debug
-escape hatch. Agent-facing flows should prefer catalog-backed methods and stable
-JSON envelopes.
+Do not add or route new behavior through a shell `kast rpc` surface.
+Agent-facing flows should prefer catalog-backed methods and stable JSON
+envelopes through `kast agent call`.

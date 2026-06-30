@@ -23,7 +23,7 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         mdln!(document, "No runtime candidates were found.");
         mdln!(document);
         mdln!(document, "## Next steps");
-        mdln!(document, "- Start a backend: `kast runtime up`");
+        mdln!(document, "- Start a backend: `kast setup`");
         mdln!(
             document,
             "- For headless use, install the Linux headless tarball; for macOS IDE use, install Kast through Homebrew."
@@ -89,8 +89,11 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     print_candidate(&mut document, "Selected runtime", &result.selected);
     mdln!(document);
     mdln!(document, "## Next steps");
-    mdln!(document, "- Check state again: `kast runtime status`");
-    mdln!(document, "- Check agent health: `kast agent health`");
+    mdln!(document, "- Check state again: `kast status`");
+    mdln!(
+        document,
+        "- Check agent health: `kast agent call health --params '{{}}'`"
+    );
     print_markdown(&document.into_string())
 }
 

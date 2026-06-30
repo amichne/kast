@@ -47,23 +47,23 @@ fn packaged_skill_teaches_kast_agent_as_exclusive_route() {
         "Normal installed use loads only `SKILL.md`",
         "Discover method schemas",
         "Do not pre-load the full source catalog",
-        "Use direct `kast agent` subcommands first",
+        "Use `kast agent workflow ...` for repeated sequences",
         "`kast agent workflow ...`",
         "`kast agent call <method>`",
         "`kast agent tools`",
         "`kast agent workflow --help`",
-        "`kast agent scaffold`",
-        "`kast agent file-outline`",
-        "`kast agent discover`",
-        "`kast agent resolve`",
-        "`kast agent references`",
-        "`kast agent callers`",
-        "`kast agent metrics`",
+        "`kast agent call symbol/scaffold`",
+        "`kast agent call raw/file-outline`",
+        "`kast agent call symbol/discover`",
+        "`kast agent call symbol/resolve`",
+        "`kast agent call symbol/references`",
+        "`kast agent call symbol/callers`",
+        "`kast agent call database/metrics`",
         "`kast agent workflow impact`",
-        "`kast agent raw-diagnostics`",
-        "`kast agent workspace-search`",
+        "`kast agent call raw/diagnostics`",
+        "`kast agent call raw/workspace-search`",
         "workflow package-verify",
-        "Use ordinary file tools for exact non-Kotlin",
+        "Use ordinary file tools for exact",
     ] {
         assert!(
             skill.contains(required),
@@ -208,8 +208,8 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
                 }
                 "command" => {
                     assert!(
-                        name.starts_with("kast agent"),
-                        "eval case {} should use kast agent commands, got {name}",
+                        name.starts_with("kast agent") || name.starts_with("kast setup"),
+                        "eval case {} should use kast agent/setup commands, got {name}",
                         case["id"]
                     );
                 }
@@ -235,16 +235,16 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         })
         .collect::<BTreeSet<_>>();
     for required in [
-        "kast agent scaffold",
-        "kast agent file-outline",
+        "kast agent call symbol/scaffold",
+        "kast agent call raw/file-outline",
         "kast agent call symbol/query",
-        "kast agent references",
-        "kast agent callers",
-        "kast agent raw-diagnostics",
+        "kast agent call symbol/references",
+        "kast agent call symbol/callers",
+        "kast agent call raw/diagnostics",
         "kast agent call database/metrics",
         "kast agent workflow diagnostics",
         "kast agent workflow package-verify",
-        "kast agent setup skill --source-dir",
+        "kast setup --force",
         "kast agent tools",
     ] {
         assert!(

@@ -19,11 +19,11 @@ binary.
 ```mermaid
 flowchart LR
     ready["ready"]
-    setup["agent up<br/>agent setup"]
-    runtime["runtime up/status"]
-    inspect["inspect ..."]
-    semantic["agent raw-*<br/>agent workflow ..."]
-    repair["ready --fix<br/>machine ..."]
+    setup["setup"]
+    runtime["developer runtime<br/>status"]
+    inspect["developer inspect ..."]
+    semantic["agent call<br/>agent workflow ..."]
+    repair["ready --fix<br/>developer machine ..."]
 
     ready --> setup
     ready --> runtime
@@ -36,11 +36,12 @@ flowchart LR
 | Group | Commands | Use when |
 |-------|----------|----------|
 | Readiness | `ready` | Prove the active binary, manifest, and task surface are usable |
-| Agent automation | `agent up`, `agent setup ...`, `agent tools`, `agent workflow ...`, `agent ...` | Bring a repository up for agents, install resources, discover tools, start LSP, and script semantic workflows |
-| Runtime | `runtime up`, `runtime status`, `runtime restart`, `runtime stop`, `runtime capabilities` | Start, inspect, refresh, or stop the workspace backend |
-| Inspect | `inspect paths`, `inspect metrics`, `inspect demo`, `inspect catalog` | Inspect paths, catalogs, demos, and source-index metrics |
-| Machine | `machine plugin`, `machine shell` | Manage local IDE plugin links and shell integration |
-| Release | `release package ...`, `release activate bundle`, `release generate`, `release validate` | Build, activate, or validate release artifacts |
+| Setup | `setup` | Run readiness repair, install repository guidance, optionally configure IDEA, and warm the backend |
+| Agent automation | `agent tools`, `agent call <method>`, `agent workflow ...`, `agent lsp` | Discover tools, start LSP, and script semantic workflows |
+| Runtime | `status`, `developer runtime ...` | Inspect, start, refresh, or stop the workspace backend |
+| Inspect | `developer inspect paths`, `developer inspect metrics`, `developer inspect demo`, `developer inspect catalog` | Inspect paths, catalogs, demos, and source-index metrics |
+| Machine | `developer machine plugin`, `developer machine shell` | Manage local IDE plugin links and shell integration |
+| Release | `developer release package ...`, `developer release activate bundle`, `developer release generate`, `developer release validate` | Build, activate, or validate release artifacts |
 
 ## Output modes
 
@@ -51,13 +52,13 @@ the structured payload for automation.
 === "Human terminal"
 
     ```console title="Readable by default"
-    kast runtime status
+    kast status
     ```
 
 === "Script"
 
     ```console title="Structured output"
-    kast --output json runtime status
+    kast --output json status
     ```
 
 `kast agent` is different by design. It always emits a single JSON envelope
@@ -66,7 +67,7 @@ script, agent, or CI step needs stable machine output.
 
 | Surface | Output default | Use it for |
 |---------|----------------|------------|
-| `kast ready` and `kast runtime ...` | Human-readable text | Operator inspection and repair loops |
+| `kast ready` and `kast developer runtime ...` | Human-readable text | Operator inspection and repair loops |
 | `kast --output json ...` | Structured JSON for supported operator commands | CI and scripts that still use high-level operator commands |
 | `kast agent ...` | One JSON envelope on stdout | Agent tools, command chaining, and stable semantic evidence |
 
@@ -79,14 +80,7 @@ Kast walks upward to a Gradle marker or `.kast` directory. Pass
 Backend selection is explicit when it matters:
 
 ```console title="Select the backend"
-kast runtime up --backend=headless
-kast runtime status --backend=idea
-kast agent health --workspace-root "$PWD" --backend=headless
+kast setup --backend=headless
+kast status --backend=idea
+kast agent call health --params '{}' --workspace-root "$PWD" --backend=headless
 ```
-
-## Debug escape hatch
-
-!!! warning "Prefer the public agent surface"
-    Raw `kast rpc` still exists for low-level debugging and compatibility. The
-    published command docs teach `kast agent` first because it normalizes
-    inputs, wraps results consistently, and works better for scripts.

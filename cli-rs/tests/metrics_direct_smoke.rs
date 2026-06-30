@@ -16,6 +16,7 @@ fn reads_metrics_directly_from_source_index_db() {
 
     let fan_in = kast(&home, &config_home)
         .args([
+            "developer",
             "inspect",
             "metrics",
             "fan-in",
@@ -42,6 +43,7 @@ fn reads_metrics_directly_from_source_index_db() {
         .args([
             "--output",
             "json",
+            "developer",
             "inspect",
             "metrics",
             "fan-in",
@@ -65,6 +67,7 @@ fn reads_metrics_directly_from_source_index_db() {
         .args([
             "--output",
             "json",
+            "developer",
             "inspect",
             "metrics",
             "search",
@@ -85,6 +88,7 @@ fn reads_metrics_directly_from_source_index_db() {
         .args([
             "--output",
             "json",
+            "developer",
             "inspect",
             "metrics",
             "search",
@@ -102,7 +106,7 @@ fn reads_metrics_directly_from_source_index_db() {
     assert!(String::from_utf8_lossy(&short_search.stdout).contains("\"lib.FooWidget\""));
 
     let metrics_help = kast(&home, &config_home)
-        .args(["inspect", "metrics", "--help"])
+        .args(["developer", "inspect", "metrics", "--help"])
         .output()
         .expect("metrics help");
     assert!(
@@ -112,6 +116,7 @@ fn reads_metrics_directly_from_source_index_db() {
     );
     let demo = kast(&home, &config_home)
         .args([
+            "developer",
             "inspect",
             "demo",
             "--workspace-root",
@@ -207,6 +212,7 @@ fn reads_metrics_directly_from_source_index_db() {
 
     let demo_symbol_view = kast(&home, &config_home)
         .args([
+            "developer",
             "inspect",
             "demo",
             "--workspace-root",
@@ -236,7 +242,7 @@ fn reads_metrics_directly_from_source_index_db() {
     );
 
     let demo_help = kast(&home, &config_home)
-        .args(["inspect", "demo", "--help"])
+        .args(["developer", "inspect", "demo", "--help"])
         .output()
         .expect("demo help");
     assert!(
@@ -262,23 +268,18 @@ fn reads_metrics_directly_from_source_index_db() {
         },
         "id": 41
     });
-    let metrics_rpc_body = metrics_rpc_request.to_string();
-    let metrics_rpc = kast(&home, &config_home)
-        .args([
-            "rpc",
-            metrics_rpc_body.as_str(),
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("metrics rpc");
-    assert!(
-        metrics_rpc.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&metrics_rpc.stderr)
+    let (metrics_success, metrics_envelope, metrics_stderr) = run_agent_call(
+        &home,
+        &config_home,
+        &workspace,
+        "database/metrics",
+        metrics_rpc_request,
     );
-    let metrics_rpc_json: Value =
-        serde_json::from_slice(&metrics_rpc.stdout).expect("metrics rpc json");
+    assert!(
+        metrics_success,
+        "stderr: {metrics_stderr}\nenvelope: {metrics_envelope:#}"
+    );
+    let metrics_rpc_json = metrics_envelope["response"].clone();
     assert_eq!(
         metrics_rpc_json["jsonrpc"],
         Value::String("2.0".to_string())
@@ -301,30 +302,28 @@ fn reads_metrics_directly_from_source_index_db() {
         },
         "id": 43
     });
-    let unsupported_metrics_rpc_body = unsupported_metrics_rpc_request.to_string();
-    let unsupported_metrics_rpc = kast(&home, &config_home)
-        .args([
-            "rpc",
-            unsupported_metrics_rpc_body.as_str(),
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("unsupported metrics rpc");
+    let (unsupported_success, unsupported_envelope, unsupported_stderr) = run_agent_call(
+        &home,
+        &config_home,
+        &workspace,
+        "database/metrics",
+        unsupported_metrics_rpc_request,
+    );
     assert!(
-        unsupported_metrics_rpc.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&unsupported_metrics_rpc.stderr)
+        !unsupported_success,
+        "unsupported metric should fail the agent envelope: {unsupported_envelope:#}"
     );
-    let unsupported_metrics_rpc_json: Value =
-        serde_json::from_slice(&unsupported_metrics_rpc.stdout).expect("unsupported metrics json");
-    assert_eq!(
-        unsupported_metrics_rpc_json["result"]["type"],
-        Value::String("METRICS_FAILURE".to_string())
+    assert!(
+        unsupported_stderr.is_empty(),
+        "agent envelope errors should be printed to stdout, not stderr: {unsupported_stderr}"
     );
     assert_eq!(
-        unsupported_metrics_rpc_json["result"]["stage"],
-        Value::String("validate".to_string())
+        unsupported_envelope["error"]["code"],
+        Value::String("AGENT_REQUEST_INVALID".to_string())
+    );
+    assert_eq!(
+        unsupported_envelope["error"]["details"]["validation"]["errors"][0]["path"],
+        Value::String("/params/metric".to_string())
     );
 
     let symbol_rpc_request = serde_json::json!({
@@ -349,23 +348,18 @@ fn reads_metrics_directly_from_source_index_db() {
         },
         "id": 42
     });
-    let symbol_rpc_body = symbol_rpc_request.to_string();
-    let symbol_rpc = kast(&home, &config_home)
-        .args([
-            "rpc",
-            symbol_rpc_body.as_str(),
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("symbol query rpc");
-    assert!(
-        symbol_rpc.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&symbol_rpc.stderr)
+    let (symbol_success, symbol_envelope, symbol_stderr) = run_agent_call(
+        &home,
+        &config_home,
+        &workspace,
+        "symbol/query",
+        symbol_rpc_request,
     );
-    let symbol_rpc_json: Value =
-        serde_json::from_slice(&symbol_rpc.stdout).expect("symbol query json");
+    assert!(
+        symbol_success,
+        "stderr: {symbol_stderr}\nenvelope: {symbol_envelope:#}"
+    );
+    let symbol_rpc_json = symbol_envelope["response"].clone();
     assert_symbol_query_response_matches_schema(&symbol_rpc_json);
     assert_eq!(symbol_rpc_json["jsonrpc"], Value::String("2.0".to_string()));
     assert_eq!(symbol_rpc_json["id"], Value::Number(42.into()));

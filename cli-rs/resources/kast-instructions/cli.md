@@ -17,30 +17,28 @@ For agent automation, prefer machine-readable output and explicit workspace
 roots:
 
 ```sh
-kast --output json agent up --workspace-root "$PWD" --dry-run
-kast --output json agent up --workspace-root "$PWD" --no-onboard
-kast --output json agent setup auto --dry-run
-kast --output json runtime status --workspace-root "$PWD"
-kast --output json runtime up --workspace-root "$PWD" --backend idea
+kast --output json setup --workspace-root "$PWD" --dry-run
+kast --output json setup --workspace-root "$PWD" --no-open-ide
+kast --output json status --workspace-root "$PWD"
+kast --output json developer runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Use human output only for operator-facing summaries. Use `--output json` when a
-result will be parsed, stored, or used as evidence. For `agent up` dry-runs,
-`setup.targetDir` is the resolved package target and `setup.installCommand` is
-the install-only command to copy exactly. For `agent setup auto --dry-run`,
-`targetDir` and `installCommand` describe the selected package target without a
-runtime warmup step.
+result will be parsed, stored, or used as evidence. For `setup` dry-runs,
+`setup.targetDir` is the resolved package target, `setup.installCommand` is the
+install-only command for the selected guidance package, and `runtimeCommand`
+shows the backend warmup that a real setup will attempt.
 
 ## Non-Interactive Rules
 
 - Prefer `--output json` for agent-run operator commands.
-- Pass `--no-onboard` to `kast agent up` when a human TTY may be present but
+- Pass `--no-open-ide` to `kast setup` when a human TTY may be present but
   automation must not prompt.
 - Pass command-specific mutation controls explicitly, such as `--dry-run` or
   `--force`.
 - Keep follow-up Kotlin inspection, references, diagnostics, and edits on Kast
   after the first successful call.
-- Use `kast inspect demo --json` for snapshots; the default demo opens an interactive
+- Use `kast developer inspect demo --json` for snapshots; the default demo opens an interactive
   TUI when stdout is a terminal.
 - If `kast`, `kast agent tools`, or `kast agent workflow` is missing, report a
   stale instruction/binary install instead of falling back to Kotlin text
@@ -51,15 +49,15 @@ runtime warmup step.
 ## Common Commands
 
 ```sh
-kast --output json runtime status --workspace-root "$PWD"
-kast --output json runtime capabilities --workspace-root "$PWD"
-kast inspect metrics search EventBean --workspace-root "$PWD" --limit 10
-kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json
+kast --output json status --workspace-root "$PWD"
+kast --output json developer runtime capabilities --workspace-root "$PWD"
+kast developer inspect metrics search EventBean --workspace-root "$PWD" --limit 10
+kast developer inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json
 ```
 
 If the backend is missing or indexing is stale, warm the IDEA backend before
 falling back to non-semantic file tools:
 
 ```sh
-kast runtime up --workspace-root "$PWD" --backend idea
+kast setup --workspace-root "$PWD" --backend idea --no-open-ide
 ```

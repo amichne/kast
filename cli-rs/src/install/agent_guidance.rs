@@ -227,7 +227,7 @@ fn render_agents_md_guidance_block() -> String {
         "- Use `.agents/skills/kast/SKILL.md` as the first-stop Kast guidance for Kotlin, Gradle, and repository semantic work.",
         "- Confirm the active CLI exposes `kast agent tools` and `kast agent workflow --help` before relying on installed guidance.",
         "- Use `kast agent tools` for harness-agnostic tool discovery, then invoke the returned `result.invocation.argv` for catalog-backed calls.",
-        "- Use `kast agent workflow ...` for repeated semantic sequences and `kast agent up --workspace-root \"$PWD\" --dry-run` to inspect setup/runtime actions.",
+        "- Use `kast agent workflow ...` for repeated semantic sequences and `kast setup --workspace-root \"$PWD\" --dry-run` to inspect setup/runtime actions.",
         "- Verify managed resources with the packaged skill verifier or `kast agent workflow package-verify` before trusting stale installed state.",
         KAST_MANAGED_FENCE_END,
     ]

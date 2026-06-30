@@ -1,60 +1,26 @@
-#[derive(Tabled)]
-struct PathConfigFileRow {
-    #[tabled(rename = "Scope")]
-    scope: String,
-    #[tabled(rename = "State")]
-    state: String,
-    #[tabled(rename = "Path")]
-    path: String,
-}
-
-#[derive(Tabled)]
-struct PathEntryRow {
-    #[tabled(rename = "Key")]
-    key: String,
-    #[tabled(rename = "Source")]
-    source: String,
-    #[tabled(rename = "Kind")]
-    kind: String,
-    #[tabled(rename = "From")]
-    from: String,
-    #[tabled(rename = "State")]
-    state: String,
-    #[tabled(rename = "Value")]
-    value: String,
-}
-
-#[derive(Tabled)]
-struct IdeaPluginInstallSummaryRow {
-    #[tabled(rename = "Item")]
-    item: String,
-    #[tabled(rename = "Value")]
-    value: String,
-}
-
-#[derive(Tabled)]
-struct IdeaPluginDirectoryRow {
-    #[tabled(rename = "JetBrains plugins directory")]
-    path: String,
-}
-
-fn render_table_with_style<Row>(
-    rows: impl IntoIterator<Item = Row>,
-    style: TableRenderStyle,
-) -> String
-where
-    Row: Tabled,
-{
-    let mut table = Table::new(rows);
-    match style {
-        TableRenderStyle::Ascii => table.with(TableStyle::ascii()),
-        TableRenderStyle::Modern => table.with(TableStyle::modern()),
-    };
-    table.to_string()
-}
-
 fn exists_label(exists: bool) -> &'static str {
     if exists { "exists" } else { "missing" }
+}
+
+fn compact_path_for_output(path: &str) -> String {
+    let home = std::env::var("HOME").ok();
+    compact_path_with_home(path, home.as_deref())
+}
+
+fn compact_path_with_home(path: &str, home: Option<&str>) -> String {
+    let Some(home) = home else {
+        return path.to_string();
+    };
+    if home.is_empty() {
+        return path.to_string();
+    }
+    if path == home {
+        return "~".to_string();
+    }
+    let home_prefix = format!("{home}/");
+    path.strip_prefix(&home_prefix)
+        .map(|suffix| format!("~/{suffix}"))
+        .unwrap_or_else(|| path.to_string())
 }
 
 fn format_bytes_for_output(bytes: u64) -> String {

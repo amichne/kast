@@ -5,7 +5,7 @@ mod tests {
     #[test]
     fn rendered_human_output_plain_text_does_not_dump_raw_markdown_tokens() {
         let rendered = render_markdown_for_test(
-            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast runtime up`\n",
+            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast setup`\n",
             RenderStyle::Plain,
         );
 
@@ -45,72 +45,49 @@ mod tests {
     }
 
     #[test]
-    fn path_resolution_human_output_uses_ascii_tables_for_plain_capture() {
+    fn path_resolution_human_output_uses_compact_lists_for_plain_capture() {
         let report = path_resolution_report_for_test();
         let mut document = MarkdownDocument::default();
-        print_path_resolution_with_table_style(&mut document, &report, TableRenderStyle::Ascii);
+        print_path_resolution(&mut document, &report);
         let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
 
         assert!(rendered.contains("Config files:"), "{rendered}");
         assert!(rendered.contains("Path entries:"), "{rendered}");
-        assert!(rendered.contains("Scope"), "{rendered}");
-        assert!(rendered.contains("State"), "{rendered}");
         assert!(rendered.contains("paths.installRoot"), "{rendered}");
         assert!(
-            rendered
-                .lines()
-                .any(|line| line.starts_with('+') && line.ends_with('+')),
-            "captured tables should use standard ASCII borders with '+' corners: {rendered}"
+            rendered.contains("- global: exists /tmp/config.toml"),
+            "{rendered}"
         );
         assert!(
-            !rendered
-                .lines()
-                .any(|line| line.starts_with('.') || line.starts_with('\'')),
-            "tables should not use rounded ASCII borders that look like raw glyphs: {rendered}"
+            rendered.contains("- paths.installRoot: exists directory via manifest -> /tmp/kast"),
+            "{rendered}"
         );
         assert!(
-            !rendered.contains("- paths.installRoot ->"),
-            "path entries should render as a table, not dense bullets: {rendered}"
+            !rendered.lines().any(|line| line.starts_with('+')
+                || line.starts_with('┌')
+                || line.starts_with('└')),
+            "path output should avoid table borders entirely: {rendered}"
         );
     }
 
     #[test]
-    fn path_resolution_human_output_uses_modern_tables_for_terminals() {
-        let report = path_resolution_report_for_test();
-        let mut document = MarkdownDocument::default();
-        print_path_resolution_with_table_style(&mut document, &report, TableRenderStyle::Modern);
-        let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
-
-        assert!(rendered.contains("Config files:"), "{rendered}");
-        assert!(rendered.contains("Path entries:"), "{rendered}");
-        assert!(rendered.contains("Scope"), "{rendered}");
-        assert!(rendered.contains("State"), "{rendered}");
-        assert!(rendered.contains("paths.installRoot"), "{rendered}");
-        assert!(
-            rendered
-                .lines()
-                .any(|line| line.starts_with('┌') && line.ends_with('┐')),
-            "terminal tables should use modern box-drawing borders: {rendered}"
+    fn path_resolution_human_output_shortens_home_paths() {
+        assert_eq!(compact_path_with_home("/tmp", Some("/tmp")), "~");
+        assert_eq!(
+            compact_path_with_home("/tmp/config.toml", Some("/tmp")),
+            "~/config.toml"
         );
-        assert!(
-            rendered
-                .lines()
-                .any(|line| line.starts_with('└') && line.ends_with('┘')),
-            "terminal tables should close with modern box-drawing borders: {rendered}"
-        );
-        assert!(
-            !rendered
-                .lines()
-                .any(|line| line.starts_with('+') || line.starts_with('.')),
-            "terminal tables should not fall back to raw ASCII borders: {rendered}"
+        assert_eq!(
+            compact_path_with_home("/var/tmp/config.toml", Some("/tmp")),
+            "/var/tmp/config.toml"
         );
     }
 
     #[test]
-    fn idea_plugin_install_human_output_uses_summary_tables_and_next_steps() {
+    fn idea_plugin_install_human_output_uses_summary_lists_and_next_steps() {
         let result = idea_plugin_install_result_for_test(false);
         let mut document = MarkdownDocument::default();
-        print_idea_plugin_install_with_table_style(&mut document, &result, TableRenderStyle::Ascii);
+        print_idea_plugin_install_summary(&mut document, &result);
         let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
 
         assert!(rendered.contains("Kast IDEA plugin install"), "{rendered}");
@@ -124,10 +101,14 @@ mod tests {
             "{rendered}"
         );
         assert!(
-            rendered
-                .lines()
-                .any(|line| line.starts_with('+') && line.ends_with('+')),
-            "captured install summary should render as an ASCII table: {rendered}"
+            rendered.contains("- Homebrew action: install"),
+            "{rendered}"
+        );
+        assert!(
+            !rendered.lines().any(|line| line.starts_with('+')
+                || line.starts_with('┌')
+                || line.starts_with('└')),
+            "install summary should avoid table borders entirely: {rendered}"
         );
     }
 
@@ -135,13 +116,13 @@ mod tests {
     fn idea_plugin_install_dry_run_output_keeps_install_guidance() {
         let result = idea_plugin_install_result_for_test(true);
         let mut document = MarkdownDocument::default();
-        print_idea_plugin_install_with_table_style(&mut document, &result, TableRenderStyle::Ascii);
+        print_idea_plugin_install_summary(&mut document, &result);
         let rendered = render_markdown_for_test(&document.into_string(), RenderStyle::Plain);
 
         assert!(rendered.contains("Status: planned"), "{rendered}");
         assert!(rendered.contains("Dry run"), "{rendered}");
         assert!(
-            rendered.contains("without --dry-run to install the Homebrew cask"),
+            rendered.contains("kast developer machine plugin without --dry-run"),
             "{rendered}"
         );
     }

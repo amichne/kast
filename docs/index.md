@@ -29,7 +29,7 @@ hosted agents, and server images use the headless runtime.
     brew install kast
 
     cd /path/to/your/repository
-    kast agent setup copilot
+    kast setup
     ```
 
 === "Headless Linux"
@@ -42,7 +42,7 @@ hosted agents, and server images use the headless runtime.
     export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
     ./scripts/install-ubuntu-debian.sh install
     ./scripts/install-ubuntu-debian.sh verify
-    kast runtime up --backend=headless
+    kast setup --backend=headless --no-open-ide
     ```
 
 ## Operating model
@@ -56,7 +56,7 @@ flowchart LR
     machine["Machine install<br/>kast binary and runtime files"]
     repo["Repository resources<br/>Copilot, skill, or instructions"]
     backend["Workspace backend<br/>IDEA or headless"]
-    commands["Semantic commands<br/>kast runtime and kast agent"]
+    commands["Semantic commands<br/>kast developer runtime and kast agent"]
     evidence["Evidence<br/>JSON envelopes, hashes, diagnostics"]
 
     machine --> repo
@@ -69,8 +69,8 @@ flowchart LR
 | Layer | First command | Proves |
 |-------|---------------|--------|
 | Machine install | `kast ready` | The active binary, manifest, and local paths are coherent |
-| Repository resources | `kast agent setup ...` | Agent-facing files match the running CLI version |
-| Runtime backend | `kast runtime status` | A workspace backend is reachable and reports capabilities |
+| Repository resources | `kast setup ...` | Agent-facing files match the running CLI version |
+| Runtime backend | `kast developer runtime status` | A workspace backend is reachable and reports capabilities |
 | Semantic command layer | `kast agent ...` | The request uses compiler-backed Kotlin evidence |
 
 ## Command manual
@@ -127,5 +127,5 @@ before applying edits.
 
 !!! tip "Automation boundary"
     Use `--output json` on operator commands when automation needs structured
-    payloads. Use `kast agent` for pipe-friendly advanced command calls. Raw
-    `kast rpc` remains a hidden debug transport, not the published docs path.
+    payloads. Use `kast agent call <method>` for pipe-friendly advanced catalog
+    calls.

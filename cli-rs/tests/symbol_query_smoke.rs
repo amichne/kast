@@ -2,7 +2,6 @@ mod support;
 
 use serde_json::Value;
 use support::metrics::*;
-use support::*;
 
 #[test]
 fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
@@ -24,22 +23,10 @@ fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
         },
         "id": 44
     });
-    let body = request.to_string();
-    let output = kast(&home, &config_home)
-        .args([
-            "rpc",
-            body.as_str(),
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("symbol query rpc");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let response: Value = serde_json::from_slice(&output.stdout).expect("symbol query json");
+    let (success, envelope, stderr) =
+        run_agent_call(&home, &config_home, &workspace, "symbol/query", request);
+    assert!(success, "stderr: {stderr}\nenvelope: {envelope:#}");
+    let response = envelope["response"].clone();
     assert_symbol_query_response_matches_schema(&response);
     assert_eq!(
         response["result"]["results"][0]["declaration"]["fqName"],

@@ -27,11 +27,11 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent scaffold"
+          "name": "kast agent call symbol/scaffold"
         },
         {
           "kind": "command",
-          "name": "kast agent file-outline"
+          "name": "kast agent call raw/file-outline"
         }
       ],
       "forbiddenActions": [
@@ -43,7 +43,7 @@
       "recoveryExpectation": "If the backend is unavailable, report the concrete Kast setup or runtime recovery command before using a generic reader.",
       "verificationEvidence": [
         "SKILL.md explicitly covers every .kt and .kts file.",
-        "SKILL.md routes Kotlin file inspection through kast agent scaffold and kast agent file-outline."
+        "SKILL.md routes Kotlin file inspection through kast agent call symbol/scaffold and kast agent call raw/file-outline."
       ],
       "notes": "This case protects the all-Kotlin-file trigger and the sole-navigation rule."
     },
@@ -71,11 +71,11 @@
         },
         {
           "kind": "command",
-          "name": "kast agent discover"
+          "name": "kast agent call symbol/discover"
         },
         {
           "kind": "command",
-          "name": "kast agent resolve"
+          "name": "kast agent call symbol/resolve"
         }
       ],
       "forbiddenActions": [
@@ -87,7 +87,7 @@
       "recoveryExpectation": "If symbol/query returns INDEX_UNAVAILABLE, run the emitted Kast recovery or warmup path and retry the symbol-first route.",
       "verificationEvidence": [
         "symbol/query is reachable through kast agent call.",
-        "SKILL.md names kast agent discover and kast agent resolve for unknown symbols."
+        "SKILL.md names kast agent call symbol/discover and kast agent call symbol/resolve for unknown symbols."
       ],
       "notes": "This case makes unknown-symbol navigation measurable without relying on raw file enumeration."
     },
@@ -111,15 +111,15 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent resolve"
+          "name": "kast agent call symbol/resolve"
         },
         {
           "kind": "command",
-          "name": "kast agent references"
+          "name": "kast agent call symbol/references"
         },
         {
           "kind": "command",
-          "name": "kast agent callers"
+          "name": "kast agent call symbol/callers"
         }
       ],
       "forbiddenActions": [
@@ -128,10 +128,10 @@
         "textual call graph",
         "unresolved name matching"
       ],
-      "recoveryExpectation": "If the name is ambiguous, use kast agent discover or kast agent resolve filters before references and callers.",
+      "recoveryExpectation": "If the name is ambiguous, use kast agent call symbol/discover or kast agent call symbol/resolve filters before references and callers.",
       "verificationEvidence": [
-        "SKILL.md routes usage sets through kast agent references.",
-        "SKILL.md routes caller expansion through kast agent callers."
+        "SKILL.md routes usage sets through kast agent call symbol/references.",
+        "SKILL.md routes caller expansion through kast agent call symbol/callers."
       ],
       "notes": "This case protects relationship navigation through symbol calls instead of text."
     },
@@ -155,7 +155,7 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent metrics"
+          "name": "kast agent call database/metrics"
         },
         {
           "kind": "command",
@@ -175,7 +175,7 @@
       "recoveryExpectation": "If metrics are unavailable, report METRICS_DB_UNAVAILABLE and run the documented Kast index/runtime recovery before using another source.",
       "verificationEvidence": [
         "database/metrics is reachable through kast agent call.",
-        "SKILL.md lists kast agent metrics and kast agent workflow impact as the public impact path."
+        "SKILL.md lists kast agent call database/metrics and kast agent workflow impact as the public impact path."
       ],
       "notes": "This case verifies database access is public through Kast without exposing storage internals."
     },
@@ -244,15 +244,15 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent scaffold"
+          "name": "kast agent call symbol/scaffold"
         },
         {
           "kind": "command",
-          "name": "kast agent references"
+          "name": "kast agent call symbol/references"
         },
         {
           "kind": "command",
-          "name": "kast agent raw-diagnostics"
+          "name": "kast agent call raw/diagnostics"
         },
         {
           "kind": "command",
@@ -293,7 +293,7 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent setup skill --source-dir"
+          "name": "kast setup --force"
         },
         {
           "kind": "command",
@@ -307,7 +307,7 @@
         "manual copy into installed skill target",
         "ignoring emitted recovery"
       ],
-      "recoveryExpectation": "Run the emitted `kast agent setup skill --target-dir ... --source-dir <skill-root> --force` recovery, then rerun the verifier or package-verify gate.",
+      "recoveryExpectation": "Run the emitted setup recovery, then rerun the verifier or package-verify gate.",
       "verificationEvidence": [
         "kast agent workflow package-verify emits stale skill recovery for manifest-backed package drift.",
         "package_verifier_smoke covers recovery for tampered manifest-backed skills."

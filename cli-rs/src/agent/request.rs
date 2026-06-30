@@ -13,12 +13,11 @@ fn execute_request(request: AgentRequest) -> AgentEnvelope {
             );
         }
     };
-    let response = runtime::rpc_passthrough(RpcArgs {
-        request: Some(raw_request),
-        request_file: None,
-        workspace_root: request.runtime.workspace_root,
-        backend_name: request.runtime.backend_name,
-    });
+    let response = runtime::raw_request_passthrough(
+        raw_request,
+        request.runtime.workspace_root,
+        request.runtime.backend_name,
+    );
     match response {
         Ok(raw_response) => response_envelope(request.method, request.request, raw_response),
         Err(error) => error_envelope(

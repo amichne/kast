@@ -37,12 +37,6 @@ pub(crate) enum RenderStyle {
     Ansi,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TableRenderStyle {
-    Ascii,
-    Modern,
-}
-
 #[derive(Default)]
 struct MarkdownDocument {
     text: String,
@@ -57,11 +51,6 @@ impl MarkdownDocument {
     }
 
     fn blank(&mut self) {
-        self.text.push('\n');
-    }
-
-    fn block(&mut self, block: &str) {
-        self.text.push_str(block);
         self.text.push('\n');
     }
 
@@ -102,20 +91,6 @@ fn terminal_render_style(is_terminal: bool) -> RenderStyle {
         RenderStyle::Ansi
     } else {
         RenderStyle::Plain
-    }
-}
-
-fn stdout_table_render_style() -> TableRenderStyle {
-    terminal_table_render_style(io::stdout().is_terminal())
-}
-
-fn terminal_table_render_style(is_terminal: bool) -> TableRenderStyle {
-    let unicode_disabled =
-        std::env::var("TERM").is_ok_and(|terminal| terminal.eq_ignore_ascii_case("dumb"));
-    if is_terminal && !unicode_disabled {
-        TableRenderStyle::Modern
-    } else {
-        TableRenderStyle::Ascii
     }
 }
 

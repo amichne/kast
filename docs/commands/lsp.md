@@ -26,12 +26,12 @@ expect normal human text output.
 ## Repository integration
 
 Most developers should not hand-write LSP configuration. Run
-`kast agent setup copilot` from the repository root and let Kast write the managed
+`kast setup` from the repository root and let Kast write the managed
 `.github/lsp.json` and extension files for the active CLI version.
 
 ```console title="Install the managed LSP package"
 cd /path/to/your/repository
-kast agent setup copilot --force
+kast setup --force
 ```
 
 Use `kast ready` after installation when a host cannot find the binary,
@@ -44,8 +44,8 @@ workspace outside the host first.
 
 ```console title="Verify outside the LSP host"
 kast ready
-kast runtime status --workspace-root "$PWD"
-kast agent health --workspace-root "$PWD"
+kast developer runtime status --workspace-root "$PWD"
+kast agent call health --params '{}' --workspace-root "$PWD"
 ```
 
 If those commands pass, inspect the host's LSP logs for command path,

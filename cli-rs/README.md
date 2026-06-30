@@ -8,29 +8,31 @@ analysis backend as a JVM process and keeps CLI-owned work in Rust:
 - command parsing with `clap`
 - config read/write from `config.toml`
 - headless daemon launch via `java -cp <runtime-libs/classpath.txt>`
-- JSON-RPC passthrough over Unix domain sockets
-- descriptor-based `up`, `status`, and `stop`
+- catalog calls over Unix domain sockets through `kast agent call`
+- descriptor-based runtime lifecycle under `kast developer runtime`
 - embedded skill and Copilot LSP plugin installation
 - Homebrew cask-backed IDEA plugin download and optional profile linking
 - install state recorded directly in `config.toml`
 - direct read-only `source-index.db` metrics through `rusqlite`
 - interactive symbol walking and spatial structure demos through `ratatui`
 
-The current Rust binary supports the control-plane commands and the direct
-source-index metrics surface:
+The public binary keeps a small production surface, with development and
+release commands grouped under `kast developer`:
 
 ```sh
-cargo test
-cargo build --release
-target/release/kast --help
-target/release/kast version
-target/release/kast config init
-target/release/kast status
-target/release/kast metrics fan-in
-target/release/kast metrics search Foo
-target/release/kast demo --symbol lib.Foo
-target/release/kast demo --view spatial --symbol lib.Foo
+brew tap amichne/kast
+brew install kast
+brew install --cask kast-plugin
+
+kast setup
+kast ready
+kast status
+kast agent call health --params '{}'
+kast developer inspect metrics fan-in
 ```
+
+Use the published command manual for the full command vocabulary. Non-Brew
+Linux installs use the canonical `scripts/install-ubuntu-debian.sh` flow.
 
 The monorepo release workflow publishes platform-specific CLI zips named
 `kast-v<version>-<platform>.zip` and renders the generated

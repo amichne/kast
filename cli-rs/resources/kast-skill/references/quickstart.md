@@ -36,7 +36,7 @@ If `kast` exists but a command reports `NO_BACKEND_AVAILABLE`,
 database, warm the IDEA backend before using non-semantic file tools:
 
 ```console
-kast runtime up --workspace-root "$PWD" --backend idea
+kast developer runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Kast opens IDEA or Android Studio dynamically only when
@@ -47,33 +47,26 @@ installed. That is the blocker; do not stop at the first missing-index result.
 ## Contract reference
 
 The Rust `kast` command tree is the operator surface. Use `kast --help` and
-`kast <command> --help` for direct CLI families such as `agent`, `runtime`,
-`inspect`, `machine`, and `release`. `kast agent --help` is the public
-agent-oriented entrypoint; `kast rpc --help` remains available as a raw
-transport/debug topic.
+`kast help <command>` for public CLI families such as `setup`, `ready`,
+`status`, `agent`, and `developer`. `kast agent --help` is the public
+agent-oriented entrypoint for `tools`, `call`, `workflow`, and `lsp`.
 
-Use `kast agent up --dry-run --workspace-root "$PWD"` when you need to inspect
-both the selected harness package and the runtime warmup command before writing
-files or launching a backend. In JSON dry runs, read `setup.targetDir` and copy
-`setup.installCommand` exactly when you want to install only the selected agent
-resource; it includes the executable token and `--target-dir` chosen for that
-workspace. Use `kast agent up --workspace-root "$PWD"` when the repository
-should be prepared and warmed in one operator step.
-In a smart human terminal, the first eligible non-JSON `kast agent up` may ask
+Use `kast setup --dry-run --workspace-root "$PWD"` when you need to inspect
+the setup target and runtime warmup command before writing files or launching a
+backend. In JSON dry runs, read `setup.targetDir`, `setup.installCommand`, and
+`runtimeCommand` before copying any command. Run `kast setup --workspace-root "$PWD"`
+when the repository should be prepared and warmed in one operator step.
+In a smart human terminal, the first eligible non-JSON `kast setup` may ask
 whether to apply IDEA/Copilot onboarding globally or for the repository only.
-Agents and scripts should use `kast --output json agent up ...` or pass
-`--no-onboard` so prompts cannot block execution.
-
-Use `kast agent setup auto --dry-run` when only package selection matters. It
-derives its default target from the current directory unless `--target-dir` is
-passed, and JSON output reports `targetDir` plus an executable `installCommand`.
+Agents and scripts should use `kast --output json setup ...` or pass
+`--no-open-ide` so prompts cannot block execution.
 
 For shell pipelines, use the public `kast agent` surface instead of hand-written
 JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
 and either `result` or `error`; `kast agent call <method>` accepts params,
 full JSON-RPC requests, previous envelopes, and `nextRequest` objects through
-stdin or `--params-file`. `kast rpc` remains a raw transport/debug escape hatch,
-not the workflow agents should copy first.
+stdin or `--params-file`. Do not use a shell RPC command; preserve envelopes
+through `kast agent call <method>` instead.
 
 JSON-RPC request schemas, response types, discriminated variants, and
 field-level notes live in `references/commands.yaml` for reading and
@@ -146,29 +139,22 @@ run_kast_agent symbol/query '{"query":"EventBean","modes":["exact","lexical"],"f
 run_kast_agent raw/workspace-files '{"moduleName":":analysis-api","includeFiles":false,"maxFilesPerModule":25}'
 
 # Resolve an ambiguous symbol
-kast agent resolve --symbol date --kind property \
-  --containing-type com.example.EventBean --workspace-root "$PWD" >"$KAST_RESULT"
+run_kast_agent symbol/resolve '{"symbol":"date","kind":"property","containingType":"com.example.EventBean"}'
 
 # Rank candidates before resolving
 run_kast_agent symbol/discover '{"symbol":"date","fileHint":"/abs/path/EventBean.kt","line":42,"codeSnippet":"val date = event.date","maxResults":5}'
 
 # Resolve with declaration context
-kast agent resolve --symbol date --kind property \
-  --containing-type com.example.EventBean --include-declaration-scope \
-  --include-documentation --surrounding-lines 3 \
-  --include-surrounding-members --workspace-root "$PWD" >"$KAST_RESULT"
+run_kast_agent symbol/resolve '{"symbol":"date","kind":"property","containingType":"com.example.EventBean","includeDeclarationScope":true,"includeDocumentation":true,"surroundingLines":3,"includeSurroundingMembers":true}'
 
 # Find usages
-kast agent references --symbol EventBean --include-declaration \
-  --workspace-root "$PWD" >"$KAST_RESULT"
+run_kast_agent symbol/references '{"symbol":"EventBean","includeDeclaration":true}'
 
 # Trace callers
-kast agent callers --symbol process --direction incoming --depth 3 \
-  --workspace-root "$PWD" >"$KAST_RESULT"
+run_kast_agent symbol/callers '{"symbol":"process","direction":"INCOMING","depth":3}'
 
 # Scaffold a file
-kast agent scaffold --target-file /abs/path/EventBean.kt \
-  --workspace-root "$PWD" >"$KAST_RESULT"
+run_kast_agent symbol/scaffold '{"targetFile":"/abs/path/EventBean.kt"}'
 
 # Rename
 run_kast_agent symbol/rename '{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldName","newName":"NewName"}'
@@ -177,19 +163,18 @@ run_kast_agent symbol/rename '{"type":"RENAME_BY_SYMBOL_REQUEST","symbol":"OldNa
 run_kast_agent symbol/write-and-validate '{"type":"REPLACE_RANGE_REQUEST","filePath":"/abs/path/File.kt","startOffset":120,"endOffset":240,"content":"..."}'
 
 # Diagnostics
-kast agent raw-diagnostics --file-path /abs/path/File.kt \
-  --workspace-root "$PWD" >"$KAST_RESULT"
+run_kast_agent raw/diagnostics '{"filePaths":["/abs/path/File.kt"]}'
 
 # Complex edit plans stay JSON-shaped
 kast agent call raw/apply-edits --params-file "$KAST_PARAMS" \
   --workspace-root "$PWD" >"$KAST_RESULT"
 
 # Direct source-index metrics
-kast inspect metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
+kast developer inspect metrics impact com.example.EventBean --workspace-root "$PWD" --depth 3 \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 # Agent-readable symbol graph snapshot
-kast inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json \
+kast developer inspect demo --workspace-root "$PWD" --view symbol --query EventBean --json \
   >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 

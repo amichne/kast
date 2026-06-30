@@ -97,7 +97,7 @@ pub fn print_agent_setup_auto_plan(result: &AgentSetupAutoPlan) -> Result<()> {
 
 pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast agent up");
+    mdln!(document, "# Kast setup");
     mdln!(document);
     mdln!(document, "## What happened");
     mdln!(document, "- Ready: {}", yes_no(result.ok));
@@ -120,11 +120,13 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
             result.setup.agents_md_targets.len()
         );
     }
-    mdln!(
-        document,
-        "- Runtime command: `{}`",
-        result.runtime_command.join(" ")
-    );
+    if result.runtime_command != result.setup.install_command {
+        mdln!(
+            document,
+            "- Runtime command: `{}`",
+            result.runtime_command.join(" ")
+        );
+    }
     if let Some(install) = &result.install {
         let summary = install_summary(install);
         mdln!(
@@ -171,7 +173,7 @@ fn print_agent_up_next_steps(document: &mut MarkdownDocument, result: &AgentUpRe
         mdln!(document, "## Next step");
         mdln!(
             document,
-            "- Run semantic requests with `kast agent ... --workspace-root <repo>`."
+            "- Run semantic requests with `kast agent call <method> --workspace-root <repo>`."
         );
     }
     if !result.manual_steps.is_empty() {

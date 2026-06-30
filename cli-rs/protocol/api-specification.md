@@ -22,13 +22,13 @@ Batch requests and JSON-RPC notifications aren't supported.
 
 ## Full command catalog
 
-`kast rpc` can also route higher-level `symbol/*` orchestration methods
-and `database/*` index methods. The complete RPC command catalog lives in
+`kast agent call` routes higher-level `symbol/*` orchestration methods
+and `database/*` index methods. The complete method catalog lives in
 `cli-rs/resources/kast-skill/references/commands.json` and is packaged by the Rust
 CLI in `cli-rs/`.
 
 Use OpenAPI when you need the raw backend schema. Use `commands.json`
-when an agent or script needs the complete `kast rpc` catalog,
+when an agent or script needs the complete `kast agent call` catalog,
 including `symbol/resolve`, `symbol/rename`, and `database/metrics`.
 
 The embedded catalog below is generated from `commands.json` so readers can
@@ -39,7 +39,7 @@ browse the actual JSON-RPC suite directly on this page.
 
 This section is generated from `cli-rs/resources/kast-skill/references/commands.json`
 so the page exposes the same method catalog used by installed agent
-skills and `kast rpc`. It embeds the command families, flow-oriented
+skills and `kast agent call`. It embeds the command families, flow-oriented
 building blocks, and request fields that callers compose into larger
 automation flows.
 
@@ -47,7 +47,7 @@ Catalog version: `dev`. Methods: `31`.
 
 #### Method families
 
-The families below are the top-level namespaces accepted by `kast rpc`.
+The families below are the top-level namespaces accepted by `kast agent call`.
 
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
@@ -565,7 +565,7 @@ Result variants: `METRICS_SUCCESS`, `METRICS_FAILURE`.
 
 Notes:
 
-- Use this as the public source-index database surface through kast agent call or kast inspect metrics.
+- Use this as the public source-index database surface through kast agent call or kast developer inspect metrics.
 - Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for supported metrics.
 
 </details>

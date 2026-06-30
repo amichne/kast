@@ -14,28 +14,28 @@ Keep the install scopes separate:
 
 - **Machine install:** put the global `kast` binary and version-coupled IDEA
   plugin on the machine once.
-- **Repository install:** add Copilot integration files to each repository
-  where agents should use Kast.
+- **Repository setup:** run one command in each repository where agents should
+  use Kast.
 
-Install the macOS developer distribution with Homebrew, then add the Copilot
-package to a repository:
+Install the macOS developer distribution with Homebrew, then set up a
+repository:
 
 ```console
 brew tap amichne/kast
 brew install kast
 
 cd /path/to/your/repository
-kast agent setup copilot
+kast setup
 ```
 
-Use `kast agent up --dry-run` to preview the selected repository harness and
-runtime warmup command before writing files or starting a backend.
+Use `kast setup --dry-run` to preview repository guidance, optional IDEA
+onboarding, and runtime warmup before writing files or starting a backend.
 
 `brew install kast` installs or refreshes the matching `kast-plugin` cask, the
 same cask path exposed by `brew install --cask kast-plugin` for direct repair.
 Restart IDEA or Android Studio after Homebrew links or refreshes the plugin.
-The repository install writes managed files under `.github`, including the LSP
-config and catalog-backed extension tools with runtime guidance.
+Repository setup writes the shared Kast skill and managed `AGENTS.md` guidance,
+then warms the selected backend.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
@@ -44,12 +44,12 @@ air-gapped host needs its own binary and backend runtime:
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
 ./scripts/install-ubuntu-debian.sh verify
-kast runtime up --backend=headless
+kast setup --backend=headless --no-open-ide
 ```
 
 The [install guide](https://kast.michne.com/getting-started/install/) covers
-the Homebrew CLI and IDEA plugin, repository Copilot files, manifest-backed
-paths, and repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+the Homebrew CLI and IDEA plugin, repository setup, manifest-backed paths, and
+repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
 covers server and hosted-agent installs.
 
 ## Why Kast instead of text search?
@@ -75,10 +75,9 @@ Kast has two runtime modes behind the same command surface:
 | **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew formula plus `kast-plugin` cask |
 | **Headless CLI + backend** | A CI runner, server, or hosted Linux image needs its own runtime | Linux headless bundle |
 
-The repository Copilot package can use either runtime because it starts the
-same global `kast` binary and speaks the same protocol. The Linux headless
-bundle is a server/hosted-agent distribution, not the local macOS developer
-fallback.
+Repository agent guidance can use either runtime because agents call the same
+global `kast` binary and command surface. The Linux headless bundle is a
+server/hosted-agent distribution, not the local macOS developer fallback.
 
 ## Documentation
 

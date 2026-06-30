@@ -42,9 +42,10 @@ The durable decision record for agent resources and workflows is
 - Do not maintain compatibility helpers only for older binaries. Missing
   `kast agent` or `kast agent workflow` support is an incompatibility that
   requires upgrade or reinstall.
-- Keep raw `kast rpc` and older top-level command aliases hidden/debug-oriented.
-  Agent and Copilot integrations use `kast agent up`, `kast agent setup`,
-  `kast agent lsp`, `kast agent call`, and `kast agent workflow`.
+- Do not restore a shell `kast rpc` surface or older top-level developer
+  aliases. Agent and Copilot integrations use the root setup/readiness
+  commands, `kast developer ...`, `kast agent lsp`, `kast agent call`, and
+  `kast agent workflow`.
 - When install output shape changes, update manifest resource recording,
   doctor verification, package scripts, docs, and smoke tests in the same
   change.

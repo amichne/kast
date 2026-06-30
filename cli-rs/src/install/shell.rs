@@ -53,7 +53,7 @@ fn detect_shell() -> Result<ShellKind> {
         "zsh" => Ok(ShellKind::Zsh),
         _ => Err(CliError::new(
             "CLI_USAGE",
-            "Could not infer a supported shell from SHELL. Pass `kast machine shell --shell bash` or `--shell zsh`.",
+            "Could not infer a supported shell from SHELL. Pass `kast developer machine shell --shell bash` or `--shell zsh`.",
         )),
     }
 }
@@ -115,7 +115,7 @@ fn shell_source_content(
     config_home: &Path,
 ) -> String {
     format!(
-        r#"# Managed by `kast machine shell`; re-run that command after moving Kast.
+        r#"# Managed by `kast developer machine shell`; re-run that command after moving Kast.
 export KAST_CONFIG_HOME={}
 _kast_bin_dir={}
 case ":${{PATH}}:" in
@@ -125,7 +125,7 @@ esac
 unset _kast_bin_dir
 
 if command -v {command_name} >/dev/null 2>&1; then
-  source <({command_name} machine completion {} --command-name {command_name})
+  source <({command_name} developer machine completion {} --command-name {command_name})
 fi
 "#,
         shell_quote(&config_home.display().to_string()),
@@ -136,7 +136,7 @@ fi
 
 fn patch_shell_profile(profile: &Path, source_line: &str, dry_run: bool) -> Result<bool> {
     let block = format!(
-        "{SHELL_BLOCK_START}\n# Managed by `kast machine shell`; edit the generated source file instead.\n{source_line}\n{SHELL_BLOCK_END}\n"
+        "{SHELL_BLOCK_START}\n# Managed by `kast developer machine shell`; edit the generated source file instead.\n{source_line}\n{SHELL_BLOCK_END}\n"
     );
     let original = match fs::read_to_string(profile) {
         Ok(content) => content,

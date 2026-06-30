@@ -49,21 +49,31 @@ pub struct AgentUpNextAction {
 
 impl AgentUpResult {
     pub fn dry_run(setup: AgentGuidanceSetupPlan, runtime_command: Vec<String>) -> Self {
-        let next_actions = vec![
-            AgentUpNextAction {
-                label: "Run repository bring-up".to_string(),
-                argv: runtime_command_for_agent_up(&setup.install_command, &runtime_command),
-                reason: "Installs the selected agent resource and warms the workspace runtime."
+        let next_actions = if is_root_setup_command(&runtime_command) {
+            vec![AgentUpNextAction {
+                label: "Run setup".to_string(),
+                argv: runtime_command.clone(),
+                reason: "Installs repository agent resources and warms the workspace runtime."
                     .to_string(),
                 destructive: false,
-            },
-            AgentUpNextAction {
-                label: "Install only the selected agent resource".to_string(),
-                argv: setup.install_command.clone(),
-                reason: "Use this when runtime warmup should happen separately.".to_string(),
-                destructive: false,
-            },
-        ];
+            }]
+        } else {
+            vec![
+                AgentUpNextAction {
+                    label: "Run repository bring-up".to_string(),
+                    argv: runtime_command_for_agent_up(&setup.install_command, &runtime_command),
+                    reason: "Installs the selected agent resource and warms the workspace runtime."
+                        .to_string(),
+                    destructive: false,
+                },
+                AgentUpNextAction {
+                    label: "Install only the selected agent resource".to_string(),
+                    argv: setup.install_command.clone(),
+                    reason: "Use this when runtime warmup should happen separately.".to_string(),
+                    destructive: false,
+                },
+            ]
+        };
         Self {
             result_type: "AGENT_UP",
             ok: true,
@@ -97,7 +107,8 @@ impl AgentUpResult {
             runtime_command,
             next_actions: vec![],
             manual_steps: vec![
-                "Run semantic requests with `kast agent ... --workspace-root <repo>`.".to_string(),
+                "Run semantic requests with `kast agent call <method> --workspace-root <repo>`."
+                    .to_string(),
             ],
             error: None,
             schema_version: SCHEMA_VERSION,
@@ -153,6 +164,10 @@ fn runtime_command_for_agent_up(
     append_setup_args(&mut command, install_command);
     append_workspace_and_backend_args(&mut command, runtime_command);
     command
+}
+
+fn is_root_setup_command(command: &[String]) -> bool {
+    command.get(1).is_some_and(|arg| arg == "setup")
 }
 
 fn append_setup_args(command: &mut Vec<String>, install_command: &[String]) {
@@ -264,6 +279,15 @@ fn forced_setup_command(setup: &AgentGuidanceSetupPlan) -> Vec<String> {
 }
 
 fn runtime_status_command(runtime_command: &[String]) -> Vec<String> {
+    if is_root_setup_command(runtime_command) {
+        let executable = runtime_command
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "kast".to_string());
+        let mut command = vec![executable, "status".to_string()];
+        append_workspace_and_backend_args(&mut command, runtime_command);
+        return command;
+    }
     let mut command = runtime_command.to_vec();
     if command.len() >= 3 {
         command[2] = "status".to_string();
