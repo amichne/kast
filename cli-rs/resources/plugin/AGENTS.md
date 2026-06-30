@@ -1,8 +1,8 @@
 # Copilot package source guide
 
 This file applies to `cli-rs/resources/plugin/` and descendants. This tree is
-the authored source for the Kast Copilot package installed by
-`kast agent setup copilot`.
+the authored source for the Kast Copilot package that repository setup and
+development install scripts copy into `.github`.
 
 ## Local purpose
 

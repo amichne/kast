@@ -19,9 +19,9 @@ agents, and server images.
 ```mermaid
 flowchart TD
     ready["1. Check the install<br/>kast ready"]
-    start["2. Start or warm backend<br/>kast runtime up"]
-    resolve["3. Resolve symbol identity<br/>kast agent raw-resolve"]
-    refs["4. Find references<br/>kast agent raw-references"]
+    start["2. Set up or warm backend<br/>kast setup"]
+    resolve["3. Resolve symbol identity<br/>kast agent call raw/resolve"]
+    refs["4. Find references<br/>kast agent call raw/references"]
     scope["5. Check completeness<br/>result.searchScope"]
 
     ready --> start --> resolve --> refs --> scope
@@ -29,7 +29,7 @@ flowchart TD
 
 ```console title="Check the active install"
 kast ready
-kast inspect paths
+kast developer inspect paths
 ```
 
 Run the remaining commands from the repository root or any subdirectory below
@@ -45,21 +45,21 @@ project on developer machines.
 === "Headless"
 
     ```console title="Start or warm a headless backend"
-    kast runtime up --backend=headless
-    kast runtime status --backend=headless
+    kast setup --backend=headless --no-open-ide
+    kast status --backend=headless
     ```
 
 === "IDEA"
 
     ```console title="Reuse an open IDEA or Android Studio project"
-    kast runtime up --backend=idea
-    kast runtime status --backend=idea
+    kast setup --backend=idea --no-open-ide
+    kast status --backend=idea
     ```
 
 Use JSON output for automation:
 
 ```console title="Machine-readable status"
-kast --output json runtime status --backend=headless
+kast --output json status --backend=headless
 ```
 
 ## Step 2: resolve a symbol
@@ -70,9 +70,8 @@ returns one JSON object with the normalized request and result.
 ```console title="Resolve a symbol at a file offset"
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-kast agent raw-resolve \
-  --file-path "$APP_FILE" \
-  --offset 42 \
+kast agent call raw/resolve \
+  --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}}" \
   --backend=headless
 ```
 
@@ -92,10 +91,8 @@ Use the same file and offset to ask for usages. Include the declaration when
 you want one complete evidence list.
 
 ```console title="Find references"
-kast agent raw-references \
-  --file-path "$APP_FILE" \
-  --offset 42 \
-  --include-declaration \
+kast agent call raw/references \
+  --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42},\"includeDeclaration\":true}" \
   --backend=headless
 ```
 
@@ -114,9 +111,8 @@ returned `location.filePath` and `location.startOffset` into the offset-based
 commands.
 
 ```console title="Find declarations by name"
-kast agent workspace-symbol \
-  --pattern OrderService \
-  --max-results 20 \
+kast agent call raw/workspace-symbol \
+  --params '{"pattern":"OrderService","maxResults":20}' \
   --backend=headless
 ```
 
@@ -129,7 +125,7 @@ Stop the backend when you want to free local resources. Long-lived developer
 machines can keep a warm backend running.
 
 ```console title="Stop the backend"
-kast runtime stop --backend=headless
+kast developer runtime stop --backend=headless
 ```
 
 ## Next commands

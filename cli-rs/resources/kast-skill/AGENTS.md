@@ -63,7 +63,7 @@ python3 .github/scripts/render-rpc-contract-summary.py --check
 .github/scripts/test-lsp-pivot-gates.sh
 ```
 
-Use `kast release validate --request-file <file>` for hand-authored request examples.
+Use `kast developer release validate --request-file <file>` for hand-authored request examples.
 Run the packaged helper dry run after script or workflow edits:
 
 ```console

@@ -248,7 +248,7 @@ mod tests {
         assert!(ops.launches.borrow().is_empty());
         assert_eq!(
             error.details.get("installCommand").map(String::as_str),
-            Some("kast machine plugin")
+            Some("kast developer machine plugin")
         );
     }
 

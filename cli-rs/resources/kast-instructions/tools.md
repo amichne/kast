@@ -29,10 +29,9 @@ until the task leaves Kotlin semantics or Kast reports a concrete blocker.
 Use JSON output when a result will drive later steps:
 
 ```sh
-kast --output json agent up --workspace-root "$PWD" --dry-run
-kast --output json agent up --workspace-root "$PWD" --no-onboard
-kast --output json agent setup auto --dry-run
-kast agent ready --output json
+kast --output json setup --workspace-root "$PWD" --dry-run
+kast --output json setup --workspace-root "$PWD" --no-open-ide
+kast --output json ready --for agent
 kast --output json agent workflow verify --workspace-root "$PWD"
 kast --output json agent workflow package-verify --workspace-root "$PWD"
 kast --output json agent workflow package-verify --workspace-root "$PWD" \
@@ -44,44 +43,39 @@ kast --output json agent workflow package-verify --workspace-root "$PWD" \
 Use `--backend idea` or `--backend headless` when the runtime choice must be
 explicit. Keep `--workspace-root "$PWD"` or an absolute workspace path on every
 agent call so runtime and source-index state are tied to the intended project.
-Use `--no-onboard` for `agent up` in automation when a human terminal might be
+Use `--no-open-ide` for `setup` in automation when a human terminal might be
 attached; first-run interactive onboarding is an operator flow.
 Use package verification `--require-*` flags only for resources the task needs.
-When a Copilot, skill, or instruction package was installed with
-`agent setup ... --target-dir`, pass that same setup target with
+When a Copilot, skill, or instruction package was installed to a custom target,
+pass that same setup target with
 `--copilot-target-dir`, `--skill-target-dir`, or `--instructions-target-dir`;
 the workflow fails if the required target is not manifest-backed and current.
 Failed required resource checks include `requiredResources.issues[].recoveryArgv`
-with the exact `kast agent setup ... --force` invocation to run.
+with the exact recovery invocation to run.
 In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
 `package-verify` reports `nextCommandArgv` because it is native CLI
 verification, not a backend JSON-RPC method.
-When an `agent up` dry-run is used only to inspect setup, trust
+When a `setup` dry-run is used only to inspect setup, trust
 `setup.targetDir` and copy `setup.installCommand` exactly; it includes the
-selected executable and `--target-dir`. When only package selection matters,
-`agent setup auto --dry-run` derives the target from the current directory
-unless `--target-dir` is passed, and reports `targetDir` with a matching
-`installCommand`.
+selected executable and setup arguments.
 
 ## Shallow Tools
 
-Prefer the shallow aliases when their flags fit the task:
+Prefer catalog calls when a workflow does not fit the task:
 
 ```sh
-kast agent resolve --symbol EventBean --workspace-root "$PWD"
-kast agent references --symbol EventBean --workspace-root "$PWD"
-kast agent callers --symbol EventBean --workspace-root "$PWD"
-kast agent workspace-symbol --pattern EventBean --workspace-root "$PWD" --max-results 10
-kast agent workspace-search --pattern "EventBean" --workspace-root "$PWD" --max-results 20
-kast agent workspace-files --workspace-root "$PWD"
-kast agent raw-resolve --file-path "$PWD/src/main/kotlin/App.kt" --offset 128 --workspace-root "$PWD"
-kast agent raw-references --file-path "$PWD/src/main/kotlin/App.kt" --offset 128 --workspace-root "$PWD"
-kast agent raw-diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-root "$PWD"
-kast agent metrics --metric fanIn --symbol io.example.EventBean --workspace-root "$PWD"
+kast agent call symbol/resolve --params '{"symbol":"EventBean"}' --workspace-root "$PWD"
+kast agent call symbol/references --params '{"symbol":"EventBean","includeDeclaration":true}' --workspace-root "$PWD"
+kast agent call symbol/callers --params '{"symbol":"EventBean","direction":"INCOMING"}' --workspace-root "$PWD"
+kast agent call raw/workspace-symbol --params '{"pattern":"EventBean","maxResults":10}' --workspace-root "$PWD"
+kast agent call raw/workspace-search --params '{"pattern":"EventBean","maxResults":20}' --workspace-root "$PWD"
+kast agent call raw/workspace-files --params '{}' --workspace-root "$PWD"
+kast agent call raw/diagnostics --params '{"filePaths":["/abs/path/App.kt"]}' --workspace-root "$PWD"
+kast agent call database/metrics --params '{"metric":"fanIn","symbol":"io.example.EventBean"}' --workspace-root "$PWD"
 ```
 
 Resolve identity before asking for references, callers, hierarchy, rename, or
-edits. Use raw commands only when you already have exact files and offsets.
+edits. Use raw catalog methods only when you already have exact files and offsets.
 
 ## File-Backed Tools
 

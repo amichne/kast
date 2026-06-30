@@ -99,18 +99,3 @@ pub enum DemoView {
     /// Existing source-index-backed symbol walk.
     Symbol,
 }
-
-#[derive(Debug, Args, Clone)]
-pub struct RpcArgs {
-    /// Raw JSON-RPC request string.
-    pub request: Option<String>,
-    /// Absolute JSON request file for operations with richer payloads.
-    #[arg(long)]
-    pub request_file: Option<PathBuf>,
-    /// Absolute workspace root for daemon lifecycle and RPC commands.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
-    /// Pin the command to a specific backend.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
-}

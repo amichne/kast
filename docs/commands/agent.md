@@ -51,24 +51,24 @@ flowchart LR
 
 ## Bring Up A Repository
 
-Use `kast agent up` when a repository should be ready for an agent in one
+Use `kast setup` when a repository should be ready for an agent in one
 step. It installs harness-agnostic agent guidance, installs the packaged skill
 under `.agents/skills/kast`, and warms the runtime for the resolved workspace
 root.
 
 ```console title="Plan and run agent bring-up"
-kast agent up --dry-run
-kast agent up --workspace-root "$PWD"
-kast agent up --workspace-root "$PWD" --backend=headless
-kast agent up --agents-md "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
+kast setup --dry-run
+kast setup --workspace-root "$PWD"
+kast setup --workspace-root "$PWD" --backend=headless
+kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
 ```
 
-In a smart interactive terminal, the first eligible `kast agent up` can offer
+In a smart interactive terminal, the first eligible `kast setup` can offer
 automatic IDEA setup. If accepted, choose whether Kast saves IDEA as the
 default backend, automatic IDEA launch, and project-open auto-init as global
 machine defaults or for this repository only. The JetBrains plugin is still
 installed or refreshed at machine scope, and harness-agnostic guidance is still
-written under the workspace. Use `--no-onboard` to skip that first-run prompt,
+written under the workspace. Use `--no-open-ide` to skip that first-run prompt,
 and use `--output json` in
 scripts so onboarding never prompts.
 
@@ -81,21 +81,21 @@ paths remain directly callable. `stage`, `nextActions`, and `manualSteps`
 explain what happened and what the user should do next.
 
 !!! tip "Plan before mutating a repository"
-    Use `kast agent up --dry-run` when the harness, setup target, or backend is
+    Use `kast setup --dry-run` when the harness, setup target, or backend is
     not obvious. The dry run reports the resource install command and runtime
     warmup command without writing repository files.
 
 ## Setup
 
-Use `kast agent setup` to install harness-agnostic agent resources. The default
+Use `kast setup` to install harness-agnostic agent resources. The default
 setup writes the packaged skill to `.agents/skills/kast` and patches an
 existing root `AGENTS.md` with a Kast-managed fenced region. User guidance
 outside that fence remains authored repository text.
 
 ```console title="Install harness-agnostic agent guidance"
-kast agent setup --dry-run
-kast agent setup
-kast agent setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
+kast setup --dry-run
+kast setup
+kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
 ```
 
 When root `AGENTS.md` is missing, default setup installs only the skill.
@@ -153,26 +153,26 @@ sequenceDiagram
     CLI-->>Host: JSON envelope
 ```
 
-## Alias commands
+## Catalog calls
 
-Use aliases for common shallow requests. They prepare the request object and
-return the same envelope as `agent call`.
+Use catalog calls for method-specific requests. They prepare the request object
+and return a stable JSON envelope.
 
 ```console title="Resolve and trace from a file offset"
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-kast agent raw-resolve --file-path "$APP_FILE" --offset 42
-kast agent raw-references --file-path "$APP_FILE" --offset 42 --include-declaration
-kast agent raw-call-hierarchy --file-path "$APP_FILE" --offset 42 --direction incoming --depth 3
+kast agent call raw/resolve --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}}"
+kast agent call raw/references --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42},\"includeDeclaration\":true}"
+kast agent call raw/call-hierarchy --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42},\"direction\":\"INCOMING\",\"depth\":3}"
 ```
 
-Use name-based aliases when you know a Kotlin declaration name but not a file
+Use name-based methods when you know a Kotlin declaration name but not a file
 offset.
 
 ```console title="Find and resolve by name"
-kast agent workspace-symbol --pattern OrderService --max-results 20
-kast agent resolve --symbol OrderService --kind class
-kast agent references --symbol OrderService --kind class --include-declaration
+kast agent call raw/workspace-symbol --params '{"pattern":"OrderService","maxResults":20}'
+kast agent call symbol/resolve --params '{"symbol":"OrderService","kind":"class"}'
+kast agent call symbol/references --params '{"symbol":"OrderService","kind":"class","includeDeclaration":true}'
 ```
 
 ## Structured calls
@@ -216,7 +216,7 @@ manifest. When a Copilot, skill, or instructions package was installed into a
 nonstandard host root, pass the same setup target root with
 `--copilot-target-dir`, `--skill-target-dir`, or `--instructions-target-dir`.
 Failed required resource checks include `requiredResources.issues[].recoveryArgv`
-with the exact `kast agent setup ... --force` invocation to run.
+with the exact `kast setup ... --force` invocation to run.
 In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
 `package-verify` reports `nextCommandArgv` because it is native CLI verification,
 not a backend JSON-RPC method.
@@ -224,8 +224,9 @@ not a backend JSON-RPC method.
 Mutating workflow commands require explicit mutation opt-in. Do not treat a
 dry-run workflow as proof that files changed.
 
-## Raw RPC fallback
+## Catalog Calls
 
-Use raw `kast rpc` only when debugging the low-level transport or reproducing a
-protocol issue. Agent scripts should prefer `kast agent` because it normalizes
-request inputs and returns a consistent envelope.
+Use `kast agent call <method>` when a workflow does not fit and the task needs a
+specific catalog method. The input may be a params object, a full JSON-RPC
+request, or a prior agent envelope with `nextRequest`; the output is always the
+agent envelope.

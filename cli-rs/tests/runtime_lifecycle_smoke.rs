@@ -13,6 +13,7 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
 
     let human = kast(&home, &config_home)
         .args([
+            "developer",
             "runtime",
             "status",
             "--workspace-root",
@@ -53,6 +54,7 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
         .args([
             "--output",
             "json",
+            "developer",
             "runtime",
             "status",
             "--workspace-root",
@@ -131,6 +133,7 @@ fn stop_removes_every_matching_stale_headless_descriptor() {
         .args([
             "--output",
             "json",
+            "developer",
             "runtime",
             "stop",
             "--workspace-root",
@@ -282,6 +285,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
         .args([
             "--output",
             "json",
+            "developer",
             "runtime",
             "stop",
             "--workspace-root",
@@ -427,6 +431,7 @@ fn restart_requests_reachable_idea_backend_restart() {
         .args([
             "--output",
             "json",
+            "developer",
             "runtime",
             "restart",
             "--workspace-root",
@@ -501,7 +506,7 @@ fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
         .current_dir(&nested)
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
-        .args(["--output", "json", "runtime", "status"])
+        .args(["--output", "json", "developer", "runtime", "status"])
         .output()
         .expect("status");
 

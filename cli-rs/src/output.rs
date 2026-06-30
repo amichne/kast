@@ -19,7 +19,6 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, IsTerminal, Write as IoWrite};
-use tabled::{Table, Tabled, settings::Style as TableStyle};
 
 const SOURCE_MODULE_DISPLAY_LIMIT: usize = 30;
 

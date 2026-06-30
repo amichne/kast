@@ -8,7 +8,7 @@ icon: lucide/package-check
 
 Distribution commands exist for releases, mirrors, server images, and hosted
 agent snapshots. Most developers only need `brew install kast` and
-`kast agent setup copilot`; use this page when you are building or promoting
+`kast setup`; use this page when you are building or promoting
 artifacts.
 
 ## Ubuntu/Debian bundle
@@ -18,7 +18,7 @@ tarball. Release automation builds it from the CLI archive and portable
 headless backend archive.
 
 ```console title="Package a Linux headless bundle"
-kast release package ubuntu-debian-bundle \
+kast developer release package ubuntu-debian-bundle \
   --cli-archive dist/kast-<version>-linux-x64.zip \
   --backend-archive backend-headless/build/distributions/backend-headless-<version>-portable.zip \
   --version <version> \
@@ -31,15 +31,15 @@ The public release asset name is
 
 ## Activate a bundle
 
-Use `kast release activate bundle` when an image build or mirror workflow has
+Use `kast developer release activate bundle` when an image build or mirror workflow has
 an extracted or archived bundle and should activate it into a managed install
 root.
 
 ```console title="Activate or verify a bundle"
-kast release activate bundle \
+kast developer release activate bundle \
   --source /artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
 
-kast release activate bundle \
+kast developer release activate bundle \
   --source /artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz \
   --verify-only
 ```

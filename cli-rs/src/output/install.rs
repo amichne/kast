@@ -78,15 +78,11 @@ fn print_copilot_install(title: &str, result: &InstallCopilotPackageResult) -> R
 
 fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    print_idea_plugin_install_with_table_style(&mut document, result, stdout_table_render_style());
+    print_idea_plugin_install_summary(&mut document, result);
     print_markdown(&document.into_string())
 }
 
-fn print_idea_plugin_install_with_table_style(
-    document: &mut MarkdownDocument,
-    result: &InstallIdeaPluginResult,
-    table_style: TableRenderStyle,
-) {
+fn print_idea_plugin_install_summary(document: &mut MarkdownDocument, result: &InstallIdeaPluginResult) {
     mdln!(document, "# Kast IDEA plugin install");
     mdln!(document);
     mdln!(
@@ -97,66 +93,34 @@ fn print_idea_plugin_install_with_table_style(
     mdln!(document);
     mdln!(document, "## Install summary");
     let mut rows = vec![
-        IdeaPluginInstallSummaryRow {
-            item: "Cask token".to_string(),
-            value: result.cask_token.clone(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Plugin version".to_string(),
-            value: result.plugin_version.clone(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Homebrew action".to_string(),
-            value: result.brew_action.clone(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Download cache".to_string(),
-            value: result.download_cache.clone(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Downloaded".to_string(),
-            value: format_bytes_for_output(result.downloaded_bytes),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Dry run".to_string(),
-            value: yes_no(result.dry_run).to_string(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Homebrew prefix".to_string(),
-            value: result.brew_prefix.clone(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Formula prefix".to_string(),
-            value: result.formula_prefix.clone(),
-        },
-        IdeaPluginInstallSummaryRow {
-            item: "Running CLI".to_string(),
-            value: result.cli_path.clone(),
-        },
+        ("Cask token", result.cask_token.clone()),
+        ("Plugin version", result.plugin_version.clone()),
+        ("Homebrew action", result.brew_action.clone()),
+        ("Download cache", compact_path_for_output(&result.download_cache)),
+        ("Downloaded", format_bytes_for_output(result.downloaded_bytes)),
+        ("Dry run", yes_no(result.dry_run).to_string()),
+        ("Homebrew prefix", compact_path_for_output(&result.brew_prefix)),
+        ("Formula prefix", compact_path_for_output(&result.formula_prefix)),
+        ("Running CLI", compact_path_for_output(&result.cli_path)),
     ];
     if !result.brew_command.is_empty() {
-        rows.push(IdeaPluginInstallSummaryRow {
-            item: "Brew command".to_string(),
-            value: result.brew_command.join(" "),
-        });
+        rows.push(("Brew command", result.brew_command.join(" ")));
     }
     if let Some(jetbrains_config_root) = &result.jetbrains_config_root {
-        rows.push(IdeaPluginInstallSummaryRow {
-            item: "JetBrains config root".to_string(),
-            value: jetbrains_config_root.clone(),
-        });
+        rows.push((
+            "JetBrains config root",
+            compact_path_for_output(jetbrains_config_root),
+        ));
     }
-    document.block(&render_table_with_style(rows, table_style));
+    for (item, value) in rows {
+        mdln!(document, "- {item}: `{value}`");
+    }
     if !result.plugin_directories.is_empty() {
         mdln!(document);
         mdln!(document, "## JetBrains destinations");
-        document.block(&render_table_with_style(
-            result
-                .plugin_directories
-                .iter()
-                .map(|path| IdeaPluginDirectoryRow { path: path.clone() }),
-            table_style,
-        ));
+        for path in &result.plugin_directories {
+            mdln!(document, "- `{}`", compact_path_for_output(path));
+        }
     }
     print_warnings(document, &result.warnings);
     mdln!(document);
@@ -164,7 +128,7 @@ fn print_idea_plugin_install_with_table_style(
     if result.dry_run {
         mdln!(
             document,
-            "- Run `kast machine plugin` without `--dry-run` to install the Homebrew cask and link JetBrains profiles."
+            "- Run `kast developer machine plugin` without `--dry-run` to install the Homebrew cask and link JetBrains profiles."
         );
     } else {
         mdln!(
@@ -173,7 +137,7 @@ fn print_idea_plugin_install_with_table_style(
         );
         mdln!(
             document,
-            "- Reopen the project, then run `kast runtime status --backend idea` if the IDE backend still is not available."
+            "- Reopen the project, then run `kast status --backend idea` if the IDE backend still is not available."
         );
     }
 }

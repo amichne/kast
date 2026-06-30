@@ -14,7 +14,7 @@ fn paths_report_distinguishes_global_defaults_from_workspace_cache_env() {
 
     let global_paths = kast(&home, &config_home)
         .env("KAST_CACHE_HOME", &cache_home)
-        .args(["--output", "json", "inspect", "paths"])
+        .args(["--output", "json", "developer", "inspect", "paths"])
         .output()
         .expect("global paths");
     assert!(
@@ -64,6 +64,7 @@ fn paths_report_distinguishes_global_defaults_from_workspace_cache_env() {
         .args([
             "--output",
             "json",
+            "developer",
             "inspect",
             "paths",
             "--workspace-root",
@@ -96,7 +97,7 @@ fn paths_report_distinguishes_global_defaults_from_workspace_cache_env() {
 }
 
 #[test]
-fn top_level_help_exposes_release_commands() {
+fn top_level_help_exposes_production_and_developer_commands() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -108,7 +109,7 @@ fn top_level_help_exposes_release_commands() {
         .expect("help");
     assert!(help.status.success());
     let stdout = String::from_utf8_lossy(&help.stdout);
-    for command in ["ready", "agent", "runtime", "inspect", "machine", "release"] {
+    for command in ["help", "version", "setup", "ready", "status", "developer"] {
         assert!(
             stdout
                 .lines()
@@ -117,9 +118,9 @@ fn top_level_help_exposes_release_commands() {
         );
     }
     let up_help = kast(&home, &config_home)
-        .args(["runtime", "up", "--help"])
+        .args(["developer", "runtime", "up", "--help"])
         .output()
-        .expect("up help");
+        .expect("developer runtime up help");
     assert!(up_help.status.success());
     let up_help_stdout = String::from_utf8_lossy(&up_help.stdout);
     for visible in ["--workspace-root", "--backend"] {
@@ -130,9 +131,9 @@ fn top_level_help_exposes_release_commands() {
     }
 
     let install_help = kast(&home, &config_home)
-        .args(["release", "activate", "--help"])
+        .args(["developer", "release", "activate", "--help"])
         .output()
-        .expect("release activate help");
+        .expect("developer release activate help");
     assert!(install_help.status.success());
     let install_help_stdout = String::from_utf8_lossy(&install_help.stdout);
     assert!(
@@ -141,9 +142,9 @@ fn top_level_help_exposes_release_commands() {
     );
 
     let package_help = kast(&home, &config_home)
-        .args(["release", "package", "--help"])
+        .args(["developer", "release", "package", "--help"])
         .output()
-        .expect("package help");
+        .expect("developer release package help");
     assert!(package_help.status.success());
     let package_help_stdout = String::from_utf8_lossy(&package_help.stdout);
     assert!(
@@ -152,9 +153,9 @@ fn top_level_help_exposes_release_commands() {
     );
 
     let machine_help = kast(&home, &config_home)
-        .args(["machine", "--help"])
+        .args(["developer", "machine", "--help"])
         .output()
-        .expect("machine help");
+        .expect("developer machine help");
     assert!(machine_help.status.success());
     let machine_stdout = String::from_utf8_lossy(&machine_help.stdout);
     assert!(
@@ -163,7 +164,7 @@ fn top_level_help_exposes_release_commands() {
     );
 
     let doctor_help = kast(&home, &config_home)
-        .args(["machine", "doctor", "--help"])
+        .args(["developer", "machine", "doctor", "--help"])
         .output()
         .expect("doctor help");
     assert!(
@@ -191,7 +192,7 @@ fn install_completion_command_renders_shell_completion_scripts() {
     std::fs::create_dir_all(&home).expect("home");
 
     let bash = kast(&home, &config_home)
-        .args(["machine", "completion", "bash"])
+        .args(["developer", "machine", "completion", "bash"])
         .output()
         .expect("bash completion");
     assert!(
@@ -211,7 +212,14 @@ fn install_completion_command_renders_shell_completion_scripts() {
     );
 
     let zsh = kast(&home, &config_home)
-        .args(["machine", "completion", "zsh", "--command-name", "kast-dev"])
+        .args([
+            "developer",
+            "machine",
+            "completion",
+            "zsh",
+            "--command-name",
+            "kast-dev",
+        ])
         .output()
         .expect("zsh completion");
     assert!(
@@ -249,6 +257,7 @@ fn install_shell_writes_path_and_completion_profile_integration() {
         .args([
             "--output",
             "json",
+            "developer",
             "machine",
             "shell",
             "--shell",
@@ -294,7 +303,7 @@ fn install_shell_writes_path_and_completion_profile_integration() {
         "source file should prepend the configured bin directory: {source}"
     );
     assert!(
-        source.contains("kast-dev machine completion zsh --command-name kast-dev"),
+        source.contains("kast-dev developer machine completion zsh --command-name kast-dev"),
         "source file should wire completions for kast-dev: {source}"
     );
 
@@ -337,6 +346,7 @@ binDir = "{}"
         .args([
             "--output",
             "json",
+            "developer",
             "machine",
             "shell",
             "--shell",
@@ -384,7 +394,7 @@ fn help_topic_dumps_selected_command_help() {
     std::fs::create_dir_all(&home).expect("home");
 
     let help = kast(&home, &config_home)
-        .args(["help", "machine", "plugin"])
+        .args(["help", "developer", "machine", "plugin"])
         .output()
         .expect("help topic");
 

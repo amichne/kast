@@ -369,7 +369,7 @@ if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "ready" ]; then
   printf '{"ok":true,"issues":[],"warnings":[]}\n'
   exit 0
 fi
-if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "inspect" ] && [ "$4" = "paths" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "developer" ] && [ "$4" = "inspect" ] && [ "$5" = "paths" ]; then
   printf '{"root":"%s","warnings":[]}\n' "$PWD"
   exit 0
 fi
@@ -471,7 +471,7 @@ if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "ready" ]; then
   printf '{"ok":true,"issues":[],"warnings":[]}\n'
   exit 0
 fi
-if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "inspect" ] && [ "$4" = "paths" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "developer" ] && [ "$4" = "inspect" ] && [ "$5" = "paths" ]; then
   printf '{"root":"%s","warnings":[]}\n' "$PWD"
   exit 0
 fi

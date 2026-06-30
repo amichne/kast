@@ -873,7 +873,7 @@ jobs:
           chmod 755 "$packager_bin"
 
           "$packager_bin" \
-            release package ubuntu-debian-bundle \
+            developer release package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \

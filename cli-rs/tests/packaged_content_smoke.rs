@@ -29,63 +29,6 @@ fn assert_no_local_paths(value: &Value, label: &str) {
 }
 
 #[test]
-fn packaged_skill_teaches_kast_agent_as_exclusive_route() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let skill = std::fs::read_to_string(root.join("resources/kast-skill/SKILL.md"))
-        .expect("packaged skill");
-
-    for required in [
-        "Use when working on Kotlin or Gradle semantics",
-        "Route all Kast work through",
-        "`kast agent ...` is the only first-class Kast",
-        "Do not use raw transport",
-        "If the active binary lacks",
-        "require upgrade or reinstall",
-        "do not replace the missing compiler-backed path with text search",
-        "Route to the narrowest Kotlin-aware `kast agent` surface",
-        "Keep using `kast agent` after the first successful call",
-        "Normal installed use loads only `SKILL.md`",
-        "Discover method schemas",
-        "Do not pre-load the full source catalog",
-        "Use direct `kast agent` subcommands first",
-        "`kast agent workflow ...`",
-        "`kast agent call <method>`",
-        "`kast agent tools`",
-        "`kast agent workflow --help`",
-        "`kast agent scaffold`",
-        "`kast agent file-outline`",
-        "`kast agent discover`",
-        "`kast agent resolve`",
-        "`kast agent references`",
-        "`kast agent callers`",
-        "`kast agent metrics`",
-        "`kast agent workflow impact`",
-        "`kast agent raw-diagnostics`",
-        "`kast agent workspace-search`",
-        "workflow package-verify",
-        "Use ordinary file tools for exact non-Kotlin",
-    ] {
-        assert!(
-            skill.contains(required),
-            "packaged skill should teach {required}"
-        );
-    }
-
-    for forbidden in [
-        "kast rpc",
-        "capabilities.experimental.kastMethods",
-        "scripts/verify-kast-state.py",
-        "scripts/kast-agent-call.py",
-        "scripts/kast-semantic-workflow.py",
-    ] {
-        assert!(
-            !skill.contains(forbidden),
-            "packaged skill should not teach {forbidden}"
-        );
-    }
-}
-
-#[test]
 fn repo_local_copilot_plugin_content_is_generated_not_tracked() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -238,10 +181,12 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         "kast agent scaffold",
         "kast agent file-outline",
         "kast agent call symbol/query",
+        "kast agent discover",
+        "kast agent resolve",
         "kast agent references",
         "kast agent callers",
         "kast agent raw-diagnostics",
-        "kast agent call database/metrics",
+        "kast agent metrics",
         "kast agent workflow diagnostics",
         "kast agent workflow package-verify",
         "kast agent setup skill --source-dir",

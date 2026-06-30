@@ -26,6 +26,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "package",
             "ubuntu-debian-bundle",
@@ -129,6 +130,7 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",
@@ -191,6 +193,7 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",
@@ -231,6 +234,7 @@ fn activate_bundle_installs_from_tarball_source() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",
@@ -277,6 +281,7 @@ fn activate_bundle_rejects_unsupported_manifest_without_mutation() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",
@@ -318,6 +323,7 @@ fn activate_bundle_rejects_unsafe_manifest_version_without_mutation() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",
@@ -351,6 +357,7 @@ fn activate_bundle_rejects_unsafe_tar_member_without_mutation() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",
@@ -381,6 +388,7 @@ fn activate_bundle_verify_only_is_read_only_when_missing_install() {
         .args([
             "--output",
             "json",
+            "developer",
             "release",
             "activate",
             "bundle",

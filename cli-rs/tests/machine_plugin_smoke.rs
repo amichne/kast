@@ -16,7 +16,14 @@ fn idea_plugin_install_requires_jetbrains_profiles_in_normalized_install_path() 
 
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
-        .args(["--output", "json", "machine", "plugin", "--dry-run"])
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--dry-run",
+        ])
         .output()
         .expect("install idea plugin");
 
@@ -53,6 +60,7 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
         .args([
             "--output",
             "json",
+            "developer",
             "machine",
             "plugin",
             "--jetbrains-config-root",
@@ -110,6 +118,7 @@ fn plugin_install_human_output_reports_progress_and_summary_tables() {
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
         .args([
+            "developer",
             "machine",
             "plugin",
             "--jetbrains-config-root",
@@ -145,10 +154,14 @@ fn plugin_install_human_output_reports_progress_and_summary_tables() {
     assert!(stdout.contains("Homebrew action"), "{stdout}");
     assert!(stdout.contains("Brew command"), "{stdout}");
     assert!(
-        stdout
+        stdout.contains("- Homebrew action: install") && stdout.contains("- Brew command:"),
+        "captured summary should use compact list rows: {stdout}"
+    );
+    assert!(
+        !stdout
             .lines()
-            .any(|line| line.starts_with('+') && line.ends_with('+')),
-        "captured summary should use ASCII table borders: {stdout}"
+            .any(|line| line.starts_with('+') || line.starts_with('┌') || line.starts_with('└')),
+        "captured summary should not use table borders: {stdout}"
     );
     assert!(
         stdout.contains("Restart any open IntelliJ IDEA or Android Studio windows"),
@@ -182,6 +195,7 @@ fn plugin_install_repairs_stale_homebrew_profile_link() {
         .args([
             "--output",
             "json",
+            "developer",
             "machine",
             "plugin",
             "--jetbrains-config-root",

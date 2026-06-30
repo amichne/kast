@@ -21,6 +21,7 @@ fn idea_plugin_install_uses_profile_install_mode() {
         .args([
             "--output",
             "json",
+            "developer",
             "machine",
             "plugin",
             "--jetbrains-config-root",
@@ -115,6 +116,7 @@ version = "0.7.35"
         .args([
             "--output",
             "json",
+            "developer",
             "machine",
             "plugin",
             "--jetbrains-config-root",

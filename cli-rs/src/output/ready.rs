@@ -89,49 +89,42 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
 }
 
 fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutionReport) {
-    print_path_resolution_with_table_style(document, report, stdout_table_render_style());
-}
-
-fn print_path_resolution_with_table_style(
-    document: &mut MarkdownDocument,
-    report: &PathResolutionReport,
-    table_style: TableRenderStyle,
-) {
     mdln!(document);
     mdln!(document, "## Path resolution");
-    mdln!(document, "- Root: `{}`", report.root);
+    mdln!(document, "- Root: `{}`", compact_path_for_output(&report.root));
     if !report.config_files.is_empty() {
         mdln!(document);
         mdln!(document, "Config files:");
-        document.block(&render_table_with_style(
-            report
-                .config_files
-                .iter()
-                .map(|config_file| PathConfigFileRow {
-                    scope: config_file.scope.clone(),
-                    state: exists_label(config_file.exists).to_string(),
-                    path: config_file.path.clone(),
-                }),
-            table_style,
-        ));
+        for config_file in &report.config_files {
+            mdln!(
+                document,
+                "- {}: {} `{}`",
+                config_file.scope,
+                exists_label(config_file.exists),
+                compact_path_for_output(&config_file.path)
+            );
+        }
     }
     if !report.entries.is_empty() {
         mdln!(document);
         mdln!(document, "Path entries:");
-        document.block(&render_table_with_style(
-            report.entries.iter().map(|entry| PathEntryRow {
-                key: entry.key.clone(),
-                source: entry.source.to_string(),
-                kind: entry.expected_kind.clone(),
-                from: entry
-                    .derived_from
-                    .clone()
-                    .unwrap_or_else(|| "-".to_string()),
-                state: exists_label(entry.exists).to_string(),
-                value: entry.value.clone(),
-            }),
-            table_style,
-        ));
+        for entry in &report.entries {
+            let from = entry
+                .derived_from
+                .as_ref()
+                .map(|value| format!(" from `{value}`"))
+                .unwrap_or_default();
+            mdln!(
+                document,
+                "- `{}`: {} {} via `{}`{} -> `{}`",
+                entry.key,
+                exists_label(entry.exists),
+                entry.expected_kind,
+                entry.source,
+                from,
+                compact_path_for_output(&entry.value)
+            );
+        }
     }
     print_messages(document, "Path warnings", &report.warnings);
 }

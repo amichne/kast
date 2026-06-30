@@ -10,7 +10,7 @@ use crate::cli::{
     AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
     AgentWorkflowPackageVerifyArgs, AgentWorkflowSymbolArgs, AgentWorkflowWriteMode,
     AgentWorkflowWriteValidateArgs, AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs,
-    AgentWorkspaceSymbolArgs, RpcArgs,
+    AgentWorkspaceSymbolArgs,
 };
 use crate::error::{CliError, Result};
 use crate::{catalog_schema, config, manifest, output, runtime, self_mgmt, validate};

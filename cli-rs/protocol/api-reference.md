@@ -34,7 +34,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc '{"jsonrpc":"2.0","method":"health","id":1}' --workspace-root=/path/to/project
+            kast agent call health --params '{}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -88,7 +88,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc '{"jsonrpc":"2.0","method":"runtime/status","id":1}' --workspace-root=/path/to/project
+            kast agent call runtime/status --params '{}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -143,7 +143,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc '{"jsonrpc":"2.0","method":"runtime/shutdown","params":{},"id":1}' --workspace-root=/path/to/project
+            kast agent call runtime/shutdown --params '{}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -200,7 +200,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc '{"jsonrpc":"2.0","method":"runtime/restart","params":{},"id":1}' --workspace-root=/path/to/project
+            kast agent call runtime/restart --params '{}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -257,7 +257,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast capabilities --workspace-root=/path/to/project
+            kast agent call capabilities --params '{}' --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -339,7 +339,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/resolveSymbol-request.json --workspace-root=/path/to/project
+            kast agent call raw/resolve --request-file=cli-rs/protocol/examples/resolveSymbol-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -424,7 +424,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/findReferences-request.json --workspace-root=/path/to/project
+            kast agent call raw/references --request-file=cli-rs/protocol/examples/findReferences-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -520,7 +520,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/callHierarchy-request.json --workspace-root=/path/to/project
+            kast agent call raw/call-hierarchy --request-file=cli-rs/protocol/examples/callHierarchy-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -643,7 +643,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/typeHierarchy-request.json --workspace-root=/path/to/project
+            kast agent call raw/type-hierarchy --request-file=cli-rs/protocol/examples/typeHierarchy-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -763,7 +763,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project
+            kast agent call raw/semantic-insertion-point --request-file=cli-rs/protocol/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -821,7 +821,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/diagnostics-request.json --workspace-root=/path/to/project
+            kast agent call raw/diagnostics --request-file=cli-rs/protocol/examples/diagnostics-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -876,7 +876,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/fileOutline-request.json --workspace-root=/path/to/project
+            kast agent call raw/file-outline --request-file=cli-rs/protocol/examples/fileOutline-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -959,7 +959,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project
+            kast agent call raw/workspace-symbol --request-file=cli-rs/protocol/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1091,7 +1091,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/workspaceSearch-request.json --workspace-root=/path/to/project
+            kast agent call raw/workspace-search --request-file=cli-rs/protocol/examples/workspaceSearch-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1165,7 +1165,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/workspaceFiles-request.json --workspace-root=/path/to/project
+            kast agent call raw/workspace-files --request-file=cli-rs/protocol/examples/workspaceFiles-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1232,7 +1232,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/implementations-request.json --workspace-root=/path/to/project
+            kast agent call raw/implementations --request-file=cli-rs/protocol/examples/implementations-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1321,7 +1321,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/codeActions-request.json --workspace-root=/path/to/project
+            kast agent call raw/code-actions --request-file=cli-rs/protocol/examples/codeActions-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1379,7 +1379,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/completions-request.json --workspace-root=/path/to/project
+            kast agent call raw/completions --request-file=cli-rs/protocol/examples/completions-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1463,7 +1463,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/rename-request.json --workspace-root=/path/to/project
+            kast agent call raw/rename --request-file=cli-rs/protocol/examples/rename-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1545,7 +1545,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/optimizeImports-request.json --workspace-root=/path/to/project
+            kast agent call raw/optimize-imports --request-file=cli-rs/protocol/examples/optimizeImports-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1606,7 +1606,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/applyEdits-request.json --workspace-root=/path/to/project
+            kast agent call raw/apply-edits --request-file=cli-rs/protocol/examples/applyEdits-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 
@@ -1687,7 +1687,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         === "CLI"
 
             ```bash
-            kast rpc --request-file=cli-rs/protocol/examples/refreshWorkspace-request.json --workspace-root=/path/to/project
+            kast agent call raw/workspace-refresh --request-file=cli-rs/protocol/examples/refreshWorkspace-request.json --workspace-root=/path/to/project
             ```
         === "Request"
 

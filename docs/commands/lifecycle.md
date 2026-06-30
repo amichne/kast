@@ -12,12 +12,12 @@ inspect when a semantic request fails.
 
 ## Start or warm a backend
 
-Use `kast runtime up` from the repository root or any subdirectory. The first run may
+Use `kast developer runtime up` from the repository root or any subdirectory. The first run may
 index the workspace; later calls reuse the warm backend.
 
 ```console title="Start the selected backend"
-kast runtime up --backend=headless
-kast runtime up --backend=idea
+kast developer runtime up --backend=headless
+kast developer runtime up --backend=idea
 ```
 
 `--backend=headless` starts the packaged headless runtime. `--backend=idea`
@@ -29,30 +29,30 @@ IntelliJ IDEA or Android Studio profile when the launcher is not on `PATH`.
 
 ## Inspect runtime state
 
-Use `kast runtime status` for a human-readable state summary. Add `--output json` when
+Use `kast developer runtime status` for a human-readable state summary. Add `--output json` when
 a script needs resolved paths, daemon state, logs, warnings, or backend details.
 
 ```console title="Check runtime state"
-kast runtime status
-kast --output json runtime status
+kast developer runtime status
+kast --output json developer runtime status
 ```
 
-Use `kast runtime capabilities` when you need to know which semantic operations the
+Use `kast developer runtime capabilities` when you need to know which semantic operations the
 selected backend advertises.
 
 ```console title="Inspect capabilities"
-kast runtime capabilities --backend=headless
+kast developer runtime capabilities --backend=headless
 ```
 
 ## Restart or stop
 
-Use `kast runtime restart` when a backend should be rebuilt from the current install
-state. Use `kast runtime stop` to shut it down and remove runtime state owned by that
+Use `kast developer runtime restart` when a backend should be rebuilt from the current install
+state. Use `kast developer runtime stop` to shut it down and remove runtime state owned by that
 workspace.
 
 ```console title="Restart or stop"
-kast runtime restart --backend=headless
-kast runtime stop --backend=headless
+kast developer runtime restart --backend=headless
+kast developer runtime stop --backend=headless
 ```
 
 Restart is broader than a workspace refresh. Use it when runtime state is
@@ -65,8 +65,8 @@ guessing about plugin state, runtime paths, or daemon readiness.
 
 | Need | Command |
 |------|---------|
-| Confirm a backend is reachable | `kast agent health` |
-| Read machine output for automation | `kast --output json runtime status` |
-| Check the selected runtime path model | `kast inspect paths` |
+| Confirm a backend is reachable | `kast agent call health --params '{}'` |
+| Read machine output for automation | `kast --output json developer runtime status` |
+| Check the selected runtime path model | `kast developer inspect paths` |
 | Verify managed install state | `kast ready` |
 | Repair managed install state | `kast ready --fix` |

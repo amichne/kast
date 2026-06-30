@@ -110,7 +110,7 @@ fn maybe_launch_idea_backend(
         ));
     }
     if launch_config.require_installed_plugin && !ops.plugin_installed()? {
-        let install_command = "kast machine plugin".to_string();
+        let install_command = "kast developer machine plugin".to_string();
         let mut error = CliError::new(
             "IDEA_PLUGIN_NOT_INSTALLED",
             format!(

@@ -17,7 +17,7 @@ const KAST_TOOLING_CONTEXT = [
   "Use catalog-backed kast_* tools for Kast-specific symbol identity, references, callers, hierarchy, diagnostics, workspace discovery, metrics, and safe write flows.",
   "Use `kast agent tools` when a CLI-only host needs to discover the same catalog-backed tools without this Copilot extension, then call its `result.invocation.argv`.",
   "Use shell only for validation, explicit lifecycle commands, or a `kast agent` fallback when LSP and kast_* tools cannot cover the operation.",
-  "If Kast reports a missing backend, missing source index, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or NO_BACKEND_AVAILABLE, warm the IDEA backend with `kast runtime up --workspace-root \"$PWD\" --backend idea` before falling back.",
+  "If Kast reports a missing backend, missing source index, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or NO_BACKEND_AVAILABLE, warm the IDEA backend with `kast agent up --workspace-root \"$PWD\" --backend idea --no-onboard` before falling back.",
   "Treat stale, missing, ambiguous, partial, or truncated compiler-backed facts as blockers after warmup; do not replace Kotlin identity, references, hierarchy, rename, or edit scope with text search guesses.",
 ].join(" ");
 const RECOVERABLE_WARMUP_CODES = new Set([
@@ -288,14 +288,15 @@ function agentArgs(method, params, args = backendArgs()) {
 
 async function warmIdeaBackend(bin) {
   return execCommand(bin, [
+    "agent",
     "--output",
     "json",
-    "runtime",
     "up",
     "--workspace-root",
     REPO_ROOT,
     "--backend",
     "idea",
+    "--no-onboard",
   ]);
 }
 

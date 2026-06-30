@@ -1,20 +1,17 @@
 ---
 name: kast
 description: >
-  Use when working on Kotlin or Gradle semantics in a repository: `.kt` and
-  `.kts` source reads or edits, symbol identity, references, callers,
-  hierarchy, diagnostics, source-index metrics, semantic mutation, package
-  readiness, or focused Gradle validation. Route all Kast work through
-  `kast agent`.
+  Kotlin semantic work in Gradle repositories. Use `kast agent` for Kotlin
+  `.kt` or `.kts` source reads and edits, symbol identity, references, callers,
+  hierarchy, diagnostics, source-index metrics, file-backed catalog calls, and
+  focused Gradle validation.
 ---
 
-# Kast Agent
+# Kotlin
 
-Kotlin work uses the agent route: `kast agent ...` is the only first-class Kast
-path. Do not use raw transport, generated protocol routes, LSP internals, or
-source-only helper scripts as the agent workflow. If the active binary lacks
-`kast agent`, report stale Kast installation and require upgrade or reinstall;
-do not replace the missing compiler-backed path with text search.
+Kotlin work uses `kast agent`. If this skill is loaded, assume `kast agent` is
+available and do the Kotlin work instead of proving the installation. Treat
+`kast agent ...` as the only first-class path.
 
 ## Operating Loop
 
@@ -34,8 +31,8 @@ work is an exact non-Kotlin path that does not depend on semantic facts.
 ## Usage Routes
 
 Use direct `kast agent` subcommands first. Use `kast agent workflow ...` for
-repeated sequences. Use `kast agent call <method>` only when no direct
-subcommand or workflow fits.
+repeated sequences. Use `kast agent call <method>` only when no direct subcommand
+or workflow fits.
 
 | Need | Use |
 | --- | --- |
@@ -57,17 +54,11 @@ other text that is not a symbol. Use ordinary file tools for exact non-Kotlin
 paths, generated text, docs, skill maintenance, and final absence checks after
 `kast agent` finds no candidates.
 
-## Disclosure
-
-Normal installed use loads only `SKILL.md`. Discover method schemas, field
-names, default arguments, mutation metadata, and invocation argv through
-`kast agent tools`; use `kast agent workflow --help` for supported multi-step
-operations. Do not pre-load the full source catalog, generated request samples,
-or raw transport runbook before a concrete command needs exact fields.
-
 ## Catalog Calls
 
-For one nontrivial catalog call, keep parameters in a file:
+Use `kast agent tools` to discover the live method list, schemas, default
+arguments, mutation metadata, and invocation shape. For one nontrivial catalog
+call, keep parameters in a file:
 
 ```console
 kast agent --output json call <method> --params-file "$KAST_PARAMS" --workspace-root "$PWD"

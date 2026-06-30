@@ -112,7 +112,7 @@ fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
     let mut error = CliError::new(
         "HOMEBREW_INSTALL_REQUIRED",
         format!(
-            "`kast machine plugin` must be run from the Homebrew-installed kast binary under {}",
+            "`kast developer machine plugin` must be run from the Homebrew-installed kast binary under {}",
             homebrew.formula_prefix.display()
         ),
     );

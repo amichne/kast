@@ -36,8 +36,7 @@ host-owned target instead of only the standard repository roots. The
 `package-verify` workflow accepts the same require and target-root flags and
 fails when an explicit required target is missing, stale, or not
 manifest-backed. Failed required resource checks include
-`requiredResources.issues[].recoveryArgv` with the exact
-`kast agent setup ... --force` invocation to run.
+`requiredResources.issues[].recoveryArgv` with the exact recovery invocation to run.
 In `--dry-run` mode, catalog-backed workflow steps report `nextRequest`;
 `package-verify` reports `nextCommandArgv` because it is native CLI
 verification, not a backend JSON-RPC method.
@@ -59,9 +58,8 @@ If the verifier reports stale state, use the one owner for that state:
 | configured binary missing or not the running binary | `kast ready --for machine --fix` |
 | Kotlin semantic backend absent from the manifest | `kast ready --for kotlin`, then install or activate a backend |
 | active binary lacks `kast agent`, shows top-level `kast rpc`, or shows `install affected` | refresh the active binary, in this repo `./gradlew installDevelopmentLocal` |
-| stale repository Copilot package files or manifest resource mismatch | `kast agent setup copilot --force` |
-| stale repository skill | emitted `kast agent setup skill ... --force` recovery |
-| stale Markdown instructions | emitted `kast agent setup instructions ... --force` recovery |
+| stale repository guidance or manifest resource mismatch | `kast setup --force` |
+| stale repository skill or Markdown instructions | emitted recovery command |
 
 Do not edit generated `.github` package files as source. The source owners are
 `cli-rs/resources/plugin/`, `cli-rs/resources/kast-instructions/`, and this
@@ -76,30 +74,24 @@ Before semantic work, prove three things:
    Kotlin/Gradle semantics;
 3. backend or index failures have a recovery attempt or a clear blocker.
 
-Use `kast agent up --dry-run --workspace-root "$PWD"` when harness setup and
-runtime readiness both matter. The dry run reports the selected harness,
-workspace-root-derived setup target, and runtime command without writing files
-or starting a backend. In JSON output, `setup.targetDir` is the resolved package
-target and `setup.installCommand` is the exact install-only command, including
-the executable token and `--target-dir`. For agent-run flows, prefer
-`kast --output json agent up --workspace-root "$PWD" --no-onboard` when the
+Use `kast setup --dry-run --workspace-root "$PWD"` when setup and runtime
+readiness both matter. The dry run reports the setup target and runtime command
+without writing files or starting a backend. In JSON output, `setup.targetDir`
+and `setup.installCommand` describe the guidance install, and `runtimeCommand`
+describes backend warmup. For agent-run flows, prefer
+`kast --output json setup --workspace-root "$PWD" --no-open-ide` when the
 command may inherit a human terminal; interactive onboarding is for operators
 choosing global or repository-scoped defaults, not unattended agents.
-
-Use `kast agent setup auto --dry-run` when only harness package selection
-matters. It derives the default target from the current directory unless
-`--target-dir` is passed, and JSON output reports `targetDir` with the matching
-`installCommand`.
 
 For `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a
 missing source-index database, warm the runtime:
 
 ```sh
-kast runtime up --workspace-root "$PWD" --backend idea
+kast setup --workspace-root "$PWD" --backend idea --no-open-ide
 ```
 
-Use `kast runtime restart --workspace-root "$PWD"` when daemon/config drift is likely,
-then re-run the failed request. Use `kast runtime status --workspace-root "$PWD"` to
+Use `kast developer runtime restart --workspace-root "$PWD"` when daemon/config drift is likely,
+then re-run the failed request. Use `kast developer runtime status --workspace-root "$PWD"` to
 quote runtime evidence.
 
 ## File-backed request exchange

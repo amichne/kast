@@ -7,8 +7,8 @@ icon: lucide/life-buoy
 # Troubleshooting
 
 Start with commands that report active state instead of guessing. `kast ready`
-checks managed install state, `kast inspect paths` explains filesystem resolution, and
-`kast runtime status` reports backend state for the current workspace.
+checks managed install state, `kast developer inspect paths` explains filesystem resolution, and
+`kast developer runtime status` reports backend state for the current workspace.
 
 ## Install state
 
@@ -23,7 +23,7 @@ plugin links are suspected.
 
     ```console
     kast --output json ready --for machine
-    kast inspect paths
+    kast developer inspect paths
     ```
 
     If readiness reports repairable managed state, run the repair command once and
@@ -40,8 +40,8 @@ plugin links are suspected.
     help, install shell integration and verify the active shim path.
 
     ```console
-    kast machine shell --shell zsh
-    kast inspect paths
+    kast developer machine shell --shell zsh
+    kast developer inspect paths
     command -v kast
     ```
 
@@ -55,12 +55,12 @@ plugin links are suspected.
 
     ```console
     brew reinstall --cask kast-plugin
-    kast machine plugin
+    kast developer machine plugin
     kast ready
     ```
 
     `kast ready` should report the managed plugin and JetBrains profile links.
-    If it does not, inspect the profile root shown by `kast inspect paths --idea`.
+    If it does not, inspect the profile root shown by `kast developer inspect paths --idea`.
 
 ??? question "Repository Copilot files look stale"
 
@@ -70,7 +70,7 @@ plugin links are suspected.
 
     ```console
     cd /path/to/your/repository
-    kast agent setup copilot --force
+    kast setup --force
     kast ready
     ```
 
@@ -86,9 +86,9 @@ results.
 
     ```console
     kast ready --for kotlin
-    kast runtime up --backend=headless
-    kast runtime status --backend=headless
-    kast --output json runtime status --backend=headless
+    kast developer runtime up --backend=headless
+    kast developer runtime status --backend=headless
+    kast --output json developer runtime status --backend=headless
     ```
 
     Check Java 21 or newer for the headless backend:
@@ -106,8 +106,8 @@ results.
     the backend reaches a servable state.
 
     ```console
-    kast runtime status
-    kast --output json runtime status
+    kast developer runtime status
+    kast --output json developer runtime status
     ```
 
     If indexing never converges, verify the Gradle project itself works, then
@@ -121,8 +121,8 @@ results.
     ```console
     APP_FILE="$PWD/src/main/kotlin/App.kt"
 
-    kast agent raw-workspace-refresh --file-path "$APP_FILE"
-    kast agent raw-diagnostics --file-path "$APP_FILE"
+    kast agent call raw/workspace-refresh --params "{\"filePaths\":[\"$APP_FILE\"]}"
+    kast agent call raw/diagnostics --params "{\"filePaths\":[\"$APP_FILE\"]}"
     ```
 
     The same refresh pattern applies before resolve, references, file outline,
@@ -139,22 +139,20 @@ bounded, or failed.
     Kotlin identifier. Use `workspace-symbol` when you only know the name.
 
     ```console
-    kast agent workspace-symbol --pattern OrderService --max-results 20
-    kast agent raw-resolve --file-path "$PWD/src/main/kotlin/App.kt" --offset 42
+    kast agent call raw/workspace-symbol --params '{"pattern":"OrderService","maxResults":20}'
+    kast agent call raw/resolve --params "{\"position\":{\"filePath\":\"$PWD/src/main/kotlin/App.kt\",\"offset\":42}}"
     ```
 
     If the file is new or recently edited, refresh it first.
 
 ??? question "References return partial results"
 
-    Read `result.searchScope.exhaustive` in the `kast agent raw-references`
+    Read `result.searchScope.exhaustive` in the `kast agent call raw/references`
     envelope.
 
     ```console
-    kast agent raw-references \
-      --file-path "$PWD/src/main/kotlin/App.kt" \
-      --offset 42 \
-      --include-declaration
+    kast agent call raw/references \
+      --params "{\"position\":{\"filePath\":\"$PWD/src/main/kotlin/App.kt\",\"offset\":42},\"includeDeclaration\":true}"
     ```
 
     `true` means every candidate file was searched. `false` means the search
@@ -167,11 +165,8 @@ bounded, or failed.
     timeout. Increase limits only when the larger tree is useful.
 
     ```console
-    kast agent raw-call-hierarchy \
-      --file-path "$PWD/src/main/kotlin/App.kt" \
-      --offset 42 \
-      --direction incoming \
-      --depth 5
+    kast agent call raw/call-hierarchy \
+      --params "{\"position\":{\"filePath\":\"$PWD/src/main/kotlin/App.kt\",\"offset\":42},\"direction\":\"INCOMING\",\"depth\":5}"
     ```
 
     Read `result.stats` to identify which bound stopped traversal.
@@ -187,12 +182,9 @@ no longer matches the planned state.
     generated or read-only.
 
     ```console
-    kast runtime capabilities
-    kast agent raw-rename \
-      --file-path "$PWD/src/main/kotlin/App.kt" \
-      --offset 42 \
-      --new-name newName \
-      --dry-run
+    kast developer runtime capabilities
+    kast agent call raw/rename \
+      --params "{\"position\":{\"filePath\":\"$PWD/src/main/kotlin/App.kt\",\"offset\":42},\"newName\":\"newName\",\"dryRun\":true}"
     ```
 
 ??? question "Apply-edits rejects with a conflict"
@@ -201,11 +193,8 @@ no longer matches the planned state.
     file state, review it, and apply the fresh plan.
 
     ```console
-    kast agent raw-rename \
-      --file-path "$PWD/src/main/kotlin/App.kt" \
-      --offset 42 \
-      --new-name newName \
-      --dry-run > rename-plan.json
+    kast agent call raw/rename \
+      --params "{\"position\":{\"filePath\":\"$PWD/src/main/kotlin/App.kt\",\"offset\":42},\"newName\":\"newName\",\"dryRun\":true}" > rename-plan.json
     ```
 
 ## LSP hosts
@@ -220,8 +209,8 @@ host logs.
 
     ```console
     kast ready
-    kast runtime status --workspace-root "$PWD"
-    kast agent health --workspace-root "$PWD"
+    kast developer runtime status --workspace-root "$PWD"
+    kast agent call health --params '{}' --workspace-root "$PWD"
     ```
 
     If those commands pass, inspect the host logs for the exact
@@ -234,6 +223,6 @@ Prefer JSON where the command supports it.
 
 ```console
 kast --output json ready
-kast --output json runtime status
-kast inspect paths
+kast --output json developer runtime status
+kast developer inspect paths
 ```

@@ -1,28 +1,22 @@
-pub fn rpc_passthrough(args: RpcArgs) -> Result<String> {
-    let raw_request = match (args.request, args.request_file) {
-        (Some(request), None) => request,
-        (None, Some(path)) => fs::read_to_string(path)?.trim().to_string(),
-        _ => {
-            return Err(CliError::new(
-                "CLI_USAGE",
-                "rpc requires a JSON-RPC string argument or --request-file",
-            ));
-        }
-    };
+pub fn raw_request_passthrough(
+    raw_request: String,
+    requested_workspace_root: Option<PathBuf>,
+    backend_name: Option<BackendName>,
+) -> Result<String> {
     if let Some(response) =
-        crate::metrics::try_handle_raw_rpc(&raw_request, args.workspace_root.clone())?
+        crate::metrics::try_handle_raw_rpc(&raw_request, requested_workspace_root.clone())?
     {
         return Ok(response);
     }
     if let Some(response) =
-        crate::symbol_query::try_handle_raw_rpc(&raw_request, args.workspace_root.clone())?
+        crate::symbol_query::try_handle_raw_rpc(&raw_request, requested_workspace_root.clone())?
     {
         return Ok(response);
     }
-    let workspace_root = workspace_root(args.workspace_root)?;
+    let workspace_root = workspace_root(requested_workspace_root)?;
     let ensure = workspace_ensure(RuntimeArgs {
         workspace_root: Some(workspace_root),
-        backend_name: args.backend_name,
+        backend_name,
         idea_home: None,
         wait_timeout_ms: 60_000,
         accept_indexing: Some(true),

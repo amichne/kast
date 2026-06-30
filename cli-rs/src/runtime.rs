@@ -1,5 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{BackendName, DaemonStartArgs, RpcArgs, RuntimeArgs};
+use crate::cli::{BackendName, DaemonStartArgs, RuntimeArgs};
 use crate::config::{self, KastConfig, PathResolutionReport};
 use crate::daemon;
 use crate::error::{CliError, Result};

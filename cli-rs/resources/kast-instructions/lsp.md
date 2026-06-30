@@ -18,14 +18,14 @@ For local developer machines, warm the IDEA backend before LSP startup if
 semantic state is missing:
 
 ```sh
-kast runtime up --workspace-root "$PWD" --backend idea
+kast setup --workspace-root "$PWD" --backend idea --no-open-ide
 ```
 
 For hosted Linux agents, warm the headless backend after installing the Linux
 headless bundle:
 
 ```sh
-kast runtime up --workspace-root "$PWD" --backend headless
+kast setup --workspace-root "$PWD" --backend headless --no-open-ide
 ```
 
 ## Capabilities

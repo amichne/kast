@@ -13,6 +13,7 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
 
     let up = kast(&home, &config_home)
         .args([
+            "developer",
             "runtime",
             "up",
             "--workspace-root",
@@ -52,6 +53,7 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
 
     let up = kast(&home, &config_home)
         .args([
+            "developer",
             "runtime",
             "up",
             "--workspace-root",
@@ -89,6 +91,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
 
     let up = kast(&home, &config_home)
         .args([
+            "developer",
             "runtime",
             "up",
             "--workspace-root",
@@ -111,7 +114,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
 }
 
 #[test]
-fn rpc_uses_configured_default_backend_when_auto_starting() {
+fn agent_call_uses_configured_default_backend_when_auto_starting() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -125,29 +128,32 @@ fn rpc_uses_configured_default_backend_when_auto_starting() {
     )
     .expect("config");
 
-    let rpc = kast(&home, &config_home)
+    let call = kast(&home, &config_home)
         .args([
-            "rpc",
-            r#"{"jsonrpc":"2.0","method":"runtime/status","id":1}"#,
+            "agent",
+            "call",
+            "runtime/status",
+            "--params",
+            r#"{"jsonrpc":"2.0","method":"runtime/status","params":{},"id":1}"#,
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
         ])
         .output()
-        .expect("rpc");
+        .expect("agent call runtime/status");
 
     assert!(
-        !rpc.status.success(),
-        "rpc should fail without an installed headless backend"
+        !call.status.success(),
+        "agent call should fail without an installed headless backend"
     );
-    let stderr = String::from_utf8_lossy(&rpc.stderr);
+    let stdout = String::from_utf8_lossy(&call.stdout);
     assert!(
-        stderr.contains("Linux headless tarball"),
-        "stderr should point to the supported headless distribution: {stderr}"
+        stdout.contains("Linux headless tarball"),
+        "agent envelope should point to the supported headless distribution: {stdout}"
     );
 }
 
 #[test]
-fn rpc_backend_flag_overrides_configured_default_backend() {
+fn agent_call_backend_flag_overrides_configured_default_backend() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -161,24 +167,27 @@ fn rpc_backend_flag_overrides_configured_default_backend() {
     )
     .expect("config");
 
-    let rpc = kast(&home, &config_home)
+    let call = kast(&home, &config_home)
         .args([
-            "rpc",
-            r#"{"jsonrpc":"2.0","method":"runtime/status","id":1}"#,
+            "agent",
+            "call",
+            "runtime/status",
+            "--params",
+            r#"{"jsonrpc":"2.0","method":"runtime/status","params":{},"id":1}"#,
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
         ])
         .output()
-        .expect("rpc");
+        .expect("agent call runtime/status");
 
     assert!(
-        !rpc.status.success(),
-        "rpc should fail without an installed headless backend"
+        !call.status.success(),
+        "agent call should fail without an installed headless backend"
     );
-    let stderr = String::from_utf8_lossy(&rpc.stderr);
+    let stdout = String::from_utf8_lossy(&call.stdout);
     assert!(
-        stderr.contains("Linux headless tarball"),
-        "stderr should point to the supported headless distribution: {stderr}"
+        stdout.contains("Linux headless tarball"),
+        "agent envelope should point to the supported headless distribution: {stdout}"
     );
 }

@@ -1,5 +1,24 @@
 #[derive(Debug, Args, Clone)]
 #[command(disable_help_subcommand = true)]
+pub struct DeveloperArgs {
+    #[command(subcommand)]
+    pub command: DeveloperCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum DeveloperCommand {
+    /// Manage backend runtime lifecycle.
+    Runtime(RuntimeCommandArgs),
+    /// Inspect local Kast state, catalogs, demos, and source-index metrics.
+    Inspect(InspectArgs),
+    /// Manage machine-local Kast integrations.
+    Machine(MachineArgs),
+    /// Build, activate, and validate release artifacts.
+    Release(ReleaseArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(disable_help_subcommand = true)]
 pub struct InspectArgs {
     #[command(subcommand)]
     pub command: InspectCommand,

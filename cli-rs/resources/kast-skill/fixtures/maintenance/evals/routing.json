@@ -163,7 +163,7 @@
         },
         {
           "kind": "command",
-          "name": "kast agent call database/metrics"
+          "name": "kast agent metrics"
         }
       ],
       "forbiddenActions": [
@@ -174,7 +174,7 @@
       ],
       "recoveryExpectation": "If metrics are unavailable, report METRICS_DB_UNAVAILABLE and run the documented Kast index/runtime recovery before using another source.",
       "verificationEvidence": [
-        "database/metrics is reachable through kast agent call.",
+        "Source-index metrics are reachable through kast agent metrics.",
         "SKILL.md lists kast agent metrics and kast agent workflow impact as the public impact path."
       ],
       "notes": "This case verifies database access is public through Kast without exposing storage internals."
@@ -307,7 +307,7 @@
         "manual copy into installed skill target",
         "ignoring emitted recovery"
       ],
-      "recoveryExpectation": "Run the emitted `kast agent setup skill --target-dir ... --source-dir <skill-root> --force` recovery, then rerun the verifier or package-verify gate.",
+      "recoveryExpectation": "Run the emitted setup recovery, then rerun the verifier or package-verify gate.",
       "verificationEvidence": [
         "kast agent workflow package-verify emits stale skill recovery for manifest-backed package drift.",
         "package_verifier_smoke covers recovery for tampered manifest-backed skills."

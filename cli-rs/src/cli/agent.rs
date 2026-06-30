@@ -8,10 +8,13 @@ pub struct AgentArgs {
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentCommand {
     /// Prepare agent resources and warm the workspace runtime.
+    #[command(hide = true)]
     Up(AgentUpArgs),
     /// Verify Kast readiness for agent and semantic workflows.
+    #[command(hide = true)]
     Ready(ReadyArgs),
     /// Install repo-local or portable agent resources.
+    #[command(hide = true)]
     Setup(AgentSetupArgs),
     /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
@@ -22,54 +25,79 @@ pub enum AgentCommand {
     /// Run a file-backed multi-step workflow.
     Workflow(AgentWorkflowArgs),
     /// Run the health RPC.
+    #[command(hide = true)]
     Health(AgentRuntimeArgs),
     /// Read detailed backend runtime state.
+    #[command(hide = true)]
     RuntimeStatus(AgentRuntimeArgs),
     /// Read advertised backend capabilities.
+    #[command(hide = true)]
     Capabilities(AgentRuntimeArgs),
     /// Gather structural generation context for a Kotlin file.
+    #[command(hide = true)]
     Scaffold(AgentScaffoldArgs),
     /// Rank candidate Kotlin declarations for a simple symbol name.
+    #[command(hide = true)]
     Discover(AgentDiscoverArgs),
     /// Resolve a Kotlin symbol by name.
+    #[command(hide = true)]
     Resolve(AgentSymbolResolveArgs),
     /// Find usages of a Kotlin symbol by name.
+    #[command(hide = true)]
     References(AgentSymbolReferencesArgs),
     /// Expand a Kotlin call hierarchy by symbol name.
+    #[command(hide = true)]
     Callers(AgentSymbolCallersArgs),
     /// Resolve the symbol at a file offset.
+    #[command(hide = true)]
     RawResolve(AgentRawResolveArgs),
     /// Find references for the symbol at a file offset.
+    #[command(hide = true)]
     RawReferences(AgentRawReferencesArgs),
     /// Expand call hierarchy from a file offset.
+    #[command(hide = true)]
     RawCallHierarchy(AgentRawCallHierarchyArgs),
     /// Expand type hierarchy from a file offset.
+    #[command(hide = true)]
     RawTypeHierarchy(AgentRawTypeHierarchyArgs),
     /// Find an insertion point near a file offset.
+    #[command(hide = true)]
     RawSemanticInsertionPoint(AgentRawSemanticInsertionPointArgs),
     /// Read diagnostics for one or more files.
+    #[command(hide = true)]
     RawDiagnostics(AgentFilePathsArgs),
     /// Rename the symbol at a file offset.
+    #[command(hide = true)]
     RawRename(AgentRawRenameArgs),
     /// Optimize imports for one or more files.
+    #[command(hide = true)]
     RawOptimizeImports(AgentFilePathsArgs),
     /// Refresh workspace state for optional files.
+    #[command(hide = true)]
     RawWorkspaceRefresh(AgentOptionalFilePathsArgs),
     /// Read a hierarchical Kotlin file outline.
+    #[command(hide = true)]
     FileOutline(AgentFileOutlineArgs),
     /// Search workspace symbols.
+    #[command(hide = true)]
     WorkspaceSymbol(AgentWorkspaceSymbolArgs),
     /// Search workspace text.
+    #[command(hide = true)]
     WorkspaceSearch(AgentWorkspaceSearchArgs),
     /// List workspace modules and optionally files.
+    #[command(hide = true)]
     WorkspaceFiles(AgentWorkspaceFilesArgs),
     /// Find implementations from a file offset.
+    #[command(hide = true)]
     RawImplementations(AgentRawImplementationsArgs),
     /// Read code actions at a file offset.
+    #[command(hide = true)]
     RawCodeActions(AgentRawCodeActionsArgs),
     /// Read completions at a file offset.
+    #[command(hide = true)]
     RawCompletions(AgentRawCompletionsArgs),
     /// Query source-index metrics through the RPC catalog.
+    #[command(hide = true)]
     Metrics(AgentMetricsArgs),
 }
 

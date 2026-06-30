@@ -248,7 +248,7 @@ run_bundle_activation() {
   [[ -x "$bundled_kast" ]] || die "Bundle source missing executable bin/kast"
 
   local activation_args=(
-    release activate bundle
+    developer release activate bundle
     --source "$bundle_source_dir"
     --install-root "$root_dir"
     --bin-dir "$bin_dir"
