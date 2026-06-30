@@ -405,7 +405,7 @@ jobs:
           chmod 755 "$packager_bin"
 
           "$packager_bin" \
-            release package ubuntu-debian-bundle \
+            developer release package ubuntu-debian-bundle \
             --repo-root "$PWD" \
             --cli-archive "$KAST_RUST_CLI_ASSET" \
             --backend-archive "$backend_asset" \
