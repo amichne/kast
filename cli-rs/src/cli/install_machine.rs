@@ -119,6 +119,9 @@ pub struct ResourceInstallArgs {
     /// Directory name for the installed resource. Defaults to kast.
     #[arg(long)]
     pub name: Option<String>,
+    /// Override the packaged resource source directory. Developer/test use only.
+    #[arg(long)]
+    pub source_dir: Option<PathBuf>,
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,

@@ -28,6 +28,7 @@ pub fn install_agent_guidance(
     let skill = install_skill(ResourceInstallArgs {
         target_dir: Some(workspace_root.join(".agents/skills")),
         name: Some("kast".to_string()),
+        source_dir: None,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
         dry_run: false,

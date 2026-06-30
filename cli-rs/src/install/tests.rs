@@ -8,6 +8,7 @@ mod tests {
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
+            source_dir: None,
             force: false,
             no_auto_exclude_git: false,
             dry_run: false,
@@ -26,6 +27,7 @@ mod tests {
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
+            source_dir: None,
             force: false,
             no_auto_exclude_git: false,
             dry_run: false,

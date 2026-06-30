@@ -79,7 +79,9 @@
             "LOADED_BYPASSED",
             "ADAPTER_DRIFT",
             "SCHEMA_FRICTION",
-            "SETUP_FRICTION"
+            "SETUP_FRICTION",
+            "EFFICIENCY_DRIFT",
+            "OVER_TRIGGER"
           ]
         },
         "source": {
@@ -113,7 +115,7 @@
           "minLength": 1
         },
         "expectedPrimitive": {
-          "$ref": "#/$defs/primitive"
+          "$ref": "#/$defs/expectedPrimitive"
         },
         "observedRoute": {
           "type": "object",
@@ -162,11 +164,37 @@
             "minLength": 1
           }
         },
+        "referenceExpectation": {
+          "$ref": "#/$defs/referenceExpectation"
+        },
         "notes": {
           "type": "string",
           "minLength": 1
         }
       }
+    },
+    "expectedPrimitive": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/primitive"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "name"
+          ],
+          "properties": {
+            "type": {
+              "const": "none"
+            },
+            "name": {
+              "const": "none"
+            }
+          }
+        }
+      ]
     },
     "action": {
       "type": "object",
@@ -180,12 +208,46 @@
           "enum": [
             "method",
             "command",
-            "tool"
+            "tool",
+            "script",
+            "generic"
           ]
         },
         "name": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "referenceExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alwaysLoaded",
+        "allowedReferences",
+        "forbiddenReferences"
+      ],
+      "properties": {
+        "alwaysLoaded": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allowedReferences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbiddenReferences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }

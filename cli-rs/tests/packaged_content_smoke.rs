@@ -112,12 +112,15 @@ fn packaged_skill_targets_rust_kast_only() {
     assert!(instruction_cli.contains("kast agent tools"));
     assert!(instruction_cli.contains("kast agent workflow --help"));
     assert!(instruction_cli.contains("stale instruction/binary install"));
+    assert!(instruction_cli.contains("every `.kt` and `.kts` file"));
+    assert!(instruction_cli.contains("Do not invoke Kast for unrelated docs/text work"));
     assert!(instruction_tools.contains("kast agent tools"));
     assert!(instruction_tools.contains("--copilot-target-dir"));
     assert!(instruction_tools.contains("nextCommandArgv"));
     assert!(instruction_tools.contains("result.invocation.argv"));
     assert!(instruction_tools.contains("schemaVersion >= 3"));
     assert!(instruction_tools.contains("matching `toolCount`"));
+    assert!(instruction_tools.contains("Keep using Kast after the first successful call"));
     assert!(instruction_rpc.contains("kast agent tools"));
     assert!(instruction_rpc.contains("catalog-backed tool names"));
     assert!(instruction_rpc.contains("result.invocation.argv"));
@@ -205,8 +208,8 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         .as_array()
         .expect("routing eval cases");
     assert!(
-        cases.len() >= 5,
-        "routing eval should cover Kotlin files, symbol calls, database access, workflows, and public API boundaries"
+        cases.len() >= 10,
+        "routing eval should cover initial pickup, continuous use, recovery, efficiency, negative routing, and public API boundaries"
     );
 
     let case_ids = cases
@@ -219,6 +222,10 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         "relationship-navigation",
         "source-index-database-access",
         "agent-workflow-public-surface",
+        "continuous-kast-use-after-first-call",
+        "source-override-skill-recovery",
+        "reference-budget-symbol-query",
+        "non-kotlin-docs-negative-case",
         "public-api-boundary",
     ] {
         assert!(
@@ -229,19 +236,34 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
 
     for case in cases {
         assert_no_local_paths(case, case["id"].as_str().expect("case id"));
-        assert_eq!(
-            case["expectedPrimitive"]["name"], "kast",
-            "every case should route to the Kast skill: {case:#}"
+        let expects_kast = case["expectedPrimitive"]["name"] == "kast";
+        let expects_none = case["expectedPrimitive"]["name"] == "none";
+        assert!(
+            expects_kast || expects_none,
+            "case should route to Kast or explicitly expect no primitive: {case:#}"
         );
         let forbidden = case["forbiddenActions"]
             .as_array()
             .unwrap_or_else(|| panic!("case {} should list forbidden fallbacks", case["id"]));
-        assert!(
-            forbidden.iter().any(|value| value == "grep")
-                && forbidden.iter().any(|value| value == "rg"),
-            "case {} should forbid raw text search for Kotlin semantics",
-            case["id"]
-        );
+        if expects_kast {
+            assert!(
+                forbidden.iter().any(|value| value == "grep")
+                    && forbidden.iter().any(|value| value == "rg"),
+                "case {} should forbid raw text search for Kotlin semantics",
+                case["id"]
+            );
+        } else {
+            assert_eq!(
+                case["type"], "OVER_TRIGGER",
+                "negative case should use OVER_TRIGGER: {case:#}"
+            );
+            assert!(
+                forbidden.iter().any(|value| value == "kast agent workflow")
+                    && forbidden.iter().any(|value| value == "symbol/query"),
+                "negative case {} should forbid Kast semantic routing",
+                case["id"]
+            );
+        }
         assert!(
             case["verificationEvidence"]
                 .as_array()
@@ -293,6 +315,20 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
                         case["id"]
                     );
                 }
+                "script" => {
+                    assert!(
+                        root.join("resources/kast-skill").join(name).is_file(),
+                        "eval case {} references missing packaged script {name}",
+                        case["id"]
+                    );
+                }
+                "generic" => {
+                    assert!(
+                        expects_none,
+                        "eval case {} should use generic actions only for negative cases",
+                        case["id"]
+                    );
+                }
                 other => panic!("unexpected action kind {other}"),
             }
         }
@@ -312,7 +348,9 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         "symbol/callers",
         "database/metrics",
         "kast agent workflow diagnostics",
+        "kast agent setup skill --source-dir",
         "kast agent tools",
+        "scripts/verify-kast-state.py",
     ] {
         assert!(
             action_names.contains(required),
@@ -351,5 +389,16 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
     assert!(
         !skill.contains("/rpc/") && !skill.contains("capabilities.experimental.kastMethods"),
         "skill must not teach generated protocol endpoints or LSP internals as the public API"
+    );
+    assert!(
+        skill.contains("Keep using Kast after the first successful call")
+            && skill.contains("A first Kast result is not a handoff back to generic file reads"),
+        "skill should keep follow-up Kotlin work on Kast after initial pickup"
+    );
+    assert!(
+        skill.contains("Normal use loads only SKILL.md")
+            && skill.contains("Do not pre-load the full catalog")
+            && skill.contains("Load `references/runbook.md` only"),
+        "skill should route reference loading by need"
     );
 }

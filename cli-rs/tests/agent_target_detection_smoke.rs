@@ -218,6 +218,190 @@ agentHarness = "skill"
 }
 
 #[test]
+fn explicit_host_skill_target_is_manifest_backed_outside_workspace_repo() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let host_skill_root = temp.path().join("host-codex/skills");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::create_dir_all(&host_skill_root).expect("host skill root");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&workspace)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+
+    let install = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            host_skill_root.to_str().expect("host skill root"),
+            "--force",
+        ])
+        .output()
+        .expect("agent setup skill");
+    assert!(
+        install.status.success(),
+        "explicit host skill install should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let install_stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("skill install json");
+    let installed_at = PathBuf::from(
+        install_stdout["installedAt"]
+            .as_str()
+            .expect("installed at"),
+    )
+    .canonicalize()
+    .expect("canonical installed at");
+    let expected_host_skill = host_skill_root
+        .join("kast")
+        .canonicalize()
+        .expect("canonical installed host skill");
+    assert_eq!(installed_at, expected_host_skill);
+    assert!(expected_host_skill.join("SKILL.md").is_file());
+    assert!(
+        expected_host_skill
+            .join("references/commands.json")
+            .is_file()
+    );
+
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verify = Command::new("python3")
+        .arg(&verifier)
+        .arg("--workspace-root")
+        .arg(&workspace)
+        .arg("--skill-root")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill"))
+        .arg("--kast-bin")
+        .arg(env!("CARGO_BIN_EXE_kast"))
+        .arg("--require-gradle-project")
+        .arg("--require-skill")
+        .arg("--skill-target-dir")
+        .arg(&host_skill_root)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run verifier");
+    assert!(
+        verify.status.success(),
+        "verifier should accept explicit host skill target: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let verify_json: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("verifier json");
+    let host_target = verify_json["checks"]["skills"]["targets"]
+        .as_array()
+        .expect("skill targets")
+        .iter()
+        .find(|target| {
+            PathBuf::from(target["path"].as_str().expect("target path"))
+                .canonicalize()
+                .is_ok_and(|path| path == expected_host_skill)
+        })
+        .expect("host skill target");
+    assert!(host_target["exists"].as_bool().expect("exists"));
+    assert!(
+        host_target["manifestResource"].is_object(),
+        "{host_target:#}"
+    );
+    assert_eq!(
+        host_target["manifestOutputMismatches"]
+            .as_array()
+            .expect("manifest output mismatches")
+            .len(),
+        0
+    );
+}
+
+#[test]
+fn agent_setup_skill_can_override_packaged_skill_source() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let target_root = temp.path().join("host-codex/skills");
+    let source_root = temp.path().join("source-skill");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::create_dir_all(source_root.join("references")).expect("source references");
+    std::fs::create_dir_all(source_root.join("scripts/__pycache__")).expect("source cache");
+    std::fs::write(source_root.join("SKILL.md"), "override skill\n").expect("source skill");
+    std::fs::write(
+        source_root.join("references/commands.json"),
+        r#"{"commands":{}}"#,
+    )
+    .expect("source commands");
+    std::fs::write(source_root.join(".kast-version"), "retired marker\n").expect("source marker");
+    std::fs::write(
+        source_root.join("scripts/helper.py"),
+        "#!/usr/bin/env python3\n",
+    )
+    .expect("source script");
+    std::fs::write(
+        source_root.join("scripts/__pycache__/helper.cpython-314.pyc"),
+        "cache\n",
+    )
+    .expect("source cache file");
+
+    let install = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            target_root.to_str().expect("target root"),
+            "--source-dir",
+            source_root.to_str().expect("source root"),
+            "--force",
+        ])
+        .output()
+        .expect("agent setup skill with source override");
+    assert!(
+        install.status.success(),
+        "source override skill install should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let installed = target_root.join("kast");
+    assert_eq!(
+        std::fs::read_to_string(installed.join("SKILL.md")).expect("installed skill"),
+        "override skill\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(installed.join("references/commands.json"))
+            .expect("installed commands"),
+        r#"{"commands":{}}"#
+    );
+    assert!(installed.join("scripts/helper.py").is_file());
+    assert!(!installed.join(".kast-version").exists());
+    assert!(!installed.join("scripts/__pycache__").exists());
+}
+
+#[test]
 fn codex_instruction_roots_are_first_class_agent_targets() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
