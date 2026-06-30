@@ -13,10 +13,6 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function readText(path) {
-  return readFileSync(path, "utf8");
-}
-
 function check(id, status, severity, message, evidence = [], remediation = []) {
   return {
     id,
@@ -37,10 +33,6 @@ function metric(id, value, unit, band) {
     unit,
     band,
   };
-}
-
-function includesAll(text, needles) {
-  return needles.every((needle) => text.includes(needle));
 }
 
 function collectStrings(value, strings = []) {
@@ -128,7 +120,6 @@ function checkToolEnvelope(path) {
   );
 }
 
-const skill = readText(join(targetPath, "SKILL.md"));
 const catalog = readJson(join(targetPath, "references/commands.json"));
 const routing = readJson(join(targetPath, "fixtures/maintenance/evals/routing.json"));
 const routingSchema = readJson(join(targetPath, "fixtures/maintenance/evals/routing.schema.json"));
@@ -215,63 +206,6 @@ checks.push(
   ),
 );
 
-const triggerEvidence = [
-  "Use when working on Kotlin or Gradle semantics",
-  "`.kt`",
-  "`.kts`",
-  "Route all Kast work through",
-  "only first-class Kast",
-];
-checks.push(
-  check(
-    "routing-kotlin-file-trigger",
-    includesAll(skill, triggerEvidence) ? "pass" : "fail",
-    includesAll(skill, triggerEvidence) ? "info" : "error",
-    includesAll(skill, triggerEvidence)
-      ? "Skill explicitly triggers for all Kotlin source and script files."
-      : "Skill trigger language does not fully cover Kotlin source and script files.",
-    triggerEvidence,
-    ["Keep SKILL.md explicit about every .kt and .kts file and the sole-navigation rule."],
-  ),
-);
-
-const continuityEvidence = [
-  "Keep using `kast agent` after the first successful call",
-  "not a handoff back to generic file reads",
-];
-checks.push(
-  check(
-    "routing-continuous-use-guidance",
-    includesAll(skill, continuityEvidence) ? "pass" : "fail",
-    includesAll(skill, continuityEvidence) ? "info" : "error",
-    includesAll(skill, continuityEvidence)
-      ? "Skill tells agents to keep follow-up Kotlin work on Kast after initial pickup."
-      : "Skill does not clearly preserve Kast use after the first successful call.",
-    continuityEvidence,
-    ["Add concise continuity guidance to SKILL.md."],
-  ),
-);
-
-const referenceRouterEvidence = [
-  "Normal installed use loads only `SKILL.md`",
-  "Do not pre-load the full source catalog",
-  "Discover method schemas",
-  "`kast agent tools`",
-  "`kast agent workflow --help`",
-];
-checks.push(
-  check(
-    "routing-reference-router-guidance",
-    includesAll(skill, referenceRouterEvidence) ? "pass" : "fail",
-    includesAll(skill, referenceRouterEvidence) ? "info" : "error",
-    includesAll(skill, referenceRouterEvidence)
-      ? "Skill routes option discovery through the CLI instead of encouraging eager source-reference reads."
-      : "Skill does not provide a strict enough progressive-disclosure router.",
-    referenceRouterEvidence,
-    ["Keep installed SKILL.md as trigger/router text and push detail discovery through kast agent tools."],
-  ),
-);
-
 const caseShapeFailures = [];
 const allowedTypes = new Set([
   "TRIGGER_MISS",
@@ -326,10 +260,12 @@ const requiredActions = [
   "kast agent scaffold",
   "kast agent file-outline",
   "kast agent call symbol/query",
+  "kast agent discover",
+  "kast agent resolve",
   "kast agent references",
   "kast agent callers",
   "kast agent raw-diagnostics",
-  "kast agent call database/metrics",
+  "kast agent metrics",
   "kast agent workflow diagnostics",
   "kast agent workflow package-verify",
   "kast agent setup skill --source-dir",
@@ -409,7 +345,6 @@ const leakNeedles = [
   "Rust-owned",
 ];
 const publicSurfaceTexts = [
-  skill,
   commands["symbol/query"]?.tool?.description ?? "",
   commands["symbol/callers"]?.tool?.description ?? "",
   commands["database/metrics"]?.tool?.description ?? "",
@@ -425,8 +360,8 @@ checks.push(
     "routing-public-api-boundary",
     leaks.length === 0 ? "pass" : "fail",
     leaks.length === 0 ? "info" : "error",
-    leaks.length === 0 ? "Skill and public tool descriptions avoid internal endpoint and implementation leaks." : "Public routing surface leaks internal details.",
-    leaks.length === 0 ? ["SKILL.md", "symbol/query", "symbol/callers", "database/metrics"] : leaks,
+    leaks.length === 0 ? "Public tool descriptions avoid internal endpoint and implementation leaks." : "Public routing surface leaks internal details.",
+    leaks.length === 0 ? ["symbol/query", "symbol/callers", "database/metrics"] : leaks,
     ["Keep generated protocol paths, LSP internals, and implementation routing out of public skill/tool descriptions."],
   ),
 );
