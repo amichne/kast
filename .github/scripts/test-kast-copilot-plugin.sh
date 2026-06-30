@@ -86,7 +86,7 @@ assert(!tools.includes("buildBundledToolSpecs"), "extension must not reconstruct
 const extension = readText("extensions/kast/extension.mjs");
 assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
 assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
-assert(extension.includes('"setup"') && extension.includes('"--no-open-ide"'), "extension must invoke kast setup for warmup");
+assert(extension.includes('"agent"') && extension.includes('"up"') && extension.includes('"--no-onboard"'), "extension must invoke kast agent up for warmup");
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
 assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
 assert(extension.includes('"agent"') && extension.includes('"tools"'), "extension must load tool specs from kast agent tools");
