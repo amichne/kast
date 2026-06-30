@@ -10,8 +10,8 @@ Verify a setup-kast installation in a CI runner, Devin snapshot, or local smoke.
 Options:
   --install-dir <path>              Installed current runtime directory. Defaults to $KAST_INSTALL_ROOT/current.
   --workspace-root <path>           Workspace root to start. Defaults to a temporary Kotlin workspace.
-  --source-root <path>              Kotlin source root for kast runtime up. Defaults with temporary workspace.
-  --module-name <name>              Module name for kast runtime up. Defaults to setup-kast-verify.
+  --source-root <path>              Kotlin source root for kast developer runtime up. Defaults with temporary workspace.
+  --module-name <name>              Module name for kast developer runtime up. Defaults to setup-kast-verify.
   --workspace-id <id>               KAST_WORKSPACE_ID for daemon state. Defaults to setup-kast-verify.
   --wait-timeout-ms <millis>        Startup wait timeout. Defaults to 120000.
   --gradle-root <path>              Run repo-level Gradle warm checks from this root.
@@ -199,6 +199,7 @@ if [[ "$start_daemon" == "true" ]]; then
   fi
 
   up_args=(
+    developer
     runtime
     up
     --backend=headless
@@ -212,16 +213,16 @@ if [[ "$start_daemon" == "true" ]]; then
   fi
 
   KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" "${up_args[@]}"
-  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" runtime status \
+  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" developer runtime status \
     --backend=headless \
     "--workspace-root=${workspace_root}" \
     --no-auto-start=true
-  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" runtime capabilities \
+  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" developer runtime capabilities \
     --backend=headless \
     "--workspace-root=${workspace_root}" \
     --accept-indexing=true \
     --no-auto-start=true
-  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" runtime stop \
+  KAST_WORKSPACE_ID="$workspace_id" "$kast_bin" developer runtime stop \
     --backend=headless \
     "--workspace-root=${workspace_root}" || true
 

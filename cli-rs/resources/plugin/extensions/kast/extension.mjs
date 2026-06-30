@@ -290,12 +290,12 @@ async function warmIdeaBackend(bin) {
   return execCommand(bin, [
     "--output",
     "json",
-    "runtime",
-    "up",
+    "setup",
     "--workspace-root",
     REPO_ROOT,
     "--backend",
     "idea",
+    "--no-open-ide",
   ]);
 }
 
