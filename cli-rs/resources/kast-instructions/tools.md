@@ -19,6 +19,11 @@ If any command is missing, report a stale Kast installation and upgrade or
 reinstall the binary. Do not replace missing semantic tools with Kotlin text
 search.
 
+Keep using Kast after the first successful call for the same Kotlin or Gradle
+task. Continue follow-up declaration inspection, references, callers,
+diagnostics, and edit validation through `kast agent` or `kast agent workflow`
+until the task leaves Kotlin semantics or Kast reports a concrete blocker.
+
 ## Readiness Tools
 
 Use JSON output when a result will drive later steps:

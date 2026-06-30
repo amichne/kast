@@ -3,11 +3,14 @@
 The packaged skill, `references/commands.json`, `references/requests/`, and
 `fixtures/maintenance/evals/routing.json` are the canonical shipped routing
 surface for the Kast skill. Validate routing cases against
-`fixtures/maintenance/evals/routing.schema.json`. Keep cases centered on the
-public agent surface: `expectedPrimitive.name` should be `kast`,
-`allowedActions` should name catalog methods, named tools, or `kast agent` /
-`kast inspect metrics` commands, and `forbiddenActions` should cover generic
-Kotlin tools such as `grep`, `rg`, and generic file reads.
+`fixtures/maintenance/evals/routing.schema.json`. Keep positive cases centered
+on the public agent surface: `expectedPrimitive.name` should be `kast`,
+`allowedActions` should name catalog methods, named tools, packaged scripts, or
+`kast agent` / `kast inspect metrics` commands, and `forbiddenActions` should
+cover generic Kotlin tools such as `grep`, `rg`, and generic file reads.
+Negative over-trigger cases should set `expectedPrimitive.name` to `none`, use
+only generic allowed actions, and forbid Kast semantic actions that should not
+run for unrelated work.
 
 Keep session exports, benchmark runs, generated candidate corpora, and any
 local routing-analysis tools outside the installed skill tree unless a release

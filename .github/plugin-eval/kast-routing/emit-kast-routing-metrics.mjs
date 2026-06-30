@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -56,6 +56,14 @@ function collectStrings(value, strings = []) {
 
 function failIf(condition, message, failures) {
   if (condition) failures.push(message);
+}
+
+function isKastCase(item) {
+  return item.expectedPrimitive?.type === "skill" && item.expectedPrimitive?.name === "kast";
+}
+
+function isNegativeCase(item) {
+  return item.expectedPrimitive?.type === "none" && item.expectedPrimitive?.name === "none";
 }
 
 function checkToolEnvelope(path) {
@@ -155,6 +163,10 @@ const requiredCaseIds = new Set([
   "relationship-navigation",
   "source-index-database-access",
   "agent-workflow-public-surface",
+  "continuous-kast-use-after-first-call",
+  "source-override-skill-recovery",
+  "reference-budget-symbol-query",
+  "non-kotlin-docs-negative-case",
   "public-api-boundary",
 ]);
 const caseIds = new Set(cases.map((item) => item.id));
@@ -165,7 +177,7 @@ checks.push(
     missingCaseIds.length === 0 ? "pass" : "fail",
     missingCaseIds.length === 0 ? "info" : "error",
     missingCaseIds.length === 0
-      ? "Routing corpus covers Kotlin files, symbols, relationships, database, workflows, and public API boundary."
+      ? "Routing corpus covers initial pickup, continuous use, recovery, efficiency, negative routing, and public API boundary."
       : "Routing corpus is missing required coverage cases.",
     missingCaseIds.length === 0 ? [...caseIds].sort() : missingCaseIds,
     ["Add missing cases to fixtures/maintenance/evals/routing.json."],
@@ -187,6 +199,13 @@ for (const item of cases) {
       !action.name.startsWith("kast inspect metrics")
     ) {
       actionFailures.push(`${item.id}: non-public command ${action.name}`);
+    } else if (action.kind === "script") {
+      const scriptPath = join(targetPath, action.name);
+      if (!existsSync(scriptPath)) {
+        actionFailures.push(`${item.id}: missing script ${action.name}`);
+      }
+    } else if (action.kind === "generic" && !isNegativeCase(item)) {
+      actionFailures.push(`${item.id}: generic action is only valid for negative routing cases`);
     }
   }
 }
@@ -195,9 +214,11 @@ checks.push(
     "routing-actions-resolve",
     actionFailures.length === 0 ? "pass" : "fail",
     actionFailures.length === 0 ? "info" : "error",
-    actionFailures.length === 0 ? "All routing actions resolve to public Kast methods, tools, or commands." : "Some routing actions do not resolve.",
+    actionFailures.length === 0
+      ? "All routing actions resolve to public Kast methods, tools, commands, packaged scripts, or negative generic actions."
+      : "Some routing actions do not resolve.",
     actionFailures.length === 0 ? [...actionNames].sort() : actionFailures,
-    ["Keep allowedActions aligned with references/commands.json and kast agent tools."],
+    ["Keep allowedActions aligned with references/commands.json, kast agent tools, and packaged scripts."],
   ),
 );
 
@@ -220,6 +241,41 @@ checks.push(
   ),
 );
 
+const continuityEvidence = [
+  "Keep using Kast after the first successful call",
+  "A first Kast result is not a handoff back to generic file reads",
+];
+checks.push(
+  check(
+    "routing-continuous-use-guidance",
+    includesAll(skill, continuityEvidence) ? "pass" : "fail",
+    includesAll(skill, continuityEvidence) ? "info" : "error",
+    includesAll(skill, continuityEvidence)
+      ? "Skill tells agents to keep follow-up Kotlin work on Kast after initial pickup."
+      : "Skill does not clearly preserve Kast use after the first successful call.",
+    continuityEvidence,
+    ["Add concise continuity guidance to SKILL.md."],
+  ),
+);
+
+const referenceRouterEvidence = [
+  "Normal use loads only SKILL.md",
+  "Do not pre-load the full catalog",
+  "Load `references/runbook.md` only",
+];
+checks.push(
+  check(
+    "routing-reference-router-guidance",
+    includesAll(skill, referenceRouterEvidence) ? "pass" : "fail",
+    includesAll(skill, referenceRouterEvidence) ? "info" : "error",
+    includesAll(skill, referenceRouterEvidence)
+      ? "Skill routes reference loading by need instead of encouraging eager reference reads."
+      : "Skill does not provide a strict enough reference-loading router.",
+    referenceRouterEvidence,
+    ["Keep SKILL.md as trigger/router text and push detail into references only when needed."],
+  ),
+);
+
 const caseShapeFailures = [];
 const allowedTypes = new Set([
   "TRIGGER_MISS",
@@ -228,10 +284,13 @@ const allowedTypes = new Set([
   "ADAPTER_DRIFT",
   "SCHEMA_FRICTION",
   "SETUP_FRICTION",
+  "EFFICIENCY_DRIFT",
+  "OVER_TRIGGER",
 ]);
 for (const item of cases) {
   failIf(!allowedTypes.has(item.type), `${item.id}: invalid type ${item.type}`, caseShapeFailures);
-  failIf(item.expectedPrimitive?.name !== "kast", `${item.id}: expectedPrimitive must be kast`, caseShapeFailures);
+  failIf(!isKastCase(item) && !isNegativeCase(item), `${item.id}: expectedPrimitive must be kast or none`, caseShapeFailures);
+  failIf(isNegativeCase(item) && item.type !== "OVER_TRIGGER", `${item.id}: negative cases must use OVER_TRIGGER`, caseShapeFailures);
   failIf(!item.observedRoute?.risk, `${item.id}: observedRoute.risk is required`, caseShapeFailures);
   failIf(!item.recoveryExpectation, `${item.id}: recoveryExpectation is required`, caseShapeFailures);
   failIf((item.verificationEvidence ?? []).length < 2, `${item.id}: verificationEvidence needs at least two entries`, caseShapeFailures);
@@ -251,6 +310,7 @@ checks.push(
 
 const fallbackFailures = [];
 for (const item of cases) {
+  if (!isKastCase(item)) continue;
   const forbidden = new Set(item.forbiddenActions ?? []);
   failIf(!forbidden.has("grep"), `${item.id}: must forbid grep`, fallbackFailures);
   failIf(!forbidden.has("rg"), `${item.id}: must forbid rg`, fallbackFailures);
@@ -274,7 +334,9 @@ const requiredActions = [
   "kast_callers",
   "kast_metrics",
   "kast agent workflow diagnostics",
+  "kast agent setup skill --source-dir",
   "kast agent tools",
+  "scripts/verify-kast-state.py",
 ];
 const missingActions = requiredActions.filter((name) => !actionNames.has(name));
 checks.push(
@@ -283,10 +345,62 @@ checks.push(
     missingActions.length === 0 ? "pass" : "fail",
     missingActions.length === 0 ? "info" : "error",
     missingActions.length === 0
-      ? "Routing eval exposes symbol calls, database metrics, high-level workflows, and agent tool discovery."
+      ? "Routing eval exposes symbol calls, database metrics, high-level workflows, source-override recovery, and agent tool discovery."
       : "Routing eval is missing required public action coverage.",
     missingActions.length === 0 ? requiredActions : missingActions,
     ["Add allowedActions for missing public methods, tools, or workflow commands."],
+  ),
+);
+
+const referenceFailures = [];
+const referenceCases = cases.filter((item) => item.type === "EFFICIENCY_DRIFT");
+failIf(referenceCases.length === 0, "routing corpus needs at least one EFFICIENCY_DRIFT reference-budget case", referenceFailures);
+for (const item of referenceCases) {
+  const expectation = item.referenceExpectation ?? {};
+  const alwaysLoaded = new Set(expectation.alwaysLoaded ?? []);
+  const forbiddenReferences = new Set(expectation.forbiddenReferences ?? []);
+  failIf(!alwaysLoaded.has("SKILL.md"), `${item.id}: referenceExpectation.alwaysLoaded must include SKILL.md`, referenceFailures);
+  for (const required of [
+    "references/commands.json before exact field lookup",
+    "references/requests/ before sample need",
+    "references/runbook.md for ordinary symbol lookup",
+  ]) {
+    failIf(!forbiddenReferences.has(required), `${item.id}: referenceExpectation must forbid ${required}`, referenceFailures);
+  }
+}
+checks.push(
+  check(
+    "routing-reference-budget-cases",
+    referenceFailures.length === 0 ? "pass" : "fail",
+    referenceFailures.length === 0 ? "info" : "error",
+    referenceFailures.length === 0
+      ? "Routing corpus includes explicit reference-loading budget cases."
+      : "Routing corpus is missing reference-loading budget evidence.",
+    referenceFailures.length === 0 ? referenceCases.map((item) => item.id) : referenceFailures,
+    ["Add EFFICIENCY_DRIFT cases with referenceExpectation budgets."],
+  ),
+);
+
+const negativeFailures = [];
+const negativeCases = cases.filter((item) => item.type === "OVER_TRIGGER" || isNegativeCase(item));
+failIf(negativeCases.length === 0, "routing corpus needs at least one negative over-trigger case", negativeFailures);
+for (const item of negativeCases) {
+  failIf(!isNegativeCase(item), `${item.id}: OVER_TRIGGER case must expect no Kast primitive`, negativeFailures);
+  for (const action of item.allowedActions ?? []) {
+    failIf(action.kind !== "generic", `${item.id}: negative allowedActions must stay generic`, negativeFailures);
+  }
+  const forbidden = new Set(item.forbiddenActions ?? []);
+  failIf(!forbidden.has("kast agent workflow"), `${item.id}: negative case must forbid kast agent workflow`, negativeFailures);
+  failIf(!forbidden.has("symbol/query"), `${item.id}: negative case must forbid symbol/query`, negativeFailures);
+}
+checks.push(
+  check(
+    "routing-negative-cases",
+    negativeFailures.length === 0 ? "pass" : "fail",
+    negativeFailures.length === 0 ? "info" : "error",
+    negativeFailures.length === 0 ? "Routing corpus prevents unrelated work from over-triggering Kast." : "Routing corpus negative cases are incomplete.",
+    negativeFailures.length === 0 ? negativeCases.map((item) => item.id) : negativeFailures,
+    ["Keep negative cases explicit and free of Kast allowed actions."],
   ),
 );
 

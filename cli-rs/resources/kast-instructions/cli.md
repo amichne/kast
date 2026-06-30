@@ -1,8 +1,9 @@
 # Kast CLI Instructions
 
 Use the Rust `kast` CLI before ordinary text search for Kotlin and Gradle
-project navigation. These instructions are installed by the binary, so confirm
-the command surface and then use it:
+project navigation. Use Kast for every `.kt` and `.kts` file and for Gradle
+project facts that need semantic or install-state evidence. These instructions
+are installed by the binary, so confirm the command surface and then use it:
 
 ```sh
 command -v kast
@@ -37,11 +38,15 @@ runtime warmup step.
   automation must not prompt.
 - Pass command-specific mutation controls explicitly, such as `--dry-run` or
   `--force`.
+- Keep follow-up Kotlin inspection, references, diagnostics, and edits on Kast
+  after the first successful call.
 - Use `kast inspect demo --json` for snapshots; the default demo opens an interactive
   TUI when stdout is a terminal.
 - If `kast`, `kast agent tools`, or `kast agent workflow` is missing, report a
   stale instruction/binary install instead of falling back to Kotlin text
   search.
+- Do not invoke Kast for unrelated docs/text work that has no Kotlin, Gradle,
+  package-state, or source-index requirement.
 
 ## Common Commands
 

@@ -20,6 +20,15 @@ semantic or install-state evidence. Treat Kast as the only navigation surface
 for Kotlin semantics until it returns a concrete blocker or a bounded
 non-semantic task remains.
 
+## Continuity Rule
+
+Keep using Kast after the first successful call for the same Kotlin or Gradle
+task. A first Kast result is not a handoff back to generic file reads; continue
+with `symbol/scaffold`, `symbol/references`, `symbol/callers`,
+`raw/diagnostics`, `raw/workspace-refresh`, or the matching
+`kast agent workflow ...` command until the task leaves Kotlin semantics or
+Kast reports a concrete blocker.
+
 ## First Move
 
 Confirm the command surface, then use Kast before ordinary text tools for
@@ -113,14 +122,14 @@ files. Send catalog methods through `kast agent call <method> --params-file
 camelCase fields, absolute paths, and check the agent envelope `ok` plus the
 nested result status; validation errors, `ok=false`, dirty diagnostics, hash
 mismatches, and failed Gradle tasks fail the operation.
-Load `references/commands.yaml`, `references/commands.json`, or
-`references/requests/` only for exact fields, variants, enum values, or samples.
-Use `references/runbook.md` only when debugging raw transport or preserving a
-full JSON-RPC envelope matters.
-
-Read `references/workflows.md` for install/refresh/verify ownership, project
+Normal use loads only SKILL.md. Do not pre-load the full catalog, generated
+request samples, or raw transport runbook before a concrete call needs them.
+Load `references/workflows.md` for install/refresh/verify ownership, project
 readiness gates, file-backed request exchange, semantic request sequences, and
-failure recovery.
+failure recovery. Load `references/commands.yaml`, `references/commands.json`,
+or `references/requests/` only for exact fields, variants, enum values, or
+samples. Load `references/runbook.md` only when debugging raw transport or
+preserving a full JSON-RPC envelope matters.
 
 ## Boundaries
 

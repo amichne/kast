@@ -233,6 +233,191 @@
       "notes": "This case keeps high-level workflow functionality visible in the public API."
     },
     {
+      "id": "continuous-kast-use-after-first-call",
+      "type": "LOADED_BYPASSED",
+      "source": {
+        "kind": "synthetic-regression",
+        "capturedAt": "2026-06-29",
+        "note": "Regression guard for agents using Kast once and then falling back to generic file reads for the same Kotlin task."
+      },
+      "prompt": "You already ran symbol/query for EventBean and got a candidate. Continue the edit by inspecting the declaration, checking references, and validating diagnostics.",
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "observedRoute": {
+        "status": "prevent-regression",
+        "risk": "After the first successful Kast call, an agent may treat the route as complete and switch to generic file reads or text matching for follow-up work."
+      },
+      "allowedActions": [
+        {
+          "kind": "method",
+          "name": "symbol/scaffold"
+        },
+        {
+          "kind": "method",
+          "name": "symbol/references"
+        },
+        {
+          "kind": "method",
+          "name": "raw/diagnostics"
+        },
+        {
+          "kind": "command",
+          "name": "kast agent workflow diagnostics"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "generic file read after Kast",
+        "stop after first Kast call",
+        "unvalidated edit"
+      ],
+      "recoveryExpectation": "If a follow-up Kast call fails with backend or index state, run the documented Kast recovery and retry the same semantic route before falling back.",
+      "verificationEvidence": [
+        "symbol/scaffold, symbol/references, and raw/diagnostics are catalog methods.",
+        "kast agent workflow diagnostics is a public workflow command for continued validation."
+      ],
+      "notes": "This case protects sustained Kast use across a multi-step Kotlin task, not just initial pickup."
+    },
+    {
+      "id": "source-override-skill-recovery",
+      "type": "SETUP_FRICTION",
+      "source": {
+        "kind": "synthetic-regression",
+        "capturedAt": "2026-06-29",
+        "note": "Regression guard for stale installed skills when the verifier was pointed at a source override."
+      },
+      "prompt": "The packaged verifier was run with --skill-root cli-rs/resources/kast-skill and reports SKILLS_STALE for .agents/skills/kast. What command should the agent run next?",
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "observedRoute": {
+        "status": "prevent-regression",
+        "risk": "An agent may rerun a default embedded skill install and lose the source override that the verifier used to diagnose the stale target."
+      },
+      "allowedActions": [
+        {
+          "kind": "script",
+          "name": "scripts/verify-kast-state.py"
+        },
+        {
+          "kind": "command",
+          "name": "kast agent setup skill --source-dir"
+        },
+        {
+          "kind": "command",
+          "name": "kast agent workflow package-verify"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "default embedded skill reinstall after --skill-root",
+        "manual copy into installed skill target",
+        "ignoring emitted recovery"
+      ],
+      "recoveryExpectation": "Run the emitted `kast agent setup skill --target-dir ... --source-dir <skill-root> --force` recovery, then rerun the verifier or package-verify gate.",
+      "verificationEvidence": [
+        "verify-kast-state.py emits stale skill recovery with --source-dir when --skill-root is provided.",
+        "package_verifier_smoke covers source-root recovery for tampered manifest-backed skills."
+      ],
+      "notes": "This case keeps stale installed skill recovery tied to the verified source tree."
+    },
+    {
+      "id": "reference-budget-symbol-query",
+      "type": "EFFICIENCY_DRIFT",
+      "source": {
+        "kind": "synthetic-regression",
+        "capturedAt": "2026-06-29",
+        "note": "Regression guard for loading the full command catalog or runbook before a simple symbol lookup."
+      },
+      "prompt": "Find the declaration for EventBean in a Gradle workspace, then decide whether more context is needed.",
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "observedRoute": {
+        "status": "prevent-regression",
+        "risk": "An agent may pre-load commands.json, request samples, and the raw transport runbook before the task needs exact fields or transport debugging."
+      },
+      "allowedActions": [
+        {
+          "kind": "method",
+          "name": "symbol/query"
+        },
+        {
+          "kind": "tool",
+          "name": "kast_symbol_query"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "references/commands.json before exact field lookup",
+        "references/requests/ before sample need",
+        "references/runbook.md for ordinary symbol lookup"
+      ],
+      "recoveryExpectation": "If symbol/query needs exact request fields, load only the relevant catalog or request sample instead of the full reference tree.",
+      "verificationEvidence": [
+        "symbol/query and kast_symbol_query are public symbol lookup surfaces.",
+        "SKILL.md routes detailed references by need instead of pre-loading all references."
+      ],
+      "referenceExpectation": {
+        "alwaysLoaded": [
+          "SKILL.md"
+        ],
+        "allowedReferences": [
+          "references/commands.yaml",
+          "references/requests/symbol/query/minimal.json"
+        ],
+        "forbiddenReferences": [
+          "references/commands.json before exact field lookup",
+          "references/requests/ before sample need",
+          "references/runbook.md for ordinary symbol lookup"
+        ]
+      },
+      "notes": "This case makes reference-loading efficiency part of the shipped routing contract."
+    },
+    {
+      "id": "non-kotlin-docs-negative-case",
+      "type": "OVER_TRIGGER",
+      "source": {
+        "kind": "synthetic-regression",
+        "capturedAt": "2026-06-29",
+        "note": "Regression guard for over-triggering Kast on unrelated documentation work."
+      },
+      "prompt": "Update docs/commands/install.md copy and run the docs content contract. No Kotlin, Gradle, package install, or source-index question is involved.",
+      "expectedPrimitive": {
+        "type": "none",
+        "name": "none"
+      },
+      "observedRoute": {
+        "status": "prevent-regression",
+        "risk": "The Kast skill may over-trigger on repository-local docs work that has no Kotlin, Gradle, install-state, package-verification, or semantic navigation requirement."
+      },
+      "allowedActions": [
+        {
+          "kind": "generic",
+          "name": "normal file read"
+        }
+      ],
+      "forbiddenActions": [
+        "kast agent call",
+        "kast agent workflow",
+        "symbol/query",
+        "semantic backend warmup"
+      ],
+      "recoveryExpectation": "Do not run Kast recovery; keep the task on ordinary docs tooling unless a Kotlin, Gradle, or Kast package-state requirement appears.",
+      "verificationEvidence": [
+        "The prompt names only a Markdown docs file and a docs contract.",
+        "No Kotlin file, Gradle model, symbol identity, source-index metric, package install, or package verification task is requested."
+      ],
+      "notes": "This negative case prevents the routing surface from expanding into unrelated repository work."
+    },
+    {
       "id": "public-api-boundary",
       "type": "ADAPTER_DRIFT",
       "source": {
