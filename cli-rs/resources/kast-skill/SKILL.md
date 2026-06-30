@@ -1,143 +1,101 @@
 ---
 name: kast
 description: >
-  Use when an agent works in a Gradle project and needs the Rust `kast` CLI for
-  file discovery, all Kotlin `.kt` and `.kts` source reads or edits, symbol
-  identity, references, callers, hierarchy, diagnostics, source-index metrics,
-  install/config/package verification, file-backed Kast calls, or focused
-  Gradle validation. Prefer Kast before generic text or file tools for Kotlin
-  and broad Gradle project exploration.
+  Use when working on Kotlin or Gradle semantics in a repository: `.kt` and
+  `.kts` source reads or edits, symbol identity, references, callers,
+  hierarchy, diagnostics, source-index metrics, semantic mutation, package
+  readiness, or focused Gradle validation. Route all Kast work through
+  `kast agent`.
 ---
 
-# Kast
+# Kast Agent
 
-Kast is the installed Rust `kast` CLI semantic surface for Kotlin and Gradle
-repositories. When this skill is present, assume the binary installed it and use
-`kast` directly for file discovery, Kotlin context, symbol identity,
-relationships, diagnostics, edits, and focused validation. Default to Kast for
-every `.kt` and `.kts` file and for Gradle project file operations that need
-semantic or install-state evidence. Treat Kast as the only navigation surface
-for Kotlin semantics until it returns a concrete blocker or a bounded
-non-semantic task remains.
+Kotlin work uses the agent route: `kast agent ...` is the only first-class Kast
+path. Do not use raw transport, generated protocol routes, LSP internals, or
+source-only helper scripts as the agent workflow. If the active binary lacks
+`kast agent`, report stale Kast installation and require upgrade or reinstall;
+do not replace the missing compiler-backed path with text search.
 
-## Continuity Rule
+## Operating Loop
 
-Keep using Kast after the first successful call for the same Kotlin or Gradle
-task. A first Kast result is not a handoff back to generic file reads; continue
-with `symbol/scaffold`, `symbol/references`, `symbol/callers`,
-`raw/diagnostics`, `raw/workspace-refresh`, or the matching
-`kast agent workflow ...` command until the task leaves Kotlin semantics or
-Kast reports a concrete blocker.
+1. Route to the narrowest Kotlin-aware `kast agent` surface before reading
+   files, searching text, or guessing project structure.
+2. Keep using `kast agent` after the first successful call. A first result is
+   not a handoff back to generic file reads; stay on `kast agent` until the work
+   leaves Kotlin semantics or it reports a concrete blocker.
+3. Mutate through `kast agent` when the target is semantic or compiler-owned.
+   Validate with `kast agent` diagnostics and then the narrowest Gradle task
+   that proves the change.
 
-## First Move
+Completion criterion: every Kotlin semantic claim, edit target, relationship
+set, and completion proof is backed by `kast agent` evidence, or the remaining
+work is an exact non-Kotlin path that does not depend on semantic facts.
 
-Confirm the command surface, then use Kast before ordinary text tools for
-Kotlin or Gradle project facts:
+## Usage Routes
+
+Use direct `kast agent` subcommands first. Use `kast agent workflow ...` for
+repeated sequences. Use `kast agent call <method>` only when no direct
+subcommand or workflow fits.
+
+| Need | Use |
+| --- | --- |
+| Kotlin file content with declaration context | `kast agent scaffold` |
+| File structure only | `kast agent file-outline` |
+| Unknown symbol | `kast agent discover`, then `kast agent resolve` |
+| Exact symbol identity | `kast agent resolve` |
+| Usages and incoming calls | `kast agent references`, `kast agent callers` |
+| Offset-owned relationships | `kast agent raw-resolve`, `kast agent raw-references`, `kast agent raw-call-hierarchy`, `kast agent raw-type-hierarchy`, `kast agent raw-implementations` |
+| Workspace files, symbols, or text | `kast agent workspace-files`, `kast agent workspace-symbol`, `kast agent workspace-search` |
+| Diagnostics | `kast agent raw-diagnostics` |
+| Source-index impact | `kast agent metrics` or `kast agent workflow impact` |
+| Rename or write | `kast agent raw-rename`, `kast agent workflow rename-plan`, or `kast agent workflow write-validate` |
+| Imports, completions, code actions, insertion points | `kast agent raw-optimize-imports`, `kast agent raw-completions`, `kast agent raw-code-actions`, `kast agent raw-semantic-insertion-point` |
+| Repeated semantic sequence | `kast agent workflow symbol`, `kast agent workflow diagnostics`, `kast agent workflow rename-plan`, or `kast agent workflow write-validate` |
+
+Use `kast agent workspace-search` only for Kotlin comments, string literals, or
+other text that is not a symbol. Use ordinary file tools for exact non-Kotlin
+paths, generated text, docs, skill maintenance, and final absence checks after
+`kast agent` finds no candidates.
+
+## Disclosure
+
+Normal installed use loads only `SKILL.md`. Discover method schemas, field
+names, default arguments, mutation metadata, and invocation argv through
+`kast agent tools`; use `kast agent workflow --help` for supported multi-step
+operations. Do not pre-load the full source catalog, generated request samples,
+or raw transport runbook before a concrete command needs exact fields.
+
+## Catalog Calls
+
+For one nontrivial catalog call, keep parameters in a file:
 
 ```console
-command -v kast
-kast --help
-kast agent --help
-kast agent tools
-kast agent workflow --help
+kast agent --output json call <method> --params-file "$KAST_PARAMS" --workspace-root "$PWD"
 ```
 
-When the installed skill exposes `scripts/`, prefer the read-only verifier for
-install, package, config, active-binary, and project-readiness evidence:
+Use camelCase fields and absolute paths. A call succeeds only when the outer
+`ok` field and the nested result status are clean. Validation errors,
+`ok=false`, dirty diagnostics, hash mismatches, and failed Gradle tasks fail the
+operation.
 
-```console
-python3 scripts/verify-kast-state.py --workspace-root "$PWD" --require-gradle-project
-```
+## Health Reference
 
-If the binary is missing or does not expose the expected agent tool/workflow
-surface, report that the installed skill and active binary are incompatible and
-require a CLI upgrade/reinstall. Do not replace the missing compiler-backed path
-with non-semantic Kotlin search.
+Use this section only when a `kast agent` command fails, the user asks for
+readiness evidence, or backend state is part of the task. Do not make these
+commands the first move for normal Kotlin work.
 
-If a command reports `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`,
-`METRICS_DB_UNAVAILABLE`, or a missing source-index database, warm the
-repository with `kast agent up` when setup state may also be stale, or warm the
-IDE-hosted backend directly when only runtime state is missing:
+| Symptom or need | Command |
+| --- | --- |
+| Agent readiness or safe repair | `kast agent --output json ready --for agent --fix` |
+| Kotlin backend readiness | `kast agent --output json ready --for kotlin --fix` |
+| Resource setup plus runtime warmup | `kast agent --output json up --workspace-root "$PWD" --no-onboard` |
+| Backend health/capabilities sweep | `kast agent --output json workflow verify --workspace-root "$PWD"` |
+| Direct health RPC | `kast agent --output json health --workspace-root "$PWD"` |
+| Detailed runtime state | `kast agent --output json runtime-status --workspace-root "$PWD"` |
+| Advertised backend capabilities | `kast agent --output json capabilities --workspace-root "$PWD"` |
+| Repo-local package/resource state | `kast agent --output json workflow package-verify --workspace-root "$PWD" --require-skill` |
 
-```console
-kast agent up --workspace-root "$PWD" --dry-run
-kast --output json agent up --workspace-root "$PWD" --no-onboard
-kast runtime up --workspace-root "$PWD" --backend idea
-```
-
-Interactive human `kast agent up` may offer first-run IDEA/Copilot onboarding
-with global or repository-scoped defaults. Agents should use JSON output or
-`--no-onboard` so prompts cannot block execution. Runtime warmup may open IDEA
-or Android Studio only when
-`runtime.ideaLaunch.enabled` is set in Kast config; otherwise it reports that
-the project must be opened in the IDE. Treat the failure as a blocker only
-after this dynamic IDE warmup path has failed.
-
-## Gradle File Routing
-
-- Use for Gradle project file work, not only direct Kotlin edits.
-- Any `.kt` or `.kts` file: start with `symbol/scaffold` when you need content
-  plus declaration context, or `raw/file-outline` when only structure is needed.
-  Do not open Kotlin files with generic readers before Kast has provided the
-  bounded target and semantic context.
-- Unknown symbol: start with `kast agent call symbol/query`; use tight `query`, `limit`,
-  `modes`, and filters such as `relativePathPrefix`, `gradleProject`,
-  `sourceSet`, or `kinds`.
-- Ambiguous symbol: escalate through `raw/workspace-symbol`, `symbol/discover`,
-  then `symbol/resolve`; inspect with `symbol/scaffold`, `raw/file-outline`,
-  `symbol/references`, or `symbol/callers`.
-- Unknown file/module: use `raw/workspace-files includeFiles=false`; request
-  paths only with `moduleName` and a small `maxFilesPerModule`.
-- Unknown Kotlin text, comments, or literals: use `raw/workspace-search`.
-- Known non-Kotlin path (`build.gradle.kts`, docs, YAML, JSON, shell): normal
-  file tools are fine. Use Kast to discover the owning module or likely path
-  when the path is not already exact.
-- Kotlin edits: `symbol/rename`, `symbol/write-and-validate`,
-  `raw/semantic-insertion-point`, `raw/completions`, `raw/code-actions`,
-  `raw/apply-edits`, `raw/optimize-imports`; still run Kast before external
-  patches and diagnostics after.
-- Impact/proof: `raw/type-hierarchy`, `raw/implementations`,
-  `database/metrics`, `kast inspect metrics fan-in`, other `kast inspect metrics` subcommands,
-  `kast inspect demo --json`, `raw/workspace-refresh`, `raw/diagnostics`, then the
-  narrowest Gradle task.
-
-## Public Surface
-
-Use the public agent surfaces first: `kast agent`, `kast agent tools`,
-`kast agent workflow`, `kast inspect metrics`, and the catalog method names in
-`references/commands.json`. Named tools such as `kast_symbol_query`,
-`kast_resolve`, `kast_references`, `kast_callers`, and `kast_metrics` are the
-host-facing way to expose navigation, relationships, source-index database
-access, and edits. Do not teach generated protocol paths, LSP capability
-internals, daemon routing details, or implementation class names as the public
-API for agents.
-
-## Request Discipline
-
-For repeated semantic sequences, use `kast agent workflow ...`; the active CLI
-must provide this command. For one nontrivial catalog call, use
-`scripts/kast-agent-call.py` so params, stdout, and stderr are preserved as
-files. Send catalog methods through `kast agent call <method> --params-file
-"$KAST_PARAMS"` with `--workspace-root "$PWD"` when scripting manually. Use
-camelCase fields, absolute paths, and check the agent envelope `ok` plus the
-nested result status; validation errors, `ok=false`, dirty diagnostics, hash
-mismatches, and failed Gradle tasks fail the operation.
-Normal use loads only SKILL.md. Do not pre-load the full catalog, generated
-request samples, or raw transport runbook before a concrete call needs them.
-Load `references/workflows.md` for install/refresh/verify ownership, project
-readiness gates, file-backed request exchange, semantic request sequences, and
-failure recovery. Load `references/commands.yaml`, `references/commands.json`,
-or `references/requests/` only for exact fields, variants, enum values, or
-samples. Load `references/runbook.md` only when debugging raw transport or
-preserving a full JSON-RPC envelope matters.
-
-## Boundaries
-
-Do not use `grep`, `rg`, `ast-grep`, manual parsing, or ordinary file reads for
-Kotlin symbol identity, usage sets, hierarchy, insertion points, or rename
-scope. Use them for exact non-Kotlin paths, generated text, docs, skill
-maintenance, and final absence verification after Kast finds no candidates.
-
-When a Kotlin request names only a symbol, resolve it with Kast before reading
-or editing. For exact Kotlin-file textual cleanup, read only what is needed and
-run Kast diagnostics before claiming completion.
+If `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a
+missing source-index database appears, run `kast agent --output json up` or
+`kast agent --output json workflow verify`, then retry the original Kotlin
+route.

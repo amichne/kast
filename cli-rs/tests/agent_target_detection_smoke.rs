@@ -113,7 +113,8 @@ agentHarness = "skill"
         expected_codex_skill.display().to_string()
     );
     assert!(codex_skills.join("kast/SKILL.md").is_file());
-    assert!(codex_skills.join("kast/references/commands.json").is_file());
+    assert!(!codex_skills.join("kast/references").exists());
+    assert!(!codex_skills.join("kast/scripts").exists());
 
     let up = kast(&home, &config_home)
         .current_dir(&workspace)
@@ -277,11 +278,8 @@ fn explicit_host_skill_target_is_manifest_backed_outside_workspace_repo() {
         .expect("canonical installed host skill");
     assert_eq!(installed_at, expected_host_skill);
     assert!(expected_host_skill.join("SKILL.md").is_file());
-    assert!(
-        expected_host_skill
-            .join("references/commands.json")
-            .is_file()
-    );
+    assert!(!expected_host_skill.join("references").exists());
+    assert!(!expected_host_skill.join("scripts").exists());
 
     let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("resources/kast-skill/scripts/verify-kast-state.py");
@@ -345,6 +343,8 @@ fn agent_setup_skill_can_override_packaged_skill_source() {
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::create_dir_all(source_root.join("references")).expect("source references");
+    std::fs::create_dir_all(source_root.join("fixtures/maintenance/evals"))
+        .expect("source eval fixtures");
     std::fs::create_dir_all(source_root.join("scripts/__pycache__")).expect("source cache");
     std::fs::write(source_root.join("SKILL.md"), "override skill\n").expect("source skill");
     std::fs::write(
@@ -352,6 +352,11 @@ fn agent_setup_skill_can_override_packaged_skill_source() {
         r#"{"commands":{}}"#,
     )
     .expect("source commands");
+    std::fs::write(
+        source_root.join("fixtures/maintenance/evals/routing.json"),
+        r#"{"cases":[]}"#,
+    )
+    .expect("source routing eval");
     std::fs::write(source_root.join(".kast-version"), "retired marker\n").expect("source marker");
     std::fs::write(
         source_root.join("scripts/helper.py"),
@@ -391,14 +396,10 @@ fn agent_setup_skill_can_override_packaged_skill_source() {
         std::fs::read_to_string(installed.join("SKILL.md")).expect("installed skill"),
         "override skill\n"
     );
-    assert_eq!(
-        std::fs::read_to_string(installed.join("references/commands.json"))
-            .expect("installed commands"),
-        r#"{"commands":{}}"#
-    );
-    assert!(installed.join("scripts/helper.py").is_file());
+    assert!(!installed.join("references").exists());
+    assert!(!installed.join("fixtures").exists());
+    assert!(!installed.join("scripts").exists());
     assert!(!installed.join(".kast-version").exists());
-    assert!(!installed.join("scripts/__pycache__").exists());
 }
 
 #[test]
@@ -459,7 +460,8 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
     assert!(codex_instructions.join("kast/README.md").is_file());
     assert!(codex_instructions.join("kast/cli.md").is_file());
     assert!(codex_instructions.join("kast/tools.md").is_file());
-    assert!(codex_instructions.join("kast/rpc.md").is_file());
+    assert!(codex_instructions.join("kast/lsp.md").is_file());
+    assert!(!codex_instructions.join("kast/rpc.md").exists());
 
     let up = kast(&home, &config_home)
         .current_dir(&workspace)

@@ -32,7 +32,6 @@ use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-static KAST_SKILL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-skill");
 static KAST_INSTRUCTIONS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-instructions");
 static COPILOT_PLUGIN: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin");
 const KAST_FORMULA_NAME: &str = "kast";
