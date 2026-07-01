@@ -30,17 +30,17 @@ that exists only for older binaries.
 Kast will use manifest-backed resource records and first-class agent workflow
 commands as the current source-of-truth model.
 
-| Surface | Source of truth | Installed or generated output | Verification |
-|---------|-----------------|-------------------------------|--------------|
-| Copilot package | `cli-rs/resources/plugin/` and `primitive-manifest.json` | `.github/lsp.json`, `.github/extensions/kast/**` | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh` |
-| RPC and tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | internal request schemas, samples, LSP custom route metadata, `kast agent tools` specs | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
-| Packaged skill | `cli-rs/resources/kast-skill/SKILL.md` | thin installed `kast` skill entrypoint only | `kast agent workflow package-verify`, CLI smoke tests |
-| Installable instructions | `cli-rs/resources/kast-instructions/` | thin installed instruction directories: `README.md`, `cli.md`, `tools.md`, `lsp.md` | `kast agent setup instructions --force`, docs content contract |
-| Repo-local agent guidance | `cli-rs/src/install/agent_guidance.rs` | ignored root `AGENTS.local.md` plus explicit `--agents-md` targets, each with a managed `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` region | CLI smoke tests, docs content contract |
-| Harness selection | `projectOpen.agentHarness` and `kast agent setup auto --harness ...` | Copilot, skill, or instruction resource installs | CLI smoke tests |
-| Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json ready`, verifier script |
-| Tool discovery | `cli-rs/resources/kast-skill/references/commands.json` | `kast agent tools` JSON specs for CLI-capable hosts and Copilot adapter loading | CLI smoke tests, Copilot package tests |
-| Semantic workflows | `kast agent workflow ...` in the active binary | workflow output directories with `input.json`, `stdout.json`, `stderr.txt`, and `workflow.json` | CLI smoke tests, workflow dry runs |
+| Surface                   | Source of truth                                                      | Installed or generated output                                                                                                                                                    | Verification                                                                                                                                                                    |
+|---------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Copilot package           | `cli-rs/resources/plugin/` and `primitive-manifest.json`             | `.github/lsp.json`, `.github/extensions/kast/**`                                                                                                                                 | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh`                                                                                        |
+| RPC and tool catalog      | `cli-rs/resources/kast-skill/references/commands.json`               | internal request schemas, samples, LSP custom route metadata, `kast agent tools` specs                                                                                           | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
+| Packaged skill            | `cli-rs/resources/kast-skill/SKILL.md`                               | thin installed `kast` skill entrypoint only                                                                                                                                      | `kast agent workflow package-verify`, CLI smoke tests                                                                                                                           |
+| Installable instructions  | `cli-rs/resources/kast-instructions/`                                | thin installed instruction directories: `README.md`, `cli.md`, `tools.md`, `lsp.md`                                                                                              | `kast agent setup instructions --force`, docs content contract                                                                                                                  |
+| Repo-local agent guidance | `cli-rs/src/install/agent_guidance.rs`                               | ignored root `AGENTS.local.md` plus explicit `--agents-md` targets, each with a managed `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` region | CLI smoke tests, docs content contract                                                                                                                                          |
+| Harness selection         | `projectOpen.agentHarness` and `kast agent setup auto --harness ...` | Copilot, skill, or instruction resource installs                                                                                                                                 | CLI smoke tests                                                                                                                                                                 |
+| Repo resource trust       | `$HOME/.local/share/kast/install.json`                               | managed repo resource records with output checksums                                                                                                                              | `kast --output json ready`, verifier script                                                                                                                                     |
+| Tool discovery            | `cli-rs/resources/kast-skill/references/commands.json`               | `kast agent tools` JSON specs for CLI-capable hosts and Copilot adapter loading                                                                                                  | CLI smoke tests, Copilot package tests                                                                                                                                          |
+| Semantic workflows        | `kast agent workflow ...` in the active binary                       | workflow output directories with `input.json`, `stdout.json`, `stderr.txt`, and `workflow.json`                                                                                  | CLI smoke tests, workflow dry runs                                                                                                                                              |
 
 Marker files such as `.kast-version` and `.github/.kast-copilot-version` are
 retired. They may be detected as stale state, but they are not trusted as a
@@ -96,18 +96,18 @@ right source before editing an installed or generated output. Generated
 repo-local Kast guidance belongs in ignored `AGENTS.local.md`, not in the
 authored root `AGENTS.md`.
 
-| Instruction file | Scope |
-|------------------|-------|
-| `AGENTS.md` | Repo-wide build, type-safety, generated-output, and decision-record routing |
-| `AGENTS.local.md` | Ignored repo-local Kast setup guidance generated by the active binary |
-| `.agents/AGENTS.md` | Agent-only docs and local agent tooling |
-| `.agents/adr/AGENTS.md` | Agent-only decision records |
-| `cli-rs/AGENTS.md` | Rust CLI, installer, manifest, agent command, and resource bundling work |
-| `cli-rs/resources/plugin/AGENTS.md` | Authored Copilot package source |
-| `cli-rs/resources/kast-skill/AGENTS.md` | Packaged skill, command catalog, request schemas, and workflow guidance |
-| `cli-rs/resources/kast-instructions/AGENTS.md` | Installable Markdown instruction source |
-| `.github/AGENTS.md` | Authored GitHub automation vs generated Copilot package outputs |
-| `.agents/docs/AGENTS.md` | Published docs site source guidance kept out of the site |
+| Instruction file                               | Scope                                                                       |
+|------------------------------------------------|-----------------------------------------------------------------------------|
+| `AGENTS.md`                                    | Repo-wide build, type-safety, generated-output, and decision-record routing |
+| `.agents/AGENTS.md`                            | Agent-only docs and local agent tooling                                     |
+| `.agents/adr/AGENTS.md`                        | Agent-only decision records                                                 |
+| `cli-rs/AGENTS.md`                             | Rust CLI, installer, manifest, agent command, and resource bundling work    |
+| `cli-rs/resources/plugin/AGENTS.md`            | Authored Copilot package source                                             |
+| `cli-rs/resources/kast-skill/AGENTS.md`        | Packaged skill, command catalog, request schemas, and workflow guidance     |
+| `cli-rs/resources/kast-instructions/AGENTS.md` | Installable Markdown instruction source                                     |
+| `.github/AGENTS.md`                            | Authored GitHub automation vs generated Copilot package outputs             |
+| `.agents/docs/AGENTS.md`                       | Published docs site source guidance kept out of the site                    |
+| `AGENTS.local.md` (special case)               | Ignored repo-local Kast setup guidance generated by the active binary       |
 
 Add a scoped `AGENTS.md` only when a subtree has a real local delta: different
 commands, source ownership, generated-output rules, or validation gates. Do not
