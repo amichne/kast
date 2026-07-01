@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
@@ -13,6 +14,8 @@ struct Args {
     kast_bin: PathBuf,
     target: PathBuf,
     output: PathBuf,
+    answer_requests: Option<PathBuf>,
+    answers: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,12 +29,50 @@ struct ImpactCase {
     id: String,
     prompt: String,
     input_artifact: InputArtifact,
+    expected_actions: Vec<Action>,
+    forbidden_actions: Vec<String>,
     gold_facts: Vec<String>,
+    answer_scoring: AnswerScoring,
 }
 
 #[derive(Debug, Deserialize)]
 struct InputArtifact {
     kind: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Action {
+    kind: String,
+    name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnswerScoring {
+    required_terms: Vec<String>,
+    forbidden_terms: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AnswerRecord {
+    case_id: String,
+    format: String,
+    answer: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnswerRequest {
+    case_id: String,
+    format: String,
+    prompt: String,
+    input: String,
+    input_bytes: usize,
+    expected_actions: Vec<Action>,
+    forbidden_actions: Vec<String>,
+    gold_facts: Vec<String>,
+    answer_scoring: AnswerScoring,
 }
 
 #[derive(Debug, Serialize)]
@@ -42,8 +83,14 @@ struct ImpactRecord {
     prompt: String,
     observed_actions: Vec<String>,
     forbidden_hits: Vec<String>,
+    matched_required_terms: Vec<String>,
+    missing_required_terms: Vec<String>,
     extracted_facts: Vec<String>,
     answer_verdict: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    answer_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    answer: Option<String>,
     stdout_bytes: usize,
     decoded_equivalent: bool,
 }
@@ -59,21 +106,43 @@ struct ImpactSummary {
     toon_stdout_bytes: usize,
     byte_reduction_percent: Option<f64>,
     answer_verdict: String,
+    evaluated_answers: usize,
+    passing_answers: usize,
+    answer_accuracy_percent: Option<f64>,
     output: PathBuf,
+    answer_requests: Option<PathBuf>,
+    answers: Option<PathBuf>,
 }
 
 #[derive(Debug)]
 struct FormatOutput {
     format: &'static str,
     stdout_bytes: usize,
+    text: String,
     decoded: Value,
+}
+
+#[derive(Debug)]
+struct AnswerScore {
+    observed_actions: Vec<String>,
+    forbidden_hits: Vec<String>,
+    matched_required_terms: Vec<String>,
+    missing_required_terms: Vec<String>,
+    score: f64,
+    verdict: &'static str,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = parse_args()?;
     let corpus = read_corpus(&args.target)?;
+    let answers = match &args.answers {
+        Some(path) => read_answer_records(path)?,
+        None => BTreeMap::new(),
+    };
+    validate_answer_records(&corpus, &answers)?;
     let run_root = make_run_root()?;
     let mut records = Vec::new();
+    let mut answer_requests = Vec::new();
 
     for case in &corpus.cases {
         let outputs = outputs_for_case(&args.kast_bin, &run_root, case)?;
@@ -86,14 +155,38 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         for output in outputs {
+            let answer = answers
+                .get(&(case.id.clone(), output.format.to_string()))
+                .cloned();
+            let answer_score = answer.as_deref().map(|answer| score_answer(case, answer));
+            answer_requests.push(answer_request(case, &output));
             records.push(ImpactRecord {
                 case_id: case.id.clone(),
                 format: output.format.to_string(),
                 prompt: case.prompt.clone(),
-                observed_actions: Vec::new(),
-                forbidden_hits: Vec::new(),
+                observed_actions: answer_score
+                    .as_ref()
+                    .map(|score| score.observed_actions.clone())
+                    .unwrap_or_default(),
+                forbidden_hits: answer_score
+                    .as_ref()
+                    .map(|score| score.forbidden_hits.clone())
+                    .unwrap_or_default(),
+                matched_required_terms: answer_score
+                    .as_ref()
+                    .map(|score| score.matched_required_terms.clone())
+                    .unwrap_or_default(),
+                missing_required_terms: answer_score
+                    .as_ref()
+                    .map(|score| score.missing_required_terms.clone())
+                    .unwrap_or_default(),
                 extracted_facts: extracted_facts(case, &output.decoded),
-                answer_verdict: "not_evaluated".to_string(),
+                answer_verdict: answer_score
+                    .as_ref()
+                    .map(|score| score.verdict.to_string())
+                    .unwrap_or_else(|| "not_evaluated".to_string()),
+                answer_score: answer_score.as_ref().map(|score| score.score),
+                answer,
                 stdout_bytes: output.stdout_bytes,
                 decoded_equivalent,
             });
@@ -101,7 +194,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     write_jsonl(&args.output, &records)?;
-    let summary = summarize(&records, args.output.clone());
+    if let Some(path) = &args.answer_requests {
+        write_jsonl(path, &answer_requests)?;
+    }
+    let summary = summarize(
+        &records,
+        args.output.clone(),
+        args.answer_requests.clone(),
+        args.answers.clone(),
+    );
     println!("{}", serde_json::to_string_pretty(&summary)?);
     let _ = fs::remove_dir_all(run_root);
     Ok(())
@@ -111,6 +212,8 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
     let mut kast_bin = None;
     let mut target = None;
     let mut output = None;
+    let mut answer_requests = None;
+    let mut answers = None;
     let mut raw = std::env::args().skip(1);
 
     while let Some(arg) = raw.next() {
@@ -118,6 +221,8 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
             "--kast-bin" => kast_bin = raw.next().map(PathBuf::from),
             "--target" => target = raw.next().map(PathBuf::from),
             "--output" => output = raw.next().map(PathBuf::from),
+            "--answer-requests" => answer_requests = raw.next().map(PathBuf::from),
+            "--answers" => answers = raw.next().map(PathBuf::from),
             other => return Err(format!("unexpected argument `{other}`").into()),
         }
     }
@@ -126,6 +231,8 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
         kast_bin: kast_bin.ok_or("missing --kast-bin")?,
         target: target.unwrap_or_else(|| PathBuf::from("cli-rs/resources/kast-skill")),
         output: output.ok_or("missing --output")?,
+        answer_requests,
+        answers,
     })
 }
 
@@ -137,6 +244,51 @@ fn read_corpus(target: &Path) -> Result<Corpus, Box<dyn Error>> {
         .join("format-impact.json");
     let content = fs::read_to_string(&path)?;
     Ok(serde_json::from_str(&content)?)
+}
+
+fn read_answer_records(path: &Path) -> Result<BTreeMap<(String, String), String>, Box<dyn Error>> {
+    let content = fs::read_to_string(path)?;
+    let mut answers = BTreeMap::new();
+    for (index, line) in content.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let record: AnswerRecord = serde_json::from_str(line)
+            .map_err(|error| format!("{}:{}: {error}", path.display(), index + 1))?;
+        let key = (record.case_id, record.format);
+        if answers.insert(key.clone(), record.answer).is_some() {
+            return Err(format!(
+                "{}:{}: duplicate answer for {}/{}",
+                path.display(),
+                index + 1,
+                key.0,
+                key.1
+            )
+            .into());
+        }
+    }
+    Ok(answers)
+}
+
+fn validate_answer_records(
+    corpus: &Corpus,
+    answers: &BTreeMap<(String, String), String>,
+) -> Result<(), Box<dyn Error>> {
+    let expected_keys = corpus
+        .cases
+        .iter()
+        .flat_map(|case| ["json", "toon"].map(move |format| (case.id.clone(), format.to_string())))
+        .collect::<BTreeSet<_>>();
+    for key in answers.keys() {
+        if !expected_keys.contains(key) {
+            return Err(format!(
+                "answer supplied for unknown case/format {}/{}",
+                key.0, key.1
+            )
+            .into());
+        }
+    }
+    Ok(())
 }
 
 fn make_run_root() -> Result<PathBuf, Box<dyn Error>> {
@@ -203,11 +355,13 @@ fn outputs_for_case(
             FormatOutput {
                 format: "json",
                 stdout_bytes: 0,
+                text: String::new(),
                 decoded: Value::Null,
             },
             FormatOutput {
                 format: "toon",
                 stdout_bytes: 0,
+                text: String::new(),
                 decoded: Value::Null,
             },
         ]),
@@ -224,18 +378,23 @@ fn command_outputs(
     let json_stdout = run_kast(kast_bin, run_root, json_args)?;
     let toon_stdout = run_kast(kast_bin, run_root, toon_args)?;
     let json_decoded = serde_json::from_slice(&json_stdout)?;
-    let toon_text = std::str::from_utf8(&toon_stdout)?;
+    let json_stdout_bytes = json_stdout.len();
+    let json_text = String::from_utf8(json_stdout)?;
+    let toon_stdout_bytes = toon_stdout.len();
+    let toon_text = String::from_utf8(toon_stdout)?;
     let toon_decoded = toon_format::decode_default(toon_text.trim())?;
 
     Ok(vec![
         FormatOutput {
             format: "json",
-            stdout_bytes: json_stdout.len(),
+            stdout_bytes: json_stdout_bytes,
+            text: json_text,
             decoded: json_decoded,
         },
         FormatOutput {
             format: "toon",
-            stdout_bytes: toon_stdout.len(),
+            stdout_bytes: toon_stdout_bytes,
+            text: toon_text,
             decoded: toon_decoded,
         },
     ])
@@ -265,16 +424,19 @@ fn synthetic_outputs(case: &ImpactCase) -> Result<Vec<FormatOutput>, Box<dyn Err
     json_text.push('\n');
     let toon_text = toon_format::encode_default(&value)?;
     let toon_decoded = toon_format::decode_default(toon_text.trim())?;
+    let json_decoded = serde_json::from_str(&json_text)?;
 
     Ok(vec![
         FormatOutput {
             format: "json",
             stdout_bytes: json_text.len(),
-            decoded: serde_json::from_str(&json_text)?,
+            text: json_text,
+            decoded: json_decoded,
         },
         FormatOutput {
             format: "toon",
             stdout_bytes: toon_text.len(),
+            text: toon_text,
             decoded: toon_decoded,
         },
     ])
@@ -338,7 +500,93 @@ fn extracted_facts(case: &ImpactCase, decoded: &Value) -> Vec<String> {
     facts
 }
 
-fn write_jsonl(path: &Path, records: &[ImpactRecord]) -> Result<(), Box<dyn Error>> {
+fn answer_request(case: &ImpactCase, output: &FormatOutput) -> AnswerRequest {
+    AnswerRequest {
+        case_id: case.id.clone(),
+        format: output.format.to_string(),
+        prompt: case.prompt.clone(),
+        input: output.text.clone(),
+        input_bytes: output.stdout_bytes,
+        expected_actions: case.expected_actions.clone(),
+        forbidden_actions: case.forbidden_actions.clone(),
+        gold_facts: case.gold_facts.clone(),
+        answer_scoring: case.answer_scoring.clone(),
+    }
+}
+
+fn score_answer(case: &ImpactCase, answer: &str) -> AnswerScore {
+    let matched_required_terms = case
+        .answer_scoring
+        .required_terms
+        .iter()
+        .filter(|term| contains_term(answer, term))
+        .cloned()
+        .collect::<Vec<_>>();
+    let missing_required_terms = case
+        .answer_scoring
+        .required_terms
+        .iter()
+        .filter(|term| !contains_term(answer, term))
+        .cloned()
+        .collect::<Vec<_>>();
+    let forbidden_hits = case
+        .answer_scoring
+        .forbidden_terms
+        .iter()
+        .filter(|term| contains_term(answer, term))
+        .cloned()
+        .collect::<Vec<_>>();
+    let observed_actions = case
+        .expected_actions
+        .iter()
+        .filter(|action| contains_term(answer, &action.name))
+        .map(|action| action.name.clone())
+        .collect::<Vec<_>>();
+    let required_score = if case.answer_scoring.required_terms.is_empty() {
+        100.0
+    } else {
+        (matched_required_terms.len() as f64 / case.answer_scoring.required_terms.len() as f64)
+            * 100.0
+    };
+    let score = if forbidden_hits.is_empty() {
+        required_score
+    } else {
+        0.0
+    };
+    let verdict = if missing_required_terms.is_empty() && forbidden_hits.is_empty() {
+        "pass"
+    } else {
+        "fail"
+    };
+
+    AnswerScore {
+        observed_actions,
+        forbidden_hits,
+        matched_required_terms,
+        missing_required_terms,
+        score,
+        verdict,
+    }
+}
+
+fn contains_term(answer: &str, term: &str) -> bool {
+    let answer = answer.to_ascii_lowercase();
+    let term = term.to_ascii_lowercase();
+    if is_token_term(&term) {
+        return answer
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .any(|token| token == term);
+    }
+    answer.contains(&term)
+}
+
+fn is_token_term(term: &str) -> bool {
+    term.chars()
+        .all(|character| character.is_ascii_alphanumeric())
+        && term.len() <= 4
+}
+
+fn write_jsonl<T: Serialize>(path: &Path, records: &[T]) -> Result<(), Box<dyn Error>> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -349,7 +597,12 @@ fn write_jsonl(path: &Path, records: &[ImpactRecord]) -> Result<(), Box<dyn Erro
     Ok(())
 }
 
-fn summarize(records: &[ImpactRecord], output: PathBuf) -> ImpactSummary {
+fn summarize(
+    records: &[ImpactRecord],
+    output: PathBuf,
+    answer_requests: Option<PathBuf>,
+    answers: Option<PathBuf>,
+) -> ImpactSummary {
     let json_stdout_bytes = records
         .iter()
         .filter(|record| record.format == "json")
@@ -368,6 +621,28 @@ fn summarize(records: &[ImpactRecord], output: PathBuf) -> ImpactSummary {
     } else {
         None
     };
+    let evaluated_answers = records
+        .iter()
+        .filter(|record| record.answer_verdict != "not_evaluated")
+        .count();
+    let passing_answers = records
+        .iter()
+        .filter(|record| record.answer_verdict == "pass")
+        .count();
+    let answer_accuracy_percent = if evaluated_answers > 0 {
+        Some((passing_answers as f64 / evaluated_answers as f64) * 100.0)
+    } else {
+        None
+    };
+    let answer_verdict = if evaluated_answers == 0 {
+        "not_evaluated"
+    } else if passing_answers == evaluated_answers {
+        "pass"
+    } else if passing_answers == 0 {
+        "fail"
+    } else {
+        "partial"
+    };
 
     ImpactSummary {
         ok: true,
@@ -377,7 +652,12 @@ fn summarize(records: &[ImpactRecord], output: PathBuf) -> ImpactSummary {
         json_stdout_bytes,
         toon_stdout_bytes,
         byte_reduction_percent,
-        answer_verdict: "not_evaluated".to_string(),
+        answer_verdict: answer_verdict.to_string(),
+        evaluated_answers,
+        passing_answers,
+        answer_accuracy_percent,
         output,
+        answer_requests,
+        answers,
     }
 }

@@ -56,6 +56,7 @@
         "expectedActions",
         "forbiddenActions",
         "goldFacts",
+        "answerScoring",
         "metrics",
         "reportOnly"
       ],
@@ -141,6 +142,9 @@
             "minLength": 1
           }
         },
+        "answerScoring": {
+          "$ref": "#/$defs/answerScoring"
+        },
         "metrics": {
           "type": "array",
           "minItems": 1,
@@ -213,6 +217,31 @@
         "name": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "answerScoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requiredTerms",
+        "forbiddenTerms"
+      ],
+      "properties": {
+        "requiredTerms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbiddenTerms": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }

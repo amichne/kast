@@ -322,6 +322,16 @@ fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
             "case should include gold facts: {case:#}"
         );
         assert!(
+            case["answerScoring"]["requiredTerms"]
+                .as_array()
+                .is_some_and(|terms| !terms.is_empty()),
+            "case should include deterministic answer scoring terms: {case:#}"
+        );
+        assert!(
+            case["answerScoring"]["forbiddenTerms"].is_array(),
+            "case should include deterministic forbidden answer terms: {case:#}"
+        );
+        assert!(
             case["reportOnly"].as_bool() == Some(true),
             "format impact live accuracy cases must stay report-only: {case:#}"
         );
@@ -365,7 +375,7 @@ fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
 }
 
 #[test]
-fn format_impact_metric_pack_and_runner_are_report_only() {
+fn format_impact_metric_pack_and_runner_capture_scoreable_answers() {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("repo root");
@@ -395,7 +405,83 @@ fn format_impact_metric_pack_and_runner_are_report_only() {
         "runner should feed observed JSONL into the metric pack: {runner}"
     );
     assert!(
-        !runner.contains("exit 1 # accuracy"),
-        "report-only accuracy deltas should not be hard CI failures: {runner}"
+        runner.contains("--answer-requests"),
+        "runner should write answer request JSONL for external answer capture: {runner}"
     );
+    assert!(
+        runner.contains("KAST_FORMAT_IMPACT_ANSWERS_JSONL"),
+        "runner should score captured answers when supplied: {runner}"
+    );
+
+    let metric_pack_path = repo_root
+        .join(".github/plugin-eval/kast-format-impact/emit-kast-format-impact-metrics.mjs");
+    let metric_pack = std::fs::read_to_string(&metric_pack_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", metric_pack_path.display()));
+    assert!(
+        metric_pack.contains("format-impact-answer-scoring"),
+        "metric pack should expose answer scoring as a first-class check: {metric_pack}"
+    );
+    assert!(
+        metric_pack.contains("kast-format-impact-answer-pass-rate"),
+        "metric pack should emit answer pass-rate metrics: {metric_pack}"
+    );
+
+    let target = repo_root.join("cli-rs/resources/kast-skill");
+    let eval_path = target.join("fixtures/maintenance/evals/format-impact.json");
+    let eval: Value = serde_json::from_str(
+        &std::fs::read_to_string(&eval_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", eval_path.display())),
+    )
+    .expect("format impact eval json");
+    let temp = tempfile::tempdir().expect("format impact metric tempdir");
+    let observed_path = temp.path().join("observed.jsonl");
+    let mut observed = String::new();
+    for case in eval["cases"].as_array().expect("format impact cases") {
+        let case_id = case["id"].as_str().expect("case id");
+        for format in ["json", "toon"] {
+            observed.push_str(
+                &serde_json::to_string(&serde_json::json!({
+                    "caseId": case_id,
+                    "format": format,
+                    "decodedEquivalent": true,
+                    "answerVerdict": "pass",
+                    "stdoutBytes": 1
+                }))
+                .expect("observed record json"),
+            );
+            observed.push('\n');
+        }
+    }
+    std::fs::write(&observed_path, observed)
+        .unwrap_or_else(|error| panic!("write {}: {error}", observed_path.display()));
+
+    let output = Command::new("node")
+        .arg(&metric_pack_path)
+        .arg(&target)
+        .arg("skill")
+        .env("KAST_FORMAT_IMPACT_OBSERVED_JSONL", &observed_path)
+        .output()
+        .unwrap_or_else(|error| panic!("run {}: {error}", metric_pack_path.display()));
+    assert!(
+        output.status.success(),
+        "metric pack should run: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let metric_output: Value =
+        serde_json::from_slice(&output.stdout).expect("metric pack output json");
+    let answer_check = metric_output["checks"]
+        .as_array()
+        .expect("metric checks")
+        .iter()
+        .find(|check| check["id"] == "format-impact-answer-scoring")
+        .expect("answer scoring check");
+    assert_eq!(answer_check["status"], "pass", "{metric_output:#}");
+    let answer_pass_rate = metric_output["metrics"]
+        .as_array()
+        .expect("metric list")
+        .iter()
+        .find(|metric| metric["id"] == "kast-format-impact-answer-pass-rate")
+        .expect("answer pass-rate metric");
+    assert_eq!(answer_pass_rate["value"], 100, "{metric_output:#}");
 }

@@ -106,6 +106,8 @@ for (const item of cases) {
   failIf(JSON.stringify(item.pairedFormats) !== JSON.stringify(corpus.formats), `${item.id}: pairedFormats must match corpus formats`, caseFailures);
   failIf(item.reportOnly !== true, `${item.id}: live accuracy cases must stay report-only`, caseFailures);
   failIf(!Array.isArray(item.goldFacts) || item.goldFacts.length < 2, `${item.id}: goldFacts needs at least two entries`, caseFailures);
+  failIf(!Array.isArray(item.answerScoring?.requiredTerms) || item.answerScoring.requiredTerms.length < 1, `${item.id}: answerScoring.requiredTerms needs at least one entry`, caseFailures);
+  failIf(!Array.isArray(item.answerScoring?.forbiddenTerms), `${item.id}: answerScoring.forbiddenTerms must be present`, caseFailures);
   failIf(!isPositiveCase(item) && !isNegativeCase(item), `${item.id}: expectedPrimitive must be kast or none`, caseFailures);
 
   const forbidden = new Set(item.forbiddenActions ?? []);
@@ -124,7 +126,7 @@ checks.push(
     caseFailures.length === 0 ? "pass" : "fail",
     caseFailures.length === 0 ? "info" : "error",
     caseFailures.length === 0
-      ? "Every format impact case is paired, report-only, and has gold facts plus forbidden-action expectations."
+      ? "Every format impact case is paired, report-only, and has gold facts, forbidden-action expectations, plus deterministic answer scoring terms."
       : "One or more format impact cases are incomplete.",
     caseFailures.length === 0 ? cases.map((item) => `${item.id}:${item.scenario}`) : caseFailures,
     ["Keep JSON/TOON case pairs explicit and report-only until live accuracy thresholds stabilize."],
@@ -143,7 +145,6 @@ for (const record of observedRecords) {
   if (!recordsByCase.has(key)) recordsByCase.set(key, []);
   recordsByCase.get(key).push(record);
   failIf(record.decodedEquivalent !== true, `${record.caseId}/${record.format}: decodedEquivalent must be true`, observedFailures);
-  failIf((record.forbiddenHits ?? []).length > 0, `${record.caseId}/${record.format}: forbidden hits ${record.forbiddenHits.join(", ")}`, observedFailures);
 }
 for (const item of cases) {
   const records = recordsByCase.get(item.id) ?? [];
@@ -168,6 +169,49 @@ checks.push(
   ),
 );
 
+const evaluated = observedRecords.filter((record) => record.answerVerdict && record.answerVerdict !== "not_evaluated");
+const answerFailures = [];
+const missingAnswerRecords = [];
+for (const record of observedRecords) {
+  if (!record.answerVerdict || record.answerVerdict === "not_evaluated") {
+    missingAnswerRecords.push(`${record.caseId}/${record.format}`);
+    continue;
+  }
+  if (record.answerVerdict !== "pass") {
+    const missing = (record.missingRequiredTerms ?? []).join(", ");
+    const forbidden = (record.forbiddenHits ?? []).join(", ");
+    answerFailures.push(`${record.caseId}/${record.format}: missing=[${missing}] forbidden=[${forbidden}]`);
+  }
+}
+const answerPassCount = evaluated.filter((record) => record.answerVerdict === "pass").length;
+const answerPassRate = evaluated.length > 0 ? Math.round((answerPassCount / evaluated.length) * 10000) / 100 : 0;
+let answerStatus = "warn";
+let answerSeverity = "warning";
+let answerMessage = "No captured answers were supplied; answer accuracy remains unmeasured.";
+let answerEvidence = missingAnswerRecords.length > 0 ? missingAnswerRecords : ["records=0"];
+if (evaluated.length > 0 && answerFailures.length === 0 && missingAnswerRecords.length === 0) {
+  answerStatus = "pass";
+  answerSeverity = "info";
+  answerMessage = "Captured answers satisfy every required term and avoid forbidden actions.";
+  answerEvidence = [`answers=${evaluated.length}`, `passRate=${answerPassRate}`];
+} else if (evaluated.length > 0 && answerFailures.length === 0) {
+  answerMessage = "Captured answer scoring is partial; some JSON/TOON pairs were not supplied.";
+  answerEvidence = missingAnswerRecords;
+} else if (answerFailures.length > 0) {
+  answerMessage = "Captured answers missed required terms or used forbidden actions.";
+  answerEvidence = answerFailures;
+}
+checks.push(
+  check(
+    "format-impact-answer-scoring",
+    answerStatus,
+    answerSeverity,
+    answerMessage,
+    answerEvidence,
+    ["Generate answers from cli-rs/target/format-impact/answer-requests.jsonl and set KAST_FORMAT_IMPACT_ANSWERS_JSONL before rerunning the report."],
+  ),
+);
+
 const jsonBytes = observedRecords
   .filter((record) => record.format === "json")
   .reduce((sum, record) => sum + (record.stdoutBytes ?? 0), 0);
@@ -175,7 +219,6 @@ const toonBytes = observedRecords
   .filter((record) => record.format === "toon")
   .reduce((sum, record) => sum + (record.stdoutBytes ?? 0), 0);
 const byteReduction = jsonBytes > 0 ? Math.round(((jsonBytes - toonBytes) / jsonBytes) * 10000) / 100 : 0;
-const evaluated = observedRecords.filter((record) => record.answerVerdict && record.answerVerdict !== "not_evaluated");
 const passCount = checks.filter((item) => item.status === "pass").length;
 const score = Math.round((passCount / checks.length) * 100);
 
@@ -189,6 +232,8 @@ console.log(
         metric("kast-format-impact-observed-records", observedRecords.length, "records", observedRecords.length >= cases.length * 2 ? "good" : "report-only"),
         metric("kast-format-impact-byte-reduction", byteReduction, "percent", byteReduction > 0 ? "good" : "unmeasured"),
         metric("kast-format-impact-live-answers", evaluated.length, "records", evaluated.length > 0 ? "measured" : "report-only"),
+        metric("kast-format-impact-answer-pass-rate", answerPassRate, "percent", evaluated.length > 0 ? answerPassRate === 100 ? "excellent" : answerPassRate >= 85 ? "good" : "needs-work" : "unmeasured"),
+        metric("kast-format-impact-answer-failures", answerFailures.length, "records", answerFailures.length === 0 ? "good" : "needs-work"),
       ],
       artifacts: [
         {
@@ -201,7 +246,13 @@ console.log(
           id: "kast-format-impact-observed-jsonl",
           type: "jsonl",
           label: "Kast TOON format impact observed records",
-          description: "Report-only paired JSON/TOON fixture records and optional live-agent verdicts.",
+          description: "Paired JSON/TOON fixture records with optional captured-answer verdicts.",
+        },
+        {
+          id: "kast-format-impact-answer-requests",
+          type: "jsonl",
+          label: "Kast TOON format impact answer requests",
+          description: "Prompt and input rows to feed an external agent/model runner before scoring captured answers.",
         },
       ],
     },
