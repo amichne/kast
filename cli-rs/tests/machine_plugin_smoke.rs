@@ -93,6 +93,15 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
     );
     assert!(stdout.get("downloadDir").is_none(), "{stdout}");
     assert!(stdout.get("downloadedPath").is_none(), "{stdout}");
+    assert_eq!(stdout["developerDefaults"]["defaultBackend"], "idea");
+    assert_eq!(stdout["developerDefaults"]["ideaLaunchEnabled"], true);
+    assert_eq!(stdout["developerDefaults"]["applied"], true);
+    let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
+    assert!(config.contains("defaultBackend = \"idea\""), "{config}");
+    assert!(config.contains("[runtime.ideaLaunch]"), "{config}");
+    assert!(config.contains("enabled = true"), "{config}");
+    assert!(config.contains("command = \"idea\""), "{config}");
+    assert!(config.contains("requireInstalledPlugin = true"), "{config}");
     #[cfg(unix)]
     assert_eq!(
         std::fs::read_link(jetbrains_root.join("IntelliJIdea2026.1/plugins/kast"))

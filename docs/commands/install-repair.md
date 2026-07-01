@@ -92,6 +92,13 @@ brew reinstall --cask kast-plugin
 kast developer machine plugin
 ```
 
+Use `kast developer machine defaults` to make developer-machine commands prefer
+the IDEA plugin backend unless a command explicitly passes another backend.
+
+```console title="Configure developer-machine backend defaults"
+kast developer machine defaults
+```
+
 Use `kast developer machine shell` to add the active shim directory to a shell profile
 and write managed completion integration.
 

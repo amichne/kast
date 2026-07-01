@@ -52,7 +52,7 @@ dev_cli="${install_bin_dir}/kast-dev"
 profile="${tmp_root}/zshrc"
 shell_install_json="${tmp_root}/shell-install.json"
 HOME="$home_dir" KAST_CONFIG_HOME="$config_home" \
-  "$dev_cli" --output json machine shell --shell zsh --profile "$profile" >"$shell_install_json"
+  "$dev_cli" --output json developer machine shell --shell zsh --profile "$profile" >"$shell_install_json"
 
 grep -Fq '"commandName": "kast-dev"' "$shell_install_json" \
   || die "install shell should target the kast-dev command name"
@@ -65,7 +65,7 @@ grep -Fq "# >>> kast shell integration >>>" "$profile" \
 source_file="$(sed -n 's/.*"sourceFile": "\(.*\)",/\1/p' "$shell_install_json" | head -1)"
 [[ -n "$source_file" && -f "$source_file" ]] \
   || die "install shell should write the managed source file"
-grep -Fq "kast-dev machine completion zsh --command-name kast-dev" "$source_file" \
+grep -Fq "kast-dev developer machine completion zsh --command-name kast-dev" "$source_file" \
   || die "managed shell source should route completion through machine completion"
 
 gradle_profile="${tmp_root}/gradle-zshrc"
@@ -82,7 +82,7 @@ HOME="$home_dir" \
 
 grep -Fq "# >>> kast shell integration >>>" "$gradle_profile" \
   || die "installDevelopmentShell should patch the requested profile"
-grep -Fq "kast-dev machine completion zsh --command-name kast-dev" "${config_home}/shell/kast-dev.zsh" \
+grep -Fq "kast-dev developer machine completion zsh --command-name kast-dev" "${config_home}/shell/kast-dev.zsh" \
   || die "installDevelopmentShell should route completions through kast-dev"
 
 plugins_dir="${tmp_root}/jetbrains/plugins"
@@ -113,6 +113,20 @@ HOME="$home_dir" \
   KAST_CONFIG_HOME="$config_home" \
   PATH="$restricted_path" \
   "${repo_root}/gradlew" -q help --task installDevelopmentLocal >/dev/null
+
+HOME="$home_dir" \
+  CARGO_HOME="$cargo_home" \
+  RUSTUP_HOME="$rustup_home" \
+  GRADLE_USER_HOME="$gradle_user_home" \
+  KAST_CONFIG_HOME="$config_home" \
+  KAST_BIN_DIR="$install_bin_dir" \
+  PATH="$restricted_path" \
+  "${repo_root}/gradlew" -q configureDevelopmentMachineDefaults
+
+grep -Fq 'defaultBackend = "idea"' "${config_home}/config.toml" \
+  || die "configureDevelopmentMachineDefaults should set the IDEA plugin backend as the developer default"
+grep -Fq 'enabled = true' "${config_home}/config.toml" \
+  || die "configureDevelopmentMachineDefaults should enable IDEA launch policy"
 
 bin_config_home="${tmp_root}/config-bin-dir"
 custom_bin_dir="${tmp_root}/custom-bin"

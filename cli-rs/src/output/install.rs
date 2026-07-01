@@ -113,6 +113,14 @@ fn print_idea_plugin_install_summary(document: &mut MarkdownDocument, result: &I
             compact_path_for_output(jetbrains_config_root),
         ));
     }
+    rows.push((
+        "Developer default backend",
+        format!("{:?}", result.developer_defaults.default_backend).to_lowercase(),
+    ));
+    rows.push((
+        "Developer config",
+        compact_path_for_output(&result.developer_defaults.config_path),
+    ));
     for (item, value) in rows {
         mdln!(document, "- {item}: `{value}`");
     }
@@ -165,6 +173,41 @@ fn print_shell_install(result: &InstallShellResult) -> Result<()> {
         document,
         "- Open a fresh shell or run `{}`.",
         result.source_line
+    );
+    print_markdown(&document.into_string())
+}
+
+pub fn print_developer_machine_defaults(result: &DeveloperMachineDefaultsResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast developer-machine defaults");
+    mdln!(document);
+    mdln!(
+        document,
+        "- Status: {}",
+        if result.applied { "applied" } else { "planned" }
+    );
+    mdln!(document, "- Config path: `{}`", result.config_path);
+    mdln!(document, "- Default backend: `idea`");
+    mdln!(
+        document,
+        "- IDEA launch enabled: {}",
+        yes_no(result.idea_launch_enabled)
+    );
+    mdln!(document, "- IDEA launch command: `{}`", result.idea_launch_command);
+    mdln!(
+        document,
+        "- Require installed plugin: {}",
+        yes_no(result.require_installed_plugin)
+    );
+    mdln!(document);
+    mdln!(document, "## Next steps");
+    mdln!(
+        document,
+        "- Restart any open IntelliJ IDEA or Android Studio windows after updating the plugin."
+    );
+    mdln!(
+        document,
+        "- Reopen the project, then run `kast status` to verify the IDEA backend."
     );
     print_markdown(&document.into_string())
 }

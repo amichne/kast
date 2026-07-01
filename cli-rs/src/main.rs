@@ -762,6 +762,15 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
         cli::MachineCommand::Plugin(args) => {
             run_install(cli::InstallCommand::Plugin(args), output_format)
         }
+        cli::MachineCommand::Defaults(args) => {
+            let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
+            if output_format == OutputFormat::Json {
+                output::print_json(&result)?;
+            } else {
+                output::print_developer_machine_defaults(&result)?;
+            }
+            Ok(0)
+        }
         cli::MachineCommand::Shell(args) => {
             run_install(cli::InstallCommand::Shell(args), output_format)
         }

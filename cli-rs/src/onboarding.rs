@@ -171,11 +171,7 @@ fn apply_agent_up_onboarding_config(
 }
 
 fn write_agent_up_onboarding_defaults(document: &mut toml::Table) -> Result<()> {
-    table(document, "runtime")?.insert("defaultBackend".to_string(), "idea".into());
-    let idea_launch = nested_table(document, "runtime", "ideaLaunch")?;
-    idea_launch.insert("enabled".to_string(), true.into());
-    idea_launch.insert("command".to_string(), "idea".into());
-    idea_launch.insert("requireInstalledPlugin".to_string(), true.into());
+    self_mgmt::write_developer_machine_idea_defaults(document)?;
 
     let project_open = table(document, "projectOpen")?;
     project_open.insert("profileAutoInit".to_string(), true.into());
@@ -193,25 +189,6 @@ fn table<'a>(document: &'a mut toml::Table, key: &str) -> Result<&'a mut toml::T
             CliError::new(
                 "CONFIG_ERROR",
                 format!("Cannot write onboarding config because `{key}` is not a TOML table."),
-            )
-        })
-}
-
-fn nested_table<'a>(
-    document: &'a mut toml::Table,
-    first: &str,
-    second: &str,
-) -> Result<&'a mut toml::Table> {
-    table(document, first)?
-        .entry(second.to_string())
-        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
-        .as_table_mut()
-        .ok_or_else(|| {
-            CliError::new(
-                "CONFIG_ERROR",
-                format!(
-                    "Cannot write onboarding config because `{first}.{second}` is not a TOML table."
-                ),
             )
         })
 }

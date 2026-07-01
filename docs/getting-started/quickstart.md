@@ -38,28 +38,29 @@ it. Kast walks upward to the nearest Gradle or `.kast` marker when
 
 ## Step 1: start a backend
 
-Use the backend that matches the machine. The headless backend works well for
-servers and CI. The IDEA backend reuses an already-open IDEA or Android Studio
-project on developer machines.
+Use the backend that matches the machine. The developer-machine install
+configures the IDEA plugin backend as the default, so ordinary local commands
+do not need `--backend`. The headless backend stays explicit for Linux servers,
+CI, and hosted agents.
 
-=== "Headless"
+=== "Developer machine"
+
+    ```console title="Reuse an open IDEA or Android Studio project"
+    kast setup --no-open-ide
+    kast status
+    ```
+
+=== "Headless Linux"
 
     ```console title="Start or warm a headless backend"
     kast setup --backend=headless --no-open-ide
     kast status --backend=headless
     ```
 
-=== "IDEA"
-
-    ```console title="Reuse an open IDEA or Android Studio project"
-    kast setup --backend=idea --no-open-ide
-    kast status --backend=idea
-    ```
-
 Use JSON output for automation:
 
 ```console title="Machine-readable status"
-kast --output json status --backend=headless
+kast --output json status
 ```
 
 ## Step 2: resolve a symbol
@@ -71,8 +72,7 @@ returns one JSON object with the normalized request and result.
 APP_FILE="$PWD/src/main/kotlin/App.kt"
 
 kast agent call raw/resolve \
-  --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}}" \
-  --backend=headless
+  --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42}}"
 ```
 
 The important fields are in `result`: fully qualified name, kind, signature,
@@ -92,8 +92,7 @@ you want one complete evidence list.
 
 ```console title="Find references"
 kast agent call raw/references \
-  --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42},\"includeDeclaration\":true}" \
-  --backend=headless
+  --params "{\"position\":{\"filePath\":\"$APP_FILE\",\"offset\":42},\"includeDeclaration\":true}"
 ```
 
 Read `result.searchScope.exhaustive` before claiming the list is complete. If
@@ -112,12 +111,14 @@ commands.
 
 ```console title="Find declarations by name"
 kast agent call raw/workspace-symbol \
-  --params '{"pattern":"OrderService","maxResults":20}' \
-  --backend=headless
+  --params '{"pattern":"OrderService","maxResults":20}'
 ```
 
 This keeps the workflow semantic. Use text search only when you are looking for
 plain text, comments, or literals.
+
+On a Linux headless install, add `--backend=headless` to the lifecycle and
+agent commands above.
 
 ## Step 5: stop when finished
 
@@ -125,7 +126,7 @@ Stop the backend when you want to free local resources. Long-lived developer
 machines can keep a warm backend running.
 
 ```console title="Stop the backend"
-kast developer runtime stop --backend=headless
+kast developer runtime stop
 ```
 
 ## Next commands

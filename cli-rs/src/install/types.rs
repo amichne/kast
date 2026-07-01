@@ -154,6 +154,7 @@ pub struct InstallIdeaPluginResult {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub plugin_directories: Vec<String>,
     pub dry_run: bool,
+    pub developer_defaults: self_mgmt::DeveloperMachineDefaultsResult,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
     pub schema_version: u32,

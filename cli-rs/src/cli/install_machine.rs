@@ -112,6 +112,13 @@ pub struct ShellInstallArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+pub struct DeveloperMachineDefaultsArgs {
+    /// Print the planned developer-machine config without writing it.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Args, Clone)]
 pub struct ResourceInstallArgs {
     /// Target root directory.
     #[arg(long)]

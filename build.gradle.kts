@@ -209,6 +209,7 @@ val installDevelopmentShell: TaskProvider<Exec> by tasks.registering(Exec::class
             kastDevBinary.absolutePath,
             "--output",
             "json",
+            "developer",
             "machine",
             "shell",
             "--shell",
@@ -216,6 +217,20 @@ val installDevelopmentShell: TaskProvider<Exec> by tasks.registering(Exec::class
             "--command-name",
             "kast-dev",
         ) + developmentShellProfileArg()
+    )
+}
+
+val configureDevelopmentMachineDefaults: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "distribution"
+    description = "Configures developer-machine defaults to use the IDEA plugin backend."
+    dependsOn("installDevelopmentCli")
+    commandLine(
+        kastDevBinary.absolutePath,
+        "--output",
+        "json",
+        "developer",
+        "machine",
+        "defaults",
     )
 }
 
@@ -314,5 +329,5 @@ val installDevelopmentIdeaPlugin: TaskProvider<InstallDevelopmentIdeaPluginTask>
 tasks.register("installDevelopmentLocal") {
     group = "distribution"
     description = "Installs kast-dev shell integration and replaces the local IDEA plugin with the development build."
-    dependsOn(installDevelopmentShell, installDevelopmentIdeaPlugin)
+    dependsOn(installDevelopmentShell, installDevelopmentIdeaPlugin, configureDevelopmentMachineDefaults)
 }
