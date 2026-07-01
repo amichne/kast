@@ -82,7 +82,10 @@ pub fn generated_files_from_catalog(
     samples_root: &Path,
 ) -> Result<BTreeMap<PathBuf, String>> {
     let mut files = BTreeMap::new();
-    files.insert(yaml_path.to_path_buf(), serde_yaml::to_string(catalog)?);
+    files.insert(
+        yaml_path.to_path_buf(),
+        serde_yaml::to_string(&canonical_json_value(catalog))?,
+    );
     let schemas = catalog_schema::request_schemas(catalog)?;
     for (method, command) in commands(catalog)? {
         let category = command
@@ -260,9 +263,27 @@ fn request_path(samples_root: &Path, category: &str, method: &str) -> PathBuf {
 }
 
 fn json_file_content(value: &Value) -> Result<String> {
-    let mut content = serde_json::to_string_pretty(value)?;
+    let mut content = serde_json::to_string_pretty(&canonical_json_value(value))?;
     content.push('\n');
     Ok(content)
+}
+
+fn canonical_json_value(value: &Value) -> Value {
+    match value {
+        Value::Array(items) => Value::Array(items.iter().map(canonical_json_value).collect()),
+        Value::Object(fields) => {
+            let mut sorted = Map::new();
+            let mut entries = BTreeMap::new();
+            for (key, value) in fields {
+                entries.insert(key, value);
+            }
+            for (key, value) in entries {
+                sorted.insert(key.clone(), canonical_json_value(value));
+            }
+            Value::Object(sorted)
+        }
+        _ => value.clone(),
+    }
 }
 
 fn request_payload(method: &str, params: Value) -> Result<Value> {
@@ -539,6 +560,52 @@ mod tests {
         assert!(files.contains_key(Path::new(
             "/tmp/requests/symbol/example/request.schema.json"
         )));
+    }
+
+    #[test]
+    fn generated_files_keep_canonical_object_order() {
+        let catalog = json!({
+            "version": "dev",
+            "commands": {
+                "symbol/example": {
+                    "summary": "Example command",
+                    "method": "symbol/example",
+                    "request": {
+                        "required": ["query"],
+                        "fields": {
+                            "query": { "type": "string" }
+                        }
+                    },
+                    "category": "symbol"
+                }
+            },
+            "$schema": "./commands.schema.json",
+            "categories": {
+                "symbol": ["symbol/example"]
+            }
+        });
+        let files = generated_files_from_catalog(
+            &catalog,
+            Path::new("/tmp/commands.yaml"),
+            Path::new("/tmp/requests"),
+        )
+        .expect("generated files");
+
+        let yaml = files
+            .get(Path::new("/tmp/commands.yaml"))
+            .expect("commands yaml");
+        assert!(
+            yaml.starts_with("$schema: ./commands.schema.json\ncategories:\n"),
+            "{yaml}"
+        );
+
+        let minimal = files
+            .get(Path::new("/tmp/requests/symbol/example/minimal.json"))
+            .expect("minimal sample");
+        assert_eq!(
+            minimal,
+            "{\n  \"id\": 1,\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"symbol/example\",\n  \"params\": {\n    \"query\": \"Widget\"\n  }\n}\n"
+        );
     }
 
     #[test]
