@@ -252,3 +252,150 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         );
     }
 }
+
+#[test]
+fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let eval_path = root.join("resources/kast-skill/fixtures/maintenance/evals/format-impact.json");
+    let eval: Value = serde_json::from_str(
+        &std::fs::read_to_string(&eval_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", eval_path.display())),
+    )
+    .expect("format impact eval json");
+    let schema_path =
+        root.join("resources/kast-skill/fixtures/maintenance/evals/format-impact.schema.json");
+    let schema: Value = serde_json::from_str(
+        &std::fs::read_to_string(&schema_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", schema_path.display())),
+    )
+    .expect("format impact eval schema json");
+    let validator = jsonschema::validator_for(&schema).expect("format impact schema");
+    validator
+        .validate(&eval)
+        .unwrap_or_else(|error| panic!("format impact eval schema validation failed: {error}"));
+
+    assert_eq!(eval["schemaVersion"], 1, "{eval:#}");
+    assert_eq!(
+        eval["formats"],
+        serde_json::json!(["json", "toon"]),
+        "{eval:#}"
+    );
+
+    let cases = eval["cases"].as_array().expect("format impact eval cases");
+    assert!(
+        cases.len() >= 7,
+        "format impact eval should cover tool catalog, symbol extraction, relationship navigation, validation recovery, workflow evidence, negative routing, and large read-only output"
+    );
+
+    let case_ids = cases
+        .iter()
+        .map(|case| case["id"].as_str().expect("case id"))
+        .collect::<BTreeSet<_>>();
+    for required in [
+        "tool-catalog-comprehension",
+        "symbol-result-extraction",
+        "relationship-navigation-continuation",
+        "validation-error-recovery",
+        "workflow-evidence-json-artifacts",
+        "non-kotlin-negative-routing",
+        "large-read-only-catalog-efficiency",
+    ] {
+        assert!(
+            case_ids.contains(required),
+            "format impact eval should include {required}"
+        );
+    }
+
+    for case in cases {
+        assert_no_local_paths(case, case["id"].as_str().expect("case id"));
+        assert_eq!(case["pairedFormats"], eval["formats"], "{case:#}");
+        assert!(
+            case["prompt"]
+                .as_str()
+                .is_some_and(|prompt| !prompt.is_empty()),
+            "case should include a prompt: {case:#}"
+        );
+        assert!(
+            case["goldFacts"]
+                .as_array()
+                .is_some_and(|facts| facts.len() >= 2),
+            "case should include gold facts: {case:#}"
+        );
+        assert!(
+            case["reportOnly"].as_bool() == Some(true),
+            "format impact live accuracy cases must stay report-only: {case:#}"
+        );
+
+        let expected_actions = case["expectedActions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("case {} should list expected actions", case["id"]));
+        let forbidden_actions = case["forbiddenActions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("case {} should list forbidden actions", case["id"]));
+        if case["expectedPrimitive"]["name"] == "none" {
+            assert!(
+                expected_actions
+                    .iter()
+                    .all(|action| action["kind"] == "generic"),
+                "negative format-impact cases should not expect Kast actions: {case:#}"
+            );
+            assert!(
+                forbidden_actions
+                    .iter()
+                    .any(|action| action == "kast agent call"),
+                "negative format-impact cases should forbid Kast calls: {case:#}"
+            );
+        } else {
+            assert!(
+                expected_actions.iter().any(|action| {
+                    action["kind"] == "command"
+                        && action["name"]
+                            .as_str()
+                            .is_some_and(|name| name.starts_with("kast agent"))
+                }),
+                "positive format-impact cases should expect a kast agent command: {case:#}"
+            );
+            assert!(
+                forbidden_actions.iter().any(|action| action == "grep")
+                    && forbidden_actions.iter().any(|action| action == "rg"),
+                "positive format-impact cases should forbid text-search fallbacks: {case:#}"
+            );
+        }
+    }
+}
+
+#[test]
+fn format_impact_metric_pack_and_runner_are_report_only() {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repo root");
+    let manifest_path = repo_root.join(".github/plugin-eval/kast-format-impact/manifest.json");
+    let manifest: Value = serde_json::from_str(
+        &std::fs::read_to_string(&manifest_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", manifest_path.display())),
+    )
+    .expect("format impact metric pack manifest");
+
+    assert_eq!(manifest["name"], "kast-format-impact", "{manifest:#}");
+    assert_eq!(
+        manifest["command"],
+        serde_json::json!(["node", "./emit-kast-format-impact-metrics.mjs"]),
+        "{manifest:#}"
+    );
+
+    let runner_path = repo_root.join(".github/scripts/run-kast-format-impact-report.sh");
+    let runner = std::fs::read_to_string(&runner_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", runner_path.display()));
+    assert!(
+        runner.contains("format_impact_report"),
+        "runner should use the Rust TOON-aware report generator: {runner}"
+    );
+    assert!(
+        runner.contains("KAST_FORMAT_IMPACT_OBSERVED_JSONL"),
+        "runner should feed observed JSONL into the metric pack: {runner}"
+    );
+    assert!(
+        !runner.contains("exit 1 # accuracy"),
+        "report-only accuracy deltas should not be hard CI failures: {runner}"
+    );
+}

@@ -67,3 +67,8 @@ For terminal onboarding and executable command examples, run:
 ```console
 .github/scripts/test-terminal-onboarding-contract.sh
 ```
+
+For plugin-eval metric pack changes, run the script that owns the changed pack,
+such as `.github/scripts/test-kast-routing-evals.sh` for routing checks or
+`.github/scripts/run-kast-format-impact-report.sh` for the report-only TOON
+format impact pack.
