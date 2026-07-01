@@ -1,6 +1,83 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn agent_output_renderer_defaults_to_pretty_json() {
+        let value = json!({
+            "ok": true,
+            "method": "agent/tools",
+            "result": {
+                "type": "KAST_AGENT_TOOLS",
+                "tools": [
+                    {"name": "kast_resolve", "method": "symbol/resolve"},
+                    {"name": "kast_references", "method": "symbol/references"}
+                ]
+            },
+            "schemaVersion": 3
+        });
+
+        let rendered = render_agent_output(&value, AgentOutputFormat::Json)
+            .expect("render default json agent output");
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered).expect("rendered json"),
+            value
+        );
+        assert!(
+            rendered.ends_with('\n'),
+            "agent output should keep the existing trailing newline contract"
+        );
+    }
+
+    #[test]
+    fn agent_output_renderer_can_emit_round_trippable_toon() {
+        let value = json!({
+            "ok": true,
+            "method": "agent/tools",
+            "result": {
+                "type": "KAST_AGENT_TOOLS",
+                "tools": [
+                    {"name": "kast_resolve", "method": "symbol/resolve", "mutates": false},
+                    {"name": "kast_references", "method": "symbol/references", "mutates": false},
+                    {"name": "kast_rename", "method": "symbol/rename", "mutates": true}
+                ]
+            },
+            "schemaVersion": 3
+        });
+
+        let rendered = render_agent_output(&value, AgentOutputFormat::Toon)
+            .expect("render toon agent output");
+        let decoded: serde_json::Value =
+            toon_format::decode_default(rendered.trim()).expect("decode toon output");
+
+        assert_eq!(decoded, value);
+    }
+
+    #[test]
+    fn agent_output_renderer_toon_is_smaller_for_uniform_agent_rows() {
+        let value = json!({
+            "tools": [
+                {"name": "kast_resolve", "method": "symbol/resolve", "mutates": false},
+                {"name": "kast_references", "method": "symbol/references", "mutates": false},
+                {"name": "kast_rename", "method": "symbol/rename", "mutates": true},
+                {"name": "kast_workspace_search", "method": "raw/workspace-search", "mutates": false}
+            ]
+        });
+
+        let json_output = render_agent_output(&value, AgentOutputFormat::Json)
+            .expect("render json agent output");
+        let toon_output = render_agent_output(&value, AgentOutputFormat::Toon)
+            .expect("render toon agent output");
+
+        assert!(
+            toon_output.len() < json_output.len(),
+            "TOON should reduce repeated field names for uniform rows: json={}, toon={}",
+            json_output.len(),
+            toon_output.len()
+        );
+    }
 
     #[test]
     fn rendered_human_output_plain_text_does_not_dump_raw_markdown_tokens() {
