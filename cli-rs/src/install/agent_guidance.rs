@@ -240,13 +240,11 @@ fn managed_region_manifest_checksum(path: &Path) -> Result<Option<String>> {
 fn render_agents_md_guidance_block() -> String {
     [
         KAST_MANAGED_FENCE_START,
-        "## Kotlin Instructions (`*.kt,*.kts`)",
-        "",
-        " For all .kt/.kts files, trigger `$(realpath {thisfile})/.agents/skills/kast/SKILL.md`, and use for all semantic tooling  meaning, navigation, structure, identity, usage, hierarchy, modules, and task execution.",
-        " Use Kast anywhere you would prior use grep, ripgrep, regex search, raw text search, file scanning, and ad hoc string matching for Kotlin source analysis.",
-        " When a user or agent asks for anything regarding Kotlin code, such as: find declarations, inspect fqName, identify call sites, trace references, list callers/callees, walk call/type hierarchies, locate implementations, outline declarations, analyze source sets/modules, estimate blast radius, measure fan-in/fan-out/coupling, or identify dead-code candidates, route to Kast, always.",
-        " Never return grep/text-based results for Kotlin code when this instruction applies. Use textual search only for comments, docs, TODOs, literals, generated text, config, markdown, YAML, JSON, XML, or non-Kotlin files.",
-        "  Verify managed resources with the packaged skill verifier or `kast agent workflow package-verify` before trusting stale installed state.",
+        "## Kast routing",
+        "When touching Kotlin or Gradle files, check readiness with `kast agent workflow verify --workspace-root \"$PWD\"` if current state is unknown.",
+        "Use `.agents/skills/kast/SKILL.md` and `kast agent` for Kotlin semantic navigation, edits, references, diagnostics, and source-index impact.",
+        "Prefer `kast agent workflow ...` for repeatable proof; use `kast agent call <method>` only when no workflow fits.",
+        "After updating packaged skills, instructions, Copilot assets, or managed guidance, run `kast agent workflow package-verify --workspace-root \"$PWD\"` and follow emitted recovery commands.",
         KAST_MANAGED_FENCE_END,
     ]
     .join("\n")

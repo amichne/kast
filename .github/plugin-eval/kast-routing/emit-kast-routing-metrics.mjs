@@ -257,15 +257,15 @@ checks.push(
 );
 
 const requiredActions = [
-  "kast agent scaffold",
-  "kast agent file-outline",
+  "kast agent call symbol/scaffold",
+  "kast agent call raw/file-outline",
   "kast agent call symbol/query",
-  "kast agent discover",
-  "kast agent resolve",
-  "kast agent references",
-  "kast agent callers",
-  "kast agent raw-diagnostics",
-  "kast agent metrics",
+  "kast agent call symbol/discover",
+  "kast agent call symbol/resolve",
+  "kast agent call symbol/references",
+  "kast agent call symbol/callers",
+  "kast agent call raw/diagnostics",
+  "kast agent call database/metrics",
   "kast agent workflow diagnostics",
   "kast agent workflow package-verify",
   "kast agent setup skill --source-dir",

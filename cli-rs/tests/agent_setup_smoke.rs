@@ -2,6 +2,48 @@ mod support;
 
 use support::*;
 
+fn assert_compact_kast_guidance(content: &str) {
+    assert!(
+        content.contains(
+            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#
+        ),
+        "{content}"
+    );
+    assert!(
+        content.contains("Use `.agents/skills/kast/SKILL.md` and `kast agent`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent workflow verify --workspace-root \"$PWD\"`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent workflow package-verify --workspace-root \"$PWD\"`"),
+        "{content}"
+    );
+    assert!(
+        !content.contains("When a user or agent asks for anything regarding Kotlin code"),
+        "{content}"
+    );
+    assert!(
+        !content.contains("grep, ripgrep, regex search, raw text search"),
+        "{content}"
+    );
+    let managed_lines = content
+        .lines()
+        .filter(|line| {
+            !line.is_empty()
+                && !line.starts_with("<kast ")
+                && !line.starts_with("</kast>")
+                && !line.starts_with("<!--")
+        })
+        .count();
+    assert!(
+        (4..=5).contains(&managed_lines),
+        "Kast guidance should stay a 4-5 line routing aid, got {managed_lines}: {content}"
+    );
+}
+
 #[test]
 fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -59,20 +101,7 @@ fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
     let root_agents = std::fs::read_to_string(repo.join("AGENTS.md")).expect("agents");
     assert_eq!(root_agents, "# Repo guidance\n\nKeep local text.\n");
     let local_agents = std::fs::read_to_string(repo.join("AGENTS.local.md")).expect("local agents");
-    assert!(
-        local_agents.contains(
-            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#
-        ),
-        "{local_agents}"
-    );
-    assert!(
-        local_agents.contains("`.agents/skills/kast/SKILL.md`"),
-        "{local_agents}"
-    );
-    assert!(
-        local_agents.contains("`kast agent tools`"),
-        "{local_agents}"
-    );
+    assert_compact_kast_guidance(&local_agents);
     let exclude = std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git exclude");
     assert!(exclude.contains("AGENTS.local.md"), "{exclude}");
     assert!(!repo.join(".github/lsp.json").exists());
@@ -175,13 +204,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
         String::from_utf8_lossy(&setup.stderr)
     );
     let content = std::fs::read_to_string(&scoped_agents).expect("scoped agents");
-    assert!(
-        content.contains(
-            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#
-        ),
-        "{content}"
-    );
-    assert!(content.contains("`kast agent workflow ...`"), "{content}");
+    assert_compact_kast_guidance(&content);
     assert!(repo.join("AGENTS.local.md").is_file());
 }
 
@@ -208,7 +231,7 @@ fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
     let agents_path = repo.join("AGENTS.local.md");
     let mut content = std::fs::read_to_string(&agents_path).expect("agents");
     content = content.replace(
-        "Use `.agents/skills/kast/SKILL.md`",
+        "Use `.agents/skills/kast/SKILL.md` and `kast agent`",
         "Use `custom/SKILL.md`",
     );
     std::fs::write(&agents_path, content).expect("tamper agents");
@@ -243,7 +266,7 @@ fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
     );
     let repaired = std::fs::read_to_string(&agents_path).expect("repaired agents");
     assert!(
-        repaired.contains("Use `.agents/skills/kast/SKILL.md`"),
+        repaired.contains("Use `.agents/skills/kast/SKILL.md` and `kast agent`"),
         "{repaired}"
     );
 }
