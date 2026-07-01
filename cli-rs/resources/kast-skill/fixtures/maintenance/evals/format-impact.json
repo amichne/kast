@@ -1,0 +1,397 @@
+{
+  "$schema": "./format-impact.schema.json",
+  "schemaVersion": 1,
+  "description": "Report-only paired JSON versus TOON cases for measuring Kast agent output comprehension, route accuracy, and byte cost without making live model results a CI gate.",
+  "formats": [
+    "json",
+    "toon"
+  ],
+  "cases": [
+    {
+      "id": "tool-catalog-comprehension",
+      "scenario": "TOOL_CATALOG_COMPREHENSION",
+      "prompt": "Given the agent tool catalog, choose the first Kast action for finding where EventBean is declared in a Kotlin workspace.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "agent-tools",
+        "description": "Use the current kast agent tools envelope in JSON and TOON forms."
+      },
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "expectedActions": [
+        {
+          "kind": "command",
+          "name": "kast agent call symbol/query"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "workspace file dump",
+        "manual package inference"
+      ],
+      "goldFacts": [
+        "The envelope method is agent/tools.",
+        "The result type is KAST_AGENT_TOOLS.",
+        "The selected route is symbol/query, not text search."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "agent/tools",
+          "KAST_AGENT_TOOLS",
+          "symbol/query"
+        ],
+        "forbiddenTerms": [
+          "grep",
+          "rg",
+          "workspace file dump",
+          "manual package inference"
+        ]
+      },
+      "metrics": [
+        "routeAccuracy",
+        "fieldAccuracy",
+        "forbiddenFallbacks",
+        "stdoutBytes",
+        "decodedEquivalent"
+      ],
+      "reportOnly": true
+    },
+    {
+      "id": "symbol-result-extraction",
+      "scenario": "SYMBOL_RESULT_EXTRACTION",
+      "prompt": "Given a symbol resolve envelope, extract the method, resolved declaration identity, file path, and the next inspection action without inventing fields.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "synthetic-envelope",
+        "description": "Use a stable symbol/resolve-style envelope encoded as JSON and TOON."
+      },
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "expectedActions": [
+        {
+          "kind": "command",
+          "name": "kast agent call symbol/scaffold"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "invented response fields",
+        "generic file read before Kast"
+      ],
+      "goldFacts": [
+        "The envelope method is symbol/resolve.",
+        "The declaration is EventBean.",
+        "The file path must be read from result data, not inferred from the package name."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "symbol/resolve",
+          "EventBean",
+          "src/main/kotlin/com/example/EventBean.kt",
+          "symbol/scaffold"
+        ],
+        "forbiddenTerms": [
+          "grep",
+          "rg",
+          "invented response fields",
+          "generic file read before Kast"
+        ]
+      },
+      "metrics": [
+        "fieldAccuracy",
+        "answerVerdict",
+        "forbiddenFallbacks",
+        "decodedEquivalent"
+      ],
+      "reportOnly": true
+    },
+    {
+      "id": "relationship-navigation-continuation",
+      "scenario": "RELATIONSHIP_NAVIGATION",
+      "prompt": "Continue from a resolved Kotlin declaration by finding usages and incoming callers, preserving symbol identity across the next Kast calls.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "synthetic-envelope",
+        "description": "Use a resolved symbol envelope that contains enough identity to request references and callers."
+      },
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "expectedActions": [
+        {
+          "kind": "command",
+          "name": "kast agent call symbol/references"
+        },
+        {
+          "kind": "command",
+          "name": "kast agent call symbol/callers"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "textual call graph",
+        "unresolved name matching"
+      ],
+      "goldFacts": [
+        "The continuation must use symbol/references or symbol/callers.",
+        "The action must preserve the resolved symbol identity.",
+        "Text matching is not an acceptable replacement."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "EventBean",
+          "symbol/references",
+          "symbol/callers"
+        ],
+        "forbiddenTerms": [
+          "grep",
+          "rg",
+          "textual call graph",
+          "unresolved name matching"
+        ]
+      },
+      "metrics": [
+        "routeAccuracy",
+        "fieldAccuracy",
+        "forbiddenFallbacks",
+        "decodedEquivalent"
+      ],
+      "reportOnly": true
+    },
+    {
+      "id": "validation-error-recovery",
+      "scenario": "VALIDATION_RECOVERY",
+      "prompt": "Given an AGENT_REQUEST_INVALID envelope for symbol/resolve, repair the request using JSON params and retry the same method.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "validation-error",
+        "description": "Use the current validation error envelope from kast agent call symbol/resolve."
+      },
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "expectedActions": [
+        {
+          "kind": "command",
+          "name": "kast agent call symbol/resolve --params-file"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "TOON params",
+        "changing methods instead of repairing params"
+      ],
+      "goldFacts": [
+        "The error code is AGENT_REQUEST_INVALID.",
+        "Request params remain JSON even when stdout was TOON.",
+        "The retry method remains symbol/resolve."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "AGENT_REQUEST_INVALID",
+          "JSON",
+          "symbol/resolve",
+          "--params-file"
+        ],
+        "forbiddenTerms": [
+          "grep",
+          "rg",
+          "TOON params",
+          "changing methods instead of repairing params"
+        ]
+      },
+      "metrics": [
+        "routeAccuracy",
+        "fieldAccuracy",
+        "answerVerdict",
+        "decodedEquivalent"
+      ],
+      "reportOnly": true
+    },
+    {
+      "id": "workflow-evidence-json-artifacts",
+      "scenario": "WORKFLOW_EVIDENCE",
+      "prompt": "Given TOON workflow stdout, identify the workflow result and inspect the emitted workflow evidence files as JSON artifacts.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "workflow-dry-run",
+        "description": "Use a dry-run symbol workflow stdout envelope plus its generated workflow files."
+      },
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "expectedActions": [
+        {
+          "kind": "command",
+          "name": "kast agent workflow symbol --dry-run"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "TOON workflow files",
+        "treating dry-run as mutation proof"
+      ],
+      "goldFacts": [
+        "Only stdout changes format.",
+        "workflow.json remains JSON.",
+        "Step input and stdout files remain JSON."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "agent/workflow/symbol",
+          "dryRun",
+          "workflow.json",
+          "stdout.json",
+          "JSON"
+        ],
+        "forbiddenTerms": [
+          "grep",
+          "rg",
+          "TOON workflow files",
+          "treating dry-run as mutation proof"
+        ]
+      },
+      "metrics": [
+        "fieldAccuracy",
+        "answerVerdict",
+        "stdoutBytes",
+        "decodedEquivalent"
+      ],
+      "reportOnly": true
+    },
+    {
+      "id": "non-kotlin-negative-routing",
+      "scenario": "NEGATIVE_ROUTING",
+      "prompt": "Update docs/commands/install.md copy and run the docs content contract. No Kotlin or Kast package-state question is involved.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "prompt-only",
+        "description": "No Kast output should be needed for this unrelated docs task."
+      },
+      "expectedPrimitive": {
+        "type": "none",
+        "name": "none"
+      },
+      "expectedActions": [
+        {
+          "kind": "generic",
+          "name": "normal file read"
+        }
+      ],
+      "forbiddenActions": [
+        "kast agent call",
+        "kast agent workflow",
+        "symbol/query",
+        "semantic backend warmup"
+      ],
+      "goldFacts": [
+        "The task is docs-only.",
+        "No Kotlin semantic route should be selected."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "docs/commands/install.md",
+          "docs content contract"
+        ],
+        "forbiddenTerms": [
+          "kast agent call",
+          "kast agent workflow",
+          "symbol/query",
+          "semantic backend warmup"
+        ]
+      },
+      "metrics": [
+        "routeAccuracy",
+        "forbiddenFallbacks",
+        "answerVerdict"
+      ],
+      "reportOnly": true
+    },
+    {
+      "id": "large-read-only-catalog-efficiency",
+      "scenario": "LARGE_READ_ONLY_OUTPUT",
+      "prompt": "Compare JSON and TOON agent tool catalog output and report whether the denser form preserves semantics while reducing stdout bytes.",
+      "pairedFormats": [
+        "json",
+        "toon"
+      ],
+      "inputArtifact": {
+        "kind": "agent-tools",
+        "description": "Use the current agent tools catalog because it is a large read-only response."
+      },
+      "expectedPrimitive": {
+        "type": "skill",
+        "name": "kast"
+      },
+      "expectedActions": [
+        {
+          "kind": "command",
+          "name": "kast agent --format toon tools"
+        }
+      ],
+      "forbiddenActions": [
+        "grep",
+        "rg",
+        "tokenizer dependency",
+        "schema change"
+      ],
+      "goldFacts": [
+        "TOON decodes to the same JSON value as default output.",
+        "TOON stdout bytes are lower than pretty JSON bytes.",
+        "The agent tools schemaVersion and catalogSha256 are preserved."
+      ],
+      "answerScoring": {
+        "requiredTerms": [
+          "TOON",
+          "same JSON value",
+          "lower",
+          "schemaVersion",
+          "catalogSha256"
+        ],
+        "forbiddenTerms": [
+          "grep",
+          "rg",
+          "tokenizer dependency",
+          "schema change"
+        ]
+      },
+      "metrics": [
+        "stdoutBytes",
+        "decodedEquivalent",
+        "fieldAccuracy",
+        "answerVerdict"
+      ],
+      "reportOnly": true
+    }
+  ]
+}

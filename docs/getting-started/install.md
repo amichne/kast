@@ -200,7 +200,8 @@ For live Copilot CLI validation of the SDK extension tools, load the source
 package explicitly with `--plugin-dir cli-rs/resources/plugin`.
 
 Use the development Gradle task when you need a local debug CLI and IDEA plugin
-from the checkout:
+from the checkout. It also configures the developer-machine backend default to
+the IDEA plugin backend:
 
 ```console title="Install local development CLI and plugin"
 ./gradlew installDevelopmentLocal

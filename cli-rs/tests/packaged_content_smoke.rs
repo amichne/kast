@@ -50,6 +50,10 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
     assert!(skill.contains("Kotlin work uses `kast agent`."), "{skill}");
     assert!(skill.contains("`kast agent call <method>`"), "{skill}");
     assert!(skill.contains("`kast agent workflow ...`"), "{skill}");
+    assert!(
+        skill.contains("`--format toon` only for large read-only outputs"),
+        "{skill}"
+    );
     assert!(skill.contains("raw catalog methods only after"), "{skill}");
     assert!(
         !skill.contains("`kast agent scaffold`"),
@@ -247,4 +251,237 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
             "routing eval should reject public API leak {required}"
         );
     }
+}
+
+#[test]
+fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let eval_path = root.join("resources/kast-skill/fixtures/maintenance/evals/format-impact.json");
+    let eval: Value = serde_json::from_str(
+        &std::fs::read_to_string(&eval_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", eval_path.display())),
+    )
+    .expect("format impact eval json");
+    let schema_path =
+        root.join("resources/kast-skill/fixtures/maintenance/evals/format-impact.schema.json");
+    let schema: Value = serde_json::from_str(
+        &std::fs::read_to_string(&schema_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", schema_path.display())),
+    )
+    .expect("format impact eval schema json");
+    let validator = jsonschema::validator_for(&schema).expect("format impact schema");
+    validator
+        .validate(&eval)
+        .unwrap_or_else(|error| panic!("format impact eval schema validation failed: {error}"));
+
+    assert_eq!(eval["schemaVersion"], 1, "{eval:#}");
+    assert_eq!(
+        eval["formats"],
+        serde_json::json!(["json", "toon"]),
+        "{eval:#}"
+    );
+
+    let cases = eval["cases"].as_array().expect("format impact eval cases");
+    assert!(
+        cases.len() >= 7,
+        "format impact eval should cover tool catalog, symbol extraction, relationship navigation, validation recovery, workflow evidence, negative routing, and large read-only output"
+    );
+
+    let case_ids = cases
+        .iter()
+        .map(|case| case["id"].as_str().expect("case id"))
+        .collect::<BTreeSet<_>>();
+    for required in [
+        "tool-catalog-comprehension",
+        "symbol-result-extraction",
+        "relationship-navigation-continuation",
+        "validation-error-recovery",
+        "workflow-evidence-json-artifacts",
+        "non-kotlin-negative-routing",
+        "large-read-only-catalog-efficiency",
+    ] {
+        assert!(
+            case_ids.contains(required),
+            "format impact eval should include {required}"
+        );
+    }
+
+    for case in cases {
+        assert_no_local_paths(case, case["id"].as_str().expect("case id"));
+        assert_eq!(case["pairedFormats"], eval["formats"], "{case:#}");
+        assert!(
+            case["prompt"]
+                .as_str()
+                .is_some_and(|prompt| !prompt.is_empty()),
+            "case should include a prompt: {case:#}"
+        );
+        assert!(
+            case["goldFacts"]
+                .as_array()
+                .is_some_and(|facts| facts.len() >= 2),
+            "case should include gold facts: {case:#}"
+        );
+        assert!(
+            case["answerScoring"]["requiredTerms"]
+                .as_array()
+                .is_some_and(|terms| !terms.is_empty()),
+            "case should include deterministic answer scoring terms: {case:#}"
+        );
+        assert!(
+            case["answerScoring"]["forbiddenTerms"].is_array(),
+            "case should include deterministic forbidden answer terms: {case:#}"
+        );
+        assert!(
+            case["reportOnly"].as_bool() == Some(true),
+            "format impact live accuracy cases must stay report-only: {case:#}"
+        );
+
+        let expected_actions = case["expectedActions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("case {} should list expected actions", case["id"]));
+        let forbidden_actions = case["forbiddenActions"]
+            .as_array()
+            .unwrap_or_else(|| panic!("case {} should list forbidden actions", case["id"]));
+        if case["expectedPrimitive"]["name"] == "none" {
+            assert!(
+                expected_actions
+                    .iter()
+                    .all(|action| action["kind"] == "generic"),
+                "negative format-impact cases should not expect Kast actions: {case:#}"
+            );
+            assert!(
+                forbidden_actions
+                    .iter()
+                    .any(|action| action == "kast agent call"),
+                "negative format-impact cases should forbid Kast calls: {case:#}"
+            );
+        } else {
+            assert!(
+                expected_actions.iter().any(|action| {
+                    action["kind"] == "command"
+                        && action["name"]
+                            .as_str()
+                            .is_some_and(|name| name.starts_with("kast agent"))
+                }),
+                "positive format-impact cases should expect a kast agent command: {case:#}"
+            );
+            assert!(
+                forbidden_actions.iter().any(|action| action == "grep")
+                    && forbidden_actions.iter().any(|action| action == "rg"),
+                "positive format-impact cases should forbid text-search fallbacks: {case:#}"
+            );
+        }
+    }
+}
+
+#[test]
+fn format_impact_metric_pack_and_runner_capture_scoreable_answers() {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repo root");
+    let manifest_path = repo_root.join(".github/plugin-eval/kast-format-impact/manifest.json");
+    let manifest: Value = serde_json::from_str(
+        &std::fs::read_to_string(&manifest_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", manifest_path.display())),
+    )
+    .expect("format impact metric pack manifest");
+
+    assert_eq!(manifest["name"], "kast-format-impact", "{manifest:#}");
+    assert_eq!(
+        manifest["command"],
+        serde_json::json!(["node", "./emit-kast-format-impact-metrics.mjs"]),
+        "{manifest:#}"
+    );
+
+    let runner_path = repo_root.join(".github/scripts/run-kast-format-impact-report.sh");
+    let runner = std::fs::read_to_string(&runner_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", runner_path.display()));
+    assert!(
+        runner.contains("format_impact_report"),
+        "runner should use the Rust TOON-aware report generator: {runner}"
+    );
+    assert!(
+        runner.contains("KAST_FORMAT_IMPACT_OBSERVED_JSONL"),
+        "runner should feed observed JSONL into the metric pack: {runner}"
+    );
+    assert!(
+        runner.contains("--answer-requests"),
+        "runner should write answer request JSONL for external answer capture: {runner}"
+    );
+    assert!(
+        runner.contains("KAST_FORMAT_IMPACT_ANSWERS_JSONL"),
+        "runner should score captured answers when supplied: {runner}"
+    );
+
+    let metric_pack_path = repo_root
+        .join(".github/plugin-eval/kast-format-impact/emit-kast-format-impact-metrics.mjs");
+    let metric_pack = std::fs::read_to_string(&metric_pack_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", metric_pack_path.display()));
+    assert!(
+        metric_pack.contains("format-impact-answer-scoring"),
+        "metric pack should expose answer scoring as a first-class check: {metric_pack}"
+    );
+    assert!(
+        metric_pack.contains("kast-format-impact-answer-pass-rate"),
+        "metric pack should emit answer pass-rate metrics: {metric_pack}"
+    );
+
+    let target = repo_root.join("cli-rs/resources/kast-skill");
+    let eval_path = target.join("fixtures/maintenance/evals/format-impact.json");
+    let eval: Value = serde_json::from_str(
+        &std::fs::read_to_string(&eval_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", eval_path.display())),
+    )
+    .expect("format impact eval json");
+    let temp = tempfile::tempdir().expect("format impact metric tempdir");
+    let observed_path = temp.path().join("observed.jsonl");
+    let mut observed = String::new();
+    for case in eval["cases"].as_array().expect("format impact cases") {
+        let case_id = case["id"].as_str().expect("case id");
+        for format in ["json", "toon"] {
+            observed.push_str(
+                &serde_json::to_string(&serde_json::json!({
+                    "caseId": case_id,
+                    "format": format,
+                    "decodedEquivalent": true,
+                    "answerVerdict": "pass",
+                    "stdoutBytes": 1
+                }))
+                .expect("observed record json"),
+            );
+            observed.push('\n');
+        }
+    }
+    std::fs::write(&observed_path, observed)
+        .unwrap_or_else(|error| panic!("write {}: {error}", observed_path.display()));
+
+    let output = Command::new("node")
+        .arg(&metric_pack_path)
+        .arg(&target)
+        .arg("skill")
+        .env("KAST_FORMAT_IMPACT_OBSERVED_JSONL", &observed_path)
+        .output()
+        .unwrap_or_else(|error| panic!("run {}: {error}", metric_pack_path.display()));
+    assert!(
+        output.status.success(),
+        "metric pack should run: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let metric_output: Value =
+        serde_json::from_slice(&output.stdout).expect("metric pack output json");
+    let answer_check = metric_output["checks"]
+        .as_array()
+        .expect("metric checks")
+        .iter()
+        .find(|check| check["id"] == "format-impact-answer-scoring")
+        .expect("answer scoring check");
+    assert_eq!(answer_check["status"], "pass", "{metric_output:#}");
+    let answer_pass_rate = metric_output["metrics"]
+        .as_array()
+        .expect("metric list")
+        .iter()
+        .find(|metric| metric["id"] == "kast-format-impact-answer-pass-rate")
+        .expect("answer pass-rate metric");
+    assert_eq!(answer_pass_rate["value"], 100, "{metric_output:#}");
 }

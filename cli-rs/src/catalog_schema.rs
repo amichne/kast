@@ -57,7 +57,9 @@ fn params_schema(command: &Value, method: &str) -> Result<Value> {
     match command.get("variants").and_then(Value::as_object) {
         Some(variants) if !variants.is_empty() => {
             let mut schemas = Vec::with_capacity(variants.len());
-            for (variant_name, variant_request) in variants {
+            let mut sorted_variants = variants.iter().collect::<Vec<_>>();
+            sorted_variants.sort_by_key(|(name, _)| *name);
+            for (variant_name, variant_request) in sorted_variants {
                 schemas.push(variant_schema(
                     command,
                     variant_name,
@@ -403,5 +405,45 @@ mod tests {
         });
         assert!(validator.validate(&valid).is_ok());
         assert!(validator.validate(&invalid).is_err());
+    }
+
+    #[test]
+    fn variant_schema_order_is_canonical() {
+        let catalog = json!({
+            "commands": {
+                "symbol/rename": {
+                    "request": {
+                        "fields": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["BY_SYMBOL", "BY_OFFSET"]
+                            }
+                        },
+                        "required": ["type"]
+                    },
+                    "variants": {
+                        "BY_SYMBOL": {
+                            "fields": {
+                                "symbol": { "type": "string" }
+                            },
+                            "required": ["symbol"]
+                        },
+                        "BY_OFFSET": {
+                            "fields": {
+                                "filePath": { "type": "string" }
+                            },
+                            "required": ["filePath"]
+                        }
+                    }
+                }
+            }
+        });
+        let schema = request_schema(&catalog, "symbol/rename").expect("schema");
+        let variants = schema["properties"]["params"]["oneOf"]
+            .as_array()
+            .expect("oneOf variants");
+        let first_type = &variants[0]["properties"]["type"]["const"];
+
+        assert_eq!(first_type, "BY_OFFSET");
     }
 }

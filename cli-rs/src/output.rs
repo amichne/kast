@@ -1,4 +1,4 @@
-use crate::cli::{AgentSetupHarness, OutputFormat, ReadyTarget};
+use crate::cli::{AgentOutputFormat, AgentSetupHarness, OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
@@ -12,7 +12,7 @@ use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
     WorkspaceRestartResult, WorkspaceStatusResult,
 };
-use crate::self_mgmt::SelfDoctorResult;
+use crate::self_mgmt::{DeveloperMachineDefaultsResult, SelfDoctorResult};
 use glamour::{Renderer, Style as GlamourStyle};
 use serde::Serialize;
 use serde_json::Value;

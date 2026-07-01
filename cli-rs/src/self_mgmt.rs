@@ -55,6 +55,18 @@ pub struct DoctorBinaryDiagnostic {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DeveloperMachineDefaultsResult {
+    pub config_path: String,
+    pub default_backend: config::RuntimeDefaultBackend,
+    pub idea_launch_enabled: bool,
+    pub idea_launch_command: String,
+    pub require_installed_plugin: bool,
+    pub applied: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
@@ -328,10 +340,30 @@ pub fn write_install_state(install: &InstallState) -> Result<PathBuf> {
     manifest::write_install_manifest(install)
 }
 
-pub fn record_repo_resource(repo_root: &Path, mut resource: ManagedRepoResource) -> Result<()> {
+pub fn record_repo_resource(repo_root: &Path, resource: ManagedRepoResource) -> Result<()> {
+    let paths = manifest::default_resolved_paths();
+    manifest::with_install_lock(&paths, || {
+        let mut install =
+            manifest::read_install_manifest()?.unwrap_or_else(manifest::fresh_manifest);
+        upsert_repo_resource(&mut install, repo_root, resource);
+        install.version = install.version.trim().to_string();
+        if install.version.is_empty() {
+            install.version = cli::version().to_string();
+        }
+        install.active_version = cli::version().to_string();
+        install.updated_at = manifest::current_timestamp();
+        let paths = manifest::paths_from_manifest(&install)?;
+        manifest::write_manifest_atomic(&paths.manifest_file, &install)
+    })
+}
+
+fn upsert_repo_resource(
+    install: &mut InstallState,
+    repo_root: &Path,
+    mut resource: ManagedRepoResource,
+) {
     let normalized_repo = config::normalize(repo_root.to_path_buf());
     let repo_path = normalized_repo.display().to_string();
-    let mut install = read_global_install_state()?.unwrap_or_else(manifest::fresh_manifest);
     let repo_index = install
         .repos
         .iter()
@@ -373,14 +405,6 @@ pub fn record_repo_resource(repo_root: &Path, mut resource: ManagedRepoResource)
             .cmp(&right.kind)
             .then_with(|| left.target_path.cmp(&right.target_path))
     });
-    install.version = install.version.trim().to_string();
-    if install.version.is_empty() {
-        install.version = cli::version().to_string();
-    }
-    install.active_version = cli::version().to_string();
-    install.updated_at = manifest::current_timestamp();
-    write_install_state(&install)?;
-    Ok(())
 }
 
 pub fn read_global_install_state() -> Result<Option<InstallState>> {
@@ -400,6 +424,33 @@ pub fn update_workspace_config(
 ) -> Result<PathBuf> {
     let path = config::workspace_data_directory(workspace_root)?.join("config.toml");
     update_config_file(&path, mutator)
+}
+
+pub fn configure_developer_machine_defaults(
+    dry_run: bool,
+) -> Result<DeveloperMachineDefaultsResult> {
+    let config_path = config::global_config_path();
+    if !dry_run {
+        update_global_config(write_developer_machine_idea_defaults)?;
+    }
+    Ok(DeveloperMachineDefaultsResult {
+        config_path: config_path.display().to_string(),
+        default_backend: config::RuntimeDefaultBackend::Idea,
+        idea_launch_enabled: true,
+        idea_launch_command: "idea".to_string(),
+        require_installed_plugin: true,
+        applied: !dry_run,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub(crate) fn write_developer_machine_idea_defaults(document: &mut toml::Table) -> Result<()> {
+    table(document, "runtime")?.insert("defaultBackend".to_string(), "idea".into());
+    let idea_launch = nested_table(document, "runtime", "ideaLaunch")?;
+    idea_launch.insert("enabled".to_string(), true.into());
+    idea_launch.insert("command".to_string(), "idea".into());
+    idea_launch.insert("requireInstalledPlugin".to_string(), true.into());
+    Ok(())
 }
 
 fn update_config_file(
@@ -439,6 +490,40 @@ fn write_config_document(path: &Path, document: &toml::Table) -> Result<()> {
 
 fn default_config_document() -> Result<toml::Table> {
     Ok(config::default_config_template()?.parse::<toml::Table>()?)
+}
+
+fn table<'a>(document: &'a mut toml::Table, key: &str) -> Result<&'a mut toml::Table> {
+    document
+        .entry(key.to_string())
+        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            crate::error::CliError::new(
+                "CONFIG_ERROR",
+                format!(
+                    "Cannot write developer-machine config because `{key}` is not a TOML table."
+                ),
+            )
+        })
+}
+
+fn nested_table<'a>(
+    document: &'a mut toml::Table,
+    first: &str,
+    second: &str,
+) -> Result<&'a mut toml::Table> {
+    table(document, first)?
+        .entry(second.to_string())
+        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            crate::error::CliError::new(
+                "CONFIG_ERROR",
+                format!(
+                    "Cannot write developer-machine config because `{first}.{second}` is not a TOML table."
+                ),
+            )
+        })
 }
 
 fn merge_config_document(base: &mut toml::Table, overlay: toml::Table) {
@@ -484,6 +569,23 @@ fn parse_version_triplet(value: &str) -> Option<(u64, u64, u64)> {
 mod tests {
     use super::*;
 
+    fn test_repo_resource(
+        kind: ManagedResourceKind,
+        target_path: &str,
+        version: &str,
+    ) -> ManagedRepoResource {
+        ManagedRepoResource {
+            kind,
+            target_path: target_path.to_string(),
+            primitive_version: version.to_string(),
+            source_bundle_sha256: format!("source-{version}"),
+            output_paths: vec![format!("{target_path}/output.md")],
+            output_checksums: vec![],
+            installed_at: format!("installed-{version}"),
+            history: vec![],
+        }
+    }
+
     #[test]
     fn configured_binary_match_accepts_manifest_active_binary() {
         let configured_binary = Path::new("/example/bin/kast");
@@ -501,5 +603,53 @@ mod tests {
             Path::new("/other/bin/kast"),
             Some(&install)
         ));
+    }
+
+    #[test]
+    fn repo_resource_upsert_preserves_resources_and_records_history() {
+        let mut install = manifest::fresh_manifest();
+        let repo_root = Path::new("/workspace/kast");
+        let skill_target = "/workspace/kast/.agents/skills/kast";
+        let instructions_target = "/workspace/kast/.agents/instructions/kast";
+
+        upsert_repo_resource(
+            &mut install,
+            repo_root,
+            test_repo_resource(ManagedResourceKind::Skill, skill_target, "1.0.0"),
+        );
+        upsert_repo_resource(
+            &mut install,
+            repo_root,
+            test_repo_resource(
+                ManagedResourceKind::Instructions,
+                instructions_target,
+                "1.0.0",
+            ),
+        );
+        upsert_repo_resource(
+            &mut install,
+            repo_root,
+            test_repo_resource(ManagedResourceKind::Skill, skill_target, "1.0.1"),
+        );
+
+        let repo = install
+            .repos
+            .iter()
+            .find(|repo| repo.path == repo_root.display().to_string())
+            .expect("repo resource entry");
+        assert_eq!(repo.resources.len(), 2);
+        let skill = repo
+            .resources
+            .iter()
+            .find(|resource| resource.kind == ManagedResourceKind::Skill)
+            .expect("skill resource");
+        assert_eq!(skill.primitive_version, "1.0.1");
+        assert_eq!(skill.history.len(), 1);
+        assert_eq!(skill.history[0].primitive_version, "1.0.0");
+        assert!(
+            repo.resources
+                .iter()
+                .any(|resource| resource.kind == ManagedResourceKind::Instructions)
+        );
     }
 }

@@ -135,6 +135,17 @@ fn install_idea_plugin_into_jetbrains_profiles(
             }
         }
     }
+    let developer_defaults = if args.dry_run {
+        self_mgmt::configure_developer_machine_defaults(true)?
+    } else {
+        reporter.idea_plugin_step_started("Configuring developer-machine IDEA defaults")?;
+        let defaults = self_mgmt::configure_developer_machine_defaults(false)?;
+        reporter.idea_plugin_step_finished(&format!(
+            "Configured IDEA plugin backend defaults at {}",
+            defaults.config_path
+        ))?;
+        defaults
+    };
 
     Ok(InstallIdeaPluginResult {
         cask_token,
@@ -154,6 +165,7 @@ fn install_idea_plugin_into_jetbrains_profiles(
             .map(|path| path.display().to_string())
             .collect(),
         dry_run: args.dry_run,
+        developer_defaults,
         warnings,
         schema_version: SCHEMA_VERSION,
     })

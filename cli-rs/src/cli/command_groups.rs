@@ -50,6 +50,8 @@ pub struct MachineArgs {
 pub enum MachineCommand {
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
     Plugin(IdeaPluginInstallArgs),
+    /// Configure developer-machine defaults to use the IDEA plugin backend.
+    Defaults(DeveloperMachineDefaultsArgs),
     /// Install shell PATH and completion integration.
     Shell(ShellInstallArgs),
     /// Print shell completion scripts.

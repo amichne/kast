@@ -1,7 +1,30 @@
 pub fn print_json(value: &impl Serialize) -> Result<()> {
-    serde_json::to_writer_pretty(io::stdout(), value)?;
-    println!();
+    print_agent_output(value, AgentOutputFormat::Json)
+}
+
+pub(crate) fn print_agent_output(value: &impl Serialize, format: AgentOutputFormat) -> Result<()> {
+    io::stdout().write_all(render_agent_output(value, format)?.as_bytes())?;
     Ok(())
+}
+
+pub(crate) fn render_agent_output(
+    value: &impl Serialize,
+    format: AgentOutputFormat,
+) -> Result<String> {
+    match format {
+        AgentOutputFormat::Json => {
+            let mut rendered = serde_json::to_string_pretty(value)?;
+            rendered.push('\n');
+            Ok(rendered)
+        }
+        AgentOutputFormat::Toon => {
+            let value = serde_json::to_value(value)?;
+            let mut rendered = toon_format::encode_default(&value)
+                .map_err(|error| CliError::new("TOON_ENCODE_ERROR", error.to_string()))?;
+            rendered.push('\n');
+            Ok(rendered)
+        }
+    }
 }
 
 pub fn print_error(error: &CliError, output: OutputFormat) -> Result<()> {

@@ -322,6 +322,70 @@ fn install_shell_writes_path_and_completion_profile_integration() {
 }
 
 #[test]
+fn developer_machine_defaults_configures_idea_plugin_backend() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let defaults = kast(&home, &config_home)
+        .args(["--output", "json", "developer", "machine", "defaults"])
+        .output()
+        .expect("developer machine defaults");
+
+    assert!(
+        defaults.status.success(),
+        "developer defaults should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&defaults.stdout),
+        String::from_utf8_lossy(&defaults.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&defaults.stdout).expect("developer defaults json");
+    assert_eq!(stdout["defaultBackend"], "idea");
+    assert_eq!(stdout["ideaLaunchEnabled"], true);
+    assert_eq!(stdout["ideaLaunchCommand"], "idea");
+    assert_eq!(stdout["requireInstalledPlugin"], true);
+    assert_eq!(stdout["applied"], true);
+
+    let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
+    assert!(config.contains("defaultBackend = \"idea\""), "{config}");
+    assert!(config.contains("[runtime.ideaLaunch]"), "{config}");
+    assert!(config.contains("enabled = true"), "{config}");
+    assert!(config.contains("command = \"idea\""), "{config}");
+    assert!(config.contains("requireInstalledPlugin = true"), "{config}");
+
+    let up = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--no-auto-start=true",
+        ])
+        .output()
+        .expect("runtime up");
+    assert!(
+        !up.status.success(),
+        "runtime up should fail without a live IDEA backend"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&up.stdout),
+        String::from_utf8_lossy(&up.stderr)
+    );
+    assert!(combined.contains("IDEA_PLUGIN_NOT_INSTALLED"), "{combined}");
+    assert!(
+        !combined.contains("Linux headless tarball"),
+        "developer defaults should not fall through to headless guidance: {combined}"
+    );
+}
+
+#[test]
 fn install_shell_prefers_running_cli_directory_over_stale_config_bin_dir() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

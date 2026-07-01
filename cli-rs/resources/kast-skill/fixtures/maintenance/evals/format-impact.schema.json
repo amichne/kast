@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kast TOON format impact eval corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "description",
+    "formats",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "formats": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "const": "json"
+        },
+        {
+          "const": "toon"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "scenario",
+        "prompt",
+        "pairedFormats",
+        "inputArtifact",
+        "expectedPrimitive",
+        "expectedActions",
+        "forbiddenActions",
+        "goldFacts",
+        "answerScoring",
+        "metrics",
+        "reportOnly"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "scenario": {
+          "enum": [
+            "TOOL_CATALOG_COMPREHENSION",
+            "SYMBOL_RESULT_EXTRACTION",
+            "RELATIONSHIP_NAVIGATION",
+            "VALIDATION_RECOVERY",
+            "WORKFLOW_EVIDENCE",
+            "NEGATIVE_ROUTING",
+            "LARGE_READ_ONLY_OUTPUT"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pairedFormats": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "json"
+            },
+            {
+              "const": "toon"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "inputArtifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "description"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "agent-tools",
+                "synthetic-envelope",
+                "validation-error",
+                "workflow-dry-run",
+                "prompt-only"
+              ]
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "expectedPrimitive": {
+          "$ref": "#/$defs/expectedPrimitive"
+        },
+        "expectedActions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        },
+        "forbiddenActions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "goldFacts": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "answerScoring": {
+          "$ref": "#/$defs/answerScoring"
+        },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "routeAccuracy",
+              "fieldAccuracy",
+              "forbiddenFallbacks",
+              "answerVerdict",
+              "stdoutBytes",
+              "decodedEquivalent"
+            ]
+          }
+        },
+        "reportOnly": {
+          "const": true
+        }
+      }
+    },
+    "expectedPrimitive": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "name"
+          ],
+          "properties": {
+            "type": {
+              "const": "skill"
+            },
+            "name": {
+              "const": "kast"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "name"
+          ],
+          "properties": {
+            "type": {
+              "const": "none"
+            },
+            "name": {
+              "const": "none"
+            }
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "command",
+            "generic"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "answerScoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requiredTerms",
+        "forbiddenTerms"
+      ],
+      "properties": {
+        "requiredTerms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbiddenTerms": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

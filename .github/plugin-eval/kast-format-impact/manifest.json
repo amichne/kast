@@ -1,0 +1,12 @@
+{
+  "name": "kast-format-impact",
+  "version": "1.0.0",
+  "supportedTargetKinds": [
+    "skill",
+    "directory"
+  ],
+  "command": [
+    "node",
+    "./emit-kast-format-impact-metrics.mjs"
+  ]
+}
