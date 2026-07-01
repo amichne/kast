@@ -223,6 +223,15 @@ mod tests {
             jetbrains_config_root: Some("/tmp/JetBrains".to_string()),
             plugin_directories: vec!["/tmp/JetBrains/IntelliJIdea2026.1/plugins".to_string()],
             dry_run,
+            developer_defaults: DeveloperMachineDefaultsResult {
+                config_path: "/tmp/config.toml".to_string(),
+                default_backend: crate::config::RuntimeDefaultBackend::Idea,
+                idea_launch_enabled: true,
+                idea_launch_command: "idea".to_string(),
+                require_installed_plugin: true,
+                applied: !dry_run,
+                schema_version: 3,
+            },
             warnings: vec![],
             schema_version: 3,
         }

@@ -58,6 +58,12 @@ fn idea_plugin_install_uses_profile_install_mode() {
             .display()
             .to_string()
     );
+    assert_eq!(stdout["developerDefaults"]["defaultBackend"], "idea");
+    assert_eq!(stdout["developerDefaults"]["applied"], false);
+    assert!(
+        !config_home.join("config.toml").exists(),
+        "dry-run plugin install must not write developer defaults"
+    );
     assert!(stdout.get("downloadDir").is_none(), "{stdout}");
 }
 

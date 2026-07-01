@@ -152,7 +152,8 @@ require_contains "$install_doc" "headless-linux.md" "Install docs must link the 
 require_contains "$headless_doc" 'scripts/install-ubuntu-debian.sh' "Headless docs must document the canonical Linux installer"
 require_contains "$headless_doc" 'kast developer release package ubuntu-debian-bundle' "Headless docs must document the release bundle packager"
 
-require_contains "$quickstart_doc" "kast setup --backend=headless" "Quickstart must start or warm a backend through setup"
+require_contains "$quickstart_doc" "kast setup --no-open-ide" "Quickstart must start or warm the developer-machine backend through setup"
+require_contains "$quickstart_doc" "kast setup --backend=headless" "Quickstart must keep explicit headless setup for Linux hosts"
 require_contains "$quickstart_doc" "kast agent call raw/resolve" "Quickstart must use agent resolve"
 require_contains "$quickstart_doc" "kast agent call raw/references" "Quickstart must use agent references"
 require_contains "$quickstart_doc" "kast agent call raw/workspace-symbol" "Quickstart must show name-to-offset bridge"

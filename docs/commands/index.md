@@ -40,7 +40,7 @@ flowchart LR
 | Agent automation | `agent tools`, `agent call <method>`, `agent workflow ...`, `agent lsp` | Discover tools, start LSP, and script semantic workflows |
 | Runtime | `status`, `developer runtime ...` | Inspect, start, refresh, or stop the workspace backend |
 | Inspect | `developer inspect paths`, `developer inspect metrics`, `developer inspect demo`, `developer inspect catalog` | Inspect paths, catalogs, demos, and source-index metrics |
-| Machine | `developer machine plugin`, `developer machine shell` | Manage local IDE plugin links and shell integration |
+| Machine | `developer machine plugin`, `developer machine defaults`, `developer machine shell` | Manage local IDE plugin links, developer defaults, and shell integration |
 | Release | `developer release package ...`, `developer release activate bundle`, `developer release generate`, `developer release validate` | Build, activate, or validate release artifacts |
 
 ## Output modes

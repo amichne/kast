@@ -55,6 +55,18 @@ pub struct DoctorBinaryDiagnostic {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DeveloperMachineDefaultsResult {
+    pub config_path: String,
+    pub default_backend: config::RuntimeDefaultBackend,
+    pub idea_launch_enabled: bool,
+    pub idea_launch_command: String,
+    pub require_installed_plugin: bool,
+    pub applied: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
@@ -402,6 +414,33 @@ pub fn update_workspace_config(
     update_config_file(&path, mutator)
 }
 
+pub fn configure_developer_machine_defaults(
+    dry_run: bool,
+) -> Result<DeveloperMachineDefaultsResult> {
+    let config_path = config::global_config_path();
+    if !dry_run {
+        update_global_config(write_developer_machine_idea_defaults)?;
+    }
+    Ok(DeveloperMachineDefaultsResult {
+        config_path: config_path.display().to_string(),
+        default_backend: config::RuntimeDefaultBackend::Idea,
+        idea_launch_enabled: true,
+        idea_launch_command: "idea".to_string(),
+        require_installed_plugin: true,
+        applied: !dry_run,
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+pub(crate) fn write_developer_machine_idea_defaults(document: &mut toml::Table) -> Result<()> {
+    table(document, "runtime")?.insert("defaultBackend".to_string(), "idea".into());
+    let idea_launch = nested_table(document, "runtime", "ideaLaunch")?;
+    idea_launch.insert("enabled".to_string(), true.into());
+    idea_launch.insert("command".to_string(), "idea".into());
+    idea_launch.insert("requireInstalledPlugin".to_string(), true.into());
+    Ok(())
+}
+
 fn update_config_file(
     path: &Path,
     mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
@@ -439,6 +478,40 @@ fn write_config_document(path: &Path, document: &toml::Table) -> Result<()> {
 
 fn default_config_document() -> Result<toml::Table> {
     Ok(config::default_config_template()?.parse::<toml::Table>()?)
+}
+
+fn table<'a>(document: &'a mut toml::Table, key: &str) -> Result<&'a mut toml::Table> {
+    document
+        .entry(key.to_string())
+        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            crate::error::CliError::new(
+                "CONFIG_ERROR",
+                format!(
+                    "Cannot write developer-machine config because `{key}` is not a TOML table."
+                ),
+            )
+        })
+}
+
+fn nested_table<'a>(
+    document: &'a mut toml::Table,
+    first: &str,
+    second: &str,
+) -> Result<&'a mut toml::Table> {
+    table(document, first)?
+        .entry(second.to_string())
+        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            crate::error::CliError::new(
+                "CONFIG_ERROR",
+                format!(
+                    "Cannot write developer-machine config because `{first}.{second}` is not a TOML table."
+                ),
+            )
+        })
 }
 
 fn merge_config_document(base: &mut toml::Table, overlay: toml::Table) {
