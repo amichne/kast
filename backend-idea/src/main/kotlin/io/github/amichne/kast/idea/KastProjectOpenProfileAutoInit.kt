@@ -6,7 +6,7 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import java.nio.file.Files
 import java.nio.file.Path
 
-internal object KastProjectOpenProfileAutoInit {
+object KastProjectOpenProfileAutoInit {
     fun execute(
         workspaceRoot: Path,
         config: KastConfig,
@@ -33,10 +33,10 @@ internal object KastProjectOpenProfileAutoInit {
 
     fun buildInstallCommand(workspaceRoot: Path, config: KastConfig): List<String> = buildList {
         add(config.cli.binaryPath.value)
-        add("install")
-        add("copilot")
-        add("--target-dir")
-        add(workspaceRoot.resolve(".github").toAbsolutePath().normalize().toString())
+        add("agent")
+        add("setup")
+        add("--workspace-root")
+        add(workspaceRoot.toAbsolutePath().normalize().toString())
         if (!config.projectOpen.autoExcludeGit.value) {
             add("--no-auto-exclude-git")
         }
@@ -65,21 +65,21 @@ internal object KastProjectOpenProfileAutoInit {
     fun log(result: ProjectOpenProfileAutoInitResult) {
         when (result) {
             is ProjectOpenProfileAutoInitResult.Installed ->
-                LOG.info("Kast project-open profile auto-init ran: ${result.command.joinToString(" ")}")
+                LOG.info("Kast project-open agent guidance setup ran: ${result.command.joinToString(" ")}")
             is ProjectOpenProfileAutoInitResult.Skipped ->
-                LOG.info("Kast project-open profile auto-init skipped: ${result.reason}")
+                LOG.info("Kast project-open agent guidance setup skipped: ${result.reason}")
             is ProjectOpenProfileAutoInitResult.Failed ->
-                LOG.warn("Kast project-open profile auto-init failed: ${result.message}")
+                LOG.warn("Kast project-open agent guidance setup failed: ${result.message}")
         }
     }
 }
 
-internal data class CommandRunResult(
+data class CommandRunResult(
     val success: Boolean,
     val message: String,
 )
 
-internal sealed class ProjectOpenProfileAutoInitResult {
+sealed class ProjectOpenProfileAutoInitResult {
     data class Skipped(val reason: String) : ProjectOpenProfileAutoInitResult()
     data class Installed(val command: List<String>) : ProjectOpenProfileAutoInitResult()
     data class Failed(val command: List<String>, val message: String) : ProjectOpenProfileAutoInitResult()

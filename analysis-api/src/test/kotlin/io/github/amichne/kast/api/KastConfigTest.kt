@@ -76,8 +76,8 @@ class KastConfigTest {
 
         assertEquals("projectOpen", config.projectOpen.profileAutoInit.section)
         assertEquals("profileAutoInit", config.projectOpen.profileAutoInit.key)
-        assertEquals(ConfigurationDefault(false), config.projectOpen.profileAutoInit.default)
-        assertEquals(false, config.projectOpen.profileAutoInit.value)
+        assertEquals(ConfigurationDefault(true), config.projectOpen.profileAutoInit.default)
+        assertEquals(true, config.projectOpen.profileAutoInit.value)
         assertEquals("copilot-lsp", config.projectOpen.profile.value)
         assertEquals(true, config.projectOpen.autoExcludeGit.value)
     }

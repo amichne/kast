@@ -13,8 +13,9 @@ Install commands write managed files. Run them deliberately, then use
 
 Use `kast setup` once per repository where agents should discover Kast
 guidance without depending on a harness-specific package. The command installs
-the packaged skill under `.agents/skills/kast` and patches selected
-`AGENTS.md` files with a Kast-managed fenced region.
+the packaged skill under `.agents/skills/kast` and writes an ignored
+`AGENTS.local.md` file with a Kast-managed fenced region:
+`<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`.
 
 ```console title="Install harness-agnostic agent guidance"
 cd /path/to/your/repository
@@ -24,15 +25,18 @@ kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
 
 Use `--force` after upgrading the machine binary or when a managed fenced
 region was intentionally reset to the active binary's guidance.
+Use `--agents-md` only when a scoped authored guidance file should also carry
+the managed Kast region.
 
 Use `kast setup` when setup and runtime warmup should happen together. Start
-with `--dry-run` to inspect the skill target, `AGENTS.md` targets, and runtime
+with `--dry-run` to inspect the skill target, guidance targets, and runtime
 command before writing files or starting a backend.
 In a smart interactive terminal, the first eligible non-JSON run can ask
-whether to apply automatic IDEA setup. Accepting lets the user save IDEA
-launch and project-open auto-init as global machine defaults or for this
-repository only. The flow installs or refreshes the JetBrains plugin, prepares
-harness-agnostic agent guidance, then warms the repository runtime. Use
+whether to apply automatic IDEA setup. Project-open local guidance setup is
+enabled by default; accepting lets the user save IDEA backend and launch
+defaults globally or for this repository only. The flow installs or refreshes
+the JetBrains plugin, prepares harness-agnostic agent guidance, then warms the
+repository runtime. Use
 `--no-open-ide` when an interactive terminal should behave like automation.
 In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
 the executable token used for the dry run, so copied binaries and absolute CLI

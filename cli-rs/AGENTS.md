@@ -14,9 +14,10 @@ resource trust, agent command surface, and bundled agent resources.
   `kast agent setup`, and `kast agent lsp` dispatch through operator handlers
   before JSON-envelope execution.
 - `kast agent setup` installs harness-agnostic agent exposure: the packaged
-  skill under `.agents/skills/kast` plus Kast-managed fenced regions in
-  selected `AGENTS.md` files. Its `--dry-run` mode must stay read-only and
-  explain skill and `AGENTS.md` targets.
+  skill under `.agents/skills/kast` plus a Kast-managed fenced region in the
+  ignored root `AGENTS.local.md` file, with `--agents-md` available for
+  explicit scoped guidance files. Its `--dry-run` mode must stay read-only and
+  explain skill and guidance targets.
 - `kast agent up` composes harness-agnostic setup with `kast runtime up`.
   Its explicit `--workspace-root` must stay authoritative for setup targets,
   and `--dry-run` must not write resources or start a backend.
@@ -37,8 +38,10 @@ The durable decision record for agent resources and workflows is
   or catalog schema validation with ad hoc string handling.
 - Treat generated or installed resource copies as outputs. Edit the authored
   resource source, then regenerate or reinstall from the active binary.
-- Treat `AGENTS.md` files as authored guidance. Kast may own only fenced
-  `<!-- BEGIN KAST MANAGED -->` regions inside explicitly targeted files.
+- Treat `AGENTS.md` files as authored guidance. Default Kast setup writes the
+  managed guidance block to ignored `AGENTS.local.md`; Kast may own only the
+  `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`
+  region inside explicit guidance targets.
 - Do not maintain compatibility helpers only for older binaries. Missing
   `kast agent` or `kast agent workflow` support is an incompatibility that
   requires upgrade or reinstall.

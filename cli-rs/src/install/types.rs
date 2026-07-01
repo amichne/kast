@@ -54,6 +54,7 @@ pub struct AgentsMdTargetResult {
     pub updated: bool,
     pub skipped: bool,
     pub managed_region_sha256: String,
+    pub git_exclude: GitExcludeResult,
 }
 
 #[derive(Debug, Serialize)]

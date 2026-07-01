@@ -2,8 +2,50 @@ mod support;
 
 use support::*;
 
+fn assert_compact_kast_guidance(content: &str) {
+    assert!(
+        content.contains(
+            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#
+        ),
+        "{content}"
+    );
+    assert!(
+        content.contains("Use `.agents/skills/kast/SKILL.md` and `kast agent`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent workflow verify --workspace-root \"$PWD\"`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent workflow package-verify --workspace-root \"$PWD\"`"),
+        "{content}"
+    );
+    assert!(
+        !content.contains("When a user or agent asks for anything regarding Kotlin code"),
+        "{content}"
+    );
+    assert!(
+        !content.contains("grep, ripgrep, regex search, raw text search"),
+        "{content}"
+    );
+    let managed_lines = content
+        .lines()
+        .filter(|line| {
+            !line.is_empty()
+                && !line.starts_with("<kast ")
+                && !line.starts_with("</kast>")
+                && !line.starts_with("<!--")
+        })
+        .count();
+    assert!(
+        (4..=5).contains(&managed_lines),
+        "Kast guidance should stay a 4-5 line routing aid, got {managed_lines}: {content}"
+    );
+}
+
 #[test]
-fn agent_setup_installs_skill_and_patches_root_agents_md() {
+fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -56,14 +98,12 @@ fn agent_setup_installs_skill_and_patches_root_agents_md() {
             .expect("canonical expected skill")
     );
     assert!(repo.join(".agents/skills/kast/SKILL.md").is_file());
-    let agents = std::fs::read_to_string(repo.join("AGENTS.md")).expect("agents");
-    assert!(agents.contains("Keep local text."), "{agents}");
-    assert!(agents.contains("<!-- BEGIN KAST MANAGED -->"), "{agents}");
-    assert!(
-        agents.contains("`.agents/skills/kast/SKILL.md`"),
-        "{agents}"
-    );
-    assert!(agents.contains("`kast agent tools`"), "{agents}");
+    let root_agents = std::fs::read_to_string(repo.join("AGENTS.md")).expect("agents");
+    assert_eq!(root_agents, "# Repo guidance\n\nKeep local text.\n");
+    let local_agents = std::fs::read_to_string(repo.join("AGENTS.local.md")).expect("local agents");
+    assert_compact_kast_guidance(&local_agents);
+    let exclude = std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git exclude");
+    assert!(exclude.contains("AGENTS.local.md"), "{exclude}");
     assert!(!repo.join(".github/lsp.json").exists());
     assert!(!repo.join(".github/extensions/kast/extension.mjs").exists());
 
@@ -79,7 +119,7 @@ fn agent_setup_installs_skill_and_patches_root_agents_md() {
 }
 
 #[test]
-fn agent_setup_skips_missing_root_agents_md_unless_explicit() {
+fn agent_setup_creates_local_guidance_without_root_agents_md() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -105,13 +145,30 @@ fn agent_setup_skips_missing_root_agents_md_unless_explicit() {
         !repo.join("AGENTS.md").exists(),
         "default setup must not create root AGENTS.md"
     );
+    assert!(
+        repo.join("AGENTS.local.md").is_file(),
+        "default setup should create local agent guidance"
+    );
     let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
     assert_eq!(
         stdout["agentsMdTargets"]
             .as_array()
             .expect("agents targets")
             .len(),
-        0,
+        1,
+        "{stdout}"
+    );
+    assert_eq!(
+        PathBuf::from(
+            stdout["agentsMdTargets"][0]["path"]
+                .as_str()
+                .expect("local guidance target")
+        )
+        .canonicalize()
+        .expect("canonical local guidance target"),
+        repo.join("AGENTS.local.md")
+            .canonicalize()
+            .expect("canonical expected local guidance"),
         "{stdout}"
     );
 }
@@ -147,8 +204,8 @@ fn agent_setup_creates_explicit_agents_md_target() {
         String::from_utf8_lossy(&setup.stderr)
     );
     let content = std::fs::read_to_string(&scoped_agents).expect("scoped agents");
-    assert!(content.contains("<!-- BEGIN KAST MANAGED -->"), "{content}");
-    assert!(content.contains("`kast agent workflow ...`"), "{content}");
+    assert_compact_kast_guidance(&content);
+    assert!(repo.join("AGENTS.local.md").is_file());
 }
 
 #[test]
@@ -160,8 +217,6 @@ fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&repo).expect("repo");
-    std::fs::write(repo.join("AGENTS.md"), "# Repo guidance\n").expect("agents");
-
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
         .args(["--output", "json", "agent", "setup"])
@@ -173,10 +228,10 @@ fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
         String::from_utf8_lossy(&setup.stdout),
         String::from_utf8_lossy(&setup.stderr)
     );
-    let agents_path = repo.join("AGENTS.md");
+    let agents_path = repo.join("AGENTS.local.md");
     let mut content = std::fs::read_to_string(&agents_path).expect("agents");
     content = content.replace(
-        "Use `.agents/skills/kast/SKILL.md`",
+        "Use `.agents/skills/kast/SKILL.md` and `kast agent`",
         "Use `custom/SKILL.md`",
     );
     std::fs::write(&agents_path, content).expect("tamper agents");
@@ -211,7 +266,7 @@ fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
     );
     let repaired = std::fs::read_to_string(&agents_path).expect("repaired agents");
     assert!(
-        repaired.contains("Use `.agents/skills/kast/SKILL.md`"),
+        repaired.contains("Use `.agents/skills/kast/SKILL.md` and `kast agent`"),
         "{repaired}"
     );
 }

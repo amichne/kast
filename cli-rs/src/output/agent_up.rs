@@ -24,7 +24,7 @@ pub fn print_agent_guidance_setup_plan(result: &AgentGuidanceSetupPlan) -> Resul
     mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
     if !result.agents_md_targets.is_empty() {
         mdln!(document);
-        mdln!(document, "## AGENTS.md targets");
+        mdln!(document, "## Agent guidance targets");
         for target in &result.agents_md_targets {
             mdln!(
                 document,
@@ -53,7 +53,7 @@ pub fn print_agent_guidance_setup_result(result: &AgentGuidanceSetupResult) -> R
     mdln!(document, "- Setup skipped: {}", yes_no(result.skipped));
     if !result.agents_md_targets.is_empty() {
         mdln!(document);
-        mdln!(document, "## AGENTS.md targets");
+        mdln!(document, "## Agent guidance targets");
         for target in &result.agents_md_targets {
             mdln!(
                 document,
@@ -116,7 +116,7 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
     if !result.setup.agents_md_targets.is_empty() {
         mdln!(
             document,
-            "- AGENTS.md targets: {}",
+            "- Agent guidance targets: {}",
             result.setup.agents_md_targets.len()
         );
     }

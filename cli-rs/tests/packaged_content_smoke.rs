@@ -41,6 +41,36 @@ fn repo_local_copilot_plugin_content_is_generated_not_tracked() {
 }
 
 #[test]
+fn packaged_skill_stays_usage_first_and_public_agent_only() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let skill_path = root.join("resources/kast-skill/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", skill_path.display()));
+
+    assert!(skill.contains("Kotlin work uses `kast agent`."), "{skill}");
+    assert!(skill.contains("`kast agent call <method>`"), "{skill}");
+    assert!(skill.contains("`kast agent workflow ...`"), "{skill}");
+    assert!(skill.contains("raw catalog methods only after"), "{skill}");
+    assert!(
+        !skill.contains("`kast agent scaffold`"),
+        "hidden aliases should not be installed as the primary skill route: {skill}"
+    );
+    assert!(
+        !skill.contains("`kast agent raw-"),
+        "raw hidden aliases should not be installed as the primary skill route: {skill}"
+    );
+    assert!(
+        !skill.contains("| Need | Use |"),
+        "installed skill should stay thin instead of shipping a bulky route table: {skill}"
+    );
+    assert!(
+        skill.lines().count() <= 70,
+        "installed skill should stay thin: {} lines",
+        skill.lines().count()
+    );
+}
+
+#[test]
 fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let routing_eval_path =
@@ -178,15 +208,15 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         })
         .collect::<BTreeSet<_>>();
     for required in [
-        "kast agent scaffold",
-        "kast agent file-outline",
+        "kast agent call symbol/scaffold",
+        "kast agent call raw/file-outline",
         "kast agent call symbol/query",
-        "kast agent discover",
-        "kast agent resolve",
-        "kast agent references",
-        "kast agent callers",
-        "kast agent raw-diagnostics",
-        "kast agent metrics",
+        "kast agent call symbol/discover",
+        "kast agent call symbol/resolve",
+        "kast agent call symbol/references",
+        "kast agent call symbol/callers",
+        "kast agent call raw/diagnostics",
+        "kast agent call database/metrics",
         "kast agent workflow diagnostics",
         "kast agent workflow package-verify",
         "kast agent setup skill --source-dir",

@@ -22,7 +22,7 @@ class KastSettingsConfigurableTest {
             loadFromConfig(KastConfig.defaults())
             runtimeDefaultBackend = "idea"
             backendsIdeaEnabled = false
-            projectOpenProfileAutoInit = true
+            projectOpenProfileAutoInit = false
             projectOpenAutoExcludeGit = false
         }
 
@@ -31,7 +31,7 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("[runtime]"))
         assertTrue(toml.contains("defaultBackend = \"idea\""))
         assertTrue(toml.contains("[projectOpen]"))
-        assertTrue(toml.contains("profileAutoInit = true"))
+        assertTrue(toml.contains("profileAutoInit = false"))
         assertTrue(toml.contains("autoExcludeGit = false"))
         assertFalse(toml.contains("[cli]"))
         assertTrue(toml.contains("[backends.idea]"))
@@ -69,7 +69,7 @@ class KastSettingsConfigurableTest {
         val state = KastSettingsState().apply {
             loadFromConfig(KastConfig.defaults())
             runtimeDefaultBackend = "idea"
-            projectOpenProfileAutoInit = true
+            projectOpenProfileAutoInit = false
             projectOpenAutoExcludeGit = false
         }
 
@@ -84,12 +84,12 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("[runtime]"))
         assertTrue(toml.contains("defaultBackend = \"idea\""))
         assertTrue(toml.contains("[projectOpen]"))
-        assertTrue(toml.contains("profileAutoInit = true"))
+        assertTrue(toml.contains("profileAutoInit = false"))
         assertTrue(toml.contains("autoExcludeGit = false"))
         assertTrue(toml.contains("[cli]"))
         assertTrue(toml.contains("binaryPath = \"/old/kast\""))
         assertFalse(toml.contains("defaultBackend = \"headless\""))
-        assertFalse(toml.contains("profileAutoInit = false"))
+        assertFalse(toml.contains("profileAutoInit = true"))
         assertFalse(toml.contains("autoExcludeGit = true"))
         assertFalse(toml.contains("binaryPath = \"/new/kast\""))
     }

@@ -5,5 +5,5 @@ data class ProjectOpenProfileAutoInit(
 ) : ConfigurationField<Boolean>() {
     override val section: String get() = "projectOpen"
     override val key: String get() = "profileAutoInit"
-    override val default: ConfigurationDefault<Boolean> get() = ConfigurationDefault(false)
+    override val default: ConfigurationDefault<Boolean> get() = ConfigurationDefault(true)
 }
