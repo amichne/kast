@@ -1,5 +1,9 @@
 pub fn print_json(value: &impl Serialize) -> Result<()> {
-    io::stdout().write_all(render_agent_output(value, AgentOutputFormat::Json)?.as_bytes())?;
+    print_agent_output(value, AgentOutputFormat::Json)
+}
+
+pub(crate) fn print_agent_output(value: &impl Serialize, format: AgentOutputFormat) -> Result<()> {
+    io::stdout().write_all(render_agent_output(value, format)?.as_bytes())?;
     Ok(())
 }
 

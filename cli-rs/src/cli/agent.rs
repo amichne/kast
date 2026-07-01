@@ -7,6 +7,9 @@ pub enum AgentOutputFormat {
 #[derive(Debug, Args, Clone)]
 #[command(disable_help_subcommand = true)]
 pub struct AgentArgs {
+    /// Select JSON or TOON for agent envelope stdout.
+    #[arg(long, value_enum, default_value = "json")]
+    pub format: AgentOutputFormat,
     #[command(subcommand)]
     pub command: AgentCommand,
 }

@@ -1,7 +1,8 @@
 pub fn run(args: AgentArgs) -> Result<i32> {
+    let format = args.format;
     let envelope = execute(args.command);
     let exit_code = if envelope.ok { 0 } else { 1 };
-    output::print_json(&envelope)?;
+    output::print_agent_output(&envelope, format)?;
     Ok(exit_code)
 }
 

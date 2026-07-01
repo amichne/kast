@@ -151,6 +151,7 @@ fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
 }
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
+    let agent_format = args.format;
     match args.command {
         cli::AgentCommand::Up(args) => {
             run_agent_up_with_surface(args, output_format, AgentUpCommandSurface::AgentUp)
@@ -158,7 +159,10 @@ fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
         cli::AgentCommand::Ready(args) => run_ready(args, output_format),
         cli::AgentCommand::Setup(args) => run_agent_setup(args, output_format),
         cli::AgentCommand::Lsp(args) => lsp::run(args),
-        command => agent::run(cli::AgentArgs { command }),
+        command => agent::run(cli::AgentArgs {
+            format: agent_format,
+            command,
+        }),
     }
 }
 
