@@ -10,10 +10,13 @@ icon: lucide/bot
 agents. It is part of the public command tree because it is the preferred
 machine-oriented command path.
 
-## JSON envelope
+## Agent Envelope
 
-Every `kast agent` command emits one JSON object on stdout. Treat `ok: false`
-as a failed operation even when the process exited cleanly.
+Every `kast agent` command emits one envelope on stdout. JSON is the default
+and remains the canonical script format. Use `kast agent --format toon ...`
+only when the host can consume TOON and needs a denser, prompt-friendly
+encoding for large read-only responses. Treat `ok: false` as a failed
+operation even when the process exited cleanly.
 
 ```json title="Envelope shape"
 {
@@ -24,13 +27,18 @@ as a failed operation even when the process exited cleanly.
 }
 ```
 
-Stderr may contain human-readable startup or progress messages. Scripts should
-parse stdout and keep stderr for diagnostics.
+The envelope fields are the same for JSON and TOON output. Stderr may contain
+human-readable startup or progress messages. Scripts should parse stdout and
+keep stderr for diagnostics.
+
+Request inputs stay JSON regardless of stdout encoding. Keep `--params`,
+`--params-file`, and `--request-file` payloads as JSON, and keep workflow files
+as JSON artifacts.
 
 ```mermaid
 flowchart LR
     command["kast agent ..."]
-    envelope["JSON envelope"]
+    envelope["agent envelope"]
     ok["ok: true<br/>result"]
     error["ok: false<br/>error"]
     next["nextRequest or workflow files"]
@@ -122,6 +130,7 @@ mutation metadata, and params JSON Schemas.
 
 ```console title="List catalog-backed tools"
 kast agent tools
+kast agent --format toon tools
 ```
 
 Invoke one of the returned specs through the returned
@@ -152,13 +161,14 @@ sequenceDiagram
     Host->>CLI: kast agent call <method>
     CLI->>Backend: Normalized request
     Backend-->>CLI: Semantic result or typed error
-    CLI-->>Host: JSON envelope
+    CLI-->>Host: agent envelope
 ```
 
 ## Catalog calls
 
 Use catalog calls for method-specific requests. They prepare the request object
-and return a stable JSON envelope.
+and return a stable agent envelope: JSON by default, or TOON when requested
+with `kast agent --format toon ...`.
 
 ```console title="Resolve and trace from a file offset"
 APP_FILE="$PWD/src/main/kotlin/App.kt"
@@ -230,5 +240,5 @@ dry-run workflow as proof that files changed.
 
 Use `kast agent call <method>` when a workflow does not fit and the task needs a
 specific catalog method. The input may be a params object, a full JSON-RPC
-request, or a prior agent envelope with `nextRequest`; the output is always the
-agent envelope.
+request, or a prior agent envelope with `nextRequest`; the output is the agent
+envelope, using JSON unless `--format toon` is requested.

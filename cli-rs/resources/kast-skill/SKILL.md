@@ -18,8 +18,9 @@ first-class path.
 
 1. Use `kast agent workflow ...` when a workflow fits, or `kast agent call <method>` for the narrowest single catalog method.
 2. Keep nontrivial params in a JSON file and pass `--params-file`; use `kast agent tools` only when exact fields, variants, or mutation metadata are needed.
-3. Stay on `kast agent` after the first successful call. Switch to generic file reads or text search only when the work leaves Kotlin semantics or Kast reports a concrete blocker.
-4. Mutate through `kast agent` for semantic or compiler-owned targets, then validate with Kast diagnostics/workflows and the narrowest Gradle task.
+3. Keep response output JSON by default; use `--format toon` only for large read-only outputs when the host can consume TOON.
+4. Stay on `kast agent` after the first successful call. Switch to generic file reads or text search only when the work leaves Kotlin semantics or Kast reports a concrete blocker.
+5. Mutate through `kast agent` for semantic or compiler-owned targets, then validate with Kast diagnostics/workflows and the narrowest Gradle task.
 
 Completion criterion: every Kotlin semantic claim, edit target, relationship set, and completion proof is backed by `kast agent` evidence, or the remaining work is an exact non-Kotlin path.
 
