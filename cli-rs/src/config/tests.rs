@@ -504,10 +504,10 @@ requireInstalledPlugin = false
     }
 
     #[test]
-    fn project_open_defaults_to_disabled_copilot_profile_with_git_excludes() {
+    fn project_open_defaults_to_enabled_guidance_setup_with_git_excludes() {
         let config = KastConfig::defaults();
 
-        assert!(!config.project_open.profile_auto_init);
+        assert!(config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
         assert_eq!(config.project_open.agent_harness, AgentSetupHarness::Auto);
         assert!(config.project_open.auto_exclude_git);

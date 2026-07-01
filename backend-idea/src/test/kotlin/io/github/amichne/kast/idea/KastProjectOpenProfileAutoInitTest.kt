@@ -19,7 +19,7 @@ class KastProjectOpenProfileAutoInitTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `disabled project-open profile skips without running command`() {
+    fun `explicitly disabled project-open setup skips without running command`() {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
         Files.writeString(workspace.resolve("settings.gradle.kts"), "")
@@ -27,7 +27,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         val result = KastProjectOpenProfileAutoInit.execute(
             workspaceRoot = workspace,
-            config = KastConfig.defaults(),
+            config = autoInitConfig(enabled = false),
             runCommand = { command ->
                 commands.add(command)
                 CommandRunResult(success = true, message = "")
@@ -53,7 +53,7 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
-    fun `enabled project-open profile installs copilot package for Gradle project`() {
+    fun `enabled project-open profile installs shared agent guidance for Gradle project`() {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
         Files.writeString(workspace.resolve("settings.gradle.kts"), "")
@@ -72,17 +72,17 @@ class KastProjectOpenProfileAutoInitTest {
         assertEquals(
             listOf(
                 "/opt/kast/bin/kast",
-                "install",
-                "copilot",
-                "--target-dir",
-                workspace.resolve(".github").toAbsolutePath().normalize().toString(),
+                "agent",
+                "setup",
+                "--workspace-root",
+                workspace.toAbsolutePath().normalize().toString(),
             ),
             commands.single(),
         )
     }
 
     @Test
-    fun `auto exclude opt-out is passed to copilot install command`() {
+    fun `auto exclude opt-out is passed to agent setup command`() {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
         Files.writeString(workspace.resolve("build.gradle"), "")
@@ -111,10 +111,13 @@ class KastProjectOpenProfileAutoInitTest {
         assertEquals("nope", (result as ProjectOpenProfileAutoInitResult.Failed).message)
     }
 
-    private fun autoInitConfig(autoExcludeGit: Boolean = true): KastConfig =
+    private fun autoInitConfig(
+        enabled: Boolean = true,
+        autoExcludeGit: Boolean = true,
+    ): KastConfig =
         KastConfig.defaults().copy(
             projectOpen = ProjectOpenConfig(
-                profileAutoInit = ProjectOpenProfileAutoInit(true),
+                profileAutoInit = ProjectOpenProfileAutoInit(enabled),
                 profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
                 autoExcludeGit = ProjectOpenAutoExcludeGit(autoExcludeGit),
             ),

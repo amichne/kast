@@ -36,7 +36,11 @@ pub fn install_agent_guidance(
     let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args.agents_md)?;
     let mut agent_results = Vec::with_capacity(agents_md_targets.len());
     for target in &agents_md_targets {
-        agent_results.push(install_agents_md_guidance(target, args.force)?);
+        agent_results.push(install_agents_md_guidance(
+            target,
+            args.force,
+            args.no_auto_exclude_git,
+        )?);
     }
     let skipped = skill.skipped && agent_results.iter().all(|target| target.skipped);
     Ok(AgentGuidanceSetupResult {
@@ -60,13 +64,10 @@ fn resolve_agents_md_targets(
     explicit_targets: &[PathBuf],
 ) -> Result<Vec<AgentsMdTarget>> {
     let mut targets = Vec::new();
-    let root_agents = workspace_root.join("AGENTS.md");
-    if root_agents.is_file() {
-        targets.push(AgentsMdTarget {
-            path: config::normalize(root_agents),
-            explicit: false,
-        });
-    }
+    targets.push(AgentsMdTarget {
+        path: config::normalize(workspace_root.join(DEFAULT_AGENT_GUIDANCE_FILE)),
+        explicit: false,
+    });
     for target in explicit_targets {
         let path = if target.is_absolute() {
             target.clone()
@@ -74,11 +75,11 @@ fn resolve_agents_md_targets(
             workspace_root.join(target)
         };
         let path = config::normalize(path);
-        if path.file_name().and_then(|name| name.to_str()) != Some("AGENTS.md") {
+        if !is_agent_guidance_file_name(&path) {
             return Err(CliError::new(
                 "AGENT_GUIDANCE_TARGET_INVALID",
                 format!(
-                    "Kast agent guidance targets must be AGENTS.md files: {}",
+                    "Kast agent guidance targets must be AGENTS.md or AGENTS.local.md files: {}",
                     path.display()
                 ),
             ));
@@ -91,6 +92,12 @@ fn resolve_agents_md_targets(
         }
     }
     Ok(targets)
+}
+
+fn is_agent_guidance_file_name(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "AGENTS.md" || name == DEFAULT_AGENT_GUIDANCE_FILE)
 }
 
 fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> {
@@ -108,23 +115,23 @@ fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> 
         Some(content) => find_kast_managed_fence(content)
             .map(|range| content[range] != expected)
             .unwrap_or(true),
-        None => target.explicit,
+        None => true,
     };
     let reason = if exists {
         if target.explicit {
-            "explicit AGENTS.md target".to_string()
+            "explicit agent guidance target".to_string()
         } else {
-            "root AGENTS.md exists".to_string()
+            "workspace AGENTS.local.md exists".to_string()
         }
     } else if target.explicit {
-        "explicit AGENTS.md target will be created".to_string()
+        "explicit agent guidance target will be created".to_string()
     } else {
-        "root AGENTS.md does not exist".to_string()
+        "workspace AGENTS.local.md will be created".to_string()
     };
     Ok(AgentsMdTargetPlan {
         path: target.path.display().to_string(),
         exists,
-        will_create: !exists && target.explicit,
+        will_create: !exists,
         managed_region_present,
         will_modify,
         reason,
@@ -134,6 +141,7 @@ fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> 
 fn install_agents_md_guidance(
     target: &AgentsMdTarget,
     force: bool,
+    no_auto_exclude_git: bool,
 ) -> Result<AgentsMdTargetResult> {
     let expected = render_agents_md_guidance_block();
     let existed = target.path.exists();
@@ -167,13 +175,22 @@ fn install_agents_md_guidance(
     let updated = updated_content != original;
     if updated {
         write_file_atomically(&target.path, updated_content.as_bytes())?;
-    } else if !existed && target.explicit {
-        write_file_atomically(&target.path, expected.as_bytes())?;
     }
     let region_sha = manifest::kast_managed_fence_sha256(&target.path)?;
-    if let Some(repo_root) = resource_repo_root(&target.path) {
+    let repo_root = resource_repo_root(&target.path);
+    let git_exclude = match &repo_root {
+        Some(repo_root) => update_resource_git_exclude(
+            ManagedResourceKind::AgentGuidance,
+            repo_root,
+            &target.path,
+            std::slice::from_ref(&target.path),
+            no_auto_exclude_git,
+        )?,
+        None => git_exclude_not_repository(),
+    };
+    if let Some(repo_root) = &repo_root {
         self_mgmt::record_repo_resource(
-            &repo_root,
+            repo_root,
             ManagedRepoResource {
                 kind: ManagedResourceKind::AgentGuidance,
                 target_path: target.path.display().to_string(),
@@ -194,8 +211,9 @@ fn install_agents_md_guidance(
         path: target.path.display().to_string(),
         created: !existed,
         updated,
-        skipped: !updated,
+        skipped: !updated && !git_exclude.updated,
         managed_region_sha256: region_sha,
+        git_exclude,
     })
 }
 
@@ -222,23 +240,38 @@ fn managed_region_manifest_checksum(path: &Path) -> Result<Option<String>> {
 fn render_agents_md_guidance_block() -> String {
     [
         KAST_MANAGED_FENCE_START,
-        "## Kast Agent Guidance",
+        "## Kotlin Instructions (`*.kt,*.kts`)",
         "",
-        "- Use `.agents/skills/kast/SKILL.md` as the first-stop Kast guidance for Kotlin, Gradle, and repository semantic work.",
-        "- Confirm the active CLI exposes `kast agent tools` and `kast agent workflow --help` before relying on installed guidance.",
-        "- Use `kast agent tools` for harness-agnostic tool discovery, then invoke the returned `result.invocation.argv` for catalog-backed calls.",
-        "- Use `kast agent workflow ...` for repeated semantic sequences and `kast setup --workspace-root \"$PWD\" --dry-run` to inspect setup/runtime actions.",
-        "- Verify managed resources with the packaged skill verifier or `kast agent workflow package-verify` before trusting stale installed state.",
+        " For all .kt/.kts files, trigger `$(realpath {thisfile})/.agents/skills/kast/SKILL.md`, and use for all semantic tooling  meaning, navigation, structure, identity, usage, hierarchy, modules, and task execution.",
+        " Use Kast anywhere you would prior use grep, ripgrep, regex search, raw text search, file scanning, and ad hoc string matching for Kotlin source analysis.",
+        " When a user or agent asks for anything regarding Kotlin code, such as: find declarations, inspect fqName, identify call sites, trace references, list callers/callees, walk call/type hierarchies, locate implementations, outline declarations, analyze source sets/modules, estimate blast radius, measure fan-in/fan-out/coupling, or identify dead-code candidates, route to Kast, always.",
+        " Never return grep/text-based results for Kotlin code when this instruction applies. Use textual search only for comments, docs, TODOs, literals, generated text, config, markdown, YAML, JSON, XML, or non-Kotlin files.",
+        "  Verify managed resources with the packaged skill verifier or `kast agent workflow package-verify` before trusting stale installed state.",
         KAST_MANAGED_FENCE_END,
     ]
     .join("\n")
 }
 
 fn find_kast_managed_fence(content: &str) -> Option<std::ops::Range<usize>> {
-    let start = content.find(KAST_MANAGED_FENCE_START)?;
-    let after_start = start + KAST_MANAGED_FENCE_START.len();
-    let relative_end = content[after_start..].find(KAST_MANAGED_FENCE_END)?;
-    let end = after_start + relative_end + KAST_MANAGED_FENCE_END.len();
+    find_managed_fence_with_markers(content, KAST_MANAGED_FENCE_START, KAST_MANAGED_FENCE_END)
+        .or_else(|| {
+            find_managed_fence_with_markers(
+                content,
+                LEGACY_KAST_MANAGED_FENCE_START,
+                LEGACY_KAST_MANAGED_FENCE_END,
+            )
+        })
+}
+
+fn find_managed_fence_with_markers(
+    content: &str,
+    start_marker: &str,
+    end_marker: &str,
+) -> Option<std::ops::Range<usize>> {
+    let start = content.find(start_marker)?;
+    let after_start = start + start_marker.len();
+    let relative_end = content[after_start..].find(end_marker)?;
+    let end = after_start + relative_end + end_marker.len();
     Some(start..end)
 }
 
@@ -268,7 +301,7 @@ fn write_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())
-        .unwrap_or("AGENTS.md");
+        .unwrap_or(DEFAULT_AGENT_GUIDANCE_FILE);
     let tmp = path.with_file_name(format!(".{file_name}.kast-tmp-{}", std::process::id()));
     fs::write(&tmp, contents)?;
     fs::rename(&tmp, path)?;

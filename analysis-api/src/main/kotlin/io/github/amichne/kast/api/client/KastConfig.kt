@@ -61,7 +61,7 @@ data class KastConfig(
                     ),
                 ),
                 projectOpen = ProjectOpenConfig(
-                    profileAutoInit = ProjectOpenProfileAutoInit(false),
+                    profileAutoInit = ProjectOpenProfileAutoInit(true),
                     profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
                     autoExcludeGit = ProjectOpenAutoExcludeGit(true),
                 ),

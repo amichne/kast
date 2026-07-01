@@ -270,7 +270,9 @@ fn standard_resource_targets(
                 ".claude/instructions",
             ],
         ),
-        self_mgmt::ManagedResourceKind::AgentGuidance => vec![workspace_root.join("AGENTS.md")],
+        self_mgmt::ManagedResourceKind::AgentGuidance => {
+            vec![workspace_root.join("AGENTS.local.md")]
+        }
     }
 }
 

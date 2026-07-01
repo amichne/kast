@@ -112,7 +112,7 @@ pub struct ProjectOpenConfig {
 
 impl ProjectOpenConfig {
     fn is_default(&self) -> bool {
-        !self.profile_auto_init
+        self.profile_auto_init
             && self.profile == ProjectOpenProfile::CopilotLsp
             && self.agent_harness.is_auto()
             && self.auto_exclude_git
@@ -122,7 +122,7 @@ impl ProjectOpenConfig {
 impl Default for ProjectOpenConfig {
     fn default() -> Self {
         Self {
-            profile_auto_init: false,
+            profile_auto_init: true,
             profile: ProjectOpenProfile::CopilotLsp,
             agent_harness: AgentSetupHarness::Auto,
             auto_exclude_git: true,

@@ -15,7 +15,7 @@ belongs to each repository.
 |-------|---------|-----------|-------------|
 | Machine CLI + IDE plugin | `brew install kast` | Homebrew-managed global binary on `PATH` and version-coupled `kast-plugin` cask | A macOS developer machine needs Kast |
 | Machine IDE plugin repair | `brew reinstall --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | Local IDE profile links need repair |
-| Repository | `kast setup` | The current repository's `.agents/skills/kast` and managed `AGENTS.md` fence | A repository should expose Kast guidance to agents |
+| Repository | `kast setup` | The current repository's `.agents/skills/kast` and ignored `AGENTS.local.md` guidance | A repository should expose Kast guidance to agents |
 
 Linux CI, hosted agents, and server images use the separate
 [Headless Linux server](headless-linux.md) install path.
@@ -40,14 +40,14 @@ part of the Homebrew formula install, using the same cask path as
 `brew install --cask kast-plugin`. Restart IDEA or Android Studio after
 Homebrew links or refreshes the plugin, then restart after installing
 repository files so agents discover `.agents/skills/kast`, managed
-`AGENTS.md` guidance, runtime guidance, and catalog-backed tools at startup.
+`AGENTS.local.md` guidance, runtime guidance, and catalog-backed tools at startup.
 
 On the first eligible run in a smart interactive terminal, `kast setup`
 offers automatic IDEA setup for IDEA-backed agent workflows. Accepting lets
-you save IDEA as the default backend, automatic IDEA launch, and project-open
-auto-init either globally or for this repository only. It also installs or
-refreshes the JetBrains plugin, installs repository agent guidance, and warms
-the workspace runtime. Scripts and repeatable setup
+you save IDEA as the default backend and automatic IDEA launch either globally
+or for this repository only. Project-open local guidance setup is enabled by
+default. The flow also installs or refreshes the JetBrains plugin, installs
+repository agent guidance, and warms the workspace runtime. Scripts and repeatable setup
 should use `kast setup --no-open-ide` or `kast --output json setup ...`.
 
 ??? success "Homebrew machine install"
@@ -66,7 +66,7 @@ should use `kast setup --no-open-ide` or `kast --output json setup ...`.
 ??? tip "Repository agent guidance"
     `kast setup` is the normal repository bring-up command. When only the
     repository guidance should be installed, `kast setup` installs the
-    shared Kast skill and updates the selected `AGENTS.md` managed fences. Run
+    shared Kast skill and writes ignored `AGENTS.local.md` guidance. Run
     it from the repository root, or pass explicit targets:
 
     ```console title="Install into another repository"
@@ -78,9 +78,8 @@ should use `kast setup --no-open-ide` or `kast --output json setup ...`.
     The command writes managed files for the running CLI version:
 
     - `.agents/skills/kast/SKILL.md`
-    - `.agents/skills/kast/references/quickstart.md`
-    - `.agents/skills/kast/references/workflows.md`
-    - `<!-- BEGIN KAST MANAGED -->` fenced regions in selected `AGENTS.md` files
+    - `AGENTS.local.md`
+    - `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` fenced regions in local or explicit guidance files
 
     The global `$HOME/.local/share/kast/install.json` manifest records the
     repository resource version, source bundle checksum, output checksums, and
@@ -91,7 +90,7 @@ should use `kast setup --no-open-ide` or `kast --output json setup ...`.
     Some enterprise environments need guidance and tooling exposure without an
     MCP-dependent integration. Use `kast setup --dry-run` to inspect setup
     plus runtime warmup, or `kast setup --dry-run` when only the skill
-    and `AGENTS.md` guidance should be installed:
+    and `AGENTS.local.md` guidance should be installed:
 
     ```console title="Install repository agent guidance"
     kast setup --dry-run
@@ -100,9 +99,10 @@ should use `kast setup --no-open-ide` or `kast --output json setup ...`.
     kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
     ```
 
-    The command installs `.agents/skills/kast` and, when root `AGENTS.md`
-    already exists, patches only a `<!-- BEGIN KAST MANAGED -->` fenced region.
-    Pass `--agents-md` for additional explicit scoped `AGENTS.md` targets.
+    The command installs `.agents/skills/kast`, creates ignored
+    `AGENTS.local.md`, and patches only the managed `<kast ...>` region on
+    repeat runs. Pass `--agents-md` for additional explicit scoped
+    `AGENTS.md` or `AGENTS.local.md` targets.
 
 ??? info "Homebrew-managed IDE plugin"
     The IDEA or Android Studio plugin is part of the macOS developer install.

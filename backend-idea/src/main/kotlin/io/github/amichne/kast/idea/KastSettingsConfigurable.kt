@@ -80,10 +80,10 @@ internal class KastSettingsConfigurable(
 
         group("Project Open") {
             row {
-                projectOpenProfileAutoInit = checkBox("Install Copilot/LSP profile for Gradle projects").component
+                projectOpenProfileAutoInit = checkBox("Install Kast agent guidance for Gradle projects").component
             }
             row {
-                projectOpenAutoExcludeGit = checkBox("Exclude generated package files from Git").component
+                projectOpenAutoExcludeGit = checkBox("Exclude managed setup files from Git").component
             }
         }
 

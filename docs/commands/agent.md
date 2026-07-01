@@ -65,11 +65,11 @@ kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
 
 In a smart interactive terminal, the first eligible `kast setup` can offer
 automatic IDEA setup. If accepted, choose whether Kast saves IDEA as the
-default backend, automatic IDEA launch, and project-open auto-init as global
-machine defaults or for this repository only. The JetBrains plugin is still
-installed or refreshed at machine scope, and harness-agnostic guidance is still
-written under the workspace. Use `--no-open-ide` to skip that first-run prompt,
-and use `--output json` in
+default backend and automatic IDEA launch as global machine defaults or for
+this repository only. Project-open local guidance setup is enabled by default,
+so the JetBrains plugin is still installed or refreshed at machine scope and
+harness-agnostic guidance is still written under the workspace. Use
+`--no-open-ide` to skip that first-run prompt, and use `--output json` in
 scripts so onboarding never prompts.
 
 When `--workspace-root` is supplied, setup targets that repository instead of
@@ -88,9 +88,10 @@ explain what happened and what the user should do next.
 ## Setup
 
 Use `kast setup` to install harness-agnostic agent resources. The default
-setup writes the packaged skill to `.agents/skills/kast` and patches an
-existing root `AGENTS.md` with a Kast-managed fenced region. User guidance
-outside that fence remains authored repository text.
+setup writes the packaged skill to `.agents/skills/kast` and creates an
+ignored root `AGENTS.local.md` with a Kast-managed fenced region:
+`<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`.
+User guidance outside that fence remains authored repository text.
 
 ```console title="Install harness-agnostic agent guidance"
 kast setup --dry-run
@@ -98,8 +99,9 @@ kast setup
 kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
 ```
 
-When root `AGENTS.md` is missing, default setup installs only the skill.
-Pass `--agents-md <path/to/AGENTS.md>` to explicitly create or patch a scoped
+Default setup adds `AGENTS.local.md` to `.git/info/exclude` when the workspace
+is a Git repository. Pass `--agents-md <path/to/AGENTS.md>` or
+`--agents-md <path/to/AGENTS.local.md>` to explicitly create or patch a scoped
 guidance file. In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and
 `installCommand` report the exact writes and equivalent command.
 

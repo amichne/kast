@@ -105,7 +105,7 @@ pub enum AgentCommand {
 pub struct AgentUpArgs {
     #[command(flatten)]
     pub runtime: RuntimeArgs,
-    /// Additional AGENTS.md files to patch with Kast managed guidance.
+    /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
     #[arg(long = "agents-md")]
     pub agents_md: Vec<PathBuf>,
     /// Overwrite existing managed resources.
@@ -136,7 +136,7 @@ pub struct AgentGuidanceSetupArgs {
     /// Absolute workspace root for harness-agnostic agent resource setup.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Additional AGENTS.md files to patch with Kast managed guidance.
+    /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
     #[arg(long = "agents-md")]
     pub agents_md: Vec<PathBuf>,
     /// Overwrite modified Kast managed regions.

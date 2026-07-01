@@ -51,8 +51,12 @@ const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
 const COPILOT_GIT_EXCLUDE_BLOCK_START: &str = "# >>> kast copilot package >>>";
 const COPILOT_GIT_EXCLUDE_BLOCK_END: &str = "# <<< kast copilot package <<<";
-const KAST_MANAGED_FENCE_START: &str = "<!-- BEGIN KAST MANAGED -->";
-const KAST_MANAGED_FENCE_END: &str = "<!-- END KAST MANAGED -->";
+const DEFAULT_AGENT_GUIDANCE_FILE: &str = "AGENTS.local.md";
+const KAST_MANAGED_FENCE_START: &str =
+    r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#;
+const KAST_MANAGED_FENCE_END: &str = "</kast>";
+const LEGACY_KAST_MANAGED_FENCE_START: &str = "<!-- BEGIN KAST MANAGED -->";
+const LEGACY_KAST_MANAGED_FENCE_END: &str = "<!-- END KAST MANAGED -->";
 
 include!("install/reporting.rs");
 include!("install/types.rs");
