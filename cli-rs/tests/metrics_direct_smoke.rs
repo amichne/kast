@@ -16,6 +16,8 @@ fn reads_metrics_directly_from_source_index_db() {
 
     let fan_in = kast(&home, &config_home)
         .args([
+            "--output",
+            "human",
             "developer",
             "inspect",
             "metrics",

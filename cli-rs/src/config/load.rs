@@ -70,6 +70,7 @@ impl KastConfig {
             },
             cli: CliConfig {
                 binary_path: paths.shim_path.clone(),
+                dynamic_output: true,
             },
         }
     }
@@ -267,6 +268,11 @@ impl KastConfig {
             {
                 self.backends.idea.enabled = value;
             }
+        }
+        if let Some(cli) = partial.cli
+            && let Some(value) = cli.dynamic_output
+        {
+            self.cli.dynamic_output = value;
         }
     }
 }

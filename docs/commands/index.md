@@ -6,9 +6,10 @@ icon: lucide/list-tree
 
 # Commands
 
-Kast keeps the public CLI small. Human operator commands default to readable
-text and accept `--output json` when scripts need structured payloads. Advanced
-agent commands emit one JSON object on stdout so they can be chained in tools.
+Kast keeps the public CLI small. Commands default to compact TOON outside
+interactive human terminals and switch to readable text only when Kast can see
+an interactive non-agent terminal. Pass `--output json` when scripts need JSON
+payloads.
 
 ## Command groups
 
@@ -45,31 +46,32 @@ flowchart LR
 
 ## Output modes
 
-Operator commands are designed for humans first. They render readable summaries
-in terminals and plain text in captured logs. Add `--output json` to preserve
-the structured payload for automation.
+Commands are AXI-oriented by default: captured, piped, CI, and agent-process
+invocations use compact TOON on stdout. Interactive non-agent terminals get the
+most readable human output unless `[cli] dynamicOutput = false` is set in
+`config.toml`. Add `--output json` for JSON-only automation.
 
 === "Human terminal"
 
-    ```console title="Readable by default"
+    ```console title="Readable when interactive"
     kast status
     ```
 
 === "Script"
 
-    ```console title="Structured output"
+    ```console title="JSON output"
     kast --output json status
     ```
 
-`kast agent` is different by design. It always emits a single JSON envelope
-with `ok`, `method`, `request`, and either `result` or `error`. Use it when a
-script, agent, or CI step needs stable machine output.
+`kast agent` always emits a single envelope with `ok`, `method`, `request`, and
+either `result` or `error`. Use it when a script, agent, or CI step needs
+stable machine output.
 
 | Surface | Output default | Use it for |
 |---------|----------------|------------|
-| `kast ready` and `kast developer runtime ...` | Human-readable text | Operator inspection and repair loops |
-| `kast --output json ...` | Structured JSON for supported operator commands | CI and scripts that still use high-level operator commands |
-| `kast agent ...` | One JSON envelope on stdout | Agent tools, command chaining, and stable semantic evidence |
+| `kast ready` and `kast developer runtime ...` | TOON outside interactive human terminals; readable text in interactive human terminals | Operator inspection and repair loops |
+| `kast --output json ...` | Structured JSON for supported commands | CI and scripts that require JSON |
+| `kast agent ...` | One TOON envelope on stdout unless `--output json` is selected | Agent tools, command chaining, and stable semantic evidence |
 
 ## Workspace selection
 

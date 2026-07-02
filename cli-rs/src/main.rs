@@ -30,7 +30,7 @@ use cli::{Cli, Command, GenerateCommand, OutputFormat, ShellKind};
 use error::{CliError, Result};
 use serde::Serialize;
 use std::env;
-use std::io;
+use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 
 const SCHEMA_VERSION: u32 = 3;
@@ -69,7 +69,6 @@ fn parse_cli() -> Result<Option<Cli>> {
 
 fn requested_output_format() -> OutputFormat {
     let mut args = std::env::args().skip(1);
-    let mut saw_agent = false;
     while let Some(arg) = args.next() {
         if arg == "--output" {
             return match args.next().as_deref() {
@@ -85,33 +84,88 @@ fn requested_output_format() -> OutputFormat {
                 _ => OutputFormat::Human,
             };
         }
-        if arg == "agent" {
-            saw_agent = true;
-        }
     }
-    if saw_agent {
-        OutputFormat::Toon
-    } else {
-        OutputFormat::Human
-    }
+    implicit_output_format()
 }
 
 fn effective_output_format(
     requested: Option<OutputFormat>,
-    command: Option<&Command>,
+    _command: Option<&Command>,
 ) -> OutputFormat {
     if let Some(requested) = requested {
         return requested;
     }
-    if matches!(command, Some(Command::Agent(_))) {
-        OutputFormat::Toon
-    } else {
+    implicit_output_format()
+}
+
+fn implicit_output_format() -> OutputFormat {
+    if dynamic_output_enabled() && OutputEnvironment::current().allows_human_output() {
         OutputFormat::Human
+    } else {
+        OutputFormat::Toon
     }
 }
 
 fn error_exit_code(error: &CliError) -> i32 {
     if error.code == "CLI_USAGE" { 2 } else { 1 }
+}
+
+fn dynamic_output_enabled() -> bool {
+    config::KastConfig::load_global()
+        .map(|config| config.cli.dynamic_output)
+        .unwrap_or(true)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct OutputEnvironment {
+    stdin_terminal: bool,
+    stdout_terminal: bool,
+    ci: bool,
+    dumb_terminal: bool,
+    agent_process: bool,
+}
+
+impl OutputEnvironment {
+    fn current() -> Self {
+        Self {
+            stdin_terminal: io::stdin().is_terminal(),
+            stdout_terminal: io::stdout().is_terminal(),
+            ci: env_flag("CI"),
+            dumb_terminal: env::var("TERM").is_ok_and(|term| term.eq_ignore_ascii_case("dumb")),
+            agent_process: agent_process_environment_present(),
+        }
+    }
+
+    fn allows_human_output(self) -> bool {
+        self.stdin_terminal
+            && self.stdout_terminal
+            && !self.ci
+            && !self.dumb_terminal
+            && !self.agent_process
+    }
+}
+
+fn env_flag(name: &str) -> bool {
+    env::var(name)
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty() && value != "0")
+}
+
+fn agent_process_environment_present() -> bool {
+    const AGENT_PROCESS_ENV_KEYS: &[&str] = &[
+        "CODEX_SANDBOX",
+        "CODEX_SESSION_ID",
+        "CODEX_TASK_ID",
+        "CODEX_RUN_ID",
+        "CLAUDECODE",
+        "CLAUDE_CODE_ENTRYPOINT",
+        "CLAUDE_CODE_SSE_PORT",
+        "OPENCODE",
+        "OPENCODE_SESSION",
+        "CURSOR_AGENT",
+        "GITHUB_COPILOT_AGENT",
+    ];
+    AGENT_PROCESS_ENV_KEYS.iter().any(|key| env_flag(key))
 }
 
 fn default_runtime_args() -> cli::RuntimeArgs {
@@ -192,7 +246,7 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
         bin: display_current_executable(),
         description: "Compiler-backed Kotlin semantic navigation, editing, diagnostics, and repository agent setup.",
         workspace_root: workspace_root.display().to_string(),
-        output_default: "kast agent defaults to TOON; pass --output json when a JSON consumer requires it.",
+        output_default: "Kast defaults to TOON outside interactive human terminals; pass --output json when a JSON consumer requires it.",
         commands: vec![
             ContextCommandHint {
                 command: "kast setup --workspace-root <repo>".to_string(),
@@ -1179,5 +1233,50 @@ fn completion_shell(shell: ShellKind) -> clap_complete::Shell {
     match shell {
         ShellKind::Bash => clap_complete::Shell::Bash,
         ShellKind::Zsh => clap_complete::Shell::Zsh,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn interactive_human_environment() -> OutputEnvironment {
+        OutputEnvironment {
+            stdin_terminal: true,
+            stdout_terminal: true,
+            ci: false,
+            dumb_terminal: false,
+            agent_process: false,
+        }
+    }
+
+    #[test]
+    fn output_environment_allows_human_only_for_interactive_non_agent_terminal() {
+        assert!(interactive_human_environment().allows_human_output());
+
+        for environment in [
+            OutputEnvironment {
+                stdin_terminal: false,
+                ..interactive_human_environment()
+            },
+            OutputEnvironment {
+                stdout_terminal: false,
+                ..interactive_human_environment()
+            },
+            OutputEnvironment {
+                ci: true,
+                ..interactive_human_environment()
+            },
+            OutputEnvironment {
+                dumb_terminal: true,
+                ..interactive_human_environment()
+            },
+            OutputEnvironment {
+                agent_process: true,
+                ..interactive_human_environment()
+            },
+        ] {
+            assert!(!environment.allows_human_output(), "{environment:?}");
+        }
     }
 }

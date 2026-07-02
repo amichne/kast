@@ -3,7 +3,7 @@ mod support;
 use support::*;
 
 #[test]
-fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
+fn lifecycle_commands_render_human_text_when_selected_and_json_when_selected() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -13,6 +13,8 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
 
     let human = kast(&home, &config_home)
         .args([
+            "--output",
+            "human",
             "developer",
             "runtime",
             "status",
@@ -31,7 +33,7 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
     let stdout = String::from_utf8_lossy(&human.stdout);
     assert!(
         stdout.starts_with("Kast status\n===========\n"),
-        "status should default to a rendered readable summary: {stdout}"
+        "status should render a readable summary when human output is selected: {stdout}"
     );
     assert!(
         stdout.contains("No runtime candidates were found."),
@@ -47,7 +49,7 @@ fn lifecycle_commands_render_human_text_by_default_and_json_when_selected() {
     );
     assert!(
         serde_json::from_slice::<serde_json::Value>(&human.stdout).is_err(),
-        "default status output should not be JSON"
+        "human status output should not be JSON"
     );
 
     let json = kast(&home, &config_home)

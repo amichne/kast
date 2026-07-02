@@ -29,8 +29,10 @@ IntelliJ IDEA or Android Studio profile when the launcher is not on `PATH`.
 
 ## Inspect runtime state
 
-Use `kast developer runtime status` for a human-readable state summary. Add `--output json` when
-a script needs resolved paths, daemon state, logs, warnings, or backend details.
+Use `kast developer runtime status` for a human-readable state summary in an
+interactive non-agent terminal. Captured and agent-run invocations default to
+compact TOON. Add `--output json` when a JSON-only script needs resolved paths,
+daemon state, logs, warnings, or backend details.
 
 ```console title="Check runtime state"
 kast developer runtime status

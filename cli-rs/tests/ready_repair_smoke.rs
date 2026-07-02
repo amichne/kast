@@ -26,6 +26,7 @@ runtimeLibsDir = "{}"
 ideaHome = "{}"
 
 [cli]
+dynamicOutput = false
 binaryPath = "{}"
 
 [install]
@@ -87,7 +88,8 @@ version = "0.7.35"
     let config_after =
         std::fs::read_to_string(config_home.join("config.toml")).expect("config after repair");
     assert!(!config_after.contains("[paths]"));
-    assert!(!config_after.contains("[cli]"));
+    assert!(config_after.contains("[cli]"));
+    assert!(config_after.contains("dynamicOutput = false"));
     assert!(!config_after.contains("[install]"));
     assert!(!config_after.contains("binaryPath"));
     assert!(!config_after.contains("runtimeLibsDir"));

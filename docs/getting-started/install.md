@@ -130,10 +130,11 @@ profile needs repair.
 Kast 1.0 resolves every install-owned path from the install manifest at
 `$HOME/.local/share/kast/install.json`. The user config file remains
 `$HOME/.config/kast/config.toml`, but it only owns behavior settings such as
-backend selection, indexing policy, launch policy, telemetry, and profiling.
-Do not put install roots, CLI paths, daemon paths, socket paths, runtime
-library paths, or managed install state in `config.toml`; those values come
-from the manifest-backed resolver.
+backend selection, indexing policy, launch policy, telemetry, profiling, and
+`[cli] dynamicOutput = false` when implicit output should stay TOON even in an
+interactive human terminal. Do not put install roots, CLI paths, daemon paths,
+socket paths, runtime library paths, or managed install state in `config.toml`;
+those values come from the manifest-backed resolver.
 
 ??? question "Inspect the active path model"
     Use `kast developer inspect paths` when you need the exact resolved paths that the CLI,

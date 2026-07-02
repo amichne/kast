@@ -13,8 +13,9 @@ kast agent tools
 kast agent workflow --help
 ```
 
-For agent automation, prefer machine-readable output and explicit workspace
-roots:
+Kast defaults to compact TOON when stdout is not an interactive human terminal
+or when it detects an agent process. For agent automation, keep explicit
+workspace roots and use JSON only when a JSON consumer requires it:
 
 ```sh
 kast --output json setup --workspace-root "$PWD" --dry-run
@@ -24,16 +25,18 @@ kast --output json developer runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Use human output only for operator-facing summaries. Use `--output json` when a
-result will be parsed, stored, or used as evidence. `kast agent` defaults to
-compact TOON; add `--full` to `agent call` when exact large response fields are
-needed. For `setup` dry-runs, `setup.targetDir` is the resolved package target,
-`setup.installCommand` is the install-only command for the selected guidance
-package, and `runtimeCommand` shows the backend warmup that a real setup will
-attempt.
+result will be parsed by a JSON-only consumer, stored, or used as evidence. Add
+`--full` to `agent call` when exact large response fields are needed. Set
+`[cli] dynamicOutput = false` in `config.toml` to disable the interactive-human
+fallback and keep implicit output TOON. For `setup` dry-runs, `setup.targetDir`
+is the resolved package target, `setup.installCommand` is the install-only
+command for the selected guidance package, and `runtimeCommand` shows the
+backend warmup that a real setup will attempt.
 
 ## Non-Interactive Rules
 
-- Prefer `--output json` for agent-run operator commands.
+- Prefer implicit TOON for agent-run operator commands; pass `--output json`
+  only for JSON consumers.
 - Pass `--no-open-ide` to `kast setup` when a human TTY may be present but
   automation must not prompt.
 - Pass command-specific mutation controls explicitly, such as `--dry-run` or

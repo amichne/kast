@@ -12,6 +12,7 @@ struct PartialConfig {
     telemetry: Option<PartialTelemetry>,
     profiling: Option<PartialProfiling>,
     backends: Option<PartialBackends>,
+    cli: Option<PartialCli>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -128,4 +129,10 @@ struct PartialHeadless {
 #[serde(rename_all = "camelCase")]
 struct PartialIdea {
     enabled: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialCli {
+    dynamic_output: Option<bool>,
 }

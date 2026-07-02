@@ -26,7 +26,8 @@ until the task leaves Kotlin semantics or Kast reports a concrete blocker.
 
 ## Readiness Tools
 
-Use JSON output when a result will drive later steps:
+Kast defaults to compact TOON outside interactive human terminals. Use JSON
+output when a JSON-only result will drive later steps:
 
 ```sh
 kast --output json setup --workspace-root "$PWD" --dry-run

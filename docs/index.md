@@ -126,6 +126,6 @@ hierarchy evidence was complete or bounded, and plan mutations with file hashes
 before applying edits.
 
 !!! tip "Automation boundary"
-    Use `--output json` on operator commands when automation needs structured
-    payloads. Use `kast agent call <method>` for pipe-friendly advanced catalog
-    calls.
+    Captured and agent-run commands default to compact TOON. Use
+    `--output json` when automation specifically needs JSON payloads, and use
+    `kast agent call <method>` for pipe-friendly advanced catalog calls.

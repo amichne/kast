@@ -244,6 +244,7 @@ pub struct IdeaBackendConfig {
 #[serde(rename_all = "camelCase")]
 pub struct CliConfig {
     pub binary_path: PathBuf,
+    pub dynamic_output: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
