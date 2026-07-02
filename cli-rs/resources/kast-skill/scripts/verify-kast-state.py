@@ -213,7 +213,11 @@ def verify_command_surface(
     top_help = command_record(kast_command + ["--help"], workspace_root, timeout)
     ready_help = command_record(kast_command + ["ready", "--help"], workspace_root, timeout)
     agent_help = command_record(kast_command + ["agent", "--help"], workspace_root, timeout)
-    agent_tools = command_record(kast_command + ["agent", "tools"], workspace_root, timeout)
+    agent_tools = command_record(
+        kast_command + ["--output", "json", "agent", "tools", "--full"],
+        workspace_root,
+        timeout,
+    )
     setup_help = command_record(kast_command + ["setup", "--help"], workspace_root, timeout)
     agent_workflow_help = command_record(
         kast_command + ["agent", "workflow", "--help"],
@@ -315,7 +319,7 @@ def verify_command_surface(
         add_issue(
             result,
             "KAST_AGENT_TOOLS_UNAVAILABLE",
-            "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            "`kast --output json agent tools --full` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
     if setup_help["exitCode"] != 0:

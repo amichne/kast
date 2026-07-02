@@ -17,6 +17,8 @@ pub struct AgentGuidanceSetupPlan {
     pub result_type: &'static str,
     pub skill_target: String,
     pub agents_md_targets: Vec<AgentsMdTargetPlan>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub hook_targets: Vec<AgentHookPlan>,
     pub install_command: Vec<String>,
     pub force: bool,
     pub dry_run: bool,
@@ -34,6 +36,15 @@ pub struct AgentsMdTargetPlan {
     pub reason: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentHookPlan {
+    pub host: String,
+    pub path: String,
+    pub action: String,
+    pub command: Vec<String>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentGuidanceSetupResult {
@@ -41,6 +52,8 @@ pub struct AgentGuidanceSetupResult {
     pub result_type: &'static str,
     pub skill: InstallSkillResult,
     pub agents_md_targets: Vec<AgentsMdTargetResult>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub hook_targets: Vec<AgentHookResult>,
     pub install_command: Vec<String>,
     pub skipped: bool,
     pub schema_version: u32,
@@ -55,6 +68,16 @@ pub struct AgentsMdTargetResult {
     pub skipped: bool,
     pub managed_region_sha256: String,
     pub git_exclude: GitExcludeResult,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentHookResult {
+    pub host: String,
+    pub path: String,
+    pub updated: bool,
+    pub skipped: bool,
+    pub command: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

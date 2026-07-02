@@ -1,5 +1,12 @@
-fn response_envelope(method: String, request: Value, raw_response: String) -> AgentEnvelope {
-    let response = match serde_json::from_str::<Value>(&raw_response) {
+const AXI_PREVIEW_LIMIT: usize = 1_000;
+
+fn response_envelope(
+    method: String,
+    request: Value,
+    raw_response: String,
+    full_response: bool,
+) -> AgentEnvelope {
+    let mut response = match serde_json::from_str::<Value>(&raw_response) {
         Ok(response) => response,
         Err(error) => {
             let mut agent_error = AgentError::from_cli_error(CliError::from(error));
@@ -18,6 +25,9 @@ fn response_envelope(method: String, request: Value, raw_response: String) -> Ag
             };
         }
     };
+    if !full_response {
+        preview_large_strings(&mut response, AXI_PREVIEW_LIMIT);
+    }
     let result = response.get("result").cloned();
     let error = response_error(&response).or_else(|| result_failure(&result));
     AgentEnvelope {
@@ -29,6 +39,32 @@ fn response_envelope(method: String, request: Value, raw_response: String) -> Ag
         raw_response: None,
         error,
         schema_version: SCHEMA_VERSION,
+    }
+}
+
+fn preview_large_strings(value: &mut Value, limit: usize) {
+    match value {
+        Value::String(raw) if raw.chars().count() > limit => {
+            let total_chars = raw.chars().count();
+            let preview = raw.chars().take(limit).collect::<String>();
+            *value = json!({
+                "preview": preview,
+                "truncated": true,
+                "totalChars": total_chars,
+                "help": "Run this command with --full for complete content."
+            });
+        }
+        Value::Array(values) => {
+            for value in values {
+                preview_large_strings(value, limit);
+            }
+        }
+        Value::Object(values) => {
+            for value in values.values_mut() {
+                preview_large_strings(value, limit);
+            }
+        }
+        _ => {}
     }
 }
 

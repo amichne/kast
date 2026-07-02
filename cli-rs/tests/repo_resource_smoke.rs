@@ -674,6 +674,8 @@ fn agent_workflow_dry_run_writes_stable_step_files() {
 
     let workflow = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "workflow",
             "symbol",

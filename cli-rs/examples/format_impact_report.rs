@@ -309,14 +309,14 @@ fn outputs_for_case(
         "agent-tools" => command_outputs(
             kast_bin,
             run_root,
-            &["agent", "tools"],
-            &["agent", "--format", "toon", "tools"],
+            &["--output", "json", "agent", "tools", "--full"],
+            &["agent", "tools", "--full"],
         ),
         "validation-error" => command_outputs(
             kast_bin,
             run_root,
+            &["--output", "json", "agent", "call", "symbol/resolve"],
             &["agent", "call", "symbol/resolve"],
-            &["agent", "--format", "toon", "call", "symbol/resolve"],
         ),
         "workflow-dry-run" => {
             let out_dir = run_root.join("workflow").join(&case.id);
@@ -337,8 +337,6 @@ fn outputs_for_case(
                 ],
                 &[
                     "agent",
-                    "--format",
-                    "toon",
                     "workflow",
                     "symbol",
                     "--dry-run",

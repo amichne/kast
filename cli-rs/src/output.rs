@@ -1,4 +1,4 @@
-use crate::cli::{AgentOutputFormat, AgentSetupHarness, OutputFormat, ReadyTarget};
+use crate::cli::{AgentSetupHarness, OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{

@@ -22,6 +22,9 @@ owns the global binary, repository Copilot, and docs operating model.
 `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md` owns
 manifest-backed agent resources, `kast agent workflow`, and the rule that stale
 binary/resource combinations fail loudly and require upgrade or reinstall.
+`.agents/adr/0004-repo-context-guidance-operating-model.md` owns repository
+root context-file selection, managed Kast guidance regions, clone-local Git
+filter behavior, and direct references to the installed skill path.
 
 When a change alters source ownership, generated outputs, or validation gates,
 update the nearest scoped `AGENTS.md` in the same change. Agent-only ADRs stay

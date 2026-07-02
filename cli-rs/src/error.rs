@@ -17,6 +17,7 @@ pub struct CliError {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliErrorResponse {
+    pub ok: bool,
     pub code: &'static str,
     pub message: String,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
@@ -35,6 +36,7 @@ impl CliError {
 
     pub fn to_response(&self) -> CliErrorResponse {
         CliErrorResponse {
+            ok: false,
             code: self.code,
             message: self.message.clone(),
             details: self.details.clone(),

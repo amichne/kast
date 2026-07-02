@@ -19,7 +19,12 @@ fn execute_request(request: AgentRequest) -> AgentEnvelope {
         request.runtime.backend_name,
     );
     match response {
-        Ok(raw_response) => response_envelope(request.method, request.request, raw_response),
+        Ok(raw_response) => response_envelope(
+            request.method,
+            request.request,
+            raw_response,
+            request.full_response,
+        ),
         Err(error) => error_envelope(
             request.method,
             Some(request.request),

@@ -356,7 +356,7 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent --format toon tools"
+          "name": "kast agent tools --full"
         }
       ],
       "forbiddenActions": [
@@ -366,7 +366,7 @@
         "schema change"
       ],
       "goldFacts": [
-        "TOON decodes to the same JSON value as default output.",
+        "TOON decodes to the same JSON value as explicit JSON output.",
         "TOON stdout bytes are lower than pretty JSON bytes.",
         "The agent tools schemaVersion and catalogSha256 are preserved."
       ],

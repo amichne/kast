@@ -24,10 +24,12 @@ kast --output json developer runtime up --workspace-root "$PWD" --backend idea
 ```
 
 Use human output only for operator-facing summaries. Use `--output json` when a
-result will be parsed, stored, or used as evidence. For `setup` dry-runs,
-`setup.targetDir` is the resolved package target, `setup.installCommand` is the
-install-only command for the selected guidance package, and `runtimeCommand`
-shows the backend warmup that a real setup will attempt.
+result will be parsed, stored, or used as evidence. `kast agent` defaults to
+compact TOON; add `--full` to `agent call` when exact large response fields are
+needed. For `setup` dry-runs, `setup.targetDir` is the resolved package target,
+`setup.installCommand` is the install-only command for the selected guidance
+package, and `runtimeCommand` shows the backend warmup that a real setup will
+attempt.
 
 ## Non-Interactive Rules
 

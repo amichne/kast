@@ -294,8 +294,8 @@ fn activate_bundle_rejects_unsupported_manifest_without_mutation() {
         .expect("activate unsupported bundle");
 
     assert!(!install.status.success(), "unsupported bundle should fail");
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(stderr.contains("BUNDLE_MANIFEST_UNSUPPORTED"), "{stderr}");
+    let stdout = String::from_utf8_lossy(&install.stdout);
+    assert!(stdout.contains("BUNDLE_MANIFEST_UNSUPPORTED"), "{stdout}");
     assert!(!install_root.join("install.json").exists());
 }
 
@@ -336,8 +336,8 @@ fn activate_bundle_rejects_unsafe_manifest_version_without_mutation() {
         .expect("activate unsafe-version bundle");
 
     assert!(!install.status.success(), "unsafe version should fail");
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(stderr.contains("BUNDLE_MANIFEST_INVALID"), "{stderr}");
+    let stdout = String::from_utf8_lossy(&install.stdout);
+    assert!(stdout.contains("BUNDLE_MANIFEST_INVALID"), "{stdout}");
     assert!(
         victim.join("marker").is_file(),
         "unsafe version must not delete or replace paths outside the install root"
@@ -370,8 +370,8 @@ fn activate_bundle_rejects_unsafe_tar_member_without_mutation() {
         .expect("activate malicious tarball");
 
     assert!(!install.status.success(), "unsafe tarball should fail");
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(stderr.contains("BUNDLE_ARCHIVE_INVALID"), "{stderr}");
+    let stdout = String::from_utf8_lossy(&install.stdout);
+    assert!(stdout.contains("BUNDLE_ARCHIVE_INVALID"), "{stdout}");
     assert!(!install_root.join("install.json").exists());
     assert!(!temp.path().join("outside").exists());
 }

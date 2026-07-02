@@ -29,6 +29,7 @@ struct AgentRequest {
     method: String,
     request: Value,
     runtime: AgentRuntimeArgs,
+    full_response: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -192,6 +193,19 @@ struct AgentToolsResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct AgentToolsListResult {
+    #[serde(rename = "type")]
+    result_type: &'static str,
+    catalog_sha256: String,
+    count: usize,
+    invocation: AgentToolInvocation,
+    tools: Vec<AgentToolRow>,
+    help: Vec<String>,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AgentToolInvocation {
     command: &'static str,
     argv: Vec<String>,
@@ -210,5 +224,14 @@ struct AgentToolSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     default_args: Option<Value>,
     parameters: Value,
+    mutates: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentToolRow {
+    name: String,
+    method: String,
+    category: String,
     mutates: bool,
 }

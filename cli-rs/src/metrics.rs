@@ -10,7 +10,6 @@ use crate::metrics_database::{DirectMetricsError, DirectResult, FileFilter, Metr
 use crate::output;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::io;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
@@ -188,17 +187,12 @@ fn print_metrics_response(
         log_file: String::new(),
         schema_version: SCHEMA_VERSION,
     })?;
-    if output_format == OutputFormat::Json {
-        print_json_value(&response)
+    if output_format.is_structured() {
+        output::print_structured(&response, output_format)?;
+        Ok(0)
     } else {
         print_human_metrics_response(request, &response)
     }
-}
-
-fn print_json_value(value: &Value) -> Result<i32> {
-    serde_json::to_writer_pretty(io::stdout(), value)?;
-    println!();
-    Ok(0)
 }
 
 fn print_human_metrics_response(request: &MetricsRequest, response: &Value) -> Result<i32> {

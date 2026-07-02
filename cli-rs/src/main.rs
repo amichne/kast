@@ -28,6 +28,7 @@ mod validate;
 use clap::{CommandFactory, Parser};
 use cli::{Cli, Command, GenerateCommand, OutputFormat, ShellKind};
 use error::{CliError, Result};
+use serde::Serialize;
 use std::env;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -37,19 +38,19 @@ const SCHEMA_VERSION: u32 = 3;
 fn main() {
     let exit_code = match parse_cli() {
         Ok(Some(cli)) => {
-            let output_format = cli.output;
-            match run(cli) {
+            let output_format = effective_output_format(cli.output, cli.command.as_ref());
+            match run(cli, output_format) {
                 Ok(code) => code,
                 Err(error) => {
                     let _ = output::print_error(&error, output_format);
-                    1
+                    error_exit_code(&error)
                 }
             }
         }
         Ok(None) => 0,
         Err(error) => {
             let _ = output::print_error(&error, requested_output_format());
-            1
+            error_exit_code(&error)
         }
     };
     std::process::exit(exit_code);
@@ -68,23 +69,77 @@ fn parse_cli() -> Result<Option<Cli>> {
 
 fn requested_output_format() -> OutputFormat {
     let mut args = std::env::args().skip(1);
+    let mut saw_agent = false;
     while let Some(arg) = args.next() {
         if arg == "--output" {
-            if args.next().as_deref() == Some("json") {
-                return OutputFormat::Json;
-            }
-            continue;
+            return match args.next().as_deref() {
+                Some("json") => OutputFormat::Json,
+                Some("toon") => OutputFormat::Toon,
+                _ => OutputFormat::Human,
+            };
         }
-        if arg == "--output=json" {
-            return OutputFormat::Json;
+        if let Some(value) = arg.strip_prefix("--output=") {
+            return match value {
+                "json" => OutputFormat::Json,
+                "toon" => OutputFormat::Toon,
+                _ => OutputFormat::Human,
+            };
+        }
+        if arg == "agent" {
+            saw_agent = true;
         }
     }
-    OutputFormat::Human
+    if saw_agent {
+        OutputFormat::Toon
+    } else {
+        OutputFormat::Human
+    }
 }
 
-fn run(cli: Cli) -> Result<i32> {
-    let output_format = cli.output;
-    let command = cli.command.unwrap_or(Command::Help { topic: vec![] });
+fn effective_output_format(
+    requested: Option<OutputFormat>,
+    command: Option<&Command>,
+) -> OutputFormat {
+    if let Some(requested) = requested {
+        return requested;
+    }
+    if matches!(command, Some(Command::Agent(_))) {
+        OutputFormat::Toon
+    } else {
+        OutputFormat::Human
+    }
+}
+
+fn error_exit_code(error: &CliError) -> i32 {
+    if error.code == "CLI_USAGE" { 2 } else { 1 }
+}
+
+fn default_runtime_args() -> cli::RuntimeArgs {
+    cli::RuntimeArgs {
+        workspace_root: None,
+        backend_name: None,
+        idea_home: None,
+        wait_timeout_ms: 60_000,
+        accept_indexing: None,
+        no_auto_start: None,
+        socket_path: None,
+        module_name: None,
+        source_roots: None,
+        classpath: None,
+        request_timeout_ms: None,
+        max_results: None,
+        max_concurrent_requests: None,
+        profile: false,
+        profile_modes: None,
+        profile_duration: None,
+        profile_otlp_endpoint: None,
+    }
+}
+
+fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
+    let command = cli
+        .command
+        .unwrap_or_else(|| Command::Context(default_runtime_args()));
     match command {
         Command::Help { topic } => {
             if topic.is_empty() {
@@ -99,6 +154,7 @@ fn run(cli: Cli) -> Result<i32> {
             println!("Kast CLI {}", cli::version());
             Ok(0)
         }
+        Command::Context(args) => run_context(args, output_format),
         Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
@@ -106,6 +162,97 @@ fn run(cli: Cli) -> Result<i32> {
         Command::Doctor(args) => run_ready(args, output_format),
         Command::Agent(args) => run_agent(args, output_format),
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContextCommandHint {
+    command: String,
+    purpose: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KastContext {
+    #[serde(rename = "type")]
+    context_type: &'static str,
+    bin: String,
+    description: &'static str,
+    workspace_root: String,
+    output_default: &'static str,
+    commands: Vec<ContextCommandHint>,
+    help: Vec<String>,
+    schema_version: u32,
+}
+
+fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i32> {
+    let workspace_root = config::resolve_workspace_root(args.workspace_root)?;
+    let context = KastContext {
+        context_type: "KAST_CONTEXT",
+        bin: display_current_executable(),
+        description: "Compiler-backed Kotlin semantic navigation, editing, diagnostics, and repository agent setup.",
+        workspace_root: workspace_root.display().to_string(),
+        output_default: "kast agent defaults to TOON; pass --output json when a JSON consumer requires it.",
+        commands: vec![
+            ContextCommandHint {
+                command: "kast setup --workspace-root <repo>".to_string(),
+                purpose: "Install or repair repository agent resources and detected hooks.".to_string(),
+            },
+            ContextCommandHint {
+                command: "kast agent tools --full".to_string(),
+                purpose: "Inspect full catalog-backed tool schemas.".to_string(),
+            },
+            ContextCommandHint {
+                command: "kast agent call <method> --params-file <file> --workspace-root <repo>".to_string(),
+                purpose: "Run a bounded semantic request through the active backend.".to_string(),
+            },
+        ],
+        help: vec![
+            "Run `kast --help` for command reference.".to_string(),
+            "Run `kast agent workflow verify --workspace-root <repo>` when backend state is unknown.".to_string(),
+        ],
+        schema_version: SCHEMA_VERSION,
+    };
+    if output_format.is_structured() {
+        output::print_structured(&context, output_format)?;
+    } else {
+        print_context_human(&context)?;
+    }
+    Ok(0)
+}
+
+fn print_context_human(context: &KastContext) -> Result<()> {
+    let mut markdown = String::new();
+    markdown.push_str("# Kast context\n\n");
+    markdown.push_str(&format!("- Bin: `{}`\n", context.bin));
+    markdown.push_str(&format!("- Description: {}\n", context.description));
+    markdown.push_str(&format!("- Workspace: `{}`\n", context.workspace_root));
+    markdown.push_str(&format!("- Output: {}\n\n", context.output_default));
+    markdown.push_str("## Commands\n");
+    for command in &context.commands {
+        markdown.push_str(&format!("- `{}`: {}\n", command.command, command.purpose));
+    }
+    markdown.push_str("\n## Help\n");
+    for help in &context.help {
+        markdown.push_str(&format!("- {help}\n"));
+    }
+    output::print_markdown(&markdown)
+}
+
+fn display_current_executable() -> String {
+    let raw = env::current_exe()
+        .ok()
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(current_executable_argument);
+    let home = env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|path| path.display().to_string());
+    if let Some(home) = home
+        && let Some(stripped) = raw.strip_prefix(&home)
+    {
+        return format!("~{stripped}");
+    }
+    raw
 }
 
 fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
@@ -132,6 +279,8 @@ fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
 fn setup_to_agent_up_args(args: cli::SetupArgs) -> cli::AgentUpArgs {
     cli::AgentUpArgs {
         runtime: args.runtime,
+        skill_target_dir: args.skill_target_dir,
+        context_files: merge_context_files(args.context_files, args.agents_md.clone()),
         agents_md: args.agents_md,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
@@ -140,10 +289,19 @@ fn setup_to_agent_up_args(args: cli::SetupArgs) -> cli::AgentUpArgs {
     }
 }
 
+fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>) -> Vec<PathBuf> {
+    for target in agents_md {
+        if !context_files.iter().any(|existing| existing == &target) {
+            context_files.push(target);
+        }
+    }
+    context_files
+}
+
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
     let result = self_mgmt::doctor(args.fix, args.target)?;
-    if output_format == OutputFormat::Json {
-        output::print_json(&result)?;
+    if output_format.is_structured() {
+        output::print_structured(&result, output_format)?;
     } else {
         output::print_ready(&result)?;
     }
@@ -151,7 +309,6 @@ fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
 }
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
-    let agent_format = args.format;
     match args.command {
         cli::AgentCommand::Up(args) => {
             run_agent_up_with_surface(args, output_format, AgentUpCommandSurface::AgentUp)
@@ -159,10 +316,7 @@ fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
         cli::AgentCommand::Ready(args) => run_ready(args, output_format),
         cli::AgentCommand::Setup(args) => run_agent_setup(args, output_format),
         cli::AgentCommand::Lsp(args) => lsp::run(args),
-        command => agent::run(cli::AgentArgs {
-            format: agent_format,
-            command,
-        }),
+        command => agent::run(command, output_format),
     }
 }
 
@@ -248,8 +402,8 @@ fn print_agent_up_result(
     result: &orchestration::AgentUpResult,
     output_format: OutputFormat,
 ) -> Result<()> {
-    if output_format == OutputFormat::Json {
-        output::print_json(result)
+    if output_format.is_structured() {
+        output::print_structured(result, output_format)
     } else {
         output::print_agent_up_result(result)
     }
@@ -261,6 +415,8 @@ fn agent_up_setup_args(
 ) -> cli::AgentGuidanceSetupArgs {
     cli::AgentGuidanceSetupArgs {
         workspace_root: Some(workspace_root.to_path_buf()),
+        skill_target_dir: args.skill_target_dir.clone(),
+        context_files: merge_context_files(args.context_files.clone(), args.agents_md.clone()),
         agents_md: args.agents_md.clone(),
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
@@ -374,16 +530,16 @@ fn run_agent_guidance_setup(
     let install_command = agent_guidance_setup_command(&args);
     if args.dry_run {
         let plan = install::agent_guidance_setup_plan(&args, install_command)?;
-        if output_format == OutputFormat::Json {
-            output::print_json(&plan)?;
+        if output_format.is_structured() {
+            output::print_structured(&plan, output_format)?;
         } else {
             output::print_agent_guidance_setup_plan(&plan)?;
         }
         return Ok(0);
     }
     let result = install::install_agent_guidance(args, install_command)?;
-    if output_format == OutputFormat::Json {
-        output::print_json(&result)?;
+    if output_format.is_structured() {
+        output::print_structured(&result, output_format)?;
     } else {
         output::print_agent_guidance_setup_result(&result)?;
     }
@@ -399,6 +555,14 @@ fn agent_guidance_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<Strin
     if let Some(workspace_root) = &args.workspace_root {
         command.push("--workspace-root".to_string());
         command.push(workspace_root.display().to_string());
+    }
+    if let Some(skill_target_dir) = &args.skill_target_dir {
+        command.push("--skill-target-dir".to_string());
+        command.push(skill_target_dir.display().to_string());
+    }
+    for target in &args.context_files {
+        command.push("--context-file".to_string());
+        command.push(target.display().to_string());
     }
     for target in &args.agents_md {
         command.push("--agents-md".to_string());
@@ -425,6 +589,14 @@ fn root_setup_command(
     } else if let Some(workspace_root) = &setup_args.workspace_root {
         command.push("--workspace-root".to_string());
         command.push(workspace_root.display().to_string());
+    }
+    if let Some(skill_target_dir) = &setup_args.skill_target_dir {
+        command.push("--skill-target-dir".to_string());
+        command.push(skill_target_dir.display().to_string());
+    }
+    for target in &setup_args.context_files {
+        command.push("--context-file".to_string());
+        command.push(target.display().to_string());
     }
     if let Some(backend) = runtime_args.backend_name {
         command.push("--backend".to_string());
@@ -455,8 +627,8 @@ fn run_agent_setup_auto(
     let selection = agent_setup_auto_selection(&cwd, &args)?;
     if args.dry_run {
         let plan = agent_setup_auto_plan(&selection, &args, &cwd);
-        if output_format == OutputFormat::Json {
-            output::print_json(&plan)?;
+        if output_format.is_structured() {
+            output::print_structured(&plan, output_format)?;
         } else {
             output::print_agent_setup_auto_plan(&plan)?;
         }
@@ -693,8 +865,8 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
     match command {
         cli::RuntimeCommand::Up(args) => {
             let result = runtime::workspace_ensure(args)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
             } else {
                 output::print_workspace_ensure(&result)?;
             }
@@ -702,8 +874,8 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
         }
         cli::RuntimeCommand::Status(args) => {
             let result = runtime::workspace_status(args)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
             } else {
                 output::print_workspace_status(&result)?;
             }
@@ -711,8 +883,8 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
         }
         cli::RuntimeCommand::Stop(args) => {
             let result = runtime::workspace_stop(args)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
             } else {
                 output::print_stop_result(&result)?;
             }
@@ -720,8 +892,8 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
         }
         cli::RuntimeCommand::Restart(args) => {
             let result = runtime::workspace_restart(args)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
             } else {
                 output::print_restart_result(&result)?;
             }
@@ -729,8 +901,8 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
         }
         cli::RuntimeCommand::Capabilities(args) => {
             let result = runtime::capabilities(args)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
             } else {
                 output::print_capabilities(&result)?;
             }
@@ -764,8 +936,8 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
         }
         cli::MachineCommand::Defaults(args) => {
             let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
-            if output_format == OutputFormat::Json {
-                output::print_json(&result)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
             } else {
                 output::print_developer_machine_defaults(&result)?;
             }
@@ -817,8 +989,8 @@ fn run_generate(args: cli::GenerateArgs) -> Result<i32> {
 
 fn run_package(args: cli::PackageArgs, output_format: OutputFormat) -> Result<i32> {
     let result = package::run(args)?;
-    if output_format == OutputFormat::Json {
-        output::print_json(&result)?;
+    if output_format.is_structured() {
+        output::print_structured(&result, output_format)?;
     } else {
         output::print_package_result(&result)?;
     }
@@ -841,8 +1013,8 @@ fn run_paths(args: cli::PathsArgs, output_format: OutputFormat) -> Result<i32> {
         config::PathResolutionMode::Cli
     };
     let result = config::path_resolution_report(&config, workspace_root.as_deref(), mode)?;
-    if output_format == OutputFormat::Json {
-        output::print_json(&result)?;
+    if output_format.is_structured() {
+        output::print_structured(&result, output_format)?;
     } else {
         output::print_paths(&result)?;
     }
@@ -855,8 +1027,8 @@ fn run_install(command: cli::InstallCommand, output_format: OutputFormat) -> Res
         return Ok(0);
     }
     if let Some(plan) = install_dry_run_plan(&command) {
-        if output_format == OutputFormat::Json {
-            output::print_json(&plan)?;
+        if output_format.is_structured() {
+            output::print_structured(&plan, output_format)?;
         } else {
             output::print_agent_setup_auto_plan(&plan)?;
         }
@@ -864,8 +1036,8 @@ fn run_install(command: cli::InstallCommand, output_format: OutputFormat) -> Res
     }
     let mut reporter = install_reporter(output_format);
     let result = install::install(cli::InstallArgs { command }, reporter.as_mut())?;
-    if output_format == OutputFormat::Json {
-        output::print_json(&result)?;
+    if output_format.is_structured() {
+        output::print_structured(&result, output_format)?;
     } else {
         output::print_install_result(&result)?;
     }

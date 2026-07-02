@@ -10,7 +10,7 @@ Run the native package verification workflow before claiming the active
 package, skill, instructions, config, or binary are current:
 
 ```sh
-kast agent --output json workflow package-verify --workspace-root "$PWD" \
+kast --output json agent workflow package-verify --workspace-root "$PWD" \
   --require-gradle-project
 ```
 
@@ -18,7 +18,7 @@ Pass explicit require and target-root flags when a host-specific resource must
 be checked:
 
 ```sh
-kast agent --output json workflow package-verify --workspace-root "$PWD" \
+kast --output json agent workflow package-verify --workspace-root "$PWD" \
   --require-copilot --copilot-target-dir "$PWD/.github" \
   --require-skill --skill-target-dir "$PWD/.codex/skills" \
   --require-instructions --instructions-target-dir "$PWD/.codex/instructions"

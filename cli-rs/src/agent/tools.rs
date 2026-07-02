@@ -1,5 +1,10 @@
-fn execute_tools() -> AgentEnvelope {
-    match agent_tools_result() {
+fn execute_tools(args: AgentToolsArgs) -> AgentEnvelope {
+    let result = if args.full {
+        agent_tools_result().map(|result| serde_json::to_value(result).unwrap_or(Value::Null))
+    } else {
+        agent_tools_list_result().map(|result| serde_json::to_value(result).unwrap_or(Value::Null))
+    };
+    match result {
         Ok(result) => result_envelope("agent/tools".to_string(), result),
         Err(error) => error_envelope(
             "agent/tools".to_string(),
@@ -9,6 +14,23 @@ fn execute_tools() -> AgentEnvelope {
     }
 }
 
+fn agent_tools_list_result() -> Result<AgentToolsListResult> {
+    let catalog = validate::embedded_catalog()?;
+    let tools = agent_tool_rows(&catalog)?;
+    Ok(AgentToolsListResult {
+        result_type: "KAST_AGENT_TOOLS",
+        catalog_sha256: manifest::sha256_bytes(validate::embedded_catalog_source().as_bytes()),
+        count: tools.len(),
+        invocation: agent_tool_invocation(),
+        tools,
+        help: vec![
+            "Run `kast agent tools --full` for params schemas.".to_string(),
+            "Run `kast agent call <method> --params-file <file> --workspace-root <repo>` to invoke a method.".to_string(),
+        ],
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
 fn agent_tools_result() -> Result<AgentToolsResult> {
     let catalog = validate::embedded_catalog()?;
     let tools = agent_tool_specs(&catalog)?;
@@ -16,21 +38,25 @@ fn agent_tools_result() -> Result<AgentToolsResult> {
         result_type: "KAST_AGENT_TOOLS",
         catalog_sha256: manifest::sha256_bytes(validate::embedded_catalog_source().as_bytes()),
         tool_count: tools.len(),
-        invocation: AgentToolInvocation {
-            command: "kast agent call",
-            argv: vec![
-                current_executable_argument(),
-                "agent".to_string(),
-                "call".to_string(),
-                "<method>".to_string(),
-            ],
-            method_argument: "<method>",
-            params_file_flag: "--params-file",
-            workspace_root_flag: "--workspace-root",
-        },
+        invocation: agent_tool_invocation(),
         tools,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn agent_tool_invocation() -> AgentToolInvocation {
+    AgentToolInvocation {
+        command: "kast agent call",
+        argv: vec![
+            current_executable_argument(),
+            "agent".to_string(),
+            "call".to_string(),
+            "<method>".to_string(),
+        ],
+        method_argument: "<method>",
+        params_file_flag: "--params-file",
+        workspace_root_flag: "--workspace-root",
+    }
 }
 
 fn current_executable_argument() -> String {
@@ -83,6 +109,20 @@ fn agent_tool_specs(catalog: &Value) -> Result<Vec<AgentToolSpec>> {
         }
     }
     Ok(tools)
+}
+
+fn agent_tool_rows(catalog: &Value) -> Result<Vec<AgentToolRow>> {
+    agent_tool_specs(catalog).map(|tools| {
+        tools
+            .into_iter()
+            .map(|tool| AgentToolRow {
+                name: tool.name,
+                method: tool.method,
+                category: tool.category,
+                mutates: tool.mutates,
+            })
+            .collect()
+    })
 }
 
 fn agent_tool_spec(catalog: &Value, method: &str, command: &Value) -> Result<AgentToolSpec> {

@@ -20,7 +20,7 @@ use flate2::read::GzDecoder;
 use include_dir::{Dir, DirEntry, include_dir};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::env;

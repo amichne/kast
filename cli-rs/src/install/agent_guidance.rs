@@ -3,16 +3,18 @@ pub fn agent_guidance_setup_plan(
     install_command: Vec<String>,
 ) -> Result<AgentGuidanceSetupPlan> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
-    let skill_target = workspace_root.join(".agents/skills/kast");
-    let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args.agents_md)?;
+    let skill_target_dir = agent_guidance_skill_target_dir(args, &workspace_root);
+    let skill_target = skill_target_dir.join("kast");
+    let agents_md_targets = resolve_agents_md_targets(&workspace_root, args)?;
     let agents_md_targets = agents_md_targets
         .iter()
-        .map(agents_md_target_plan)
+        .map(|target| agents_md_target_plan(target, &skill_target))
         .collect::<Result<Vec<_>>>()?;
     Ok(AgentGuidanceSetupPlan {
         result_type: "AGENT_SETUP_PLAN",
         skill_target: skill_target.display().to_string(),
         agents_md_targets,
+        hook_targets: detected_hook_plans(&workspace_root),
         install_command,
         force: args.force,
         dry_run: args.dry_run,
@@ -25,28 +27,33 @@ pub fn install_agent_guidance(
     install_command: Vec<String>,
 ) -> Result<AgentGuidanceSetupResult> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
+    let skill_target_dir = agent_guidance_skill_target_dir(&args, &workspace_root);
     let skill = install_skill(ResourceInstallArgs {
-        target_dir: Some(workspace_root.join(".agents/skills")),
+        target_dir: Some(skill_target_dir),
         name: Some("kast".to_string()),
         source_dir: None,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
         dry_run: false,
     })?;
-    let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args.agents_md)?;
+    let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args)?;
     let mut agent_results = Vec::with_capacity(agents_md_targets.len());
     for target in &agents_md_targets {
         agent_results.push(install_agents_md_guidance(
             target,
+            &PathBuf::from(&skill.installed_at).join("SKILL.md"),
             args.force,
             args.no_auto_exclude_git,
         )?);
     }
     let skipped = skill.skipped && agent_results.iter().all(|target| target.skipped);
+    let hook_results = install_detected_hooks(&workspace_root, args.force, args.no_auto_exclude_git)?;
+    let skipped = skipped && hook_results.iter().all(|target| target.skipped);
     Ok(AgentGuidanceSetupResult {
         result_type: "AGENT_SETUP",
         skill,
         agents_md_targets: agent_results,
+        hook_targets: hook_results,
         install_command,
         skipped,
         schema_version: SCHEMA_VERSION,
@@ -57,50 +64,107 @@ pub fn install_agent_guidance(
 struct AgentsMdTarget {
     path: PathBuf,
     explicit: bool,
+    local_only: bool,
 }
 
 fn resolve_agents_md_targets(
     workspace_root: &Path,
-    explicit_targets: &[PathBuf],
+    args: &cli::AgentGuidanceSetupArgs,
 ) -> Result<Vec<AgentsMdTarget>> {
     let mut targets = Vec::new();
-    targets.push(AgentsMdTarget {
-        path: config::normalize(workspace_root.join(DEFAULT_AGENT_GUIDANCE_FILE)),
-        explicit: false,
-    });
-    for target in explicit_targets {
+    let explicit_targets = merge_context_files(args.context_files.clone(), args.agents_md.clone());
+    targets.push(default_context_target(workspace_root));
+    for target in &explicit_targets {
         let path = if target.is_absolute() {
             target.clone()
         } else {
             workspace_root.join(target)
         };
         let path = config::normalize(path);
-        if !is_agent_guidance_file_name(&path) {
+        if !is_supported_context_file(workspace_root, &path) {
             return Err(CliError::new(
                 "AGENT_GUIDANCE_TARGET_INVALID",
                 format!(
-                    "Kast agent guidance targets must be AGENTS.md or AGENTS.local.md files: {}",
+                    "Kast context files must be AGENTS.md, CODEX.md, CLAUDE.md, .github/copilot-instructions.md, or AGENTS.local.md: {}",
                     path.display()
                 ),
             ));
         }
         if !targets.iter().any(|existing| existing.path == path) {
             targets.push(AgentsMdTarget {
-                path,
+                local_only: is_local_context_file(&path),
                 explicit: true,
+                path,
             });
         }
     }
     Ok(targets)
 }
 
-fn is_agent_guidance_file_name(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| name == "AGENTS.md" || name == DEFAULT_AGENT_GUIDANCE_FILE)
+fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>) -> Vec<PathBuf> {
+    for target in agents_md {
+        if !context_files.iter().any(|existing| existing == &target) {
+            context_files.push(target);
+        }
+    }
+    context_files
 }
 
-fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> {
+fn agent_guidance_skill_target_dir(
+    args: &cli::AgentGuidanceSetupArgs,
+    workspace_root: &Path,
+) -> PathBuf {
+    args.skill_target_dir
+        .clone()
+        .unwrap_or_else(|| workspace_root.join(".agents/skills"))
+}
+
+fn default_context_target(workspace_root: &Path) -> AgentsMdTarget {
+    for candidate in [
+        "AGENTS.md",
+        "CODEX.md",
+        "CLAUDE.md",
+        ".github/copilot-instructions.md",
+        DEFAULT_AGENT_GUIDANCE_FILE,
+    ] {
+        let path = workspace_root.join(candidate);
+        if path.exists() {
+            return AgentsMdTarget {
+                local_only: candidate == DEFAULT_AGENT_GUIDANCE_FILE,
+                explicit: false,
+                path: config::normalize(path),
+            };
+        }
+    }
+    AgentsMdTarget {
+        path: config::normalize(workspace_root.join(DEFAULT_AGENT_GUIDANCE_FILE)),
+        explicit: false,
+        local_only: true,
+    }
+}
+
+fn is_supported_context_file(workspace_root: &Path, path: &Path) -> bool {
+    let relative = path.strip_prefix(workspace_root).unwrap_or(path);
+    if relative.to_str() == Some(".github/copilot-instructions.md") {
+        return true;
+    }
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+            matches!(
+                name,
+                "AGENTS.md" | "CODEX.md" | "CLAUDE.md" | DEFAULT_AGENT_GUIDANCE_FILE
+            )
+        })
+}
+
+fn is_local_context_file(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == DEFAULT_AGENT_GUIDANCE_FILE)
+}
+
+fn agents_md_target_plan(target: &AgentsMdTarget, skill_path: &Path) -> Result<AgentsMdTargetPlan> {
     let exists = target.path.exists();
     let content = if exists {
         Some(fs::read_to_string(&target.path)?)
@@ -110,7 +174,7 @@ fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> 
     let managed_region_present = content
         .as_deref()
         .is_some_and(|content| find_kast_managed_fence(content).is_some());
-    let expected = render_agents_md_guidance_block();
+    let expected = render_agents_md_guidance_block(skill_path);
     let will_modify = match content.as_deref() {
         Some(content) => find_kast_managed_fence(content)
             .map(|range| content[range] != expected)
@@ -119,14 +183,14 @@ fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> 
     };
     let reason = if exists {
         if target.explicit {
-            "explicit agent guidance target".to_string()
+            "explicit context file target".to_string()
         } else {
-            "workspace AGENTS.local.md exists".to_string()
+            "workspace context file exists".to_string()
         }
     } else if target.explicit {
-        "explicit agent guidance target will be created".to_string()
+        "explicit context file target will be created".to_string()
     } else {
-        "workspace AGENTS.local.md will be created".to_string()
+        "workspace context fallback will be created".to_string()
     };
     Ok(AgentsMdTargetPlan {
         path: target.path.display().to_string(),
@@ -140,10 +204,11 @@ fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> 
 
 fn install_agents_md_guidance(
     target: &AgentsMdTarget,
+    skill_path: &Path,
     force: bool,
     no_auto_exclude_git: bool,
 ) -> Result<AgentsMdTargetResult> {
-    let expected = render_agents_md_guidance_block();
+    let expected = render_agents_md_guidance_block(skill_path);
     let existed = target.path.exists();
     let original = if existed {
         fs::read_to_string(&target.path)?
@@ -161,13 +226,7 @@ fn install_agents_md_guidance(
             .is_some_and(|recorded| recorded != current_sha);
         let unmanaged_different_region = manifest_sha.is_none() && current_sha != expected_sha;
         if (changed_from_manifest || unmanaged_different_region) && !force {
-            return Err(CliError::new(
-                "INSTALL_MANAGED_OUTPUT_MODIFIED",
-                format!(
-                    "Kast managed guidance in {} was modified. Move custom content outside the Kast fence or pass --force to replace only the fenced region.",
-                    target.path.display()
-                ),
-            ));
+            backup_context_file(&target.path, &original)?;
         }
     }
 
@@ -178,15 +237,16 @@ fn install_agents_md_guidance(
     }
     let region_sha = manifest::kast_managed_fence_sha256(&target.path)?;
     let repo_root = resource_repo_root(&target.path);
-    let git_exclude = match &repo_root {
-        Some(repo_root) => update_resource_git_exclude(
+    let git_exclude = match (&repo_root, target.local_only) {
+        (Some(repo_root), true) => update_resource_git_exclude(
             ManagedResourceKind::AgentGuidance,
             repo_root,
             &target.path,
             std::slice::from_ref(&target.path),
             no_auto_exclude_git,
         )?,
-        None => git_exclude_not_repository(),
+        (Some(repo_root), false) => update_context_git_filter(repo_root, &target.path, no_auto_exclude_git)?,
+        (None, _) => git_exclude_not_repository(),
     };
     if let Some(repo_root) = &repo_root {
         self_mgmt::record_repo_resource(
@@ -237,17 +297,306 @@ fn managed_region_manifest_checksum(path: &Path) -> Result<Option<String>> {
     }))
 }
 
-fn render_agents_md_guidance_block() -> String {
+fn render_agents_md_guidance_block(skill_path: &Path) -> String {
+    let skill_path = skill_path.display().to_string();
     [
         KAST_MANAGED_FENCE_START,
         "## Kast routing",
         "When touching Kotlin or Gradle files, check readiness with `kast agent workflow verify --workspace-root \"$PWD\"` if current state is unknown.",
-        "Use `.agents/skills/kast/SKILL.md` and `kast agent` for Kotlin semantic navigation, edits, references, diagnostics, and source-index impact.",
+        &format!("Use `{skill_path}` and `kast agent` for Kotlin semantic navigation, edits, references, diagnostics, and source-index impact."),
         "Prefer `kast agent workflow ...` for repeatable proof; use `kast agent call <method>` only when no workflow fits.",
         "After updating packaged skills, instructions, Copilot assets, or managed guidance, run `kast agent workflow package-verify --workspace-root \"$PWD\"` and follow emitted recovery commands.",
         KAST_MANAGED_FENCE_END,
     ]
     .join("\n")
+}
+
+fn update_context_git_filter(
+    repo_root: &Path,
+    target: &Path,
+    disabled: bool,
+) -> Result<GitExcludeResult> {
+    if disabled {
+        return Ok(GitExcludeResult {
+            attempted: false,
+            updated: false,
+            exclude_file: None,
+            reason: Some("disabled".to_string()),
+            schema_version: SCHEMA_VERSION,
+        });
+    }
+    let Some(attributes_file) = git_info_attributes_path(repo_root) else {
+        return Ok(git_exclude_not_repository());
+    };
+    let tools_dir = attributes_file
+        .parent()
+        .and_then(Path::parent)
+        .map(|git_dir| git_dir.join("tools"))
+        .unwrap_or_else(|| repo_root.join(".git/tools"));
+    let filter_script = tools_dir.join("kast-context-region-filter");
+    fs::create_dir_all(&tools_dir)?;
+    write_file_atomically(
+        &filter_script,
+        b"#!/usr/bin/env sh\nsed '/<kast files=\"*.kt, *.kts\" type=\"instructions\" replaceTools=\"grep,search,write\">/,/<\\/kast>/d'\n",
+    )?;
+    set_context_filter_executable(&filter_script)?;
+    let relative = target
+        .strip_prefix(repo_root)
+        .unwrap_or(target)
+        .display()
+        .to_string();
+    let block = format!("{relative} filter=kast-context-region diff=kast-context-region\n");
+    let original = match fs::read_to_string(&attributes_file) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
+    let start_marker = "# >>> kast context filter >>>";
+    let end_marker = "# <<< kast context filter <<<";
+    let updated_content = replace_managed_block_with_markers(
+        &original,
+        &format!("{start_marker}\n{block}{end_marker}\n"),
+        start_marker,
+        end_marker,
+    );
+    let updated = updated_content != original;
+    if updated {
+        write_file_atomically(&attributes_file, updated_content.as_bytes())?;
+    }
+    configure_context_filter(repo_root, &filter_script)?;
+    Ok(GitExcludeResult {
+        attempted: true,
+        updated,
+        exclude_file: Some(attributes_file.display().to_string()),
+        reason: Some("context git filter".to_string()),
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn git_info_attributes_path(repo_root: &Path) -> Option<PathBuf> {
+    let output = ProcessCommand::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .args(["rev-parse", "--git-path", "info/attributes"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8(output.stdout).ok()?;
+    Some(repo_root.join(raw.trim()))
+}
+
+fn configure_context_filter(repo_root: &Path, filter_script: &Path) -> Result<()> {
+    for args in [
+        vec![
+            "config",
+            "--local",
+            "filter.kast-context-region.clean",
+            filter_script.to_str().unwrap_or(""),
+        ],
+        vec![
+            "config",
+            "--local",
+            "filter.kast-context-region.smudge",
+            "cat",
+        ],
+        vec![
+            "config",
+            "--local",
+            "diff.kast-context-region.textconv",
+            filter_script.to_str().unwrap_or(""),
+        ],
+    ] {
+        let output = ProcessCommand::new("git")
+            .arg("-C")
+            .arg(repo_root)
+            .args(args)
+            .output()?;
+        if !output.status.success() {
+            return Err(CliError::new(
+                "GIT_FILTER_CONFIG_FAILED",
+                "Could not configure clone-local Kast context Git filter.",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn set_context_filter_executable(path: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(path)?.permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions)?;
+    }
+    Ok(())
+}
+
+fn detected_hook_plans(workspace_root: &Path) -> Vec<AgentHookPlan> {
+    detected_hook_targets(workspace_root)
+        .into_iter()
+        .map(|target| AgentHookPlan {
+            host: target.host.to_string(),
+            path: target.path.display().to_string(),
+            action: target.action.to_string(),
+            command: context_command(workspace_root),
+        })
+        .collect()
+}
+
+fn install_detected_hooks(
+    workspace_root: &Path,
+    force: bool,
+    no_auto_exclude_git: bool,
+) -> Result<Vec<AgentHookResult>> {
+    let mut results = Vec::new();
+    for target in detected_hook_targets(workspace_root) {
+        let updated = match target.host {
+            "codex" => write_json_hook(
+                &target.path,
+                &json!({
+                    "hooks": [{
+                        "event": "SessionStart",
+                        "command": context_command(workspace_root)
+                    }]
+                }),
+            )?,
+            "claude-code" => write_json_hook(
+                &target.path,
+                &json!({
+                    "hooks": {
+                        "SessionStart": [{
+                            "hooks": [{
+                                "type": "command",
+                                "command": shell_command(&context_command(workspace_root))
+                            }]
+                        }]
+                    }
+                }),
+            )?,
+            "opencode" => write_json_hook(
+                &target.path,
+                &json!({
+                    "name": "kast-context",
+                    "event": "session.start",
+                    "command": context_command(workspace_root)
+                }),
+            )?,
+            "copilot" => {
+                let result = install_copilot(CopilotInstallArgs {
+                    target_dir: Some(workspace_root.join(".github")),
+                    force,
+                    no_auto_exclude_git,
+                    dry_run: false,
+                })?;
+                !result.skipped
+            }
+            _ => false,
+        };
+        results.push(AgentHookResult {
+            host: target.host.to_string(),
+            path: target.path.display().to_string(),
+            updated,
+            skipped: !updated,
+            command: context_command(workspace_root),
+        });
+    }
+    Ok(results)
+}
+
+#[derive(Debug, Clone)]
+struct AgentHookTarget {
+    host: &'static str,
+    path: PathBuf,
+    action: &'static str,
+}
+
+fn detected_hook_targets(workspace_root: &Path) -> Vec<AgentHookTarget> {
+    let mut targets = Vec::new();
+    if workspace_root.join(".codex").is_dir() {
+        targets.push(AgentHookTarget {
+            host: "codex",
+            path: workspace_root.join(".codex/hooks.json"),
+            action: "install or repair Codex SessionStart hook",
+        });
+    }
+    if workspace_root.join(".claude").is_dir() {
+        targets.push(AgentHookTarget {
+            host: "claude-code",
+            path: workspace_root.join(".claude/settings.json"),
+            action: "install or repair Claude Code SessionStart hook",
+        });
+    }
+    if workspace_root.join(".opencode").is_dir() {
+        targets.push(AgentHookTarget {
+            host: "opencode",
+            path: workspace_root.join(".opencode/kast-context.plugin.json"),
+            action: "install or repair OpenCode session context plugin",
+        });
+    }
+    if workspace_root.join(".github").is_dir() {
+        targets.push(AgentHookTarget {
+            host: "copilot",
+            path: workspace_root.join(".github/extensions/kast/extension.mjs"),
+            action: "install or repair Copilot Kast package session hook",
+        });
+    }
+    targets
+}
+
+fn write_json_hook(path: &Path, value: &Value) -> Result<bool> {
+    let mut bytes = serde_json::to_vec_pretty(value)?;
+    bytes.push(b'\n');
+    let original = fs::read(path).unwrap_or_default();
+    let updated = original != bytes;
+    if updated {
+        write_file_atomically(path, &bytes)?;
+    }
+    Ok(updated)
+}
+
+fn context_command(workspace_root: &Path) -> Vec<String> {
+    vec![
+        hook_executable_argument(),
+        "--output".to_string(),
+        "toon".to_string(),
+        "context".to_string(),
+        "--workspace-root".to_string(),
+        workspace_root.display().to_string(),
+    ]
+}
+
+fn shell_command(argv: &[String]) -> String {
+    argv.iter()
+        .map(|arg| {
+            if arg.chars().all(|ch| ch.is_ascii_alphanumeric() || "-_./".contains(ch)) {
+                arg.clone()
+            } else {
+                format!("'{}'", arg.replace('\'', "'\\''"))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn hook_executable_argument() -> String {
+    let current = env::current_exe().ok().map(config::normalize);
+    let path_kast = ProcessCommand::new("sh")
+        .args(["-c", "command -v kast"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|raw| config::normalize(PathBuf::from(raw.trim())));
+    if current.is_some() && current == path_kast {
+        "kast".to_string()
+    } else {
+        current
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "kast".to_string())
+    }
 }
 
 fn find_kast_managed_fence(content: &str) -> Option<std::ops::Range<usize>> {
@@ -304,4 +653,15 @@ fn write_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
     fs::write(&tmp, contents)?;
     fs::rename(&tmp, path)?;
     Ok(())
+}
+
+fn backup_context_file(path: &Path, original: &str) -> Result<()> {
+    if original.is_empty() {
+        return Ok(());
+    }
+    let backup = path.with_extension(format!(
+        "{}.kast-backup",
+        current_timestamp().replace([':', 'T', 'Z'], "-")
+    ));
+    write_file_atomically(&backup, original.as_bytes())
 }

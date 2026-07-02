@@ -33,8 +33,8 @@ fn idea_plugin_install_requires_jetbrains_profiles_in_normalized_install_path() 
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr),
     );
-    let stderr = String::from_utf8_lossy(&install.stderr);
-    assert!(stderr.contains("JETBRAINS_CONFIG_NOT_FOUND"), "{stderr}");
+    let stdout = String::from_utf8_lossy(&install.stdout);
+    assert!(stdout.contains("JETBRAINS_CONFIG_NOT_FOUND"), "{stdout}");
     assert!(
         !home.join("Downloads/kast-plugin.zip").exists(),
         "normalized plugin install must not create a manual plugin zip"

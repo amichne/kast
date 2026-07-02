@@ -4,7 +4,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn agent_output_renderer_defaults_to_pretty_json() {
+    fn structured_output_renderer_emits_pretty_json() {
         let value = json!({
             "ok": true,
             "method": "agent/tools",
@@ -18,8 +18,8 @@ mod tests {
             "schemaVersion": 3
         });
 
-        let rendered = render_agent_output(&value, AgentOutputFormat::Json)
-            .expect("render default json agent output");
+        let rendered =
+            render_structured_output(&value, OutputFormat::Json).expect("render json output");
 
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(&rendered).expect("rendered json"),
@@ -32,7 +32,7 @@ mod tests {
     }
 
     #[test]
-    fn agent_output_renderer_can_emit_round_trippable_toon() {
+    fn structured_output_renderer_can_emit_round_trippable_toon() {
         let value = json!({
             "ok": true,
             "method": "agent/tools",
@@ -47,8 +47,8 @@ mod tests {
             "schemaVersion": 3
         });
 
-        let rendered = render_agent_output(&value, AgentOutputFormat::Toon)
-            .expect("render toon agent output");
+        let rendered =
+            render_structured_output(&value, OutputFormat::Toon).expect("render toon output");
         let decoded: serde_json::Value =
             toon_format::decode_default(rendered.trim()).expect("decode toon output");
 
@@ -56,7 +56,7 @@ mod tests {
     }
 
     #[test]
-    fn agent_output_renderer_toon_is_smaller_for_uniform_agent_rows() {
+    fn structured_output_renderer_toon_is_smaller_for_uniform_rows() {
         let value = json!({
             "tools": [
                 {"name": "kast_resolve", "method": "symbol/resolve", "mutates": false},
@@ -66,10 +66,10 @@ mod tests {
             ]
         });
 
-        let json_output = render_agent_output(&value, AgentOutputFormat::Json)
-            .expect("render json agent output");
-        let toon_output = render_agent_output(&value, AgentOutputFormat::Toon)
-            .expect("render toon agent output");
+        let json_output =
+            render_structured_output(&value, OutputFormat::Json).expect("render json output");
+        let toon_output =
+            render_structured_output(&value, OutputFormat::Toon).expect("render toon output");
 
         assert!(
             toon_output.len() < json_output.len(),

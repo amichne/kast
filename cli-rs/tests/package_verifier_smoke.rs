@@ -353,7 +353,7 @@ if [ "$1" = "agent" ] && [ "$2" = "workflow" ] && [ "$3" = "--help" ]; then
   printf 'Usage: kast agent workflow\n'
   exit 0
 fi
-if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "agent" ] && [ "$4" = "tools" ] && [ "$5" = "--full" ]; then
   printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","schemaVersion":3,"catalogSha256":"0000000000000000000000000000000000000000000000000000000000000000","toolCount":0,"invocation":{"argv":["/wrong/kast","agent","call","<method>"]},"tools":[]}}\n'
   exit 0
 fi
@@ -455,7 +455,7 @@ if [ "$1" = "agent" ] && [ "$2" = "workflow" ] && [ "$3" = "--help" ]; then
   printf 'Usage: kast agent workflow\n'
   exit 0
 fi
-if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "agent" ] && [ "$4" = "tools" ] && [ "$5" = "--full" ]; then
   printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","schemaVersion":3,"catalogSha256":"0000000000000000000000000000000000000000000000000000000000000000","toolCount":0,"invocation":{"argv":["%s","agent","call","<method>"]},"tools":[]}}\n' "$0"
   exit 0
 fi

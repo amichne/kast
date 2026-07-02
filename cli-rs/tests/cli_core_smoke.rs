@@ -31,24 +31,30 @@ fn smoke_core_cli_commands() {
     assert!(help.status.success());
     let help_stdout = String::from_utf8_lossy(&help.stdout);
     assert!(help_stdout.contains("Usage: kast"));
-    for command in ["help", "version", "setup", "ready", "status", "developer"] {
+    for command in [
+        "help",
+        "version",
+        "setup",
+        "ready",
+        "status",
+        "developer",
+        "agent",
+    ] {
         assert!(
             help_lists_command(&help_stdout, command),
             "top-level help should show {command}: {help_stdout}"
         );
     }
     for hidden in [
-        "agent", "runtime", "inspect", "machine", "release", "rpc", "doctor", "install", "paths",
-        "up", "package",
+        "runtime", "inspect", "machine", "release", "rpc", "doctor", "install", "paths", "up",
+        "package",
     ] {
         assert!(
             !help_lists_command(&help_stdout, hidden),
             "hidden or legacy top-level command {hidden} should not appear in public help: {help_stdout}"
         );
     }
-    for hidden_topic in [
-        "agent", "runtime", "inspect", "machine", "release", "rpc", "doctor",
-    ] {
+    for hidden_topic in ["runtime", "inspect", "machine", "release", "rpc", "doctor"] {
         let topic = kast(&home, &config_home)
             .args(["help", hidden_topic])
             .output()
@@ -88,7 +94,7 @@ fn smoke_core_cli_commands() {
     }
 
     let agent_tools = kast(&home, &config_home)
-        .args(["agent", "tools"])
+        .args(["--output", "json", "agent", "tools", "--full"])
         .output()
         .expect("agent tools");
     assert!(agent_tools.status.success());
@@ -186,7 +192,8 @@ fn smoke_core_cli_commands() {
     for flag in [
         "--workspace-root",
         "--backend",
-        "--agents-md",
+        "--skill-target-dir",
+        "--context-file",
         "--dry-run",
         "--no-open-ide",
     ] {
@@ -259,7 +266,7 @@ fn smoke_core_cli_commands() {
     }
 
     let invalid_agent_call = kast(&home, &config_home)
-        .args(["agent", "call", "symbol/resolve"])
+        .args(["--output", "json", "agent", "call", "symbol/resolve"])
         .output()
         .expect("agent validation failure");
     assert!(
@@ -336,8 +343,9 @@ fn smoke_core_cli_commands() {
         "lsp without --stdio should fail closed"
     );
     assert!(
-        String::from_utf8_lossy(&lsp_without_stdio.stderr).contains("kast agent lsp --stdio"),
-        "lsp usage error should name the supported command: stderr={}",
+        String::from_utf8_lossy(&lsp_without_stdio.stdout).contains("kast agent lsp --stdio"),
+        "lsp usage error should name the supported command: stdout={}, stderr={}",
+        String::from_utf8_lossy(&lsp_without_stdio.stdout),
         String::from_utf8_lossy(&lsp_without_stdio.stderr)
     );
     assert!(

@@ -17,8 +17,8 @@ first-class path.
 ## Loop
 
 1. Use `kast agent workflow ...` when a workflow fits, or `kast agent call <method>` for the narrowest single catalog method.
-2. Keep nontrivial params in a JSON file and pass `--params-file`; use `kast agent tools` only when exact fields, variants, or mutation metadata are needed.
-3. Keep response output JSON by default; use `--format toon` only for large read-only outputs when the host can consume TOON.
+2. Keep nontrivial params in a JSON file and pass `--params-file`; use `kast agent tools --full` only when exact fields, variants, or mutation metadata are needed.
+3. `kast agent` defaults to compact TOON; use `--output json` for parsed scripts and add `--full` to `agent call` when exact large response fields are needed.
 4. Stay on `kast agent` after the first successful call. Switch to generic file reads or text search only when the work leaves Kotlin semantics or Kast reports a concrete blocker.
 5. Mutate through `kast agent` for semantic or compiler-owned targets, then validate with Kast diagnostics/workflows and the narrowest Gradle task.
 
@@ -36,7 +36,7 @@ Completion criterion: every Kotlin semantic claim, edit target, relationship set
 For one nontrivial catalog call:
 
 ```console
-kast agent --output json call <method> --params-file "$KAST_PARAMS" --workspace-root "$PWD"
+kast --output json agent call <method> --full --params-file "$KAST_PARAMS" --workspace-root "$PWD"
 ```
 
 Use camelCase fields and absolute paths. A call succeeds only when the outer `ok` field and nested result status are clean; validation errors, dirty diagnostics, hash mismatches, and failed Gradle tasks fail the operation.
@@ -45,7 +45,7 @@ Use camelCase fields and absolute paths. A call succeeds only when the outer `ok
 
 Use this section only when a `kast agent` command fails, the user asks for readiness evidence, or backend state is part of the task. Do not make these commands the first move for normal Kotlin work.
 
-If `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index database appears, run `kast agent --output json workflow verify --workspace-root "$PWD"` or `kast agent --output json up --workspace-root "$PWD" --no-onboard`, then retry the original Kotlin route.
-For repo-local package/resource state, run `kast agent --output json workflow package-verify --workspace-root "$PWD"` with the `--require-*` flags that match the task, then follow emitted recovery commands.
+If `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index database appears, run `kast --output json agent workflow verify --workspace-root "$PWD"` or `kast --output json agent up --workspace-root "$PWD" --no-onboard`, then retry the original Kotlin route.
+For repo-local package/resource state, run `kast --output json agent workflow package-verify --workspace-root "$PWD"` with the `--require-*` flags that match the task, then follow emitted recovery commands.
 
 Do not teach `kast rpc`, generated protocol paths, LSP capability internals, or backend implementation classes as public agent APIs.

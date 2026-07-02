@@ -51,7 +51,7 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
     assert!(skill.contains("`kast agent call <method>`"), "{skill}");
     assert!(skill.contains("`kast agent workflow ...`"), "{skill}");
     assert!(
-        skill.contains("`--format toon` only for large read-only outputs"),
+        skill.contains("`--output json` for parsed scripts"),
         "{skill}"
     );
     assert!(skill.contains("raw catalog methods only after"), "{skill}");

@@ -409,6 +409,8 @@ fn agent_write_validate_workflow_requires_mutation_opt_in() {
 
     let workflow = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "workflow",
             "write-validate",

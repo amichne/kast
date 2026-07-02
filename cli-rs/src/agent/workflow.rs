@@ -338,6 +338,7 @@ fn run_workflow_step(
                     method: step.method.to_string(),
                     request: json_rpc_request(step.method, step.params.clone()),
                     runtime: common.runtime.clone(),
+                    full_response: true,
                 });
                 let exit_code = if envelope.ok { 0 } else { 1 };
                 (exit_code, serde_json::to_value(envelope)?)

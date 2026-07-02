@@ -62,10 +62,12 @@ Agents and scripts should use `kast --output json setup ...` or pass
 `--no-open-ide` so prompts cannot block execution.
 
 For shell pipelines, use the public `kast agent` surface instead of hand-written
-JSON-RPC plumbing. It emits one JSON envelope with `ok`, `method`, `request`,
-and either `result` or `error`; `kast agent call <method>` accepts params,
-full JSON-RPC requests, previous envelopes, and `nextRequest` objects through
-stdin or `--params-file`. Do not use a shell RPC command; preserve envelopes
+JSON-RPC plumbing. It emits one envelope with `ok`, `method`, `request`, and
+either `result` or `error`; `kast agent` defaults to compact TOON and
+`--output json` selects JSON for parsed scripts. `kast agent call <method>`
+accepts params, full JSON-RPC requests, previous envelopes, and `nextRequest`
+objects through stdin or `--params-file`. Add `--full` when exact large
+response fields are needed. Do not use a shell RPC command; preserve envelopes
 through `kast agent call <method>` instead.
 
 JSON-RPC request schemas, response types, discriminated variants, and
@@ -75,11 +77,12 @@ contract for requests sent through `kast agent call`, not as a replacement for
 the Rust CLI help.
 
 Use `kast agent tools` when an agent host can run CLI commands but cannot load
-the full skill or Copilot package. It emits the catalog-backed tool names,
-methods, descriptions, mutation metadata, default args, and params JSON Schemas
-plus `result.invocation.argv`, so a generic host can call the same executable it
-used for discovery with `<method>` replaced by the tool method.
-Validate the discovery envelope before registering tools: `ok=true`,
+the full skill or Copilot package. It emits catalog-backed tool names, methods,
+mutation metadata, and `result.invocation.argv`; add `--full` when a generic
+host needs descriptions, default args, and params JSON Schemas for tool
+registration.
+Validate the full discovery envelope before registering schema-backed tools:
+`ok=true`,
 `method=agent/tools`, `result.type=KAST_AGENT_TOOLS`, `schemaVersion >= 3`, a
 SHA-256 `catalogSha256`, matching `toolCount`, and `result.invocation.argv`
 shaped as `agent call <method>`. If validation fails, upgrade or reinstall the

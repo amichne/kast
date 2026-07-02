@@ -8,14 +8,14 @@ fn decode_toon(bytes: &[u8]) -> serde_json::Value {
 }
 
 #[test]
-fn agent_tools_can_emit_toon_equivalent_to_default_json() {
+fn agent_tools_default_toon_matches_explicit_json() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
 
     let json = kast(&home, &config_home)
-        .args(["agent", "tools"])
+        .args(["--output", "json", "agent", "tools"])
         .output()
         .expect("agent tools json");
     assert!(
@@ -28,7 +28,7 @@ fn agent_tools_can_emit_toon_equivalent_to_default_json() {
         serde_json::from_slice(&json.stdout).expect("agent tools json");
 
     let toon = kast(&home, &config_home)
-        .args(["agent", "--format", "toon", "tools"])
+        .args(["agent", "tools"])
         .output()
         .expect("agent tools toon");
     assert!(
@@ -60,7 +60,7 @@ fn agent_call_validation_errors_can_emit_toon() {
     std::fs::create_dir_all(&home).expect("home");
 
     let call = kast(&home, &config_home)
-        .args(["agent", "--format", "toon", "call", "symbol/resolve"])
+        .args(["agent", "call", "symbol/resolve"])
         .output()
         .expect("agent call toon validation");
     assert!(
@@ -92,8 +92,6 @@ fn agent_workflow_toon_stdout_keeps_step_files_json() {
     let workflow = kast(&home, &config_home)
         .args([
             "agent",
-            "--format",
-            "toon",
             "workflow",
             "symbol",
             "--dry-run",

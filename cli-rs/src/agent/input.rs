@@ -12,6 +12,7 @@ fn prepare_call(args: AgentCallArgs) -> std::result::Result<AgentRequest, Box<Ag
         method,
         request,
         runtime: args.runtime,
+        full_response: args.full,
     })
 }
 
@@ -21,6 +22,7 @@ fn prepare_alias(command: AgentCommand) -> AgentRequest {
         request: json_rpc_request(&parts.method, parts.params),
         method: parts.method,
         runtime: parts.runtime,
+        full_response: true,
     }
 }
 
@@ -52,7 +54,7 @@ fn alias_parts(command: AgentCommand) -> AliasParts {
         | AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before alias prep")
         }
-        AgentCommand::Tools => unreachable!("agent tools is handled before alias prep"),
+        AgentCommand::Tools(_) => unreachable!("agent tools is handled before alias prep"),
         AgentCommand::Call(_) => unreachable!("agent call is prepared separately"),
         AgentCommand::Workflow(_) => unreachable!("agent workflow is prepared separately"),
         AgentCommand::Health(runtime) => empty_alias("health", runtime),

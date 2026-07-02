@@ -9,10 +9,7 @@ fn assert_compact_kast_guidance(content: &str) {
         ),
         "{content}"
     );
-    assert!(
-        content.contains("Use `.agents/skills/kast/SKILL.md` and `kast agent`"),
-        "{content}"
-    );
+    assert!(content.contains("SKILL.md` and `kast agent`"), "{content}");
     assert!(
         content.contains("`kast agent workflow verify --workspace-root \"$PWD\"`"),
         "{content}"
@@ -29,7 +26,13 @@ fn assert_compact_kast_guidance(content: &str) {
         !content.contains("grep, ripgrep, regex search, raw text search"),
         "{content}"
     );
-    let managed_lines = content
+    let managed = content
+        .split_once(
+            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#,
+        )
+        .and_then(|(_, rest)| rest.split_once("</kast>").map(|(managed, _)| managed))
+        .unwrap_or(content);
+    let managed_lines = managed
         .lines()
         .filter(|line| {
             !line.is_empty()
@@ -99,11 +102,15 @@ fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
     );
     assert!(repo.join(".agents/skills/kast/SKILL.md").is_file());
     let root_agents = std::fs::read_to_string(repo.join("AGENTS.md")).expect("agents");
-    assert_eq!(root_agents, "# Repo guidance\n\nKeep local text.\n");
-    let local_agents = std::fs::read_to_string(repo.join("AGENTS.local.md")).expect("local agents");
-    assert_compact_kast_guidance(&local_agents);
-    let exclude = std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git exclude");
-    assert!(exclude.contains("AGENTS.local.md"), "{exclude}");
+    assert!(root_agents.starts_with("# Repo guidance\n\nKeep local text.\n"));
+    assert_compact_kast_guidance(&root_agents);
+    assert!(!repo.join("AGENTS.local.md").exists());
+    let attributes =
+        std::fs::read_to_string(repo.join(".git/info/attributes")).expect("git attributes");
+    assert!(
+        attributes.contains("AGENTS.md filter=kast-context-region"),
+        "{attributes}"
+    );
     assert!(!repo.join(".github/lsp.json").exists());
     assert!(!repo.join(".github/extensions/kast/extension.mjs").exists());
 
@@ -209,7 +216,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
 }
 
 #[test]
-fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
+fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -230,44 +237,37 @@ fn agent_setup_rejects_modified_managed_agents_md_region_without_force() {
     );
     let agents_path = repo.join("AGENTS.local.md");
     let mut content = std::fs::read_to_string(&agents_path).expect("agents");
-    content = content.replace(
-        "Use `.agents/skills/kast/SKILL.md` and `kast agent`",
-        "Use `custom/SKILL.md`",
-    );
+    content = content.replace("SKILL.md` and `kast agent`", "Use `custom/SKILL.md`");
     std::fs::write(&agents_path, content).expect("tamper agents");
 
-    let rejected = kast(&home, &config_home)
+    let repaired_setup = kast(&home, &config_home)
         .current_dir(&repo)
         .args(["--output", "json", "agent", "setup"])
         .output()
-        .expect("agent setup rejected");
+        .expect("agent setup repair");
     assert!(
-        !rejected.status.success(),
-        "modified managed region should fail without --force: stdout={}, stderr={}",
-        String::from_utf8_lossy(&rejected.stdout),
-        String::from_utf8_lossy(&rejected.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&rejected.stderr).contains("INSTALL_MANAGED_OUTPUT_MODIFIED"),
-        "stderr={}",
-        String::from_utf8_lossy(&rejected.stderr)
-    );
-
-    let forced = kast(&home, &config_home)
-        .current_dir(&repo)
-        .args(["--output", "json", "agent", "setup", "--force"])
-        .output()
-        .expect("agent setup force");
-    assert!(
-        forced.status.success(),
-        "--force should replace only the managed region: stdout={}, stderr={}",
-        String::from_utf8_lossy(&forced.stdout),
-        String::from_utf8_lossy(&forced.stderr)
+        repaired_setup.status.success(),
+        "modified managed region should be backed up and repaired: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repaired_setup.stdout),
+        String::from_utf8_lossy(&repaired_setup.stderr)
     );
     let repaired = std::fs::read_to_string(&agents_path).expect("repaired agents");
     assert!(
-        repaired.contains("Use `.agents/skills/kast/SKILL.md` and `kast agent`"),
+        repaired.contains("SKILL.md` and `kast agent`"),
         "{repaired}"
+    );
+    let backup_exists = std::fs::read_dir(&repo)
+        .expect("repo entries")
+        .any(|entry| {
+            entry
+                .expect("entry")
+                .file_name()
+                .to_string_lossy()
+                .contains("kast-backup")
+        });
+    assert!(
+        backup_exists,
+        "setup should preserve a backup before repairing"
     );
 }
 
@@ -283,7 +283,7 @@ fn agent_tools_invocation_argv_uses_invoked_binary_path() {
     let agent_tools = Command::new(&alternate_bin)
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
-        .args(["agent", "tools"])
+        .args(["--output", "json", "agent", "tools"])
         .output()
         .expect("agent tools");
     assert!(

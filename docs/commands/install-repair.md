@@ -13,19 +13,20 @@ Install commands write managed files. Run them deliberately, then use
 
 Use `kast setup` once per repository where agents should discover Kast
 guidance without depending on a harness-specific package. The command installs
-the packaged skill under `.agents/skills/kast` and writes an ignored
-`AGENTS.local.md` file with a Kast-managed fenced region:
+the packaged skill under `.agents/skills/kast`, patches the repository context
+file, and configures detected hooks. If no supported context file exists, it
+creates an ignored `AGENTS.local.md` file with a Kast-managed fenced region:
 `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`.
 
 ```console title="Install harness-agnostic agent guidance"
 cd /path/to/your/repository
 kast setup
-kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
+kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
 ```
 
 Use `--force` after upgrading the machine binary or when a managed fenced
 region was intentionally reset to the active binary's guidance.
-Use `--agents-md` only when a scoped authored guidance file should also carry
+Use `--context-file` only when a scoped authored guidance file should also carry
 the managed Kast region.
 
 Use `kast setup` when setup and runtime warmup should happen together. Start

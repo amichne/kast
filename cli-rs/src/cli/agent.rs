@@ -1,15 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum AgentOutputFormat {
-    Json,
-    Toon,
-}
-
 #[derive(Debug, Args, Clone)]
 #[command(disable_help_subcommand = true)]
 pub struct AgentArgs {
-    /// Select JSON or TOON for agent envelope stdout.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: AgentOutputFormat,
     #[command(subcommand)]
     pub command: AgentCommand,
 }
@@ -28,7 +19,7 @@ pub enum AgentCommand {
     /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
     /// List catalog-backed tools for CLI-capable agent hosts.
-    Tools,
+    Tools(AgentToolsArgs),
     /// Call any catalog method with params from flags, file, or stdin.
     Call(AgentCallArgs),
     /// Run a file-backed multi-step workflow.
@@ -114,8 +105,14 @@ pub enum AgentCommand {
 pub struct AgentUpArgs {
     #[command(flatten)]
     pub runtime: RuntimeArgs,
+    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
+    #[arg(long = "skill-target-dir")]
+    pub skill_target_dir: Option<PathBuf>,
+    /// Repository context file to patch with Kast managed guidance.
+    #[arg(long = "context-file")]
+    pub context_files: Vec<PathBuf>,
     /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
-    #[arg(long = "agents-md")]
+    #[arg(long = "agents-md", hide = true)]
     pub agents_md: Vec<PathBuf>,
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
@@ -145,8 +142,14 @@ pub struct AgentGuidanceSetupArgs {
     /// Absolute workspace root for harness-agnostic agent resource setup.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
+    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
+    #[arg(long = "skill-target-dir")]
+    pub skill_target_dir: Option<PathBuf>,
+    /// Repository context file to patch with Kast managed guidance.
+    #[arg(long = "context-file")]
+    pub context_files: Vec<PathBuf>,
     /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
-    #[arg(long = "agents-md")]
+    #[arg(long = "agents-md", hide = true)]
     pub agents_md: Vec<PathBuf>,
     /// Overwrite modified Kast managed regions.
     #[arg(short = 'f', long)]
@@ -216,6 +219,13 @@ pub struct AgentRuntimeArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+pub struct AgentToolsArgs {
+    /// Emit full catalog schemas and tool definitions.
+    #[arg(long)]
+    pub full: bool,
+}
+
+#[derive(Debug, Args, Clone)]
 pub struct AgentCallArgs {
     /// Catalog RPC method, such as symbol/resolve or raw/apply-edits.
     pub method: String,
@@ -228,6 +238,9 @@ pub struct AgentCallArgs {
     /// JSON file containing a full JSON-RPC request or pipe-compatible input object.
     #[arg(long)]
     pub request_file: Option<PathBuf>,
+    /// Emit complete response content instead of AXI previews for large fields.
+    #[arg(long)]
+    pub full: bool,
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
 }

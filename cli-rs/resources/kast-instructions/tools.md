@@ -79,12 +79,13 @@ edits. Use raw catalog methods only when you already have exact files and offset
 
 ## File-Backed Tools
 
-Use `kast agent tools` when the host needs machine-readable tool names,
-catalog methods, descriptions, mutation metadata, default args, and params JSON
-Schemas. Then call `result.invocation.argv`, replacing `<method>` with the
-returned tool `method`; this keeps alternate binary names and absolute binary
-paths intact.
-Validate the discovery envelope first: `ok=true`, `method=agent/tools`,
+Use `kast agent tools` when the host needs compact machine-readable tool names,
+catalog methods, mutation metadata, and invocation hints. Use
+`kast --output json agent tools --full` when a host needs descriptions, default
+args, and params JSON Schemas for registration. Then call
+`result.invocation.argv`, replacing `<method>` with the returned tool `method`;
+this keeps alternate binary names and absolute binary paths intact.
+Validate the full discovery envelope first: `ok=true`, `method=agent/tools`,
 `result.type=KAST_AGENT_TOOLS`, `schemaVersion >= 3`, a SHA-256
 `catalogSha256`, matching `toolCount`, and an invocation argv shaped as
 `agent call <method>`. If that fails, report a stale binary or package install.

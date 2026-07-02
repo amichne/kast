@@ -15,7 +15,7 @@ if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
   printf 'Usage: kast agent\nCommands:\n  call\n  tools\n'
   exit 0
 fi
-if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "agent" ] && [ "$4" = "tools" ] && [ "$5" = "--full" ]; then
   printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","schemaVersion":3,"catalogSha256":"0000000000000000000000000000000000000000000000000000000000000000","toolCount":0,"invocation":{"argv":["/wrong/kast","agent","call","<method>"]},"tools":[]}}\n'
   exit 0
 fi
@@ -56,7 +56,10 @@ exit 64
             .any(|issue| issue["code"] == "KAST_AGENT_TOOLS_UNAVAILABLE"),
         "{stdout:#}"
     );
-    assert_eq!(stdout["process"]["preflight"], "agent tools", "{stdout:#}");
+    assert_eq!(
+        stdout["process"]["preflight"], "agent tools --full",
+        "{stdout:#}"
+    );
     assert!(
         !String::from_utf8_lossy(&call.stderr).contains("unexpected fake kast args"),
         "helper should not dispatch after invalid agent tools preflight"
@@ -76,7 +79,7 @@ if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
   printf 'Usage: kast agent\nCommands:\n  call\n  tools\n'
   exit 0
 fi
-if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "agent" ] && [ "$4" = "tools" ] && [ "$5" = "--full" ]; then
   printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","schemaVersion":3,"catalogSha256":"0000000000000000000000000000000000000000000000000000000000000000","toolCount":1,"invocation":{"argv":["%s","agent","call","<method>"]},"tools":[]}}\n' "$0"
   exit 0
 fi
@@ -117,7 +120,10 @@ exit 64
             .any(|issue| issue["code"] == "KAST_AGENT_TOOLS_UNAVAILABLE"),
         "{stdout:#}"
     );
-    assert_eq!(stdout["process"]["preflight"], "agent tools", "{stdout:#}");
+    assert_eq!(
+        stdout["process"]["preflight"], "agent tools --full",
+        "{stdout:#}"
+    );
     assert!(
         !String::from_utf8_lossy(&call.stderr).contains("unexpected fake kast args"),
         "helper should not dispatch after invalid agent tools metadata"
@@ -137,7 +143,7 @@ if [ "$1" = "agent" ] && [ "$2" = "--help" ]; then
   printf 'Usage: kast agent\nCommands:\n  call\n  tools\n'
   exit 0
 fi
-if [ "$1" = "agent" ] && [ "$2" = "tools" ]; then
+if [ "$1" = "--output" ] && [ "$2" = "json" ] && [ "$3" = "agent" ] && [ "$4" = "tools" ] && [ "$5" = "--full" ]; then
   printf '{"ok":true,"method":"agent/tools","result":{"type":"KAST_AGENT_TOOLS","schemaVersion":3,"catalogSha256":"0000000000000000000000000000000000000000000000000000000000000000","toolCount":0,"invocation":{"argv":["%s","agent","call","<method>"]},"tools":[]}}\n' "$0"
   exit 0
 fi

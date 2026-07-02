@@ -46,6 +46,8 @@ pub(crate) fn run_agent_call(
     let body = input.to_string();
     let output = kast(home, config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "call",
             method,

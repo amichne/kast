@@ -1,17 +1,17 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::ReadyTarget;
 use crate::cli::{
-    AgentArgs, AgentCallArgs, AgentCommand, AgentDiscoverArgs, AgentFileOutlineArgs,
-    AgentFilePathsArgs, AgentMetricsArgs, AgentOptionalFilePathsArgs, AgentPositionArgs,
-    AgentRawCallHierarchyArgs, AgentRawCodeActionsArgs, AgentRawCompletionsArgs,
-    AgentRawImplementationsArgs, AgentRawReferencesArgs, AgentRawRenameArgs, AgentRawResolveArgs,
+    AgentCallArgs, AgentCommand, AgentDiscoverArgs, AgentFileOutlineArgs, AgentFilePathsArgs,
+    AgentMetricsArgs, AgentOptionalFilePathsArgs, AgentPositionArgs, AgentRawCallHierarchyArgs,
+    AgentRawCodeActionsArgs, AgentRawCompletionsArgs, AgentRawImplementationsArgs,
+    AgentRawReferencesArgs, AgentRawRenameArgs, AgentRawResolveArgs,
     AgentRawSemanticInsertionPointArgs, AgentRawTypeHierarchyArgs, AgentRuntimeArgs,
     AgentScaffoldArgs, AgentSymbolCallersArgs, AgentSymbolReferencesArgs, AgentSymbolResolveArgs,
-    AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
+    AgentToolsArgs, AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
     AgentWorkflowPackageVerifyArgs, AgentWorkflowSymbolArgs, AgentWorkflowWriteMode,
     AgentWorkflowWriteValidateArgs, AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs,
     AgentWorkspaceSymbolArgs,
 };
+use crate::cli::{OutputFormat, ReadyTarget};
 use crate::error::{CliError, Result};
 use crate::{catalog_schema, config, manifest, output, runtime, self_mgmt, validate};
 use serde::Serialize;

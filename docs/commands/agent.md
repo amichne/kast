@@ -12,11 +12,11 @@ machine-oriented command path.
 
 ## Agent Envelope
 
-Every `kast agent` command emits one envelope on stdout. JSON is the default
-and remains the canonical script format. Use `kast agent --format toon ...`
-only when the host can consume TOON and needs a denser, prompt-friendly
-encoding for large read-only responses. Treat `ok: false` as a failed
-operation even when the process exited cleanly.
+Every `kast agent` command emits one envelope on stdout. Agent commands default
+to compact TOON for prompt-friendly shell use. Use `--output json` when a
+script needs to parse the envelope, and add `--full` to `agent call` when the
+caller needs exact large response fields instead of AXI previews. Treat
+`ok: false` as a failed operation even when the process exited cleanly.
 
 ```json title="Envelope shape"
 {
@@ -68,7 +68,7 @@ root.
 kast setup --dry-run
 kast setup --workspace-root "$PWD"
 kast setup --workspace-root "$PWD" --backend=headless
-kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
+kast setup --context-file "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
 ```
 
 In a smart interactive terminal, the first eligible `kast setup` can offer
@@ -96,22 +96,33 @@ explain what happened and what the user should do next.
 ## Setup
 
 Use `kast setup` to install harness-agnostic agent resources. The default
-setup writes the packaged skill to `.agents/skills/kast` and creates an
-ignored root `AGENTS.local.md` with a Kast-managed fenced region:
+setup writes the packaged skill to `.agents/skills/kast`, patches the first
+existing repository context file from `AGENTS.md`, `CODEX.md`, `CLAUDE.md`,
+`.github/copilot-instructions.md`, or `AGENTS.local.md`, and falls back to an
+ignored root `AGENTS.local.md` when no context file exists. The patched file
+gets a Kast-managed fenced region:
 `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`.
 User guidance outside that fence remains authored repository text.
 
 ```console title="Install harness-agnostic agent guidance"
 kast setup --dry-run
 kast setup
-kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
+kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
 ```
 
-Default setup adds `AGENTS.local.md` to `.git/info/exclude` when the workspace
-is a Git repository. Pass `--agents-md <path/to/AGENTS.md>` or
-`--agents-md <path/to/AGENTS.local.md>` to explicitly create or patch a scoped
-guidance file. In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and
-`installCommand` report the exact writes and equivalent command.
+Default setup adds local-only context files to `.git/info/exclude` when the
+workspace is a Git repository, and installs Git filters for tracked managed
+context regions. Pass `--context-file <path/to/AGENTS.md>`,
+`--context-file <path/to/CODEX.md>`, `--context-file <path/to/CLAUDE.md>`, or
+`--context-file <path/to/.github/copilot-instructions.md>` to explicitly create
+or patch scoped guidance. In JSON dry-runs, `skillTarget`,
+`agentsMdTargets`, `hookTargets`, and `installCommand` report the exact writes
+and equivalent command.
+
+Detected hook hosts are configured by default: Codex `.codex/hooks.json`,
+Claude Code `.claude/settings.json`, OpenCode `.opencode/kast-context.plugin.json`,
+and Copilot `.github` package resources. Hooks call `kast context` so agents can
+refresh repo-local guidance without hand-maintained snippets.
 
 | Harness | Typical target | Use when |
 |---------|----------------|----------|
@@ -125,12 +136,14 @@ guidance file. In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and
 Use `kast agent tools` when a CLI-capable host needs the same catalog-derived
 tool surface that Copilot loads from the active CLI, without loading a Copilot
 SDK, MCP adapter, or the full packaged skill. The command has no backend
-dependency and returns tool names, catalog methods, descriptions, default args,
-mutation metadata, and params JSON Schemas.
+dependency. By default it returns a compact list of tool names, catalog methods,
+mutation metadata, and invocation hints; add `--full` when the host needs params
+JSON Schemas.
 
 ```console title="List catalog-backed tools"
 kast agent tools
-kast agent --format toon tools
+kast agent tools --full
+kast --output json agent tools --full
 ```
 
 Invoke one of the returned specs through the returned
@@ -140,7 +153,7 @@ readable `kast agent call` hint, while `argv` preserves the exact executable
 token used to discover the tools. The `catalogSha256` field identifies the
 embedded command catalog used to build the tool list.
 
-Before registering or invoking returned tools, validate the discovery envelope:
+For full schema registration, validate the full discovery envelope:
 `ok` is true, `method` is `agent/tools`, `result.type` is `KAST_AGENT_TOOLS`,
 `schemaVersion` is at least 3, `catalogSha256` is a SHA-256 hex string,
 `toolCount` matches the returned tools length, and `result.invocation.argv`
@@ -154,7 +167,7 @@ sequenceDiagram
     participant Catalog as Embedded catalog
     participant Backend as Workspace backend
 
-    Host->>CLI: kast agent tools
+Host->>CLI: kast agent tools
     CLI->>Catalog: Read catalog-backed specs
     Catalog-->>CLI: Tool schemas and invocation argv
     CLI-->>Host: KAST_AGENT_TOOLS envelope
@@ -167,8 +180,9 @@ sequenceDiagram
 ## Catalog calls
 
 Use catalog calls for method-specific requests. They prepare the request object
-and return a stable agent envelope: JSON by default, or TOON when requested
-with `kast agent --format toon ...`.
+and return a stable agent envelope: compact TOON by default, or JSON when
+requested with `--output json`. Add `--full` when the caller needs exact large
+response fields instead of AXI previews.
 
 ```console title="Resolve and trace from a file offset"
 APP_FILE="$PWD/src/main/kotlin/App.kt"
@@ -241,4 +255,4 @@ dry-run workflow as proof that files changed.
 Use `kast agent call <method>` when a workflow does not fit and the task needs a
 specific catalog method. The input may be a params object, a full JSON-RPC
 request, or a prior agent envelope with `nextRequest`; the output is the agent
-envelope, using JSON unless `--format toon` is requested.
+envelope, using compact TOON unless `--output json` is requested.

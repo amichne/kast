@@ -7,8 +7,8 @@
 )]
 pub struct Cli {
     /// Select readable text or machine-readable JSON for operator command output.
-    #[arg(long, value_enum, global = true, default_value = "human")]
-    pub output: OutputFormat,
+    #[arg(long, value_enum, global = true)]
+    pub output: Option<OutputFormat>,
     #[command(subcommand)]
     pub command: Option<Command>,
 }
@@ -17,6 +17,13 @@ pub struct Cli {
 pub enum OutputFormat {
     Human,
     Json,
+    Toon,
+}
+
+impl OutputFormat {
+    pub fn is_structured(self) -> bool {
+        matches!(self, Self::Json | Self::Toon)
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -28,6 +35,8 @@ pub enum Command {
     },
     /// Print the packaged CLI version.
     Version,
+    /// Print compact workspace context for agents and hooks.
+    Context(RuntimeArgs),
     /// Set up Kast for this repository.
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
@@ -40,7 +49,6 @@ pub enum Command {
     #[command(hide = true)]
     Doctor(ReadyArgs),
     /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
-    #[command(hide = true)]
     Agent(AgentArgs),
 }
 
@@ -48,8 +56,14 @@ pub enum Command {
 pub struct SetupArgs {
     #[command(flatten)]
     pub runtime: RuntimeArgs,
+    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
+    #[arg(long = "skill-target-dir")]
+    pub skill_target_dir: Option<PathBuf>,
+    /// Repository context file to patch with Kast managed guidance.
+    #[arg(long = "context-file")]
+    pub context_files: Vec<PathBuf>,
     /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
-    #[arg(long = "agents-md")]
+    #[arg(long = "agents-md", hide = true)]
     pub agents_md: Vec<PathBuf>,
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]

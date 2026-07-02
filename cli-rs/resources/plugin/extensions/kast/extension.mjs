@@ -15,7 +15,7 @@ const KAST_TOOLING_CONTEXT = [
   "Kast tooling preference:",
   "For Kotlin or Gradle semantic work, use the configured kotlin LSP server first for standard editor operations.",
   "Use catalog-backed kast_* tools for Kast-specific symbol identity, references, callers, hierarchy, diagnostics, workspace discovery, metrics, and safe write flows.",
-  "Use `kast agent tools` when a CLI-only host needs to discover the same catalog-backed tools without this Copilot extension, then call its `result.invocation.argv`.",
+  "Use `kast --output json agent tools --full` when a CLI-only host needs to discover the same catalog-backed tools without this Copilot extension, then call its `result.invocation.argv`.",
   "Use shell only for validation, explicit lifecycle commands, or a `kast agent` fallback when LSP and kast_* tools cannot cover the operation.",
   "If Kast reports a missing backend, missing source index, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or NO_BACKEND_AVAILABLE, warm the IDEA backend with `kast agent up --workspace-root \"$PWD\" --backend idea --no-onboard` before falling back.",
   "Treat stale, missing, ambiguous, partial, or truncated compiler-backed facts as blockers after warmup; do not replace Kotlin identity, references, hierarchy, rename, or edit scope with text search guesses.",
@@ -106,7 +106,7 @@ async function supportsKastCli(path) {
   if (!version.ok || !looksLikeKastCliVersion(version.stdout)) return false;
   const help = await execCommand(path, ["agent", "--help"]);
   if (!help.ok || !/\bcall\b/i.test(`${help.stdout}\n${help.stderr}`)) return false;
-  const tools = await execCommand(path, ["agent", "tools"]);
+  const tools = await execCommand(path, ["--output", "json", "agent", "tools", "--full"]);
   const toolsJson = parseJsonOrNull(tools.stdout.trim());
   return tools.ok && isKastAgentToolsEnvelope(toolsJson);
 }
@@ -190,7 +190,7 @@ function parseJsonOrNull(text) {
 async function loadKastToolSpecs() {
   const bin = await resolveKastBinary();
   if (bin) {
-    const tools = await execCommand(bin, ["agent", "tools"]);
+    const tools = await execCommand(bin, ["--output", "json", "agent", "tools", "--full"]);
     const toolsJson = parseJsonOrNull(tools.stdout.trim());
     if (tools.ok && isKastAgentToolsEnvelope(toolsJson)) {
       try {
@@ -278,6 +278,7 @@ function agentArgs(method, params, args = backendArgs()) {
     "agent",
     "call",
     method,
+    "--full",
     "--params",
     JSON.stringify(params ?? {}),
     "--workspace-root",
@@ -288,9 +289,9 @@ function agentArgs(method, params, args = backendArgs()) {
 
 async function warmIdeaBackend(bin) {
   return execCommand(bin, [
-    "agent",
     "--output",
     "json",
+    "agent",
     "up",
     "--workspace-root",
     REPO_ROOT,

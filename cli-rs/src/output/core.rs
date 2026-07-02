@@ -1,26 +1,28 @@
 pub fn print_json(value: &impl Serialize) -> Result<()> {
-    print_agent_output(value, AgentOutputFormat::Json)
+    print_structured(value, OutputFormat::Json)
 }
 
-pub(crate) fn print_agent_output(value: &impl Serialize, format: AgentOutputFormat) -> Result<()> {
-    io::stdout().write_all(render_agent_output(value, format)?.as_bytes())?;
+pub(crate) fn print_structured(value: &impl Serialize, format: OutputFormat) -> Result<()> {
+    io::stdout().write_all(render_structured_output(value, format)?.as_bytes())?;
     Ok(())
 }
 
-pub(crate) fn render_agent_output(
-    value: &impl Serialize,
-    format: AgentOutputFormat,
-) -> Result<String> {
+pub(crate) fn render_structured_output(value: &impl Serialize, format: OutputFormat) -> Result<String> {
     match format {
-        AgentOutputFormat::Json => {
+        OutputFormat::Json => {
             let mut rendered = serde_json::to_string_pretty(value)?;
             rendered.push('\n');
             Ok(rendered)
         }
-        AgentOutputFormat::Toon => {
+        OutputFormat::Toon => {
             let value = serde_json::to_value(value)?;
             let mut rendered = toon_format::encode_default(&value)
                 .map_err(|error| CliError::new("TOON_ENCODE_ERROR", error.to_string()))?;
+            rendered.push('\n');
+            Ok(rendered)
+        }
+        OutputFormat::Human => {
+            let mut rendered = serde_json::to_string_pretty(value)?;
             rendered.push('\n');
             Ok(rendered)
         }
@@ -28,9 +30,8 @@ pub(crate) fn render_agent_output(
 }
 
 pub fn print_error(error: &CliError, output: OutputFormat) -> Result<()> {
-    if output == OutputFormat::Json {
-        serde_json::to_writer_pretty(io::stderr(), &error.to_response())?;
-        eprintln!();
+    if output.is_structured() {
+        print_structured(&error.to_response(), output)?;
         return Ok(());
     }
 

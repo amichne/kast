@@ -15,7 +15,7 @@ belongs to each repository.
 |-------|---------|-----------|-------------|
 | Machine CLI + IDE plugin | `brew install kast` | Homebrew-managed global binary on `PATH` and version-coupled `kast-plugin` cask | A macOS developer machine needs Kast |
 | Machine IDE plugin repair | `brew reinstall --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | Local IDE profile links need repair |
-| Repository | `kast setup` | The current repository's `.agents/skills/kast` and ignored `AGENTS.local.md` guidance | A repository should expose Kast guidance to agents |
+| Repository | `kast setup` | The current repository's `.agents/skills/kast`, managed context guidance, and detected hooks | A repository should expose Kast guidance to agents |
 
 Linux CI, hosted agents, and server images use the separate
 [Headless Linux server](headless-linux.md) install path.
@@ -66,20 +66,22 @@ should use `kast setup --no-open-ide` or `kast --output json setup ...`.
 ??? tip "Repository agent guidance"
     `kast setup` is the normal repository bring-up command. When only the
     repository guidance should be installed, `kast setup` installs the
-    shared Kast skill and writes ignored `AGENTS.local.md` guidance. Run
+    shared Kast skill, patches the repository context file, and configures
+    detected hooks. Run
     it from the repository root, or pass explicit targets:
 
     ```console title="Install into another repository"
     kast setup --workspace-root /Users/alex/work/project --no-open-ide
     kast setup --workspace-root /Users/alex/work/project --force
-    kast setup --workspace-root /Users/alex/work/project --agents-md /Users/alex/work/project/cli-rs/AGENTS.md --force
+    kast setup --workspace-root /Users/alex/work/project --context-file /Users/alex/work/project/cli-rs/AGENTS.md --force
     ```
 
     The command writes managed files for the running CLI version:
 
     - `.agents/skills/kast/SKILL.md`
-    - `AGENTS.local.md`
+    - the first existing context file from `AGENTS.md`, `CODEX.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `AGENTS.local.md`; otherwise `AGENTS.local.md`
     - `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` fenced regions in local or explicit guidance files
+    - detected Codex, Claude Code, OpenCode, or Copilot hook resources
 
     The global `$HOME/.local/share/kast/install.json` manifest records the
     repository resource version, source bundle checksum, output checksums, and
@@ -89,20 +91,20 @@ should use `kast setup --no-open-ide` or `kast --output json setup ...`.
 ??? tip "Harness-agnostic agent setup"
     Some enterprise environments need guidance and tooling exposure without an
     MCP-dependent integration. Use `kast setup --dry-run` to inspect setup
-    plus runtime warmup, or `kast setup --dry-run` when only the skill
-    and `AGENTS.local.md` guidance should be installed:
+    plus runtime warmup, or `kast setup --dry-run` when only the skill,
+    context guidance, and detected hooks should be installed:
 
     ```console title="Install repository agent guidance"
     kast setup --dry-run
-    kast setup --dry-run
     kast setup
-    kast setup --agents-md "$PWD/cli-rs/AGENTS.md" --force
+    kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
     ```
 
-    The command installs `.agents/skills/kast`, creates ignored
-    `AGENTS.local.md`, and patches only the managed `<kast ...>` region on
-    repeat runs. Pass `--agents-md` for additional explicit scoped
-    `AGENTS.md` or `AGENTS.local.md` targets.
+    The command installs `.agents/skills/kast`, patches only the managed
+    `<kast ...>` region on repeat runs, and configures detected hooks. Pass
+    `--context-file` for additional explicit scoped `AGENTS.md`, `CODEX.md`,
+    `CLAUDE.md`, `.github/copilot-instructions.md`, or `AGENTS.local.md`
+    targets.
 
 ??? info "Homebrew-managed IDE plugin"
     The IDEA or Android Studio plugin is part of the macOS developer install.

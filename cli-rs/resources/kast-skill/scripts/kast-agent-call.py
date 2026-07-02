@@ -301,7 +301,11 @@ def main() -> int:
         sys.stdout.write("\n")
         return 1
 
-    agent_tools = command_record([kast_bin, "agent", "tools"], workspace_root, args.timeout)
+    agent_tools = command_record(
+        [kast_bin, "--output", "json", "agent", "tools", "--full"],
+        workspace_root,
+        args.timeout,
+    )
     agent_tools_json = None
     try:
         agent_tools_json = json.loads(agent_tools["stdout"])
@@ -313,14 +317,14 @@ def main() -> int:
         result["issues"].append(
             issue(
                 "KAST_AGENT_TOOLS_UNAVAILABLE",
-                "`kast agent tools` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+                "`kast --output json agent tools --full` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
                 "./gradlew installDevelopmentLocal",
             )
         )
         result["process"] = {
             "exitCode": agent_tools["exitCode"],
             "timedOut": agent_tools["timedOut"],
-            "preflight": "agent tools",
+            "preflight": "agent tools --full",
         }
         result["recovery"] = ["./gradlew installDevelopmentLocal"]
         json.dump(result, sys.stdout, indent=2, sort_keys=True)

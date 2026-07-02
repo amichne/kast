@@ -1,8 +1,7 @@
-pub fn run(args: AgentArgs) -> Result<i32> {
-    let format = args.format;
-    let envelope = execute(args.command);
+pub fn run(command: AgentCommand, output_format: OutputFormat) -> Result<i32> {
+    let envelope = execute(command);
     let exit_code = if envelope.ok { 0 } else { 1 };
-    output::print_agent_output(&envelope, format)?;
+    output::print_structured(&envelope, output_format)?;
     Ok(exit_code)
 }
 
@@ -26,8 +25,8 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
     if let AgentCommand::Workflow(args) = command {
         return execute_workflow(args.command);
     }
-    if matches!(command, AgentCommand::Tools) {
-        return execute_tools();
+    if let AgentCommand::Tools(args) = command {
+        return execute_tools(args);
     }
     let request = match command {
         AgentCommand::Up(_)
@@ -36,7 +35,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         | AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before request prep")
         }
-        AgentCommand::Tools => unreachable!("agent tools is handled before request prep"),
+        AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
         AgentCommand::Call(args) => prepare_call(args),
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         other => Ok(prepare_alias(other)),
