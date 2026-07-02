@@ -12,11 +12,12 @@ machine-oriented command path.
 
 ## Agent Envelope
 
-Every `kast agent` command emits one envelope on stdout. Agent commands default
-to compact TOON for prompt-friendly shell use. Use `--output json` when a
-script needs to parse the envelope, and add `--full` to `agent call` when the
-caller needs exact large response fields instead of AXI previews. Treat
-`ok: false` as a failed operation even when the process exited cleanly.
+Every `kast agent` command emits one envelope on stdout. Kast defaults to
+compact TOON outside interactive human terminals for prompt-friendly shell use.
+Use `--output json` when a JSON-only script needs to parse the envelope, and
+add `--full` to `agent call` when the caller needs exact large response fields
+instead of AXI previews. Treat `ok: false` as a failed operation even when the
+process exited cleanly.
 
 ```json title="Envelope shape"
 {

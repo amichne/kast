@@ -64,12 +64,12 @@ cannot block execution.
 
 For shell pipelines, use the public `kast agent` surface instead of hand-written
 JSON-RPC plumbing. It emits one envelope with `ok`, `method`, `request`, and
-either `result` or `error`; `kast agent` defaults to compact TOON and
-`--output json` selects JSON for parsed scripts. `kast agent call <method>`
-accepts params, full JSON-RPC requests, previous envelopes, and `nextRequest`
-objects through stdin or `--params-file`. Add `--full` when exact large
-response fields are needed. Do not use a shell RPC command; preserve envelopes
-through `kast agent call <method>` instead.
+either `result` or `error`. Kast defaults to compact TOON outside interactive
+human terminals, and `--output json` selects JSON for JSON-only parsed scripts.
+`kast agent call <method>` accepts params, full JSON-RPC requests, previous
+envelopes, and `nextRequest` objects through stdin or `--params-file`. Add
+`--full` when exact large response fields are needed. Do not use a shell RPC
+command; preserve envelopes through `kast agent call <method>` instead.
 
 JSON-RPC request schemas, response types, discriminated variants, and
 field-level notes live in `references/commands.yaml` for reading and

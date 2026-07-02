@@ -96,7 +96,10 @@ fn repair_install_config_state(
     let config_path = config::global_config_path();
     let document = read_toml_document(&config_path)?;
     let remove_paths_table = document.contains_key("paths");
-    let remove_cli_table = document.contains_key("cli");
+    let remove_cli_binary_path = document
+        .get("cli")
+        .and_then(toml::Value::as_table)
+        .is_some_and(|cli| cli.contains_key("binaryPath"));
     let remove_install_table = document.contains_key("install");
     let remove_headless_runtime_paths = document
         .get("backends")
@@ -108,7 +111,7 @@ fn repair_install_config_state(
         });
 
     if remove_paths_table
-        || remove_cli_table
+        || remove_cli_binary_path
         || remove_install_table
         || remove_headless_runtime_paths
     {
@@ -122,7 +125,7 @@ fn repair_install_config_state(
     }
     if args.apply
         && (remove_paths_table
-            || remove_cli_table
+            || remove_cli_binary_path
             || remove_install_table
             || remove_headless_runtime_paths)
     {
@@ -131,8 +134,13 @@ fn repair_install_config_state(
             if remove_paths_table {
                 document.remove("paths");
             }
-            if remove_cli_table {
-                document.remove("cli");
+            if remove_cli_binary_path
+                && let Some(toml::Value::Table(cli)) = document.get_mut("cli")
+            {
+                cli.remove("binaryPath");
+                if cli.is_empty() {
+                    document.remove("cli");
+                }
             }
             if remove_install_table {
                 document.remove("install");

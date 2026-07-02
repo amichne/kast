@@ -275,7 +275,7 @@ fn idea_ignored_workspace_key(key: &str) -> bool {
 fn install_owned_config_key(key: &str) -> bool {
     let key = normalize_config_key(key);
     key.starts_with("paths.")
-        || key.starts_with("cli.")
+        || key == "cli.binarypath"
         || key.starts_with("install.")
         || key == "backends.headless.runtimelibsdir"
         || key == "backends.headless.ideahome"

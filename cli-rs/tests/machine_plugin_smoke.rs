@@ -127,6 +127,8 @@ fn plugin_install_human_output_reports_progress_and_summary_tables() {
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
         .args([
+            "--output",
+            "human",
             "developer",
             "machine",
             "plugin",

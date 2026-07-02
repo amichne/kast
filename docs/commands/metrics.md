@@ -11,9 +11,11 @@ not require a running JVM backend when the database already exists.
 
 ## Direct metrics
 
-Use `kast developer inspect metrics ...` for human-readable summaries or `--output json` for
-automation. Pass `--database` only when you need to read a specific index file
-instead of the current workspace cache.
+Use `kast developer inspect metrics ...` for human-readable summaries in an
+interactive non-agent terminal. Captured and agent-run invocations default to
+compact TOON; pass `--output json` for JSON-only automation. Pass `--database`
+only when you need to read a specific index file instead of the current
+workspace cache.
 
 ```console title="Source-index metrics"
 kast developer inspect metrics fan-in --limit 20

@@ -57,7 +57,8 @@ CI, and hosted agents.
     kast status --backend=headless
     ```
 
-Use JSON output for automation:
+Captured and agent-run commands default to compact TOON. Use JSON output when
+automation specifically needs JSON:
 
 ```console title="Machine-readable status"
 kast --output json status

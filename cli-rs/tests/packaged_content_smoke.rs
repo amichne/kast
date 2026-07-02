@@ -51,7 +51,7 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
     assert!(skill.contains("`kast agent call <method>`"), "{skill}");
     assert!(skill.contains("`kast agent workflow ...`"), "{skill}");
     assert!(
-        skill.contains("`--output json` for parsed scripts"),
+        skill.contains("`--output json` for JSON-only parsed scripts"),
         "{skill}"
     );
     assert!(skill.contains("raw catalog methods only after"), "{skill}");
@@ -258,7 +258,7 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         .unwrap_or_else(|error| panic!("read {}: {error}", routing_script_path.display()));
     assert!(
         routing_script.contains("--output json agent tools --full"),
-        "routing metric-pack input should request JSON explicitly while agent defaults to TOON: {routing_script}"
+        "routing metric-pack input should request JSON explicitly while implicit noninteractive output defaults to TOON: {routing_script}"
     );
 }
 

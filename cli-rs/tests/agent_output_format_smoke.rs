@@ -53,6 +53,38 @@ fn agent_tools_default_toon_matches_explicit_json() {
 }
 
 #[test]
+fn operator_commands_default_to_toon_when_stdout_is_not_interactive() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let status = kast(&home, &config_home)
+        .args([
+            "status",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("status toon");
+    assert!(
+        status.status.success(),
+        "status toon should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&status.stdout),
+        String::from_utf8_lossy(&status.stderr)
+    );
+    assert!(
+        serde_json::from_slice::<serde_json::Value>(&status.stdout).is_err(),
+        "default noninteractive status output should not be JSON"
+    );
+    let output = decode_toon(&status.stdout);
+
+    assert_eq!(output["candidates"], serde_json::json!([]), "{output:#}");
+}
+
+#[test]
 fn agent_call_validation_errors_can_emit_toon() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

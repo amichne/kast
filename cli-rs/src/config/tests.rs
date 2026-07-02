@@ -473,6 +473,12 @@ installRoot = "{}"
     }
 
     #[test]
+    fn cli_dynamic_output_is_behavior_config_not_install_owned() {
+        assert!(install_owned_config_key("cli.binaryPath"));
+        assert!(!install_owned_config_key("cli.dynamicOutput"));
+    }
+
+    #[test]
     fn parses_runtime_idea_launch() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
@@ -501,6 +507,24 @@ requireInstalledPlugin = false
         );
         assert_eq!(config.runtime.idea_launch.wait_timeout_millis.get(), 45_678);
         assert!(!config.runtime.idea_launch.require_installed_plugin);
+    }
+
+    #[test]
+    fn parses_cli_dynamic_output_policy() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[cli]
+dynamicOutput = false
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert!(!config.cli.dynamic_output);
     }
 
     #[test]

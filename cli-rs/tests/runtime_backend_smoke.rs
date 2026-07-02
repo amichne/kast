@@ -13,6 +13,8 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
 
     let up = kast(&home, &config_home)
         .args([
+            "--output",
+            "human",
             "developer",
             "runtime",
             "up",
@@ -53,6 +55,8 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
 
     let up = kast(&home, &config_home)
         .args([
+            "--output",
+            "human",
             "developer",
             "runtime",
             "up",
@@ -91,6 +95,8 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
 
     let up = kast(&home, &config_home)
         .args([
+            "--output",
+            "human",
             "developer",
             "runtime",
             "up",
