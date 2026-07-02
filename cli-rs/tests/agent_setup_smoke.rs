@@ -126,6 +126,95 @@ fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
 }
 
 #[test]
+fn agent_setup_context_git_filter_strips_managed_region_for_each_tracked_target() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo with spaces");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    let init = Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .arg("init")
+        .output()
+        .expect("git init");
+    assert!(
+        init.status.success(),
+        "git init failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+    std::fs::write(repo.join("AGENTS.md"), "# Agents\n").expect("agents");
+
+    let setup = kast(&home, &config_home)
+        .current_dir(&repo)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "--context-file",
+            "CODEX.md",
+        ])
+        .output()
+        .expect("agent setup");
+    assert!(
+        setup.status.success(),
+        "setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    let attributes =
+        std::fs::read_to_string(repo.join(".git/info/attributes")).expect("attributes");
+    assert!(
+        attributes.contains("AGENTS.md filter=kast-context-region"),
+        "{attributes}"
+    );
+    assert!(
+        attributes.contains("CODEX.md filter=kast-context-region"),
+        "{attributes}"
+    );
+
+    let add = Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .args(["add", "AGENTS.md", "CODEX.md"])
+        .output()
+        .expect("git add context files");
+    assert!(
+        add.status.success(),
+        "git add failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&add.stdout),
+        String::from_utf8_lossy(&add.stderr)
+    );
+    for file in ["AGENTS.md", "CODEX.md"] {
+        let show = Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["show", &format!(":{file}")])
+            .output()
+            .unwrap_or_else(|error| panic!("git show {file}: {error}"));
+        assert!(
+            show.status.success(),
+            "git show {file} failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&show.stdout),
+            String::from_utf8_lossy(&show.stderr)
+        );
+        let staged = String::from_utf8_lossy(&show.stdout);
+        assert!(
+            !staged.contains("<kast "),
+            "clean filter should remove managed region from staged {file}: {staged}"
+        );
+        assert!(
+            !staged.contains("</kast>"),
+            "clean filter should remove managed region from staged {file}: {staged}"
+        );
+    }
+}
+
+#[test]
 fn agent_setup_creates_local_guidance_without_root_agents_md() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -268,6 +357,112 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     assert!(
         backup_exists,
         "setup should preserve a backup before repairing"
+    );
+}
+
+#[test]
+fn agent_setup_preserves_existing_hook_config_when_installing_detected_hooks() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(repo.join(".codex")).expect("codex");
+    std::fs::create_dir_all(repo.join(".claude")).expect("claude");
+    std::fs::write(
+        repo.join(".codex/hooks.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "hooks": [{
+                "event": "SessionStart",
+                "command": ["existing-tool", "--flag"]
+            }]
+        }))
+        .expect("codex json"),
+    )
+    .expect("codex hooks");
+    std::fs::write(
+        repo.join(".claude/settings.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "permissions": {
+                "allow": ["Bash(./gradlew test)"]
+            },
+            "hooks": {
+                "SessionStart": [{
+                    "hooks": [{
+                        "type": "command",
+                        "command": "existing-tool --flag"
+                    }]
+                }]
+            }
+        }))
+        .expect("claude json"),
+    )
+    .expect("claude settings");
+
+    let setup = kast(&home, &config_home)
+        .current_dir(&repo)
+        .args(["--output", "json", "agent", "setup"])
+        .output()
+        .expect("agent setup");
+    assert!(
+        setup.status.success(),
+        "setup should preserve hook config: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+
+    let codex: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(repo.join(".codex/hooks.json")).unwrap())
+            .expect("codex hooks json");
+    let codex_hooks = codex["hooks"].as_array().expect("codex hooks array");
+    assert!(
+        codex_hooks
+            .iter()
+            .any(|hook| hook["command"] == serde_json::json!(["existing-tool", "--flag"])),
+        "{codex:#}"
+    );
+    assert!(
+        codex_hooks.iter().any(|hook| {
+            hook["event"] == "SessionStart"
+                && hook["command"]
+                    .as_array()
+                    .is_some_and(|argv| argv.iter().any(|arg| arg == "context"))
+        }),
+        "{codex:#}"
+    );
+
+    let claude: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(repo.join(".claude/settings.json")).unwrap())
+            .expect("claude settings json");
+    assert_eq!(
+        claude["permissions"]["allow"][0], "Bash(./gradlew test)",
+        "{claude:#}"
+    );
+    let session_hooks = claude["hooks"]["SessionStart"]
+        .as_array()
+        .expect("claude SessionStart hooks");
+    assert!(
+        session_hooks.iter().any(|entry| {
+            entry["hooks"].as_array().is_some_and(|hooks| {
+                hooks
+                    .iter()
+                    .any(|hook| hook["command"] == "existing-tool --flag")
+            })
+        }),
+        "{claude:#}"
+    );
+    assert!(
+        session_hooks.iter().any(|entry| {
+            entry["hooks"].as_array().is_some_and(|hooks| {
+                hooks.iter().any(|hook| {
+                    hook["command"]
+                        .as_str()
+                        .is_some_and(|command| command.contains(" context "))
+                })
+            })
+        }),
+        "{claude:#}"
     );
 }
 

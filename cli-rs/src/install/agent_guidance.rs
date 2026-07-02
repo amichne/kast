@@ -335,9 +335,14 @@ fn update_context_git_filter(
         .unwrap_or_else(|| repo_root.join(".git/tools"));
     let filter_script = tools_dir.join("kast-context-region-filter");
     fs::create_dir_all(&tools_dir)?;
+    let filter_script_contents = format!(
+        "#!/usr/bin/env sh\nawk '\n  $0 == \"{}\" {{ in_kast = 1; next }}\n  in_kast && $0 == \"{}\" {{ in_kast = 0; next }}\n  !in_kast {{ print }}\n'\n",
+        KAST_MANAGED_FENCE_START.replace('"', "\\\""),
+        KAST_MANAGED_FENCE_END.replace('"', "\\\"")
+    );
     write_file_atomically(
         &filter_script,
-        b"#!/usr/bin/env sh\nsed '/<kast files=\"*.kt, *.kts\" type=\"instructions\" replaceTools=\"grep,search,write\">/,/<\\/kast>/d'\n",
+        filter_script_contents.as_bytes(),
     )?;
     set_context_filter_executable(&filter_script)?;
     let relative = target
@@ -353,9 +358,12 @@ fn update_context_git_filter(
     };
     let start_marker = "# >>> kast context filter >>>";
     let end_marker = "# <<< kast context filter <<<";
+    let mut lines = context_filter_lines(&original, start_marker, end_marker);
+    lines.insert(block.trim_end().to_string());
+    let block = lines.into_iter().collect::<Vec<_>>().join("\n");
     let updated_content = replace_managed_block_with_markers(
         &original,
-        &format!("{start_marker}\n{block}{end_marker}\n"),
+        &format!("{start_marker}\n{block}\n{end_marker}\n"),
         start_marker,
         end_marker,
     );
@@ -373,6 +381,23 @@ fn update_context_git_filter(
     })
 }
 
+fn context_filter_lines(original: &str, start_marker: &str, end_marker: &str) -> BTreeSet<String> {
+    let Some(start) = original.find(start_marker) else {
+        return BTreeSet::new();
+    };
+    let Some(end_offset) = original[start..].find(end_marker) else {
+        return BTreeSet::new();
+    };
+    let block_start = start + start_marker.len();
+    let block_end = start + end_offset;
+    original[block_start..block_end]
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
 fn git_info_attributes_path(repo_root: &Path) -> Option<PathBuf> {
     let output = ProcessCommand::new("git")
         .arg("-C")
@@ -388,24 +413,25 @@ fn git_info_attributes_path(repo_root: &Path) -> Option<PathBuf> {
 }
 
 fn configure_context_filter(repo_root: &Path, filter_script: &Path) -> Result<()> {
+    let filter_command = shell_command(&[filter_script.display().to_string()]);
     for args in [
         vec![
-            "config",
-            "--local",
-            "filter.kast-context-region.clean",
-            filter_script.to_str().unwrap_or(""),
+            "config".to_string(),
+            "--local".to_string(),
+            "filter.kast-context-region.clean".to_string(),
+            filter_command.clone(),
         ],
         vec![
-            "config",
-            "--local",
-            "filter.kast-context-region.smudge",
-            "cat",
+            "config".to_string(),
+            "--local".to_string(),
+            "filter.kast-context-region.smudge".to_string(),
+            "cat".to_string(),
         ],
         vec![
-            "config",
-            "--local",
-            "diff.kast-context-region.textconv",
-            filter_script.to_str().unwrap_or(""),
+            "config".to_string(),
+            "--local".to_string(),
+            "diff.kast-context-region.textconv".to_string(),
+            filter_command.clone(),
         ],
     ] {
         let output = ProcessCommand::new("git")
@@ -454,28 +480,8 @@ fn install_detected_hooks(
     let mut results = Vec::new();
     for target in detected_hook_targets(workspace_root) {
         let updated = match target.host {
-            "codex" => write_json_hook(
-                &target.path,
-                &json!({
-                    "hooks": [{
-                        "event": "SessionStart",
-                        "command": context_command(workspace_root)
-                    }]
-                }),
-            )?,
-            "claude-code" => write_json_hook(
-                &target.path,
-                &json!({
-                    "hooks": {
-                        "SessionStart": [{
-                            "hooks": [{
-                                "type": "command",
-                                "command": shell_command(&context_command(workspace_root))
-                            }]
-                        }]
-                    }
-                }),
-            )?,
+            "codex" => upsert_codex_hook(&target.path, workspace_root)?,
+            "claude-code" => upsert_claude_hook(&target.path, workspace_root)?,
             "opencode" => write_json_hook(
                 &target.path,
                 &json!({
@@ -544,6 +550,166 @@ fn detected_hook_targets(workspace_root: &Path) -> Vec<AgentHookTarget> {
         });
     }
     targets
+}
+
+fn upsert_codex_hook(path: &Path, workspace_root: &Path) -> Result<bool> {
+    let mut value = read_hook_config(path)?;
+    let hook = json!({
+        "event": "SessionStart",
+        "command": context_command(workspace_root)
+    });
+    let root = hook_config_object(&mut value, path)?;
+    let hooks = hook_config_array(root, "hooks", path)?;
+    let mut retained = Vec::with_capacity(hooks.len() + 1);
+    let mut kept_exact = false;
+    for hook_value in hooks.iter() {
+        if is_codex_kast_context_hook(hook_value) {
+            if !kept_exact && hook_value == &hook {
+                retained.push(hook_value.clone());
+                kept_exact = true;
+            }
+        } else {
+            retained.push(hook_value.clone());
+        }
+    }
+    if !kept_exact {
+        retained.push(hook);
+    }
+    *hooks = retained;
+    write_json_hook(path, &value)
+}
+
+fn upsert_claude_hook(path: &Path, workspace_root: &Path) -> Result<bool> {
+    let mut value = read_hook_config(path)?;
+    let command_hook = json!({
+        "type": "command",
+        "command": shell_command(&context_command(workspace_root))
+    });
+    let root = hook_config_object(&mut value, path)?;
+    let hooks_value = root
+        .entry("hooks".to_string())
+        .or_insert_with(|| json!({}));
+    let Some(hooks_object) = hooks_value.as_object_mut() else {
+        return Err(invalid_hook_config(path, "`hooks` must be a JSON object"));
+    };
+    let session_value = hooks_object
+        .entry("SessionStart".to_string())
+        .or_insert_with(|| json!([]));
+    let Some(session_hooks) = session_value.as_array_mut() else {
+        return Err(invalid_hook_config(
+            path,
+            "`hooks.SessionStart` must be a JSON array",
+        ));
+    };
+    remove_claude_kast_context_hooks(session_hooks, &command_hook);
+    if !session_hooks.iter().any(|entry| {
+        entry
+            .get("hooks")
+            .and_then(Value::as_array)
+            .is_some_and(|hooks| hooks.iter().any(|hook| hook == &command_hook))
+    }) {
+        session_hooks.push(json!({ "hooks": [command_hook] }));
+    }
+    write_json_hook(path, &value)
+}
+
+fn remove_claude_kast_context_hooks(session_hooks: &mut Vec<Value>, command_hook: &Value) {
+    let mut kept_exact = false;
+    session_hooks.retain_mut(|entry| {
+        let Some(object) = entry.as_object_mut() else {
+            return true;
+        };
+        let Some(hooks) = object.get_mut("hooks").and_then(Value::as_array_mut) else {
+            return true;
+        };
+        hooks.retain(|hook| {
+            if is_claude_kast_context_hook(hook) {
+                if !kept_exact && hook == command_hook {
+                    kept_exact = true;
+                    true
+                } else {
+                    false
+                }
+            } else {
+                true
+            }
+        });
+        !hooks.is_empty() || object.len() > 1
+    });
+}
+
+fn read_hook_config(path: &Path) -> Result<Value> {
+    match fs::read_to_string(path) {
+        Ok(content) if content.trim().is_empty() => Ok(json!({})),
+        Ok(content) => serde_json::from_str(&content)
+            .map_err(|error| invalid_hook_config(path, error.to_string())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn hook_config_object<'a>(
+    value: &'a mut Value,
+    path: &Path,
+) -> Result<&'a mut serde_json::Map<String, Value>> {
+    value
+        .as_object_mut()
+        .ok_or_else(|| invalid_hook_config(path, "hook config must be a JSON object"))
+}
+
+fn hook_config_array<'a>(
+    object: &'a mut serde_json::Map<String, Value>,
+    key: &str,
+    path: &Path,
+) -> Result<&'a mut Vec<Value>> {
+    let value = object
+        .entry(key.to_string())
+        .or_insert_with(|| Value::Array(Vec::new()));
+    value
+        .as_array_mut()
+        .ok_or_else(|| invalid_hook_config(path, format!("`{key}` must be a JSON array")))
+}
+
+fn invalid_hook_config(path: &Path, message: impl Into<String>) -> CliError {
+    CliError::new(
+        "HOOK_CONFIG_INVALID",
+        format!("Could not update {}: {}", path.display(), message.into()),
+    )
+}
+
+fn is_codex_kast_context_hook(value: &Value) -> bool {
+    value.get("event").and_then(Value::as_str) == Some("SessionStart")
+        && value
+            .get("command")
+            .is_some_and(command_value_mentions_kast_context)
+}
+
+fn is_claude_kast_context_hook(value: &Value) -> bool {
+    value.get("type").and_then(Value::as_str) == Some("command")
+        && value
+            .get("command")
+            .and_then(Value::as_str)
+            .is_some_and(command_string_mentions_kast_context)
+}
+
+fn command_value_mentions_kast_context(value: &Value) -> bool {
+    match value {
+        Value::Array(args) => {
+            let joined = args
+                .iter()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join(" ");
+            command_string_mentions_kast_context(&joined)
+        }
+        Value::String(command) => command_string_mentions_kast_context(command),
+        _ => false,
+    }
+}
+
+fn command_string_mentions_kast_context(command: &str) -> bool {
+    command.contains("kast")
+        && (command.contains(" context ") || command.ends_with(" context"))
 }
 
 fn write_json_hook(path: &Path, value: &Value) -> Result<bool> {
