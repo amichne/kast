@@ -120,7 +120,7 @@ import { execFileSync } from "node:child_process";
 const pluginRoot = process.argv[2];
 const toolsModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-tools.mjs`);
 const traceModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-trace.mjs`);
-const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["agent", "tools"], { encoding: "utf8" }));
+const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["--output", "json", "agent", "tools", "--full"], { encoding: "utf8" }));
 if (!toolsModule.isKastAgentToolsEnvelope(agentTools)) {
   throw new Error("source plugin must accept the current KAST_AGENT_TOOLS envelope");
 }
@@ -254,7 +254,7 @@ node --input-type=module - "$tmp_dir" <<'NODE'
 import { execFileSync } from "node:child_process";
 const target = process.argv[2];
 const toolsModule = await import(`file://${target}/.github/extensions/kast/_shared/kast-tools.mjs`);
-const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["agent", "tools"], { encoding: "utf8" }));
+const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["--output", "json", "agent", "tools", "--full"], { encoding: "utf8" }));
 if (!toolsModule.isKastAgentToolsEnvelope(agentTools)) {
   throw new Error("installed plugin must accept the current KAST_AGENT_TOOLS envelope");
 }
