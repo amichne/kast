@@ -16,6 +16,54 @@ struct Args {
     output: PathBuf,
     answer_requests: Option<PathBuf>,
     answers: Option<PathBuf>,
+    suite: Suite,
+    agent_output_shape: AgentOutputShape,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Suite {
+    FormatImpact,
+    Routing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AgentOutputShape {
+    Text,
+    Json,
+    Toon,
+}
+
+impl AgentOutputShape {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Json => "json",
+            Self::Toon => "toon",
+        }
+    }
+
+    fn answer_instructions(self) -> &'static str {
+        match self {
+            Self::Text => {
+                "Return concise plain text that names selected actions, summarizes facts and recovery, and states forbidden actions were avoided without listing them."
+            }
+            Self::Json => {
+                "Return one JSON object with selectedActions, facts, recovery, and forbiddenActionsAvoided fields; do not copy forbidden action names."
+            }
+            Self::Toon => {
+                "Return one TOON object with selectedActions, facts, recovery, and forbiddenActionsAvoided fields; do not copy forbidden action names."
+            }
+        }
+    }
+}
+
+impl Suite {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::FormatImpact => "format-impact",
+            Self::Routing => "routing",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -33,6 +81,8 @@ struct ImpactCase {
     forbidden_actions: Vec<String>,
     gold_facts: Vec<String>,
     answer_scoring: AnswerScoring,
+    #[serde(default, skip_deserializing)]
+    model_input: Option<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,6 +119,8 @@ struct AnswerRequest {
     prompt: String,
     input: String,
     input_bytes: usize,
+    agent_output_shape: String,
+    answer_instructions: String,
     expected_actions: Vec<Action>,
     forbidden_actions: Vec<String>,
     gold_facts: Vec<String>,
@@ -99,6 +151,7 @@ struct ImpactRecord {
 #[serde(rename_all = "camelCase")]
 struct ImpactSummary {
     ok: bool,
+    suite: String,
     cases: usize,
     records: usize,
     decoded_equivalent: bool,
@@ -109,6 +162,7 @@ struct ImpactSummary {
     evaluated_answers: usize,
     passing_answers: usize,
     answer_accuracy_percent: Option<f64>,
+    agent_output_shape: String,
     output: PathBuf,
     answer_requests: Option<PathBuf>,
     answers: Option<PathBuf>,
@@ -132,9 +186,28 @@ struct AnswerScore {
     verdict: &'static str,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RoutingCase {
+    id: String,
+    #[serde(rename = "type")]
+    case_type: String,
+    prompt: String,
+    expected_primitive: Primitive,
+    allowed_actions: Vec<Action>,
+    forbidden_actions: Vec<String>,
+    recovery_expectation: String,
+    verification_evidence: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Primitive {
+    name: String,
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args = parse_args()?;
-    let corpus = read_corpus(&args.target)?;
+    let corpus = read_corpus(&args.target, args.suite)?;
     let answers = match &args.answers {
         Some(path) => read_answer_records(path)?,
         None => BTreeMap::new(),
@@ -159,7 +232,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .get(&(case.id.clone(), output.format.to_string()))
                 .cloned();
             let answer_score = answer.as_deref().map(|answer| score_answer(case, answer));
-            answer_requests.push(answer_request(case, &output));
+            answer_requests.push(answer_request(case, &output, args.agent_output_shape));
             records.push(ImpactRecord {
                 case_id: case.id.clone(),
                 format: output.format.to_string(),
@@ -198,10 +271,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         write_jsonl(path, &answer_requests)?;
     }
     let summary = summarize(
+        args.suite,
         &records,
         args.output.clone(),
         args.answer_requests.clone(),
         args.answers.clone(),
+        args.agent_output_shape,
     );
     println!("{}", serde_json::to_string_pretty(&summary)?);
     let _ = fs::remove_dir_all(run_root);
@@ -214,6 +289,8 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
     let mut output = None;
     let mut answer_requests = None;
     let mut answers = None;
+    let mut suite = Suite::FormatImpact;
+    let mut agent_output_shape = AgentOutputShape::Text;
     let mut raw = std::env::args().skip(1);
 
     while let Some(arg) = raw.next() {
@@ -223,6 +300,33 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
             "--output" => output = raw.next().map(PathBuf::from),
             "--answer-requests" => answer_requests = raw.next().map(PathBuf::from),
             "--answers" => answers = raw.next().map(PathBuf::from),
+            "--suite" => {
+                suite = match raw.next().as_deref() {
+                    Some("format-impact") => Suite::FormatImpact,
+                    Some("routing") => Suite::Routing,
+                    Some(other) => {
+                        return Err(format!(
+                            "unsupported --suite `{other}`; expected format-impact or routing"
+                        )
+                        .into());
+                    }
+                    None => return Err("missing value for --suite".into()),
+                };
+            }
+            "--agent-output-shape" => {
+                agent_output_shape = match raw.next().as_deref() {
+                    Some("text") => AgentOutputShape::Text,
+                    Some("json") => AgentOutputShape::Json,
+                    Some("toon") => AgentOutputShape::Toon,
+                    Some(other) => {
+                        return Err(format!(
+                            "unsupported --agent-output-shape `{other}`; expected text, json, or toon"
+                        )
+                        .into());
+                    }
+                    None => return Err("missing value for --agent-output-shape".into()),
+                };
+            }
             other => return Err(format!("unexpected argument `{other}`").into()),
         }
     }
@@ -233,10 +337,23 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
         output: output.ok_or("missing --output")?,
         answer_requests,
         answers,
+        suite,
+        agent_output_shape,
     })
 }
 
-fn read_corpus(target: &Path) -> Result<Corpus, Box<dyn Error>> {
+fn read_corpus(target: &Path, suite: Suite) -> Result<Corpus, Box<dyn Error>> {
+    match suite {
+        Suite::FormatImpact => read_format_impact_corpus(target),
+        Suite::Routing => read_routing_corpus(target),
+    }
+}
+
+fn evals_dir(target: &Path) -> PathBuf {
+    target.join("fixtures").join("maintenance").join("evals")
+}
+
+fn read_format_impact_corpus(target: &Path) -> Result<Corpus, Box<dyn Error>> {
     let path = target
         .join("fixtures")
         .join("maintenance")
@@ -244,6 +361,22 @@ fn read_corpus(target: &Path) -> Result<Corpus, Box<dyn Error>> {
         .join("format-impact.json");
     let content = fs::read_to_string(&path)?;
     Ok(serde_json::from_str(&content)?)
+}
+
+fn read_routing_corpus(target: &Path) -> Result<Corpus, Box<dyn Error>> {
+    let path = evals_dir(target).join("routing.json");
+    let content = fs::read_to_string(&path)?;
+    let root: Value = serde_json::from_str(&content)?;
+    let raw_cases = root
+        .get("cases")
+        .and_then(Value::as_array)
+        .ok_or("routing corpus must contain cases array")?;
+    let mut cases = Vec::with_capacity(raw_cases.len());
+    for raw_case in raw_cases {
+        let routing_case: RoutingCase = serde_json::from_value(raw_case.clone())?;
+        cases.push(routing_case.into_impact_case(raw_case.clone()));
+    }
+    Ok(Corpus { cases })
 }
 
 fn read_answer_records(path: &Path) -> Result<BTreeMap<(String, String), String>, Box<dyn Error>> {
@@ -325,6 +458,8 @@ fn outputs_for_case(
                 kast_bin,
                 run_root,
                 &[
+                    "--output",
+                    "json",
                     "agent",
                     "workflow",
                     "symbol",
@@ -349,6 +484,7 @@ fn outputs_for_case(
             )
         }
         "synthetic-envelope" => synthetic_outputs(case),
+        "routing-case" => model_input_outputs(case),
         "prompt-only" => Ok(vec![
             FormatOutput {
                 format: "json",
@@ -365,6 +501,14 @@ fn outputs_for_case(
         ]),
         other => Err(format!("unsupported input artifact kind `{other}`").into()),
     }
+}
+
+fn model_input_outputs(case: &ImpactCase) -> Result<Vec<FormatOutput>, Box<dyn Error>> {
+    let value = case
+        .model_input
+        .clone()
+        .ok_or_else(|| format!("case {} missing model input", case.id))?;
+    encode_value_outputs(value)
 }
 
 fn command_outputs(
@@ -418,6 +562,10 @@ fn run_kast(kast_bin: &Path, run_root: &Path, args: &[&str]) -> Result<Vec<u8>, 
 
 fn synthetic_outputs(case: &ImpactCase) -> Result<Vec<FormatOutput>, Box<dyn Error>> {
     let value = synthetic_value(case);
+    encode_value_outputs(value)
+}
+
+fn encode_value_outputs(value: Value) -> Result<Vec<FormatOutput>, Box<dyn Error>> {
     let mut json_text = serde_json::to_string_pretty(&value)?;
     json_text.push('\n');
     let toon_text = toon_format::encode_default(&value)?;
@@ -498,13 +646,23 @@ fn extracted_facts(case: &ImpactCase, decoded: &Value) -> Vec<String> {
     facts
 }
 
-fn answer_request(case: &ImpactCase, output: &FormatOutput) -> AnswerRequest {
+fn answer_request(
+    case: &ImpactCase,
+    output: &FormatOutput,
+    agent_output_shape: AgentOutputShape,
+) -> AnswerRequest {
     AnswerRequest {
         case_id: case.id.clone(),
         format: output.format.to_string(),
-        prompt: case.prompt.clone(),
+        prompt: format!(
+            "{}\n\n{}",
+            case.prompt,
+            agent_output_shape.answer_instructions()
+        ),
         input: output.text.clone(),
         input_bytes: output.stdout_bytes,
+        agent_output_shape: agent_output_shape.as_str().to_string(),
+        answer_instructions: agent_output_shape.answer_instructions().to_string(),
         expected_actions: case.expected_actions.clone(),
         forbidden_actions: case.forbidden_actions.clone(),
         gold_facts: case.gold_facts.clone(),
@@ -596,10 +754,12 @@ fn write_jsonl<T: Serialize>(path: &Path, records: &[T]) -> Result<(), Box<dyn E
 }
 
 fn summarize(
+    suite: Suite,
     records: &[ImpactRecord],
     output: PathBuf,
     answer_requests: Option<PathBuf>,
     answers: Option<PathBuf>,
+    agent_output_shape: AgentOutputShape,
 ) -> ImpactSummary {
     let json_stdout_bytes = records
         .iter()
@@ -644,6 +804,7 @@ fn summarize(
 
     ImpactSummary {
         ok: true,
+        suite: suite.as_str().to_string(),
         cases: records.len() / 2,
         records: records.len(),
         decoded_equivalent: records.iter().all(|record| record.decoded_equivalent),
@@ -654,8 +815,54 @@ fn summarize(
         evaluated_answers,
         passing_answers,
         answer_accuracy_percent,
+        agent_output_shape: agent_output_shape.as_str().to_string(),
         output,
         answer_requests,
         answers,
+    }
+}
+
+impl RoutingCase {
+    fn into_impact_case(self, raw_case: Value) -> ImpactCase {
+        let mut required_terms = Vec::new();
+        required_terms.push(self.expected_primitive.name.clone());
+        for action in &self.allowed_actions {
+            if !required_terms.contains(&action.name) {
+                required_terms.push(action.name.clone());
+            }
+        }
+        required_terms.push("recovery".to_string());
+
+        let mut gold_facts = vec![
+            format!("The routing case type is {}.", self.case_type),
+            format!(
+                "The expected primitive is {}.",
+                self.expected_primitive.name
+            ),
+            format!("Recovery expectation: {}", self.recovery_expectation),
+        ];
+        gold_facts.extend(self.verification_evidence.iter().cloned());
+
+        ImpactCase {
+            id: self.id,
+            prompt: format!(
+                "Given this Kast routing eval case, identify the expected primitive, list every allowed public action, avoid forbidden fallbacks, and preserve the recovery expectation. Original prompt: {}",
+                self.prompt
+            ),
+            input_artifact: InputArtifact {
+                kind: "routing-case".to_string(),
+            },
+            expected_actions: self.allowed_actions,
+            forbidden_actions: self.forbidden_actions.clone(),
+            gold_facts,
+            answer_scoring: AnswerScoring {
+                required_terms,
+                forbidden_terms: self.forbidden_actions,
+            },
+            model_input: Some(json!({
+                "suite": "routing",
+                "case": raw_case,
+            })),
+        }
     }
 }

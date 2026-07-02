@@ -60,9 +60,17 @@ cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contr
 python3 .github/scripts/render-rpc-contract-summary.py --check
 .github/scripts/test-kast-routing-evals.sh
 .github/scripts/run-kast-format-impact-report.sh
+.github/scripts/run-kast-routing-format-impact-report.sh
+.github/scripts/run-kast-skill-eval-format-comparison.sh
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 ```
+
+For skill-eval format experiments, set `KAST_SKILL_EVAL_AGENT_OUTPUT_SHAPE`
+to `text`, `json`, or `toon` before running the comparison script. Suite-specific
+overrides are `KAST_FORMAT_IMPACT_AGENT_OUTPUT_SHAPE` and
+`KAST_ROUTING_FORMAT_IMPACT_AGENT_OUTPUT_SHAPE`; unset them to fall back to the
+shared value, and set `json` to switch captured answer requests back to JSON.
 
 Use `kast developer release validate --request-file <file>` for hand-authored request examples.
 Run the packaged helper dry run after script or workflow edits:
