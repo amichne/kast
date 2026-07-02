@@ -56,10 +56,11 @@ the setup target and runtime warmup command before writing files or launching a
 backend. In JSON dry runs, read `setup.targetDir`, `setup.installCommand`, and
 `runtimeCommand` before copying any command. Run `kast setup --workspace-root "$PWD"`
 when the repository should be prepared and warmed in one operator step.
-In a smart human terminal, the first eligible non-JSON `kast setup` may ask
-whether to apply IDEA/Copilot onboarding globally or for the repository only.
-Agents and scripts should use `kast --output json setup ...` or pass
-`--no-open-ide` so prompts cannot block execution.
+In a smart human terminal, the first eligible non-JSON `kast setup` from the
+Homebrew-installed binary may ask whether to apply IDEA/Copilot onboarding
+globally or for the repository only. Agents, scripts, and development aliases
+should use `kast --output json setup ...` or pass `--no-open-ide` so prompts
+cannot block execution.
 
 For shell pipelines, use the public `kast agent` surface instead of hand-written
 JSON-RPC plumbing. It emits one envelope with `ok`, `method`, `request`, and

@@ -32,13 +32,14 @@ the managed Kast region.
 Use `kast setup` when setup and runtime warmup should happen together. Start
 with `--dry-run` to inspect the skill target, guidance targets, and runtime
 command before writing files or starting a backend.
-In a smart interactive terminal, the first eligible non-JSON run can ask
-whether to apply automatic IDEA setup. Project-open local guidance setup is
-enabled by default; accepting lets the user save IDEA backend and launch
-defaults globally or for this repository only. The flow installs or refreshes
-the JetBrains plugin, prepares harness-agnostic agent guidance, then warms the
-repository runtime. Use
-`--no-open-ide` when an interactive terminal should behave like automation.
+In a smart interactive terminal, the first eligible non-JSON run from the
+Homebrew-installed `kast` can ask whether to apply automatic IDEA setup.
+Project-open local guidance setup is enabled by default; accepting lets the
+user save IDEA backend and launch defaults globally or for this repository
+only. The flow installs or refreshes the JetBrains plugin, prepares
+harness-agnostic agent guidance, then warms the repository runtime. Use
+`--no-open-ide` when an interactive terminal or development alias should behave
+like automation.
 In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
 the executable token used for the dry run, so copied binaries and absolute CLI
 paths remain directly callable.

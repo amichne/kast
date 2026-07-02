@@ -76,7 +76,8 @@ and `setup.installCommand` describe the guidance install, and `runtimeCommand`
 describes backend warmup. For agent-run flows, prefer
 `kast --output json setup --workspace-root "$PWD" --no-open-ide` when the
 command may inherit a human terminal; interactive onboarding is for operators
-choosing global or repository-scoped defaults, not unattended agents.
+using the Homebrew-installed binary to choose global or repository-scoped
+defaults, not unattended agents or development aliases.
 
 For `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a
 missing source-index database, warm the runtime:

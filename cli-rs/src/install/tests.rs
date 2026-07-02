@@ -272,4 +272,21 @@ mod tests {
             prefix
         ));
     }
+
+    #[test]
+    fn homebrew_cli_verification_rejects_development_binary() {
+        let context = HomebrewContext {
+            brew_prefix: PathBuf::from("/opt/homebrew"),
+            formula_prefix: PathBuf::from("/opt/homebrew/opt/kast"),
+            cli_path: PathBuf::from("/Users/example/.local/bin/kast-dev"),
+        };
+
+        let error = verify_homebrew_cli(&context).unwrap_err();
+
+        assert_eq!(error.code, "HOMEBREW_INSTALL_REQUIRED");
+        assert_eq!(
+            error.details.get("cliPath").map(String::as_str),
+            Some("/Users/example/.local/bin/kast-dev")
+        );
+    }
 }

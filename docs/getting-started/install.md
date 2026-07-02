@@ -42,13 +42,15 @@ Homebrew links or refreshes the plugin, then restart after installing
 repository files so agents discover `.agents/skills/kast`, managed
 `AGENTS.local.md` guidance, runtime guidance, and catalog-backed tools at startup.
 
-On the first eligible run in a smart interactive terminal, `kast setup`
-offers automatic IDEA setup for IDEA-backed agent workflows. Accepting lets
-you save IDEA as the default backend and automatic IDEA launch either globally
-or for this repository only. Project-open local guidance setup is enabled by
-default. The flow also installs or refreshes the JetBrains plugin, installs
-repository agent guidance, and warms the workspace runtime. Scripts and repeatable setup
-should use `kast setup --no-open-ide` or `kast --output json setup ...`.
+On the first eligible run in a smart interactive terminal, the
+Homebrew-installed `kast setup` offers automatic IDEA setup for IDEA-backed
+agent workflows. Accepting lets you save IDEA as the default backend and
+automatic IDEA launch either globally or for this repository only. Project-open
+local guidance setup is enabled by default. The flow also installs or refreshes
+the JetBrains plugin, installs repository agent guidance, and warms the
+workspace runtime. Scripts, repeatable setup, and development aliases such as
+`kast-dev` should use `kast setup --no-open-ide` or
+`kast --output json setup ...`.
 
 ??? success "Homebrew machine install"
     `brew install kast` is machine-level. It installs one `kast` executable

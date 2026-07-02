@@ -71,14 +71,14 @@ kast setup --workspace-root "$PWD" --backend=headless
 kast setup --context-file "$PWD/cli-rs/AGENTS.md" --workspace-root "$PWD" --dry-run
 ```
 
-In a smart interactive terminal, the first eligible `kast setup` can offer
-automatic IDEA setup. If accepted, choose whether Kast saves IDEA as the
-default backend and automatic IDEA launch as global machine defaults or for
-this repository only. Project-open local guidance setup is enabled by default,
-so the JetBrains plugin is still installed or refreshed at machine scope and
-harness-agnostic guidance is still written under the workspace. Use
-`--no-open-ide` to skip that first-run prompt, and use `--output json` in
-scripts so onboarding never prompts.
+In a smart interactive terminal, the first eligible Homebrew-backed
+`kast setup` can offer automatic IDEA setup. If accepted, choose whether Kast
+saves IDEA as the default backend and automatic IDEA launch as global machine
+defaults or for this repository only. Project-open local guidance setup is
+enabled by default, so the JetBrains plugin is still installed or refreshed at
+machine scope and harness-agnostic guidance is still written under the
+workspace. Use `--no-open-ide` to skip that first-run prompt, and use
+`--output json` in scripts or development aliases so onboarding never prompts.
 
 When `--workspace-root` is supplied, setup targets that repository instead of
 the shell's current directory. The command reports the selected setup command
