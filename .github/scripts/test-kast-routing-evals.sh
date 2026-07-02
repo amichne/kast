@@ -15,7 +15,7 @@ else
   kast_bin="${repo_root}/cli-rs/target/debug/kast"
 fi
 
-"$kast_bin" agent tools >"$tools_file"
+"$kast_bin" --output json agent tools --full >"$tools_file"
 KAST_AGENT_TOOLS_FILE="$tools_file" node "${metric_pack_dir}/emit-kast-routing-metrics.mjs" "$target" skill >"$tmp_file"
 
 node --input-type=module - "$tmp_file" <<'NODE'
