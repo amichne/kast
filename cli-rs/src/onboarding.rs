@@ -23,6 +23,7 @@ struct AgentUpOnboardingEligibility {
     ci: bool,
     dumb_terminal: bool,
     config_allows: bool,
+    homebrew_idea_plugin_installable: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +51,7 @@ impl AgentUpOnboardingEligibility {
             && !self.ci
             && !self.dumb_terminal
             && self.config_allows
+            && self.homebrew_idea_plugin_installable
     }
 }
 
@@ -68,6 +70,14 @@ pub fn maybe_run_agent_up_onboarding(
         ci: env_flag("CI"),
         dumb_terminal: env::var("TERM").is_ok_and(|term| term.eq_ignore_ascii_case("dumb")),
         config_allows: config.can_run_agent_up_onboarding(),
+        homebrew_idea_plugin_installable: true,
+    };
+    if !eligibility.allows_prompt() {
+        return Ok(AgentUpOnboardingOutcome::NotEligible);
+    }
+    let eligibility = AgentUpOnboardingEligibility {
+        homebrew_idea_plugin_installable: install::current_cli_can_install_homebrew_idea_plugin(),
+        ..eligibility
     };
     if !eligibility.allows_prompt() {
         return Ok(AgentUpOnboardingOutcome::NotEligible);
@@ -207,6 +217,7 @@ mod tests {
             ci: false,
             dumb_terminal: false,
             config_allows: true,
+            homebrew_idea_plugin_installable: true,
         }
     }
 
@@ -257,6 +268,10 @@ mod tests {
             },
             AgentUpOnboardingEligibility {
                 config_allows: false,
+                ..eligible()
+            },
+            AgentUpOnboardingEligibility {
+                homebrew_idea_plugin_installable: false,
                 ..eligible()
             },
         ] {

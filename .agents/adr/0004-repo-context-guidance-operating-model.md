@@ -91,10 +91,11 @@ metadata only:
 - `.git/info/attributes`
 - `.git/tools/kast-context-region-filter`
 
-The clean and textconv modes remove only the managed `<kast>...</kast>` region.
-The smudge mode preserves an existing managed region and injects the current
-region when none is present. The attribute entry is scoped to the selected
-context file, not every matching filename in the tree.
+The clean and textconv modes remove only the managed `<kast>...</kast>` region
+from tracked content. The smudge mode preserves checked-out content unchanged;
+setup injects or repairs the current region in the working tree when none is
+present. The attribute entry is scoped to the selected context file, not every
+matching filename in the tree.
 
 `AGENTS.local.md` remains the fallback for repositories without a known context
 file. Because that file is intentionally local, setup keeps excluding it through
@@ -107,8 +108,9 @@ place. Existing `--agents-md` commands continue to work. Existing managed
 `<kast>` regions are replaced in place when current setup output changes.
 
 If the current managed region differs from the last recorded manifest checksum,
-setup fails unless `--force` is passed. `--force` replaces only the managed
-region and must not rewrite surrounding repository guidance.
+setup writes a timestamped backup, repairs only the managed region, and leaves
+surrounding repository guidance untouched. `--force` may be used to replace the
+managed region intentionally without changing the surrounding text.
 
 Stale active-binary/resource combinations continue to fail closed. The recovery
 path is to upgrade or reinstall Kast and rerun setup from the active binary.
@@ -148,7 +150,8 @@ Coverage must prove:
 - no known context file creates `AGENTS.local.md`
 - guidance points at the real installed `SKILL.md`
 - Git clean removes only the managed region
-- Git smudge injects the region when absent
+- Git clean removes only the managed region from tracked content
+- setup injects the region when absent
 - scoped Git attributes affect only the selected context file
 - `--agents-md` compatibility still works
 - `--context-file` accepts supported v1 filenames and rejects unsupported ones

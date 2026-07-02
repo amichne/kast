@@ -127,6 +127,12 @@ fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
     Err(error)
 }
 
+pub(crate) fn current_cli_can_install_homebrew_idea_plugin() -> bool {
+    discover_homebrew_context()
+        .and_then(|homebrew| verify_homebrew_cli(&homebrew))
+        .is_ok()
+}
+
 fn homebrew_prefix(args: &[&str]) -> Result<PathBuf> {
     let output = run_brew(args)?;
     if !output.status.success() {
