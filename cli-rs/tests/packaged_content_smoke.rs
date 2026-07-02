@@ -251,6 +251,15 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
             "routing eval should reject public API leak {required}"
         );
     }
+
+    let repo_root = root.parent().expect("repo root");
+    let routing_script_path = repo_root.join(".github/scripts/test-kast-routing-evals.sh");
+    let routing_script = std::fs::read_to_string(&routing_script_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", routing_script_path.display()));
+    assert!(
+        routing_script.contains("--output json agent tools --full"),
+        "routing metric-pack input should request JSON explicitly while agent defaults to TOON: {routing_script}"
+    );
 }
 
 #[test]
@@ -409,6 +418,17 @@ fn format_impact_metric_pack_and_runner_capture_scoreable_answers() {
         "runner should write answer request JSONL for external answer capture: {runner}"
     );
     assert!(
+        runner.contains("--suite format-impact"),
+        "runner should select the format-impact comparison suite explicitly: {runner}"
+    );
+    assert!(
+        runner.contains("--agent-output-shape")
+            && runner.contains("KAST_FORMAT_IMPACT_AGENT_OUTPUT_SHAPE")
+            && runner.contains("KAST_SKILL_EVAL_AGENT_OUTPUT_SHAPE")
+            && runner.contains("text|json|toon"),
+        "runner should make external agent answer shape configurable: {runner}"
+    );
+    assert!(
         runner.contains("KAST_FORMAT_IMPACT_ANSWERS_JSONL"),
         "runner should score captured answers when supplied: {runner}"
     );
@@ -482,6 +502,157 @@ fn format_impact_metric_pack_and_runner_capture_scoreable_answers() {
         .expect("metric list")
         .iter()
         .find(|metric| metric["id"] == "kast-format-impact-answer-pass-rate")
+        .expect("answer pass-rate metric");
+    assert_eq!(answer_pass_rate["value"], 100, "{metric_output:#}");
+}
+
+#[test]
+fn routing_format_impact_metric_pack_and_runner_capture_scoreable_answers() {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repo root");
+    let manifest_path =
+        repo_root.join(".github/plugin-eval/kast-routing-format-impact/manifest.json");
+    let manifest: Value = serde_json::from_str(
+        &std::fs::read_to_string(&manifest_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", manifest_path.display())),
+    )
+    .expect("routing format impact metric pack manifest");
+
+    assert_eq!(
+        manifest["name"], "kast-routing-format-impact",
+        "{manifest:#}"
+    );
+    assert_eq!(
+        manifest["command"],
+        serde_json::json!(["node", "./emit-kast-routing-format-impact-metrics.mjs"]),
+        "{manifest:#}"
+    );
+
+    let runner_path = repo_root.join(".github/scripts/run-kast-routing-format-impact-report.sh");
+    let runner = std::fs::read_to_string(&runner_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", runner_path.display()));
+    assert!(
+        runner.contains("format_impact_report"),
+        "runner should use the shared Rust JSON/TOON report generator: {runner}"
+    );
+    assert!(
+        runner.contains("--suite routing"),
+        "runner should select the routing comparison suite: {runner}"
+    );
+    assert!(
+        runner.contains("--agent-output-shape")
+            && runner.contains("KAST_ROUTING_FORMAT_IMPACT_AGENT_OUTPUT_SHAPE")
+            && runner.contains("KAST_SKILL_EVAL_AGENT_OUTPUT_SHAPE")
+            && runner.contains("text|json|toon"),
+        "runner should make routing agent answer shape configurable: {runner}"
+    );
+    assert!(
+        runner.contains("KAST_ROUTING_FORMAT_IMPACT_OBSERVED_JSONL"),
+        "runner should feed observed JSONL into the routing metric pack: {runner}"
+    );
+    assert!(
+        runner.contains("KAST_ROUTING_FORMAT_IMPACT_ANSWERS_JSONL"),
+        "runner should score captured routing answers when supplied: {runner}"
+    );
+
+    let combined_path = repo_root.join(".github/scripts/run-kast-skill-eval-format-comparison.sh");
+    let combined = std::fs::read_to_string(&combined_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", combined_path.display()));
+    assert!(
+        combined.contains("run-kast-format-impact-report.sh")
+            && combined.contains("run-kast-routing-format-impact-report.sh"),
+        "combined runner should execute both JSON/TOON comparison suites: {combined}"
+    );
+
+    let metric_pack_path = repo_root.join(
+        ".github/plugin-eval/kast-routing-format-impact/emit-kast-routing-format-impact-metrics.mjs",
+    );
+    let metric_pack = std::fs::read_to_string(&metric_pack_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", metric_pack_path.display()));
+    assert!(
+        metric_pack.contains("routing-format-impact-answer-scoring"),
+        "metric pack should expose answer scoring as a first-class check: {metric_pack}"
+    );
+    assert!(
+        metric_pack.contains("kast-routing-format-impact-answer-pass-rate"),
+        "metric pack should emit answer pass-rate metrics: {metric_pack}"
+    );
+
+    let target = repo_root.join("cli-rs/resources/kast-skill");
+    let routing_path = target.join("fixtures/maintenance/evals/routing.json");
+    let routing: Value = serde_json::from_str(
+        &std::fs::read_to_string(&routing_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", routing_path.display())),
+    )
+    .expect("routing eval json");
+    let temp = tempfile::tempdir().expect("routing format impact metric tempdir");
+    let observed_path = temp.path().join("observed.jsonl");
+    let mut observed = String::new();
+    for case in routing["cases"].as_array().expect("routing cases") {
+        let case_id = case["id"].as_str().expect("case id");
+        let input = serde_json::json!({
+            "suite": "routing",
+            "case": case,
+        });
+        let mut json_input = serde_json::to_string_pretty(&input).expect("json input");
+        json_input.push('\n');
+        let toon_input = toon_format::encode_default(&input).expect("toon input");
+        assert!(
+            serde_json::from_str::<Value>(&toon_input).is_err(),
+            "routing TOON input should not parse as JSON for {case_id}"
+        );
+        let decoded: Value =
+            toon_format::decode_default(toon_input.trim()).expect("decode routing toon");
+        assert_eq!(
+            decoded, input,
+            "routing TOON should decode to JSON for {case_id}"
+        );
+
+        for (format, stdout_bytes) in [("json", json_input.len()), ("toon", toon_input.len())] {
+            observed.push_str(
+                &serde_json::to_string(&serde_json::json!({
+                    "caseId": case_id,
+                    "format": format,
+                    "decodedEquivalent": true,
+                    "answerVerdict": "pass",
+                    "stdoutBytes": stdout_bytes
+                }))
+                .expect("observed record json"),
+            );
+            observed.push('\n');
+        }
+    }
+    std::fs::write(&observed_path, observed)
+        .unwrap_or_else(|error| panic!("write {}: {error}", observed_path.display()));
+
+    let output = Command::new("node")
+        .arg(&metric_pack_path)
+        .arg(&target)
+        .arg("skill")
+        .env("KAST_ROUTING_FORMAT_IMPACT_OBSERVED_JSONL", &observed_path)
+        .output()
+        .unwrap_or_else(|error| panic!("run {}: {error}", metric_pack_path.display()));
+    assert!(
+        output.status.success(),
+        "metric pack should run: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let metric_output: Value =
+        serde_json::from_slice(&output.stdout).expect("metric pack output json");
+    let answer_check = metric_output["checks"]
+        .as_array()
+        .expect("metric checks")
+        .iter()
+        .find(|check| check["id"] == "routing-format-impact-answer-scoring")
+        .expect("answer scoring check");
+    assert_eq!(answer_check["status"], "pass", "{metric_output:#}");
+    let answer_pass_rate = metric_output["metrics"]
+        .as_array()
+        .expect("metric list")
+        .iter()
+        .find(|metric| metric["id"] == "kast-routing-format-impact-answer-pass-rate")
         .expect("answer pass-rate metric");
     assert_eq!(answer_pass_rate["value"], 100, "{metric_output:#}");
 }
