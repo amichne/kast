@@ -47,14 +47,41 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
     let skill = std::fs::read_to_string(&skill_path)
         .unwrap_or_else(|error| panic!("read {}: {error}", skill_path.display()));
 
-    assert!(skill.contains("Kotlin work uses `kast agent`."), "{skill}");
-    assert!(skill.contains("`kast agent call <method>`"), "{skill}");
-    assert!(skill.contains("`kast agent workflow ...`"), "{skill}");
+    assert!(
+        skill.contains("Use `kast agent` before generic file reads"),
+        "{skill}"
+    );
+    assert!(
+        skill.contains("`kast agent symbol --query <name> --workspace-root \"$PWD\"`"),
+        "{skill}"
+    );
+    assert!(
+        skill.contains(
+            "`kast agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"`"
+        ),
+        "{skill}"
+    );
+    assert!(
+        skill.contains("`kast repair --for agent|kotlin|release|machine"),
+        "{skill}"
+    );
     assert!(
         skill.contains("`--output json` for JSON-only parsed scripts"),
         "{skill}"
     );
-    assert!(skill.contains("raw catalog methods only after"), "{skill}");
+    assert!(skill.contains("read-only readiness"), "{skill}");
+    assert!(
+        skill.contains("Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`"),
+        "{skill}"
+    );
+    assert!(
+        !skill.contains("Use `kast agent workflow"),
+        "workflow should not be a positive route: {skill}"
+    );
+    assert!(
+        !skill.contains("Use `kast agent call"),
+        "agent call should not be a positive route: {skill}"
+    );
     assert!(
         !skill.contains("`kast agent scaffold`"),
         "hidden aliases should not be installed as the primary skill route: {skill}"

@@ -17,22 +17,16 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
-AGENT_TOOLS_SCHEMA_VERSION = 3
-CATALOG_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
 def setup_recovery_command(
     kast_executable: str | None,
-    harness: str,
     target_dir: Path | None = None,
-    source_dir: Path | None = None,
 ) -> str:
     executable = kast_executable or "kast"
-    command = [executable, "agent", "setup", harness]
+    command = [executable, "setup"]
     if target_dir is not None:
-        command.extend(["--target-dir", str(target_dir)])
-    if source_dir is not None:
-        command.extend(["--source-dir", str(source_dir)])
+        command.extend(["--skill-target-dir", str(target_dir)])
     command.append("--force")
     return shlex.join(command)
 
@@ -40,10 +34,8 @@ def setup_recovery_command(
 def recovery_commands(kast_executable: str | None) -> dict[str, str]:
     executable = kast_executable or "kast"
     return {
-        "ready": shlex.join([executable, "ready", "--fix"]),
-        "skill": setup_recovery_command(kast_executable, "skill"),
-        "instructions": setup_recovery_command(kast_executable, "instructions"),
-        "copilot": setup_recovery_command(kast_executable, "copilot"),
+        "ready": shlex.join([executable, "repair", "--apply"]),
+        "skill": setup_recovery_command(kast_executable),
         "development": "./gradlew installDevelopmentLocal",
     }
 
@@ -70,26 +62,10 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Additional manifest-backed skill target directory to verify.",
     )
-    parser.add_argument(
-        "--copilot-target-dir",
-        type=Path,
-        action="append",
-        default=[],
-        help="Additional manifest-backed Copilot package target directory to verify.",
-    )
-    parser.add_argument(
-        "--instructions-target-dir",
-        type=Path,
-        action="append",
-        default=[],
-        help="Additional manifest-backed instructions target directory to verify.",
-    )
     parser.add_argument("--kast-bin", type=Path)
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--require-gradle-project", action="store_true")
-    parser.add_argument("--require-copilot", action="store_true")
     parser.add_argument("--require-skill", action="store_true")
-    parser.add_argument("--require-instructions", action="store_true")
     return parser.parse_args()
 
 
@@ -139,22 +115,15 @@ def parse_json_output(record: dict[str, Any]) -> Any | None:
         return None
 
 
-def is_non_bool_int(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
-
-
-def agent_tools_metadata_ok(result: dict[str, Any], tools: Any) -> bool:
-    schema_version = result.get("schemaVersion")
-    catalog_sha256 = result.get("catalogSha256")
-    tool_count = result.get("toolCount")
+def removed_command_envelope(envelope: Any, method: str) -> bool:
+    if not isinstance(envelope, dict):
+        return False
+    error = envelope.get("error")
     return (
-        is_non_bool_int(schema_version)
-        and schema_version >= AGENT_TOOLS_SCHEMA_VERSION
-        and isinstance(catalog_sha256, str)
-        and CATALOG_SHA256_RE.fullmatch(catalog_sha256) is not None
-        and isinstance(tools, list)
-        and is_non_bool_int(tool_count)
-        and tool_count == len(tools)
+        envelope.get("ok") is False
+        and envelope.get("method") == method
+        and isinstance(error, dict)
+        and error.get("code") == "AGENT_COMMAND_REMOVED"
     )
 
 
@@ -212,88 +181,80 @@ def verify_command_surface(
     checks = result["checks"]
     top_help = command_record(kast_command + ["--help"], workspace_root, timeout)
     ready_help = command_record(kast_command + ["ready", "--help"], workspace_root, timeout)
+    repair_help = command_record(kast_command + ["repair", "--help"], workspace_root, timeout)
     agent_help = command_record(kast_command + ["agent", "--help"], workspace_root, timeout)
+    agent_verify_help = command_record(
+        kast_command + ["agent", "verify", "--help"],
+        workspace_root,
+        timeout,
+    )
+    agent_symbol_help = command_record(
+        kast_command + ["agent", "symbol", "--help"],
+        workspace_root,
+        timeout,
+    )
+    agent_rename_help = command_record(
+        kast_command + ["agent", "rename", "--help"],
+        workspace_root,
+        timeout,
+    )
     agent_tools = command_record(
         kast_command + ["--output", "json", "agent", "tools", "--full"],
         workspace_root,
         timeout,
     )
-    setup_help = command_record(kast_command + ["setup", "--help"], workspace_root, timeout)
-    agent_workflow_help = command_record(
-        kast_command + ["agent", "workflow", "--help"],
+    agent_call = command_record(
+        kast_command + ["--output", "json", "agent", "call", "health"],
         workspace_root,
         timeout,
     )
+    agent_workflow = command_record(
+        kast_command + ["--output", "json", "agent", "workflow", "verify"],
+        workspace_root,
+        timeout,
+    )
+    setup_help = command_record(kast_command + ["setup", "--help"], workspace_root, timeout)
     install_help = command_record(kast_command + ["install", "--help"], workspace_root, timeout)
     version = command_record(kast_command + ["version"], workspace_root, timeout)
 
     top_help_text = top_help["stdout"] + top_help["stderr"]
+    agent_help_text = agent_help["stdout"] + agent_help["stderr"]
     install_help_text = install_help["stdout"] + install_help["stderr"]
     agent_tools_json = parse_json_output(agent_tools)
-    agent_tools_result = agent_tools_json.get("result") if isinstance(agent_tools_json, dict) else None
-    agent_tools_specs = agent_tools_result.get("tools") if isinstance(agent_tools_result, dict) else None
-    agent_tools_type = agent_tools_result.get("type") if isinstance(agent_tools_result, dict) else None
-    agent_tools_schema_version = (
-        agent_tools_result.get("schemaVersion") if isinstance(agent_tools_result, dict) else None
-    )
-    agent_tools_catalog_sha256 = (
-        agent_tools_result.get("catalogSha256") if isinstance(agent_tools_result, dict) else None
-    )
-    agent_tools_declared_tool_count = (
-        agent_tools_result.get("toolCount") if isinstance(agent_tools_result, dict) else None
-    )
-    agent_tools_metadata_valid = (
-        agent_tools_metadata_ok(agent_tools_result, agent_tools_specs)
-        if isinstance(agent_tools_result, dict)
-        else False
-    )
-    agent_tools_invocation = (
-        agent_tools_result.get("invocation") if isinstance(agent_tools_result, dict) else None
-    )
-    agent_tools_invocation_argv = (
-        agent_tools_invocation.get("argv") if isinstance(agent_tools_invocation, dict) else None
-    )
-    expected_agent_tools_invocation_argv = [kast_command[0], "agent", "call", "<method>"]
-    agent_tools_invocation_argv_ok = (
-        isinstance(agent_tools_invocation_argv, list)
-        and agent_tools_invocation_argv == expected_agent_tools_invocation_argv
-    )
-    agent_tools_envelope_ok = (
-        agent_tools["exitCode"] == 0
-        and isinstance(agent_tools_json, dict)
-        and agent_tools_json.get("ok") is True
-        and agent_tools_json.get("method") == "agent/tools"
-        and agent_tools_type == "KAST_AGENT_TOOLS"
-        and isinstance(agent_tools_specs, list)
-        and agent_tools_metadata_valid
-        and agent_tools_invocation_argv_ok
-    )
+    agent_call_json = parse_json_output(agent_call)
+    agent_workflow_json = parse_json_output(agent_workflow)
+    agent_tools_removed = removed_command_envelope(agent_tools_json, "agent/tools")
+    agent_call_removed = removed_command_envelope(agent_call_json, "agent/call")
+    agent_workflow_removed = removed_command_envelope(agent_workflow_json, "agent/workflow")
     checks["commandSurface"] = {
         "helpExitCode": top_help["exitCode"],
         "readyHelpExitCode": ready_help["exitCode"],
+        "repairHelpExitCode": repair_help["exitCode"],
         "agentHelpExitCode": agent_help["exitCode"],
+        "agentVerifyHelpExitCode": agent_verify_help["exitCode"],
+        "agentSymbolHelpExitCode": agent_symbol_help["exitCode"],
+        "agentRenameHelpExitCode": agent_rename_help["exitCode"],
         "agentToolsExitCode": agent_tools["exitCode"],
+        "agentCallExitCode": agent_call["exitCode"],
+        "agentWorkflowExitCode": agent_workflow["exitCode"],
         "setupHelpExitCode": setup_help["exitCode"],
-        "agentWorkflowHelpExitCode": agent_workflow_help["exitCode"],
         "installHelpExitCode": install_help["exitCode"],
         "versionExitCode": version["exitCode"],
         "version": version["stdout"].strip(),
         "cliVersion": parse_cli_version(version["stdout"]),
         "readyAvailable": ready_help["exitCode"] == 0,
+        "repairAvailable": repair_help["exitCode"] == 0,
         "agentAvailable": agent_help["exitCode"] == 0,
-        "agentToolsAvailable": agent_tools["exitCode"] == 0,
-        "agentToolsEnvelopeOk": agent_tools_envelope_ok,
-        "agentToolsType": agent_tools_type,
-        "agentToolsSchemaVersion": agent_tools_schema_version,
-        "agentToolsCatalogSha256": agent_tools_catalog_sha256,
-        "agentToolsDeclaredToolCount": agent_tools_declared_tool_count,
-        "agentToolsToolCount": len(agent_tools_specs) if isinstance(agent_tools_specs, list) else None,
-        "agentToolsMetadataValid": agent_tools_metadata_valid,
-        "agentToolsInvocationArgv": agent_tools_invocation_argv,
-        "agentToolsInvocationArgvExpected": expected_agent_tools_invocation_argv,
-        "agentToolsInvocationArgvOk": agent_tools_invocation_argv_ok,
+        "agentVerifyAvailable": agent_verify_help["exitCode"] == 0,
+        "agentSymbolAvailable": agent_symbol_help["exitCode"] == 0,
+        "agentRenameAvailable": agent_rename_help["exitCode"] == 0,
+        "agentToolsRemoved": agent_tools_removed,
+        "agentCallRemoved": agent_call_removed,
+        "agentWorkflowRemoved": agent_workflow_removed,
         "setupAvailable": setup_help["exitCode"] == 0,
-        "agentWorkflowAvailable": agent_workflow_help["exitCode"] == 0,
+        "agentHelpListsTools": help_lists_command(agent_help_text, "tools"),
+        "agentHelpListsCall": help_lists_command(agent_help_text, "call"),
+        "agentHelpListsWorkflow": help_lists_command(agent_help_text, "workflow"),
         "rpcVisibleInTopHelp": help_lists_command(top_help_text, "rpc"),
         "installVisibleInTopHelp": help_lists_command(top_help_text, "install"),
         "installAffectedVisible": help_lists_command(install_help_text, "affected"),
@@ -315,11 +276,42 @@ def verify_command_surface(
             "`kast ready --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
-    if not agent_tools_envelope_ok:
+    if repair_help["exitCode"] != 0:
         add_issue(
             result,
-            "KAST_AGENT_TOOLS_UNAVAILABLE",
-            "`kast --output json agent tools --full` failed or returned an invalid KAST_AGENT_TOOLS envelope; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            "KAST_REPAIR_UNAVAILABLE",
+            "`kast repair --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+            RECOVERY["development"],
+        )
+    for code, label, record in [
+        ("KAST_AGENT_VERIFY_UNAVAILABLE", "`kast agent verify --help`", agent_verify_help),
+        ("KAST_AGENT_SYMBOL_UNAVAILABLE", "`kast agent symbol --help`", agent_symbol_help),
+        ("KAST_AGENT_RENAME_UNAVAILABLE", "`kast agent rename --help`", agent_rename_help),
+    ]:
+        if record["exitCode"] != 0:
+            add_issue(
+                result,
+                code,
+                f"{label} failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
+                RECOVERY["development"],
+            )
+    for code, label, removed in [
+        ("KAST_AGENT_TOOLS_STILL_PUBLIC", "`kast agent tools`", agent_tools_removed),
+        ("KAST_AGENT_CALL_STILL_PUBLIC", "`kast agent call`", agent_call_removed),
+        ("KAST_AGENT_WORKFLOW_STILL_PUBLIC", "`kast agent workflow`", agent_workflow_removed),
+    ]:
+        if not removed:
+            add_issue(
+                result,
+                code,
+                f"{label} did not return an AGENT_COMMAND_REMOVED envelope.",
+                RECOVERY["development"],
+            )
+    if checks["commandSurface"]["agentHelpListsTools"] or checks["commandSurface"]["agentHelpListsCall"] or checks["commandSurface"]["agentHelpListsWorkflow"]:
+        add_issue(
+            result,
+            "KAST_AGENT_REMOVED_COMMAND_VISIBLE",
+            "`kast agent --help` still lists a removed generic agent command.",
             RECOVERY["development"],
         )
     if setup_help["exitCode"] != 0:
@@ -327,13 +319,6 @@ def verify_command_surface(
             result,
             "KAST_SETUP_UNAVAILABLE",
             "`kast setup --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
-            RECOVERY["development"],
-        )
-    if agent_workflow_help["exitCode"] != 0:
-        add_issue(
-            result,
-            "KAST_AGENT_WORKFLOW_UNAVAILABLE",
-            "`kast agent workflow --help` failed; the installed skill and active binary are incompatible. Upgrade or reinstall Kast.",
             RECOVERY["development"],
         )
     if checks["commandSurface"]["rpcVisibleInTopHelp"]:
@@ -647,16 +632,14 @@ def resource_recovery_command(
     kind: str,
     stale_targets: list[dict[str, Any]],
     target_dirs: list[Path] | None = None,
-    source_dir: Path | None = None,
 ) -> str:
-    harness = "skill" if kind == "skills" else "instructions"
     if stale_targets:
         target_dir = Path(stale_targets[0]["path"]).parent
     elif target_dirs:
         target_dir = target_dirs[0]
     else:
         target_dir = resource_targets(workspace_root, kind)[0].parent
-    return setup_recovery_command(kast_executable, harness, target_dir, source_dir)
+    return setup_recovery_command(kast_executable, target_dir)
 
 
 def verify_resource_install(
@@ -670,7 +653,6 @@ def verify_resource_install(
     ready_json: dict[str, Any] | None = None,
     kast_executable: str | None = None,
     target_dirs: list[Path] | None = None,
-    recovery_source_dir: Path | None = None,
 ) -> None:
     targets = []
     manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
@@ -717,7 +699,6 @@ def verify_resource_install(
             kind,
             stale,
             target_dirs,
-            recovery_source_dir,
         )
         add_issue(
             result,
@@ -732,7 +713,6 @@ def verify_resource_install(
             kind,
             stale,
             target_dirs,
-            recovery_source_dir,
         )
         add_warning(
             result,
@@ -748,12 +728,7 @@ def main() -> int:
     script_root = Path(__file__).resolve().parents[1]
     explicit_skill_root = normalize(args.skill_root) if args.skill_root else None
     skill_root = explicit_skill_root or script_root
-    copilot_target_dirs = [normalize(target_dir) for target_dir in args.copilot_target_dir]
     skill_target_dirs = [normalize(target_dir) for target_dir in args.skill_target_dir]
-    instructions_target_dirs = [
-        normalize(target_dir) for target_dir in args.instructions_target_dir
-    ]
-    source_catalog = skill_root / "references" / "commands.json"
 
     which_kast = shutil.which("kast")
     if args.kast_bin:
@@ -777,13 +752,13 @@ def main() -> int:
     }
 
     result["checks"]["sourceSkill"] = {
-        "catalog": str(source_catalog),
-        "catalogExists": source_catalog.is_file(),
+        "skill": str(skill_root / "SKILL.md"),
+        "skillExists": (skill_root / "SKILL.md").is_file(),
         "installedContent": ["SKILL.md"],
         "explicitOverride": explicit_skill_root is not None,
     }
-    if not source_catalog.is_file():
-        add_issue(result, "SOURCE_CATALOG_MISSING", f"Missing skill command catalog: {source_catalog}", None)
+    if not (skill_root / "SKILL.md").is_file():
+        add_issue(result, "SOURCE_SKILL_MISSING", f"Missing skill entrypoint: {skill_root / 'SKILL.md'}", None)
 
     result["checks"]["binaryResolution"] = {
         "pathLookup": which_kast,
@@ -805,15 +780,6 @@ def main() -> int:
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
-    verify_copilot(
-        result,
-        workspace_root,
-        expected_version,
-        args.require_copilot,
-        ready_json,
-        kast_bin,
-        copilot_target_dirs,
-    )
     verify_resource_install(
         result,
         workspace_root,
@@ -825,17 +791,6 @@ def main() -> int:
         ready_json,
         kast_bin,
         skill_target_dirs,
-        explicit_skill_root,
-    )
-    verify_resource_install(
-        result,
-        workspace_root,
-        expected_version,
-        "instructions",
-        args.require_instructions,
-        ready_json=ready_json,
-        kast_executable=kast_bin,
-        target_dirs=instructions_target_dirs,
     )
 
     result["ok"] = not result["issues"]

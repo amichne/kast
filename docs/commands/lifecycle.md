@@ -67,8 +67,8 @@ guessing about plugin state, runtime paths, or daemon readiness.
 
 | Need | Command |
 |------|---------|
-| Confirm a backend is reachable | `kast agent call health --params '{}'` |
+| Confirm a backend is reachable | `kast agent verify --workspace-root "$PWD"` |
 | Read machine output for automation | `kast --output json developer runtime status` |
 | Check the selected runtime path model | `kast developer inspect paths` |
 | Verify managed install state | `kast ready` |
-| Repair managed install state | `kast ready --fix` |
+| Repair managed install state | `kast repair --apply` |

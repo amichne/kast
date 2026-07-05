@@ -3,7 +3,7 @@ mod support;
 use support::*;
 
 #[test]
-fn ready_fix_writes_manifest_and_removes_install_owned_config() {
+fn repair_apply_writes_manifest_and_removes_install_owned_config() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -62,14 +62,24 @@ version = "0.7.35"
             .contains("[install]")
     );
 
-    let repair = kast(&home, &config_home)
+    let retired_fix = kast(&home, &config_home)
         .args(["--output", "json", "ready", "--fix"])
         .output()
-        .expect("ready fix");
+        .expect("retired ready fix");
+    assert!(
+        !retired_fix.status.success(),
+        "ready --fix should be rejected as a usage error"
+    );
+    assert!(!install_manifest_path(&home).exists());
+
+    let repair = kast(&home, &config_home)
+        .args(["--output", "json", "repair", "--apply"])
+        .output()
+        .expect("repair apply");
 
     assert!(
         repair.status.success(),
-        "ready --fix should repair stale state: stdout={}, stderr={}",
+        "repair --apply should repair stale state: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
@@ -81,9 +91,9 @@ version = "0.7.35"
             .expect("actions")
             .iter()
             .any(|action| action["kind"] == "remove-install-owned-config"),
-        "ready --fix should remove install-owned TOML keys: {stdout}"
+        "repair --apply should remove install-owned TOML keys: {stdout}"
     );
-    assert_eq!(stdout["install"]["tool"], "kast");
+    assert_eq!(stdout["ready"]["install"]["tool"], "kast");
     assert!(install_manifest_path(&home).is_file());
     let config_after =
         std::fs::read_to_string(config_home.join("config.toml")).expect("config after repair");
@@ -105,17 +115,17 @@ fn ready_for_targets_apply_task_specific_readiness_checks() {
     std::fs::create_dir_all(&config_home).expect("config home");
 
     let agent = kast(&home, &config_home)
-        .args(["--output", "json", "ready", "--fix"])
+        .args(["--output", "json", "repair", "--apply"])
         .output()
-        .expect("agent ready fix");
+        .expect("agent repair apply");
     assert!(
         agent.status.success(),
-        "default agent readiness should converge with --fix: stdout={}, stderr={}",
+        "default agent readiness should converge with repair --apply: stdout={}, stderr={}",
         String::from_utf8_lossy(&agent.stdout),
         String::from_utf8_lossy(&agent.stderr)
     );
     let agent_stdout: serde_json::Value =
-        serde_json::from_slice(&agent.stdout).expect("agent ready json");
+        serde_json::from_slice(&agent.stdout).expect("agent repair json");
     assert_eq!(agent_stdout["target"], "agent", "{agent_stdout}");
     assert_eq!(agent_stdout["ok"], true, "{agent_stdout}");
 
@@ -177,7 +187,7 @@ fn ready_for_targets_apply_task_specific_readiness_checks() {
 }
 
 #[test]
-fn ready_fix_recovers_malformed_global_config_with_backup() {
+fn repair_apply_recovers_malformed_global_config_with_backup() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -200,13 +210,13 @@ fn ready_fix_recovers_malformed_global_config_with_backup() {
     );
 
     let apply = kast(&home, &config_home)
-        .args(["--output", "json", "ready", "--fix"])
+        .args(["--output", "json", "repair", "--apply"])
         .output()
-        .expect("ready fix");
+        .expect("repair apply");
 
     assert!(
         apply.status.success(),
-        "ready --fix should recover malformed config: stdout={}, stderr={}",
+        "repair --apply should recover malformed config: stdout={}, stderr={}",
         String::from_utf8_lossy(&apply.stdout),
         String::from_utf8_lossy(&apply.stderr)
     );

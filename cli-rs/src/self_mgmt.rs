@@ -186,7 +186,7 @@ pub fn doctor(repair: bool, target: ReadyTarget) -> Result<SelfDoctorResult> {
                     .any(|resource| resource.kind == ManagedResourceKind::CopilotPackage)
             {
                 issues.push(format!(
-                    "Managed repo {} uses retired copilotPackageVersion state, which is incompatible with manifest-backed resource verification; upgrade/reinstall Kast if needed, then run `kast ready --fix` to refresh from the active binary bundles",
+                    "Managed repo {} uses retired copilotPackageVersion state, which is incompatible with manifest-backed resource verification; upgrade/reinstall Kast if needed, then run `kast repair --apply` to refresh from the active binary bundles",
                     repo.path
                 ));
             }

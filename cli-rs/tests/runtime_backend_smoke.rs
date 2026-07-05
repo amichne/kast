@@ -120,7 +120,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
 }
 
 #[test]
-fn agent_call_uses_configured_default_backend_when_auto_starting() {
+fn agent_verify_uses_configured_default_backend_when_auto_starting() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -134,24 +134,21 @@ fn agent_call_uses_configured_default_backend_when_auto_starting() {
     )
     .expect("config");
 
-    let call = kast(&home, &config_home)
+    let verify = kast(&home, &config_home)
         .args([
             "agent",
-            "call",
-            "runtime/status",
-            "--params",
-            r#"{"jsonrpc":"2.0","method":"runtime/status","params":{},"id":1}"#,
+            "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
         ])
         .output()
-        .expect("agent call runtime/status");
+        .expect("agent verify");
 
     assert!(
-        !call.status.success(),
-        "agent call should fail without an installed headless backend"
+        !verify.status.success(),
+        "agent verify should fail without an installed headless backend"
     );
-    let stdout = String::from_utf8_lossy(&call.stdout);
+    let stdout = String::from_utf8_lossy(&verify.stdout);
     assert!(
         stdout.contains("Linux headless tarball"),
         "agent envelope should point to the supported headless distribution: {stdout}"
@@ -159,7 +156,7 @@ fn agent_call_uses_configured_default_backend_when_auto_starting() {
 }
 
 #[test]
-fn agent_call_backend_flag_overrides_configured_default_backend() {
+fn agent_verify_backend_flag_overrides_configured_default_backend() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -173,25 +170,22 @@ fn agent_call_backend_flag_overrides_configured_default_backend() {
     )
     .expect("config");
 
-    let call = kast(&home, &config_home)
+    let verify = kast(&home, &config_home)
         .args([
             "agent",
-            "call",
-            "runtime/status",
-            "--params",
-            r#"{"jsonrpc":"2.0","method":"runtime/status","params":{},"id":1}"#,
+            "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
         ])
         .output()
-        .expect("agent call runtime/status");
+        .expect("agent verify");
 
     assert!(
-        !call.status.success(),
-        "agent call should fail without an installed headless backend"
+        !verify.status.success(),
+        "agent verify should fail without an installed headless backend"
     );
-    let stdout = String::from_utf8_lossy(&call.stdout);
+    let stdout = String::from_utf8_lossy(&verify.stdout);
     assert!(
         stdout.contains("Linux headless tarball"),
         "agent envelope should point to the supported headless distribution: {stdout}"

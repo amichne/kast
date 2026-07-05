@@ -580,7 +580,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
 }
 
 #[test]
-fn copilot_install_receives_the_manifest_declared_package_outputs() {
+fn copilot_agent_setup_reports_removed_without_installing_package_outputs() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -591,6 +591,8 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "setup",
             "copilot",
@@ -600,18 +602,17 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .output()
         .expect("install copilot plugin");
     assert!(
-        output.status.success(),
+        !output.status.success(),
         "stdout={}, stderr={}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let source = std::fs::read_to_string(manifest_dir.join("resources/plugin/lsp.json"))
-        .expect("plugin lsp");
-    let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
-    assert_eq!(installed, source);
-
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("removed command json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["method"], "agent/setup/copilot", "{stdout}");
+    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    assert!(!target.join("lsp.json").exists());
     assert!(
         !target
             .join("instructions/kast-kotlin.instructions.md")
@@ -619,26 +620,6 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
     );
     assert!(!target.join("agents/kast-reader.agent.md").exists());
     assert!(!target.join("agents/kast-writer.agent.md").exists());
-
-    let extension_source = std::fs::read_to_string(
-        manifest_dir.join("resources/plugin/extensions/kast/extension.mjs"),
-    )
-    .expect("plugin extension");
-    let installed_extension = std::fs::read_to_string(target.join("extensions/kast/extension.mjs"))
-        .expect("installed extension");
-    assert_eq!(installed_extension, extension_source);
-    assert!(installed_extension.contains("KAST_TOOLING_CONTEXT"));
-    assert!(installed_extension.contains("onUserPromptSubmitted"));
-    assert!(installed_extension.contains("additionalContext"));
-
-    let trace_source = std::fs::read_to_string(
-        manifest_dir.join("resources/plugin/extensions/kast/_shared/kast-trace.mjs"),
-    )
-    .expect("plugin trace helper");
-    let installed_trace =
-        std::fs::read_to_string(target.join("extensions/kast/_shared/kast-trace.mjs"))
-            .expect("installed trace helper");
-    assert_eq!(installed_trace, trace_source);
     assert!(
         !target
             .join("extensions/kast/_shared/kast-agents.mjs")

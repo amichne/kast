@@ -8,32 +8,48 @@ fn decode_toon(bytes: &[u8]) -> serde_json::Value {
 }
 
 #[test]
-fn agent_tools_default_toon_matches_explicit_json() {
+fn agent_rename_plan_default_toon_matches_explicit_json() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
 
     let json = kast(&home, &config_home)
-        .args(["--output", "json", "agent", "tools"])
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "io.example.OrderService.process",
+            "--new-name",
+            "processSafely",
+        ])
         .output()
-        .expect("agent tools json");
+        .expect("agent rename json");
     assert!(
         json.status.success(),
-        "agent tools json should succeed: stdout={}, stderr={}",
+        "agent rename json should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&json.stdout),
         String::from_utf8_lossy(&json.stderr)
     );
     let json_value: serde_json::Value =
-        serde_json::from_slice(&json.stdout).expect("agent tools json");
+        serde_json::from_slice(&json.stdout).expect("agent rename json");
 
     let toon = kast(&home, &config_home)
-        .args(["agent", "tools"])
+        .args([
+            "agent",
+            "rename",
+            "--symbol",
+            "io.example.OrderService.process",
+            "--new-name",
+            "processSafely",
+        ])
         .output()
-        .expect("agent tools toon");
+        .expect("agent rename toon");
     assert!(
         toon.status.success(),
-        "agent tools toon should succeed: stdout={}, stderr={}",
+        "agent rename toon should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&toon.stdout),
         String::from_utf8_lossy(&toon.stderr)
     );
@@ -46,46 +62,14 @@ fn agent_tools_default_toon_matches_explicit_json() {
     assert_eq!(toon_value, json_value);
     assert!(
         toon.stdout.len() < json.stdout.len(),
-        "toon agent tools output should be smaller than pretty JSON: json={}, toon={}",
+        "toon agent rename output should be smaller than pretty JSON: json={}, toon={}",
         json.stdout.len(),
         toon.stdout.len()
     );
 }
 
 #[test]
-fn operator_commands_default_to_toon_when_stdout_is_not_interactive() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-
-    let status = kast(&home, &config_home)
-        .args([
-            "status",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-        ])
-        .output()
-        .expect("status toon");
-    assert!(
-        status.status.success(),
-        "status toon should succeed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&status.stdout),
-        String::from_utf8_lossy(&status.stderr)
-    );
-    assert!(
-        serde_json::from_slice::<serde_json::Value>(&status.stdout).is_err(),
-        "default noninteractive status output should not be JSON"
-    );
-    let output = decode_toon(&status.stdout);
-
-    assert_eq!(output["candidates"], serde_json::json!([]), "{output:#}");
-}
-
-#[test]
-fn agent_call_validation_errors_can_emit_toon() {
+fn agent_call_removed_errors_can_emit_toon() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -94,11 +78,8 @@ fn agent_call_validation_errors_can_emit_toon() {
     let call = kast(&home, &config_home)
         .args(["agent", "call", "symbol/resolve"])
         .output()
-        .expect("agent call toon validation");
-    assert!(
-        !call.status.success(),
-        "invalid agent call should fail validation"
-    );
+        .expect("agent call toon removal");
+    assert!(!call.status.success(), "removed agent call should fail");
     assert!(
         serde_json::from_slice::<serde_json::Value>(&call.stdout).is_err(),
         "toon validation output should not be parseable as JSON"
@@ -106,61 +87,53 @@ fn agent_call_validation_errors_can_emit_toon() {
     let output = decode_toon(&call.stdout);
 
     assert_eq!(output["ok"], false, "{output:#}");
-    assert_eq!(output["method"], "symbol/resolve", "{output:#}");
+    assert_eq!(output["method"], "agent/call", "{output:#}");
     assert_eq!(
-        output["error"]["code"], "AGENT_REQUEST_INVALID",
+        output["error"]["code"], "AGENT_COMMAND_REMOVED",
         "{output:#}"
     );
 }
 
 #[test]
-fn agent_workflow_toon_stdout_keeps_step_files_json() {
+fn agent_rename_plan_is_read_only_until_apply() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
-    let out_dir = temp.path().join("workflow");
     std::fs::create_dir_all(&home).expect("home");
 
-    let workflow = kast(&home, &config_home)
+    let plan = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
-            "workflow",
-            "symbol",
-            "--dry-run",
-            "--out-dir",
-            out_dir.to_str().expect("workflow path"),
+            "rename",
             "--symbol",
-            "Kast",
-            "--references",
+            "io.example.OrderService.process",
+            "--new-name",
+            "processSafely",
         ])
         .output()
-        .expect("agent workflow toon dry-run");
+        .expect("agent rename plan");
     assert!(
-        workflow.status.success(),
-        "workflow dry-run should succeed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&workflow.stdout),
-        String::from_utf8_lossy(&workflow.stderr)
+        plan.status.success(),
+        "rename plan should succeed without backend dispatch: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr)
     );
-    assert!(
-        serde_json::from_slice::<serde_json::Value>(&workflow.stdout).is_err(),
-        "toon workflow stdout should not be parseable as JSON"
-    );
-    let output = decode_toon(&workflow.stdout);
-
+    let output: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("plan json");
     assert_eq!(output["ok"], true, "{output:#}");
-    assert_eq!(output["method"], "agent/workflow/symbol", "{output:#}");
-    assert_eq!(output["result"]["dryRun"], true, "{output:#}");
-
-    for path in [
-        out_dir.join("workflow.json"),
-        out_dir.join("symbol-query/input.json"),
-        out_dir.join("symbol-query/stdout.json"),
-        out_dir.join("symbol-resolve/input.json"),
-        out_dir.join("symbol-references/input.json"),
-    ] {
-        let content = std::fs::read_to_string(&path)
-            .unwrap_or_else(|error| panic!("read {}: {error}", path.display()));
-        serde_json::from_str::<serde_json::Value>(&content)
-            .unwrap_or_else(|error| panic!("{} should remain JSON: {error}", path.display()));
-    }
+    assert_eq!(output["method"], "agent/rename", "{output:#}");
+    assert_eq!(
+        output["result"]["type"], "KAST_AGENT_RENAME_PLAN",
+        "{output:#}"
+    );
+    assert_eq!(output["result"]["applyRequired"], true, "{output:#}");
+    assert_eq!(
+        output["result"]["request"]["method"], "symbol/rename",
+        "{output:#}"
+    );
+    assert!(
+        !output["result"]["request"].to_string().contains("offset"),
+        "{output:#}"
+    );
 }

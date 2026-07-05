@@ -14,7 +14,7 @@ pub fn agent_guidance_setup_plan(
         result_type: "AGENT_SETUP_PLAN",
         skill_target: skill_target.display().to_string(),
         agents_md_targets,
-        hook_targets: detected_hook_plans(&workspace_root),
+        hook_targets: Vec::new(),
         install_command,
         force: args.force,
         dry_run: args.dry_run,
@@ -47,13 +47,11 @@ pub fn install_agent_guidance(
         )?);
     }
     let skipped = skill.skipped && agent_results.iter().all(|target| target.skipped);
-    let hook_results = install_detected_hooks(&workspace_root, args.force, args.no_auto_exclude_git)?;
-    let skipped = skipped && hook_results.iter().all(|target| target.skipped);
     Ok(AgentGuidanceSetupResult {
         result_type: "AGENT_SETUP",
         skill,
         agents_md_targets: agent_results,
-        hook_targets: hook_results,
+        hook_targets: Vec::new(),
         install_command,
         skipped,
         schema_version: SCHEMA_VERSION,
@@ -302,10 +300,10 @@ fn render_agents_md_guidance_block(skill_path: &Path) -> String {
     [
         KAST_MANAGED_FENCE_START,
         "## Kast routing",
-        "When touching Kotlin or Gradle files, check readiness with `kast agent workflow verify --workspace-root \"$PWD\"` if current state is unknown.",
-        &format!("Use `{skill_path}` and `kast agent` for Kotlin semantic navigation, edits, references, diagnostics, and source-index impact."),
-        "Prefer `kast agent workflow ...` for repeatable proof; use `kast agent call <method>` only when no workflow fits.",
-        "After updating packaged skills, instructions, Copilot assets, or managed guidance, run `kast agent workflow package-verify --workspace-root \"$PWD\"` and follow emitted recovery commands.",
+        &format!("Use `{skill_path}` before Kotlin or Gradle semantic work."),
+        "Use `kast`, `kast help`, `kast ready`, and `kast agent verify --workspace-root \"$PWD\"` to orient.",
+        "Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.",
+        "Run `kast repair --apply` only when readiness output asks for install-state repair.",
         KAST_MANAGED_FENCE_END,
     ]
     .join("\n")
@@ -767,6 +765,13 @@ fn hook_executable_argument() -> String {
 
 fn find_kast_managed_fence(content: &str) -> Option<std::ops::Range<usize>> {
     find_managed_fence_with_markers(content, KAST_MANAGED_FENCE_START, KAST_MANAGED_FENCE_END)
+        .or_else(|| {
+            find_managed_fence_with_markers(
+                content,
+                ATTRIBUTE_KAST_MANAGED_FENCE_START,
+                KAST_MANAGED_FENCE_END,
+            )
+        })
         .or_else(|| {
             find_managed_fence_with_markers(
                 content,

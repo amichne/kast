@@ -621,12 +621,14 @@ pub(crate) fn kast_managed_fence_sha256(path: &Path) -> Result<String> {
 }
 
 fn extract_kast_managed_fence(content: &str) -> Option<&str> {
-    const START: &str =
+    const START: &str = "<kast>";
+    const ATTRIBUTE_START: &str =
         r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#;
     const END: &str = "</kast>";
     const LEGACY_START: &str = "<!-- BEGIN KAST MANAGED -->";
     const LEGACY_END: &str = "<!-- END KAST MANAGED -->";
     extract_kast_managed_fence_with_markers(content, START, END)
+        .or_else(|| extract_kast_managed_fence_with_markers(content, ATTRIBUTE_START, END))
         .or_else(|| extract_kast_managed_fence_with_markers(content, LEGACY_START, LEGACY_END))
 }
 

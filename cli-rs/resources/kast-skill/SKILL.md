@@ -1,51 +1,42 @@
 ---
 name: kast
 description: >
-  Kotlin semantic work in Gradle repositories. Use `kast agent` for Kotlin
-  `.kt` or `.kts` source reads and edits, symbol identity, references, callers,
-  hierarchy, diagnostics, source-index metrics, file-backed catalog calls, and
-  focused Gradle validation.
+  Kotlin semantic work in Gradle repositories. Use when an agent needs compiler-backed
+  Kotlin `.kt` or `.kts` discovery, symbol identity, references, callers, diagnostics,
+  source-index impact, semantic rename, or focused Gradle validation.
 ---
 
-# Kotlin
+# Kast
 
-Kotlin work uses `kast agent`. If this skill is loaded, assume `kast agent` is
-available and do the Kotlin work instead of proving the installation, unless
-the task is about readiness or package state. Treat `kast agent` as the only
-first-class path.
+Use `kast agent` before generic file reads, text search, or hand-written edits for
+Kotlin and Gradle semantic work. Treat `kast`, `kast help`, and this skill as the
+public dialect; do not use catalog, workflow, hook, or Copilot package helpers as
+the first iteration surface.
 
 ## Loop
 
-1. Use `kast agent workflow ...` when a workflow fits, or `kast agent call <method>` for the narrowest single catalog method.
-2. Keep nontrivial params in a JSON file and pass `--params-file`; use `kast agent tools --full` only when exact fields, variants, or mutation metadata are needed.
-3. Kast defaults to compact TOON outside interactive human terminals; use `--output json` for JSON-only parsed scripts and add `--full` to `agent call` when exact large response fields are needed.
-4. Stay on `kast agent` after the first successful call. Switch to generic file reads or text search only when the work leaves Kotlin semantics or Kast reports a concrete blocker.
-5. Mutate through `kast agent` for semantic or compiler-owned targets, then validate with Kast diagnostics/workflows and the narrowest Gradle task.
+1. Orient with `kast`, `kast help agent`, and read-only `kast ready --workspace-root "$PWD"` when install or backend state matters.
+2. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`. Add `--kind`, `--file-hint`, `--containing-type`, `--references`, or `--callers incoming|outgoing` only when needed.
+3. Check changed files with `kast agent diagnostics --file-path <path> --workspace-root "$PWD"`.
+4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`.
+5. Rename only by compiler identity: first run `kast agent rename --symbol <fq-name> --new-name <name> --workspace-root "$PWD"`, then add `--apply` after reviewing the plan.
+6. Use `--output json` for JSON-only parsed scripts; otherwise `kast agent` defaults to compact TOON.
 
-Completion criterion: every Kotlin semantic claim, edit target, relationship set, and completion proof is backed by `kast agent` evidence, or the remaining work is an exact non-Kotlin path.
+Completion criterion: every Kotlin semantic claim, edit target, relationship set,
+and validation result is backed by a typed `kast agent` command, or the remaining
+work is explicitly outside Kotlin semantics.
 
-## Usage Routes
+## Health
 
-- Unknown symbol or broad Kotlin discovery: start with `kast agent call symbol/query`, then use `symbol/discover` or `symbol/resolve` when context is needed.
-- File context: use `kast agent call symbol/scaffold`; use `kast agent call raw/file-outline` only for structure without full file contents.
-- Relationships and impact: use `symbol/references`, `symbol/callers`, `database/metrics`, or `kast agent workflow impact`.
-- Repeatable proof or mutation: use `kast agent workflow symbol`, `diagnostics`, `rename-plan`, `write-validate`, or `package-verify`.
-- Use ordinary file tools for exact non-Kotlin paths, generated text, docs, skill maintenance, and final absence checks after `kast agent` finds no candidates.
-- Use raw catalog methods only after a symbol-first route or workflow does not fit, or when you already have exact files and offsets for a bounded operation.
+Use this section only when a typed `kast agent` command fails, the user asks for
+readiness evidence, or backend state is part of the task.
 
-For one nontrivial catalog call:
+- `kast ready --for agent|kotlin|release|machine --workspace-root "$PWD"` is read-only readiness.
+- `kast repair --for agent|kotlin|release|machine --workspace-root "$PWD"` is plan-only repair.
+- Add `--apply` to `kast repair` only after the repair plan or readiness output asks for install-state mutation.
+- `kast agent verify --workspace-root "$PWD"` proves backend health, runtime status, and capabilities for semantic work.
+- `kast runtime status --workspace-root "$PWD"` reports daemon lifecycle only.
 
-```console
-kast --output json agent call <method> --full --params-file "$KAST_PARAMS" --workspace-root "$PWD"
-```
-
-Use camelCase fields and absolute paths. A call succeeds only when the outer `ok` field and nested result status are clean; validation errors, dirty diagnostics, hash mismatches, and failed Gradle tasks fail the operation.
-
-## Health Reference
-
-Use this section only when a `kast agent` command fails, the user asks for readiness evidence, or backend state is part of the task. Do not make these commands the first move for normal Kotlin work.
-
-If `NO_BACKEND_AVAILABLE`, `INDEX_UNAVAILABLE`, `METRICS_DB_UNAVAILABLE`, or a missing source-index database appears, run `kast --output json agent workflow verify --workspace-root "$PWD"` or `kast --output json agent up --workspace-root "$PWD" --no-onboard`, then retry the original Kotlin route.
-For repo-local package/resource state, run `kast --output json agent workflow package-verify --workspace-root "$PWD"` with the `--require-*` flags that match the task, then follow emitted recovery commands.
-
-Do not teach `kast rpc`, generated protocol paths, LSP capability internals, or backend implementation classes as public agent APIs.
+Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`, `kast rpc`,
+generated protocol paths, LSP capability internals, backend implementation classes,
+portable instruction packages, Copilot package files, or hooks as public agent APIs.

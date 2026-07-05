@@ -36,6 +36,7 @@ fn smoke_core_cli_commands() {
         "version",
         "setup",
         "ready",
+        "repair",
         "status",
         "developer",
         "agent",
@@ -71,7 +72,7 @@ fn smoke_core_cli_commands() {
         .expect("agent help");
     assert!(agent_help.status.success());
     let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
-    for command in ["lsp", "tools", "call", "workflow"] {
+    for command in ["lsp", "verify", "symbol", "impact", "diagnostics", "rename"] {
         assert!(
             help_lists_command(&agent_help_stdout, command),
             "agent help should show {command}: {agent_help_stdout}"
@@ -81,6 +82,9 @@ fn smoke_core_cli_commands() {
         "up",
         "ready",
         "setup",
+        "tools",
+        "call",
+        "workflow",
         "health",
         "runtime-status",
         "raw-resolve",
@@ -96,91 +100,64 @@ fn smoke_core_cli_commands() {
     let agent_tools = kast(&home, &config_home)
         .args(["--output", "json", "agent", "tools", "--full"])
         .output()
-        .expect("agent tools");
-    assert!(agent_tools.status.success());
+        .expect("removed agent tools");
+    assert!(
+        !agent_tools.status.success(),
+        "agent tools should be removed from the public surface"
+    );
     let agent_tools_json: serde_json::Value =
-        serde_json::from_slice(&agent_tools.stdout).expect("agent tools json");
-    assert_eq!(agent_tools_json["ok"], true);
+        serde_json::from_slice(&agent_tools.stdout).expect("agent tools removal json");
+    assert_eq!(agent_tools_json["ok"], false);
     assert_eq!(agent_tools_json["method"], "agent/tools");
-    assert_eq!(agent_tools_json["result"]["type"], "KAST_AGENT_TOOLS");
-    assert_eq!(
-        agent_tools_json["result"]["catalogSha256"]
-            .as_str()
-            .expect("catalog checksum")
-            .len(),
-        64
-    );
-    assert_eq!(
-        agent_tools_json["result"]["invocation"]["command"],
-        "kast agent call"
-    );
-    let invocation_argv = agent_tools_json["result"]["invocation"]["argv"]
-        .as_array()
-        .expect("agent invocation argv");
-    assert_eq!(invocation_argv.len(), 4, "{invocation_argv:#?}");
+    assert_eq!(agent_tools_json["error"]["code"], "AGENT_COMMAND_REMOVED");
     assert!(
-        !invocation_argv[0]
-            .as_str()
-            .expect("agent invocation executable")
-            .is_empty(),
-        "{invocation_argv:#?}"
-    );
-    assert_eq!(invocation_argv[1], "agent");
-    assert_eq!(invocation_argv[2], "call");
-    assert_eq!(invocation_argv[3], "<method>");
-    let tools = agent_tools_json["result"]["tools"]
-        .as_array()
-        .expect("tools array");
-    let tool_names = tools
-        .iter()
-        .map(|tool| tool["name"].as_str().expect("tool name"))
-        .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(
-        tool_names,
-        std::collections::BTreeSet::from([
-            "kast_callers",
-            "kast_diagnostics",
-            "kast_file_outline",
-            "kast_metrics",
-            "kast_references",
-            "kast_rename",
-            "kast_resolve",
-            "kast_scaffold",
-            "kast_symbol_discover",
-            "kast_symbol_query",
-            "kast_workspace_files",
-            "kast_workspace_search",
-            "kast_workspace_symbol",
-            "kast_write_and_validate",
-        ])
-    );
-    assert_eq!(agent_tools_json["result"]["toolCount"], tools.len());
-    let resolve_tool = tools
-        .iter()
-        .find(|tool| tool["name"] == "kast_resolve")
-        .expect("resolve tool");
-    assert_eq!(resolve_tool["method"], "symbol/resolve");
-    assert_eq!(resolve_tool["mutates"], false);
-    assert!(
-        resolve_tool["parameters"]["required"]
+        agent_tools_json["error"]["details"]["replacements"]
             .as_array()
-            .expect("resolve required")
+            .expect("replacement commands")
             .iter()
-            .any(|field| field == "symbol"),
-        "{resolve_tool:#}"
+            .any(|command| command == "kast help agent"),
+        "{agent_tools_json:#}"
     );
-    let rename_tool = tools
-        .iter()
-        .find(|tool| tool["name"] == "kast_rename")
-        .expect("rename tool");
-    assert_eq!(rename_tool["mutates"], true);
+
+    let rename_plan = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "com.example.Target",
+            "--new-name",
+            "RenamedTarget",
+        ])
+        .output()
+        .expect("agent rename plan");
     assert!(
-        rename_tool["parameters"]["oneOf"]
-            .as_array()
-            .expect("rename variants")
-            .len()
-            >= 2,
-        "{rename_tool:#}"
+        rename_plan.status.success(),
+        "agent rename without --apply should be plan-only: stdout={}, stderr={}",
+        String::from_utf8_lossy(&rename_plan.stdout),
+        String::from_utf8_lossy(&rename_plan.stderr)
+    );
+    let rename_plan_json: serde_json::Value =
+        serde_json::from_slice(&rename_plan.stdout).expect("rename plan json");
+    assert_eq!(rename_plan_json["ok"], true, "{rename_plan_json:#}");
+    assert_eq!(rename_plan_json["method"], "agent/rename");
+    assert_eq!(rename_plan_json["result"]["type"], "KAST_AGENT_RENAME_PLAN");
+    assert_eq!(
+        rename_plan_json["result"]["request"]["method"],
+        "symbol/rename"
+    );
+    assert_eq!(
+        rename_plan_json["result"]["request"]["params"]["type"],
+        "RENAME_BY_SYMBOL_REQUEST"
+    );
+    assert!(
+        rename_plan_json["result"]["request"]["params"]
+            .as_object()
+            .expect("rename params")
+            .get("offset")
+            .is_none(),
+        "{rename_plan_json:#}"
     );
 
     let setup_help = kast(&home, &config_home)
@@ -191,17 +168,19 @@ fn smoke_core_cli_commands() {
     let setup_help_stdout = String::from_utf8_lossy(&setup_help.stdout);
     for flag in [
         "--workspace-root",
-        "--backend",
         "--skill-target-dir",
         "--context-file",
         "--dry-run",
-        "--no-open-ide",
     ] {
         assert!(
             setup_help_stdout.contains(flag),
             "setup help should expose {flag}: {setup_help_stdout}"
         );
     }
+    assert!(
+        !setup_help_stdout.contains("--backend"),
+        "setup should not expose backend/runtime selection: {setup_help_stdout}"
+    );
     let setup_plan = kast(&home, &config_home)
         .args([
             "--output",
@@ -209,9 +188,7 @@ fn smoke_core_cli_commands() {
             "setup",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
             "--dry-run",
-            "--no-open-ide",
         ])
         .output()
         .expect("setup dry-run");
@@ -223,31 +200,15 @@ fn smoke_core_cli_commands() {
     );
     let setup_plan_json: serde_json::Value =
         serde_json::from_slice(&setup_plan.stdout).expect("setup plan json");
-    assert_eq!(setup_plan_json["setup"]["type"], "AGENT_SETUP_PLAN");
+    assert_eq!(setup_plan_json["type"], "AGENT_SETUP_PLAN");
     assert_eq!(setup_plan_json["dryRun"], true);
     assert_eq!(
-        setup_plan_json["setup"]["installCommand"][1], "setup",
+        setup_plan_json["installCommand"][1], "setup",
         "root setup dry-run should advertise root setup, not hidden agent setup: {setup_plan_json:#}"
     );
-    assert_eq!(
-        setup_plan_json["runtimeCommand"][1], "setup",
-        "root setup runtime action should advertise root setup, not hidden runtime up: {setup_plan_json:#}"
-    );
-    assert_eq!(
-        setup_plan_json["nextActions"]
-            .as_array()
-            .expect("next actions")
-            .len(),
-        1,
-        "root setup dry-run should expose one one-touch next action: {setup_plan_json:#}"
-    );
     assert!(
-        setup_plan_json["nextActions"][0]["argv"]
-            .as_array()
-            .expect("setup next action argv")
-            .iter()
-            .any(|arg| arg == "--no-open-ide"),
-        "root setup dry-run next action should preserve noninteractive setup: {setup_plan_json:#}"
+        setup_plan_json.get("runtimeCommand").is_none(),
+        "setup should not plan runtime warmup: {setup_plan_json:#}"
     );
     assert!(
         !install_manifest_path(&home).exists(),
@@ -268,16 +229,16 @@ fn smoke_core_cli_commands() {
     let invalid_agent_call = kast(&home, &config_home)
         .args(["--output", "json", "agent", "call", "symbol/resolve"])
         .output()
-        .expect("agent validation failure");
+        .expect("agent call removal");
     assert!(
         !invalid_agent_call.status.success(),
-        "missing required params should fail validation before dispatch"
+        "agent call should be removed from the public surface"
     );
     let invalid_agent_json: serde_json::Value =
-        serde_json::from_slice(&invalid_agent_call.stdout).expect("agent validation json");
+        serde_json::from_slice(&invalid_agent_call.stdout).expect("agent call removal json");
     assert_eq!(invalid_agent_json["ok"], false);
-    assert_eq!(invalid_agent_json["method"], "symbol/resolve");
-    assert_eq!(invalid_agent_json["error"]["code"], "AGENT_REQUEST_INVALID");
+    assert_eq!(invalid_agent_json["method"], "agent/call");
+    assert_eq!(invalid_agent_json["error"]["code"], "AGENT_COMMAND_REMOVED");
 
     let activate_bundle_help = kast(&home, &config_home)
         .args(["developer", "release", "activate", "bundle", "--help"])
@@ -290,21 +251,17 @@ fn smoke_core_cli_commands() {
         "release activate bundle help should expose read-only verification: {activate_bundle_stdout}"
     );
 
-    for command in ["skill", "instructions", "copilot"] {
-        let help = kast(&home, &config_home)
-            .args(["agent", "setup", command, "--help"])
-            .output()
-            .unwrap_or_else(|error| panic!("agent setup {command} help: {error}"));
-        assert!(
-            help.status.success(),
-            "agent setup {command} help should succeed"
-        );
-        let stdout = String::from_utf8_lossy(&help.stdout);
-        assert!(
-            stdout.contains("-f, --force"),
-            "agent setup {command} help should expose -f/--force: {stdout}"
-        );
-    }
+    let agent_setup_help = kast(&home, &config_home)
+        .args(["agent", "setup", "--help"])
+        .output()
+        .expect("hidden agent setup help");
+    assert!(
+        !agent_setup_help.status.success()
+            || !String::from_utf8_lossy(&agent_setup_help.stdout).contains("copilot"),
+        "agent setup should not expose portable asset installers: stdout={}, stderr={}",
+        String::from_utf8_lossy(&agent_setup_help.stdout),
+        String::from_utf8_lossy(&agent_setup_help.stderr)
+    );
     let shell_help = kast(&home, &config_home)
         .args(["developer", "machine", "shell", "--help"])
         .output()
@@ -361,72 +318,46 @@ fn smoke_core_cli_commands() {
     assert!(demo_help_stdout.contains("source-index demo"));
     assert!(demo_help_stdout.contains("compare"));
 
-    let repair = kast(&home, &config_home)
-        .args(["ready", "--fix"])
+    let repair_plan = kast(&home, &config_home)
+        .args(["--output", "json", "repair"])
         .output()
-        .expect("ready repair");
+        .expect("repair plan");
+    assert!(
+        !repair_plan.status.success(),
+        "repair without --apply should plan but still report not ready before manifest exists"
+    );
+    assert!(!install_manifest_path(&home).exists());
+
+    let repair = kast(&home, &config_home)
+        .args(["--output", "json", "repair", "--apply"])
+        .output()
+        .expect("repair apply");
     assert!(
         repair.status.success(),
-        "ready --fix should converge the install: stdout={}, stderr={}",
+        "repair --apply should converge the install: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
+    let repair_json: serde_json::Value =
+        serde_json::from_slice(&repair.stdout).expect("repair json");
+    assert_eq!(repair_json["type"], "KAST_REPAIR");
+    assert_eq!(repair_json["applied"], true);
     assert!(install_manifest_path(&home).is_file());
 
     let skill_dir = temp.path().join("skills");
     let skill = kast(&home, &config_home)
         .args([
-            "agent",
             "setup",
-            "skill",
             "--target-dir",
             skill_dir.to_str().expect("skill path"),
             "--force",
         ])
         .output()
-        .expect("install skill");
-    assert!(skill.status.success());
-    assert!(skill_dir.join("kast/SKILL.md").is_file());
-    assert!(!skill_dir.join("kast/AGENTS.md").exists());
-    assert!(!skill_dir.join("kast/references").exists());
-    assert!(!skill_dir.join("kast/scripts").exists());
-    assert!(!skill_dir.join("kast/fixtures").exists());
-    let instructions_dir = temp.path().join("instructions");
-    let instructions = kast(&home, &config_home)
-        .args([
-            "agent",
-            "setup",
-            "instructions",
-            "--target-dir",
-            instructions_dir.to_str().expect("instructions path"),
-            "--force",
-        ])
-        .output()
-        .expect("install instructions");
-    assert!(instructions.status.success());
-    assert!(instructions_dir.join("kast/README.md").is_file());
-    assert!(instructions_dir.join("kast/cli.md").is_file());
-    assert!(instructions_dir.join("kast/tools.md").is_file());
-    assert!(instructions_dir.join("kast/lsp.md").is_file());
-    assert!(!instructions_dir.join("kast/AGENTS.md").exists());
-    assert!(!instructions_dir.join("kast/rpc.md").exists());
-
-    let github_dir = temp.path().join(".github");
-    let copilot = kast(&home, &config_home)
-        .args([
-            "agent",
-            "setup",
-            "copilot",
-            "--target-dir",
-            github_dir.to_str().expect("github path"),
-        ])
-        .output()
-        .expect("install copilot plugin");
-    assert!(copilot.status.success());
-    assert!(github_dir.join("lsp.json").is_file());
-    assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
-    assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
-    assert!(!github_dir.join(".kast-copilot-version").exists());
+        .expect("setup target-dir rejected");
+    assert!(
+        !skill.status.success(),
+        "root setup should not accept legacy --target-dir asset installs"
+    );
 
     let status = kast(&home, &config_home)
         .args([

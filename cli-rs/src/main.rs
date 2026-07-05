@@ -211,6 +211,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Context(args) => run_context(args, output_format),
         Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
+        Command::Repair(args) => run_repair(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args, output_format),
@@ -250,20 +251,22 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
         commands: vec![
             ContextCommandHint {
                 command: "kast setup --workspace-root <repo>".to_string(),
-                purpose: "Install or repair repository agent resources and detected hooks.".to_string(),
+                purpose: "Install or repair the Kast skill and managed repo instructions."
+                    .to_string(),
             },
             ContextCommandHint {
-                command: "kast agent tools --full".to_string(),
-                purpose: "Inspect full catalog-backed tool schemas.".to_string(),
+                command: "kast agent verify --workspace-root <repo>".to_string(),
+                purpose: "Check backend health, runtime state, and capabilities.".to_string(),
             },
             ContextCommandHint {
-                command: "kast agent call <method> --params-file <file> --workspace-root <repo>".to_string(),
-                purpose: "Run a bounded semantic request through the active backend.".to_string(),
+                command: "kast agent symbol --query <name> --workspace-root <repo>".to_string(),
+                purpose: "Resolve Kotlin symbol identity before reading or editing.".to_string(),
             },
         ],
         help: vec![
             "Run `kast --help` for command reference.".to_string(),
-            "Run `kast agent workflow verify --workspace-root <repo>` when backend state is unknown.".to_string(),
+            "Run `kast repair --apply` only when readiness output asks for install-state repair."
+                .to_string(),
         ],
         schema_version: SCHEMA_VERSION,
     };
@@ -310,36 +313,19 @@ fn display_current_executable() -> String {
 }
 
 fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
-    if !args.dry_run {
-        let readiness = self_mgmt::doctor(true, cli::ReadyTarget::Agent)?;
-        if !readiness.ok {
-            let mut error = CliError::new(
-                "SETUP_READY_FAILED",
-                "Setup could not repair Kast install readiness.",
-            );
-            error
-                .details
-                .insert("issues".to_string(), readiness.issues.join("; "));
-            return Err(error);
-        }
-    }
-    run_agent_up_with_surface(
-        setup_to_agent_up_args(args),
-        output_format,
-        AgentUpCommandSurface::RootSetup,
-    )
+    let guidance = setup_to_agent_guidance_args(args);
+    run_agent_guidance_setup_with_command(guidance, output_format, root_setup_command)
 }
 
-fn setup_to_agent_up_args(args: cli::SetupArgs) -> cli::AgentUpArgs {
-    cli::AgentUpArgs {
-        runtime: args.runtime,
+fn setup_to_agent_guidance_args(args: cli::SetupArgs) -> cli::AgentGuidanceSetupArgs {
+    cli::AgentGuidanceSetupArgs {
+        workspace_root: args.workspace_root,
         skill_target_dir: args.skill_target_dir,
         context_files: merge_context_files(args.context_files, args.agents_md.clone()),
         agents_md: args.agents_md,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
         dry_run: args.dry_run,
-        no_onboard: args.no_open_ide,
     }
 }
 
@@ -353,13 +339,60 @@ fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>)
 }
 
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
-    let result = self_mgmt::doctor(args.fix, args.target)?;
+    let cli::ReadyArgs { runtime: _, target } = args;
+    let result = self_mgmt::doctor(false, target)?;
     if output_format.is_structured() {
         output::print_structured(&result, output_format)?;
     } else {
         output::print_ready(&result)?;
     }
     Ok(if result.ok { 0 } else { 1 })
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepairCommandResult {
+    #[serde(rename = "type")]
+    result_type: &'static str,
+    target: cli::ReadyTarget,
+    applied: bool,
+    repair: install::InstallRepairResult,
+    ready: self_mgmt::SelfDoctorResult,
+    ok: bool,
+    schema_version: u32,
+}
+
+fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32> {
+    let cli::RepairArgs {
+        runtime: _,
+        target,
+        apply,
+        jetbrains_config_root,
+    } = args;
+    if apply {
+        manifest::install_current_executable()?;
+    }
+    let repair = install::repair_install_state(cli::InstallRepairArgs {
+        apply,
+        jetbrains_config_root,
+    })?;
+    let ready = self_mgmt::doctor(false, target)?;
+    let ok = ready.ok;
+    let result = RepairCommandResult {
+        result_type: "KAST_REPAIR",
+        target,
+        applied: apply,
+        repair,
+        ready,
+        ok,
+        schema_version: SCHEMA_VERSION,
+    };
+    if output_format.is_structured() {
+        output::print_structured(&result, output_format)?;
+    } else {
+        output::print_structured(&result, OutputFormat::Toon)?;
+    }
+    Ok(if ok { 0 } else { 1 })
 }
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
@@ -393,7 +426,7 @@ fn run_agent_up_with_surface(
     let runtime_args = agent_up_runtime_args(args.runtime, &workspace_root);
     let setup_command = match surface {
         AgentUpCommandSurface::RootSetup => {
-            root_setup_command(&setup_args, &runtime_args, no_onboard)
+            root_agent_up_setup_command(&setup_args, &runtime_args, no_onboard)
         }
         AgentUpCommandSurface::AgentUp => agent_guidance_setup_command(&setup_args),
     };
@@ -524,25 +557,77 @@ fn run_agent_setup(args: cli::AgentSetupArgs, output_format: OutputFormat) -> Re
     let cli::AgentSetupArgs { command, guidance } = args;
     match command {
         None => run_agent_guidance_setup(guidance, output_format),
-        Some(cli::AgentSetupCommand::Auto(mut args)) => {
-            args.force |= guidance.force;
-            args.no_auto_exclude_git |= guidance.no_auto_exclude_git;
-            args.dry_run |= guidance.dry_run;
-            run_agent_setup_auto(args, output_format, guidance.workspace_root)
-        }
-        Some(cli::AgentSetupCommand::Copilot(mut args)) => {
-            merge_copilot_guidance(&mut args, &guidance);
-            run_install(cli::InstallCommand::Copilot(args), output_format)
-        }
+        Some(cli::AgentSetupCommand::Auto(_)) => removed_operator_command(
+            "agent/setup/auto",
+            "`kast agent setup auto` is not part of the v1 public setup surface. Use root `kast setup` to install the packaged skill and managed <kast> instructions region.",
+            &[
+                "kast setup --workspace-root <repo>",
+                "kast setup --skill-target-dir <dir> --context-file <path>",
+            ],
+            output_format,
+        ),
+        Some(cli::AgentSetupCommand::Copilot(_)) => removed_operator_command(
+            "agent/setup/copilot",
+            "Copilot package assets are out of scope for v1 setup. Use root `kast setup` to install the packaged skill and managed <kast> instructions region.",
+            &["kast setup --workspace-root <repo>"],
+            output_format,
+        ),
         Some(cli::AgentSetupCommand::Skill(mut args)) => {
             merge_resource_guidance(&mut args, &guidance, cli::AgentSetupHarness::Skill);
             run_install(cli::InstallCommand::Skill(args), output_format)
         }
-        Some(cli::AgentSetupCommand::Instructions(mut args)) => {
-            merge_resource_guidance(&mut args, &guidance, cli::AgentSetupHarness::Instructions);
-            run_install(cli::InstallCommand::Instructions(args), output_format)
-        }
+        Some(cli::AgentSetupCommand::Instructions(_)) => removed_operator_command(
+            "agent/setup/instructions",
+            "Portable Markdown instruction packages are out of scope for v1 setup. Use root `kast setup` to manage one <kast> instructions region in the selected repo context file.",
+            &["kast setup --workspace-root <repo> --context-file <path>"],
+            output_format,
+        ),
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemovedOperatorCommandEnvelope<'a> {
+    ok: bool,
+    method: &'a str,
+    error: RemovedOperatorCommandError<'a>,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemovedOperatorCommandError<'a> {
+    code: &'static str,
+    message: &'a str,
+    details: RemovedOperatorCommandDetails<'a>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemovedOperatorCommandDetails<'a> {
+    replacements: &'a [&'a str],
+}
+
+fn removed_operator_command(
+    method: &'static str,
+    message: &'static str,
+    replacements: &'static [&'static str],
+    output_format: OutputFormat,
+) -> Result<i32> {
+    output::print_structured(
+        &RemovedOperatorCommandEnvelope {
+            ok: false,
+            method,
+            error: RemovedOperatorCommandError {
+                code: "AGENT_COMMAND_REMOVED",
+                message,
+                details: RemovedOperatorCommandDetails { replacements },
+            },
+            schema_version: SCHEMA_VERSION,
+        },
+        output_format,
+    )?;
+    Ok(1)
 }
 
 fn merge_resource_guidance(
@@ -560,28 +645,19 @@ fn merge_resource_guidance(
     args.dry_run |= guidance.dry_run;
 }
 
-fn merge_copilot_guidance(
-    args: &mut cli::CopilotInstallArgs,
-    guidance: &cli::AgentGuidanceSetupArgs,
-) {
-    if args.target_dir.is_none()
-        && let Some(workspace_root) = &guidance.workspace_root
-    {
-        args.target_dir = Some(default_agent_up_target_dir(
-            cli::AgentSetupHarness::Copilot,
-            workspace_root,
-        ));
-    }
-    args.force |= guidance.force;
-    args.no_auto_exclude_git |= guidance.no_auto_exclude_git;
-    args.dry_run |= guidance.dry_run;
-}
-
 fn run_agent_guidance_setup(
     args: cli::AgentGuidanceSetupArgs,
     output_format: OutputFormat,
 ) -> Result<i32> {
-    let install_command = agent_guidance_setup_command(&args);
+    run_agent_guidance_setup_with_command(args, output_format, agent_guidance_setup_command)
+}
+
+fn run_agent_guidance_setup_with_command(
+    args: cli::AgentGuidanceSetupArgs,
+    output_format: OutputFormat,
+    command_builder: fn(&cli::AgentGuidanceSetupArgs) -> Vec<String>,
+) -> Result<i32> {
+    let install_command = command_builder(&args);
     if args.dry_run {
         let plan = install::agent_guidance_setup_plan(&args, install_command)?;
         if output_format.is_structured() {
@@ -598,6 +674,33 @@ fn run_agent_guidance_setup(
         output::print_agent_guidance_setup_result(&result)?;
     }
     Ok(0)
+}
+
+fn root_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<String> {
+    let mut command = vec![current_executable_argument(), "setup".to_string()];
+    if let Some(workspace_root) = &args.workspace_root {
+        command.push("--workspace-root".to_string());
+        command.push(workspace_root.display().to_string());
+    }
+    if let Some(skill_target_dir) = &args.skill_target_dir {
+        command.push("--skill-target-dir".to_string());
+        command.push(skill_target_dir.display().to_string());
+    }
+    for target in &args.context_files {
+        command.push("--context-file".to_string());
+        command.push(target.display().to_string());
+    }
+    for target in &args.agents_md {
+        command.push("--agents-md".to_string());
+        command.push(target.display().to_string());
+    }
+    if args.force {
+        command.push("--force".to_string());
+    }
+    if args.no_auto_exclude_git {
+        command.push("--no-auto-exclude-git".to_string());
+    }
+    command
 }
 
 fn agent_guidance_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<String> {
@@ -631,7 +734,7 @@ fn agent_guidance_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<Strin
     command
 }
 
-fn root_setup_command(
+fn root_agent_up_setup_command(
     setup_args: &cli::AgentGuidanceSetupArgs,
     runtime_args: &cli::RuntimeArgs,
     no_onboard: bool,
@@ -672,149 +775,6 @@ fn root_setup_command(
     command
 }
 
-fn run_agent_setup_auto(
-    args: cli::AgentSetupAutoArgs,
-    output_format: OutputFormat,
-    workspace_root: Option<PathBuf>,
-) -> Result<i32> {
-    let cwd = workspace_root.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()));
-    let selection = agent_setup_auto_selection(&cwd, &args)?;
-    if args.dry_run {
-        let plan = agent_setup_auto_plan(&selection, &args, &cwd);
-        if output_format.is_structured() {
-            output::print_structured(&plan, output_format)?;
-        } else {
-            output::print_agent_setup_auto_plan(&plan)?;
-        }
-        return Ok(0);
-    }
-
-    run_install(
-        agent_setup_command_for_harness(selection.harness, args),
-        output_format,
-    )
-}
-
-#[derive(Debug, Clone)]
-struct AgentSetupAutoSelection {
-    harness: cli::AgentSetupHarness,
-    source: install::AgentSetupSelectionSource,
-    reason: String,
-}
-
-fn agent_setup_auto_selection(
-    cwd: &Path,
-    args: &cli::AgentSetupAutoArgs,
-) -> Result<AgentSetupAutoSelection> {
-    match args.harness {
-        Some(cli::AgentSetupHarness::Auto) => Ok(agent_setup_auto_detected_harness(cwd, args)),
-        Some(harness) => Ok(AgentSetupAutoSelection {
-            harness,
-            source: install::AgentSetupSelectionSource::Explicit,
-            reason: "`--harness` selected the agent resource package.".to_string(),
-        }),
-        None => {
-            let configured = config::KastConfig::load(cwd)?.project_open.agent_harness;
-            if configured.is_auto() {
-                Ok(agent_setup_auto_detected_harness(cwd, args))
-            } else {
-                Ok(AgentSetupAutoSelection {
-                    harness: configured,
-                    source: install::AgentSetupSelectionSource::Config,
-                    reason: "`projectOpen.agentHarness` selected the agent resource package."
-                        .to_string(),
-                })
-            }
-        }
-    }
-}
-
-fn agent_setup_auto_detected_harness(
-    cwd: &Path,
-    args: &cli::AgentSetupAutoArgs,
-) -> AgentSetupAutoSelection {
-    if let Some(target_dir) = &args.target_dir {
-        let (harness, reason) = match target_dir.file_name().and_then(|name| name.to_str()) {
-            Some("skills") => (
-                cli::AgentSetupHarness::Skill,
-                "`--target-dir` ends in `skills`.",
-            ),
-            Some("instructions") => (
-                cli::AgentSetupHarness::Instructions,
-                "`--target-dir` ends in `instructions`.",
-            ),
-            _ => (
-                cli::AgentSetupHarness::Copilot,
-                "`--target-dir` was provided and no explicit harness was selected.",
-            ),
-        };
-        return AgentSetupAutoSelection {
-            harness,
-            source: install::AgentSetupSelectionSource::TargetDirectory,
-            reason: reason.to_string(),
-        };
-    }
-
-    let has_skill_root = [
-        ".agents/skills",
-        ".codex/skills",
-        ".github/skills",
-        ".claude/skills",
-    ]
-    .iter()
-    .any(|candidate| cwd.join(candidate).is_dir());
-    let has_instruction_root = [
-        ".agents/instructions",
-        ".codex/instructions",
-        ".github/instructions",
-        ".claude/instructions",
-    ]
-    .iter()
-    .any(|candidate| cwd.join(candidate).is_dir());
-
-    if has_skill_root {
-        AgentSetupAutoSelection {
-            harness: cli::AgentSetupHarness::Skill,
-            source: install::AgentSetupSelectionSource::Repository,
-            reason: "Repository detection found a skill root.".to_string(),
-        }
-    } else if has_instruction_root {
-        AgentSetupAutoSelection {
-            harness: cli::AgentSetupHarness::Instructions,
-            source: install::AgentSetupSelectionSource::Repository,
-            reason: "Repository detection found an instruction root.".to_string(),
-        }
-    } else {
-        AgentSetupAutoSelection {
-            harness: cli::AgentSetupHarness::Copilot,
-            source: install::AgentSetupSelectionSource::Repository,
-            reason: "Repository detection found `.github` or no skill/instruction roots."
-                .to_string(),
-        }
-    }
-}
-
-fn agent_setup_auto_plan(
-    selection: &AgentSetupAutoSelection,
-    args: &cli::AgentSetupAutoArgs,
-    cwd: &Path,
-) -> install::AgentSetupAutoPlan {
-    let target_dir = args
-        .target_dir
-        .clone()
-        .or_else(|| Some(default_agent_up_target_dir(selection.harness, cwd)));
-    let command = agent_setup_install_command(selection.harness, args, target_dir.as_ref());
-    let mut plan = install::AgentSetupAutoPlan::new(
-        selection.harness,
-        selection.source,
-        selection.reason.clone(),
-        command,
-        target_dir,
-    );
-    plan.dry_run = args.dry_run;
-    plan
-}
-
 fn default_agent_up_target_dir(harness: cli::AgentSetupHarness, workspace_root: &Path) -> PathBuf {
     match harness {
         cli::AgentSetupHarness::Auto => unreachable!("auto harness must be resolved"),
@@ -848,71 +808,6 @@ fn first_existing_or_default(workspace_root: &Path, candidates: &[&str], default
         .map(|candidate| workspace_root.join(candidate))
         .find(|candidate| candidate.is_dir())
         .unwrap_or_else(|| workspace_root.join(default))
-}
-
-fn agent_setup_install_command(
-    harness: cli::AgentSetupHarness,
-    args: &cli::AgentSetupAutoArgs,
-    target_dir: Option<&PathBuf>,
-) -> Vec<String> {
-    let mut command = vec![
-        current_executable_argument(),
-        "agent".to_string(),
-        "setup".to_string(),
-        match harness {
-            cli::AgentSetupHarness::Auto => unreachable!("auto harness must be resolved"),
-            cli::AgentSetupHarness::Copilot => "copilot",
-            cli::AgentSetupHarness::Skill => "skill",
-            cli::AgentSetupHarness::Instructions => "instructions",
-        }
-        .to_string(),
-    ];
-    if let Some(target_dir) = target_dir {
-        command.push("--target-dir".to_string());
-        command.push(target_dir.display().to_string());
-    }
-    if args.force {
-        command.push("--force".to_string());
-    }
-    if args.no_auto_exclude_git {
-        command.push("--no-auto-exclude-git".to_string());
-    }
-    command
-}
-
-fn agent_setup_command_for_harness(
-    harness: cli::AgentSetupHarness,
-    args: cli::AgentSetupAutoArgs,
-) -> cli::InstallCommand {
-    match harness {
-        cli::AgentSetupHarness::Auto => {
-            unreachable!("auto harness must be resolved before install")
-        }
-        cli::AgentSetupHarness::Copilot => cli::InstallCommand::Copilot(cli::CopilotInstallArgs {
-            target_dir: args.target_dir,
-            force: args.force,
-            no_auto_exclude_git: args.no_auto_exclude_git,
-            dry_run: false,
-        }),
-        cli::AgentSetupHarness::Skill => cli::InstallCommand::Skill(cli::ResourceInstallArgs {
-            target_dir: args.target_dir,
-            name: None,
-            source_dir: None,
-            force: args.force,
-            no_auto_exclude_git: args.no_auto_exclude_git,
-            dry_run: false,
-        }),
-        cli::AgentSetupHarness::Instructions => {
-            cli::InstallCommand::Instructions(cli::ResourceInstallArgs {
-                target_dir: args.target_dir,
-                name: None,
-                source_dir: None,
-                force: args.force,
-                no_auto_exclude_git: args.no_auto_exclude_git,
-                dry_run: false,
-            })
-        }
-    }
 }
 
 fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {

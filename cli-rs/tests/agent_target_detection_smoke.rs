@@ -2,8 +2,23 @@ mod support;
 
 use support::*;
 
+fn assert_removed_setup_command(output: &std::process::Output, method: &str) -> serde_json::Value {
+    assert!(
+        !output.status.success(),
+        "{method} should be removed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("removed command json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["method"], method, "{stdout}");
+    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    stdout
+}
+
 #[test]
-fn agent_setup_auto_honors_configured_harness_before_target_heuristics() {
+fn agent_setup_auto_reports_removed_command_before_resource_selection() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -32,21 +47,20 @@ agentHarness = "instructions"
         .output()
         .expect("agent setup auto instructions");
 
+    let stdout = assert_removed_setup_command(&install, "agent/setup/auto");
+    let replacements = stdout["error"]["details"]["replacements"]
+        .as_array()
+        .expect("replacement commands");
     assert!(
-        install.status.success(),
-        "configured instructions harness should install: stdout={}, stderr={}",
-        String::from_utf8_lossy(&install.stdout),
-        String::from_utf8_lossy(&install.stderr)
+        replacements
+            .iter()
+            .any(|replacement| replacement == "kast setup --workspace-root <repo>"),
+        "{stdout}"
     );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("instructions install json");
-    assert_eq!(
-        stdout["installedAt"],
-        target_root.join("kast").display().to_string()
+    assert!(
+        !target_root.exists(),
+        "removed setup auto must not write portable agent resources"
     );
-    assert!(target_root.join("kast/README.md").is_file());
-    assert!(target_root.join("kast/tools.md").is_file());
-    assert!(!target_root.join("lsp.json").exists());
 }
 
 #[test]
@@ -81,24 +95,33 @@ agentHarness = "skill"
     );
     let repair = kast(&home, &config_home)
         .current_dir(&workspace)
-        .args(["ready", "--fix"])
+        .args(["repair", "--apply"])
         .output()
         .expect("ready repair");
     assert!(
         repair.status.success(),
-        "ready --fix should converge: stdout={}, stderr={}",
+        "repair --apply should converge: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
 
     let install = kast(&home, &config_home)
         .current_dir(&workspace)
-        .args(["--output", "json", "agent", "setup", "auto", "--force"])
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "setup",
+            "skill",
+            "--target-dir",
+            codex_skills.to_str().expect("codex skills"),
+            "--force",
+        ])
         .output()
-        .expect("agent setup auto");
+        .expect("agent setup skill");
     assert!(
         install.status.success(),
-        "Codex skill root should be selected by auto setup: stdout={}, stderr={}",
+        "Codex skill root should install through the skill setup path: stdout={}, stderr={}",
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
@@ -108,10 +131,14 @@ agentHarness = "skill"
         .join("kast")
         .canonicalize()
         .expect("canonical installed Codex skill");
-    assert_eq!(
-        install_stdout["installedAt"],
-        expected_codex_skill.display().to_string()
-    );
+    let installed_at = PathBuf::from(
+        install_stdout["installedAt"]
+            .as_str()
+            .expect("installed at"),
+    )
+    .canonicalize()
+    .expect("canonical installed at");
+    assert_eq!(installed_at, expected_codex_skill);
     assert!(codex_skills.join("kast/SKILL.md").is_file());
     assert!(!codex_skills.join("kast/references").exists());
     assert!(!codex_skills.join("kast/scripts").exists());
@@ -403,7 +430,7 @@ fn agent_setup_skill_can_override_packaged_skill_source() {
 }
 
 #[test]
-fn codex_instruction_roots_are_first_class_agent_targets() {
+fn codex_instruction_roots_do_not_reenable_portable_instruction_assets() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -426,12 +453,12 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
     );
     let repair = kast(&home, &config_home)
         .current_dir(&workspace)
-        .args(["ready", "--fix"])
+        .args(["repair", "--apply"])
         .output()
         .expect("ready repair");
     assert!(
         repair.status.success(),
-        "ready --fix should converge: stdout={}, stderr={}",
+        "repair --apply should converge: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
@@ -441,27 +468,11 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
         .args(["--output", "json", "agent", "setup", "auto", "--force"])
         .output()
         .expect("agent setup auto");
+    assert_removed_setup_command(&install, "agent/setup/auto");
     assert!(
-        install.status.success(),
-        "Codex instruction root should be selected by auto setup: stdout={}, stderr={}",
-        String::from_utf8_lossy(&install.stdout),
-        String::from_utf8_lossy(&install.stderr)
+        !codex_instructions.join("kast").exists(),
+        "removed setup auto must not install portable instruction assets"
     );
-    let install_stdout: serde_json::Value =
-        serde_json::from_slice(&install.stdout).expect("instructions install json");
-    let expected_codex_instructions = codex_instructions
-        .join("kast")
-        .canonicalize()
-        .expect("canonical installed Codex instructions");
-    assert_eq!(
-        install_stdout["installedAt"],
-        expected_codex_instructions.display().to_string()
-    );
-    assert!(codex_instructions.join("kast/README.md").is_file());
-    assert!(codex_instructions.join("kast/cli.md").is_file());
-    assert!(codex_instructions.join("kast/tools.md").is_file());
-    assert!(codex_instructions.join("kast/lsp.md").is_file());
-    assert!(!codex_instructions.join("kast/rpc.md").exists());
 
     let up = kast(&home, &config_home)
         .current_dir(&workspace)
@@ -492,65 +503,15 @@ fn codex_instruction_roots_are_first_class_agent_targets() {
         workspace.join(".agents/skills/kast").display().to_string(),
         "{up_stdout}"
     );
-
-    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/kast-skill/scripts/verify-kast-state.py");
-    let verify = Command::new("python3")
-        .arg(&verifier)
-        .arg("--workspace-root")
-        .arg(&workspace)
-        .arg("--skill-root")
-        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill"))
-        .arg("--kast-bin")
-        .arg(env!("CARGO_BIN_EXE_kast"))
-        .arg("--require-gradle-project")
-        .arg("--require-instructions")
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", &config_home)
-        .output()
-        .expect("run verifier");
-    assert!(
-        verify.status.success(),
-        "verifier should accept manifest-backed Codex instruction target: stdout={}, stderr={}",
-        String::from_utf8_lossy(&verify.stdout),
-        String::from_utf8_lossy(&verify.stderr)
-    );
-    let verify_json: serde_json::Value =
-        serde_json::from_slice(&verify.stdout).expect("verifier json");
-    let codex_target = verify_json["checks"]["instructions"]["targets"]
-        .as_array()
-        .expect("instruction targets")
-        .iter()
-        .find(|target| {
-            target["path"]
-                .as_str()
-                .expect("target path")
-                .ends_with(".codex/instructions/kast")
-        })
-        .expect("Codex instruction target");
-    assert!(codex_target["exists"].as_bool().expect("exists"));
-    assert!(
-        codex_target["manifestResource"].is_object(),
-        "{codex_target:#}"
-    );
-    assert_eq!(
-        codex_target["manifestOutputMismatches"]
-            .as_array()
-            .expect("manifest output mismatches")
-            .len(),
-        0
-    );
 }
 
 #[test]
-fn packaged_verifier_accepts_explicit_resource_target_dirs() {
+fn packaged_verifier_accepts_explicit_skill_target_dirs() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let copilot_target_dir = workspace.join("host-agent/github");
     let skill_target_dir = workspace.join("host-agent/skills");
-    let instructions_target_dir = workspace.join("host-agent/instructions");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
@@ -569,12 +530,12 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
     );
     let repair = kast(&home, &config_home)
         .current_dir(&workspace)
-        .args(["ready", "--fix"])
+        .args(["repair", "--apply"])
         .output()
         .expect("ready repair");
     assert!(
         repair.status.success(),
-        "ready --fix should converge: stdout={}, stderr={}",
+        "repair --apply should converge: stdout={}, stderr={}",
         String::from_utf8_lossy(&repair.stdout),
         String::from_utf8_lossy(&repair.stderr)
     );
@@ -599,48 +560,6 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
         String::from_utf8_lossy(&skill.stdout),
         String::from_utf8_lossy(&skill.stderr)
     );
-    let instructions = kast(&home, &config_home)
-        .current_dir(&workspace)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "setup",
-            "instructions",
-            "--target-dir",
-            instructions_target_dir
-                .to_str()
-                .expect("instructions target"),
-            "--force",
-        ])
-        .output()
-        .expect("install explicit instructions");
-    assert!(
-        instructions.status.success(),
-        "explicit instructions target should install: stdout={}, stderr={}",
-        String::from_utf8_lossy(&instructions.stdout),
-        String::from_utf8_lossy(&instructions.stderr)
-    );
-    let copilot = kast(&home, &config_home)
-        .current_dir(&workspace)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "setup",
-            "copilot",
-            "--target-dir",
-            copilot_target_dir.to_str().expect("copilot target"),
-            "--force",
-        ])
-        .output()
-        .expect("install explicit copilot");
-    assert!(
-        copilot.status.success(),
-        "explicit copilot target should install: stdout={}, stderr={}",
-        String::from_utf8_lossy(&copilot.stdout),
-        String::from_utf8_lossy(&copilot.stderr)
-    );
 
     let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("resources/kast-skill/scripts/verify-kast-state.py");
@@ -653,15 +572,9 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
         .arg("--kast-bin")
         .arg(env!("CARGO_BIN_EXE_kast"))
         .arg("--require-gradle-project")
-        .arg("--require-copilot")
         .arg("--require-skill")
-        .arg("--require-instructions")
-        .arg("--copilot-target-dir")
-        .arg(&copilot_target_dir)
         .arg("--skill-target-dir")
         .arg(&skill_target_dir)
-        .arg("--instructions-target-dir")
-        .arg(&instructions_target_dir)
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
         .output()
@@ -674,30 +587,6 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
     );
     let verify_json: serde_json::Value =
         serde_json::from_slice(&verify.stdout).expect("verifier json");
-    let copilot_target = verify_json["checks"]["copilotPackage"]["targets"]
-        .as_array()
-        .expect("copilot targets")
-        .iter()
-        .find(|target| {
-            target["target"]
-                .as_str()
-                .expect("target path")
-                .ends_with("host-agent/github")
-        })
-        .expect("explicit copilot target");
-    assert!(copilot_target["exists"].as_bool().expect("exists"));
-    assert!(copilot_target["current"].as_bool().expect("current"));
-    assert!(
-        copilot_target["manifestResource"].is_object(),
-        "{copilot_target:#}"
-    );
-    assert_eq!(
-        copilot_target["manifestOutputMismatches"]
-            .as_array()
-            .expect("manifest output mismatches")
-            .len(),
-        0
-    );
     let skill_target = verify_json["checks"]["skills"]["targets"]
         .as_array()
         .expect("skill targets")
@@ -721,33 +610,10 @@ fn packaged_verifier_accepts_explicit_resource_target_dirs() {
             .len(),
         0
     );
-    let instructions_target = verify_json["checks"]["instructions"]["targets"]
-        .as_array()
-        .expect("instruction targets")
-        .iter()
-        .find(|target| {
-            target["path"]
-                .as_str()
-                .expect("target path")
-                .ends_with("host-agent/instructions/kast")
-        })
-        .expect("explicit instruction target");
-    assert!(instructions_target["exists"].as_bool().expect("exists"));
-    assert!(
-        instructions_target["manifestResource"].is_object(),
-        "{instructions_target:#}"
-    );
-    assert_eq!(
-        instructions_target["manifestOutputMismatches"]
-            .as_array()
-            .expect("manifest output mismatches")
-            .len(),
-        0
-    );
 }
 
 #[test]
-fn github_instruction_root_wins_over_generic_github_detection() {
+fn github_instruction_root_reports_removed_auto_setup_without_writing() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -764,57 +630,15 @@ fn github_instruction_root_wins_over_generic_github_detection() {
         .output()
         .expect("agent setup auto dry-run");
 
-    assert!(
-        plan.status.success(),
-        "GitHub instruction root should be selected by auto setup: stdout={}, stderr={}",
-        String::from_utf8_lossy(&plan.stdout),
-        String::from_utf8_lossy(&plan.stderr)
-    );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
-    assert_eq!(stdout["harness"], "instructions", "{stdout}");
-    assert_eq!(stdout["selectionSource"], "repository", "{stdout}");
-    let install_command = stdout["installCommand"]
-        .as_array()
-        .expect("install command");
-    assert_eq!(install_command.len(), 6, "{stdout}");
-    assert_eq!(install_command[0], env!("CARGO_BIN_EXE_kast"), "{stdout}");
-    assert_eq!(install_command[1], "agent", "{stdout}");
-    assert_eq!(install_command[2], "setup", "{stdout}");
-    assert_eq!(install_command[3], "instructions", "{stdout}");
-    assert_eq!(install_command[4], "--target-dir", "{stdout}");
-    let expected_github_instructions = github_instructions
-        .canonicalize()
-        .expect("canonical github instructions");
-    assert_eq!(
-        PathBuf::from(install_command[5].as_str().expect("install command target"))
-            .canonicalize()
-            .expect("canonical install command target"),
-        expected_github_instructions,
-        "{stdout}"
-    );
-    assert_eq!(
-        PathBuf::from(stdout["targetDir"].as_str().expect("target dir"))
-            .canonicalize()
-            .expect("canonical target dir"),
-        expected_github_instructions,
-        "{stdout}"
-    );
-    assert!(
-        stdout["reason"]
-            .as_str()
-            .expect("reason")
-            .contains("instruction root"),
-        "{stdout}"
-    );
+    assert_removed_setup_command(&plan, "agent/setup/auto");
     assert!(
         !github_instructions.join("kast").exists(),
-        "dry-run must not install instructions"
+        "removed setup auto must not install instructions"
     );
 }
 
 #[test]
-fn plain_github_repo_defaults_to_copilot_when_no_agent_roots_exist() {
+fn plain_github_repo_reports_removed_auto_setup_without_copilot_assets() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -830,56 +654,15 @@ fn plain_github_repo_defaults_to_copilot_when_no_agent_roots_exist() {
         .output()
         .expect("agent setup auto dry-run");
 
-    assert!(
-        plan.status.success(),
-        "plain GitHub repo should keep Copilot default: stdout={}, stderr={}",
-        String::from_utf8_lossy(&plan.stdout),
-        String::from_utf8_lossy(&plan.stderr)
-    );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
-    assert_eq!(stdout["harness"], "copilot", "{stdout}");
-    assert_eq!(stdout["selectionSource"], "repository", "{stdout}");
-    let expected_github = workspace.join(".github");
-    let install_command = stdout["installCommand"]
-        .as_array()
-        .expect("install command");
-    assert_eq!(install_command.len(), 6, "{stdout}");
-    assert_eq!(install_command[0], env!("CARGO_BIN_EXE_kast"), "{stdout}");
-    assert_eq!(install_command[1], "agent", "{stdout}");
-    assert_eq!(install_command[2], "setup", "{stdout}");
-    assert_eq!(install_command[3], "copilot", "{stdout}");
-    assert_eq!(install_command[4], "--target-dir", "{stdout}");
-    let expected_github = expected_github.canonicalize().expect("canonical github");
-    assert_eq!(
-        PathBuf::from(install_command[5].as_str().expect("install command target"))
-            .canonicalize()
-            .expect("canonical install command target"),
-        expected_github,
-        "{stdout}"
-    );
-    assert_eq!(
-        PathBuf::from(stdout["targetDir"].as_str().expect("target dir"))
-            .canonicalize()
-            .expect("canonical target dir"),
-        expected_github,
-        "{stdout}"
-    );
-    assert!(
-        stdout["reason"]
-            .as_str()
-            .expect("reason")
-            .contains(".github"),
-        "{stdout}"
-    );
+    assert_removed_setup_command(&plan, "agent/setup/auto");
     assert!(
         !workspace.join(".github/lsp.json").exists(),
-        "dry-run must not install the Copilot package"
+        "removed setup auto must not install the Copilot package"
     );
 }
 
 #[test]
-fn agent_setup_auto_dry_run_explains_selection_without_writing() {
+fn agent_setup_auto_dry_run_reports_removed_command_without_writing() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -913,41 +696,21 @@ agentHarness = "instructions"
         .output()
         .expect("agent setup auto dry-run");
 
+    let stdout = assert_removed_setup_command(&plan, "agent/setup/auto");
+    let replacements = stdout["error"]["details"]["replacements"]
+        .as_array()
+        .expect("replacement commands");
     assert!(
-        plan.status.success(),
-        "dry-run should succeed without writing files: stdout={}, stderr={}",
-        String::from_utf8_lossy(&plan.stdout),
-        String::from_utf8_lossy(&plan.stderr)
-    );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&plan.stdout).expect("agent setup plan json");
-    assert_eq!(stdout["harness"], "instructions", "{stdout}");
-    assert_eq!(stdout["selectionSource"], "config", "{stdout}");
-    assert_eq!(stdout["dryRun"], true, "{stdout}");
-    assert_eq!(
-        stdout["installCommand"],
-        serde_json::json!([
-            alternate_bin.display().to_string(),
-            "agent",
-            "setup",
-            "instructions",
-            "--target-dir",
-            target_root.display().to_string()
-        ]),
-        "{stdout}"
-    );
-    assert!(
-        stdout["reason"]
-            .as_str()
-            .expect("reason")
-            .contains("projectOpen.agentHarness"),
+        replacements
+            .iter()
+            .any(|replacement| replacement == "kast setup --workspace-root <repo>"),
         "{stdout}"
     );
     assert!(!target_root.exists(), "dry-run must not write target files");
 }
 
 #[test]
-fn agent_setup_concrete_parent_dry_run_does_not_install_resources() {
+fn agent_setup_concrete_parent_dry_run_only_plans_skill() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -956,23 +719,11 @@ fn agent_setup_concrete_parent_dry_run_does_not_install_resources() {
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
 
-    let cases = [
-        (
-            "skill",
-            workspace.join("agent/skills"),
-            workspace.join("agent/skills/kast/SKILL.md"),
-        ),
-        (
-            "instructions",
-            workspace.join("agent/instructions"),
-            workspace.join("agent/instructions/kast/README.md"),
-        ),
-        (
-            "copilot",
-            workspace.join("agent/github"),
-            workspace.join("agent/github/lsp.json"),
-        ),
-    ];
+    let cases = [(
+        "skill",
+        workspace.join("agent/skills"),
+        workspace.join("agent/skills/kast/SKILL.md"),
+    )];
 
     for (command, target_dir, expected_output) in cases {
         let plan = kast(&home, &config_home)
@@ -1027,6 +778,64 @@ fn agent_setup_concrete_parent_dry_run_does_not_install_resources() {
     assert!(
         !install_manifest_path(&home).exists(),
         "dry-run must not record manifest resources"
+    );
+}
+
+#[test]
+fn agent_setup_concrete_removed_asset_subcommands_report_removed() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let cases = [
+        (
+            "instructions",
+            "agent/setup/instructions",
+            workspace.join("agent/instructions"),
+            workspace.join("agent/instructions/kast/README.md"),
+        ),
+        (
+            "copilot",
+            "agent/setup/copilot",
+            workspace.join("agent/github"),
+            workspace.join("agent/github/lsp.json"),
+        ),
+    ];
+
+    for (command, method, target_dir, expected_output) in cases {
+        let removed = kast(&home, &config_home)
+            .current_dir(&workspace)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "setup",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+                "--dry-run",
+                command,
+                "--target-dir",
+                target_dir.to_str().expect("target dir"),
+                "--force",
+            ])
+            .output()
+            .unwrap_or_else(|error| panic!("agent setup {command} dry-run: {error}"));
+
+        assert_removed_setup_command(&removed, method);
+        assert!(
+            !expected_output.exists(),
+            "agent setup {command} must not write {}",
+            expected_output.display()
+        );
+    }
+
+    assert!(
+        !install_manifest_path(&home).exists(),
+        "removed commands must not record manifest resources"
     );
 }
 

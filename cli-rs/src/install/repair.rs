@@ -10,7 +10,7 @@ fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResul
     let mut result = InstallRepairResult {
         applied: args.apply,
         config_path: config_path.display().to_string(),
-        apply_command: "kast ready --fix".to_string(),
+        apply_command: "kast repair --apply".to_string(),
         actions: vec![],
         backups: vec![],
         warnings: vec![],
@@ -65,7 +65,7 @@ fn load_global_config_for_repair(
                 "recover-invalid-config",
                 &config_path,
                 "Back up the invalid global Kast config and restore safe defaults.",
-                Some("kast ready --fix".to_string()),
+                Some("kast repair --apply".to_string()),
             );
             if !args.apply {
                 result.warnings.push(format!(
@@ -409,7 +409,7 @@ fn repair_install_shell_sources(
                 "Back up and rewrite managed shell integration for `{command_name}` to use {}.",
                 bin_dir.display()
             ),
-            Some("kast ready --fix".to_string()),
+            Some("kast repair --apply".to_string()),
         );
         if args.apply {
             backup_existing_path(&path, backup_root, result)?;
