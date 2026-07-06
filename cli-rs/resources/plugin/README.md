@@ -3,8 +3,7 @@
 This package distributes the minimal reliable Kast Copilot primitive set:
 
 - `kotlin` LSP configuration
-- a small SDK extension that injects tooling guidance and exposes
-  `kast_*` tools discovered through `kast agent tools`
+- a small SDK extension that injects typed Kast command guidance
 
 The package source is `plugin.json` plus `primitive-manifest.json`; generated
 files under `.github` are install outputs. When validating the SDK extension in

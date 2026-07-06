@@ -510,7 +510,6 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         targets,
         BTreeSet::from([
             "extensions/kast/_shared/kast-trace.mjs",
-            "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
             "lsp.json",
         ])
@@ -523,7 +522,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     );
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
-        "plugin source must own the catalog-backed Copilot extension entrypoint"
+        "plugin source must own the Copilot extension entrypoint"
     );
     assert!(
         !plugin_root
@@ -540,17 +539,21 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         extension.contains("RECOVERABLE_WARMUP_CODES")
             && extension.contains("\"INDEX_UNAVAILABLE\"")
-            && extension.contains("\"up\"")
+            && extension.contains("kast ready --for agent")
             && extension.contains("createTraceEmitter"),
-        "extension must warm the IDEA backend for missing backend/index results"
+        "extension must guide recovery for missing backend/index results"
     );
     assert!(
-        extension.contains("\"agent\"")
-            && extension.contains("\"call\"")
-            && extension.contains("\"tools\"")
-            && extension.contains("formattedAgentResult")
+        extension.contains("kast agent symbol")
+            && extension.contains("kast agent diagnostics")
+            && extension.contains("kast agent impact")
+            && extension.contains("kast agent rename")
+            && extension.contains("tools: []")
+            && !extension.contains("isKastAgentToolsEnvelope")
+            && !extension.contains("formattedAgentResult")
+            && !extension.contains("agentArgs(")
             && !extension.contains("rpcArgs("),
-        "extension tools must use `kast agent tools` discovery and the shared `kast agent call` envelope instead of raw rpc"
+        "extension must inject typed command guidance without dynamic tool registration"
     );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
         .expect("local plugin installer");
