@@ -22,6 +22,10 @@ owns the global binary, repository Copilot, and docs operating model.
 `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md` owns
 manifest-backed agent resources, `kast agent workflow`, and the rule that stale
 binary/resource combinations fail loudly and require upgrade or reinstall.
+`.agents/adr/0005-axi-only-agent-cli-and-semantic-edit-dialect.md` owns the
+minimal v1 agent asset set and typed AXI CLI dialect.
+`.agents/adr/0006-forward-system-definition-and-audit-scope.md` owns the
+forward system definition and audit scope for evaluating current intent only.
 `.agents/adr/0004-repo-context-guidance-operating-model.md` owns repository
 root context-file selection, managed Kast guidance regions, clone-local Git
 filter behavior, and direct references to the installed skill path.
