@@ -27,23 +27,25 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/scaffold"
+          "name": "kast agent symbol --query --file-hint"
         },
         {
           "kind": "command",
-          "name": "kast agent call raw/file-outline"
+          "name": "kast agent diagnostics --file-path"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
         "generic file read before Kast",
-        "generated protocol endpoints"
+        "generated protocol endpoints",
+        "kast agent call",
+        "kast agent workflow"
       ],
-      "recoveryExpectation": "If the backend is unavailable, report the concrete Kast setup or runtime recovery command before using a generic reader.",
+      "recoveryExpectation": "If the backend is unavailable, report the concrete Kast readiness or repair command before using a generic reader.",
       "verificationEvidence": [
         "SKILL.md explicitly covers every .kt and .kts file.",
-        "SKILL.md routes Kotlin file inspection through kast agent call symbol/scaffold and bounded raw/file-outline calls."
+        "SKILL.md routes Kotlin inspection through typed kast agent symbol and diagnostics commands."
       ],
       "notes": "This case protects the all-Kotlin-file trigger and the sole-navigation rule."
     },
@@ -67,27 +69,24 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/query"
+          "name": "kast agent symbol --query"
         },
         {
           "kind": "command",
-          "name": "kast agent call symbol/discover"
-        },
-        {
-          "kind": "command",
-          "name": "kast agent call symbol/resolve"
+          "name": "kast help agent"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
         "workspace file dump",
-        "manual package inference"
+        "manual package inference",
+        "kast agent call symbol/query"
       ],
-      "recoveryExpectation": "If symbol/query returns INDEX_UNAVAILABLE, run the emitted Kast recovery or warmup path and retry the symbol-first route.",
+      "recoveryExpectation": "If symbol lookup reports unavailable index or backend state, run the emitted Kast readiness or repair path and retry the typed symbol route.",
       "verificationEvidence": [
-        "symbol/query is reachable through kast agent call.",
-        "SKILL.md names symbol/discover and symbol/resolve as follow-up catalog methods for unknown symbols."
+        "SKILL.md uses kast agent symbol --query as the lookup command.",
+        "ADR 0005 defines agent symbol --query as the public unknown-symbol entrypoint."
       ],
       "notes": "This case makes unknown-symbol navigation measurable without relying on raw file enumeration."
     },
@@ -111,29 +110,27 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/resolve"
+          "name": "kast agent symbol --query --references"
         },
         {
           "kind": "command",
-          "name": "kast agent call symbol/references"
-        },
-        {
-          "kind": "command",
-          "name": "kast agent call symbol/callers"
+          "name": "kast agent symbol --query --callers incoming"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
         "textual call graph",
-        "unresolved name matching"
+        "unresolved name matching",
+        "kast agent call symbol/references",
+        "kast agent call symbol/callers"
       ],
-      "recoveryExpectation": "If the name is ambiguous, use symbol/discover or symbol/resolve filters before references and callers.",
+      "recoveryExpectation": "If the name is ambiguous, add typed symbol filters such as --kind, --file-hint, or --containing-type before references and callers.",
       "verificationEvidence": [
-        "SKILL.md routes usage sets through symbol/references.",
-        "SKILL.md routes caller expansion through symbol/callers."
+        "SKILL.md routes references through kast agent symbol --query <name> --references.",
+        "SKILL.md routes caller expansion through kast agent symbol --query <name> --callers incoming|outgoing."
       ],
-      "notes": "This case protects relationship navigation through symbol calls instead of text."
+      "notes": "This case protects relationship navigation through symbol commands instead of text."
     },
     {
       "id": "source-index-database-access",
@@ -150,34 +147,32 @@
       },
       "observedRoute": {
         "status": "prevent-regression",
-        "risk": "An agent may bypass the public metrics surface and ask for internal database paths or manual SQL."
+        "risk": "An agent may bypass the public impact surface and ask for internal database paths or manual SQL."
       },
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent call database/metrics"
+          "name": "kast agent symbol --query"
         },
         {
           "kind": "command",
-          "name": "kast agent workflow impact"
-        },
-        {
-          "kind": "command",
-          "name": "kast agent call database/metrics"
+          "name": "kast agent impact --symbol"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
         "manual SQLite queries",
-        "internal database paths"
+        "internal database paths",
+        "kast agent call database/metrics",
+        "kast agent workflow impact"
       ],
-      "recoveryExpectation": "If metrics are unavailable, report METRICS_DB_UNAVAILABLE and run the documented Kast index/runtime recovery before using another source.",
+      "recoveryExpectation": "If impact data is unavailable, report the readiness issue and run the documented Kast repair path before using another source.",
       "verificationEvidence": [
-        "Source-index metrics are reachable through kast agent call database/metrics.",
-        "SKILL.md lists database/metrics and kast agent workflow impact as the public impact path."
+        "SKILL.md lists kast agent impact --symbol as the source-index impact view.",
+        "ADR 0005 defines agent impact as the public source-index impact command for one resolved symbol."
       ],
-      "notes": "This case verifies database access is public through Kast without exposing storage internals."
+      "notes": "This case verifies source-index access is public through typed Kast commands without exposing storage internals."
     },
     {
       "id": "agent-workflow-public-surface",
@@ -185,7 +180,7 @@
       "source": {
         "kind": "synthetic-regression",
         "capturedAt": "2026-06-29",
-        "note": "Regression guard for agents copying raw protocol snippets instead of using workflow commands."
+        "note": "Regression guard for agents copying raw protocol snippets instead of using typed commands."
       },
       "prompt": "Create a repeatable evidence bundle for a rename and diagnostics pass.",
       "expectedPrimitive": {
@@ -194,20 +189,20 @@
       },
       "observedRoute": {
         "status": "prevent-regression",
-        "risk": "A host adapter may expose raw transport details while hiding high-level workflow commands."
+        "risk": "A host adapter may expose raw transport details while hiding the typed v1 command dialect."
       },
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent workflow rename-plan"
+          "name": "kast agent rename --symbol --new-name"
         },
         {
           "kind": "command",
-          "name": "kast agent workflow write-validate"
+          "name": "kast agent diagnostics --file-path"
         },
         {
           "kind": "command",
-          "name": "kast agent workflow diagnostics"
+          "name": "kast agent verify"
         }
       ],
       "forbiddenActions": [
@@ -215,14 +210,16 @@
         "rg",
         "kast rpc",
         "ad hoc protocol transport",
-        "manual edit without diagnostics"
+        "manual edit without diagnostics",
+        "kast agent workflow",
+        "kast agent call"
       ],
-      "recoveryExpectation": "If workflow help is unavailable, report active binary and skill incompatibility and require upgrade or reinstall.",
+      "recoveryExpectation": "If typed agent help is unavailable, report active binary and skill incompatibility and require upgrade or reinstall.",
       "verificationEvidence": [
-        "SKILL.md requires kast agent workflow for repeated semantic sequences.",
-        "kast agent workflow --help is part of the skill first-move checks."
+        "SKILL.md requires typed kast agent commands for repeated semantic sequences.",
+        "ADR 0005 removes agent workflow and replaces rename-plan with kast agent rename."
       ],
-      "notes": "This case keeps high-level workflow functionality visible in the public API."
+      "notes": "This case keeps typed workflow functionality visible while rejecting removed helper commands."
     },
     {
       "id": "continuous-kast-use-after-first-call",
@@ -232,7 +229,7 @@
         "capturedAt": "2026-06-29",
         "note": "Regression guard for agents using Kast once and then falling back to generic file reads for the same Kotlin task."
       },
-      "prompt": "You already ran symbol/query for EventBean and got a candidate. Continue the edit by inspecting the declaration, checking references, and validating diagnostics.",
+      "prompt": "You already ran a typed symbol lookup for EventBean and got a candidate. Continue the edit by inspecting relationships, checking impact, and validating diagnostics.",
       "expectedPrimitive": {
         "type": "skill",
         "name": "kast"
@@ -244,19 +241,15 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/scaffold"
+          "name": "kast agent symbol --query --references"
         },
         {
           "kind": "command",
-          "name": "kast agent call symbol/references"
+          "name": "kast agent impact --symbol"
         },
         {
           "kind": "command",
-          "name": "kast agent call raw/diagnostics"
-        },
-        {
-          "kind": "command",
-          "name": "kast agent workflow diagnostics"
+          "name": "kast agent diagnostics --file-path"
         }
       ],
       "forbiddenActions": [
@@ -264,12 +257,14 @@
         "rg",
         "generic file read after Kast",
         "stop after first Kast call",
-        "unvalidated edit"
+        "unvalidated edit",
+        "kast agent call",
+        "kast agent workflow"
       ],
-      "recoveryExpectation": "If a follow-up Kast call fails with backend or index state, run the documented Kast recovery and retry the same semantic route before falling back.",
+      "recoveryExpectation": "If a follow-up typed Kast command fails with backend or index state, run the documented Kast recovery and retry the same semantic route before falling back.",
       "verificationEvidence": [
-        "SKILL.md routes continued declaration, reference, and diagnostics work through kast agent call and workflow commands.",
-        "kast agent workflow diagnostics is a public workflow command for continued validation."
+        "SKILL.md routes continued declaration, reference, impact, and diagnostics work through typed kast agent commands.",
+        "The typed command surface keeps follow-up work on compiler-backed symbol identity."
       ],
       "notes": "This case protects sustained Kast use across a multi-step Kotlin task, not just initial pickup."
     },
@@ -288,16 +283,20 @@
       },
       "observedRoute": {
         "status": "prevent-regression",
-        "risk": "An agent may rerun a default embedded skill install and lose the source override that the verifier used to diagnose the stale target."
+        "risk": "An agent may rerun a removed legacy installer or ignore the emitted recovery command for the selected target."
       },
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent setup skill --source-dir"
+          "name": "kast setup --skill-target-dir"
         },
         {
           "kind": "command",
-          "name": "kast agent workflow package-verify"
+          "name": "kast ready --for agent"
+        },
+        {
+          "kind": "command",
+          "name": "kast repair --for agent --apply"
         }
       ],
       "forbiddenActions": [
@@ -305,12 +304,14 @@
         "rg",
         "default embedded skill reinstall after --skill-root",
         "manual copy into installed skill target",
-        "ignoring emitted recovery"
+        "ignoring emitted recovery",
+        "kast agent setup skill --source-dir",
+        "kast agent workflow package-verify"
       ],
-      "recoveryExpectation": "Run the emitted setup recovery, then rerun the verifier or package-verify gate.",
+      "recoveryExpectation": "Run the emitted setup or repair recovery, then rerun the verifier or readiness gate.",
       "verificationEvidence": [
-        "kast agent workflow package-verify emits stale skill recovery for manifest-backed package drift.",
-        "package_verifier_smoke covers recovery for tampered manifest-backed skills."
+        "verify-kast-state.py emits root kast setup recovery commands for stale skill targets.",
+        "package_verifier_smoke covers recovery for tampered manifest-backed skills through the root setup surface."
       ],
       "notes": "This case keeps stale installed skill recovery tied to the verified source tree."
     },
@@ -334,19 +335,20 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/query"
+          "name": "kast agent symbol --query"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
-        "static references/commands.json lookup before tool discovery",
-        "static references/requests/ lookup before tool discovery",
-        "source-only runbook for ordinary symbol lookup"
+        "static references/commands.json lookup before typed command need",
+        "static references/requests/ lookup before typed command need",
+        "source-only runbook for ordinary symbol lookup",
+        "kast agent tools"
       ],
-      "recoveryExpectation": "If symbol/query needs exact request fields, load only the relevant catalog or request sample instead of the full reference tree.",
+      "recoveryExpectation": "If symbol lookup needs exact flags, load only kast help agent or the relevant reference instead of the full internal catalog tree.",
       "verificationEvidence": [
-        "symbol/query is reachable through kast agent call.",
+        "kast agent symbol --query is the typed public lookup command.",
         "SKILL.md routes detailed references by need instead of pre-loading all references."
       ],
       "referenceExpectation": {
@@ -354,11 +356,11 @@
           "SKILL.md"
         ],
         "allowedReferences": [
-          "kast agent tools"
+          "kast help agent"
         ],
         "forbiddenReferences": [
-          "static references/commands.json lookup before tool discovery",
-          "static references/requests/ lookup before tool discovery",
+          "static references/commands.json lookup before typed command need",
+          "static references/requests/ lookup before typed command need",
           "source-only runbook for ordinary symbol lookup"
         ]
       },
@@ -388,9 +390,9 @@
         }
       ],
       "forbiddenActions": [
-        "kast agent call",
-        "kast agent workflow",
-        "symbol/query",
+        "kast agent symbol",
+        "kast agent impact",
+        "kast agent diagnostics",
         "semantic backend warmup"
       ],
       "recoveryExpectation": "Do not run Kast recovery; keep the task on ordinary docs tooling unless a Kotlin, Gradle, or Kast package-state requirement appears.",
@@ -420,35 +422,38 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent"
+          "name": "kast"
         },
         {
           "kind": "command",
-          "name": "kast agent tools"
+          "name": "kast help agent"
         },
         {
           "kind": "command",
-          "name": "kast agent workflow"
+          "name": "kast ready --for agent"
         },
         {
           "kind": "command",
-          "name": "kast agent call"
+          "name": "kast agent verify"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
         "kast rpc",
+        "kast agent tools",
+        "kast agent call",
+        "kast agent workflow",
         "generated protocol endpoints",
         "capabilities.experimental.kastMethods",
         "backend implementation classes"
       ],
-      "recoveryExpectation": "If an adapter exposes only internal routes, prefer the canonical Kast skill and require adapter refresh rather than documenting the internals.",
+      "recoveryExpectation": "If an adapter exposes only internal routes, prefer the canonical Kast skill and typed command surface rather than documenting the internals.",
       "verificationEvidence": [
-        "SKILL.md names kast agent as the only first-class path.",
-        "Catalog method descriptions for symbol/query, symbol/callers, and database/metrics do not mention protocol endpoint paths or LSP capability internals."
+        "SKILL.md names kast, kast help, and typed kast agent commands as the first-class path.",
+        "ADR 0005 removes catalog/tool discovery, arbitrary agent call, and workflow helpers from the public agent surface."
       ],
-      "notes": "This case protects the public API boundary while still exposing database, symbol, and workflow capabilities."
+      "notes": "This case protects the public API boundary while still exposing setup, readiness, symbol, diagnostics, impact, and rename capabilities."
     }
   ]
 }

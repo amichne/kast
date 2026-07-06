@@ -5,9 +5,10 @@ The installed skill entrypoint, source catalog, and
 the Kast skill. Validate routing cases against
 `fixtures/maintenance/evals/routing.schema.json`. Keep positive cases centered
 on the public agent surface: `expectedPrimitive.name` should be `kast`,
-`allowedActions` should name `kast agent ...` commands, and
+`allowedActions` should name typed `kast ...` commands, and
 `forbiddenActions` should cover generic Kotlin tools such as `grep`, `rg`, and
-generic file reads.
+generic file reads plus removed helper commands such as `kast agent tools`,
+`kast agent call`, and `kast agent workflow`.
 Negative over-trigger cases should set `expectedPrimitive.name` to `none`, use
 only generic allowed actions, and forbid Kast semantic actions that should not
 run for unrelated work.
@@ -17,11 +18,10 @@ catalog fixtures, and any local routing-analysis tools outside the installed
 skill tree unless a release intentionally promotes sanitized output into
 `SKILL.md`.
 
-The package smoke tests validate the checked corpus against the catalog and
-agent tool metadata so promoted cases cannot drift away from the public
-navigation surface. The repository routing gate also captures the active
-`kast agent tools` envelope and scores that live public tool surface against
-the routing contract.
+The package smoke tests validate the checked corpus against the typed command
+surface so promoted cases cannot drift away from the public navigation surface.
+The repository routing gate also captures the removed `kast agent tools`
+envelope and verifies it points agents back to the typed v1 dialect.
 
 Run `.github/scripts/test-kast-routing-evals.sh` after routing changes. When
 `plugin-eval` is available, run

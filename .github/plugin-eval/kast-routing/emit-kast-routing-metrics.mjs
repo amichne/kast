@@ -8,6 +8,8 @@ const manifestDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(manifestDir, "../../..");
 const targetPath = rawTargetPath ? resolve(rawTargetPath) : join(repoRoot, "cli-rs/resources/kast-skill");
 const agentToolsFile = process.env.KAST_AGENT_TOOLS_FILE ? resolve(process.env.KAST_AGENT_TOOLS_FILE) : null;
+const agentToolsExitStatus =
+  process.env.KAST_AGENT_TOOLS_EXIT_STATUS === undefined ? null : Number(process.env.KAST_AGENT_TOOLS_EXIT_STATUS);
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -58,65 +60,54 @@ function isNegativeCase(item) {
   return item.expectedPrimitive?.type === "none" && item.expectedPrimitive?.name === "none";
 }
 
-function checkToolEnvelope(path) {
+function checkRemovedAgentTools(path, exitStatus) {
   const failures = [];
   const payload = readJson(path);
-  const result = payload.result ?? {};
-  const tools = Array.isArray(result.tools) ? result.tools : [];
-  const toolByName = new Map(tools.map((tool) => [tool.name, tool]));
-  const methodByName = new Map(tools.map((tool) => [tool.method, tool]));
-  const catalogHash = result.catalogSha256 ?? "";
+  const replacements = payload.error?.details?.replacements ?? [];
+  const replacementSet = new Set(replacements);
 
-  failIf(payload.ok !== true, "agent tools envelope must have ok=true", failures);
-  failIf(payload.method !== "agent/tools", "agent tools envelope method must be agent/tools", failures);
-  failIf(result.type !== "KAST_AGENT_TOOLS", "agent tools result.type must be KAST_AGENT_TOOLS", failures);
-  failIf(result.schemaVersion < 3, "agent tools schemaVersion must be at least 3", failures);
-  failIf(result.toolCount !== tools.length, "agent tools toolCount must match tools.length", failures);
-  failIf(!/^[a-f0-9]{64}$/.test(catalogHash), "agent tools catalogSha256 must be a 64-character lowercase hex digest", failures);
-
-  const requiredTools = [
-    "kast_symbol_query",
-    "kast_callers",
-    "kast_metrics",
-    "kast_scaffold",
-    "kast_write_and_validate",
-  ];
-  for (const name of requiredTools) {
-    failIf(!toolByName.has(name), `agent tools envelope missing ${name}`, failures);
+  failIf(exitStatus !== null && exitStatus === 0, "agent tools must exit non-zero after removal", failures);
+  failIf(payload.ok !== false, "removed agent tools envelope must have ok=false", failures);
+  failIf(payload.method !== "agent/tools", "removed agent tools envelope method must be agent/tools", failures);
+  failIf(payload.error?.code !== "AGENT_COMMAND_REMOVED", "agent tools must return AGENT_COMMAND_REMOVED", failures);
+  failIf((payload.schemaVersion ?? 0) < 3, "removed agent tools schemaVersion must be at least 3", failures);
+  for (const command of ["kast", "kast help agent", "kast agent verify --workspace-root <repo>"]) {
+    failIf(!replacementSet.has(command), `removed agent tools replacement missing ${command}`, failures);
   }
-
-  const requiredMethods = ["symbol/query", "symbol/callers", "database/metrics"];
-  for (const method of requiredMethods) {
-    failIf(!methodByName.has(method), `agent tools envelope missing method ${method}`, failures);
-  }
-
-  const symbolQuery = toolByName.get("kast_symbol_query")?.description ?? "";
-  failIf(!symbolQuery.includes("unknown symbols"), "kast_symbol_query must mention unknown symbols", failures);
-  failIf(!symbolQuery.includes(".kt/.kts"), "kast_symbol_query must mention .kt/.kts discovery", failures);
-
-  const metrics = toolByName.get("kast_metrics")?.description ?? "";
-  failIf(!metrics.includes("source-index metrics"), "kast_metrics must mention source-index metrics", failures);
-  failIf(!metrics.includes("database-backed view"), "kast_metrics must mention database-backed view", failures);
-
-  const leakedTools = [];
-  for (const tool of tools) {
-    for (const needle of leakNeedles) {
-      if ((tool.description ?? "").includes(needle)) {
-        leakedTools.push(`${tool.name}:${needle}`);
-      }
-    }
-  }
-  failures.push(...leakedTools);
+  failIf(JSON.stringify(payload).includes("KAST_AGENT_TOOLS"), "removed agent tools must not expose the old tool catalog", failures);
 
   return check(
-    "routing-agent-tools-envelope",
+    "routing-agent-tools-removed",
     failures.length === 0 ? "pass" : "fail",
     failures.length === 0 ? "info" : "error",
     failures.length === 0
-      ? "Live agent tool discovery exposes the same public navigation surface as the routing corpus."
-      : "Live agent tool discovery drifted from the routing contract.",
-    failures.length === 0 ? [`tools=${tools.length}`, `catalogSha256=${catalogHash}`] : failures,
-    ["Keep kast agent tools aligned with the routing corpus and public catalog metadata."],
+      ? "Removed agent tool discovery returns targeted replacement guidance."
+      : "Removed agent tool discovery drifted from the v1 public-surface contract.",
+    failures.length === 0 ? replacements : failures,
+    ["Keep removed catalog discovery out of the public surface and point agents at typed commands."],
+  );
+}
+
+const removedCommandPrefixes = ["kast agent tools", "kast agent call", "kast agent workflow"];
+
+function isRemovedPublicCommand(name) {
+  return removedCommandPrefixes.some((prefix) => name === prefix || name.startsWith(`${prefix} `));
+}
+
+function isPublicCommand(name) {
+  return (
+    name === "kast" ||
+    name === "kast agent" ||
+    name.startsWith("kast help") ||
+    name.startsWith("kast ready") ||
+    name.startsWith("kast repair") ||
+    name.startsWith("kast setup") ||
+    name.startsWith("kast status") ||
+    name.startsWith("kast agent verify") ||
+    name.startsWith("kast agent symbol") ||
+    name.startsWith("kast agent diagnostics") ||
+    name.startsWith("kast agent impact") ||
+    name.startsWith("kast agent rename")
   );
 }
 
@@ -184,7 +175,9 @@ for (const item of cases) {
       actionFailures.push(`${item.id}: allowedActions must use kast agent commands, not method ${action.name}`);
     } else if (action.kind === "tool") {
       actionFailures.push(`${item.id}: allowedActions must use kast agent commands, not tool ${action.name}`);
-    } else if (action.kind === "command" && !action.name.startsWith("kast agent")) {
+    } else if (action.kind === "command" && isRemovedPublicCommand(action.name)) {
+      actionFailures.push(`${item.id}: removed v1 command ${action.name}`);
+    } else if (action.kind === "command" && !isPublicCommand(action.name)) {
       actionFailures.push(`${item.id}: non-public command ${action.name}`);
     } else if (action.kind === "generic" && !isNegativeCase(item)) {
       actionFailures.push(`${item.id}: generic action is only valid for negative routing cases`);
@@ -199,10 +192,10 @@ checks.push(
     actionFailures.length === 0 ? "pass" : "fail",
     actionFailures.length === 0 ? "info" : "error",
     actionFailures.length === 0
-      ? "All routing actions resolve to kast agent commands or negative generic actions."
+      ? "All routing actions resolve to typed Kast v1 commands or negative generic actions."
       : "Some routing actions do not resolve.",
     actionFailures.length === 0 ? [...actionNames].sort() : actionFailures,
-    ["Keep allowedActions aligned with the public kast agent command surface."],
+    ["Keep allowedActions aligned with the public typed Kast command surface."],
   ),
 );
 
@@ -257,19 +250,19 @@ checks.push(
 );
 
 const requiredActions = [
-  "kast agent call symbol/scaffold",
-  "kast agent call raw/file-outline",
-  "kast agent call symbol/query",
-  "kast agent call symbol/discover",
-  "kast agent call symbol/resolve",
-  "kast agent call symbol/references",
-  "kast agent call symbol/callers",
-  "kast agent call raw/diagnostics",
-  "kast agent call database/metrics",
-  "kast agent workflow diagnostics",
-  "kast agent workflow package-verify",
-  "kast agent setup skill --source-dir",
-  "kast agent tools",
+  "kast",
+  "kast help agent",
+  "kast ready --for agent",
+  "kast repair --for agent --apply",
+  "kast setup --skill-target-dir",
+  "kast agent verify",
+  "kast agent symbol --query",
+  "kast agent symbol --query --file-hint",
+  "kast agent symbol --query --references",
+  "kast agent symbol --query --callers incoming",
+  "kast agent diagnostics --file-path",
+  "kast agent impact --symbol",
+  "kast agent rename --symbol --new-name",
 ];
 const missingActions = requiredActions.filter((name) => !actionNames.has(name));
 checks.push(
@@ -278,10 +271,10 @@ checks.push(
     missingActions.length === 0 ? "pass" : "fail",
     missingActions.length === 0 ? "info" : "error",
     missingActions.length === 0
-      ? "Routing eval exposes symbol calls, database metrics, high-level workflows, package verification, source-override recovery, and agent tool discovery through kast agent commands."
+      ? "Routing eval exposes the typed v1 Kast command dialect for setup, readiness, symbol work, diagnostics, impact, and rename."
       : "Routing eval is missing required public action coverage.",
     missingActions.length === 0 ? requiredActions : missingActions,
-    ["Add allowedActions for missing public kast agent commands."],
+    ["Add allowedActions for missing public typed Kast commands."],
   ),
 );
 
@@ -294,8 +287,8 @@ for (const item of referenceCases) {
   const forbiddenReferences = new Set(expectation.forbiddenReferences ?? []);
   failIf(!alwaysLoaded.has("SKILL.md"), `${item.id}: referenceExpectation.alwaysLoaded must include SKILL.md`, referenceFailures);
   for (const required of [
-    "static references/commands.json lookup before tool discovery",
-    "static references/requests/ lookup before tool discovery",
+    "static references/commands.json lookup before typed command need",
+    "static references/requests/ lookup before typed command need",
     "source-only runbook for ordinary symbol lookup",
   ]) {
     failIf(!forbiddenReferences.has(required), `${item.id}: referenceExpectation must forbid ${required}`, referenceFailures);
@@ -323,8 +316,8 @@ for (const item of negativeCases) {
     failIf(action.kind !== "generic", `${item.id}: negative allowedActions must stay generic`, negativeFailures);
   }
   const forbidden = new Set(item.forbiddenActions ?? []);
-  failIf(!forbidden.has("kast agent workflow"), `${item.id}: negative case must forbid kast agent workflow`, negativeFailures);
-  failIf(!forbidden.has("symbol/query"), `${item.id}: negative case must forbid symbol/query`, negativeFailures);
+  failIf(!forbidden.has("kast agent symbol"), `${item.id}: negative case must forbid kast agent symbol`, negativeFailures);
+  failIf(!forbidden.has("kast agent impact"), `${item.id}: negative case must forbid kast agent impact`, negativeFailures);
 }
 checks.push(
   check(
@@ -367,7 +360,7 @@ checks.push(
 );
 
 if (agentToolsFile) {
-  checks.push(checkToolEnvelope(agentToolsFile));
+  checks.push(checkRemovedAgentTools(agentToolsFile, agentToolsExitStatus));
 }
 
 const localPathNeedles = ["/Users/", "/home/", "/private/", "C:\\"];

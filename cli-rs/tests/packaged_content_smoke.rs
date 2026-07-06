@@ -176,8 +176,8 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
                 "negative case should use OVER_TRIGGER: {case:#}"
             );
             assert!(
-                forbidden.iter().any(|value| value == "kast agent workflow")
-                    && forbidden.iter().any(|value| value == "symbol/query"),
+                forbidden.iter().any(|value| value == "kast agent symbol")
+                    && forbidden.iter().any(|value| value == "kast agent impact"),
                 "negative case {} should forbid Kast semantic routing",
                 case["id"]
             );
@@ -200,20 +200,43 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
             match kind {
                 "method" => {
                     panic!(
-                        "eval case {} should name a kast agent command instead of method {name}",
+                        "eval case {} should name a typed Kast command instead of method {name}",
                         case["id"]
                     );
                 }
                 "tool" => {
                     panic!(
-                        "eval case {} should name a kast agent command instead of tool {name}",
+                        "eval case {} should name a typed Kast command instead of tool {name}",
                         case["id"]
                     );
                 }
                 "command" => {
+                    let removed_command = name == "kast agent tools"
+                        || name.starts_with("kast agent tools ")
+                        || name == "kast agent call"
+                        || name.starts_with("kast agent call ")
+                        || name == "kast agent workflow"
+                        || name.starts_with("kast agent workflow ");
                     assert!(
-                        name.starts_with("kast agent"),
-                        "eval case {} should use kast agent commands, got {name}",
+                        !removed_command,
+                        "eval case {} should forbid removed agent command {name}",
+                        case["id"]
+                    );
+                    let public_command = name == "kast"
+                        || name == "kast agent"
+                        || name.starts_with("kast help")
+                        || name.starts_with("kast ready")
+                        || name.starts_with("kast repair")
+                        || name.starts_with("kast setup")
+                        || name.starts_with("kast status")
+                        || name.starts_with("kast agent verify")
+                        || name.starts_with("kast agent symbol")
+                        || name.starts_with("kast agent diagnostics")
+                        || name.starts_with("kast agent impact")
+                        || name.starts_with("kast agent rename");
+                    assert!(
+                        public_command,
+                        "eval case {} should use typed public Kast commands, got {name}",
                         case["id"]
                     );
                 }
@@ -239,19 +262,19 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         })
         .collect::<BTreeSet<_>>();
     for required in [
-        "kast agent call symbol/scaffold",
-        "kast agent call raw/file-outline",
-        "kast agent call symbol/query",
-        "kast agent call symbol/discover",
-        "kast agent call symbol/resolve",
-        "kast agent call symbol/references",
-        "kast agent call symbol/callers",
-        "kast agent call raw/diagnostics",
-        "kast agent call database/metrics",
-        "kast agent workflow diagnostics",
-        "kast agent workflow package-verify",
-        "kast agent setup skill --source-dir",
-        "kast agent tools",
+        "kast",
+        "kast help agent",
+        "kast ready --for agent",
+        "kast repair --for agent --apply",
+        "kast setup --skill-target-dir",
+        "kast agent verify",
+        "kast agent symbol --query",
+        "kast agent symbol --query --file-hint",
+        "kast agent symbol --query --references",
+        "kast agent symbol --query --callers incoming",
+        "kast agent diagnostics --file-path",
+        "kast agent impact --symbol",
+        "kast agent rename --symbol --new-name",
     ] {
         assert!(
             action_names.contains(required),
@@ -270,6 +293,9 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         .collect::<BTreeSet<_>>();
     for required in [
         "kast rpc",
+        "kast agent tools",
+        "kast agent call",
+        "kast agent workflow",
         "generated protocol endpoints",
         "capabilities.experimental.kastMethods",
     ] {
@@ -285,7 +311,11 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         .unwrap_or_else(|error| panic!("read {}: {error}", routing_script_path.display()));
     assert!(
         routing_script.contains("--output json agent tools --full"),
-        "routing metric-pack input should request JSON explicitly while implicit noninteractive output defaults to TOON: {routing_script}"
+        "routing metric-pack should capture the removed agent tools envelope in JSON: {routing_script}"
+    );
+    assert!(
+        routing_script.contains("KAST_AGENT_TOOLS_EXIT_STATUS"),
+        "routing metric-pack should pass the removed agent tools exit status: {routing_script}"
     );
 }
 
