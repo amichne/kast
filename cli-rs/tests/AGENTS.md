@@ -7,6 +7,5 @@ Keep each test file focused on one command family or contract surface. Shared
 fixtures belong in `support/`; individual tests should read like executable
 requirements for the surface named by the file.
 
-Do not create another monolithic smoke file. If a test needs unrelated fixture
-setup, move the fixture to `support` or split the assertion into the correct
-contract file.
+New coverage belongs in the test file for the command family or contract it
+proves. Shared setup belongs in `support/`.

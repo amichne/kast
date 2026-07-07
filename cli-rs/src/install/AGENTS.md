@@ -15,11 +15,11 @@ Each part file must own one install contract:
 - `bundle_install.rs` owns writing the activated bundle to disk.
 - `bundle_helpers.rs` owns local path, scratch-dir, copy, and shim helpers.
 - `repair.rs` owns doctor/repair state reconciliation.
-- `resource_installs.rs` owns skill, instruction, and Copilot package gateways.
+- `resource_installs.rs` owns skill, instruction, and package gateways.
 - `shell.rs` owns shell profile integration.
 - `embedded_resources.rs` owns packaged resource copying and checksums.
 - `homebrew_idea_plugin.rs` and `jetbrains_profiles.rs` own IDE plugin flows.
 - `resource_targets.rs` owns default resource target discovery.
 
-Do not add compatibility shims for stale binaries. Fail loudly when packaged
-resources, manifests, or generated outputs do not match the current contract.
+Packaged resources, manifests, and generated outputs match the current
+contract and report mismatches through typed install or repair reports.

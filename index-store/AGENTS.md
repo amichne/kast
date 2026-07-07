@@ -5,20 +5,19 @@ and headless/indexer hydration APIs shared across kast runtimes.
 
 ## Ownership
 
-Keep this unit focused on storage concerns and schema compatibility.
+Keep this unit focused on storage concerns and schema continuity.
 
 - Keep SQLite schema, migrations, interning codecs, and hydration helpers here.
   `SOURCE_INDEX_SCHEMA_VERSION`, table layouts, and query columns must stay
   aligned.
-- Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access. Do
-  not rely on ambient JDBC registration from the host process because IDEA
-  and other plugin classloaders may not register the driver for you.
-- Keep this unit runtime-agnostic. Do not move IDEA PSI logic, CLI process
-  management, or JSON-RPC transport code here.
+- Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access.
+  IDEA and other plugin classloaders require explicit driver registration.
+- Keep this unit runtime-agnostic. IDEA PSI logic, CLI process management, and
+  JSON-RPC transport code live in their runtime, CLI, and server owners.
 - Treat schema resets, additive migrations, and cache hydration changes as
-  compatibility-sensitive. Operational source-index reads belong in the Rust
-  CLI; Kotlin should only read SQLite for headless hydration or targeted
-  indexer/cache behavior.
+  contract-sensitive. Operational source-index reads belong in the Rust CLI;
+  Kotlin reads SQLite for headless hydration or targeted indexer/cache
+  behavior.
 
 ## Verification
 

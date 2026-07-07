@@ -1,54 +1,51 @@
 # Rust CLI and agent resource guide
 
-This file applies to `cli-rs/` and descendants unless a deeper `AGENTS.md`
-narrows the rules. This tree owns the Rust CLI, installer, manifest-backed
-resource trust, agent command surface, and bundled agent resources.
+This file applies to `cli-rs/` and descendants. Deeper `AGENTS.md` files narrow
+the rules for their subtrees. This tree owns the Rust AXI CLI, typed agent
+command surface, installer, manifest-backed resource trust, runtime lifecycle
+orchestration, source-index CLI reads, release packaging, and bundled agent
+resources.
 
 ## Local purpose
 
-- `src/cli.rs` defines the public and hidden CLI command surface.
-- Public CLI families are intent-first: `kast ready`, `kast agent`,
-  `kast runtime`, `kast inspect`, `kast machine`, and `kast release`.
-- `src/agent.rs` owns `kast agent` aliases, `kast agent tools`,
-  `kast agent call`, and `kast agent workflow`; `kast agent up`,
-  `kast agent setup`, and `kast agent lsp` dispatch through operator handlers
-  before JSON-envelope execution.
-- `kast agent setup` installs harness-agnostic agent exposure: the packaged
-  skill under `.agents/skills/kast` plus a Kast-managed fenced region in the
-  ignored root `AGENTS.local.md` file, with `--agents-md` available for
-  explicit scoped guidance files. Its `--dry-run` mode must stay read-only and
-  explain skill and guidance targets.
-- `kast agent up` composes harness-agnostic setup with `kast runtime up`.
-  Its explicit `--workspace-root` must stay authoritative for setup targets,
-  and `--dry-run` must not write resources or start a backend.
+- `src/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
+  setup, readiness, repair, status, and developer operations.
+- `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
+  `verify`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp`.
+- `src/runtime/` owns backend lifecycle inspection and mutation for IDEA and
+  headless runtimes behind the same command dialect.
+- `src/install/` owns repository setup, managed guidance, machine install,
+  repair, bundle activation, shell integration, and IDEA plugin installation.
+- `src/symbol_query/` and `src/metrics_database/` own operational source-index
+  reads for the Rust CLI.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
-- `resources/plugin/` owns the Copilot package source.
-- `resources/kast-skill/` owns the packaged skill and RPC/tool catalog.
-- `resources/kast-instructions/` owns installable Markdown instructions.
+- `resources/kast-skill/` owns the packaged `SKILL.md` and internal catalog
+  source material used by release checks and generated artifacts.
+- `resources/kast-instructions/` owns compact Markdown instruction source used
+  by resource validation.
+- `resources/plugin/` owns package source material used by release validation.
 - `protocol/` contains generated protocol artifacts for release and
-  integration consumers. It is not a docs site.
+  integration consumers.
 
-The durable decision record for agent resources and workflows is
-`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+The current public product surface, workflows, AXI contract, source ownership,
+and validation gates live in
+`.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
 
 ## Edit rules
 
-- Keep command invariants in typed Rust structures. Do not bypass Clap, serde,
-  or catalog schema validation with ad hoc string handling.
+- Keep command invariants in typed Rust structures. Clap, serde, and catalog
+  schema validation own command parsing and structured data boundaries.
+- Agent-facing semantic workflows use typed `kast agent verify`, `symbol`,
+  `diagnostics`, `impact`, `rename`, and `lsp` commands.
+- Captured or agent-run commands default to compact structured output. Public
+  mutations are plan-first and gated: repair and rename require `--apply`;
+  setup supports `--dry-run`; forceful replacement requires `--force`.
 - Treat generated or installed resource copies as outputs. Edit the authored
   resource source, then regenerate or reinstall from the active binary.
-- Treat `AGENTS.md` files as authored guidance. Default Kast setup writes the
-  managed guidance block to ignored `AGENTS.local.md`; Kast may own only the
-  `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`
-  region inside explicit guidance targets.
-- Do not maintain compatibility helpers only for older binaries. Missing
-  `kast agent` or `kast agent workflow` support is an incompatibility that
-  requires upgrade or reinstall.
-- Do not restore a shell `kast rpc` surface or older top-level developer
-  aliases. Agent and Copilot integrations use the root setup/readiness
-  commands, `kast developer ...`, `kast agent lsp`, `kast agent call`, and
-  `kast agent workflow`.
+- Treat `AGENTS.md` files as authored guidance. Repository setup writes one
+  managed `<kast>...</kast>` guidance region to the selected context file and
+  records one manifest-backed packaged skill install.
 - When install output shape changes, update manifest resource recording,
   doctor verification, package scripts, docs, and smoke tests in the same
   change.
@@ -57,12 +54,11 @@ The durable decision record for agent resources and workflows is
 
 - Command catalog truth lives in
   `resources/kast-skill/references/commands.json`.
-- Copilot package output shape lives in
-  `resources/plugin/primitive-manifest.json`.
+- Package artifact output shape lives in `resources/plugin/primitive-manifest.json`.
 - Installable skill source lives in `resources/kast-skill/`.
 - Installable instruction source lives in `resources/kast-instructions/`.
 - Generated request schemas and samples are derived from the catalog. Regenerate
-  them through the contract generator instead of hand-editing generated drift.
+  them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
   `protocol/`; regenerate them through the Gradle docs generators.
 

@@ -2,9 +2,9 @@
 
 This directory owns human and JSON rendering for CLI command results.
 
-Keep rendering grouped by result family: core markdown/error output, agent-up,
-runtime/package output, readiness, tables, install output, and runtime helper
-formatting. Output code must not perform install, runtime, or config mutation.
+Keep rendering grouped by result family: core markdown/error output, typed
+agent commands, runtime, readiness, tables, install, package, and runtime
+helper formatting. Command modules own install, runtime, and config mutation.
 
-Do not bury behavior decisions in prose rendering. The command result type
-should already encode the state being displayed.
+Command result types encode the state being displayed; renderers project that
+state into human, TOON, or JSON output.

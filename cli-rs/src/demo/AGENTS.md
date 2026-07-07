@@ -6,4 +6,5 @@ Keep model types, entrypoints, SQLite access, symbol app state, compare app
 state, TUI event loops, rendering, and JSON/compare transformations separated.
 The database layer should return typed snapshots rather than UI-specific text.
 
-Do not let demo rendering rules leak into metrics or symbol-query contracts.
+Metrics and symbol-query contracts own their own result models and rendering
+boundaries.

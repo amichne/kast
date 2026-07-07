@@ -1,13 +1,12 @@
 # Agent Module Instructions
 
-This directory owns pipe-friendly typed `kast agent` behavior and internal
-agent workflow contracts.
+This directory owns pipe-friendly typed `kast agent` behavior.
 
-Keep command dispatch, internal tool catalog projection, retained workflow
-execution, package verification, request input normalization, response
-envelopes, and alias expansion in separate part files. A new public agent
-command must be typed and must not expose arbitrary method dispatch.
+Keep command dispatch, internal catalog projection, package verification,
+request input normalization, response envelopes, and typed command execution
+in separate part files. Public agent commands are typed noun/verb operations
+with bounded flags and structured output.
 
-Do not add or route new behavior through a shell `kast rpc` surface.
-Agent-facing flows should prefer typed commands such as `kast agent symbol`,
-`kast agent diagnostics`, `kast agent impact`, and `kast agent rename`.
+Agent-facing semantic flows use `kast agent verify`, `kast agent symbol`,
+`kast agent diagnostics`, `kast agent impact`, `kast agent rename`, and
+`kast agent lsp`.
