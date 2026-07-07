@@ -56,6 +56,7 @@ pub(crate) fn run_agent_call(
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
+        .env("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL", "1")
         .output()
         .unwrap_or_else(|error| panic!("agent call {method}: {error}"));
     let success = output.status.success();

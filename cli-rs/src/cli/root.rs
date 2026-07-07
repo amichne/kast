@@ -41,6 +41,8 @@ pub enum Command {
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
+    /// Plan or apply safe repair of Kast install state.
+    Repair(RepairArgs),
     /// Check the current workspace status.
     Status(RuntimeArgs),
     /// Developer and release-engineering commands.
@@ -54,8 +56,9 @@ pub enum Command {
 
 #[derive(Debug, Args, Clone)]
 pub struct SetupArgs {
-    #[command(flatten)]
-    pub runtime: RuntimeArgs,
+    /// Absolute workspace root for repository guidance setup.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
     /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
     #[arg(long = "skill-target-dir")]
     pub skill_target_dir: Option<PathBuf>,
@@ -71,22 +74,36 @@ pub struct SetupArgs {
     /// Do not add managed resource paths to Git info/exclude.
     #[arg(long)]
     pub no_auto_exclude_git: bool,
-    /// Explain setup and runtime actions without writing files or starting a backend.
+    /// Explain repository setup without writing files.
     #[arg(long)]
     pub dry_run: bool,
     /// Skip automatic IDE onboarding/opening steps.
-    #[arg(long = "no-open-ide", alias = "no-onboard")]
+    #[arg(long = "no-open-ide", alias = "no-onboard", hide = true)]
     pub no_open_ide: bool,
 }
 
 #[derive(Debug, Args, Clone)]
 pub struct ReadyArgs {
+    #[command(flatten)]
+    pub runtime: RuntimeArgs,
     /// Task surface to verify.
     #[arg(long = "for", value_enum, default_value = "agent")]
     pub target: ReadyTarget,
-    /// Apply safe install-state repairs before checking readiness.
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct RepairArgs {
+    #[command(flatten)]
+    pub runtime: RuntimeArgs,
+    /// Task surface to repair toward.
+    #[arg(long = "for", value_enum, default_value = "agent")]
+    pub target: ReadyTarget,
+    /// Apply the planned install-state repairs.
     #[arg(long)]
-    pub fix: bool,
+    pub apply: bool,
+    /// JetBrains config root containing IDE profile directories to audit.
+    #[arg(long)]
+    pub jetbrains_config_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]

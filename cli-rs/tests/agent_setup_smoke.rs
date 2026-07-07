@@ -3,21 +3,24 @@ mod support;
 use support::*;
 
 fn assert_compact_kast_guidance(content: &str) {
+    assert!(content.contains("<kast>"), "{content}");
     assert!(
-        content.contains(
-            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#
-        ),
-        "{content}"
-    );
-    assert!(content.contains("SKILL.md` and `kast agent`"), "{content}");
-    assert!(
-        content.contains("`kast agent workflow verify --workspace-root \"$PWD\"`"),
+        content.contains("SKILL.md` before Kotlin or Gradle semantic work"),
         "{content}"
     );
     assert!(
-        content.contains("`kast agent workflow package-verify --workspace-root \"$PWD\"`"),
+        content.contains("`kast agent verify --workspace-root \"$PWD\"`"),
         "{content}"
     );
+    assert!(
+        content.contains("`kast agent symbol --query <name>`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent rename --symbol <fq-name> --new-name <name> --apply`"),
+        "{content}"
+    );
+    assert!(content.contains("`kast repair --apply`"), "{content}");
     assert!(
         !content.contains("When a user or agent asks for anything regarding Kotlin code"),
         "{content}"
@@ -27,16 +30,14 @@ fn assert_compact_kast_guidance(content: &str) {
         "{content}"
     );
     let managed = content
-        .split_once(
-            r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#,
-        )
+        .split_once("<kast>")
         .and_then(|(_, rest)| rest.split_once("</kast>").map(|(managed, _)| managed))
         .unwrap_or(content);
     let managed_lines = managed
         .lines()
         .filter(|line| {
             !line.is_empty()
-                && !line.starts_with("<kast ")
+                && !line.starts_with("<kast")
                 && !line.starts_with("</kast>")
                 && !line.starts_with("<!--")
         })
@@ -76,13 +77,13 @@ fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "agent", "setup"])
+        .args(["--output", "json", "setup", "--no-open-ide"])
         .output()
-        .expect("agent setup");
+        .expect("setup");
 
     assert!(
         setup.status.success(),
-        "agent setup should succeed: stdout={}, stderr={}",
+        "setup should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&setup.stdout),
         String::from_utf8_lossy(&setup.stderr)
     );
@@ -153,13 +154,13 @@ fn agent_setup_context_git_filter_strips_managed_region_for_each_tracked_target(
         .args([
             "--output",
             "json",
-            "agent",
             "setup",
+            "--no-open-ide",
             "--context-file",
             "CODEX.md",
         ])
         .output()
-        .expect("agent setup");
+        .expect("setup");
     assert!(
         setup.status.success(),
         "setup should succeed: stdout={}, stderr={}",
@@ -204,7 +205,7 @@ fn agent_setup_context_git_filter_strips_managed_region_for_each_tracked_target(
         );
         let staged = String::from_utf8_lossy(&show.stdout);
         assert!(
-            !staged.contains("<kast "),
+            !staged.contains("<kast"),
             "clean filter should remove managed region from staged {file}: {staged}"
         );
         assert!(
@@ -226,13 +227,13 @@ fn agent_setup_creates_local_guidance_without_root_agents_md() {
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "agent", "setup"])
+        .args(["--output", "json", "setup", "--no-open-ide"])
         .output()
-        .expect("agent setup");
+        .expect("setup");
 
     assert!(
         setup.status.success(),
-        "agent setup should succeed without root AGENTS.md: stdout={}, stderr={}",
+        "setup should succeed without root AGENTS.md: stdout={}, stderr={}",
         String::from_utf8_lossy(&setup.stdout),
         String::from_utf8_lossy(&setup.stderr)
     );
@@ -285,13 +286,13 @@ fn agent_setup_creates_explicit_agents_md_target() {
         .args([
             "--output",
             "json",
-            "agent",
             "setup",
+            "--no-open-ide",
             "--agents-md",
             scoped_agents.to_str().expect("agents path"),
         ])
         .output()
-        .expect("agent setup");
+        .expect("setup");
 
     assert!(
         setup.status.success(),
@@ -315,9 +316,9 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     std::fs::create_dir_all(&repo).expect("repo");
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "agent", "setup"])
+        .args(["--output", "json", "setup", "--no-open-ide"])
         .output()
-        .expect("agent setup");
+        .expect("setup");
     assert!(
         setup.status.success(),
         "initial setup should succeed: stdout={}, stderr={}",
@@ -326,14 +327,14 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     );
     let agents_path = repo.join("AGENTS.local.md");
     let mut content = std::fs::read_to_string(&agents_path).expect("agents");
-    content = content.replace("SKILL.md` and `kast agent`", "Use `custom/SKILL.md`");
+    content = content.replace("Kast routing", "Custom routing");
     std::fs::write(&agents_path, content).expect("tamper agents");
 
     let repaired_setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "agent", "setup"])
+        .args(["--output", "json", "setup", "--no-open-ide"])
         .output()
-        .expect("agent setup repair");
+        .expect("setup repair");
     assert!(
         repaired_setup.status.success(),
         "modified managed region should be backed up and repaired: stdout={}, stderr={}",
@@ -342,7 +343,7 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     );
     let repaired = std::fs::read_to_string(&agents_path).expect("repaired agents");
     assert!(
-        repaired.contains("SKILL.md` and `kast agent`"),
+        repaired.contains("Kast routing") && repaired.contains("`kast agent verify"),
         "{repaired}"
     );
     let backup_exists = std::fs::read_dir(&repo)
@@ -361,7 +362,7 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
 }
 
 #[test]
-fn agent_setup_preserves_existing_hook_config_when_installing_detected_hooks() {
+fn setup_leaves_existing_hook_config_out_of_scope() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -402,12 +403,12 @@ fn agent_setup_preserves_existing_hook_config_when_installing_detected_hooks() {
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "agent", "setup"])
+        .args(["--output", "json", "setup", "--no-open-ide"])
         .output()
-        .expect("agent setup");
+        .expect("setup");
     assert!(
         setup.status.success(),
-        "setup should preserve hook config: stdout={}, stderr={}",
+        "setup should leave hook config untouched: stdout={}, stderr={}",
         String::from_utf8_lossy(&setup.stdout),
         String::from_utf8_lossy(&setup.stderr)
     );
@@ -422,15 +423,7 @@ fn agent_setup_preserves_existing_hook_config_when_installing_detected_hooks() {
             .any(|hook| hook["command"] == serde_json::json!(["existing-tool", "--flag"])),
         "{codex:#}"
     );
-    assert!(
-        codex_hooks.iter().any(|hook| {
-            hook["event"] == "SessionStart"
-                && hook["command"]
-                    .as_array()
-                    .is_some_and(|argv| argv.iter().any(|arg| arg == "context"))
-        }),
-        "{codex:#}"
-    );
+    assert_eq!(codex_hooks.len(), 1, "{codex:#}");
 
     let claude: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(repo.join(".claude/settings.json")).unwrap())
@@ -452,22 +445,19 @@ fn agent_setup_preserves_existing_hook_config_when_installing_detected_hooks() {
         }),
         "{claude:#}"
     );
+    assert_eq!(session_hooks.len(), 1, "{claude:#}");
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
     assert!(
-        session_hooks.iter().any(|entry| {
-            entry["hooks"].as_array().is_some_and(|hooks| {
-                hooks.iter().any(|hook| {
-                    hook["command"]
-                        .as_str()
-                        .is_some_and(|command| command.contains(" context "))
-                })
-            })
-        }),
-        "{claude:#}"
+        stdout
+            .get("hookTargets")
+            .and_then(|targets| targets.as_array())
+            .is_none_or(|targets| targets.is_empty()),
+        "{stdout:#}"
     );
 }
 
 #[test]
-fn agent_tools_invocation_argv_uses_invoked_binary_path() {
+fn agent_tools_reports_removed_command_through_invoked_binary() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -482,22 +472,23 @@ fn agent_tools_invocation_argv_uses_invoked_binary_path() {
         .output()
         .expect("agent tools");
     assert!(
-        agent_tools.status.success(),
-        "agent tools should succeed through alternate binary: stdout={}, stderr={}",
+        !agent_tools.status.success(),
+        "agent tools should report removed command: stdout={}, stderr={}",
         String::from_utf8_lossy(&agent_tools.stdout),
         String::from_utf8_lossy(&agent_tools.stderr)
     );
 
     let stdout: serde_json::Value =
-        serde_json::from_slice(&agent_tools.stdout).expect("agent tools json");
-    assert_eq!(stdout["result"]["invocation"]["command"], "kast agent call");
-    assert_eq!(
-        stdout["result"]["invocation"]["argv"],
-        serde_json::json!([
-            alternate_bin.display().to_string(),
-            "agent",
-            "call",
-            "<method>",
-        ])
+        serde_json::from_slice(&agent_tools.stdout).expect("agent tools removal json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["method"], "agent/tools", "{stdout}");
+    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    assert!(
+        stdout["error"]["details"]["replacements"]
+            .as_array()
+            .expect("replacements")
+            .iter()
+            .any(|replacement| replacement == "kast help agent"),
+        "{stdout}"
     );
 }

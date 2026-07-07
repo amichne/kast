@@ -15,8 +15,15 @@ else
   kast_bin="${repo_root}/cli-rs/target/debug/kast"
 fi
 
-"$kast_bin" --output json agent tools --full >"$tools_file"
-KAST_AGENT_TOOLS_FILE="$tools_file" node "${metric_pack_dir}/emit-kast-routing-metrics.mjs" "$target" skill >"$tmp_file"
+agent_tools_status=0
+if "$kast_bin" --output json agent tools --full >"$tools_file"; then
+  agent_tools_status=0
+else
+  agent_tools_status=$?
+fi
+KAST_AGENT_TOOLS_FILE="$tools_file" \
+  KAST_AGENT_TOOLS_EXIT_STATUS="$agent_tools_status" \
+  node "${metric_pack_dir}/emit-kast-routing-metrics.mjs" "$target" skill >"$tmp_file"
 
 node --input-type=module - "$tmp_file" <<'NODE'
 import { readFileSync } from "node:fs";

@@ -203,7 +203,7 @@ fn ensure_homebrew_plugin_profile_link(
     if path_exists_or_symlink(plugin_link) {
         let Some(current_target) = fs::read_link(plugin_link).ok() else {
             warnings.push(format!(
-                "Not replacing existing JetBrains plugin path {}; run `kast ready --fix` for backed-up repair",
+                "Not replacing existing JetBrains plugin path {}; run `kast repair --apply` for backed-up repair",
                 plugin_link.display()
             ));
             return Ok(());
@@ -218,7 +218,7 @@ fn ensure_homebrew_plugin_profile_link(
                 .contains("/kast-plugin/")
         {
             warnings.push(format!(
-                "Not replacing existing JetBrains plugin link {} -> {}; run `kast ready --fix` for backed-up repair",
+                "Not replacing existing JetBrains plugin link {} -> {}; run `kast repair --apply` for backed-up repair",
                 plugin_link.display(),
                 current_target.display()
             ));

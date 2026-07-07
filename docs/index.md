@@ -9,8 +9,8 @@ hide:
 # Kast
 
 Kast is a CLI for compiler-backed Kotlin code intelligence. Install the
-machine-level binary once, add repository-local Copilot files where agents
-should use it, then drive the workspace with `kast` commands.
+machine-level binary once, add minimal repository guidance where agents should
+use it, then drive the workspace with typed `kast` commands.
 
 ## Start here
 
@@ -21,8 +21,8 @@ hosted agents, and server images use the headless runtime.
 === "Developer machine"
 
     Homebrew installs the global `kast` binary and version-coupled IDEA or
-    Android Studio plugin. The repository command writes managed Copilot files
-    under that repository's `.github` directory.
+    Android Studio plugin. The repository command writes `.agents/skills/kast`
+    plus one managed `<kast>...</kast>` guidance region.
 
     ```console title="Install Kast, then enable one repository"
     brew tap amichne/kast
@@ -42,7 +42,7 @@ hosted agents, and server images use the headless runtime.
     export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
     ./scripts/install-ubuntu-debian.sh install
     ./scripts/install-ubuntu-debian.sh verify
-    kast setup --backend=headless --no-open-ide
+    kast setup --workspace-root "$PWD"
     ```
 
 ## Operating model
@@ -54,9 +54,9 @@ or automating a workspace.
 ```mermaid
 flowchart LR
     machine["Machine install<br/>kast binary and runtime files"]
-    repo["Repository resources<br/>Copilot, skill, or instructions"]
+    repo["Repository resources<br/>skill and managed guidance"]
     backend["Workspace backend<br/>IDEA or headless"]
-    commands["Semantic commands<br/>kast developer runtime and kast agent"]
+    commands["Semantic commands<br/>typed kast agent commands"]
     evidence["Evidence<br/>JSON envelopes, hashes, diagnostics"]
 
     machine --> repo
@@ -78,6 +78,8 @@ flowchart LR
 The published docs are organized around the commands a developer can run.
 `kast help` is the local command tree; these pages explain which command to
 choose, what it reads or writes, and how to verify the result.
+Automation should use typed Kast agent commands rather than generic catalog
+dispatch.
 
 <div class="grid cards" markdown>
 
@@ -126,6 +128,6 @@ hierarchy evidence was complete or bounded, and plan mutations with file hashes
 before applying edits.
 
 !!! tip "Automation boundary"
-    Captured and agent-run commands default to compact TOON. Use
-    `--output json` when automation specifically needs JSON payloads, and use
-    `kast agent call <method>` for pipe-friendly advanced catalog calls.
+    Use `--output json` on operator commands when automation needs structured
+    payloads. Use typed `kast agent` commands for compiler-backed semantic
+    calls.

@@ -1,12 +1,15 @@
+#![allow(dead_code)]
+
 use crate::SCHEMA_VERSION;
 use crate::cli::{
-    AgentCallArgs, AgentCommand, AgentDiscoverArgs, AgentFileOutlineArgs, AgentFilePathsArgs,
-    AgentMetricsArgs, AgentOptionalFilePathsArgs, AgentPositionArgs, AgentRawCallHierarchyArgs,
-    AgentRawCodeActionsArgs, AgentRawCompletionsArgs, AgentRawImplementationsArgs,
-    AgentRawReferencesArgs, AgentRawRenameArgs, AgentRawResolveArgs,
-    AgentRawSemanticInsertionPointArgs, AgentRawTypeHierarchyArgs, AgentRuntimeArgs,
-    AgentScaffoldArgs, AgentSymbolCallersArgs, AgentSymbolReferencesArgs, AgentSymbolResolveArgs,
-    AgentToolsArgs, AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
+    AgentCallArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiscoverArgs, AgentFileOutlineArgs,
+    AgentFilePathsArgs, AgentImpactArgs, AgentMetricsArgs, AgentOptionalFilePathsArgs,
+    AgentPositionArgs, AgentRawCallHierarchyArgs, AgentRawCodeActionsArgs, AgentRawCompletionsArgs,
+    AgentRawImplementationsArgs, AgentRawReferencesArgs, AgentRawRenameArgs, AgentRawResolveArgs,
+    AgentRawSemanticInsertionPointArgs, AgentRawTypeHierarchyArgs, AgentRenameArgs,
+    AgentRuntimeArgs, AgentScaffoldArgs, AgentSymbolArgs, AgentSymbolCallersArgs,
+    AgentSymbolReferencesArgs, AgentSymbolResolveArgs, AgentToolsArgs, AgentVerifyArgs,
+    AgentWorkflowCommand, AgentWorkflowCommonArgs, AgentWorkflowDiagnosticsArgs,
     AgentWorkflowPackageVerifyArgs, AgentWorkflowSymbolArgs, AgentWorkflowWriteMode,
     AgentWorkflowWriteValidateArgs, AgentWorkspaceFilesArgs, AgentWorkspaceSearchArgs,
     AgentWorkspaceSymbolArgs,

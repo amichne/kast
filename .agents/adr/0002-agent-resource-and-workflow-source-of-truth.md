@@ -4,6 +4,12 @@ Status: Accepted
 
 Date: 2026-06-25
 
+Supersession note: ADR 0005 supersedes the agent setup, harness selection,
+Copilot package, `kast agent tools`, `kast agent call`, raw command, and
+workflow CLI portions of this ADR. This ADR remains useful for historical
+resource ownership context and manifest-backed trust rules not replaced by
+ADR 0005.
+
 This ADR records the current contract for agent-facing Kast resources. It
 exists so future agents can preserve the source of truth for Copilot packages,
 installable skills, installable instructions, and workflow commands without

@@ -510,7 +510,6 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         targets,
         BTreeSet::from([
             "extensions/kast/_shared/kast-trace.mjs",
-            "extensions/kast/_shared/kast-tools.mjs",
             "extensions/kast/extension.mjs",
             "lsp.json",
         ])
@@ -523,7 +522,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     );
     assert!(
         plugin_root.join("extensions/kast/extension.mjs").is_file(),
-        "plugin source must own the catalog-backed Copilot extension entrypoint"
+        "plugin source must own the Copilot extension entrypoint"
     );
     assert!(
         !plugin_root
@@ -540,17 +539,21 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         extension.contains("RECOVERABLE_WARMUP_CODES")
             && extension.contains("\"INDEX_UNAVAILABLE\"")
-            && extension.contains("\"up\"")
+            && extension.contains("kast ready --for agent")
             && extension.contains("createTraceEmitter"),
-        "extension must warm the IDEA backend for missing backend/index results"
+        "extension must guide recovery for missing backend/index results"
     );
     assert!(
-        extension.contains("\"agent\"")
-            && extension.contains("\"call\"")
-            && extension.contains("\"tools\"")
-            && extension.contains("formattedAgentResult")
+        extension.contains("kast agent symbol")
+            && extension.contains("kast agent diagnostics")
+            && extension.contains("kast agent impact")
+            && extension.contains("kast agent rename")
+            && extension.contains("tools: []")
+            && !extension.contains("isKastAgentToolsEnvelope")
+            && !extension.contains("formattedAgentResult")
+            && !extension.contains("agentArgs(")
             && !extension.contains("rpcArgs("),
-        "extension tools must use `kast agent tools` discovery and the shared `kast agent call` envelope instead of raw rpc"
+        "extension must inject typed command guidance without dynamic tool registration"
     );
     let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
         .expect("local plugin installer");
@@ -580,7 +583,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
 }
 
 #[test]
-fn copilot_install_receives_the_manifest_declared_package_outputs() {
+fn copilot_agent_setup_reports_removed_without_installing_package_outputs() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -591,6 +594,8 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "setup",
             "copilot",
@@ -600,18 +605,17 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
         .output()
         .expect("install copilot plugin");
     assert!(
-        output.status.success(),
+        !output.status.success(),
         "stdout={}, stderr={}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let source = std::fs::read_to_string(manifest_dir.join("resources/plugin/lsp.json"))
-        .expect("plugin lsp");
-    let installed = std::fs::read_to_string(target.join("lsp.json")).expect("installed lsp");
-    assert_eq!(installed, source);
-
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("removed command json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["method"], "agent/setup/copilot", "{stdout}");
+    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    assert!(!target.join("lsp.json").exists());
     assert!(
         !target
             .join("instructions/kast-kotlin.instructions.md")
@@ -619,26 +623,6 @@ fn copilot_install_receives_the_manifest_declared_package_outputs() {
     );
     assert!(!target.join("agents/kast-reader.agent.md").exists());
     assert!(!target.join("agents/kast-writer.agent.md").exists());
-
-    let extension_source = std::fs::read_to_string(
-        manifest_dir.join("resources/plugin/extensions/kast/extension.mjs"),
-    )
-    .expect("plugin extension");
-    let installed_extension = std::fs::read_to_string(target.join("extensions/kast/extension.mjs"))
-        .expect("installed extension");
-    assert_eq!(installed_extension, extension_source);
-    assert!(installed_extension.contains("KAST_TOOLING_CONTEXT"));
-    assert!(installed_extension.contains("onUserPromptSubmitted"));
-    assert!(installed_extension.contains("additionalContext"));
-
-    let trace_source = std::fs::read_to_string(
-        manifest_dir.join("resources/plugin/extensions/kast/_shared/kast-trace.mjs"),
-    )
-    .expect("plugin trace helper");
-    let installed_trace =
-        std::fs::read_to_string(target.join("extensions/kast/_shared/kast-trace.mjs"))
-            .expect("installed trace helper");
-    assert_eq!(installed_trace, trace_source);
     assert!(
         !target
             .join("extensions/kast/_shared/kast-agents.mjs")

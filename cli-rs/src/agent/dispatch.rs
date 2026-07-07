@@ -22,13 +22,31 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             ),
         );
     }
-    if let AgentCommand::Workflow(args) = command {
-        return execute_workflow(args.command);
+    if let AgentCommand::Workflow(_) = command {
+        return removed_agent_command(
+            "agent/workflow",
+            "`kast agent workflow` is no longer public. Use `kast agent verify`, `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, `kast agent rename`, or `kast repair --apply`.",
+            replacement_commands([
+                "kast agent verify --workspace-root <repo>",
+                "kast agent symbol --query <name> --workspace-root <repo>",
+                "kast agent diagnostics --file-path <path> --workspace-root <repo>",
+                "kast repair --apply",
+            ]),
+        );
     }
     if let AgentCommand::Tools(args) = command {
-        return execute_tools(args);
+        let _ = args;
+        return removed_agent_command(
+            "agent/tools",
+            "`kast agent tools` is no longer public. Use `kast`, `kast help`, and the installed Kast skill for the CLI dialect.",
+            replacement_commands([
+                "kast",
+                "kast help agent",
+                "kast agent verify --workspace-root <repo>",
+            ]),
+        );
     }
-    let request = match command {
+    let request: std::result::Result<AgentRequest, Box<AgentFailure>> = match command {
         AgentCommand::Up(_)
         | AgentCommand::Ready(_)
         | AgentCommand::Setup(_)
@@ -36,8 +54,27 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
-        AgentCommand::Call(args) => prepare_call(args),
+        AgentCommand::Call(args) => {
+            if internal_agent_call_enabled() {
+                prepare_call(args)
+            } else {
+                return removed_agent_command(
+                    "agent/call",
+                    "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
+                    replacement_commands([
+                        "kast agent symbol --query <name> --workspace-root <repo>",
+                        "kast agent diagnostics --file-path <path> --workspace-root <repo>",
+                        "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
+                    ]),
+                );
+            }
+        }
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
+        AgentCommand::Verify(args) => return execute_agent_verify(args),
+        AgentCommand::Symbol(args) => return execute_agent_symbol(args),
+        AgentCommand::Impact(args) => return execute_agent_impact(args),
+        AgentCommand::Diagnostics(args) => return execute_agent_diagnostics(args),
+        AgentCommand::Rename(args) => return execute_agent_rename(args),
         other => Ok(prepare_alias(other)),
     };
     let request = match request {
@@ -45,4 +82,245 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         Err(error) => return error_envelope(error.method, error.request, error.error),
     };
     execute_request(request)
+}
+
+fn internal_agent_call_enabled() -> bool {
+    std::env::var_os("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL").is_some()
+}
+
+fn replacement_commands<const N: usize>(commands: [&str; N]) -> Vec<Value> {
+    commands
+        .into_iter()
+        .map(|command| Value::String(command.to_string()))
+        .collect()
+}
+
+fn removed_agent_command(method: &str, message: &str, replacements: Vec<Value>) -> AgentEnvelope {
+    let mut error = agent_error("AGENT_COMMAND_REMOVED", message);
+    error
+        .details
+        .insert("replacements".to_string(), Value::Array(replacements));
+    error_envelope(method.to_string(), None, error)
+}
+
+fn execute_agent_verify(args: AgentVerifyArgs) -> AgentEnvelope {
+    execute_agent_steps(
+        "agent/verify",
+        args.runtime,
+        vec![
+            AgentPublicStep::new("health", "health", json!({}), false),
+            AgentPublicStep::new("runtime-status", "runtime/status", json!({}), false),
+            AgentPublicStep::new("capabilities", "capabilities", json!({}), false),
+        ],
+    )
+}
+
+fn execute_agent_symbol(args: AgentSymbolArgs) -> AgentEnvelope {
+    let mut steps = vec![
+        AgentPublicStep::new(
+            "symbol-query",
+            "symbol/query",
+            json!({
+                "query": args.query,
+                "modes": ["exact", "lexical"],
+                "filters": {},
+                "limit": args.limit,
+                "includeEvidence": true,
+                "includeNextRequests": true,
+            }),
+            false,
+        ),
+        AgentPublicStep::new(
+            "symbol-resolve",
+            "symbol/resolve",
+            drop_nulls(json!({
+                "symbol": args.query,
+                "kind": args.kind.map(|kind| kind.canonical()),
+                "fileHint": args.file_hint,
+                "containingType": args.containing_type,
+                "includeDeclarationScope": true,
+                "includeDocumentation": true,
+                "surroundingLines": 3,
+                "includeSurroundingMembers": true,
+            })),
+            false,
+        ),
+    ];
+    if args.references {
+        steps.push(AgentPublicStep::new(
+            "symbol-references",
+            "symbol/references",
+            drop_nulls(json!({
+                "symbol": args.query,
+                "kind": args.kind.map(|kind| kind.canonical()),
+                "fileHint": args.file_hint,
+                "containingType": args.containing_type,
+                "includeDeclaration": true,
+            })),
+            false,
+        ));
+    }
+    if let Some(direction) = args.callers {
+        steps.push(AgentPublicStep::new(
+            "symbol-callers",
+            "symbol/callers",
+            drop_nulls(json!({
+                "symbol": args.query,
+                "kind": args.kind.map(|kind| kind.canonical()),
+                "fileHint": args.file_hint,
+                "containingType": args.containing_type,
+                "direction": direction.canonical(),
+                "depth": args.caller_depth,
+            })),
+            false,
+        ));
+    }
+    execute_agent_steps("agent/symbol", args.runtime, steps)
+}
+
+fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {
+    execute_agent_steps(
+        "agent/impact",
+        args.runtime,
+        vec![AgentPublicStep::new(
+            "impact",
+            "database/metrics",
+            json!({
+                "metric": "impact",
+                "symbol": args.symbol,
+                "depth": args.depth,
+                "limit": args.limit,
+            }),
+            false,
+        )],
+    )
+}
+
+fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {
+    let mut steps = Vec::new();
+    if !args.skip_refresh {
+        steps.push(AgentPublicStep::new(
+            "workspace-refresh",
+            "raw/workspace-refresh",
+            json!({ "filePaths": args.file_paths }),
+            false,
+        ));
+    }
+    steps.push(AgentPublicStep::new(
+        "diagnostics",
+        "raw/diagnostics",
+        json!({ "filePaths": args.file_paths }),
+        false,
+    ));
+    execute_agent_steps("agent/diagnostics", args.runtime, steps)
+}
+
+fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
+    let params = drop_nulls(json!({
+        "type": "RENAME_BY_SYMBOL_REQUEST",
+        "symbol": args.symbol,
+        "newName": args.new_name,
+        "kind": args.kind.map(|kind| kind.canonical()),
+        "fileHint": args.file_hint,
+        "containingType": args.containing_type,
+    }));
+    let request = json_rpc_request("symbol/rename", params);
+    if !args.apply {
+        let result = json!({
+            "type": "KAST_AGENT_RENAME_PLAN",
+            "ok": true,
+            "mutates": true,
+            "applyRequired": true,
+            "request": request,
+            "help": [
+                "Run `kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>` to apply this rename."
+            ],
+            "schemaVersion": SCHEMA_VERSION,
+        });
+        return result_envelope("agent/rename".to_string(), result);
+    }
+    execute_request(AgentRequest {
+        method: "symbol/rename".to_string(),
+        request,
+        runtime: args.runtime,
+        full_response: true,
+    })
+}
+
+struct AgentPublicStep {
+    name: &'static str,
+    method: &'static str,
+    params: Value,
+    mutates: bool,
+}
+
+impl AgentPublicStep {
+    fn new(name: &'static str, method: &'static str, params: Value, mutates: bool) -> Self {
+        Self {
+            name,
+            method,
+            params,
+            mutates,
+        }
+    }
+}
+
+fn execute_agent_steps(
+    method: &'static str,
+    runtime: AgentRuntimeArgs,
+    steps: Vec<AgentPublicStep>,
+) -> AgentEnvelope {
+    let mut step_results = Vec::with_capacity(steps.len());
+    let mut issues = Vec::new();
+    for step in steps {
+        let envelope = execute_request(AgentRequest {
+            method: step.method.to_string(),
+            request: json_rpc_request(step.method, step.params),
+            runtime: runtime.clone(),
+            full_response: false,
+        });
+        if !envelope.ok {
+            issues.push(json!({
+                "code": "AGENT_STEP_FAILED",
+                "step": step.name,
+                "method": step.method,
+            }));
+        }
+        step_results.push(json!({
+            "name": step.name,
+            "method": step.method,
+            "mutates": step.mutates,
+            "ok": envelope.ok,
+            "result": envelope.result,
+            "error": envelope.error,
+        }));
+        if !issues.is_empty() {
+            break;
+        }
+    }
+    let ok = issues.is_empty();
+    let result = json!({
+        "type": "KAST_AGENT_COMMAND",
+        "ok": ok,
+        "steps": step_results,
+        "issues": issues,
+        "schemaVersion": SCHEMA_VERSION,
+    });
+    let error = (!ok).then(|| {
+        let mut error = agent_error("AGENT_COMMAND_FAILED", "Agent command failed.");
+        error
+            .details
+            .insert("issues".to_string(), result["issues"].clone());
+        error
+    });
+    AgentEnvelope {
+        ok,
+        method: method.to_string(),
+        request: None,
+        response: None,
+        result: Some(result),
+        raw_response: None,
+        error,
+        schema_version: SCHEMA_VERSION,
+    }
 }

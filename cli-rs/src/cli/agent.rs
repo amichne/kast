@@ -18,11 +18,24 @@ pub enum AgentCommand {
     Setup(AgentSetupArgs),
     /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
+    /// Verify backend health, runtime state, and capabilities.
+    Verify(AgentVerifyArgs),
+    /// Query and resolve a symbol, optionally gathering references and callers.
+    Symbol(AgentSymbolArgs),
+    /// Query source-index impact for a fully-qualified symbol.
+    Impact(AgentImpactArgs),
+    /// Refresh touched files and run diagnostics.
+    Diagnostics(AgentDiagnosticsArgs),
+    /// Rename a compiler-resolved symbol by identity.
+    Rename(AgentRenameArgs),
     /// List catalog-backed tools for CLI-capable agent hosts.
+    #[command(hide = true)]
     Tools(AgentToolsArgs),
     /// Call any catalog method with params from flags, file, or stdin.
+    #[command(hide = true)]
     Call(AgentCallArgs),
     /// Run a file-backed multi-step workflow.
+    #[command(hide = true)]
     Workflow(AgentWorkflowArgs),
     /// Run the health RPC.
     #[command(hide = true)]
@@ -164,13 +177,17 @@ pub struct AgentGuidanceSetupArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentSetupCommand {
-    /// Install the best agent resource package for the current repository.
+    /// Removed legacy auto installer. Use root `kast setup`.
+    #[command(hide = true)]
     Auto(AgentSetupAutoArgs),
-    /// Install the repository-local Copilot LSP package and extension tools.
+    /// Removed legacy Copilot package installer. Use root `kast setup`.
+    #[command(hide = true)]
     Copilot(CopilotInstallArgs),
     /// Install the packaged Kast skill.
+    #[command(hide = true)]
     Skill(ResourceInstallArgs),
-    /// Install portable Markdown agent instructions.
+    /// Removed legacy Markdown instruction installer. Use root `kast setup`.
+    #[command(hide = true)]
     Instructions(ResourceInstallArgs),
 }
 
@@ -288,6 +305,78 @@ pub struct AgentWorkflowCommonArgs {
 pub struct AgentWorkflowVerifyArgs {
     #[command(flatten)]
     pub common: AgentWorkflowCommonArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentVerifyArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentSymbolArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Symbol query text. Use this for lookup; mutating commands use --symbol <fq-name>.
+    #[arg(long)]
+    pub query: String,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    #[arg(long)]
+    pub references: bool,
+    #[arg(long, value_enum)]
+    pub callers: Option<AgentSymbolCallDirection>,
+    #[arg(long, default_value_t = 3)]
+    pub caller_depth: u32,
+    #[arg(long, default_value_t = 10)]
+    pub limit: u32,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentImpactArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Fully-qualified symbol name.
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long, default_value_t = 3)]
+    pub depth: u32,
+    #[arg(long, default_value_t = 50)]
+    pub limit: u32,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentDiagnosticsArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[arg(long = "file-path", required = true)]
+    pub file_paths: Vec<String>,
+    #[arg(long)]
+    pub skip_refresh: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentRenameArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Existing declaration identity to rename.
+    #[arg(long)]
+    pub symbol: String,
+    #[arg(long)]
+    pub new_name: String,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    /// Apply the rename. Without this flag, Kast only reports the planned request.
+    #[arg(long)]
+    pub apply: bool,
 }
 
 #[derive(Debug, Args, Clone)]

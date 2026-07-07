@@ -3,22 +3,18 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 import { joinSession } from "@github/copilot-sdk/extension";
-import { createTraceEmitter, traceFieldsFromParams } from "./_shared/kast-trace.mjs";
-import { isKastAgentToolsEnvelope, makeKastTools, toolSpecsFromAgentToolsResult } from "./_shared/kast-tools.mjs";
+import { createTraceEmitter } from "./_shared/kast-trace.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT_MARKER = "workspace.repos.toml";
-const COPILOT_IDEA_AUTOSTART_ENV = "KAST_COPILOT_IDEA_AUTOSTART";
 const KAST_TOOLING_CONTEXT = [
   "Kast tooling preference:",
   "For Kotlin or Gradle semantic work, use the configured kotlin LSP server first for standard editor operations.",
-  "Use catalog-backed kast_* tools for Kast-specific symbol identity, references, callers, hierarchy, diagnostics, workspace discovery, metrics, and safe write flows.",
-  "Use `kast --output json agent tools --full` when a CLI-only host needs to discover the same catalog-backed tools without this Copilot extension, then call its `result.invocation.argv`.",
-  "Use shell only for validation, explicit lifecycle commands, or a `kast agent` fallback when LSP and kast_* tools cannot cover the operation.",
-  "If Kast reports a missing backend, missing source index, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or NO_BACKEND_AVAILABLE, warm the IDEA backend with `kast agent up --workspace-root \"$PWD\" --backend idea --no-onboard` before falling back.",
-  "Treat stale, missing, ambiguous, partial, or truncated compiler-backed facts as blockers after warmup; do not replace Kotlin identity, references, hierarchy, rename, or edit scope with text search guesses.",
+  "Use typed shell commands for Kast-specific compiler-backed work: `kast`, `kast help agent`, `kast ready --for agent`, `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename`.",
+  "Do not use removed helper surfaces such as `kast agent tools`, `kast agent call`, `kast agent workflow`, generated protocol paths, or raw RPC.",
+  "If Kast reports a missing backend, missing source index, INDEX_UNAVAILABLE, METRICS_DB_UNAVAILABLE, or NO_BACKEND_AVAILABLE, run `kast ready --for agent --workspace-root \"$PWD\"` and then the emitted `kast repair --for agent --workspace-root \"$PWD\" --apply` recovery before falling back.",
+  "Treat stale, missing, ambiguous, partial, or truncated compiler-backed facts as blockers after recovery; do not replace Kotlin identity, references, hierarchy, rename, or edit scope with text search guesses.",
 ].join(" ");
 const RECOVERABLE_WARMUP_CODES = new Set([
   "INDEX_UNAVAILABLE",
@@ -105,10 +101,15 @@ async function supportsKastCli(path) {
   const version = await execCommand(path, ["--version"]);
   if (!version.ok || !looksLikeKastCliVersion(version.stdout)) return false;
   const help = await execCommand(path, ["agent", "--help"]);
-  if (!help.ok || !/\bcall\b/i.test(`${help.stdout}\n${help.stderr}`)) return false;
-  const tools = await execCommand(path, ["--output", "json", "agent", "tools", "--full"]);
-  const toolsJson = parseJsonOrNull(tools.stdout.trim());
-  return tools.ok && isKastAgentToolsEnvelope(toolsJson);
+  const helpText = `${help.stdout}\n${help.stderr}`;
+  return help.ok &&
+    /\bsymbol\b/i.test(helpText) &&
+    /\bdiagnostics\b/i.test(helpText) &&
+    /\bimpact\b/i.test(helpText) &&
+    /\brename\b/i.test(helpText) &&
+    !/\btools\b/i.test(helpText) &&
+    !/\bcall\b/i.test(helpText) &&
+    !/\bworkflow\b/i.test(helpText);
 }
 
 function findOnPath(commandName) {
@@ -161,7 +162,7 @@ async function resolveKastBinary() {
   }
 
   resolveError = rejected.length
-    ? `no resolved Rust kast CLI exposes kast agent; rejected: ${rejected.join(", ")}`
+    ? `no resolved Rust kast CLI exposes typed kast agent commands; rejected: ${rejected.join(", ")}`
     : "no Rust kast CLI candidate found in install.json, ~/.local/bin, PATH, or under cli-rs/target";
   trace.emit("copilot.kast_binary.resolve_failed", {
     sdkRegistrationScope: "extension-session",
@@ -174,274 +175,6 @@ async function resolveKastBinary() {
   return null;
 }
 
-function backendArgs() {
-  const value = String(process.env[COPILOT_IDEA_AUTOSTART_ENV] ?? "").trim().toLowerCase();
-  return ["1", "true", "yes", "on"].includes(value) ? ["--backend", "idea"] : [];
-}
-
-function parseJsonOrNull(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-async function loadKastToolSpecs() {
-  const bin = await resolveKastBinary();
-  if (bin) {
-    const tools = await execCommand(bin, ["--output", "json", "agent", "tools", "--full"]);
-    const toolsJson = parseJsonOrNull(tools.stdout.trim());
-    if (tools.ok && isKastAgentToolsEnvelope(toolsJson)) {
-      try {
-        const specs = toolSpecsFromAgentToolsResult(toolsJson);
-        trace.emit("copilot.tool_specs.loaded", {
-          sdkRegistrationScope: "extension-session",
-          outcome: "completed",
-          detail: {
-            source: "kast-agent-tools",
-            catalogSha256: toolsJson.result?.catalogSha256 ?? null,
-            toolCount: specs.length,
-          },
-        });
-        return {
-          source: "kast-agent-tools",
-          bin,
-          catalogSha256: toolsJson.result?.catalogSha256 ?? null,
-          specs,
-        };
-      } catch (error) {
-        trace.emit("copilot.tool_specs.invalid", {
-          sdkRegistrationScope: "extension-session",
-          outcome: "failed",
-          detail: {
-            source: "kast-agent-tools",
-            message: error?.message ?? String(error),
-          },
-        });
-      }
-    } else {
-      trace.emit("copilot.tool_specs.load_failed", {
-        sdkRegistrationScope: "extension-session",
-        outcome: "failed",
-        detail: {
-          source: "kast-agent-tools",
-          exitCode: tools.code,
-          errorText: tools.stderr.trim() || null,
-        },
-      });
-    }
-  }
-  trace.emit("copilot.tool_specs.unavailable", {
-    sdkRegistrationScope: "extension-session",
-    outcome: "failed",
-    detail: {
-      source: "kast-agent-tools",
-      resolveError,
-    },
-  });
-  return {
-    source: "unavailable",
-    bin: null,
-    catalogSha256: null,
-    specs: [],
-  };
-}
-
-function resultCode(value) {
-  if (!value || typeof value !== "object") return null;
-  if (typeof value.code === "string") return value.code;
-  if (typeof value.error?.code === "string") return value.error.code;
-  if (typeof value.error?.details?.rpcError?.data?.code === "string") {
-    return value.error.details.rpcError.data.code;
-  }
-  if (typeof value.response?.error?.data?.code === "string") {
-    return value.response.error.data.code;
-  }
-  if (typeof value.error?.data?.code === "string") return value.error.data.code;
-  const result = value.result;
-  if (result && typeof result === "object") {
-    if (typeof result.reason === "string") return result.reason;
-    if (typeof result.code === "string") return result.code;
-  }
-  return null;
-}
-
-function needsIdeaWarmup(value) {
-  return RECOVERABLE_WARMUP_CODES.has(resultCode(value));
-}
-
-function agentArgs(method, params, args = backendArgs()) {
-  return [
-    "--output",
-    "json",
-    "agent",
-    "call",
-    method,
-    "--full",
-    "--params",
-    JSON.stringify(params ?? {}),
-    "--workspace-root",
-    REPO_ROOT,
-    ...args,
-  ];
-}
-
-async function warmIdeaBackend(bin) {
-  return execCommand(bin, [
-    "--output",
-    "json",
-    "agent",
-    "up",
-    "--workspace-root",
-    REPO_ROOT,
-    "--backend",
-    "idea",
-    "--no-onboard",
-  ]);
-}
-
-function formattedAgentResult(method, result, warmup = null) {
-  const out = result.stdout.trim();
-  if (!out) {
-    return JSON.stringify({
-      ok: false,
-      stage: "extension.exec",
-      method,
-      message: `kast agent call ${method} produced no output`,
-      exitCode: result.code,
-      errorText: result.stderr.trim() || null,
-      ideaWarmup: warmup,
-    });
-  }
-  if (parseJsonOrNull(out)) return out;
-  return JSON.stringify({
-    ok: false,
-    stage: "extension.parse",
-    method,
-    message: `kast agent call ${method} returned non-JSON`,
-    exitCode: result.code,
-    raw: out,
-    errorText: result.stderr.trim() || null,
-    ideaWarmup: warmup,
-  });
-}
-
-async function callKast(method, params) {
-  const invocationId = randomUUID();
-  const paramTraceFields = traceFieldsFromParams(params ?? {});
-  trace.emit("copilot.tool.invocation_started", {
-    invocationId,
-    agentRole: "kast-tool",
-    sdkRegistrationScope: "extension-session",
-    ...paramTraceFields,
-    detail: {
-      method,
-    },
-  });
-
-  const bin = await resolveKastBinary();
-  if (!bin) {
-    trace.emit("copilot.tool.invocation_failed", {
-      invocationId,
-      agentRole: "kast-tool",
-      sdkRegistrationScope: "extension-session",
-      ...paramTraceFields,
-      outcome: "failed",
-      detail: {
-        method,
-        stage: "extension.resolve",
-        resolveError,
-      },
-    });
-    return JSON.stringify({
-      ok: false,
-      stage: "extension.resolve",
-      method,
-      message: `kast binary not resolved: ${resolveError ?? "unknown"}`,
-    });
-  }
-
-  const first = await execCommand(bin, agentArgs(method, params));
-  const firstJson = parseJsonOrNull(first.stdout.trim());
-  trace.emit("copilot.tool.agent_completed", {
-    invocationId,
-    agentRole: "kast-tool",
-    sdkRegistrationScope: "extension-session",
-    ...paramTraceFields,
-    outcome: first.ok ? "completed" : "failed",
-    detail: {
-      method,
-      exitCode: first.code,
-      resultCode: resultCode(firstJson),
-    },
-  });
-  if (needsIdeaWarmup(firstJson)) {
-    trace.emit("copilot.tool.idea_warmup_started", {
-      invocationId,
-      agentRole: "kast-tool",
-      sdkRegistrationScope: "extension-session",
-      ...paramTraceFields,
-      detail: {
-        method,
-        resultCode: resultCode(firstJson),
-      },
-    });
-    const warmup = await warmIdeaBackend(bin);
-    const warmupJson = parseJsonOrNull(warmup.stdout.trim());
-    trace.emit("copilot.tool.idea_warmup_completed", {
-      invocationId,
-      agentRole: "kast-tool",
-      sdkRegistrationScope: "extension-session",
-      ...paramTraceFields,
-      outcome: warmup.ok ? "completed" : "failed",
-      detail: {
-        method,
-        exitCode: warmup.code,
-        resultCode: resultCode(warmupJson),
-      },
-    });
-    if (warmup.ok) {
-      const retried = await execCommand(bin, agentArgs(method, params, ["--backend", "idea"]));
-      const retriedJson = parseJsonOrNull(retried.stdout.trim());
-      trace.emit("copilot.tool.idea_retry_completed", {
-        invocationId,
-        agentRole: "kast-tool",
-        sdkRegistrationScope: "extension-session",
-        ...paramTraceFields,
-        outcome: retried.ok ? "completed" : "failed",
-        detail: {
-          method,
-          exitCode: retried.code,
-          resultCode: resultCode(retriedJson),
-        },
-      });
-      return formattedAgentResult(method, retried);
-    }
-    return formattedAgentResult(method, first, {
-      attempted: true,
-      ok: false,
-      exitCode: warmup.code,
-      error: warmupJson,
-      errorText: warmup.stderr.trim() || null,
-    });
-  }
-  trace.emit("copilot.tool.invocation_completed", {
-    invocationId,
-    agentRole: "kast-tool",
-    sdkRegistrationScope: "extension-session",
-    ...paramTraceFields,
-    outcome: "completed",
-    detail: {
-      method,
-    },
-  });
-  return formattedAgentResult(method, first);
-}
-
-const toolSpecLoad = await loadKastToolSpecs();
-const tools = makeKastTools(toolSpecLoad.specs, (method, args) => callKast(method, args));
-const toolNames = tools.map((tool) => tool.name);
 const hooks = {
   onSessionStart: async () => ({
     additionalContext: KAST_TOOLING_CONTEXT,
@@ -454,15 +187,14 @@ const hooks = {
 trace.emit("copilot.session.join_requested", {
   sdkRegistrationScope: "extension-session",
   detail: {
-    tools: toolNames,
-    toolSpecSource: toolSpecLoad.source,
-    catalogSha256: toolSpecLoad.catalogSha256,
+    tools: [],
     runtimeGuidance: "kast-tooling-context",
+    recoverableWarmupCodes: [...RECOVERABLE_WARMUP_CODES],
   },
 });
 
 const session = await joinSession({
-  tools,
+  tools: [],
   hooks,
   disabledSkills: ["kast"],
 });
@@ -471,23 +203,21 @@ trace.emit("copilot.session.joined", {
   sdkRegistrationScope: "extension-session",
   outcome: "completed",
   detail: {
-    tools: toolNames,
-    toolSpecSource: toolSpecLoad.source,
-    catalogSha256: toolSpecLoad.catalogSha256,
+    tools: [],
     runtimeGuidance: "kast-tooling-context",
   },
 });
 
-const bin = toolSpecLoad.bin ?? await resolveKastBinary();
+const bin = await resolveKastBinary();
 if (!bin) {
   await session.log(
-    `kast extension: failed to resolve a kast binary with agent tools (${resolveError}). No Kast tools were registered; install, build, or reinstall Kast and reload the Copilot session.`,
+    `kast extension: failed to resolve a kast binary with typed agent commands (${resolveError}). LSP configuration and prompt guidance remain active; install, build, or reinstall Kast and reload the Copilot session.`,
     { level: "warning" },
   );
 } else {
   const version = await execCommand(bin, ["--version"]);
   await session.log(
-    `kast extension ready (binary: ${bin}, version: ${cliVersionFromStdout(version.stdout) || "unknown"}; toolSpecSource: ${toolSpecLoad.source}; tools: ${toolNames.join(", ")})`,
+    `kast extension ready (binary: ${bin}, version: ${cliVersionFromStdout(version.stdout) || "unknown"}; tools: none; guidance: typed agent commands)`,
     { ephemeral: true },
   );
 }

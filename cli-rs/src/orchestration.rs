@@ -107,7 +107,7 @@ impl AgentUpResult {
             runtime_command,
             next_actions: vec![],
             manual_steps: vec![
-                "Run semantic requests with `kast agent call <method> --workspace-root <repo>`."
+                "Run typed semantic requests such as `kast agent symbol --query <name> --workspace-root <repo>`."
                     .to_string(),
             ],
             error: None,
@@ -252,7 +252,11 @@ fn failure_guidance(
             vec![
                 AgentUpNextAction {
                     label: "Repair managed install state".to_string(),
-                    argv: vec!["kast".to_string(), "ready".to_string(), "--fix".to_string()],
+                    argv: vec![
+                        "kast".to_string(),
+                        "repair".to_string(),
+                        "--apply".to_string(),
+                    ],
                     reason: "Repairs manifest-backed machine state before retrying agent bring-up."
                         .to_string(),
                     destructive: false,

@@ -63,14 +63,14 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Headless => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then start with: kast setup --backend=headless",
+                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then start with: kast developer runtime up --backend=headless",
                 workspace_root.display()
             ),
         ),
         BackendName::Idea => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No idea backend is installed or running for {}. Install the Kast IntelliJ plugin through Homebrew, open the project in IDEA or Android Studio, then start with: kast setup --backend=idea",
+                "No idea backend is installed or running for {}. Install the Kast IntelliJ plugin through Homebrew, open the project in IDEA or Android Studio, then start with: kast developer runtime up --backend=idea",
                 workspace_root.display()
             ),
         ),

@@ -169,7 +169,7 @@ fn top_level_help_exposes_production_and_developer_commands() {
         .expect("doctor help");
     assert!(
         !doctor_help.status.success(),
-        "machine doctor should be removed in favor of `kast ready --for machine --fix`"
+        "machine doctor should be removed in favor of `kast ready --for machine` and `kast repair --for machine --apply`"
     );
 
     let ready_help = kast(&home, &config_home)
@@ -179,8 +179,18 @@ fn top_level_help_exposes_production_and_developer_commands() {
     assert!(ready_help.status.success());
     let ready_stdout = String::from_utf8_lossy(&ready_help.stdout);
     assert!(
-        ready_stdout.contains("--fix") && ready_stdout.contains("--for <TARGET>"),
-        "ready help should expose the single readiness and repair surface: {ready_stdout}"
+        !ready_stdout.contains("--fix") && ready_stdout.contains("--for <TARGET>"),
+        "ready help should be read-only and expose target selection: {ready_stdout}"
+    );
+    let repair_help = kast(&home, &config_home)
+        .args(["repair", "--help"])
+        .output()
+        .expect("repair help");
+    assert!(repair_help.status.success());
+    let repair_stdout = String::from_utf8_lossy(&repair_help.stdout);
+    assert!(
+        repair_stdout.contains("--apply") && repair_stdout.contains("--for <TARGET>"),
+        "repair help should expose explicit repair apply gate: {repair_stdout}"
     );
 }
 

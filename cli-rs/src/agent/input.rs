@@ -51,7 +51,12 @@ fn alias_parts(command: AgentCommand) -> AliasParts {
         AgentCommand::Up(_)
         | AgentCommand::Ready(_)
         | AgentCommand::Setup(_)
-        | AgentCommand::Lsp(_) => {
+        | AgentCommand::Lsp(_)
+        | AgentCommand::Verify(_)
+        | AgentCommand::Symbol(_)
+        | AgentCommand::Impact(_)
+        | AgentCommand::Diagnostics(_)
+        | AgentCommand::Rename(_) => {
             unreachable!("operator agent commands are handled before alias prep")
         }
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before alias prep"),

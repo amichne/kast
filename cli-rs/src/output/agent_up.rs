@@ -173,7 +173,7 @@ fn print_agent_up_next_steps(document: &mut MarkdownDocument, result: &AgentUpRe
         mdln!(document, "## Next step");
         mdln!(
             document,
-            "- Run semantic requests with `kast agent call <method> --workspace-root <repo>`."
+            "- Run typed semantic requests such as `kast agent symbol --query <name> --workspace-root <repo>`."
         );
     }
     if !result.manual_steps.is_empty() {

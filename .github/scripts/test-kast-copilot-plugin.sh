@@ -67,7 +67,6 @@ const expectedTargets = new Set([
   "lsp.json",
   "extensions/kast/extension.mjs",
   "extensions/kast/_shared/kast-trace.mjs",
-  "extensions/kast/_shared/kast-tools.mjs",
 ]);
 assert(
   targets.size === expectedTargets.size &&
@@ -81,22 +80,22 @@ assertSameArray(server.args, ["agent", "lsp", "--stdio"], "LSP args");
 assert(server.initializationTimeoutMs >= 120000, "LSP timeout must allow startup");
 assert(server.initializationOptions.failOnStaleIndex === true, "LSP must fail on stale indexes");
 
-const tools = readText("extensions/kast/_shared/kast-tools.mjs");
-assert(!tools.includes("buildBundledToolSpecs"), "extension must not reconstruct tool specs from a bundled catalog");
 const extension = readText("extensions/kast/extension.mjs");
 assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
 assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
-assert(extension.includes('"agent"') && extension.includes('"up"') && extension.includes('"--no-onboard"'), "extension must invoke kast agent up for warmup");
+assert(extension.includes("kast agent symbol") && extension.includes("kast agent diagnostics"), "extension must guide typed agent commands");
+assert(extension.includes("kast agent impact") && extension.includes("kast agent rename"), "extension must guide impact and rename commands");
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
-assert(extension.includes('"agent"') && extension.includes('"call"'), "extension must use kast agent call");
-assert(extension.includes('"agent"') && extension.includes('"tools"'), "extension must load tool specs from kast agent tools");
-assert(extension.includes("isKastAgentToolsEnvelope"), "extension must validate the full KAST_AGENT_TOOLS envelope");
+assert(!extension.includes('"call"'), "extension must not use removed kast agent call");
+assert(!extension.includes('"workflow"'), "extension must not use removed kast agent workflow");
+assert(!extension.includes("isKastAgentToolsEnvelope"), "extension must not validate removed KAST_AGENT_TOOLS envelopes");
 assert(!extension.includes("bundled-catalog-fallback"), "extension must not fall back to reconstructed tool specs");
 assert(!extension.includes("bundledKastToolSpecs"), "extension must not import reconstructed tool specs");
 assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");
 assert(extension.includes("KAST_TOOLING_CONTEXT"), "extension must own runtime tooling guidance");
 assert(extension.includes("onUserPromptSubmitted"), "extension must inject prompt-time tooling guidance");
 assert(extension.includes("additionalContext"), "extension hooks must pass tooling guidance as context");
+assert(extension.includes("tools: []"), "extension must not register dynamic Copilot tools");
 assert(
   !extension.includes("customAgents") && !extension.includes("makeKastCustomAgents"),
   "extension must register tools without custom agents",
@@ -116,79 +115,14 @@ ensure_kast_bin() {
 ensure_kast_bin
 
 node --input-type=module - "$plugin_root" <<'NODE'
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 const pluginRoot = process.argv[2];
-const toolsModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-tools.mjs`);
 const traceModule = await import(`file://${pluginRoot}/extensions/kast/_shared/kast-trace.mjs`);
-const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["--output", "json", "agent", "tools", "--full"], { encoding: "utf8" }));
-if (!toolsModule.isKastAgentToolsEnvelope(agentTools)) {
-  throw new Error("source plugin must accept the current KAST_AGENT_TOOLS envelope");
-}
-if (toolsModule.isKastAgentToolsEnvelope({
-  ok: true,
-  method: "agent/tools",
-  result: { type: "WRONG", tools: [] },
-})) {
-  throw new Error("source plugin must reject malformed agent tools envelopes");
-}
-const sourceValidInvocation = {
-  command: "kast agent call",
-  argv: ["kast", "agent", "call", "<method>"],
-  methodArgument: "<method>",
-  paramsFileFlag: "--params-file",
-  workspaceRootFlag: "--workspace-root",
-};
-function sourceEnvelopeWith(result) {
-  return {
-    ok: true,
-    method: "agent/tools",
-    result: {
-      type: "KAST_AGENT_TOOLS",
-      schemaVersion: 3,
-      catalogSha256: "0".repeat(64),
-      toolCount: 0,
-      invocation: sourceValidInvocation,
-      tools: [],
-      ...result,
-    },
-  };
-}
-if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ invocation: undefined }))) {
-  throw new Error("source plugin must reject missing agent tool invocation");
-}
-if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({
-  invocation: { ...sourceValidInvocation, argv: ["kast", "rpc", "<method>"] },
-}))) {
-  throw new Error("source plugin must reject malformed agent tool invocation");
-}
-if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ schemaVersion: 2 }))) {
-  throw new Error("source plugin must reject stale agent tool schema versions");
-}
-if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ catalogSha256: "not-a-checksum" }))) {
-  throw new Error("source plugin must reject malformed agent tool catalog checksums");
-}
-if (toolsModule.isKastAgentToolsEnvelope(sourceEnvelopeWith({ toolCount: 1 }))) {
-  throw new Error("source plugin must reject mismatched agent tool counts");
-}
-const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
-const tools = toolsModule.makeKastTools(specs, (method, args) =>
-  Promise.resolve(JSON.stringify({ ok: true, method, args })),
-);
-const names = new Set(tools.map((tool) => tool.name));
-for (const required of ["kast_symbol_query", "kast_resolve", "kast_references", "kast_workspace_search", "kast_metrics"]) {
-  if (!names.has(required)) throw new Error(`source plugin import missing ${required}`);
-}
-const sourceResolveTool = tools.find((tool) => tool.name === "kast_resolve");
-if (!sourceResolveTool.description.includes("Preferred Kotlin funnel tool")) {
-  throw new Error("source symbol tools must use CLI-provided funnel guidance");
-}
-const sourceScaffoldTool = tools.find((tool) => tool.name === "kast_scaffold");
-if (!sourceScaffoldTool.parameters.properties.kind.type.includes("null")) {
-  throw new Error("source tool schemas must preserve nullable fields from kast agent tools");
-}
-const sourceRenameTool = tools.find((tool) => tool.name === "kast_rename");
-if (!Array.isArray(sourceRenameTool.parameters.oneOf) || sourceRenameTool.parameters.oneOf.length < 2) {
-  throw new Error("source tool schemas must preserve variant oneOf schemas from kast agent tools");
+const agentTools = spawnSync(process.env.KAST_BIN, ["--output", "json", "agent", "tools", "--full"], { encoding: "utf8" });
+if (agentTools.status === 0) throw new Error("kast agent tools must remain removed");
+const removedEnvelope = JSON.parse(agentTools.stdout);
+if (removedEnvelope.ok !== false || removedEnvelope.method !== "agent/tools" || removedEnvelope.error?.code !== "AGENT_COMMAND_REMOVED") {
+  throw new Error(`unexpected removed agent tools envelope: ${agentTools.stdout}`);
 }
 const trace = traceModule.createTraceEmitter({
   env: { KAST_COPILOT_TRACE: "1" },
@@ -199,134 +133,49 @@ const trace = traceModule.createTraceEmitter({
 });
 const record = trace.emit("copilot.test", {
   invocationId: "invocation-test",
-  agentRole: "kast-tool",
+  agentRole: "kast-guidance",
   sdkRegistrationScope: "extension-session",
-  ...traceModule.traceFieldsFromParams({ filePath: `${pluginRoot}/extensions/kast/_shared/kast-tools.mjs`, moduleName: "plugin" }),
-  detail: { method: "raw/file-outline" },
+  ...traceModule.traceFieldsFromParams({ filePath: `${pluginRoot}/extensions/kast/extension.mjs`, moduleName: "plugin" }),
+  detail: { command: "kast agent symbol" },
 });
 if (record.type !== "kast.copilot.trace") throw new Error("trace record type mismatch");
 if (record.schemaVersion !== 1) throw new Error("trace schema version mismatch");
 if (record.invocationId !== "invocation-test") throw new Error("trace invocation id missing");
-if (record.agentRole !== "kast-tool") throw new Error("trace agent role missing");
+if (record.agentRole !== "kast-guidance") throw new Error("trace agent role missing");
 if (record.sdkRegistrationScope !== "extension-session") throw new Error("trace registration scope missing");
 if (!record.canonicalWorkspaceRoot) throw new Error("trace canonical workspace root missing");
-if (!record.canonicalTargetFilePath?.endsWith("extensions/kast/_shared/kast-tools.mjs")) {
+if (!record.canonicalTargetFilePath?.endsWith("extensions/kast/extension.mjs")) {
   throw new Error("trace canonical target file path missing");
 }
 NODE
 
-"${plugin_root}/scripts/install-local.sh" --target "$tmp_dir" --force >"${tmp_dir}/install.json"
+install_status=0
+if "${plugin_root}/scripts/install-local.sh" --target "$tmp_dir" --force >"${tmp_dir}/install.json"; then
+  install_status=0
+else
+  install_status=$?
+fi
+if [[ "$install_status" -eq 0 ]]; then
+  printf '%s\n' "expected removed Copilot installer to fail" >&2
+  exit 1
+fi
 
-test -f "$tmp_dir/.github/lsp.json"
-test -f "$tmp_dir/.github/extensions/kast/extension.mjs"
-test -f "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
-test -f "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
+test ! -e "$tmp_dir/.github/lsp.json"
+test ! -e "$tmp_dir/.github/extensions/kast/extension.mjs"
+test ! -e "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
+test ! -e "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
 test ! -e "$tmp_dir/.github/.kast-copilot-version"
 
-node --input-type=module - "$HOME/.local/share/kast/install.json" "$tmp_dir" <<'NODE'
-import { readFileSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+node --input-type=module - "$tmp_dir/install.json" <<'NODE'
+import { readFileSync } from "node:fs";
 
-const manifestPath = process.argv[2];
-const target = realpathSync(process.argv[3]);
-const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-const repo = manifest.repos.find((candidate) => candidate.path === target);
-if (!repo) throw new Error(`missing managed repo record for ${target}`);
-if (repo.copilotPackageVersion) throw new Error("copilotPackageVersion must not be written for new installs");
-const resource = repo.resources?.find((candidate) => candidate.kind === "COPILOT_PACKAGE");
-if (!resource) throw new Error("missing COPILOT_PACKAGE resource record");
-if (!/^[a-f0-9]{64}$/.test(resource.sourceBundleSha256)) {
-  throw new Error("source bundle checksum must be a SHA-256 hex string");
+const payload = JSON.parse(readFileSync(process.argv[2], "utf8"));
+if (payload.ok !== false || payload.method !== "agent/setup/copilot" || payload.error?.code !== "AGENT_COMMAND_REMOVED") {
+  throw new Error(`unexpected removed Copilot installer envelope: ${JSON.stringify(payload)}`);
 }
-const outputs = new Set(resource.outputPaths.map((outputPath) => realpathSync(outputPath)));
-for (const relative of [
-  ".github/lsp.json",
-  ".github/extensions/kast/extension.mjs",
-  ".github/extensions/kast/_shared/kast-tools.mjs",
-  ".github/extensions/kast/_shared/kast-trace.mjs",
-]) {
-  const expected = join(target, relative);
-  if (!outputs.has(expected)) throw new Error(`missing output path ${expected}`);
-}
-NODE
-
-node --input-type=module - "$tmp_dir" <<'NODE'
-import { execFileSync } from "node:child_process";
-const target = process.argv[2];
-const toolsModule = await import(`file://${target}/.github/extensions/kast/_shared/kast-tools.mjs`);
-const agentTools = JSON.parse(execFileSync(process.env.KAST_BIN, ["--output", "json", "agent", "tools", "--full"], { encoding: "utf8" }));
-if (!toolsModule.isKastAgentToolsEnvelope(agentTools)) {
-  throw new Error("installed plugin must accept the current KAST_AGENT_TOOLS envelope");
-}
-if (toolsModule.isKastAgentToolsEnvelope({
-  ok: true,
-  method: "agent/tools",
-  result: { type: "WRONG", tools: [] },
-})) {
-  throw new Error("installed plugin must reject malformed agent tools envelopes");
-}
-const installedValidInvocation = {
-  command: "kast agent call",
-  argv: ["kast", "agent", "call", "<method>"],
-  methodArgument: "<method>",
-  paramsFileFlag: "--params-file",
-  workspaceRootFlag: "--workspace-root",
-};
-function installedEnvelopeWith(result) {
-  return {
-    ok: true,
-    method: "agent/tools",
-    result: {
-      type: "KAST_AGENT_TOOLS",
-      schemaVersion: 3,
-      catalogSha256: "0".repeat(64),
-      toolCount: 0,
-      invocation: installedValidInvocation,
-      tools: [],
-      ...result,
-    },
-  };
-}
-if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ invocation: undefined }))) {
-  throw new Error("installed plugin must reject missing agent tool invocation");
-}
-if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({
-  invocation: { ...installedValidInvocation, argv: ["kast", "rpc", "<method>"] },
-}))) {
-  throw new Error("installed plugin must reject malformed agent tool invocation");
-}
-if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ schemaVersion: 2 }))) {
-  throw new Error("installed plugin must reject stale agent tool schema versions");
-}
-if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ catalogSha256: "not-a-checksum" }))) {
-  throw new Error("installed plugin must reject malformed agent tool catalog checksums");
-}
-if (toolsModule.isKastAgentToolsEnvelope(installedEnvelopeWith({ toolCount: 1 }))) {
-  throw new Error("installed plugin must reject mismatched agent tool counts");
-}
-const specs = toolsModule.toolSpecsFromAgentToolsResult(agentTools);
-const tools = toolsModule.makeKastTools(specs, (method, args) =>
-  Promise.resolve(JSON.stringify({ ok: true, method, args })),
-);
-const names = new Set(tools.map((tool) => tool.name));
-for (const required of ["kast_symbol_query", "kast_resolve", "kast_references", "kast_workspace_files", "kast_metrics"]) {
-  if (!names.has(required)) throw new Error(`missing ${required}`);
-}
-const resolveTool = tools.find((tool) => tool.name === "kast_resolve");
-if (!resolveTool.description.includes("Preferred Kotlin funnel tool")) {
-  throw new Error("symbol tools must include funnel guidance");
-}
-const workspaceFiles = tools.find((tool) => tool.name === "kast_workspace_files");
-if (!workspaceFiles.description.includes("Secondary workspace inspection tool")) {
-  throw new Error("workspace files must be secondary");
-}
-const scaffoldTool = tools.find((tool) => tool.name === "kast_scaffold");
-if (!scaffoldTool.parameters.properties.kind.type.includes("null")) {
-  throw new Error("installed tool schemas must preserve nullable fields from kast agent tools");
-}
-const renameTool = tools.find((tool) => tool.name === "kast_rename");
-if (!Array.isArray(renameTool.parameters.oneOf) || renameTool.parameters.oneOf.length < 2) {
-  throw new Error("installed tool schemas must preserve variant oneOf schemas from kast agent tools");
+const replacements = new Set(payload.error?.details?.replacements ?? []);
+if (!replacements.has("kast setup --workspace-root <repo>")) {
+  throw new Error("removed Copilot installer should point to root kast setup");
 }
 NODE
 

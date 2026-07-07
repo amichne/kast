@@ -9,15 +9,13 @@ development install scripts copy into `.github`.
 The package provides the repository-local Copilot integration:
 
 - `lsp.json` starts `kast agent lsp --stdio`.
-- `extensions/kast/extension.mjs` injects runtime tooling guidance, loads
-  catalog-backed `kast_*` tool specs from `kast agent tools`, and invokes them
-  through `kast agent call`.
+- `extensions/kast/extension.mjs` injects runtime tooling guidance for the typed
+  `kast`, `kast help`, `kast ready`, and public `kast agent` command dialect.
 - `primitive-manifest.json` defines the files copied into a repository
   `.github` directory.
 
-The durable decision record for package ownership, manifest-backed resource
-trust, and active-binary workflow support is
-`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+The durable decision record for the minimal v1 agent asset and command dialect
+is `.agents/adr/0005-axi-only-agent-cli-and-semantic-edit-dialect.md`.
 
 ## Edit rules
 
@@ -30,12 +28,12 @@ trust, and active-binary workflow support is
 - Do not edit generated `.github` package copies as the source of truth.
   Regenerate or reinstall them from this tree.
 - Do not add package behavior that exists only to support older active
-  binaries. Missing `kast agent` or `kast agent workflow` support is an
-  upgrade/reinstall requirement.
-- Keep the package surface focused on LSP, runtime guidance, and
-  `kast agent tools`/`kast agent call` backed `kast_*` tools. Do not add
-  package-specific custom agents or static instruction entrypoints unless the
-  public package shape is intentionally being expanded.
+  binaries. Missing typed `kast agent` support is an upgrade/reinstall
+  requirement.
+- Keep the package surface focused on LSP and runtime guidance. Do not add
+  package-specific custom agents, static instruction entrypoints,
+  `kast agent tools`, `kast agent call`, or `kast_*` tool registration unless
+  the public package shape is intentionally being expanded in a new ADR.
 
 ## Downstream surfaces
 

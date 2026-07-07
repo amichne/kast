@@ -90,10 +90,7 @@ pub fn print_workspace_ensure(result: &WorkspaceEnsureResult) -> Result<()> {
     mdln!(document);
     mdln!(document, "## Next steps");
     mdln!(document, "- Check state again: `kast status`");
-    mdln!(
-        document,
-        "- Check agent health: `kast agent call health --params '{{}}'`"
-    );
+    mdln!(document, "- Check agent health: `kast agent verify`");
     print_markdown(&document.into_string())
 }
 

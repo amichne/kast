@@ -84,9 +84,9 @@ pub fn maybe_run_agent_up_onboarding(
     }
 
     eprintln!();
-    eprintln!("Kast can configure IDEA-backed agent workflows for this repository.");
+    eprintln!("Kast can configure IDEA-backed agent guidance for this repository.");
     eprintln!("It can install or refresh the JetBrains plugin, save IDEA defaults,");
-    eprintln!("prepare repository agent resources, and warm the runtime.");
+    eprintln!("prepare repository agent guidance, and warm the runtime.");
     eprintln!();
 
     let accepted = Confirm::new()

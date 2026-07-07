@@ -1,224 +1,83 @@
 ---
 title: Install
-description: Install the macOS Homebrew CLI and IDEA plugin, then add
-  repository-local agent guidance where agents should use it.
+description: Install the Homebrew CLI and add minimal repository agent guidance.
 icon: lucide/download
 ---
 
 # Developer Machine Install
 
-This page is the macOS developer-machine path. Homebrew owns the developer
-machine's CLI and IDEA or Android Studio plugin, while shared agent guidance
-belongs to each repository.
-
-| Scope | Command | Writes to | Repeat when |
-|-------|---------|-----------|-------------|
-| Machine CLI + IDE plugin | `brew install kast` | Homebrew-managed global binary on `PATH` and version-coupled `kast-plugin` cask | A macOS developer machine needs Kast |
-| Machine IDE plugin repair | `brew reinstall --cask kast-plugin` | Homebrew-managed plugin linked into local JetBrains profiles | Local IDE profile links need repair |
-| Repository | `kast setup` | The current repository's `.agents/skills/kast`, managed context guidance, and detected hooks | A repository should expose Kast guidance to agents |
-
-Linux CI, hosted agents, and server images use the separate
-[Headless Linux server](headless-linux.md) install path.
+This page is the macOS developer-machine path. Linux CI, hosted agents, and
+server images use the separate [Headless Linux server](headless-linux.md) path.
 
 ## Developer machine
 
-Use this path on a macOS developer machine. A functional Homebrew install
-includes the global `kast` binary and the Homebrew-managed IDEA or Android
-Studio plugin, then the repository install adds shared agent guidance to one
-repository.
-
-```console title="Global binary, then repository agent guidance"
+```console
 brew tap amichne/kast
 brew install kast
 
 cd /path/to/your/repository
-kast setup
+kast setup --workspace-root "$PWD"
 ```
 
-`brew install kast` installs or refreshes the matching `kast-plugin` cask as
-part of the Homebrew formula install, using the same cask path as
-`brew install --cask kast-plugin`. Restart IDEA or Android Studio after
-Homebrew links or refreshes the plugin, then restart after installing
-repository files so agents discover `.agents/skills/kast`, managed
-`AGENTS.local.md` guidance, runtime guidance, and catalog-backed tools at startup.
+Homebrew installs the global `kast` binary and the version-coupled
+`kast-plugin` cask. Repository setup is separate and intentionally small.
 
-On the first eligible run in a smart interactive terminal, the
-Homebrew-installed `kast setup` offers automatic IDEA setup for IDEA-backed
-agent workflows. Accepting lets you save IDEA as the default backend and
-automatic IDEA launch either globally or for this repository only. Project-open
-local guidance setup is enabled by default. The flow also installs or refreshes
-the JetBrains plugin, installs repository agent guidance, and warms the
-workspace runtime. Scripts, repeatable setup, and development aliases such as
-`kast-dev` should use `kast setup --no-open-ide` or
-`kast --output json setup ...`.
+## Repository Agent Guidance
 
-??? success "Homebrew machine install"
-    `brew install kast` is machine-level. It installs one `kast` executable
-    that can serve many repositories, then installs or reinstalls the
-    version-coupled `kast-plugin` cask so local JetBrains IDE profiles link to
-    the matching plugin.
-    Confirm the binary and managed plugin state before debugging repository
-    files:
+`kast setup` installs or repairs only two v1 assets:
 
-    ```console
-    kast --version
-    kast ready
-    ```
+- `.agents/skills/kast/SKILL.md`
+- one managed `<kast>...</kast>` region in the selected repo context file
 
-??? tip "Repository agent guidance"
-    `kast setup` is the normal repository bring-up command. When only the
-    repository guidance should be installed, `kast setup` installs the
-    shared Kast skill, patches the repository context file, and configures
-    detected hooks. Run
-    it from the repository root, or pass explicit targets:
+The default context target is the first existing file from `AGENTS.md`,
+`CODEX.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or
+`AGENTS.local.md`. If none exists, setup creates ignored `AGENTS.local.md`.
 
-    ```console title="Install into another repository"
-    kast setup --workspace-root /Users/alex/work/project --no-open-ide
-    kast setup --workspace-root /Users/alex/work/project --force
-    kast setup --workspace-root /Users/alex/work/project --context-file /Users/alex/work/project/cli-rs/AGENTS.md --force
-    ```
-
-    The command writes managed files for the running CLI version:
-
-    - `.agents/skills/kast/SKILL.md`
-    - the first existing context file from `AGENTS.md`, `CODEX.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or `AGENTS.local.md`; otherwise `AGENTS.local.md`
-    - `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` fenced regions in local or explicit guidance files
-    - detected Codex, Claude Code, OpenCode, or Copilot hook resources
-
-    The global `$HOME/.local/share/kast/install.json` manifest records the
-    repository resource version, source bundle checksum, output checksums, and
-    install time. `kast ready` verifies those manifest-backed files and fails
-    closed when an installed output is missing or tampered.
-
-??? tip "Harness-agnostic agent setup"
-    Some enterprise environments need guidance and tooling exposure without an
-    MCP-dependent integration. Use `kast setup --dry-run` to inspect setup
-    plus runtime warmup, or `kast setup --dry-run` when only the skill,
-    context guidance, and detected hooks should be installed:
-
-    ```console title="Install repository agent guidance"
-    kast setup --dry-run
-    kast setup
-    kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
-    ```
-
-    The command installs `.agents/skills/kast`, patches only the managed
-    `<kast ...>` region on repeat runs, and configures detected hooks. Pass
-    `--context-file` for additional explicit scoped `AGENTS.md`, `CODEX.md`,
-    `CLAUDE.md`, `.github/copilot-instructions.md`, or `AGENTS.local.md`
-    targets.
-
-??? info "Homebrew-managed IDE plugin"
-    The IDEA or Android Studio plugin is part of the macOS developer install.
-    The `kast-plugin` cask stages the plugin and links it into local
-    JetBrains profiles. Use the CLI command when profile links need repair or
-    when a Homebrew cask refresh needs to be applied through Kast:
-
-    ```console title="Install or repair local IDE profiles"
-    brew reinstall --cask kast-plugin
-    kast developer machine plugin
-    ```
-
-    Restart the IDE after replacing or linking the plugin.
-
-## Repair and path inspection
-
-Most readers do not need these commands on the first pass. Use them when an
-existing install is stale, a shell profile needs to be updated, or a local IDE
-profile needs repair.
-
-Kast 1.0 resolves every install-owned path from the install manifest at
-`$HOME/.local/share/kast/install.json`. The user config file remains
-`$HOME/.config/kast/config.toml`, but it only owns behavior settings such as
-backend selection, indexing policy, launch policy, telemetry, profiling, and
-`[cli] dynamicOutput = false` when implicit output should stay TOON even in an
-interactive human terminal. Do not put install roots, CLI paths, daemon paths,
-socket paths, runtime library paths, or managed install state in `config.toml`;
-those values come from the manifest-backed resolver.
-
-??? question "Inspect the active path model"
-    Use `kast developer inspect paths` when you need the exact resolved paths that the CLI,
-    repository Copilot package, headless runtime, and IDE integration should share.
-
-    ```console title="Show resolved paths"
-    kast developer inspect paths
-    kast --output json developer inspect paths
-    ```
-
-??? question "Repair stale managed files"
-    Plain `kast ready` is read-only. It reports manifest validity, canonical
-    paths, binary linkage, behavior config validity, and managed files that
-    can be repaired. Use `kast ready --fix` as the only broad convergence
-    command after upgrading Kast, moving between install methods, or seeing
-    stale managed paths.
-
-    ```console title="Audit install state"
-    kast ready
-    ```
-
-    ```console title="Repair install state"
-    kast ready --fix
-    ```
-
-    Repair mode writes the install manifest, refreshes the stable shim,
-    removes install-owned keys from behavior config, and creates backups under
-    `KAST_CONFIG_HOME/backups` before replacing or removing managed files.
-
-??? info "Shell integration"
-    Use `kast developer machine shell` to add the directory that contains the active
-    `kast` shim to your `PATH` and source completions from a managed file
-    under `KAST_CONFIG_HOME/shell`.
-
-    === "Bash"
-
-        ```console title="Install Bash integration"
-        kast developer machine shell --shell bash
-        ```
-
-    === "Zsh"
-
-        ```console title="Install Zsh integration"
-        kast developer machine shell --shell zsh
-        ```
-
-## Source checkout development
-
-When the target directory is inside a Git repository, `kast setup`
-adds an idempotent managed block to `.git/info/exclude` for the generated
-package files. Keep those generated files visible to Git with
-`--no-auto-exclude-git`:
-
-```console title="Install without updating .git/info/exclude"
-kast setup --no-auto-exclude-git
+```console title="Plan and install repository guidance"
+kast setup --dry-run --workspace-root "$PWD"
+kast setup --workspace-root "$PWD"
+kast setup --workspace-root "$PWD" --context-file "$PWD/cli-rs/AGENTS.md" --force
 ```
 
-From this source checkout, the development script installs the same
-`cli-rs/resources/plugin/` Copilot package into another repository root. This
-is for validating unreleased package changes, not for ordinary users.
+Use `--context-file` for additional explicit guidance targets. Use
+`--no-auto-exclude-git` only when generated local guidance should remain visible
+to Git.
 
-```console title="Install Copilot package from this checkout"
-cli-rs/resources/plugin/scripts/install-local.sh --target /Users/alex/work/project --force
+Setup does not install Copilot package files, portable Markdown instruction
+packages, session hooks, generated catalog copies, or workflow helper assets in
+v1. Enterprise environments that cannot use public GitHub still only need to
+mirror the Kast binary/runtime artifacts plus this skill and managed guidance
+region; the setup flow is not MCP-dependent.
+
+## Readiness And Repair
+
+Readiness is read-only:
+
+```console
+kast ready --for agent --workspace-root "$PWD"
+kast ready --for kotlin --workspace-root "$PWD"
 ```
 
-Validate the source package with `.github/scripts/test-kast-copilot-plugin.sh`.
-For live Copilot CLI validation of the SDK extension tools, load the source
-package explicitly with `--plugin-dir cli-rs/resources/plugin`.
+Repair is explicit and plan-first:
 
-Use the development Gradle task when you need a local debug CLI and IDEA plugin
-from the checkout. It also configures the developer-machine backend default to
-the IDEA plugin backend:
-
-```console title="Install local development CLI and plugin"
-./gradlew installDevelopmentLocal
+```console
+kast repair --for agent --workspace-root "$PWD"
+kast repair --for agent --workspace-root "$PWD" --apply
 ```
 
-## Next steps
+Use `kast developer inspect paths` when you need the manifest-backed path model.
 
-After installation, choose the path that matches your workflow.
+```console
+kast developer inspect paths
+kast --output json developer inspect paths
+```
 
-- [Quickstart](quickstart.md) runs the first lifecycle and semantic commands.
-- [Commands](../commands/index.md) explains the CLI command groups.
-- [Headless Linux server](headless-linux.md) covers CI runners, hosted
-  agents, and server images.
-- [Troubleshooting](../troubleshooting.md) covers stale repository files,
-  missing binaries, and backend startup issues.
+## IDE Plugin
+
+Use the Homebrew-managed cask or developer-machine command when local JetBrains
+profile links need repair:
+
+```console
+brew reinstall --cask kast-plugin
+kast developer machine plugin
+```

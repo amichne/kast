@@ -17,12 +17,6 @@
     },
     {
       "type": "PACKAGE_FILE",
-      "source": "extensions/kast/_shared/kast-tools.mjs",
-      "target": "extensions/kast/_shared/kast-tools.mjs",
-      "executable": false
-    },
-    {
-      "type": "PACKAGE_FILE",
       "source": "extensions/kast/_shared/kast-trace.mjs",
       "target": "extensions/kast/_shared/kast-trace.mjs",
       "executable": false

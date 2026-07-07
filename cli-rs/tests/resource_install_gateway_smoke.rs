@@ -2,8 +2,23 @@ mod support;
 
 use support::*;
 
+fn assert_removed(output: &std::process::Output, method: &str) -> serde_json::Value {
+    assert!(
+        !output.status.success(),
+        "{method} should be removed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("removed command json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["method"], method, "{stdout}");
+    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    stdout
+}
+
 #[test]
-fn install_resource_gateways_support_force_and_current_versions() {
+fn install_resource_gateways_support_skill_and_reject_removed_assets() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -94,7 +109,6 @@ fn install_resource_gateways_support_force_and_current_versions() {
     let forced_skill_stdout: serde_json::Value =
         serde_json::from_slice(&forced_skill.stdout).expect("forced skill json");
     assert_eq!(forced_skill_stdout["skipped"], false);
-
     assert!(!stale_skill.join(".kast-version").exists());
 
     let instructions = kast(&home, &config_home)
@@ -110,32 +124,12 @@ fn install_resource_gateways_support_force_and_current_versions() {
         ])
         .output()
         .expect("install instructions");
+    assert_removed(&instructions, "agent/setup/instructions");
+    assert!(!stale_instructions.join("README.md").exists());
     assert!(
-        instructions.status.success(),
-        "instructions install should accept -f: stdout={}, stderr={}",
-        String::from_utf8_lossy(&instructions.stdout),
-        String::from_utf8_lossy(&instructions.stderr)
+        stale_instructions.join(".kast-version").exists(),
+        "removed instruction setup must not mutate existing target"
     );
-    let instructions_stdout: serde_json::Value =
-        serde_json::from_slice(&instructions.stdout).expect("instructions install json");
-    assert_eq!(
-        instructions_stdout["installedAt"],
-        stale_instructions.display().to_string()
-    );
-    assert!(stale_instructions.join("README.md").is_file());
-    assert!(stale_instructions.join("cli.md").is_file());
-    assert!(stale_instructions.join("tools.md").is_file());
-    assert!(stale_instructions.join("lsp.md").is_file());
-    assert!(!stale_instructions.join("AGENTS.md").exists());
-    assert!(!stale_instructions.join("rpc.md").exists());
-    assert_eq!(
-        instructions_stdout["sourceBundleSha256"]
-            .as_str()
-            .expect("instructions source checksum")
-            .len(),
-        64
-    );
-    assert!(!stale_instructions.join(".kast-version").exists());
 
     std::fs::create_dir_all(github_dir.join("agents")).expect("stale agents dir");
     std::fs::create_dir_all(github_dir.join("instructions")).expect("stale instructions dir");
@@ -151,11 +145,6 @@ fn install_resource_gateways_support_force_and_current_versions() {
         b"old reader\n",
     )
     .expect("stale reader");
-    std::fs::write(
-        github_dir.join("agents/kast-writer.agent.md"),
-        b"old writer\n",
-    )
-    .expect("stale writer");
     std::fs::write(
         github_dir.join("extensions/kast/_shared/kast-agents.mjs"),
         b"old agents\n",
@@ -175,66 +164,21 @@ fn install_resource_gateways_support_force_and_current_versions() {
         ])
         .output()
         .expect("install copilot");
-    assert!(
-        copilot.status.success(),
-        "copilot install should accept --force: stdout={}, stderr={}",
-        String::from_utf8_lossy(&copilot.stdout),
-        String::from_utf8_lossy(&copilot.stderr)
-    );
-    let copilot_stdout: serde_json::Value =
-        serde_json::from_slice(&copilot.stdout).expect("copilot install json");
-    assert_eq!(
-        copilot_stdout["installedAt"],
-        github_dir.display().to_string()
-    );
-    assert!(github_dir.join("lsp.json").is_file());
-    assert!(
-        !github_dir
-            .join("instructions/kast-kotlin.instructions.md")
-            .exists()
-    );
-    assert!(github_dir.join("extensions/kast/extension.mjs").is_file());
+    assert_removed(&copilot, "agent/setup/copilot");
+    assert!(!github_dir.join("lsp.json").exists());
+    assert!(!github_dir.join("extensions/kast/extension.mjs").exists());
     assert!(
         github_dir
-            .join("extensions/kast/_shared/kast-tools.mjs")
-            .is_file()
-    );
-    assert!(
-        github_dir
-            .join("extensions/kast/_shared/kast-trace.mjs")
-            .is_file()
-    );
-    assert!(
-        !github_dir
             .join("extensions/kast/_shared/kast-agents.mjs")
             .exists()
     );
     assert!(
-        !github_dir
+        github_dir
             .join("instructions/kast-kotlin.instructions.md")
             .exists()
     );
-    assert!(!github_dir.join("agents/kast-reader.agent.md").exists());
-    assert!(!github_dir.join("agents/kast-writer.agent.md").exists());
-    assert_eq!(
-        copilot_stdout["sourceBundleSha256"]
-            .as_str()
-            .expect("copilot source checksum")
-            .len(),
-        64
-    );
-    assert!(
-        copilot_stdout["outputPaths"]
-            .as_array()
-            .expect("copilot output paths")
-            .iter()
-            .any(|path| path
-                .as_str()
-                .expect("path")
-                .ends_with("extensions/kast/extension.mjs"))
-    );
+    assert!(github_dir.join("agents/kast-reader.agent.md").exists());
 
-    assert!(!github_dir.join(".kast-copilot-version").exists());
     let manifest: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(install_manifest_path(&home)).expect("install manifest"),
     )
@@ -246,7 +190,9 @@ fn install_resource_gateways_support_force_and_current_versions() {
         .flat_map(|repo| repo["resources"].as_array().into_iter().flatten())
         .map(|resource| resource["kind"].as_str().expect("kind"))
         .collect::<std::collections::BTreeSet<_>>();
-    assert!(resource_kinds.contains("SKILL"), "{manifest}");
-    assert!(resource_kinds.contains("INSTRUCTIONS"), "{manifest}");
-    assert!(resource_kinds.contains("COPILOT_PACKAGE"), "{manifest}");
+    assert_eq!(
+        resource_kinds,
+        std::collections::BTreeSet::from(["SKILL"]),
+        "{manifest}"
+    );
 }

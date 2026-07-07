@@ -1,124 +1,62 @@
 ---
 title: Install And Repair Commands
-description: Install repository resources, shell integration, plugins, bundles, and managed state.
+description: Install repository guidance and repair managed install state.
 icon: lucide/wrench
 ---
 
 # Install And Repair Commands
 
-Install commands write managed files. Run them deliberately, then use
-`kast ready` and `kast developer inspect paths` to verify the active install state.
+## Repository Setup
 
-## Repository resources
+Use `kast setup` once per repository where agents should discover Kast guidance.
+The v1 setup surface installs only:
 
-Use `kast setup` once per repository where agents should discover Kast
-guidance without depending on a harness-specific package. The command installs
-the packaged skill under `.agents/skills/kast`, patches the repository context
-file, and configures detected hooks. If no supported context file exists, it
-creates an ignored `AGENTS.local.md` file with a Kast-managed fenced region:
-`<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">`.
+- `.agents/skills/kast/SKILL.md`
+- one managed `<kast>...</kast>` guidance region
 
-```console title="Install harness-agnostic agent guidance"
-cd /path/to/your/repository
-kast setup
+```console
+kast setup --dry-run --workspace-root "$PWD"
+kast setup --workspace-root "$PWD"
 kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
 ```
 
-Use `--force` after upgrading the machine binary or when a managed fenced
-region was intentionally reset to the active binary's guidance.
-Use `--context-file` only when a scoped authored guidance file should also carry
-the managed Kast region.
+If no supported context file exists, setup creates ignored `AGENTS.local.md`.
+Pass `--context-file` for an explicit `AGENTS.md`, `CODEX.md`, `CLAUDE.md`,
+`.github/copilot-instructions.md`, or `AGENTS.local.md` target.
 
-Use `kast setup` when setup and runtime warmup should happen together. Start
-with `--dry-run` to inspect the skill target, guidance targets, and runtime
-command before writing files or starting a backend.
-In a smart interactive terminal, the first eligible non-JSON run from the
-Homebrew-installed `kast` can ask whether to apply automatic IDEA setup.
-Project-open local guidance setup is enabled by default; accepting lets the
-user save IDEA backend and launch defaults globally or for this repository
-only. The flow installs or refreshes the JetBrains plugin, prepares
-harness-agnostic agent guidance, then warms the repository runtime. Use
-`--no-open-ide` when an interactive terminal or development alias should behave
-like automation.
-In JSON dry-runs, both `setup.installCommand` and `runtimeCommand` start with
-the executable token used for the dry run, so copied binaries and absolute CLI
-paths remain directly callable.
+JSON dry-runs report `skillTarget`, `agentsMdTargets`, and `installCommand`.
 
-```console title="Bring a repository up for agents"
-kast setup --dry-run
-kast setup --workspace-root "$PWD"
-kast setup --workspace-root "$PWD" --backend=headless
-kast setup --workspace-root "$PWD" --no-open-ide
+## Readiness
+
+`kast ready` reports readiness and does not mutate install state:
+
+```console
+kast ready --workspace-root "$PWD"
+kast ready --for machine --workspace-root "$PWD"
+kast ready --for kotlin --workspace-root "$PWD"
+kast ready --for release --workspace-root "$PWD"
 ```
 
-In JSON dry-runs, `skillTarget`, `agentsMdTargets`, and `installCommand`
-include the target paths plus the executable token used for the dry run, so
-copied binaries and absolute CLI paths remain directly callable.
+## Repair
 
-## Machine repair
+`kast repair` is the explicit repair gate. Without `--apply`, it plans only.
 
-Use `kast ready` as the broad read-only check. Add `--fix` only when you
-want Kast to rewrite install-owned state such as the manifest, managed shim,
-and stale resource records.
-
-```console title="Audit and repair"
-kast ready
-kast ready --fix
+```console
+kast repair --workspace-root "$PWD"
+kast repair --workspace-root "$PWD" --apply
+kast repair --for machine --workspace-root "$PWD" --apply
 ```
 
-Use `--for` when the failure mode is task-specific. `machine` treats a missing
-or mismatched configured binary as a hard failure, and `kotlin` requires an
-installed semantic backend in the manifest.
+Use `kast developer inspect paths` when you only need the manifest-backed path
+model.
 
-```console title="Targeted readiness checks"
-kast ready --for machine
-kast ready --for kotlin
-kast ready --for release
-```
-
-Use `kast developer inspect paths` when you only need to inspect the manifest-backed path model.
-
-```console title="Inspect resolved paths"
+```console
 kast developer inspect paths
 kast --output json developer inspect paths
 ```
 
-## Plugin and shell integration
+## Out Of Scope In V1
 
-The Homebrew formula installs or refreshes the version-coupled
-`kast-plugin` cask. Use `kast developer machine plugin` or the cask directly when local
-JetBrains profile links need repair.
-
-```console title="Repair local IDE profile links"
-brew reinstall --cask kast-plugin
-kast developer machine plugin
-```
-
-Use `kast developer machine defaults` to make developer-machine commands prefer
-the IDEA plugin backend unless a command explicitly passes another backend.
-
-```console title="Configure developer-machine backend defaults"
-kast developer machine defaults
-```
-
-Use `kast developer machine shell` to add the active shim directory to a shell profile
-and write managed completion integration.
-
-```console title="Install shell integration"
-kast developer machine shell --shell zsh
-kast developer machine shell --shell bash
-```
-
-## Linux bundle activation
-
-Release builds use `kast developer release package ubuntu-debian-bundle` to build the Linux
-headless tarball. Servers and images can activate an extracted or archived
-bundle with `kast developer release activate bundle`.
-
-```console title="Activate a portable bundle"
-kast developer release activate bundle \
-  --source /artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz
-```
-
-Use `--verify-only` when an image build should prove the bundle and current
-install without changing files.
+Repository setup does not install Copilot package files, portable Markdown
+instruction packages, session hooks, generated catalog copies, or workflow helper
+assets.
