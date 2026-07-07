@@ -2,15 +2,13 @@
 
 This directory owns the Kast Rust CLI crate.
 
-Large command surfaces must be split by responsibility before they grow into
-catch-all files. Keep the crate root and module root files as facades: imports,
-constants, and explicit `include!` part ordering only. Domain behavior belongs
-in the named subdirectory next to the facade.
+Large command surfaces are split by responsibility. Keep the crate root and
+module root files as facades: imports, constants, and explicit `include!` part
+ordering. Domain behavior belongs in the named subdirectory next to the
+facade.
 
-When adding a new part file, name it for the contract it owns, not for a generic
-helper bucket. Avoid `util.rs`, `common.rs`, or broad shared modules unless the
-type itself is the contract.
+When adding a new part file, name it for the contract it owns. Shared modules
+use names tied to the typed contract they expose.
 
-Do not loosen types to make a split compile. If visibility or ownership becomes
-awkward, model the boundary explicitly and let the compiler force every caller
-through it.
+Keep visibility and ownership boundaries explicit so the compiler forces every
+caller through the modeled contract.

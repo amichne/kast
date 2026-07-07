@@ -7,5 +7,5 @@ Keep TOML DTOs separate from the normalized `KastConfig` model. Path resolution
 must explain ownership and source for every reported path. Workspace identity
 must prefer verifiable filesystem or Git facts over guessed strings.
 
-Do not hide install-owned configuration conflicts. Surface them through typed
-reports so repair code can make explicit decisions.
+Install-owned configuration conflicts surface through typed reports so repair
+code can make explicit decisions.

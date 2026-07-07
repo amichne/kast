@@ -1,39 +1,33 @@
-# Copilot package source guide
+# Package source guide
 
 This file applies to `cli-rs/resources/plugin/` and descendants. This tree is
-the authored source for the Kast Copilot package that repository setup and
-development install scripts copy into `.github`.
+the authored source for Kast package artifacts used by release validation and
+development packaging.
 
 ## Local purpose
 
-The package provides the repository-local Copilot integration:
+The package provides repository-local editor integration material:
 
 - `lsp.json` starts `kast agent lsp --stdio`.
 - `extensions/kast/extension.mjs` injects runtime tooling guidance for the typed
   `kast`, `kast help`, `kast ready`, and public `kast agent` command dialect.
-- `primitive-manifest.json` defines the files copied into a repository
-  `.github` directory.
+- `primitive-manifest.json` defines the package artifact shape.
 
-The durable decision record for the minimal v1 agent asset and command dialect
-is `.agents/adr/0005-axi-only-agent-cli-and-semantic-edit-dialect.md`.
+The current source-of-truth contract for public workflows and command dialect
+is `.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
 
 ## Edit rules
 
-- Edit this source tree first for Copilot package changes.
+- Edit this source tree first for package changes.
 - Update `plugin.json` when entrypoints, package requirements, or package
   metadata change.
 - Update `primitive-manifest.json` when installed output files change.
 - Keep installed output paths relative and under the target `.github`
   package shape.
-- Do not edit generated `.github` package copies as the source of truth.
-  Regenerate or reinstall them from this tree.
-- Do not add package behavior that exists only to support older active
-  binaries. Missing typed `kast agent` support is an upgrade/reinstall
-  requirement.
-- Keep the package surface focused on LSP and runtime guidance. Do not add
-  package-specific custom agents, static instruction entrypoints,
-  `kast agent tools`, `kast agent call`, or `kast_*` tool registration unless
-  the public package shape is intentionally being expanded in a new ADR.
+- Generated `.github` package copies come from this source tree.
+- Keep package behavior aligned with `kast agent lsp --stdio`, `kast ready`,
+  `kast repair`, and typed `kast agent` commands.
+- Public package shape changes begin with a superseding ADR.
 
 ## Downstream surfaces
 
@@ -44,8 +38,7 @@ same change:
 - `docs/commands/agent.md`
 - `docs/commands/lsp.md`
 - `docs/troubleshooting.md`
-- `.agents/adr/0003-cli-command-documentation-operating-model.md` or a
-  superseding ADR when the product story changes
+- a superseding ADR when the product story changes
 - `.github/scripts/test-docs-content-contract.sh`
 
 ## Verify

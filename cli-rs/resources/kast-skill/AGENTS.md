@@ -1,15 +1,14 @@
 # Kast skill and internal catalog guide
 
 This file applies to `cli-rs/resources/kast-skill/` and descendants. This tree
-contains the packaged skill entrypoint plus internal command catalog material
-used by docs, backend contracts, release checks, and generated LSP custom route
+contains the packaged skill entrypoint plus internal catalog material used by
+docs, backend contracts, release checks, and generated LSP custom route
 metadata.
 
 ## Local purpose
 
-- `SKILL.md` is the only file installed by v1 repository setup.
-- `references/commands.json` is the internal machine-readable RPC and tool
-  catalog.
+- `SKILL.md` is the packaged skill source installed by repository setup.
+- `references/commands.json` is the internal machine-readable command catalog.
 - `references/commands.yaml` and generated request schemas/samples are derived
   contract artifacts.
 - `references/quickstart.md` and `references/runbook.md` are agent-facing
@@ -17,30 +16,25 @@ metadata.
 - `references/workflows.md` owns install/config/package verification, project
   readiness, semantic workflow sequencing, and recovery ownership.
 - `scripts/verify-kast-state.py` is an internal deterministic helper for
-  read-only state checks. It must not advertise catalog, workflow, Copilot
-  package, portable instruction package, or hook surfaces as v1 setup assets.
+  read-only state checks.
 
-The durable decision record for package ownership, manifest-backed resource
-trust, and active-binary workflow support is
-`.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+The current source-of-truth contract for the public product surface, workflows,
+AXI command dialect, and validation gates is
+`.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
 
 ## Edit rules
 
 - Treat `references/commands.json` as the source catalog for internal methods,
   request fields, tool names, and flow grouping.
 - Regenerate derived contract artifacts after catalog changes.
-- Keep command and tool descriptions aligned with the current product story in
-  `.agents/adr/0001-agent-first-install-and-docs-operating-model.md`.
-- Do not add JVM-owned handlers for Rust-owned `database/*` or source-index
-  query methods.
-- Keep recovery guidance resolve-first and compiler-backed; do not route
-  Kotlin symbol work through text search.
-- Do not preserve public workflow, catalog-call, or tool-discovery helpers
-  solely for older binaries. Stale surfaces should return targeted replacement
-  guidance toward typed `kast agent` commands.
-- Prefer scripts only for internal verification. Keep them JSON-emitting, eager
-  about input validation, and read-only unless a future command explicitly
-  documents mutation.
+- Keep command and tool descriptions aligned with ADR 0006.
+- Rust CLI modules own operational source-index reads; JVM handlers own
+  API-backed semantic work.
+- Keep recovery guidance resolve-first and compiler-backed.
+- Skill guidance routes agents to `kast ready`, `kast repair`, and typed
+  `kast agent` commands.
+- Scripts are internal verification helpers. Keep them JSON-emitting, eager
+  about input validation, and read-only by default.
 
 ## Downstream surfaces
 

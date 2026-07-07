@@ -15,8 +15,8 @@ Keep this unit focused on transport concerns around the backend interface.
   descriptor directory; shutdown removes them.
 - Keep capability checks, truncation, and request-limit handling aligned with
   backend responses.
-- Do not move PSI logic, workspace discovery, or CLI parsing into this unit.
-  Those belong in `backend-headless` or `kast`.
+- PSI logic, workspace discovery, and CLI parsing stay in their runtime host
+  and Rust CLI owners.
 
 ## Verification
 
