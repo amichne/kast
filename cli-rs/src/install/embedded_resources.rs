@@ -5,16 +5,8 @@ struct EmbeddedResourceFile {
     executable: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ResourceReplaceMode {
-    WholeDirectory,
-    ManagedFilesOnly,
-}
-
 const THIN_SKILL_OUTPUTS: &[&str] = &["SKILL.md"];
-const THIN_INSTRUCTION_OUTPUTS: &[&str] = &["README.md", "cli.md", "tools.md", "lsp.md"];
 const RETIRED_SKILL_PACKAGE_OUTPUTS: &[&str] = &["AGENTS.md", "fixtures", "references", "scripts"];
-const RETIRED_INSTRUCTION_OUTPUTS: &[&str] = &["AGENTS.md", "rpc.md"];
 
 #[derive(Debug)]
 struct EmbeddedResourceInstallOutcome {
@@ -30,7 +22,6 @@ fn install_embedded_resource(
     files: &[EmbeddedResourceFile],
     force: bool,
     retired_markers: &[&str],
-    replace_mode: ResourceReplaceMode,
 ) -> Result<EmbeddedResourceInstallOutcome> {
     let source_bundle_sha256 = source_bundle_sha256(files);
     let output_paths = files
@@ -58,10 +49,7 @@ fn install_embedded_resource(
     if target.exists()
         && !force
         && retired_outputs_present
-        && matches!(
-            kind,
-            ManagedResourceKind::Skill | ManagedResourceKind::Instructions
-        )
+        && kind == ManagedResourceKind::Skill
         && !manifest_managed
         && !retired_marker_managed
     {
@@ -91,18 +79,8 @@ fn install_embedded_resource(
         ));
     }
 
-    match replace_mode {
-        ResourceReplaceMode::WholeDirectory => {
-            if target.exists() && (force || manifest_managed || retired_marker_managed) {
-                fs::remove_dir_all(target)?;
-            }
-        }
-        ResourceReplaceMode::ManagedFilesOnly => {
-            if force || manifest_managed || retired_marker_managed || retired_outputs_present {
-                remove_managed_resource_outputs(&output_paths)?;
-                remove_retired_copilot_package_outputs(target)?;
-            }
-        }
+    if target.exists() && (force || manifest_managed || retired_marker_managed) {
+        fs::remove_dir_all(target)?;
     }
     remove_paths(&retired_marker_paths)?;
     write_embedded_resource_files(target, files)?;
@@ -112,23 +90,6 @@ fn install_embedded_resource(
         output_checksums: resource_output_checksums(&output_paths)?,
         output_paths,
     })
-}
-
-fn embedded_dir_resource_files(dir: &'static Dir<'static>) -> Result<Vec<EmbeddedResourceFile>> {
-    let mut files = Vec::new();
-    collect_embedded_dir_files(dir.entries(), &mut files)?;
-    files.sort_by(|left, right| left.relative.cmp(&right.relative));
-    Ok(files)
-}
-
-fn resource_install_files(
-    source_dir: Option<&Path>,
-    embedded_dir: &'static Dir<'static>,
-) -> Result<Vec<EmbeddedResourceFile>> {
-    match source_dir {
-        Some(source_dir) => filesystem_resource_files(source_dir),
-        None => embedded_dir_resource_files(embedded_dir),
-    }
 }
 
 fn thin_skill_install_files(
@@ -151,18 +112,6 @@ fn thin_skill_install_files(
         }],
     };
     require_resource_outputs(files, THIN_SKILL_OUTPUTS)
-}
-
-fn thin_instruction_install_files(
-    source_dir: Option<&Path>,
-    embedded_dir: &'static Dir<'static>,
-) -> Result<Vec<EmbeddedResourceFile>> {
-    let files = resource_install_files(source_dir, embedded_dir).map(|files| {
-        filter_resource_install_files(files, |relative| {
-            relative_matches_any(relative, THIN_INSTRUCTION_OUTPUTS)
-        })
-    })?;
-    require_resource_outputs(files, THIN_INSTRUCTION_OUTPUTS)
 }
 
 fn filter_resource_install_files(
@@ -249,30 +198,6 @@ fn collect_filesystem_resource_files(
     Ok(())
 }
 
-fn collect_embedded_dir_files(
-    entries: &[DirEntry<'static>],
-    files: &mut Vec<EmbeddedResourceFile>,
-) -> Result<()> {
-    for entry in entries {
-        match entry {
-            DirEntry::Dir(dir) => collect_embedded_dir_files(dir.entries(), files)?,
-            DirEntry::File(file) => {
-                if is_retired_resource_marker(file.path())
-                    || is_generated_resource_cache_file(file.path())
-                {
-                    continue;
-                }
-                files.push(EmbeddedResourceFile {
-                    relative: file.path().to_path_buf(),
-                    contents: file.contents().to_vec(),
-                    executable: is_script_contents(file.contents()),
-                });
-            }
-        }
-    }
-    Ok(())
-}
-
 fn is_generated_resource_cache_file(path: &Path) -> bool {
     path.components().any(|component| {
         component
@@ -290,7 +215,7 @@ fn is_generated_resource_cache_file(path: &Path) -> bool {
 fn is_retired_resource_marker(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| matches!(name, RESOURCE_MARKER | COPILOT_PACKAGE_MARKER))
+        .is_some_and(|name| name == RESOURCE_MARKER)
 }
 
 fn is_script_contents(contents: &[u8]) -> bool {
@@ -379,13 +304,6 @@ fn manifest_has_resource(kind: ManagedResourceKind, target: &Path) -> Result<boo
     )
 }
 
-fn remove_managed_resource_outputs(paths: &[PathBuf]) -> Result<()> {
-    for path in paths {
-        remove_existing_path(path)?;
-    }
-    Ok(())
-}
-
 fn remove_paths(paths: &[PathBuf]) -> Result<()> {
     for path in paths {
         remove_existing_path(path)?;
@@ -393,29 +311,14 @@ fn remove_paths(paths: &[PathBuf]) -> Result<()> {
     Ok(())
 }
 
-fn remove_retired_copilot_package_outputs(github_dir: &Path) -> Result<()> {
-    for relative in RETIRED_COPILOT_PACKAGE_OUTPUTS {
-        remove_existing_path(&github_dir.join(relative))?;
-    }
-    Ok(())
-}
-
-fn retired_copilot_package_outputs_present(github_dir: &Path) -> bool {
-    RETIRED_COPILOT_PACKAGE_OUTPUTS
-        .iter()
-        .any(|relative| github_dir.join(relative).exists())
-}
-
 fn retired_resource_outputs_present(kind: ManagedResourceKind, target: &Path) -> bool {
     match kind {
-        ManagedResourceKind::CopilotPackage => retired_copilot_package_outputs_present(target),
         ManagedResourceKind::Skill => RETIRED_SKILL_PACKAGE_OUTPUTS
             .iter()
             .any(|relative| target.join(relative).exists()),
-        ManagedResourceKind::Instructions => RETIRED_INSTRUCTION_OUTPUTS
-            .iter()
-            .any(|relative| target.join(relative).exists()),
-        ManagedResourceKind::AgentGuidance => false,
+        ManagedResourceKind::AgentGuidance
+        | ManagedResourceKind::CopilotPackage
+        | ManagedResourceKind::Instructions => false,
     }
 }
 
@@ -598,8 +501,8 @@ fn canonical_path_for_compare(path: &Path) -> PathBuf {
 fn git_exclude_markers(kind: ManagedResourceKind) -> (&'static str, &'static str) {
     match kind {
         ManagedResourceKind::CopilotPackage => (
-            COPILOT_GIT_EXCLUDE_BLOCK_START,
-            COPILOT_GIT_EXCLUDE_BLOCK_END,
+            "# >>> kast copilot package >>>",
+            "# <<< kast copilot package <<<",
         ),
         ManagedResourceKind::Skill => ("# >>> kast skill >>>", "# <<< kast skill <<<"),
         ManagedResourceKind::Instructions => {
@@ -610,87 +513,6 @@ fn git_exclude_markers(kind: ManagedResourceKind) -> (&'static str, &'static str
             "# <<< kast agent guidance <<<",
         ),
     }
-}
-
-struct CopilotPackageOutput {
-    target: PathBuf,
-    contents: &'static [u8],
-    executable: bool,
-}
-
-fn copilot_package_outputs() -> Result<Vec<CopilotPackageOutput>> {
-    let manifest = embedded_file_contents(&COPILOT_PLUGIN, COPILOT_PRIMITIVE_MANIFEST)?;
-    let manifest: Value = serde_json::from_slice(manifest)?;
-    let outputs = manifest
-        .get("outputs")
-        .and_then(Value::as_array)
-        .ok_or_else(|| {
-            CliError::new(
-                "COPILOT_PACKAGE_MANIFEST_INVALID",
-                "Copilot primitive manifest must contain an outputs array.",
-            )
-        })?;
-    let mut resolved = Vec::with_capacity(outputs.len());
-    for output in outputs {
-        let output_type = manifest_string_field(output, "type")?;
-        let source = manifest_string_field(output, "source")?;
-        let target = validate_manifest_relative_path(manifest_string_field(output, "target")?)?;
-        let source = validate_manifest_relative_path(source)?;
-        let source_path = source.to_string_lossy();
-        let contents = match output_type {
-            "PACKAGE_FILE" => embedded_file_contents(&COPILOT_PLUGIN, &source_path)?,
-            other => {
-                return Err(CliError::new(
-                    "COPILOT_PACKAGE_MANIFEST_INVALID",
-                    format!("Unsupported Copilot package output type `{other}`."),
-                ));
-            }
-        };
-        resolved.push(CopilotPackageOutput {
-            target,
-            contents,
-            executable: output
-                .get("executable")
-                .and_then(Value::as_bool)
-                .unwrap_or(false),
-        });
-    }
-    Ok(resolved)
-}
-
-fn embedded_file_contents(dir: &'static Dir<'static>, relative: &str) -> Result<&'static [u8]> {
-    dir.get_file(relative)
-        .map(|file| file.contents())
-        .ok_or_else(|| {
-            CliError::new(
-                "COPILOT_PACKAGE_SOURCE_MISSING",
-                format!("Embedded Copilot package source `{relative}` was not found."),
-            )
-        })
-}
-
-fn manifest_string_field<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
-    value.get(field).and_then(Value::as_str).ok_or_else(|| {
-        CliError::new(
-            "COPILOT_PACKAGE_MANIFEST_INVALID",
-            format!("Copilot package output must contain string field `{field}`."),
-        )
-    })
-}
-
-fn validate_manifest_relative_path(value: &str) -> Result<PathBuf> {
-    let path = Path::new(value);
-    let safe = !value.trim().is_empty()
-        && path
-            .components()
-            .all(|component| matches!(component, Component::Normal(_) | Component::CurDir));
-    if safe && !path.is_absolute() {
-        return Ok(path.to_path_buf());
-    }
-    Err(CliError::new(
-        "COPILOT_PACKAGE_MANIFEST_INVALID",
-        format!("Manifest path `{value}` must be relative and must not contain `..`."),
-    ))
 }
 
 #[cfg(unix)]

@@ -2,9 +2,6 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
         InstallResult::ActivateBundle(result) => print_activate_bundle_install(result),
         InstallResult::AgentGuidance(result) => print_agent_guidance_setup_result(result),
-        InstallResult::Skill(result) => print_skill_install(result),
-        InstallResult::Instructions(result) => print_instructions_install(result),
-        InstallResult::Copilot(result) => print_copilot_install("Kast Copilot install", result),
         InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
     }
@@ -12,7 +9,7 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
 
 pub fn print_agent_guidance_setup_plan(result: &AgentGuidanceSetupPlan) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast agent setup plan");
+    mdln!(document, "# Kast setup plan");
     mdln!(document);
     mdln!(document, "- Skill target: `{}`", result.skill_target);
     mdln!(
@@ -42,7 +39,7 @@ pub fn print_agent_guidance_setup_plan(result: &AgentGuidanceSetupPlan) -> Resul
 
 pub fn print_agent_guidance_setup_result(result: &AgentGuidanceSetupResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast agent setup");
+    mdln!(document, "# Kast setup");
     mdln!(document);
     mdln!(document, "- Skill target: `{}`", result.skill.installed_at);
     mdln!(
@@ -68,34 +65,7 @@ pub fn print_agent_guidance_setup_result(result: &AgentGuidanceSetupResult) -> R
     print_markdown(&document.into_string())
 }
 
-pub fn print_agent_setup_auto_plan(result: &AgentSetupAutoPlan) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast agent setup plan");
-    mdln!(document);
-    mdln!(
-        document,
-        "- Harness: `{}`",
-        agent_setup_harness_label(result.harness)
-    );
-    mdln!(
-        document,
-        "- Selection source: `{}`",
-        agent_setup_source_label(result.selection_source)
-    );
-    mdln!(document, "- Reason: {}", result.reason);
-    if let Some(target_dir) = &result.target_dir {
-        mdln!(document, "- Target directory: `{target_dir}`");
-    }
-    mdln!(
-        document,
-        "- Would run: `{}`",
-        result.install_command.join(" ")
-    );
-    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
-    print_markdown(&document.into_string())
-}
-
-pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
+pub fn print_setup_runtime_result(result: &SetupRuntimeResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast setup");
     mdln!(document);
@@ -104,7 +74,7 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
     mdln!(
         document,
         "- Stage: `{}`",
-        agent_up_stage_label(result.stage)
+        setup_runtime_stage_label(result.stage)
     );
     mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
     mdln!(document, "- Skill target: `{}`", result.setup.skill_target);
@@ -157,16 +127,16 @@ pub fn print_agent_up_result(result: &AgentUpResult) -> Result<()> {
         mdln!(document, "- Code: {}", error.code);
         mdln!(document, "- Message: {}", error.message);
     }
-    print_agent_up_next_steps(&mut document, result);
+    print_setup_runtime_next_steps(&mut document, result);
     print_markdown(&document.into_string())
 }
 
-fn print_agent_up_next_steps(document: &mut MarkdownDocument, result: &AgentUpResult) {
+fn print_setup_runtime_next_steps(document: &mut MarkdownDocument, result: &SetupRuntimeResult) {
     if !result.next_actions.is_empty() {
         mdln!(document);
         mdln!(document, "## Next step");
         for action in &result.next_actions {
-            print_agent_up_next_action(document, action);
+            print_setup_runtime_next_action(document, action);
         }
     } else if result.ok {
         mdln!(document);
@@ -189,19 +159,22 @@ fn print_agent_up_next_steps(document: &mut MarkdownDocument, result: &AgentUpRe
     }
 }
 
-fn print_agent_up_next_action(document: &mut MarkdownDocument, action: &AgentUpNextAction) {
+fn print_setup_runtime_next_action(
+    document: &mut MarkdownDocument,
+    action: &SetupRuntimeNextAction,
+) {
     mdln!(document, "- {}: `{}`", action.label, action.argv.join(" "));
     mdln!(document, "  Reason: {}", action.reason);
 }
 
-fn agent_up_stage_label(stage: AgentUpStage) -> &'static str {
+fn setup_runtime_stage_label(stage: SetupRuntimeStage) -> &'static str {
     match stage {
-        AgentUpStage::Onboarding => "onboarding",
-        AgentUpStage::DryRun => "dry-run",
-        AgentUpStage::SetupDone => "setup-done",
-        AgentUpStage::RuntimeReady => "runtime-ready",
-        AgentUpStage::RuntimeBlocked => "runtime-blocked",
-        AgentUpStage::RepairRequired => "repair-required",
+        SetupRuntimeStage::Onboarding => "onboarding",
+        SetupRuntimeStage::DryRun => "dry-run",
+        SetupRuntimeStage::SetupDone => "setup-done",
+        SetupRuntimeStage::RuntimeReady => "runtime-ready",
+        SetupRuntimeStage::RuntimeBlocked => "runtime-blocked",
+        SetupRuntimeStage::RepairRequired => "repair-required",
     }
 }
 
@@ -221,21 +194,6 @@ fn install_summary(result: &InstallResult) -> InstallSummary<'_> {
         InstallResult::AgentGuidance(result) => InstallSummary {
             kind: "agent guidance",
             target: &result.skill.installed_at,
-            skipped: Some(result.skipped),
-        },
-        InstallResult::Skill(result) => InstallSummary {
-            kind: "skill",
-            target: &result.installed_at,
-            skipped: Some(result.skipped),
-        },
-        InstallResult::Instructions(result) => InstallSummary {
-            kind: "instructions",
-            target: &result.installed_at,
-            skipped: Some(result.skipped),
-        },
-        InstallResult::Copilot(result) => InstallSummary {
-            kind: "copilot",
-            target: &result.installed_at,
             skipped: Some(result.skipped),
         },
         InstallResult::IdeaPlugin(result) => InstallSummary {

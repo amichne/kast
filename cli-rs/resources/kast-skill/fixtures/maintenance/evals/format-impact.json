@@ -1,23 +1,23 @@
 {
   "$schema": "./format-impact.schema.json",
   "schemaVersion": 1,
-  "description": "Report-only paired JSON versus TOON cases for measuring Kast agent output comprehension, route accuracy, and byte cost without making live model results a CI gate.",
+  "description": "Report-only paired JSON versus TOON cases for measuring Kast typed-agent output comprehension, route accuracy, and byte cost without making live model results a CI gate.",
   "formats": [
     "json",
     "toon"
   ],
   "cases": [
     {
-      "id": "tool-catalog-comprehension",
-      "scenario": "TOOL_CATALOG_COMPREHENSION",
-      "prompt": "Given the agent tool catalog, choose the first Kast action for finding where EventBean is declared in a Kotlin workspace.",
+      "id": "typed-command-plan-comprehension",
+      "scenario": "TYPED_COMMAND_PLAN_COMPREHENSION",
+      "prompt": "Given a read-only Kast rename plan, identify the selected typed command, explain why mutation has not happened yet, and name the follow-up command to apply it.",
       "pairedFormats": [
         "json",
         "toon"
       ],
       "inputArtifact": {
-        "kind": "agent-tools",
-        "description": "Use the current kast agent tools envelope in JSON and TOON forms."
+        "kind": "agent-rename-plan",
+        "description": "Use `kast agent rename` without `--apply` in JSON and TOON forms."
       },
       "expectedPrimitive": {
         "type": "skill",
@@ -26,31 +26,31 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/query"
+          "name": "kast agent rename --symbol --new-name --apply"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
-        "workspace file dump",
-        "manual package inference"
+        "manual edit before apply",
+        "raw JSON-RPC dispatch"
       ],
       "goldFacts": [
-        "The envelope method is agent/tools.",
-        "The result type is KAST_AGENT_TOOLS.",
-        "The selected route is symbol/query, not text search."
+        "The envelope method is agent/rename.",
+        "The result type is KAST_AGENT_RENAME_PLAN.",
+        "The plan is read-only until the same typed command is rerun with --apply."
       ],
       "answerScoring": {
         "requiredTerms": [
-          "agent/tools",
-          "KAST_AGENT_TOOLS",
-          "symbol/query"
+          "agent/rename",
+          "KAST_AGENT_RENAME_PLAN",
+          "--apply"
         ],
         "forbiddenTerms": [
           "grep",
           "rg",
-          "workspace file dump",
-          "manual package inference"
+          "manual edit before apply",
+          "raw JSON-RPC dispatch"
         ]
       },
       "metrics": [
@@ -65,14 +65,14 @@
     {
       "id": "symbol-result-extraction",
       "scenario": "SYMBOL_RESULT_EXTRACTION",
-      "prompt": "Given a symbol resolve envelope, extract the method, resolved declaration identity, file path, and the next inspection action without inventing fields.",
+      "prompt": "Given a typed symbol lookup envelope, extract the command method, resolved declaration identity, file path, and next inspection action without inventing fields.",
       "pairedFormats": [
         "json",
         "toon"
       ],
       "inputArtifact": {
         "kind": "synthetic-envelope",
-        "description": "Use a stable symbol/resolve-style envelope encoded as JSON and TOON."
+        "description": "Use a stable typed `kast agent symbol` result encoded as JSON and TOON."
       },
       "expectedPrimitive": {
         "type": "skill",
@@ -81,7 +81,7 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/scaffold"
+          "name": "kast agent diagnostics --file-path"
         }
       ],
       "forbiddenActions": [
@@ -91,16 +91,16 @@
         "generic file read before Kast"
       ],
       "goldFacts": [
-        "The envelope method is symbol/resolve.",
+        "The envelope method is agent/symbol.",
         "The declaration is EventBean.",
         "The file path must be read from result data, not inferred from the package name."
       ],
       "answerScoring": {
         "requiredTerms": [
-          "symbol/resolve",
+          "agent/symbol",
           "EventBean",
           "src/main/kotlin/com/example/EventBean.kt",
-          "symbol/scaffold"
+          "diagnostics"
         ],
         "forbiddenTerms": [
           "grep",
@@ -120,14 +120,14 @@
     {
       "id": "relationship-navigation-continuation",
       "scenario": "RELATIONSHIP_NAVIGATION",
-      "prompt": "Continue from a resolved Kotlin declaration by finding usages and incoming callers, preserving symbol identity across the next Kast calls.",
+      "prompt": "Continue from a resolved Kotlin declaration by finding usages and incoming callers, preserving symbol identity across typed Kast commands.",
       "pairedFormats": [
         "json",
         "toon"
       ],
       "inputArtifact": {
         "kind": "synthetic-envelope",
-        "description": "Use a resolved symbol envelope that contains enough identity to request references and callers."
+        "description": "Use a typed symbol envelope that contains enough identity to request references and callers."
       },
       "expectedPrimitive": {
         "type": "skill",
@@ -136,11 +136,11 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/references"
+          "name": "kast agent symbol --query --references"
         },
         {
           "kind": "command",
-          "name": "kast agent call symbol/callers"
+          "name": "kast agent symbol --query --callers incoming"
         }
       ],
       "forbiddenActions": [
@@ -150,15 +150,15 @@
         "unresolved name matching"
       ],
       "goldFacts": [
-        "The continuation must use symbol/references or symbol/callers.",
+        "The continuation must use typed symbol references or callers flags.",
         "The action must preserve the resolved symbol identity.",
         "Text matching is not an acceptable replacement."
       ],
       "answerScoring": {
         "requiredTerms": [
           "EventBean",
-          "symbol/references",
-          "symbol/callers"
+          "--references",
+          "--callers incoming"
         ],
         "forbiddenTerms": [
           "grep",
@@ -176,16 +176,16 @@
       "reportOnly": true
     },
     {
-      "id": "validation-error-recovery",
-      "scenario": "VALIDATION_RECOVERY",
-      "prompt": "Given an AGENT_REQUEST_INVALID envelope for symbol/resolve, repair the request using JSON params and retry the same method.",
+      "id": "read-only-plan-recovery",
+      "scenario": "READ_ONLY_PLAN_RECOVERY",
+      "prompt": "Given a rename plan that says applyRequired=true, preserve the same symbol and new name, then choose the typed command that performs the mutation.",
       "pairedFormats": [
         "json",
         "toon"
       ],
       "inputArtifact": {
-        "kind": "validation-error",
-        "description": "Use the current validation error envelope from kast agent call symbol/resolve."
+        "kind": "agent-rename-plan",
+        "description": "Use a read-only rename plan from the supported typed command."
       },
       "expectedPrimitive": {
         "type": "skill",
@@ -194,32 +194,31 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent call symbol/resolve --params-file"
+          "name": "kast agent rename --symbol --new-name --apply"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
-        "TOON params",
-        "changing methods instead of repairing params"
+        "changing symbol identity",
+        "manual package inference"
       ],
       "goldFacts": [
-        "The error code is AGENT_REQUEST_INVALID.",
-        "Request params remain JSON even when stdout was TOON.",
-        "The retry method remains symbol/resolve."
+        "The plan has applyRequired=true.",
+        "Mutation requires the typed rename command with --apply.",
+        "The symbol and new name must be preserved from the plan."
       ],
       "answerScoring": {
         "requiredTerms": [
-          "AGENT_REQUEST_INVALID",
-          "JSON",
-          "symbol/resolve",
-          "--params-file"
+          "applyRequired",
+          "--apply",
+          "EventRecord"
         ],
         "forbiddenTerms": [
           "grep",
           "rg",
-          "TOON params",
-          "changing methods instead of repairing params"
+          "changing symbol identity",
+          "manual package inference"
         ]
       },
       "metrics": [
@@ -231,16 +230,16 @@
       "reportOnly": true
     },
     {
-      "id": "workflow-evidence-json-artifacts",
-      "scenario": "WORKFLOW_EVIDENCE",
-      "prompt": "Given TOON workflow stdout, identify the workflow result and inspect the emitted workflow evidence files as JSON artifacts.",
+      "id": "typed-sequence-evidence",
+      "scenario": "TYPED_SEQUENCE_EVIDENCE",
+      "prompt": "Given typed symbol output, describe a repeatable evidence sequence for a rename and diagnostics pass using only supported Kast commands.",
       "pairedFormats": [
         "json",
         "toon"
       ],
       "inputArtifact": {
-        "kind": "workflow-dry-run",
-        "description": "Use a dry-run symbol workflow stdout envelope plus its generated workflow files."
+        "kind": "synthetic-envelope",
+        "description": "Use typed symbol output that names follow-up diagnostics and symbol-preserving actions."
       },
       "expectedPrimitive": {
         "type": "skill",
@@ -249,32 +248,39 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent workflow symbol --dry-run"
+          "name": "kast agent verify"
+        },
+        {
+          "kind": "command",
+          "name": "kast agent rename --symbol --new-name"
+        },
+        {
+          "kind": "command",
+          "name": "kast agent diagnostics --file-path"
         }
       ],
       "forbiddenActions": [
         "grep",
         "rg",
-        "TOON workflow files",
+        "ad hoc protocol transport",
         "treating dry-run as mutation proof"
       ],
       "goldFacts": [
-        "Only stdout changes format.",
-        "workflow.json remains JSON.",
-        "Step input and stdout files remain JSON."
+        "The repeatable sequence uses typed commands.",
+        "Rename planning is separate from applying mutation.",
+        "Diagnostics remain the validation step after changes."
       ],
       "answerScoring": {
         "requiredTerms": [
-          "agent/workflow/symbol",
-          "dryRun",
-          "workflow.json",
-          "stdout.json",
-          "JSON"
+          "verify",
+          "rename",
+          "diagnostics",
+          "typed"
         ],
         "forbiddenTerms": [
           "grep",
           "rg",
-          "TOON workflow files",
+          "ad hoc protocol transport",
           "treating dry-run as mutation proof"
         ]
       },
@@ -309,9 +315,8 @@
         }
       ],
       "forbiddenActions": [
-        "kast agent call",
-        "kast agent workflow",
-        "symbol/query",
+        "kast agent symbol",
+        "kast agent impact",
         "semantic backend warmup"
       ],
       "goldFacts": [
@@ -324,9 +329,8 @@
           "docs content contract"
         ],
         "forbiddenTerms": [
-          "kast agent call",
-          "kast agent workflow",
-          "symbol/query",
+          "kast agent symbol",
+          "kast agent impact",
           "semantic backend warmup"
         ]
       },
@@ -338,16 +342,16 @@
       "reportOnly": true
     },
     {
-      "id": "large-read-only-catalog-efficiency",
+      "id": "large-typed-output-efficiency",
       "scenario": "LARGE_READ_ONLY_OUTPUT",
-      "prompt": "Compare JSON and TOON agent tool catalog output and report whether the denser form preserves semantics while reducing stdout bytes.",
+      "prompt": "Compare JSON and TOON forms of a typed Kast symbol result and report whether the denser form preserves semantics while reducing stdout bytes.",
       "pairedFormats": [
         "json",
         "toon"
       ],
       "inputArtifact": {
-        "kind": "agent-tools",
-        "description": "Use the current agent tools catalog because it is a large read-only response."
+        "kind": "synthetic-envelope",
+        "description": "Use a typed read-only agent result with nested step data."
       },
       "expectedPrimitive": {
         "type": "skill",
@@ -356,7 +360,7 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent tools --full"
+          "name": "kast agent symbol --query"
         }
       ],
       "forbiddenActions": [
@@ -368,15 +372,15 @@
       "goldFacts": [
         "TOON decodes to the same JSON value as explicit JSON output.",
         "TOON stdout bytes are lower than pretty JSON bytes.",
-        "The agent tools schemaVersion and catalogSha256 are preserved."
+        "The typed result preserves method, step, and symbol fields."
       ],
       "answerScoring": {
         "requiredTerms": [
           "TOON",
           "same JSON value",
           "lower",
-          "schemaVersion",
-          "catalogSha256"
+          "agent/symbol",
+          "EventBean"
         ],
         "forbiddenTerms": [
           "grep",

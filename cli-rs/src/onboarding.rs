@@ -1,4 +1,4 @@
-use crate::cli::{AgentUpArgs, BackendName, IdeaPluginInstallArgs, OutputFormat};
+use crate::cli::{BackendName, IdeaPluginInstallArgs, OutputFormat, SetupArgs};
 use crate::error::{CliError, Result};
 use crate::{config, install, self_mgmt};
 use dialoguer::{Confirm, Select};
@@ -7,14 +7,14 @@ use std::io::{self, IsTerminal};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AgentUpOnboardingOutcome {
+pub enum SetupOnboardingOutcome {
     NotEligible,
     Declined,
     Applied,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct AgentUpOnboardingEligibility {
+struct SetupOnboardingEligibility {
     stdin_tty: bool,
     stdout_tty: bool,
     human_output: bool,
@@ -27,12 +27,12 @@ struct AgentUpOnboardingEligibility {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AgentUpOnboardingScope {
+enum SetupOnboardingScope {
     Global,
     Repository,
 }
 
-impl AgentUpOnboardingScope {
+impl SetupOnboardingScope {
     fn label(self) -> &'static str {
         match self {
             Self::Global => "global",
@@ -41,7 +41,7 @@ impl AgentUpOnboardingScope {
     }
 }
 
-impl AgentUpOnboardingEligibility {
+impl SetupOnboardingEligibility {
     fn allows_prompt(self) -> bool {
         self.stdin_tty
             && self.stdout_tty
@@ -55,32 +55,32 @@ impl AgentUpOnboardingEligibility {
     }
 }
 
-pub fn maybe_run_agent_up_onboarding(
-    args: &mut AgentUpArgs,
+pub fn maybe_run_setup_onboarding(
+    args: &mut SetupArgs,
     output_format: OutputFormat,
     workspace_root: &Path,
-) -> Result<AgentUpOnboardingOutcome> {
+) -> Result<SetupOnboardingOutcome> {
     let config = config::KastConfig::load(workspace_root)?;
-    let eligibility = AgentUpOnboardingEligibility {
+    let eligibility = SetupOnboardingEligibility {
         stdin_tty: io::stdin().is_terminal(),
         stdout_tty: io::stdout().is_terminal(),
         human_output: output_format == OutputFormat::Human,
         dry_run: args.dry_run,
-        no_onboard: args.no_onboard,
+        no_onboard: args.no_open_ide,
         ci: env_flag("CI"),
         dumb_terminal: env::var("TERM").is_ok_and(|term| term.eq_ignore_ascii_case("dumb")),
-        config_allows: config.can_run_agent_up_onboarding(),
+        config_allows: config.can_run_setup_onboarding(),
         homebrew_idea_plugin_installable: true,
     };
     if !eligibility.allows_prompt() {
-        return Ok(AgentUpOnboardingOutcome::NotEligible);
+        return Ok(SetupOnboardingOutcome::NotEligible);
     }
-    let eligibility = AgentUpOnboardingEligibility {
+    let eligibility = SetupOnboardingEligibility {
         homebrew_idea_plugin_installable: install::current_cli_can_install_homebrew_idea_plugin(),
         ..eligibility
     };
     if !eligibility.allows_prompt() {
-        return Ok(AgentUpOnboardingOutcome::NotEligible);
+        return Ok(SetupOnboardingOutcome::NotEligible);
     }
 
     eprintln!();
@@ -96,8 +96,8 @@ pub fn maybe_run_agent_up_onboarding(
         .map_err(|error| CliError::new("PROMPT_FAILED", error.to_string()))?;
 
     if !accepted {
-        mark_agent_up_onboarding_completed()?;
-        return Ok(AgentUpOnboardingOutcome::Declined);
+        mark_setup_onboarding_completed()?;
+        return Ok(SetupOnboardingOutcome::Declined);
     }
 
     let scope = prompt_onboarding_scope()?;
@@ -114,7 +114,7 @@ pub fn maybe_run_agent_up_onboarding(
         },
         &mut reporter,
     )?;
-    apply_agent_up_onboarding_config(scope, workspace_root)?;
+    apply_setup_onboarding_config(scope, workspace_root)?;
     prepare_current_invocation_for_idea(args);
     eprintln!();
     eprintln!(
@@ -122,10 +122,10 @@ pub fn maybe_run_agent_up_onboarding(
         scope.label(),
         workspace_root.display()
     );
-    Ok(AgentUpOnboardingOutcome::Applied)
+    Ok(SetupOnboardingOutcome::Applied)
 }
 
-fn prompt_onboarding_scope() -> Result<AgentUpOnboardingScope> {
+fn prompt_onboarding_scope() -> Result<SetupOnboardingScope> {
     let items = [
         "Global machine defaults - use IDEA-backed agents for all repositories",
         "This repository only - save IDEA defaults for this workspace",
@@ -137,9 +137,9 @@ fn prompt_onboarding_scope() -> Result<AgentUpOnboardingScope> {
         .interact()
         .map_err(|error| CliError::new("PROMPT_FAILED", error.to_string()))?;
     Ok(match selected {
-        0 => AgentUpOnboardingScope::Global,
-        1 => AgentUpOnboardingScope::Repository,
-        _ => AgentUpOnboardingScope::Global,
+        0 => SetupOnboardingScope::Global,
+        1 => SetupOnboardingScope::Repository,
+        _ => SetupOnboardingScope::Global,
     })
 }
 
@@ -149,44 +149,41 @@ fn env_flag(name: &str) -> bool {
         .is_some_and(|value| !value.trim().is_empty() && value != "0")
 }
 
-fn prepare_current_invocation_for_idea(args: &mut AgentUpArgs) {
-    if args.runtime.backend_name.is_none() {
-        args.runtime.backend_name = Some(BackendName::Idea);
+fn prepare_current_invocation_for_idea(args: &mut SetupArgs) {
+    if args.backend_name.is_none() {
+        args.backend_name = Some(BackendName::Idea);
     }
 }
 
-fn mark_agent_up_onboarding_completed() -> Result<()> {
+fn mark_setup_onboarding_completed() -> Result<()> {
     self_mgmt::update_global_config(|document| {
-        table(document, "onboarding")?.insert("agentUpCompleted".to_string(), true.into());
+        table(document, "onboarding")?.insert("setupCompleted".to_string(), true.into());
         Ok(())
     })?;
     Ok(())
 }
 
-fn apply_agent_up_onboarding_config(
-    scope: AgentUpOnboardingScope,
-    workspace_root: &Path,
-) -> Result<()> {
+fn apply_setup_onboarding_config(scope: SetupOnboardingScope, workspace_root: &Path) -> Result<()> {
     match scope {
-        AgentUpOnboardingScope::Global => self_mgmt::update_global_config(|document| {
-            write_agent_up_onboarding_defaults(document)
-        })?,
-        AgentUpOnboardingScope::Repository => {
+        SetupOnboardingScope::Global => {
+            self_mgmt::update_global_config(write_setup_onboarding_defaults)?
+        }
+        SetupOnboardingScope::Repository => {
             self_mgmt::update_workspace_config(workspace_root, |document| {
-                write_agent_up_onboarding_defaults(document)
+                write_setup_onboarding_defaults(document)
             })?
         }
     };
     Ok(())
 }
 
-fn write_agent_up_onboarding_defaults(document: &mut toml::Table) -> Result<()> {
+fn write_setup_onboarding_defaults(document: &mut toml::Table) -> Result<()> {
     self_mgmt::write_developer_machine_idea_defaults(document)?;
 
     let project_open = table(document, "projectOpen")?;
     project_open.insert("profileAutoInit".to_string(), true.into());
 
-    table(document, "onboarding")?.insert("agentUpCompleted".to_string(), true.into());
+    table(document, "onboarding")?.insert("setupCompleted".to_string(), true.into());
     Ok(())
 }
 
@@ -207,8 +204,8 @@ fn table<'a>(document: &'a mut toml::Table, key: &str) -> Result<&'a mut toml::T
 mod tests {
     use super::*;
 
-    fn eligible() -> AgentUpOnboardingEligibility {
-        AgentUpOnboardingEligibility {
+    fn eligible() -> SetupOnboardingEligibility {
+        SetupOnboardingEligibility {
             stdin_tty: true,
             stdout_tty: true,
             human_output: true,
@@ -225,21 +222,21 @@ mod tests {
     fn onboarding_requires_interactive_human_terminal() {
         assert!(eligible().allows_prompt());
         assert!(
-            !AgentUpOnboardingEligibility {
+            !SetupOnboardingEligibility {
                 stdin_tty: false,
                 ..eligible()
             }
             .allows_prompt()
         );
         assert!(
-            !AgentUpOnboardingEligibility {
+            !SetupOnboardingEligibility {
                 stdout_tty: false,
                 ..eligible()
             }
             .allows_prompt()
         );
         assert!(
-            !AgentUpOnboardingEligibility {
+            !SetupOnboardingEligibility {
                 human_output: false,
                 ..eligible()
             }
@@ -250,27 +247,27 @@ mod tests {
     #[test]
     fn onboarding_skips_explicit_noninteractive_modes() {
         for eligibility in [
-            AgentUpOnboardingEligibility {
+            SetupOnboardingEligibility {
                 dry_run: true,
                 ..eligible()
             },
-            AgentUpOnboardingEligibility {
+            SetupOnboardingEligibility {
                 no_onboard: true,
                 ..eligible()
             },
-            AgentUpOnboardingEligibility {
+            SetupOnboardingEligibility {
                 ci: true,
                 ..eligible()
             },
-            AgentUpOnboardingEligibility {
+            SetupOnboardingEligibility {
                 dumb_terminal: true,
                 ..eligible()
             },
-            AgentUpOnboardingEligibility {
+            SetupOnboardingEligibility {
                 config_allows: false,
                 ..eligible()
             },
-            AgentUpOnboardingEligibility {
+            SetupOnboardingEligibility {
                 homebrew_idea_plugin_installable: false,
                 ..eligible()
             },
@@ -281,9 +278,9 @@ mod tests {
 
     #[test]
     fn onboarding_scope_labels_are_human_readable() {
-        assert_eq!(AgentUpOnboardingScope::Global.label(), "global");
+        assert_eq!(SetupOnboardingScope::Global.label(), "global");
         assert_eq!(
-            AgentUpOnboardingScope::Repository.label(),
+            SetupOnboardingScope::Repository.label(),
             "repository-scoped"
         );
     }
@@ -292,7 +289,7 @@ mod tests {
     fn onboarding_defaults_configure_idea_agent_flow() {
         let mut document = toml::Table::new();
 
-        write_agent_up_onboarding_defaults(&mut document).expect("defaults");
+        write_setup_onboarding_defaults(&mut document).expect("defaults");
 
         assert_eq!(
             document
@@ -322,17 +319,11 @@ mod tests {
                 .and_then(toml::Value::as_bool),
             Some(true)
         );
-        let project_open = document
-            .get("projectOpen")
-            .and_then(toml::Value::as_table)
-            .expect("project open");
-        assert!(
-            !project_open.contains_key("agentHarness"),
-            "onboarding must not force a harness-specific setup path"
-        );
         assert_eq!(
-            project_open
-                .get("profileAutoInit")
+            document
+                .get("projectOpen")
+                .and_then(toml::Value::as_table)
+                .and_then(|project_open| project_open.get("profileAutoInit"))
                 .and_then(toml::Value::as_bool),
             Some(true)
         );
@@ -340,7 +331,7 @@ mod tests {
             document
                 .get("onboarding")
                 .and_then(toml::Value::as_table)
-                .and_then(|onboarding| onboarding.get("agentUpCompleted"))
+                .and_then(|onboarding| onboarding.get("setupCompleted"))
                 .and_then(toml::Value::as_bool),
             Some(true)
         );

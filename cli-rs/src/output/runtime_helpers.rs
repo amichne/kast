@@ -129,12 +129,6 @@ fn runtime_state(state: RuntimeState) -> &'static str {
     }
 }
 
-fn print_optional(document: &mut MarkdownDocument, label: &str, value: Option<&str>) {
-    if let Some(value) = value.filter(|value| !value.trim().is_empty()) {
-        mdln!(document, "- {label}: `{value}`");
-    }
-}
-
 fn print_warnings(document: &mut MarkdownDocument, warnings: &[String]) {
     print_messages(document, "Warnings", warnings);
 }
