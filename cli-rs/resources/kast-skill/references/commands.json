@@ -1540,7 +1540,7 @@
         "description": "Query source-index metrics: fanIn, fanOut, deadCode, impact, coupling, search, graph. Use this database-backed view for architecture, blast-radius, and impact questions before wider semantic traversal."
       },
       "notes": [
-        "Use this as the public source-index database surface through kast agent call or kast developer inspect metrics.",
+        "Use this as the source-index database backing for kast agent impact and kast developer inspect metrics.",
         "Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for supported metrics."
       ]
     }

@@ -79,6 +79,7 @@ if (initialize.error) {
       "DAEMON_START_ERROR",
       "HEADLESS_BACKEND_NOT_INSTALLED",
       "IDEA_NOT_RUNNING",
+      "MACOS_PLUGIN_WORKSPACE_REQUIRED",
       "NO_BACKEND_AVAILABLE",
       "RUNTIME_TIMEOUT",
     ].includes(initializeErrorCode),

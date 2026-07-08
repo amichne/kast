@@ -30,29 +30,45 @@ agent_up_help="$(run_kast agent up --help)"
 require_contains "$agent_up_help" "--no-onboard" "agent up help must expose the onboarding escape hatch"
 require_contains "$agent_up_help" "--dry-run" "agent up help must expose dry-run planning"
 
-package_verify_help="$(run_kast agent workflow package-verify --help)"
-require_contains "$package_verify_help" "--require-copilot" "package-verify help must expose required Copilot checks"
-require_contains "$package_verify_help" "--copilot-target-dir" "package-verify help must expose explicit Copilot target checks"
-require_contains "$package_verify_help" "--require-instructions" "package-verify help must expose instruction checks"
+ready_help="$(run_kast ready --help)"
+require_contains "$ready_help" "--for" "ready help must expose task-scoped readiness"
+
+repair_help="$(run_kast repair --help)"
+require_contains "$repair_help" "--apply" "repair help must expose explicit mutation gating"
 
 workspace="$(mktemp -d)"
 trap 'rm -rf "$workspace"' EXIT
 printf '%s\n' 'pluginManagement {}' >"${workspace}/settings.gradle.kts"
 
+set +e
 agent_up_json="$(
   TERM=dumb run_kast --output json agent up \
     --workspace-root "$workspace" \
     --backend idea \
     --dry-run
 )"
+agent_up_status=$?
+set -e
 
-python3 - "$agent_up_json" "$workspace" <<'PY'
+python3 - "$agent_up_json" "$workspace" "$agent_up_status" <<'PY'
 import json
 import sys
 
 payload = json.loads(sys.argv[1])
 workspace = sys.argv[2]
+status = int(sys.argv[3])
 
+if payload.get("ok") is False:
+    assert status != 0, payload
+    assert payload["method"] == "agent/up", payload
+    assert payload["error"]["code"] == "AGENT_COMMAND_REMOVED", payload
+    replacements = set(payload["error"].get("details", {}).get("replacements", []))
+    assert "brew install amichne/kast/kast" in replacements, payload
+    assert "kast developer machine plugin" in replacements, payload
+    assert "kast agent verify --workspace-root <repo>" in replacements, payload
+    sys.exit(0)
+
+assert status == 0, payload
 assert payload["type"] == "AGENT_UP", payload
 assert payload["ok"] is True, payload
 assert payload["stage"] == "DRY_RUN", payload

@@ -76,7 +76,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 For resource, package, or catalog changes, also run the relevant contracts:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml -- release generate contract --check
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh

@@ -40,7 +40,7 @@ sealed class ConfigurationField<T> {
             IdeaLaunchWaitTimeoutMillis(90_000L),
             IdeaLaunchRequireInstalledPlugin(true),
             ProjectOpenProfileAutoInit(true),
-            ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
+            ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
             ProjectOpenAutoExcludeGit(true),
             HeadlessBackendEnabled(true),
             HeadlessRuntimeLibsDir(OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir().toString())),
