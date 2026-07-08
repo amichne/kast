@@ -173,7 +173,8 @@ internal fun isExpectedClientDisconnect(error: Throwable): Boolean {
                 if (
                     message.contains("Broken pipe", ignoreCase = true) ||
                     message.contains("Connection reset", ignoreCase = true) ||
-                    message.contains("Socket closed", ignoreCase = true)
+                    message.contains("Socket closed", ignoreCase = true) ||
+                    message.contains("Socket is not connected", ignoreCase = true)
                 ) {
                     return true
                 }
