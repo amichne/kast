@@ -26,9 +26,7 @@ hosted agents, and server images use the headless runtime.
 
     ```console title="Install Kast, then enable one repository"
     cd /path/to/your/repository
-    curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
-    chmod +x install.sh
-    ./install.sh install --workspace-root "$PWD"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     open .
     ```
 

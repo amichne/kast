@@ -13,29 +13,31 @@ server images use the separate [Headless Linux server](headless-linux.md) path.
 
 ```console
 cd /path/to/your/repository
-curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
-chmod +x install.sh
-./install.sh install --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
 The installer is macOS-only. It uses Homebrew to install the global `kast`
 binary, invokes the version-coupled IDEA plugin installer, and asks you to open
-the repository so the plugin can prepare workspace metadata. It fails before
-mutation for unsupported hosts, unknown commands, invalid flags, invalid tap
-values, invalid tap URLs, or missing workspace roots.
+the repository so the plugin can prepare workspace metadata. Run it from the
+repository root; the current directory is the default workspace root. Like the
+Homebrew installer, mutating commands explain what they will do and pause before
+they change the machine. Use `NONINTERACTIVE=1` only when automation has
+already accepted that plan. The script fails before mutation for unsupported
+hosts, unknown commands, invalid flags, invalid tap values, invalid tap URLs,
+or missing workspace roots.
 
 Use `update` when the Homebrew path is hidden behind the installer:
 
 ```console title="Refresh the developer-machine install"
-./install.sh update --workspace-root "$PWD"
-./install.sh verify --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- verify --workspace-root "$PWD"
 ```
 
 The default Homebrew tap is `amichne/kast`. Pass both `--tap` and `--tap-url`
 for mirrors on a custom Git host:
 
 ```console title="Install from an internal Homebrew tap"
-./install.sh install \
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install \
   --tap internal/kast \
   --tap-url https://git.example.com/internal/homebrew-kast.git \
   --workspace-root "$PWD"
@@ -83,5 +85,5 @@ kast --output json ready --for agent --workspace-root "$PWD"
 Use the installer update path when local JetBrains profile links need repair:
 
 ```console
-./install.sh update --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update --workspace-root "$PWD"
 ```

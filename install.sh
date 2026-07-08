@@ -2,10 +2,13 @@
 set -Eeuo pipefail
 
 DEFAULT_TAP="amichne/kast"
+INSTALL_URL="https://raw.githubusercontent.com/amichne/kast/main/install.sh"
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: ./install.sh [install|update|verify] [options]
+Usage:
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- [install|update|verify] [options]
+  ./install.sh [install|update|verify] [options]
 
 macOS-only Kast developer-machine installer.
 
@@ -19,6 +22,9 @@ Options:
   --tap-url <git-url>      Optional Git URL for custom-host taps.
   --workspace-root <path>  Repository to verify and show in guidance. Defaults to the current directory.
   -h, --help               Show this help.
+
+Environment:
+  NONINTERACTIVE=1          Skip the install/update confirmation prompt for automation.
 USAGE
 }
 
@@ -116,6 +122,69 @@ validate_tap_url() {
       die "Invalid tap URL: ${tap_url}"
       ;;
   esac
+}
+
+tap_description() {
+  local tap="$1"
+  local tap_url="$2"
+  if [[ -n "$tap_url" ]]; then
+    printf '%s from %s' "$tap" "$tap_url"
+    return
+  fi
+  printf '%s' "$tap"
+}
+
+print_mutation_plan() {
+  local command_name="$1"
+  local tap="$2"
+  local tap_url="$3"
+  local workspace_root="$4"
+  local tap_target
+  tap_target="$(tap_description "$tap" "$tap_url")"
+
+  log_section "Kast developer ${command_name} plan"
+  log_note "Workspace: ${workspace_root}"
+  log_note "Installer: ${INSTALL_URL}"
+  log_note "This script will:"
+  case "$command_name" in
+    install)
+      log_note "  - tap Homebrew repository ${tap_target}"
+      log_note "  - install the Homebrew formula kast"
+      log_note "  - run kast developer machine plugin"
+      log_note "  - leave workspace metadata setup to IntelliJ IDEA or Android Studio"
+      ;;
+    update)
+      log_note "  - tap Homebrew repository ${tap_target}"
+      log_note "  - run brew update"
+      log_note "  - upgrade or reinstall the Homebrew formula kast"
+      log_note "  - run kast developer machine plugin --force"
+      log_note "  - leave workspace metadata refresh to IntelliJ IDEA or Android Studio"
+      ;;
+    *)
+      die "No mutation plan for command: ${command_name}"
+      ;;
+  esac
+}
+
+confirm_mutation() {
+  local command_name="$1"
+  local tap="$2"
+  local tap_url="$3"
+  local workspace_root="$4"
+  local reply=""
+
+  print_mutation_plan "$command_name" "$tap" "$tap_url" "$workspace_root"
+  if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
+    log_note "NONINTERACTIVE=1 set; skipping confirmation prompt"
+    return
+  fi
+
+  printf '%s' "Press RETURN/ENTER to continue or any other key to abort: " >&2
+  if ! IFS= read -r reply; then
+    printf '\n' >&2
+    die "Could not read confirmation. Set NONINTERACTIVE=1 to run without a prompt."
+  fi
+  [[ -z "$reply" ]] || die "Aborted. Set NONINTERACTIVE=1 to run without a prompt."
 }
 
 tap_homebrew() {
@@ -253,6 +322,12 @@ main() {
     workspace_root="$(pwd -P)"
   fi
   workspace_root="$(resolve_existing_dir "$workspace_root")"
+
+  case "$command_name" in
+    install|update)
+      confirm_mutation "$command_name" "$tap" "$tap_url" "$workspace_root"
+      ;;
+  esac
 
   case "$command_name" in
     install)

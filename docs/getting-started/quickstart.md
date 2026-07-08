@@ -20,9 +20,7 @@ metadata. Linux servers prepare repository guidance from the CLI.
 
     ```console
     cd /path/to/your/repository
-    curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
-    chmod +x install.sh
-    ./install.sh install --workspace-root "$PWD"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
     open .
     kast ready --for agent --workspace-root "$PWD"
     ```
@@ -31,7 +29,7 @@ metadata. Linux servers prepare repository guidance from the CLI.
     refreshed:
 
     ```console
-    ./install.sh update --workspace-root "$PWD"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update --workspace-root "$PWD"
     ```
 
     The plugin writes `.agents/skills/kast/SKILL.md`, one managed

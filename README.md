@@ -21,35 +21,35 @@ Install the macOS developer distribution through the root installer:
 
 ```console
 cd /path/to/your/repository
-curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
-chmod +x install.sh
-./install.sh install --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
 Use these commands to refresh or check the same installation:
 
 ```console
-./install.sh update --workspace-root "$PWD"
-./install.sh verify --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update --workspace-root "$PWD"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- verify --workspace-root "$PWD"
 ```
 
 The installer defaults to the public `amichne/kast` Homebrew tap. Internal
 mirrors can pass both a tap name and Git URL:
 
 ```console
-./install.sh install \
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install \
   --tap internal/kast \
   --tap-url https://git.example.com/internal/homebrew-kast.git \
   --workspace-root "$PWD"
 ```
 
-The script installs or updates the global `kast` binary, refreshes the matching
-IDEA plugin through the CLI, and fails before mutation when the host or
-arguments are invalid. Restart IDEA or Android Studio after the installer
-refreshes the plugin, then open the repository. On macOS, the IntelliJ plugin
-writes the skill-facing guidance, invocation metadata, and workspace setup
-manifest. The CLI does not support skill-only, runtime-only, or resource-only
-workspace setup on macOS.
+The script explains the planned Homebrew and plugin actions, pauses before
+`install` or `update`, and installs or updates the global `kast` binary plus
+matching IDEA plugin through the CLI. Set `NONINTERACTIVE=1` only for
+automation that has already accepted the plan. The script fails before mutation
+when the host or arguments are invalid. Restart IDEA or Android Studio after
+the installer refreshes the plugin, then open the repository. On macOS, the
+IntelliJ plugin writes the skill-facing guidance, invocation metadata, and
+workspace setup manifest. The CLI does not support skill-only, runtime-only, or
+resource-only workspace setup on macOS.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
