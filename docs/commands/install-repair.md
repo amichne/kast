@@ -8,8 +8,12 @@ icon: lucide/wrench
 
 ## Repository Setup
 
-Use `kast setup` once per repository where agents should discover Kast guidance.
-The v1 setup surface installs only:
+On macOS, the IntelliJ plugin prepares repository guidance and workspace
+metadata when the project opens. `kast setup` fails closed there so the CLI
+cannot create partial runtime/resource state.
+
+On non-macOS headless/server installs, use `kast setup` once per repository
+where agents should discover Kast guidance. Setup installs only:
 
 - `.agents/skills/kast/SKILL.md`
 - one managed `<kast>...</kast>` guidance region

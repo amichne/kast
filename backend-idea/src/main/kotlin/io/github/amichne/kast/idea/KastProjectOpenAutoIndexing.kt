@@ -27,14 +27,22 @@ internal object KastProjectOpenAutoIndexing {
         }
 
         val config = loadConfig(workspaceRoot)
-        val autoInitResult = installProjectOpenProfile(workspaceRoot, config)
-        KastProjectOpenProfileAutoInit.log(autoInitResult)
-        if (autoInitResult is ProjectOpenProfileAutoInitResult.Failed) {
-            notifyAutoInitFailure(project, autoInitResult)
-        }
         if (!config.backends.idea.enabled.value) {
             LOG.info("Kast idea backend disabled by config")
             return false
+        }
+        val autoInitResult = installProjectOpenProfile(workspaceRoot, config)
+        KastProjectOpenProfileAutoInit.log(autoInitResult)
+        when (autoInitResult) {
+            is ProjectOpenProfileAutoInitResult.Installed -> {}
+            is ProjectOpenProfileAutoInitResult.Skipped -> {
+                LOG.info("Kast idea backend skipped because workspace setup did not run: ${autoInitResult.reason}")
+                return false
+            }
+            is ProjectOpenProfileAutoInitResult.Failed -> {
+                notifyAutoInitFailure(project, autoInitResult)
+                return false
+            }
         }
 
         LOG.info("Kast startup activity triggered for project: ${project.name}")

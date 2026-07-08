@@ -7,9 +7,9 @@ icon: lucide/package-check
 # Distribution
 
 Distribution commands exist for releases, mirrors, server images, and hosted
-agent snapshots. Most developers only need `brew install kast` and
-`kast setup`; use this page when you are building or promoting
-artifacts.
+agent snapshots. Most macOS developers only need `brew install kast`, the
+IntelliJ plugin activation path, and repository open-time setup; use this page
+when you are building or promoting artifacts.
 
 ## Ubuntu/Debian bundle
 

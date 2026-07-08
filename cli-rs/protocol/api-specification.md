@@ -20,34 +20,35 @@ sockets, stdio pipes, or TCP — not HTTP. The OpenAPI spec is a
 logical projection for docs, client codegen, and schema validation.
 Batch requests and JSON-RPC notifications aren't supported.
 
-## Full command catalog
+## Internal JSON-RPC catalog
 
-`kast agent call` routes higher-level `symbol/*` orchestration methods
-and `database/*` index methods. The complete method catalog lives in
-`cli-rs/resources/kast-skill/references/commands.json` and is packaged by the Rust
-CLI in `cli-rs/`.
+Typed `kast agent` commands route through higher-level `symbol/*`
+orchestration methods and `database/*` index methods. The complete internal
+method catalog lives in `cli-rs/resources/kast-skill/references/commands.json`
+and is packaged by the Rust CLI in `cli-rs/`.
 
 Use OpenAPI when you need the raw backend schema. Use `commands.json`
-when an agent or script needs the complete `kast agent call` catalog,
-including `symbol/resolve`, `symbol/rename`, and `database/metrics`.
+when maintaining typed agent commands, installed skills, or internal protocol
+contracts that cover `symbol/resolve`, `symbol/rename`, and
+`database/metrics`.
 
-The embedded catalog below is generated from `commands.json` so readers can
-browse the actual JSON-RPC suite directly on this page.
+The embedded catalog below is generated from `commands.json` so maintainers
+can browse the JSON-RPC suite directly on this page.
 
 <!-- BEGIN GENERATED RPC CONTRACT SUITE -->
 ### Browse the JSON-RPC suite
 
 This section is generated from `cli-rs/resources/kast-skill/references/commands.json`
-so the page exposes the same method catalog used by installed agent
-skills and `kast agent call`. It embeds the command families, flow-oriented
-building blocks, and request fields that callers compose into larger
-automation flows.
+so the page exposes the internal JSON-RPC catalog used by typed
+`kast agent` commands and installed skills. It embeds the command
+families, flow-oriented building blocks, and request fields that
+callers compose into larger automation flows.
 
 Catalog version: `dev`. Methods: `31`.
 
 #### Method families
 
-The families below are the top-level namespaces accepted by `kast agent call`.
+The families below are internal JSON-RPC namespaces, not public CLI commands.
 
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
@@ -565,7 +566,7 @@ Result variants: `METRICS_SUCCESS`, `METRICS_FAILURE`.
 
 Notes:
 
-- Use this as the public source-index database surface through kast agent call or kast developer inspect metrics.
+- Use this as the source-index database backing for kast agent impact and kast developer inspect metrics.
 - Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for supported metrics.
 
 </details>

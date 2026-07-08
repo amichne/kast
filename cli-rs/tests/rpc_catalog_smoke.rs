@@ -559,7 +559,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         .expect("local plugin installer");
     assert!(
         !install_local.contains("python3"),
-        "local plugin installer must delegate to Rust instead of inline Python"
+        "local plugin installer must not depend on inline Python"
     );
     let repo_root = manifest_dir.parent().expect("repo root");
     let package_contract =
@@ -583,7 +583,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
 }
 
 #[test]
-fn copilot_agent_setup_reports_removed_without_installing_package_outputs() {
+fn copilot_agent_setup_is_not_a_supported_subcommand() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -613,8 +613,14 @@ fn copilot_agent_setup_reports_removed_without_installing_package_outputs() {
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("removed command json");
     assert_eq!(stdout["ok"], false, "{stdout}");
-    assert_eq!(stdout["method"], "agent/setup/copilot", "{stdout}");
-    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    assert_eq!(stdout["code"], "CLI_USAGE", "{stdout}");
+    assert!(
+        stdout["message"]
+            .as_str()
+            .expect("usage message")
+            .contains("unrecognized subcommand 'setup'"),
+        "{stdout}"
+    );
     assert!(!target.join("lsp.json").exists());
     assert!(
         !target

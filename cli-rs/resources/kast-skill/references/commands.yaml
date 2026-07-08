@@ -50,7 +50,7 @@ commands:
     failureType: METRICS_FAILURE
     method: database/metrics
     notes:
-    - Use this as the public source-index database surface through kast agent call or kast developer inspect metrics.
+    - Use this as the source-index database backing for kast agent impact and kast developer inspect metrics.
     - Use fanIn, fanOut, deadCode, impact, coupling, search, or graph for supported metrics.
     request:
       fields:

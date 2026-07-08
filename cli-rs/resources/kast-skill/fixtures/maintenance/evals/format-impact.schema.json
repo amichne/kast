@@ -67,11 +67,11 @@
         },
         "scenario": {
           "enum": [
-            "TOOL_CATALOG_COMPREHENSION",
+            "TYPED_COMMAND_PLAN_COMPREHENSION",
             "SYMBOL_RESULT_EXTRACTION",
             "RELATIONSHIP_NAVIGATION",
-            "VALIDATION_RECOVERY",
-            "WORKFLOW_EVIDENCE",
+            "READ_ONLY_PLAN_RECOVERY",
+            "TYPED_SEQUENCE_EVIDENCE",
             "NEGATIVE_ROUTING",
             "LARGE_READ_ONLY_OUTPUT"
           ]
@@ -103,10 +103,8 @@
           "properties": {
             "kind": {
               "enum": [
-                "agent-tools",
+                "agent-rename-plan",
                 "synthetic-envelope",
-                "validation-error",
-                "workflow-dry-run",
                 "prompt-only"
               ]
             },

@@ -24,7 +24,6 @@ data class OperationDoc(
     // Editorial metadata
     val description: String,
     val behavioralNotes: List<String> = emptyList(),
-    val cliExample: String = "",
     val exampleFixtureId: String? = null,
     val errorCodes: List<String> = emptyList(),
 )
@@ -49,7 +48,6 @@ object OperationDocRegistry {
             responseSchema = "HealthResponse",
             description = "Returns a lightweight health check confirming the daemon " +
                 "is responsive. Use this before dispatching heavier queries.",
-            cliExample = "kast agent call health --params '{}' --workspace-root=/path/to/project",
         ),
         OperationDoc(
             operationId = "runtimeStatus",
@@ -60,7 +58,6 @@ object OperationDocRegistry {
             description = "Returns the full runtime state including indexing progress, " +
                 "backend identity, and workspace root. Use this to verify readiness " +
                 "before running analysis commands.",
-            cliExample = "kast agent call runtime/status --params '{}' --workspace-root=/path/to/project",
         ),
         OperationDoc(
             operationId = "runtimeShutdown",
@@ -77,7 +74,6 @@ object OperationDocRegistry {
                 "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
                 "Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and backend-specific cleanup.",
             ),
-            cliExample = "kast agent call runtime/shutdown --params '{}' --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -95,7 +91,6 @@ object OperationDocRegistry {
                 "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
                 "Prefer the top-level `kast restart` command for operator workflows; it combines the host lifecycle request with readiness waiting.",
             ),
-            cliExample = "kast agent call runtime/restart --params '{}' --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -107,7 +102,6 @@ object OperationDocRegistry {
             description = "Lists every read and mutation capability the current backend " +
                 "advertises, along with server limits. Query this before calling an " +
                 "operation to confirm it is available.",
-            cliExample = "kast agent call capabilities --params '{}' --workspace-root=/path/to/project",
         ),
 
         // Read operations
@@ -128,7 +122,6 @@ object OperationDocRegistry {
                 "Optional fields like `declarationScope` and `documentation` are only " +
                     "populated when the corresponding query flags are set.",
             ),
-            cliExample = "kast agent call raw/resolve --request-file=cli-rs/protocol/examples/resolveSymbol-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
@@ -148,7 +141,6 @@ object OperationDocRegistry {
                     "in the result alongside usage sites.",
                 "Large result sets are paginated; check the `page` field for continuation.",
             ),
-            cliExample = "kast agent call raw/references --request-file=cli-rs/protocol/examples/findReferences-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
@@ -169,7 +161,6 @@ object OperationDocRegistry {
                 "Cycles are detected and reported via truncation metadata on the " +
                     "affected node.",
             ),
-            cliExample = "kast agent call raw/call-hierarchy --request-file=cli-rs/protocol/examples/callHierarchy-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -187,7 +178,6 @@ object OperationDocRegistry {
                 "Traversal is bounded by `depth` and `maxResults`. The stats object " +
                     "reports whether truncation occurred.",
             ),
-            cliExample = "kast agent call raw/type-hierarchy --request-file=cli-rs/protocol/examples/typeHierarchy-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -205,7 +195,6 @@ object OperationDocRegistry {
                 "The `target` field controls where the insertion point is computed: " +
                     "class body start/end, file top/bottom, or after imports.",
             ),
-            cliExample = "kast agent call raw/semantic-insertion-point --request-file=cli-rs/protocol/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -225,7 +214,6 @@ object OperationDocRegistry {
                 "Diagnostics reflect the current daemon state. Call `raw/workspace-refresh` " +
                     "first if files were modified outside the daemon.",
             ),
-            cliExample = "kast agent call raw/diagnostics --request-file=cli-rs/protocol/examples/diagnostics-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
@@ -242,7 +230,6 @@ object OperationDocRegistry {
                 "The outline includes classes, functions, properties, and other " +
                     "named declarations with their fully qualified names.",
             ),
-            cliExample = "kast agent call raw/file-outline --request-file=cli-rs/protocol/examples/fileOutline-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -260,7 +247,6 @@ object OperationDocRegistry {
                 "Set `regex` to true for regular expression patterns.",
                 "Results are bounded by `maxResults`. Set `kind` to filter by symbol type.",
             ),
-            cliExample = "kast agent call raw/workspace-symbol --request-file=cli-rs/protocol/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -278,7 +264,6 @@ object OperationDocRegistry {
                 "Set `regex` to true for regular expression patterns.",
                 "`caseSensitive` applies only to the content matching step.",
             ),
-            cliExample = "kast agent call raw/workspace-search --request-file=cli-rs/protocol/examples/workspaceSearch-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -295,7 +280,6 @@ object OperationDocRegistry {
                 "Leave `includeFiles` false for the bounded module summary.",
                 "When file paths are required, filter by `moduleName` and set a small `maxFilesPerModule`.",
             ),
-            cliExample = "kast agent call raw/workspace-files --request-file=cli-rs/protocol/examples/workspaceFiles-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -313,7 +297,6 @@ object OperationDocRegistry {
                 "Results include the `exhaustive` flag indicating whether all " +
                     "implementations were found within `maxResults`.",
             ),
-            cliExample = "kast agent call raw/implementations --request-file=cli-rs/protocol/examples/implementations-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -330,7 +313,6 @@ object OperationDocRegistry {
                 "Code actions are context-dependent and may return an empty list " +
                     "when no actions are applicable.",
             ),
-            cliExample = "kast agent call raw/code-actions --request-file=cli-rs/protocol/examples/codeActions-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -349,7 +331,6 @@ object OperationDocRegistry {
                     "whether all candidates were returned.",
                 "Use `kindFilter` to restrict results to specific symbol kinds.",
             ),
-            cliExample = "kast agent call raw/completions --request-file=cli-rs/protocol/examples/completions-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
 
@@ -370,7 +351,6 @@ object OperationDocRegistry {
                     "applying edits later.",
                 "Pair with `raw/apply-edits` to execute the rename after review.",
             ),
-            cliExample = "kast agent call raw/rename --request-file=cli-rs/protocol/examples/rename-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND"),
         ),
         OperationDoc(
@@ -387,7 +367,6 @@ object OperationDocRegistry {
                 "Returns the computed edits and file hashes. The daemon applies " +
                     "changes directly.",
             ),
-            cliExample = "kast agent call raw/optimize-imports --request-file=cli-rs/protocol/examples/optimizeImports-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("NOT_FOUND", "CAPABILITY_NOT_SUPPORTED"),
         ),
         OperationDoc(
@@ -406,7 +385,6 @@ object OperationDocRegistry {
                     "the edits were planned, the operation fails with a conflict error.",
                 "Supports optional `fileOperations` for creating or deleting files.",
             ),
-            cliExample = "kast agent call raw/apply-edits --request-file=cli-rs/protocol/examples/applyEdits-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CONFLICT", "VALIDATION_ERROR"),
         ),
         OperationDoc(
@@ -424,7 +402,6 @@ object OperationDocRegistry {
                     "full workspace refresh.",
                 "The result reports which files were refreshed and which were removed.",
             ),
-            cliExample = "kast agent call raw/workspace-refresh --request-file=cli-rs/protocol/examples/refreshWorkspace-request.json --workspace-root=/path/to/project",
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
     ).associateBy { it.operationId }

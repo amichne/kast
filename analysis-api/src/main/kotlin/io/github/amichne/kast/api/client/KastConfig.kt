@@ -62,7 +62,7 @@ data class KastConfig(
                 ),
                 projectOpen = ProjectOpenConfig(
                     profileAutoInit = ProjectOpenProfileAutoInit(true),
-                    profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
+                    profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
                     autoExcludeGit = ProjectOpenAutoExcludeGit(true),
                 ),
                 indexing = IndexingConfig(

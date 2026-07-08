@@ -6,19 +6,13 @@ pub fn run(command: AgentCommand, output_format: OutputFormat) -> Result<i32> {
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {
-    if matches!(
-        command,
-        AgentCommand::Up(_)
-            | AgentCommand::Ready(_)
-            | AgentCommand::Setup(_)
-            | AgentCommand::Lsp(_)
-    ) {
+    if matches!(command, AgentCommand::Lsp(_)) {
         return error_envelope(
             "agent/operator".to_string(),
             None,
             agent_error(
                 "AGENT_COMMAND_UNSUPPORTED",
-                "`kast agent up`, `kast agent ready`, `kast agent setup`, and `kast agent lsp` are operator commands handled before JSON envelope dispatch.",
+                "`kast agent lsp` is an operator command handled before JSON envelope dispatch.",
             ),
         );
     }
@@ -46,46 +40,27 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             ]),
         );
     }
-    let request: std::result::Result<AgentRequest, Box<AgentFailure>> = match command {
-        AgentCommand::Up(_)
-        | AgentCommand::Ready(_)
-        | AgentCommand::Setup(_)
-        | AgentCommand::Lsp(_) => {
+    match command {
+        AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
-        AgentCommand::Call(args) => {
-            if internal_agent_call_enabled() {
-                prepare_call(args)
-            } else {
-                return removed_agent_command(
-                    "agent/call",
-                    "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
-                    replacement_commands([
-                        "kast agent symbol --query <name> --workspace-root <repo>",
-                        "kast agent diagnostics --file-path <path> --workspace-root <repo>",
-                        "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
-                    ]),
-                );
-            }
-        }
+        AgentCommand::Call(_) => removed_agent_command(
+            "agent/call",
+            "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
+            replacement_commands([
+                "kast agent symbol --query <name> --workspace-root <repo>",
+                "kast agent diagnostics --file-path <path> --workspace-root <repo>",
+                "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
+            ]),
+        ),
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
-        AgentCommand::Verify(args) => return execute_agent_verify(args),
-        AgentCommand::Symbol(args) => return execute_agent_symbol(args),
-        AgentCommand::Impact(args) => return execute_agent_impact(args),
-        AgentCommand::Diagnostics(args) => return execute_agent_diagnostics(args),
-        AgentCommand::Rename(args) => return execute_agent_rename(args),
-        other => Ok(prepare_alias(other)),
-    };
-    let request = match request {
-        Ok(request) => request,
-        Err(error) => return error_envelope(error.method, error.request, error.error),
-    };
-    execute_request(request)
-}
-
-fn internal_agent_call_enabled() -> bool {
-    std::env::var_os("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL").is_some()
+        AgentCommand::Verify(args) => execute_agent_verify(args),
+        AgentCommand::Symbol(args) => execute_agent_symbol(args),
+        AgentCommand::Impact(args) => execute_agent_impact(args),
+        AgentCommand::Diagnostics(args) => execute_agent_diagnostics(args),
+        AgentCommand::Rename(args) => execute_agent_rename(args),
+    }
 }
 
 fn replacement_commands<const N: usize>(commands: [&str; N]) -> Vec<Value> {

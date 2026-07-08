@@ -5,6 +5,7 @@ use crate::daemon;
 use crate::error::{CliError, Result};
 use crate::install;
 use crate::rpc;
+use crate::self_mgmt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;

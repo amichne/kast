@@ -4,6 +4,11 @@ Status: Accepted
 
 Date: 2026-07-06
 
+Superseded in part by [ADR 0007](0007-macos-plugin-setup-authority.md) for the
+macOS developer-workstation setup boundary. `kast setup` remains the non-macOS
+headless/server repository guidance path, but the IntelliJ plugin is the macOS
+workspace setup authority.
+
 This ADR defines Kast as it should be evaluated going forward. It is an audit
 charter, not a migration log. Historical surfaces, compatibility aliases, and
 deprecation candidates are evidence only when they prove that the forward
@@ -84,7 +89,7 @@ An audit must cover the variety of workflows Kast intentionally supports:
 | Workflow | Required behavior |
 | --- | --- |
 | Context/home | Running `kast` with no command prints compact workspace context, executable path, output defaults, and actionable command hints. |
-| Repository setup | `kast setup` plans or installs the skill and one managed `<kast>` region, preserves user-authored context outside the region, records manifest-backed resources, and supports explicit `--context-file` targets. |
+| Repository setup | On macOS, the IntelliJ plugin prepares the workspace per ADR 0007. On non-macOS headless/server hosts, `kast setup` plans or installs the skill and one managed `<kast>` region, preserves user-authored context outside the region, records manifest-backed resources, and supports explicit `--context-file` targets. |
 | Readiness | `kast ready --for agent|kotlin|release|machine` is read-only and reports whether the requested task surface is usable. |
 | Repair | `kast repair` plans by default and mutates only with `--apply`. |
 | Runtime lifecycle | `kast status` and `kast developer runtime up|status|restart|stop|capabilities` inspect or manage the selected backend without changing the semantic command dialect. |

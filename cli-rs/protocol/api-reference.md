@@ -31,10 +31,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call health --params '{}' --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: health
+            Params: {}
             ```
         === "Request"
 
@@ -85,10 +86,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
             | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when the symbol reference index is fully populated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call runtime/status --params '{}' --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: runtime/status
+            Params: {}
             ```
         === "Request"
 
@@ -140,10 +142,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
             | `#!kotlin message: String?` | Human-readable lifecycle status message. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call runtime/shutdown --params '{}' --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: runtime/shutdown
+            Params: {}
             ```
         === "Request"
 
@@ -197,10 +200,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
             | `#!kotlin message: String?` | Human-readable lifecycle status message. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call runtime/restart --params '{}' --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: runtime/restart
+            Params: {}
             ```
         === "Request"
 
@@ -254,10 +258,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin mutationCapabilities: List<MutationCapability>` | Set of mutation operations this backend supports. |
             | `#!kotlin limits: ServerLimits` | Server-enforced resource limits. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call capabilities --params '{}' --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: capabilities
+            Params: {}
             ```
         === "Request"
 
@@ -336,10 +341,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin symbol: Symbol` | The resolved symbol at the queried position. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/resolve --request-file=cli-rs/protocol/examples/resolveSymbol-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/resolve
+            Params: see Request tab
             ```
         === "Request"
 
@@ -421,10 +427,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/references --request-file=cli-rs/protocol/examples/findReferences-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/references
+            Params: see Request tab
             ```
         === "Request"
 
@@ -517,10 +524,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin root: CallNode` | Root node of the call hierarchy tree. |
             | `#!kotlin stats: CallHierarchyStats` | Traversal statistics including truncation indicators. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/call-hierarchy --request-file=cli-rs/protocol/examples/callHierarchy-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/call-hierarchy
+            Params: see Request tab
             ```
         === "Request"
 
@@ -640,10 +648,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin root: TypeHierarchyNode` | Root node of the type hierarchy tree. |
             | `#!kotlin stats: TypeHierarchyStats` | Traversal statistics including truncation indicators. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/type-hierarchy --request-file=cli-rs/protocol/examples/typeHierarchy-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/type-hierarchy
+            Params: see Request tab
             ```
         === "Request"
 
@@ -760,10 +769,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin insertionOffset: Int` | Zero-based byte offset where new code should be inserted. |
             | `#!kotlin filePath: String` | Absolute path of the file containing the insertion point. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/semantic-insertion-point --request-file=cli-rs/protocol/examples/semanticInsertionPoint-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/semantic-insertion-point
+            Params: see Request tab
             ```
         === "Request"
 
@@ -818,10 +828,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin diagnostics: List<Diagnostic>` | List of compilation diagnostics found in the requested files. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/diagnostics --request-file=cli-rs/protocol/examples/diagnostics-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/diagnostics
+            Params: see Request tab
             ```
         === "Request"
 
@@ -873,10 +884,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin symbols: List<OutlineSymbol>` | Top-level symbols in the file, each containing nested children. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/file-outline --request-file=cli-rs/protocol/examples/fileOutline-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/file-outline
+            Params: see Request tab
             ```
         === "Request"
 
@@ -956,10 +968,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin symbols: List<Symbol>` | Symbols matching the search pattern. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/workspace-symbol --request-file=cli-rs/protocol/examples/workspaceSymbolSearch-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/workspace-symbol
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1088,10 +1101,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin matches: List<SearchMatch>` | Matched lines with absolute file path, line, column, and preview text. |
             | `#!kotlin truncated: Boolean` :material-information-outline:{ title="Default: false" } | True when the result stopped at `maxResults`. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/workspace-search --request-file=cli-rs/protocol/examples/workspaceSearch-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/workspace-search
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1162,10 +1176,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/workspace-files --request-file=cli-rs/protocol/examples/workspaceFiles-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/workspace-files
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1229,10 +1244,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin implementations: List<Symbol>` | Concrete implementations or subclasses found. |
             | `#!kotlin exhaustive: Boolean` :material-information-outline:{ title="Default: true" } | True when all implementations were found within maxResults. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/implementations --request-file=cli-rs/protocol/examples/implementations-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/implementations
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1318,10 +1334,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin actions: List<CodeAction>` | Available code actions at the queried position. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/code-actions --request-file=cli-rs/protocol/examples/codeActions-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/code-actions
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1376,10 +1393,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin items: List<CompletionItem>` | Completion candidates available at the queried position. |
             | `#!kotlin exhaustive: Boolean` :material-information-outline:{ title="Default: true" } | True when all candidates were returned within maxResults. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/completions --request-file=cli-rs/protocol/examples/completions-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/completions
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1460,10 +1478,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that would be modified. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the rename search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/rename --request-file=cli-rs/protocol/examples/rename-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/rename
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1542,10 +1561,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
             | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that were modified. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/optimize-imports --request-file=cli-rs/protocol/examples/optimizeImports-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/optimize-imports
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1603,10 +1623,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin createdFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files created by file operations. |
             | `#!kotlin deletedFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files deleted by file operations. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/apply-edits --request-file=cli-rs/protocol/examples/applyEdits-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/apply-edits
+            Params: see Request tab
             ```
         === "Request"
 
@@ -1684,10 +1705,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin removedFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files that were removed from the workspace. |
             | `#!kotlin fullRefresh: Boolean` | True when a full workspace refresh was performed. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "CLI"
+        === "Internal protocol"
 
-            ```bash
-            kast agent call raw/workspace-refresh --request-file=cli-rs/protocol/examples/refreshWorkspace-request.json --workspace-root=/path/to/project
+            ```text
+            JSON-RPC method: raw/workspace-refresh
+            Params: see Request tab
             ```
         === "Request"
 

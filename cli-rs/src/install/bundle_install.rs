@@ -177,6 +177,8 @@ fn verify_activated_bundle(
     }
     let output = ProcessCommand::new(&targets.resolved.shim_path)
         .arg("ready")
+        .arg("--for")
+        .arg("machine")
         .env("KAST_INSTALL_ROOT", &targets.resolved.install_root)
         .env("KAST_CONFIG_HOME", &targets.resolved.config_root)
         .output()
@@ -192,7 +194,7 @@ fn verify_activated_bundle(
         Err(command_error(
             "BUNDLE_READY_FAILED",
             "Installed bundle did not pass kast ready",
-            &["ready".to_string()],
+            &["ready".to_string(), "--for".to_string(), "machine".to_string()],
             &output,
         ))
     }

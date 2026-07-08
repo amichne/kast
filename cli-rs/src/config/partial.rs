@@ -44,14 +44,14 @@ struct PartialIdeaLaunch {
 struct PartialProjectOpen {
     profile_auto_init: Option<bool>,
     profile: Option<ProjectOpenProfile>,
-    agent_harness: Option<AgentSetupHarness>,
     auto_exclude_git: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialOnboarding {
-    agent_up_completed: Option<bool>,
+    #[serde(alias = "agentUpCompleted")]
+    setup_completed: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

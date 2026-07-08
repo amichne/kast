@@ -66,6 +66,12 @@ class KastProjectOpenAutoIndexingTest {
                 loadedWorkspaceRoot = workspaceRoot
                 KastConfig.defaults()
             },
+            installProjectOpenProfile = { workspaceRoot, _ ->
+                ProjectOpenProfileAutoInitResult.Installed(
+                    metadataPath = workspaceRoot.resolve(".kast/setup/workspace.json"),
+                    backups = emptyList(),
+                )
+            },
             startBackendAndIndexReferences = { startedProject = it },
         )
 
@@ -90,6 +96,24 @@ class KastProjectOpenAutoIndexingTest {
         val requestedStart = KastProjectOpenAutoIndexing.execute(
             project = project,
             loadConfig = { disabledConfig },
+            startBackendAndIndexReferences = { started = true },
+        )
+
+        assertFalse(requestedStart)
+        assertFalse(started)
+    }
+
+    @Test
+    fun `project open does not start backend when plugin workspace setup fails`() {
+        val project = projectFixture.get()
+        var started = false
+
+        val requestedStart = KastProjectOpenAutoIndexing.execute(
+            project = project,
+            loadConfig = { KastConfig.defaults() },
+            installProjectOpenProfile = { _, _ ->
+                ProjectOpenProfileAutoInitResult.Failed("invalid setup")
+            },
             startBackendAndIndexReferences = { started = true },
         )
 

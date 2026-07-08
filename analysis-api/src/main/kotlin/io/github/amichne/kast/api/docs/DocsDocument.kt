@@ -337,18 +337,21 @@ object DocsDocument {
     // ── Example tabs ──────────────────────────────────────────────────
 
     // Rendered as peers of the Input/Output schema tabs so everything
-    // about a single operation — its request shape, response shape, CLI
-    // invocation, and wire-level JSON — lives in one tab group. Tabs use
-    // consistent labels ("CLI", "Request", "Response") so pymdownx
+    // about a single operation — its request shape, response shape, protocol
+    // method, and wire-level JSON — lives in one tab group. Tabs use
+    // consistent labels ("Internal protocol", "Request", "Response") so pymdownx
     // `content.tabs.link` can sync the active tab across every operation
     // on the page.
     private fun IndentedWriter.exampleTabs(op: OperationDoc) {
-        if (op.cliExample.isNotBlank()) {
-            tab("CLI") {
-                line("```bash")
-                line(op.cliExample)
-                line("```")
+        tab("Internal protocol") {
+            line("```text")
+            line("JSON-RPC method: ${op.jsonRpcMethod}")
+            if (op.requestSchema == null) {
+                line("Params: {}")
+            } else {
+                line("Params: see Request tab")
             }
+            line("```")
         }
         readExampleFile("${op.operationId}-request.json")?.let { requestJson ->
             tab("Request") {

@@ -38,7 +38,7 @@ CLI workflow.
 - Keep broad product-story changes aligned with
   `.agents/adr/0003-cli-command-documentation-operating-model.md` or a
   superseding ADR.
-- Keep agent resource, package, manifest-trust, and `kast agent workflow`
+- Keep agent resource, package, manifest-trust, and typed `kast agent`
   changes aligned with `.agents/adr/` records. Agent-only ADRs must not be
   added to `zensical.toml` or published under `docs/`.
 - Treat `zensical.toml` as the live source of truth for navigation.

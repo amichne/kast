@@ -1,5 +1,6 @@
 pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
+    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let path_resolution = config::path_resolution_report(
         &config,
@@ -20,6 +21,7 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
 
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
+    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let path_resolution = config::path_resolution_report(
         &config,
@@ -163,6 +165,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
 
 pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
+    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
@@ -176,6 +179,7 @@ pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
 
 pub fn workspace_restart(args: RuntimeArgs) -> Result<WorkspaceRestartResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
+    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);

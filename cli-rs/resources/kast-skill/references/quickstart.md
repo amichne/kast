@@ -43,5 +43,5 @@ kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-n
 
 Do not expose `agent tools`, `agent call`, `agent workflow`, Copilot package
 assets, portable Markdown instruction packages, session hooks, or generated
-catalog copies as v1 setup assets. Generated catalogs and protocol samples stay
+catalog copies as public setup assets. Generated catalogs and protocol samples stay
 internal contract material for backend, docs, and release tests.

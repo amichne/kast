@@ -73,17 +73,27 @@ version = "0.7.35"
     assert!(!install_manifest_path(&home).exists());
 
     let repair = kast(&home, &config_home)
-        .args(["--output", "json", "repair", "--apply"])
+        .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
         .expect("repair apply");
 
-    assert!(
-        repair.status.success(),
-        "repair --apply should repair stale state: stdout={}, stderr={}",
-        String::from_utf8_lossy(&repair.stdout),
-        String::from_utf8_lossy(&repair.stderr)
-    );
     let stdout: serde_json::Value = serde_json::from_slice(&repair.stdout).expect("repair json");
+    assert!(
+        !repair.status.success(),
+        "machine readiness should fail closed when the repaired shim differs from the running test binary"
+    );
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert!(
+        stdout["ready"]["issues"]
+            .as_array()
+            .expect("ready issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .expect("ready issue")
+                .contains("configured kast binary")),
+        "{stdout}"
+    );
     assert_eq!(stdout["repair"]["applied"], true);
     assert!(
         stdout["repair"]["actions"]
@@ -118,16 +128,39 @@ fn ready_for_targets_apply_task_specific_readiness_checks() {
         .args(["--output", "json", "repair", "--apply"])
         .output()
         .expect("agent repair apply");
-    assert!(
-        agent.status.success(),
-        "default agent readiness should converge with repair --apply: stdout={}, stderr={}",
-        String::from_utf8_lossy(&agent.stdout),
-        String::from_utf8_lossy(&agent.stderr)
-    );
     let agent_stdout: serde_json::Value =
         serde_json::from_slice(&agent.stdout).expect("agent repair json");
     assert_eq!(agent_stdout["target"], "agent", "{agent_stdout}");
-    assert_eq!(agent_stdout["ok"], true, "{agent_stdout}");
+    if cfg!(target_os = "macos") {
+        assert!(
+            !agent.status.success(),
+            "macOS agent readiness should require plugin workspace metadata"
+        );
+        assert_eq!(agent_stdout["ok"], false, "{agent_stdout}");
+        assert!(
+            agent_stdout["ready"]["issues"]
+                .as_array()
+                .expect("agent issues")
+                .iter()
+                .any(|issue| issue
+                    .as_str()
+                    .expect("agent issue")
+                    .contains("plugin-prepared workspace metadata")
+                    || issue
+                        .as_str()
+                        .expect("agent issue")
+                        .contains("workspace metadata")),
+            "{agent_stdout}"
+        );
+    } else {
+        assert!(
+            agent.status.success(),
+            "default agent readiness should converge with repair --apply: stdout={}, stderr={}",
+            String::from_utf8_lossy(&agent.stdout),
+            String::from_utf8_lossy(&agent.stderr)
+        );
+        assert_eq!(agent_stdout["ok"], true, "{agent_stdout}");
+    }
 
     let kotlin = kast(&home, &config_home)
         .args(["--output", "json", "ready", "--for", "kotlin"])
@@ -210,18 +243,28 @@ fn repair_apply_recovers_malformed_global_config_with_backup() {
     );
 
     let apply = kast(&home, &config_home)
-        .args(["--output", "json", "repair", "--apply"])
+        .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
         .expect("repair apply");
 
-    assert!(
-        apply.status.success(),
-        "repair --apply should recover malformed config: stdout={}, stderr={}",
-        String::from_utf8_lossy(&apply.stdout),
-        String::from_utf8_lossy(&apply.stderr)
-    );
     let apply_stdout: serde_json::Value =
         serde_json::from_slice(&apply.stdout).expect("apply json");
+    assert!(
+        !apply.status.success(),
+        "machine readiness should fail closed when the repaired shim differs from the running test binary"
+    );
+    assert_eq!(apply_stdout["ok"], false, "{apply_stdout}");
+    assert!(
+        apply_stdout["ready"]["issues"]
+            .as_array()
+            .expect("ready issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .expect("ready issue")
+                .contains("configured kast binary")),
+        "{apply_stdout}"
+    );
     assert_eq!(apply_stdout["repair"]["applied"], true);
     assert!(
         apply_stdout["repair"]["actions"]

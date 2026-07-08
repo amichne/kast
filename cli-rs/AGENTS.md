@@ -22,8 +22,6 @@ resources.
   state, managed resource records, doctor checks, and repair behavior.
 - `resources/kast-skill/` owns the packaged `SKILL.md` and internal catalog
   source material used by release checks and generated artifacts.
-- `resources/kast-instructions/` owns compact Markdown instruction source used
-  by resource validation.
 - `resources/plugin/` owns package source material used by release validation.
 - `protocol/` contains generated protocol artifacts for release and
   integration consumers.
@@ -56,7 +54,6 @@ and validation gates live in
   `resources/kast-skill/references/commands.json`.
 - Package artifact output shape lives in `resources/plugin/primitive-manifest.json`.
 - Installable skill source lives in `resources/kast-skill/`.
-- Installable instruction source lives in `resources/kast-instructions/`.
 - Generated request schemas and samples are derived from the catalog. Regenerate
   them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
@@ -76,7 +73,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 For resource, package, or catalog changes, also run the relevant contracts:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml -- release generate contract --check
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh

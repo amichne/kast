@@ -1,6 +1,8 @@
-use super::kast;
+use super::{kast, write_macos_plugin_workspace_metadata};
 use rusqlite::{Connection, params};
 use serde_json::Value;
+use std::io::Write;
+use std::process::Stdio;
 
 pub(crate) fn symbol_query_response_schema() -> Value {
     serde_json::from_str(include_str!(
@@ -24,46 +26,92 @@ pub(crate) fn run_symbol_query(
     id: i64,
     params: Value,
 ) -> Value {
-    let request = serde_json::json!({
+    let response =
+        run_lsp_custom_request(home, config_home, workspace, "kast/symbolQuery", id, params);
+    assert!(
+        response.error.is_none(),
+        "symbol/query LSP response should succeed: stderr={}\nresponse={:#}",
+        response.stderr,
+        response.value
+    );
+    serde_json::json!({
         "jsonrpc": "2.0",
-        "method": "symbol/query",
-        "params": params,
-        "id": id
-    });
-    let (success, envelope, stderr) =
-        run_agent_call(home, config_home, workspace, "symbol/query", request);
-    assert!(success, "stderr: {stderr}\nenvelope: {envelope:#}");
-    envelope["response"].clone()
+        "id": id,
+        "result": response.value["result"].clone()
+    })
 }
 
-pub(crate) fn run_agent_call(
+pub(crate) struct LspCustomResponse {
+    pub(crate) value: Value,
+    pub(crate) stderr: String,
+    pub(crate) error: Option<Value>,
+}
+
+pub(crate) fn run_lsp_custom_request(
     home: &std::path::Path,
     config_home: &std::path::Path,
     workspace: &std::path::Path,
     method: &str,
-    input: Value,
-) -> (bool, Value, String) {
-    let body = input.to_string();
-    let output = kast(home, config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "call",
-            method,
-            "--params",
-            body.as_str(),
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .env("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL", "1")
-        .output()
-        .unwrap_or_else(|error| panic!("agent call {method}: {error}"));
-    let success = output.status.success();
+    id: i64,
+    params: Value,
+) -> LspCustomResponse {
+    let mut params = params.as_object().cloned().unwrap_or_default();
+    params
+        .entry("workspaceRoot".to_string())
+        .or_insert_with(|| Value::String(workspace.display().to_string()));
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "method": method,
+        "params": Value::Object(params)
+    });
+    let mut child = kast(home, config_home)
+        .args(["agent", "lsp", "--stdio"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|error| panic!("spawn LSP request {method}: {error}"));
+    {
+        let stdin = child.stdin.as_mut().expect("lsp stdin");
+        write_lsp_message(stdin, &request);
+    }
+    let output = child
+        .wait_with_output()
+        .unwrap_or_else(|error| panic!("wait LSP request {method}: {error}"));
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let envelope: Value = serde_json::from_slice(&output.stdout)
-        .unwrap_or_else(|error| panic!("agent call {method} json: {error}\nstderr: {stderr}"));
-    (success, envelope, stderr)
+    assert!(
+        output.status.success(),
+        "LSP process should exit cleanly: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        stderr
+    );
+    let value = read_first_lsp_message(&output.stdout)
+        .unwrap_or_else(|| panic!("missing LSP response for {method}; stderr={stderr}"));
+    let error = value.get("error").cloned();
+    LspCustomResponse {
+        value,
+        stderr,
+        error,
+    }
+}
+
+fn write_lsp_message(mut writer: impl Write, value: &Value) {
+    let body = serde_json::to_vec(value).expect("lsp request json");
+    write!(writer, "Content-Length: {}\r\n\r\n", body.len()).expect("lsp header");
+    writer.write_all(&body).expect("lsp body");
+}
+
+fn read_first_lsp_message(bytes: &[u8]) -> Option<Value> {
+    let header_end = bytes.windows(4).position(|window| window == b"\r\n\r\n")?;
+    let header = std::str::from_utf8(&bytes[..header_end]).ok()?;
+    let length = header.lines().find_map(|line| {
+        line.strip_prefix("Content-Length:")
+            .and_then(|value| value.trim().parse::<usize>().ok())
+    })?;
+    let body_start = header_end + 4;
+    let body_end = body_start.checked_add(length)?;
+    serde_json::from_slice(bytes.get(body_start..body_end)?).ok()
 }
 
 pub(crate) fn result_fq_names(response: &Value) -> Vec<String> {
@@ -131,6 +179,7 @@ pub(crate) fn assert_declaration_facets<const N: usize>(response: &Value, expect
 }
 
 pub(crate) fn seed_source_index(workspace: &std::path::Path) {
+    write_macos_plugin_workspace_metadata(workspace);
     let db_path = workspace.join(".gradle/kast/cache/source-index.db");
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
     seed_source_files(workspace);

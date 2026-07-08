@@ -6,11 +6,11 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AgentUpResult {
+pub struct SetupRuntimeResult {
     #[serde(rename = "type")]
     pub result_type: &'static str,
     pub ok: bool,
-    pub stage: AgentUpStage,
+    pub stage: SetupRuntimeStage,
     pub dry_run: bool,
     pub setup: AgentGuidanceSetupPlan,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -19,7 +19,7 @@ pub struct AgentUpResult {
     pub runtime: Option<WorkspaceEnsureResult>,
     pub runtime_command: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub next_actions: Vec<AgentUpNextAction>,
+    pub next_actions: Vec<SetupRuntimeNextAction>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub manual_steps: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -29,7 +29,7 @@ pub struct AgentUpResult {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum AgentUpStage {
+pub enum SetupRuntimeStage {
     Onboarding,
     DryRun,
     SetupDone,
@@ -40,44 +40,26 @@ pub enum AgentUpStage {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AgentUpNextAction {
+pub struct SetupRuntimeNextAction {
     pub label: String,
     pub argv: Vec<String>,
     pub reason: String,
     pub destructive: bool,
 }
 
-impl AgentUpResult {
+impl SetupRuntimeResult {
     pub fn dry_run(setup: AgentGuidanceSetupPlan, runtime_command: Vec<String>) -> Self {
-        let next_actions = if is_root_setup_command(&runtime_command) {
-            vec![AgentUpNextAction {
-                label: "Run setup".to_string(),
-                argv: runtime_command.clone(),
-                reason: "Installs repository agent resources and warms the workspace runtime."
-                    .to_string(),
-                destructive: false,
-            }]
-        } else {
-            vec![
-                AgentUpNextAction {
-                    label: "Run repository bring-up".to_string(),
-                    argv: runtime_command_for_agent_up(&setup.install_command, &runtime_command),
-                    reason: "Installs the selected agent resource and warms the workspace runtime."
-                        .to_string(),
-                    destructive: false,
-                },
-                AgentUpNextAction {
-                    label: "Install only the selected agent resource".to_string(),
-                    argv: setup.install_command.clone(),
-                    reason: "Use this when runtime warmup should happen separately.".to_string(),
-                    destructive: false,
-                },
-            ]
-        };
+        let next_actions = vec![SetupRuntimeNextAction {
+            label: "Run setup".to_string(),
+            argv: runtime_command.clone(),
+            reason: "Installs repository agent resources and warms the workspace runtime."
+                .to_string(),
+            destructive: false,
+        }];
         Self {
-            result_type: "AGENT_UP",
+            result_type: "SETUP_RUNTIME",
             ok: true,
-            stage: AgentUpStage::DryRun,
+            stage: SetupRuntimeStage::DryRun,
             dry_run: true,
             setup,
             install: None,
@@ -97,9 +79,9 @@ impl AgentUpResult {
         runtime_command: Vec<String>,
     ) -> Self {
         Self {
-            result_type: "AGENT_UP",
+            result_type: "SETUP_RUNTIME",
             ok: true,
-            stage: AgentUpStage::RuntimeReady,
+            stage: SetupRuntimeStage::RuntimeReady,
             dry_run: false,
             setup,
             install: Some(install),
@@ -125,7 +107,7 @@ impl AgentUpResult {
         let stage = failure_stage(error.code);
         let (next_actions, manual_steps) = failure_guidance(&error, &setup, &runtime_command);
         Self {
-            result_type: "AGENT_UP",
+            result_type: "SETUP_RUNTIME",
             ok: false,
             stage,
             dry_run: false,
@@ -141,7 +123,7 @@ impl AgentUpResult {
     }
 
     pub fn with_onboarding_stage(mut self) -> Self {
-        self.stage = AgentUpStage::Onboarding;
+        self.stage = SetupRuntimeStage::Onboarding;
         self
     }
 
@@ -151,44 +133,8 @@ impl AgentUpResult {
     }
 }
 
-fn runtime_command_for_agent_up(
-    install_command: &[String],
-    runtime_command: &[String],
-) -> Vec<String> {
-    let executable = install_command
-        .first()
-        .or_else(|| runtime_command.first())
-        .cloned()
-        .unwrap_or_else(|| "kast".to_string());
-    let mut command = vec![executable, "agent".to_string(), "up".to_string()];
-    append_setup_args(&mut command, install_command);
-    append_workspace_and_backend_args(&mut command, runtime_command);
-    command
-}
-
 fn is_root_setup_command(command: &[String]) -> bool {
     command.get(1).is_some_and(|arg| arg == "setup")
-}
-
-fn append_setup_args(command: &mut Vec<String>, install_command: &[String]) {
-    let mut index = 0;
-    while index < install_command.len() {
-        match install_command[index].as_str() {
-            "--agents-md" => {
-                if let Some(value) = install_command.get(index + 1) {
-                    command.push("--agents-md".to_string());
-                    command.push(value.clone());
-                    index += 2;
-                    continue;
-                }
-            }
-            "--force" | "--no-auto-exclude-git" => {
-                command.push(install_command[index].clone());
-            }
-            _ => {}
-        }
-        index += 1;
-    }
 }
 
 fn append_workspace_and_backend_args(command: &mut Vec<String>, runtime_command: &[String]) {
@@ -207,13 +153,13 @@ fn append_workspace_and_backend_args(command: &mut Vec<String>, runtime_command:
     }
 }
 
-fn failure_stage(code: &'static str) -> AgentUpStage {
+fn failure_stage(code: &'static str) -> SetupRuntimeStage {
     match code {
-        "IDEA_PLUGIN_NOT_INSTALLED" => AgentUpStage::SetupDone,
+        "IDEA_PLUGIN_NOT_INSTALLED" => SetupRuntimeStage::SetupDone,
         "IDEA_NOT_RUNNING" | "NO_BACKEND_AVAILABLE" | "RUNTIME_TIMEOUT" | "IDEA_LAUNCH_FAILED" => {
-            AgentUpStage::RuntimeBlocked
+            SetupRuntimeStage::RuntimeBlocked
         }
-        _ => AgentUpStage::RepairRequired,
+        _ => SetupRuntimeStage::RepairRequired,
     }
 }
 
@@ -221,10 +167,10 @@ fn failure_guidance(
     error: &CliError,
     setup: &AgentGuidanceSetupPlan,
     runtime_command: &[String],
-) -> (Vec<AgentUpNextAction>, Vec<String>) {
+) -> (Vec<SetupRuntimeNextAction>, Vec<String>) {
     if let Some(command) = error.details.get("installCommand") {
         return (
-            vec![AgentUpNextAction {
+            vec![SetupRuntimeNextAction {
                 label: "Install or repair the IDEA plugin".to_string(),
                 argv: command.split_whitespace().map(str::to_string).collect(),
                 reason:
@@ -237,7 +183,7 @@ fn failure_guidance(
     }
     match error.code {
         "IDEA_NOT_RUNNING" | "NO_BACKEND_AVAILABLE" | "RUNTIME_TIMEOUT" | "IDEA_LAUNCH_FAILED" => (
-            vec![AgentUpNextAction {
+            vec![SetupRuntimeNextAction {
                 label: "Check runtime status".to_string(),
                 argv: runtime_status_command(runtime_command),
                 reason: "Shows whether IDEA registered a Kast backend for this workspace."
@@ -250,18 +196,18 @@ fn failure_guidance(
         ),
         _ => (
             vec![
-                AgentUpNextAction {
+                SetupRuntimeNextAction {
                     label: "Repair managed install state".to_string(),
                     argv: vec![
                         "kast".to_string(),
                         "repair".to_string(),
                         "--apply".to_string(),
                     ],
-                    reason: "Repairs manifest-backed machine state before retrying agent bring-up."
+                    reason: "Repairs manifest-backed machine state before retrying setup."
                         .to_string(),
                     destructive: false,
                 },
-                AgentUpNextAction {
+                SetupRuntimeNextAction {
                     label: "Refresh selected agent resource".to_string(),
                     argv: forced_setup_command(setup),
                     reason: "Rewrites the selected repository agent resource from the active binary."

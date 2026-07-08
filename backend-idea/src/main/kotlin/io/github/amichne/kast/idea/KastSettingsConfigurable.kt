@@ -107,7 +107,7 @@ internal class KastSettingsConfigurable(
         state.runtimeDefaultBackend = selectedRuntimeDefaultBackend().configValue
         state.backendsIdeaEnabled = backendsIdeaEnabled.isSelected
         state.projectOpenProfileAutoInit = projectOpenProfileAutoInit.isSelected
-        state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.COPILOT_LSP
+        state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.JETBRAINS_PLUGIN
         state.projectOpenAutoExcludeGit = projectOpenAutoExcludeGit.isSelected
     }
 

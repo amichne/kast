@@ -52,7 +52,12 @@ Health boundaries:
 
 ## Repository Setup
 
-`kast setup` installs only the v1 repository agent assets:
+On macOS, repository setup is prepared by the IntelliJ plugin after the
+workspace opens. `kast setup` fails closed there so the CLI cannot create
+skill-only or resource-only partial state.
+
+On non-macOS headless/server installs, `kast setup` installs only the
+repository agent assets:
 
 - `.agents/skills/kast/SKILL.md`
 - one managed `<kast>...</kast>` guidance region in the selected context file
@@ -69,7 +74,7 @@ The default context target is the first existing file from `AGENTS.md`,
 
 `kast setup` does not install Copilot package files, portable Markdown
 instruction packages, session hooks, generated catalog copies, or workflow helper
-assets in v1.
+assets.
 
 ## Removed Surfaces
 

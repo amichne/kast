@@ -78,13 +78,13 @@ checks.push(
 );
 
 const requiredCaseIds = new Set([
-  "tool-catalog-comprehension",
+  "typed-command-plan-comprehension",
   "symbol-result-extraction",
   "relationship-navigation-continuation",
-  "validation-error-recovery",
-  "workflow-evidence-json-artifacts",
+  "read-only-plan-recovery",
+  "typed-sequence-evidence",
   "non-kotlin-negative-routing",
-  "large-read-only-catalog-efficiency",
+  "large-typed-output-efficiency",
 ]);
 const caseIds = new Set(cases.map((item) => item.id));
 const missingCaseIds = [...requiredCaseIds].filter((id) => !caseIds.has(id));
@@ -94,7 +94,7 @@ checks.push(
     missingCaseIds.length === 0 ? "pass" : "fail",
     missingCaseIds.length === 0 ? "info" : "error",
     missingCaseIds.length === 0
-      ? "Format impact corpus covers catalog comprehension, extraction, relationship continuation, validation recovery, workflow evidence, negative routing, and large read-only output."
+      ? "Format impact corpus covers typed command plans, extraction, relationship continuation, plan recovery, typed sequence evidence, negative routing, and large read-only output."
       : "Format impact corpus is missing required coverage cases.",
     missingCaseIds.length === 0 ? [...caseIds].sort() : missingCaseIds,
     ["Add missing cases to fixtures/maintenance/evals/format-impact.json."],
@@ -117,7 +117,8 @@ for (const item of cases) {
   }
   if (isNegativeCase(item)) {
     failIf(!(item.expectedActions ?? []).every((action) => action.kind === "generic"), `${item.id}: negative expected actions must be generic`, caseFailures);
-    failIf(!forbidden.has("kast agent call"), `${item.id}: negative case must forbid kast agent call`, caseFailures);
+    failIf(!forbidden.has("kast agent symbol"), `${item.id}: negative case must forbid kast agent symbol`, caseFailures);
+    failIf(!forbidden.has("kast agent impact"), `${item.id}: negative case must forbid kast agent impact`, caseFailures);
   }
 }
 checks.push(

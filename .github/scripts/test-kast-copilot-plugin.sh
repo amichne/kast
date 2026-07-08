@@ -170,12 +170,19 @@ node --input-type=module - "$tmp_dir/install.json" <<'NODE'
 import { readFileSync } from "node:fs";
 
 const payload = JSON.parse(readFileSync(process.argv[2], "utf8"));
-if (payload.ok !== false || payload.method !== "agent/setup/copilot" || payload.error?.code !== "AGENT_COMMAND_REMOVED") {
+if (payload.ok !== false || payload.method !== "plugin/install-local" || payload.error?.code !== "PLUGIN_INSTALL_REMOVED") {
   throw new Error(`unexpected removed Copilot installer envelope: ${JSON.stringify(payload)}`);
 }
 const replacements = new Set(payload.error?.details?.replacements ?? []);
-if (!replacements.has("kast setup --workspace-root <repo>")) {
-  throw new Error("removed Copilot installer should point to root kast setup");
+for (const expected of [
+  "copilot --plugin-dir cli-rs/resources/plugin",
+  "brew install amichne/kast/kast",
+  "kast developer machine plugin",
+  "kast agent verify --workspace-root <repo>",
+]) {
+  if (!replacements.has(expected)) {
+    throw new Error(`removed Copilot installer missing replacement: ${expected}`);
+  }
 }
 NODE
 

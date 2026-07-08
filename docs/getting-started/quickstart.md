@@ -6,15 +6,18 @@ icon: lucide/zap
 
 # Quickstart
 
-## 1. Install Repository Guidance
+## 1. Prepare The Workspace
 
 ```console
 cd /path/to/your/repository
-kast setup --workspace-root "$PWD"
+kast ready --for agent --workspace-root "$PWD"
 ```
 
-Setup writes `.agents/skills/kast/SKILL.md` and one managed
-`<kast>...</kast>` region in the selected repo context file.
+On macOS, open the repository in IntelliJ IDEA or Android Studio with the
+Homebrew-installed Kast plugin enabled. The plugin writes
+`.agents/skills/kast/SKILL.md`, one managed `<kast>...</kast>` region, and
+`.kast/setup/workspace.json`. On non-macOS headless/server hosts, run
+`kast setup --workspace-root "$PWD"` before the readiness check.
 
 ## 2. Check Readiness
 

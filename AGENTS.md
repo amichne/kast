@@ -74,3 +74,11 @@ For Kotlin symbol identity, references, hierarchy, and safe edits, use Kast
 semantic tooling for compiler-backed evidence. Generated package, protocol,
 catalog, and site outputs come from their source owners and contract scripts;
 edit the source tree and regenerate.
+
+<kast>
+## Kast routing
+Use `/Users/amichne/code/kast/.agents/skills/kast/SKILL.md` before Kotlin or Gradle semantic work.
+Use `kast`, `kast help`, `kast ready`, and `kast agent verify --workspace-root "$PWD"` to orient.
+Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.
+Run `kast repair --apply` only when readiness output asks for install-state repair.
+</kast>

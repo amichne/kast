@@ -17,102 +17,9 @@ fn assert_removed(output: &std::process::Output, method: &str) -> serde_json::Va
     stdout
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
-fn agent_setup_auto_reports_removed_command_without_resource_selection() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let target_root = temp.path().join("skills");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::write(
-        config_home.join("config.toml"),
-        r#"[projectOpen]
-agentHarness = "instructions"
-"#,
-    )
-    .expect("config");
-
-    let install = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "setup",
-            "auto",
-            "--harness",
-            "skill",
-            "--target-dir",
-            target_root.to_str().expect("target path"),
-            "--force",
-        ])
-        .output()
-        .expect("agent setup auto skill");
-
-    let stdout = assert_removed(&install, "agent/setup/auto");
-    let replacements = stdout["error"]["details"]["replacements"]
-        .as_array()
-        .expect("replacement commands");
-    assert!(
-        replacements
-            .iter()
-            .any(|replacement| replacement == "kast setup --workspace-root <repo>"),
-        "{stdout}"
-    );
-    assert!(!target_root.exists(), "removed auto setup must not write");
-}
-
-#[test]
-fn legacy_copilot_and_instruction_setup_report_removed_without_writing() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let repo = temp.path().join("repo");
-    let github_dir = repo.join(".github");
-    let instructions_dir = repo.join(".agents/instructions");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&repo).expect("repo");
-    std::fs::create_dir_all(github_dir.join("workflows")).expect("workflow dir");
-    std::fs::write(github_dir.join("workflows/ci.yml"), b"name: CI\n").expect("workflow");
-
-    let copilot = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "setup",
-            "copilot",
-            "--target-dir",
-            github_dir.to_str().expect("github path"),
-        ])
-        .output()
-        .expect("install copilot plugin");
-    assert_removed(&copilot, "agent/setup/copilot");
-    assert!(!github_dir.join("lsp.json").exists());
-    assert!(!github_dir.join("extensions/kast/extension.mjs").exists());
-    assert_eq!(
-        std::fs::read_to_string(github_dir.join("workflows/ci.yml")).expect("workflow"),
-        "name: CI\n"
-    );
-
-    let instructions = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "setup",
-            "instructions",
-            "--target-dir",
-            instructions_dir.to_str().expect("instructions path"),
-        ])
-        .output()
-        .expect("install instructions");
-    assert_removed(&instructions, "agent/setup/instructions");
-    assert!(!instructions_dir.join("kast/README.md").exists());
-}
-
-#[test]
-fn skill_installs_add_managed_git_info_exclude_blocks() {
+fn setup_installs_add_managed_git_info_exclude_blocks() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -135,50 +42,50 @@ fn skill_installs_add_managed_git_info_exclude_blocks() {
     );
 
     let skill = kast(&home, &config_home)
+        .current_dir(&repo)
         .args([
             "--output",
             "json",
-            "agent",
             "setup",
-            "skill",
-            "--target-dir",
+            "--no-open-ide",
+            "--skill-target-dir",
             skill_dir.to_str().expect("skill path"),
         ])
         .output()
-        .expect("install skill");
+        .expect("setup with skill target");
     assert!(
         skill.status.success(),
-        "skill install should write git exclude block: stdout={}, stderr={}",
+        "setup should write git exclude block: stdout={}, stderr={}",
         String::from_utf8_lossy(&skill.stdout),
         String::from_utf8_lossy(&skill.stderr),
     );
     let skill_stdout: serde_json::Value =
-        serde_json::from_slice(&skill.stdout).expect("skill install json");
-    assert_eq!(skill_stdout["gitExclude"]["attempted"], true);
-    assert_eq!(skill_stdout["gitExclude"]["updated"], true);
+        serde_json::from_slice(&skill.stdout).expect("setup json");
+    assert_eq!(skill_stdout["skill"]["gitExclude"]["attempted"], true);
+    assert_eq!(skill_stdout["skill"]["gitExclude"]["updated"], true);
 
     let codex_skill = kast(&home, &config_home)
+        .current_dir(&repo)
         .args([
             "--output",
             "json",
-            "agent",
             "setup",
-            "skill",
-            "--target-dir",
+            "--no-open-ide",
+            "--skill-target-dir",
             codex_skill_dir.to_str().expect("codex skill path"),
         ])
         .output()
-        .expect("install codex skill");
+        .expect("setup codex skill");
     assert!(
         codex_skill.status.success(),
-        "second skill install should preserve existing skill resource: stdout={}, stderr={}",
+        "second setup should preserve existing skill resource: stdout={}, stderr={}",
         String::from_utf8_lossy(&codex_skill.stdout),
         String::from_utf8_lossy(&codex_skill.stderr),
     );
     let codex_skill_stdout: serde_json::Value =
-        serde_json::from_slice(&codex_skill.stdout).expect("codex skill install json");
-    assert_eq!(codex_skill_stdout["gitExclude"]["attempted"], true);
-    assert_eq!(codex_skill_stdout["gitExclude"]["updated"], true);
+        serde_json::from_slice(&codex_skill.stdout).expect("codex setup json");
+    assert_eq!(codex_skill_stdout["skill"]["gitExclude"]["attempted"], true);
+    assert_eq!(codex_skill_stdout["skill"]["gitExclude"]["updated"], true);
 
     let exclude =
         std::fs::read_to_string(repo.join(".git/info/exclude")).expect("git info exclude");
@@ -196,14 +103,23 @@ fn skill_installs_add_managed_git_info_exclude_blocks() {
     let resources = manifest["repos"][0]["resources"]
         .as_array()
         .expect("resources");
-    assert_eq!(resources.len(), 2, "{manifest}");
     let resource_kinds = resources
         .iter()
         .map(|resource| resource["kind"].as_str().expect("resource kind"))
         .collect::<Vec<_>>();
-    assert_eq!(resource_kinds, vec!["SKILL", "SKILL"]);
+    assert!(resource_kinds.contains(&"SKILL"), "{manifest}");
+    assert!(resource_kinds.contains(&"AGENT_GUIDANCE"), "{manifest}");
+    assert_eq!(
+        resource_kinds
+            .iter()
+            .filter(|kind| **kind == "SKILL")
+            .count(),
+        2,
+        "{manifest}"
+    );
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn ready_reports_tampered_manifest_backed_skill_resource() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -227,17 +143,17 @@ fn ready_reports_tampered_manifest_backed_skill_resource() {
     );
 
     let skill = kast(&home, &config_home)
+        .current_dir(&repo)
         .args([
             "--output",
             "json",
-            "agent",
             "setup",
-            "skill",
-            "--target-dir",
+            "--no-open-ide",
+            "--skill-target-dir",
             skill_dir.to_str().expect("skill path"),
         ])
         .output()
-        .expect("install skill");
+        .expect("setup with skill target");
     assert!(
         skill.status.success(),
         "install should write manifest-backed skill state: stdout={}, stderr={}",
@@ -247,7 +163,7 @@ fn ready_reports_tampered_manifest_backed_skill_resource() {
     std::fs::write(skill_dir.join("kast/SKILL.md"), b"# tampered\n").expect("tamper skill");
 
     let ready = kast(&home, &config_home)
-        .args(["--output", "json", "ready"])
+        .args(["--output", "json", "ready", "--for", "machine"])
         .output()
         .expect("ready");
     assert!(
@@ -321,7 +237,7 @@ fn ready_resolves_relative_managed_paths_under_install_root() {
     .expect("manifest");
 
     let ready = kast(&home, &config_home)
-        .args(["--output", "json", "ready"])
+        .args(["--output", "json", "ready", "--for", "machine"])
         .output()
         .expect("ready");
 

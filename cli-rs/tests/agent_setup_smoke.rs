@@ -2,6 +2,7 @@ mod support;
 
 use support::*;
 
+#[cfg(not(target_os = "macos"))]
 fn assert_compact_kast_guidance(content: &str) {
     assert!(content.contains("<kast>"), "{content}");
     assert!(
@@ -48,6 +49,7 @@ fn assert_compact_kast_guidance(content: &str) {
     );
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -126,6 +128,7 @@ fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
     );
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn agent_setup_context_git_filter_strips_managed_region_for_each_tracked_target() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -212,9 +215,54 @@ fn agent_setup_context_git_filter_strips_managed_region_for_each_tracked_target(
             !staged.contains("</kast>"),
             "clean filter should remove managed region from staged {file}: {staged}"
         );
+        if file == "AGENTS.md" {
+            assert_eq!(
+                staged, "# Agents\n",
+                "clean filter should not leave trailing blank lines after removing the managed region"
+            );
+        }
     }
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn setup_fails_closed_on_macos_without_writing_partial_workspace_state() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let repo = temp.path().join("repo");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&repo).expect("repo");
+    let setup = kast(&home, &config_home)
+        .current_dir(&repo)
+        .args(["--output", "json", "setup"])
+        .output()
+        .expect("setup");
+
+    assert!(
+        !setup.status.success(),
+        "setup should fail closed on macOS: stdout={}, stderr={}",
+        String::from_utf8_lossy(&setup.stdout),
+        String::from_utf8_lossy(&setup.stderr)
+    );
+    assert!(
+        !repo.join(".agents/skills/kast/SKILL.md").exists(),
+        "setup must not install skill-only partial state on macOS"
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
+    assert_eq!(stdout["ok"], false, "{stdout}");
+    assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
+    assert!(
+        stdout["error"]["message"]
+            .as_str()
+            .expect("message")
+            .contains("IntelliJ plugin"),
+        "{stdout}"
+    );
+}
+
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn agent_setup_creates_local_guidance_without_root_agents_md() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -270,6 +318,7 @@ fn agent_setup_creates_local_guidance_without_root_agents_md() {
     );
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn agent_setup_creates_explicit_agents_md_target() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -305,6 +354,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
     assert!(repo.join("AGENTS.local.md").is_file());
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -361,6 +411,7 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     );
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn setup_leaves_existing_hook_config_out_of_scope() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -446,14 +497,6 @@ fn setup_leaves_existing_hook_config_out_of_scope() {
         "{claude:#}"
     );
     assert_eq!(session_hooks.len(), 1, "{claude:#}");
-    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
-    assert!(
-        stdout
-            .get("hookTargets")
-            .and_then(|targets| targets.as_array())
-            .is_none_or(|targets| targets.is_empty()),
-        "{stdout:#}"
-    );
 }
 
 #[test]

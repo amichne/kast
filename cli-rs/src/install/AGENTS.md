@@ -15,7 +15,7 @@ Each part file must own one install contract:
 - `bundle_install.rs` owns writing the activated bundle to disk.
 - `bundle_helpers.rs` owns local path, scratch-dir, copy, and shim helpers.
 - `repair.rs` owns doctor/repair state reconciliation.
-- `resource_installs.rs` owns skill, instruction, and package gateways.
+- `resource_installs.rs` owns the packaged skill install gateway.
 - `shell.rs` owns shell profile integration.
 - `embedded_resources.rs` owns packaged resource copying and checksums.
 - `homebrew_idea_plugin.rs` and `jetbrains_profiles.rs` own IDE plugin flows.

@@ -305,7 +305,7 @@
         "default embedded skill reinstall after --skill-root",
         "manual copy into installed skill target",
         "ignoring emitted recovery",
-        "kast agent setup skill --source-dir",
+        "manual skill source override install",
         "kast agent workflow package-verify"
       ],
       "recoveryExpectation": "Run the emitted setup or repair recovery, then rerun the verifier or readiness gate.",
