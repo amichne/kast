@@ -4,7 +4,6 @@ import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder;
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.project.Project;
-import org.jetbrains.plugins.gradle.service.project.open.GradleProjectImportUtil;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
@@ -33,7 +32,7 @@ public final class IdeaGradleProjectLoadBridge {
         CompletableFuture<Void> importFuture
     ) {
         GradleProjectSettings linkSettings =
-            GradleProjectImportUtil.createLinkSettings(externalProjectPath, project);
+            new GradleProjectSettings(normalizePath(externalProjectPath));
         ImportSpecBuilder importSpec = importSpec(project, importFuture);
         ExternalSystemUtil.linkExternalProject(linkSettings, importSpec);
     }
