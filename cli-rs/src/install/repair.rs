@@ -43,7 +43,6 @@ fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResul
         &backup_root,
         &mut config_backed_up,
     )?;
-    repair_install_copilot_repos(&args, &mut result, &backup_root)?;
     repair_install_shell_sources(&args, &mut result, &backup_root)?;
     repair_install_jetbrains_profiles(&args, &mut result, &backup_root)?;
 
@@ -294,56 +293,6 @@ fn repair_install_config_state(
         }
     }
 
-    Ok(())
-}
-
-fn repair_install_copilot_repos(
-    args: &InstallRepairArgs,
-    result: &mut InstallRepairResult,
-    _backup_root: &Path,
-) -> Result<()> {
-    let Some(install) = self_mgmt::read_global_install_state()? else {
-        return Ok(());
-    };
-    let mut seen = BTreeSet::new();
-    for repo in install.repos {
-        let repo_root = config::normalize(PathBuf::from(repo.path));
-        if !seen.insert(repo_root.display().to_string()) {
-            continue;
-        }
-        let github_dir = repo_root.join(".github");
-        let copilot_resource = repo
-            .resources
-            .iter()
-            .find(|resource| resource.kind == ManagedResourceKind::CopilotPackage);
-        let needs_refresh = if let Some(resource) = copilot_resource {
-            resource.primitive_version != cli::version()
-                || !manifest::verify_managed_resource_outputs(resource)?.ok
-        } else {
-            !repo.copilot_package_version.trim().is_empty()
-        };
-        if !needs_refresh {
-            continue;
-        }
-        push_repair_action(
-            result,
-            "refresh-copilot-package",
-            &github_dir,
-            "Refresh a stale managed Copilot LSP package install from the active binary bundles.",
-            Some(format!(
-                "kast setup --force # refresh managed resources under {}",
-                shell_quote_path(&github_dir)
-            )),
-        );
-        if args.apply {
-            install_copilot(CopilotInstallArgs {
-                target_dir: Some(github_dir),
-                force: true,
-                no_auto_exclude_git: false,
-                dry_run: false,
-            })?;
-        }
-    }
     Ok(())
 }
 

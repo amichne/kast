@@ -6,19 +6,13 @@ pub fn run(command: AgentCommand, output_format: OutputFormat) -> Result<i32> {
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {
-    if matches!(
-        command,
-        AgentCommand::Up(_)
-            | AgentCommand::Ready(_)
-            | AgentCommand::Setup(_)
-            | AgentCommand::Lsp(_)
-    ) {
+    if matches!(command, AgentCommand::Lsp(_)) {
         return error_envelope(
             "agent/operator".to_string(),
             None,
             agent_error(
                 "AGENT_COMMAND_UNSUPPORTED",
-                "`kast agent up`, `kast agent ready`, `kast agent setup`, and `kast agent lsp` are operator commands handled before JSON envelope dispatch.",
+                "`kast agent lsp` is an operator command handled before JSON envelope dispatch.",
             ),
         );
     }
@@ -47,10 +41,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         );
     }
     match command {
-        AgentCommand::Up(_)
-        | AgentCommand::Ready(_)
-        | AgentCommand::Setup(_)
-        | AgentCommand::Lsp(_) => {
+        AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),

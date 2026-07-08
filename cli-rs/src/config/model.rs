@@ -106,7 +106,6 @@ impl Default for IdeaLaunchConfig {
 pub struct ProjectOpenConfig {
     pub profile_auto_init: bool,
     pub profile: ProjectOpenProfile,
-    pub agent_harness: AgentSetupHarness,
     pub auto_exclude_git: bool,
 }
 
@@ -114,7 +113,6 @@ impl ProjectOpenConfig {
     fn is_default(&self) -> bool {
         self.profile_auto_init
             && self.profile == ProjectOpenProfile::CopilotLsp
-            && self.agent_harness.is_auto()
             && self.auto_exclude_git
     }
 }
@@ -124,7 +122,6 @@ impl Default for ProjectOpenConfig {
         Self {
             profile_auto_init: true,
             profile: ProjectOpenProfile::CopilotLsp,
-            agent_harness: AgentSetupHarness::Auto,
             auto_exclude_git: true,
         }
     }
@@ -133,12 +130,12 @@ impl Default for ProjectOpenConfig {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OnboardingConfig {
-    pub agent_up_completed: bool,
+    pub setup_completed: bool,
 }
 
 impl OnboardingConfig {
     fn is_default(&self) -> bool {
-        !self.agent_up_completed
+        !self.setup_completed
     }
 }
 
