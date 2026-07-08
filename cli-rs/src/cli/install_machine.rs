@@ -19,12 +19,6 @@ pub enum InstallCommand {
     /// Activate a portable Kast install bundle from its bundled manifest.
     #[command(name = "activate-bundle")]
     ActivateBundle(ActivateBundleArgs),
-    /// Install the packaged kast skill into the current workspace.
-    Skill(ResourceInstallArgs),
-    /// Install portable agent instruction files.
-    Instructions(ResourceInstallArgs),
-    /// Install the repository-local Copilot LSP package and extension tools.
-    Copilot(CopilotInstallArgs),
     /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
     Plugin(IdeaPluginInstallArgs),
     /// Install shell PATH and completion integration.

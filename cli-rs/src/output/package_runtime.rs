@@ -45,24 +45,6 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
-fn agent_setup_harness_label(harness: AgentSetupHarness) -> &'static str {
-    match harness {
-        AgentSetupHarness::Auto => "auto",
-        AgentSetupHarness::Copilot => "copilot",
-        AgentSetupHarness::Skill => "skill",
-        AgentSetupHarness::Instructions => "instructions",
-    }
-}
-
-fn agent_setup_source_label(source: AgentSetupSelectionSource) -> &'static str {
-    match source {
-        AgentSetupSelectionSource::Explicit => "explicit",
-        AgentSetupSelectionSource::Config => "config",
-        AgentSetupSelectionSource::TargetDirectory => "target-directory",
-        AgentSetupSelectionSource::Repository => "repository",
-    }
-}
-
 fn ready_target_label(target: ReadyTarget) -> &'static str {
     match target {
         ReadyTarget::Agent => "agent",

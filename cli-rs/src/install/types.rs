@@ -106,48 +106,6 @@ pub struct InstallCopilotPackageResult {
     pub schema_version: u32,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentSetupAutoPlan {
-    pub harness: cli::AgentSetupHarness,
-    pub selection_source: AgentSetupSelectionSource,
-    pub reason: String,
-    pub install_command: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_dir: Option<String>,
-    pub dry_run: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AgentSetupSelectionSource {
-    Explicit,
-    Config,
-    TargetDirectory,
-    Repository,
-}
-
-impl AgentSetupAutoPlan {
-    pub fn new(
-        harness: cli::AgentSetupHarness,
-        selection_source: AgentSetupSelectionSource,
-        reason: String,
-        install_command: Vec<String>,
-        target_dir: Option<PathBuf>,
-    ) -> Self {
-        Self {
-            harness,
-            selection_source,
-            reason,
-            install_command,
-            target_dir: target_dir.map(|path| path.display().to_string()),
-            dry_run: true,
-            schema_version: SCHEMA_VERSION,
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GitExcludeResult {
@@ -226,9 +184,6 @@ pub struct InstallRepairResult {
 pub enum InstallResult {
     ActivateBundle(ActivateBundleResult),
     AgentGuidance(AgentGuidanceSetupResult),
-    Skill(InstallSkillResult),
-    Instructions(InstallInstructionsResult),
-    Copilot(InstallCopilotPackageResult),
     IdeaPlugin(InstallIdeaPluginResult),
     Shell(InstallShellResult),
 }

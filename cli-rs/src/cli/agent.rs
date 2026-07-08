@@ -7,15 +7,6 @@ pub struct AgentArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentCommand {
-    /// Prepare agent resources and warm the workspace runtime.
-    #[command(hide = true)]
-    Up(AgentUpArgs),
-    /// Verify Kast readiness for agent and semantic workflows.
-    #[command(hide = true)]
-    Ready(ReadyArgs),
-    /// Install repo-local or portable agent resources.
-    #[command(hide = true)]
-    Setup(AgentSetupArgs),
     /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
     /// Verify backend health, runtime state, and capabilities.
@@ -39,42 +30,6 @@ pub enum AgentCommand {
     Workflow(RemovedAgentCommandArgs),
 }
 
-#[derive(Debug, Args, Clone)]
-pub struct AgentUpArgs {
-    #[command(flatten)]
-    pub runtime: RuntimeArgs,
-    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
-    #[arg(long = "skill-target-dir")]
-    pub skill_target_dir: Option<PathBuf>,
-    /// Repository context file to patch with Kast managed guidance.
-    #[arg(long = "context-file")]
-    pub context_files: Vec<PathBuf>,
-    /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
-    #[arg(long = "agents-md", hide = true)]
-    pub agents_md: Vec<PathBuf>,
-    /// Overwrite existing managed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Do not add the managed skill path to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Explain setup and runtime actions without writing files or starting a backend.
-    #[arg(long)]
-    pub dry_run: bool,
-    /// Skip first-run interactive onboarding even in a smart terminal.
-    #[arg(long)]
-    pub no_onboard: bool,
-}
-
-#[derive(Debug, Args, Clone)]
-#[command(disable_help_subcommand = true)]
-pub struct AgentSetupArgs {
-    #[command(subcommand)]
-    pub command: Option<AgentSetupCommand>,
-    #[command(flatten)]
-    pub guidance: AgentGuidanceSetupArgs,
-}
-
 #[derive(Debug, Args, Clone, Default)]
 pub struct AgentGuidanceSetupArgs {
     /// Absolute workspace root for harness-agnostic agent resource setup.
@@ -96,41 +51,6 @@ pub struct AgentGuidanceSetupArgs {
     #[arg(long)]
     pub no_auto_exclude_git: bool,
     /// Explain setup without writing files.
-    #[arg(long)]
-    pub dry_run: bool,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum AgentSetupCommand {
-    /// Removed legacy auto installer. Use root `kast setup`.
-    #[command(hide = true)]
-    Auto(AgentSetupAutoArgs),
-    /// Removed legacy Copilot package installer. Use root `kast setup`.
-    #[command(hide = true)]
-    Copilot(CopilotInstallArgs),
-    /// Install the packaged Kast skill.
-    #[command(hide = true)]
-    Skill(ResourceInstallArgs),
-    /// Removed legacy Markdown instruction installer. Use root `kast setup`.
-    #[command(hide = true)]
-    Instructions(ResourceInstallArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AgentSetupAutoArgs {
-    /// Agent harness resource to install. Defaults to projectOpen.agentHarness, then repository detection.
-    #[arg(long, value_enum)]
-    pub harness: Option<AgentSetupHarness>,
-    /// Target directory for the selected harness.
-    #[arg(long)]
-    pub target_dir: Option<PathBuf>,
-    /// Overwrite existing managed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Do not add managed package paths to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Explain the selected harness without writing files.
     #[arg(long)]
     pub dry_run: bool,
 }

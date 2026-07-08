@@ -1,12 +1,12 @@
-use crate::cli::{AgentSetupHarness, OutputFormat, ReadyTarget};
+use crate::cli::{OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
-    ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult, AgentSetupAutoPlan,
-    AgentSetupSelectionSource, InstallCopilotPackageResult, InstallIdeaPluginResult,
-    InstallInstructionsResult, InstallResult, InstallShellResult, InstallSkillResult,
+    ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult,
+    InstallCopilotPackageResult, InstallIdeaPluginResult, InstallInstructionsResult, InstallResult,
+    InstallShellResult, InstallSkillResult,
 };
-use crate::orchestration::{AgentUpNextAction, AgentUpResult, AgentUpStage};
+use crate::orchestration::{SetupRuntimeNextAction, SetupRuntimeResult, SetupRuntimeStage};
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -32,7 +32,7 @@ macro_rules! mdln {
 }
 
 include!("output/core.rs");
-include!("output/agent_up.rs");
+include!("output/setup_runtime.rs");
 include!("output/package_runtime.rs");
 include!("output/ready.rs");
 include!("output/tables.rs");
