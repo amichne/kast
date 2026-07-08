@@ -794,11 +794,7 @@ commands:
       fields:
         anchor:
           enum:
-          - body-start
           - body-end
-          - file-top
-          - file-bottom
-          - after-imports
           sample: body-end
           type: string
         contentFile:

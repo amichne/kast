@@ -1237,11 +1237,7 @@
             "type": "string",
             "sample": "body-end",
             "enum": [
-              "body-start",
-              "body-end",
-              "file-top",
-              "file-bottom",
-              "after-imports"
+              "body-end"
             ]
           },
           "contentFile": {

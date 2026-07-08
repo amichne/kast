@@ -1,12 +1,13 @@
-# ADR 0007: Typed scope mutation agent commands
+# ADR 0009: Typed scope mutation agent commands
 
 Status: Accepted
 
 Date: 2026-07-08
 
-This ADR supersedes ADR 0006 only for the typed agent mutation surface. ADR
-0006 remains authoritative for system boundaries, hidden catalog surfaces,
-setup, readiness, output, distribution, and audit posture.
+This ADR supersedes ADR 0006 and ADR 0008 only for the typed agent mutation
+surface. ADR 0006 remains authoritative for system boundaries, hidden catalog
+surfaces, setup, readiness, output, distribution, and audit posture. ADR 0008
+remains authoritative for deleted or internal developer surfaces.
 
 ## Decision
 

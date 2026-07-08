@@ -32,11 +32,7 @@
       "properties": {
         "anchor": {
           "enum": [
-            "body-start",
-            "body-end",
-            "file-top",
-            "file-bottom",
-            "after-imports"
+            "body-end"
           ],
           "type": "string"
         },

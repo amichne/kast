@@ -18,6 +18,8 @@ import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -458,6 +460,28 @@ class AnalysisDispatcherTest {
         assertEquals(true, success.applied)
         assertTrue(targetFile.readText().contains("fun greet() = \"hi\"\nfun added() = Unit\n"))
         assertFalse(targetFile.readText().contains("fun greet\nfun added()"))
+    }
+
+    @Test
+    fun `scope mutation request interfaces do not change wire payloads`() {
+        val request = KastAddStatementRequest(
+            workspaceRoot = tempDir.toString(),
+            insideScope = "sample.greet",
+            anchor = KastStatementPlacementAnchor.BODY_END,
+            contentFile = tempDir.resolve("statement.kt").toString(),
+        )
+
+        val payload = json.encodeToJsonElement(KastAddStatementRequest.serializer(), request).jsonObject
+
+        assertEquals(KastScopeMutationOperation.ADD_STATEMENT, request.operation)
+        assertEquals(NormalizedPath.ofAbsolute(tempDir), request.requestedWorkspaceRoot)
+        assertEquals(NonBlankString("sample.greet"), request.requestedInsideScope)
+        assertEquals(NormalizedPath.ofAbsolute(tempDir.resolve("statement.kt")), request.contentFilePath)
+        assertFalse(payload.containsKey("operation"))
+        assertFalse(payload.containsKey("requestedWorkspaceRoot"))
+        assertFalse(payload.containsKey("requestedInsideScope"))
+        assertFalse(payload.containsKey("contentFilePath"))
+        assertEquals(JsonPrimitive("body-end"), payload["anchor"])
     }
 
     @Test

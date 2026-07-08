@@ -393,15 +393,15 @@ internal class SkillRpcOrchestrator(
     }
 
     suspend fun addFile(request: KastAddFileRequest): KastScopeMutationResponse {
-        val filePath = request.filePath.normalizedAbsolutePath()
+        val filePath = request.targetFilePath.value
         return writeAndValidateCreate(
             KastWriteAndValidateCreateFileRequest(
-                workspaceRoot = request.workspaceRoot,
-                filePath = request.filePath,
-                contentFile = request.contentFile,
+                workspaceRoot = request.requestedWorkspaceRoot?.value,
+                filePath = filePath,
+                contentFile = request.contentFilePath.value,
             ),
         ).toScopeMutationResponse(
-            operation = KastScopeMutationOperation.ADD_FILE,
+            operation = request.operation,
             affectedFiles = listOf(filePath),
             createdFiles = listOf(filePath),
             editCount = 1,
@@ -409,58 +409,51 @@ internal class SkillRpcOrchestrator(
     }
 
     suspend fun addDeclaration(request: KastAddDeclarationRequest): KastScopeMutationResponse =
-        addContentAtPlacement(
-            operation = KastScopeMutationOperation.ADD_DECLARATION,
-            workspaceRoot = request.workspaceRoot,
-            placement = request.placement,
-            contentFile = request.contentFile,
-            statementBody = false,
-        )
+        addPlacedContent(request)
 
     suspend fun addImplementation(request: KastAddImplementationRequest): KastScopeMutationResponse =
-        addContentAtPlacement(
-            operation = KastScopeMutationOperation.ADD_IMPLEMENTATION,
-            workspaceRoot = request.workspaceRoot,
-            placement = request.placement,
-            contentFile = request.contentFile,
-            statementBody = false,
-        )
+        addPlacedContent(request)
 
     suspend fun addStatement(request: KastAddStatementRequest): KastScopeMutationResponse {
         val placement = KastPlacementSelector(
-            scope = KastNamedPlacementScope(insideScope = request.insideScope, kind = WrapperNamedSymbolKind.FUNCTION),
-            anchor = KastAtPlacementAnchor(request.anchor),
+            scope = KastNamedPlacementScope(
+                insideScope = request.requestedInsideScope.value,
+                kind = WrapperNamedSymbolKind.FUNCTION,
+            ),
+            anchor = KastAtPlacementAnchor(request.anchor.toPlacementAnchor()),
         )
         return addContentAtPlacement(
-            operation = KastScopeMutationOperation.ADD_STATEMENT,
-            workspaceRoot = request.workspaceRoot,
+            operation = request.operation,
+            workspaceRoot = request.requestedWorkspaceRoot?.value,
             placement = placement,
-            contentFile = request.contentFile,
+            contentFile = request.contentFilePath.value,
             statementBody = true,
         )
     }
 
     suspend fun replaceDeclaration(request: KastReplaceDeclarationRequest): KastScopeMutationResponse {
-        workspaceRootFor(request.workspaceRoot)
+        val workspaceRoot = request.requestedWorkspaceRoot?.value
+        val symbol = request.requestedSymbol.value
+        workspaceRootFor(workspaceRoot)
         val resolved = resolveNamedSymbol(
-            symbolName = request.symbol,
+            symbolName = symbol,
             fileHint = request.fileHint,
             kind = request.kind,
             containingType = request.containingType,
             includeDeclarationScope = true,
         ) ?: return KastScopeMutationFailureResponse(
-            operation = KastScopeMutationOperation.REPLACE_DECLARATION,
+            operation = request.operation,
             stage = "resolve",
-            message = "No symbol matching '${request.symbol}' found in workspace",
+            message = "No symbol matching '$symbol' found in workspace",
             logFile = placeholderLogFile(),
         )
         val declarationScope = resolved.symbol.declarationScope ?: return KastScopeMutationFailureResponse(
-            operation = KastScopeMutationOperation.REPLACE_DECLARATION,
+            operation = request.operation,
             stage = "resolve",
-            message = "Resolved symbol '${request.symbol}' did not include declaration scope",
+            message = "Resolved symbol '$symbol' did not include declaration scope",
             logFile = placeholderLogFile(),
         )
-        val content = resolveContent(null, request.contentFile)
+        val content = resolveContent(null, request.contentFilePath.value)
         val response = applyEditsAndValidate(
             filePath = resolved.filePath,
             edits = listOf(
@@ -472,14 +465,14 @@ internal class SkillRpcOrchestrator(
                 ),
             ),
             query = KastWriteAndValidateReplaceRangeQuery(
-                workspaceRoot = workspaceRootFor(request.workspaceRoot),
+                workspaceRoot = workspaceRootFor(workspaceRoot),
                 filePath = resolved.filePath,
                 startOffset = declarationScope.startOffset,
                 endOffset = declarationScope.endOffset,
             ),
         )
         return response.toScopeMutationResponse(
-            operation = KastScopeMutationOperation.REPLACE_DECLARATION,
+            operation = request.operation,
             affectedFiles = listOf(resolved.filePath),
             editCount = 1,
         )
@@ -694,6 +687,15 @@ internal class SkillRpcOrchestrator(
         )
     }
 
+    private suspend fun addPlacedContent(request: KastPlacedScopeMutationRequest): KastScopeMutationResponse =
+        addContentAtPlacement(
+            operation = request.operation,
+            workspaceRoot = request.requestedWorkspaceRoot?.value,
+            placement = request.placement,
+            contentFile = request.contentFilePath.value,
+            statementBody = false,
+        )
+
     private suspend fun addContentAtPlacement(
         operation: KastScopeMutationOperation,
         workspaceRoot: String?,
@@ -855,6 +857,10 @@ internal class SkillRpcOrchestrator(
 
     private fun ResolvedNamedSymbol.declarationEndOffset(): Int =
         symbol.declarationScope?.endOffset ?: symbol.location.endOffset
+
+    private fun KastStatementPlacementAnchor.toPlacementAnchor(): KastPlacementAnchor = when (this) {
+        KastStatementPlacementAnchor.BODY_END -> KastPlacementAnchor.BODY_END
+    }
 
     private fun currentFileHashes(filePaths: List<String>): List<FileHash> =
         filePaths.distinct().map { filePath ->
