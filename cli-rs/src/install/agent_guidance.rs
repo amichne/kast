@@ -14,7 +14,6 @@ pub fn agent_guidance_setup_plan(
         result_type: "AGENT_SETUP_PLAN",
         skill_target: skill_target.display().to_string(),
         agents_md_targets,
-        hook_targets: Vec::new(),
         install_command,
         force: args.force,
         dry_run: args.dry_run,
@@ -34,7 +33,6 @@ pub fn install_agent_guidance(
         source_dir: None,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
-        dry_run: false,
     })?;
     let agents_md_targets = resolve_agents_md_targets(&workspace_root, &args)?;
     let mut agent_results = Vec::with_capacity(agents_md_targets.len());
@@ -51,7 +49,6 @@ pub fn install_agent_guidance(
         result_type: "AGENT_SETUP",
         skill,
         agents_md_targets: agent_results,
-        hook_targets: Vec::new(),
         install_command,
         skipped,
         schema_version: SCHEMA_VERSION,
@@ -490,280 +487,6 @@ fn set_context_filter_executable(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn detected_hook_plans(workspace_root: &Path) -> Vec<AgentHookPlan> {
-    detected_hook_targets(workspace_root)
-        .into_iter()
-        .map(|target| AgentHookPlan {
-            host: target.host.to_string(),
-            path: target.path.display().to_string(),
-            action: target.action.to_string(),
-            command: context_command(workspace_root),
-        })
-        .collect()
-}
-
-fn install_detected_hooks(
-    workspace_root: &Path,
-    force: bool,
-    no_auto_exclude_git: bool,
-) -> Result<Vec<AgentHookResult>> {
-    let mut results = Vec::new();
-    for target in detected_hook_targets(workspace_root) {
-        let updated = match target.host {
-            "codex" => upsert_codex_hook(&target.path, workspace_root)?,
-            "claude-code" => upsert_claude_hook(&target.path, workspace_root)?,
-            "opencode" => write_json_hook(
-                &target.path,
-                &json!({
-                    "name": "kast-context",
-                    "event": "session.start",
-                    "command": context_command(workspace_root)
-                }),
-            )?,
-            "copilot" => {
-                let result = install_copilot(CopilotInstallArgs {
-                    target_dir: Some(workspace_root.join(".github")),
-                    force,
-                    no_auto_exclude_git,
-                    dry_run: false,
-                })?;
-                !result.skipped
-            }
-            _ => false,
-        };
-        results.push(AgentHookResult {
-            host: target.host.to_string(),
-            path: target.path.display().to_string(),
-            updated,
-            skipped: !updated,
-            command: context_command(workspace_root),
-        });
-    }
-    Ok(results)
-}
-
-#[derive(Debug, Clone)]
-struct AgentHookTarget {
-    host: &'static str,
-    path: PathBuf,
-    action: &'static str,
-}
-
-fn detected_hook_targets(workspace_root: &Path) -> Vec<AgentHookTarget> {
-    let mut targets = Vec::new();
-    if workspace_root.join(".codex").is_dir() {
-        targets.push(AgentHookTarget {
-            host: "codex",
-            path: workspace_root.join(".codex/hooks.json"),
-            action: "install or repair Codex SessionStart hook",
-        });
-    }
-    if workspace_root.join(".claude").is_dir() {
-        targets.push(AgentHookTarget {
-            host: "claude-code",
-            path: workspace_root.join(".claude/settings.json"),
-            action: "install or repair Claude Code SessionStart hook",
-        });
-    }
-    if workspace_root.join(".opencode").is_dir() {
-        targets.push(AgentHookTarget {
-            host: "opencode",
-            path: workspace_root.join(".opencode/kast-context.plugin.json"),
-            action: "install or repair OpenCode session context plugin",
-        });
-    }
-    if workspace_root.join(".github").is_dir() {
-        targets.push(AgentHookTarget {
-            host: "copilot",
-            path: workspace_root.join(".github/extensions/kast/extension.mjs"),
-            action: "install or repair Copilot Kast package session hook",
-        });
-    }
-    targets
-}
-
-fn upsert_codex_hook(path: &Path, workspace_root: &Path) -> Result<bool> {
-    let mut value = read_hook_config(path)?;
-    let hook = json!({
-        "event": "SessionStart",
-        "command": context_command(workspace_root)
-    });
-    let root = hook_config_object(&mut value, path)?;
-    let hooks = hook_config_array(root, "hooks", path)?;
-    let mut retained = Vec::with_capacity(hooks.len() + 1);
-    let mut kept_exact = false;
-    for hook_value in hooks.iter() {
-        if is_codex_kast_context_hook(hook_value) {
-            if !kept_exact && hook_value == &hook {
-                retained.push(hook_value.clone());
-                kept_exact = true;
-            }
-        } else {
-            retained.push(hook_value.clone());
-        }
-    }
-    if !kept_exact {
-        retained.push(hook);
-    }
-    *hooks = retained;
-    write_json_hook(path, &value)
-}
-
-fn upsert_claude_hook(path: &Path, workspace_root: &Path) -> Result<bool> {
-    let mut value = read_hook_config(path)?;
-    let command_hook = json!({
-        "type": "command",
-        "command": shell_command(&context_command(workspace_root))
-    });
-    let root = hook_config_object(&mut value, path)?;
-    let hooks_value = root
-        .entry("hooks".to_string())
-        .or_insert_with(|| json!({}));
-    let Some(hooks_object) = hooks_value.as_object_mut() else {
-        return Err(invalid_hook_config(path, "`hooks` must be a JSON object"));
-    };
-    let session_value = hooks_object
-        .entry("SessionStart".to_string())
-        .or_insert_with(|| json!([]));
-    let Some(session_hooks) = session_value.as_array_mut() else {
-        return Err(invalid_hook_config(
-            path,
-            "`hooks.SessionStart` must be a JSON array",
-        ));
-    };
-    remove_claude_kast_context_hooks(session_hooks, &command_hook);
-    if !session_hooks.iter().any(|entry| {
-        entry
-            .get("hooks")
-            .and_then(Value::as_array)
-            .is_some_and(|hooks| hooks.iter().any(|hook| hook == &command_hook))
-    }) {
-        session_hooks.push(json!({ "hooks": [command_hook] }));
-    }
-    write_json_hook(path, &value)
-}
-
-fn remove_claude_kast_context_hooks(session_hooks: &mut Vec<Value>, command_hook: &Value) {
-    let mut kept_exact = false;
-    session_hooks.retain_mut(|entry| {
-        let Some(object) = entry.as_object_mut() else {
-            return true;
-        };
-        let Some(hooks) = object.get_mut("hooks").and_then(Value::as_array_mut) else {
-            return true;
-        };
-        hooks.retain(|hook| {
-            if is_claude_kast_context_hook(hook) {
-                if !kept_exact && hook == command_hook {
-                    kept_exact = true;
-                    true
-                } else {
-                    false
-                }
-            } else {
-                true
-            }
-        });
-        !hooks.is_empty() || object.len() > 1
-    });
-}
-
-fn read_hook_config(path: &Path) -> Result<Value> {
-    match fs::read_to_string(path) {
-        Ok(content) if content.trim().is_empty() => Ok(json!({})),
-        Ok(content) => serde_json::from_str(&content)
-            .map_err(|error| invalid_hook_config(path, error.to_string())),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(json!({})),
-        Err(error) => Err(error.into()),
-    }
-}
-
-fn hook_config_object<'a>(
-    value: &'a mut Value,
-    path: &Path,
-) -> Result<&'a mut serde_json::Map<String, Value>> {
-    value
-        .as_object_mut()
-        .ok_or_else(|| invalid_hook_config(path, "hook config must be a JSON object"))
-}
-
-fn hook_config_array<'a>(
-    object: &'a mut serde_json::Map<String, Value>,
-    key: &str,
-    path: &Path,
-) -> Result<&'a mut Vec<Value>> {
-    let value = object
-        .entry(key.to_string())
-        .or_insert_with(|| Value::Array(Vec::new()));
-    value
-        .as_array_mut()
-        .ok_or_else(|| invalid_hook_config(path, format!("`{key}` must be a JSON array")))
-}
-
-fn invalid_hook_config(path: &Path, message: impl Into<String>) -> CliError {
-    CliError::new(
-        "HOOK_CONFIG_INVALID",
-        format!("Could not update {}: {}", path.display(), message.into()),
-    )
-}
-
-fn is_codex_kast_context_hook(value: &Value) -> bool {
-    value.get("event").and_then(Value::as_str) == Some("SessionStart")
-        && value
-            .get("command")
-            .is_some_and(command_value_mentions_kast_context)
-}
-
-fn is_claude_kast_context_hook(value: &Value) -> bool {
-    value.get("type").and_then(Value::as_str) == Some("command")
-        && value
-            .get("command")
-            .and_then(Value::as_str)
-            .is_some_and(command_string_mentions_kast_context)
-}
-
-fn command_value_mentions_kast_context(value: &Value) -> bool {
-    match value {
-        Value::Array(args) => {
-            let joined = args
-                .iter()
-                .filter_map(Value::as_str)
-                .collect::<Vec<_>>()
-                .join(" ");
-            command_string_mentions_kast_context(&joined)
-        }
-        Value::String(command) => command_string_mentions_kast_context(command),
-        _ => false,
-    }
-}
-
-fn command_string_mentions_kast_context(command: &str) -> bool {
-    command.contains("kast")
-        && (command.contains(" context ") || command.ends_with(" context"))
-}
-
-fn write_json_hook(path: &Path, value: &Value) -> Result<bool> {
-    let mut bytes = serde_json::to_vec_pretty(value)?;
-    bytes.push(b'\n');
-    let original = fs::read(path).unwrap_or_default();
-    let updated = original != bytes;
-    if updated {
-        write_file_atomically(path, &bytes)?;
-    }
-    Ok(updated)
-}
-
-fn context_command(workspace_root: &Path) -> Vec<String> {
-    vec![
-        hook_executable_argument(),
-        "--output".to_string(),
-        "toon".to_string(),
-        "context".to_string(),
-        "--workspace-root".to_string(),
-        workspace_root.display().to_string(),
-    ]
-}
-
 fn shell_command(argv: &[String]) -> String {
     argv.iter()
         .map(|arg| {
@@ -775,24 +498,6 @@ fn shell_command(argv: &[String]) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
-}
-
-fn hook_executable_argument() -> String {
-    let current = env::current_exe().ok().map(config::normalize);
-    let path_kast = ProcessCommand::new("sh")
-        .args(["-c", "command -v kast"])
-        .output()
-        .ok()
-        .filter(|output| output.status.success())
-        .and_then(|output| String::from_utf8(output.stdout).ok())
-        .map(|raw| config::normalize(PathBuf::from(raw.trim())));
-    if current.is_some() && current == path_kast {
-        "kast".to_string()
-    } else {
-        current
-            .map(|path| path.display().to_string())
-            .unwrap_or_else(|| "kast".to_string())
-    }
 }
 
 fn find_kast_managed_fence(content: &str) -> Option<std::ops::Range<usize>> {

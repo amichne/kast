@@ -109,6 +109,26 @@ fn smoke_core_cli_commands() {
             "hidden agent command {hidden} should not appear in agent help: {agent_help_stdout}"
         );
     }
+    for retired_alias in [
+        "health",
+        "runtime-status",
+        "capabilities",
+        "resolve",
+        "references",
+        "raw-resolve",
+        "raw-diagnostics",
+        "workspace-files",
+        "metrics",
+    ] {
+        let alias_help = kast(&home, &config_home)
+            .args(["agent", retired_alias, "--help"])
+            .output()
+            .unwrap_or_else(|error| panic!("agent {retired_alias} --help: {error}"));
+        assert!(
+            !alias_help.status.success(),
+            "retired agent alias {retired_alias} should not be callable"
+        );
+    }
 
     let agent_tools = kast(&home, &config_home)
         .args(["--output", "json", "agent", "tools", "--full"])
@@ -276,6 +296,29 @@ fn smoke_core_cli_commands() {
     assert_eq!(invalid_agent_json["ok"], false);
     assert_eq!(invalid_agent_json["method"], "agent/call");
     assert_eq!(invalid_agent_json["error"]["code"], "AGENT_COMMAND_REMOVED");
+
+    let escaped_agent_call = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "call",
+            "symbol/resolve",
+            "--params",
+            r#"{"symbol":"Widget"}"#,
+        ])
+        .env("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL", "1")
+        .output()
+        .expect("agent call removal with stale internal env");
+    assert!(
+        !escaped_agent_call.status.success(),
+        "agent call should stay removed even when the old internal escape env is set"
+    );
+    let escaped_agent_json: serde_json::Value =
+        serde_json::from_slice(&escaped_agent_call.stdout).expect("agent call escape removal json");
+    assert_eq!(escaped_agent_json["ok"], false);
+    assert_eq!(escaped_agent_json["method"], "agent/call");
+    assert_eq!(escaped_agent_json["error"]["code"], "AGENT_COMMAND_REMOVED");
 
     let activate_bundle_help = kast(&home, &config_home)
         .args(["developer", "release", "activate", "bundle", "--help"])

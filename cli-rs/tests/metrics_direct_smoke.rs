@@ -262,27 +262,28 @@ fn reads_metrics_directly_from_source_index_db() {
         demo_help_stdout.contains("symbol"),
         "symbol demo should remain exposed: {demo_help_stdout}"
     );
-    let metrics_rpc_request = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "database/metrics",
-        "params": {
-            "metric": "fanIn",
-            "limit": 1
-        },
-        "id": 41
-    });
-    let (metrics_success, metrics_envelope, metrics_stderr) = run_agent_call(
+    let metrics_response = run_lsp_custom_request(
         &home,
         &config_home,
         &workspace,
-        "database/metrics",
-        metrics_rpc_request,
+        "kast/databaseMetrics",
+        41,
+        serde_json::json!({
+            "metric": "fanIn",
+            "limit": 1
+        }),
     );
     assert!(
-        metrics_success,
-        "stderr: {metrics_stderr}\nenvelope: {metrics_envelope:#}"
+        metrics_response.error.is_none(),
+        "database/metrics LSP response should succeed: stderr={}\nresponse={:#}",
+        metrics_response.stderr,
+        metrics_response.value
     );
-    let metrics_rpc_json = metrics_envelope["response"].clone();
+    let metrics_rpc_json = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 41,
+        "result": metrics_response.value["result"].clone()
+    });
     assert_eq!(
         metrics_rpc_json["jsonrpc"],
         Value::String("2.0".to_string())
@@ -297,42 +298,36 @@ fn reads_metrics_directly_from_source_index_db() {
         Value::String("lib.Foo".to_string())
     );
 
-    let unsupported_metrics_rpc_request = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "database/metrics",
-        "params": {
-            "metric": "apiSurface"
-        },
-        "id": 43
-    });
-    let (unsupported_success, unsupported_envelope, unsupported_stderr) = run_agent_call(
+    let unsupported_response = run_lsp_custom_request(
         &home,
         &config_home,
         &workspace,
-        "database/metrics",
-        unsupported_metrics_rpc_request,
+        "kast/databaseMetrics",
+        43,
+        serde_json::json!({
+            "metric": "apiSurface"
+        }),
     );
     assert!(
-        !unsupported_success,
-        "unsupported metric should fail the agent envelope: {unsupported_envelope:#}"
-    );
-    assert!(
-        unsupported_stderr.is_empty(),
-        "agent envelope errors should be printed to stdout, not stderr: {unsupported_stderr}"
+        unsupported_response.error.is_none(),
+        "unsupported metrics are reported as a typed RPC result, not an LSP transport failure: {:#}",
+        unsupported_response.value
     );
     assert_eq!(
-        unsupported_envelope["error"]["code"],
-        Value::String("AGENT_REQUEST_INVALID".to_string())
+        unsupported_response.value["result"]["type"],
+        Value::String("METRICS_FAILURE".to_string())
     );
     assert_eq!(
-        unsupported_envelope["error"]["details"]["validation"]["errors"][0]["path"],
-        Value::String("/params/metric".to_string())
+        unsupported_response.value["result"]["stage"],
+        Value::String("validate".to_string())
     );
 
-    let symbol_rpc_request = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "symbol/query",
-        "params": {
+    let symbol_rpc_json = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        42,
+        serde_json::json!({
             "query": "lib.Foo",
             "modes": ["exact", "structural", "graph"],
             "filters": {
@@ -348,21 +343,8 @@ fn reads_metrics_directly_from_source_index_db() {
             },
             "limit": 10,
             "includeNextRequests": true
-        },
-        "id": 42
-    });
-    let (symbol_success, symbol_envelope, symbol_stderr) = run_agent_call(
-        &home,
-        &config_home,
-        &workspace,
-        "symbol/query",
-        symbol_rpc_request,
+        }),
     );
-    assert!(
-        symbol_success,
-        "stderr: {symbol_stderr}\nenvelope: {symbol_envelope:#}"
-    );
-    let symbol_rpc_json = symbol_envelope["response"].clone();
     assert_symbol_query_response_matches_schema(&symbol_rpc_json);
     assert_eq!(symbol_rpc_json["jsonrpc"], Value::String("2.0".to_string()));
     assert_eq!(symbol_rpc_json["id"], Value::Number(42.into()));

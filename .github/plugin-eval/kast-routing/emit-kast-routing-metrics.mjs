@@ -7,9 +7,6 @@ const [, , rawTargetPath, targetKind = "directory"] = process.argv;
 const manifestDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(manifestDir, "../../..");
 const targetPath = rawTargetPath ? resolve(rawTargetPath) : join(repoRoot, "cli-rs/resources/kast-skill");
-const agentToolsFile = process.env.KAST_AGENT_TOOLS_FILE ? resolve(process.env.KAST_AGENT_TOOLS_FILE) : null;
-const agentToolsExitStatus =
-  process.env.KAST_AGENT_TOOLS_EXIT_STATUS === undefined ? null : Number(process.env.KAST_AGENT_TOOLS_EXIT_STATUS);
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -58,34 +55,6 @@ function isKastCase(item) {
 
 function isNegativeCase(item) {
   return item.expectedPrimitive?.type === "none" && item.expectedPrimitive?.name === "none";
-}
-
-function checkRemovedAgentTools(path, exitStatus) {
-  const failures = [];
-  const payload = readJson(path);
-  const replacements = payload.error?.details?.replacements ?? [];
-  const replacementSet = new Set(replacements);
-
-  failIf(exitStatus !== null && exitStatus === 0, "agent tools must exit non-zero after removal", failures);
-  failIf(payload.ok !== false, "removed agent tools envelope must have ok=false", failures);
-  failIf(payload.method !== "agent/tools", "removed agent tools envelope method must be agent/tools", failures);
-  failIf(payload.error?.code !== "AGENT_COMMAND_REMOVED", "agent tools must return AGENT_COMMAND_REMOVED", failures);
-  failIf((payload.schemaVersion ?? 0) < 3, "removed agent tools schemaVersion must be at least 3", failures);
-  for (const command of ["kast", "kast help agent", "kast agent verify --workspace-root <repo>"]) {
-    failIf(!replacementSet.has(command), `removed agent tools replacement missing ${command}`, failures);
-  }
-  failIf(JSON.stringify(payload).includes("KAST_AGENT_TOOLS"), "removed agent tools must not expose the old tool catalog", failures);
-
-  return check(
-    "routing-agent-tools-removed",
-    failures.length === 0 ? "pass" : "fail",
-    failures.length === 0 ? "info" : "error",
-    failures.length === 0
-      ? "Removed agent tool discovery returns targeted replacement guidance."
-      : "Removed agent tool discovery drifted from the v1 public-surface contract.",
-    failures.length === 0 ? replacements : failures,
-    ["Keep removed catalog discovery out of the public surface and point agents at typed commands."],
-  );
 }
 
 const removedCommandPrefixes = ["kast agent tools", "kast agent call", "kast agent workflow"];
@@ -359,10 +328,6 @@ checks.push(
   ),
 );
 
-if (agentToolsFile) {
-  checks.push(checkRemovedAgentTools(agentToolsFile, agentToolsExitStatus));
-}
-
 const localPathNeedles = ["/Users/", "/home/", "/private/", "C:\\"];
 const localPathHits = collectStrings(routing).filter((text) =>
   localPathNeedles.some((needle) => text.includes(needle)),
@@ -389,7 +354,7 @@ console.log(
         metric("kast-routing-score", score, "percent", score === 100 ? "excellent" : score >= 85 ? "good" : "needs-work"),
         metric("kast-routing-cases", cases.length, "cases", cases.length >= requiredCaseIds.size ? "good" : "needs-work"),
         metric("kast-routing-public-actions", actionNames.size, "actions", actionNames.size >= requiredActions.length ? "good" : "needs-work"),
-        metric("kast-routing-agent-tools", toolNames.size, "tools", toolNames.size >= 14 ? "good" : "needs-work"),
+        metric("kast-routing-internal-catalog-tools", toolNames.size, "tools", toolNames.size >= 14 ? "good" : "needs-work"),
       ],
       artifacts: [
         {

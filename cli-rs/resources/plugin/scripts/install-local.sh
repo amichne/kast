@@ -38,25 +38,23 @@ if [ -z "$target_root" ]; then
   die "--target is required"
 fi
 
-script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" >/dev/null 2>&1 && pwd)"
-plugin_root="$(CDPATH= cd -- "$script_dir/.." >/dev/null 2>&1 && pwd)"
-cli_root="$(CDPATH= cd -- "$plugin_root/../.." >/dev/null 2>&1 && pwd)"
 target_root="$(cd -- "$target_root" >/dev/null 2>&1 && pwd)"
 
-kast_bin="${KAST_BIN:-}"
-if [ -z "$kast_bin" ] && command -v kast >/dev/null 2>&1; then
-  kast_bin="$(command -v kast)"
-fi
-if [ -z "$kast_bin" ] && [ -x "$cli_root/target/debug/kast" ]; then
-  kast_bin="$cli_root/target/debug/kast"
-fi
-if [ -z "$kast_bin" ] && [ -x "$cli_root/target/release/kast" ]; then
-  kast_bin="$cli_root/target/release/kast"
-fi
-[ -n "$kast_bin" ] || die "could not find kast; set KAST_BIN or build cli-rs first"
-
-github_dir="$target_root/.github"
-if [ "$force" = "true" ]; then
-  exec "$kast_bin" --output json agent setup copilot --target-dir "$github_dir" --force
-fi
-exec "$kast_bin" --output json agent setup copilot --target-dir "$github_dir"
+printf '%s\n' '{
+  "ok": false,
+  "method": "plugin/install-local",
+  "error": {
+    "code": "PLUGIN_INSTALL_REMOVED",
+    "message": "The repository-local Copilot package installer has been retired. Load this plugin source directly in Copilot CLI, or use the Homebrew-distributed Kast IntelliJ plugin for managed macOS setup.",
+    "details": {
+      "replacements": [
+        "copilot --plugin-dir cli-rs/resources/plugin",
+        "brew install amichne/kast/kast",
+        "kast developer machine plugin",
+        "kast agent verify --workspace-root <repo>"
+      ]
+    }
+  },
+  "schemaVersion": 1
+}'
+exit 1

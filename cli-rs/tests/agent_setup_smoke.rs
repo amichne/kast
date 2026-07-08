@@ -497,14 +497,6 @@ fn setup_leaves_existing_hook_config_out_of_scope() {
         "{claude:#}"
     );
     assert_eq!(session_hooks.len(), 1, "{claude:#}");
-    let stdout: serde_json::Value = serde_json::from_slice(&setup.stdout).expect("setup json");
-    assert!(
-        stdout
-            .get("hookTargets")
-            .and_then(|targets| targets.as_array())
-            .is_none_or(|targets| targets.is_empty()),
-        "{stdout:#}"
-    );
 }
 
 #[test]
