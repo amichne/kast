@@ -95,8 +95,8 @@ impl KastConfig {
         Ok(config)
     }
 
-    pub fn can_run_agent_up_onboarding(&self) -> bool {
-        !self.onboarding.agent_up_completed
+    pub fn can_run_setup_onboarding(&self) -> bool {
+        !self.onboarding.setup_completed
             && self.runtime.is_default()
             && self.project_open.is_default()
     }
@@ -167,9 +167,9 @@ impl KastConfig {
             }
         }
         if let Some(onboarding) = partial.onboarding
-            && let Some(value) = onboarding.agent_up_completed
+            && let Some(value) = onboarding.setup_completed
         {
-            self.onboarding.agent_up_completed = value;
+            self.onboarding.setup_completed = value;
         }
         if let Some(indexing) = partial.indexing {
             if let Some(value) = indexing.phase2_enabled {
