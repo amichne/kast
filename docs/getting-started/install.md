@@ -12,15 +12,34 @@ server images use the separate [Headless Linux server](headless-linux.md) path.
 ## Developer machine
 
 ```console
-brew tap amichne/kast
-brew install kast
-kast developer machine plugin
+cd /path/to/your/repository
+curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
+chmod +x install.sh
+./install.sh install --workspace-root "$PWD"
 ```
 
-Homebrew installs the global `kast` binary and matching IntelliJ plugin
-artifact.
-Restart IntelliJ IDEA or Android Studio after Homebrew links or refreshes the
-plugin, then open the repository. The plugin prepares the workspace.
+The installer is macOS-only. It uses Homebrew to install the global `kast`
+binary, invokes the version-coupled IDEA plugin installer, and asks you to open
+the repository so the plugin can prepare workspace metadata. It fails before
+mutation for unsupported hosts, unknown commands, invalid flags, invalid tap
+values, invalid tap URLs, or missing workspace roots.
+
+Use `update` when the Homebrew path is hidden behind the installer:
+
+```console title="Refresh the developer-machine install"
+./install.sh update --workspace-root "$PWD"
+./install.sh verify --workspace-root "$PWD"
+```
+
+The default Homebrew tap is `amichne/kast`. Pass both `--tap` and `--tap-url`
+for mirrors on a custom Git host:
+
+```console title="Install from an internal Homebrew tap"
+./install.sh install \
+  --tap internal/kast \
+  --tap-url https://git.example.com/internal/homebrew-kast.git \
+  --workspace-root "$PWD"
+```
 
 ## Workspace Setup
 
@@ -52,18 +71,17 @@ kast repair --for agent --workspace-root "$PWD"
 kast repair --for agent --workspace-root "$PWD" --apply
 ```
 
-Use `kast developer inspect paths` when you need the manifest-backed path model.
+Use `kast ready` when you need the manifest-backed readiness view.
 
 ```console
-kast developer inspect paths
-kast --output json developer inspect paths
+kast ready --for agent --workspace-root "$PWD"
+kast --output json ready --for agent --workspace-root "$PWD"
 ```
 
 ## IDE Plugin
 
-Use the developer-machine command when local JetBrains profile links need
-repair:
+Use the installer update path when local JetBrains profile links need repair:
 
 ```console
-kast developer machine plugin
+./install.sh update --workspace-root "$PWD"
 ```

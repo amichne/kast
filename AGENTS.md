@@ -43,6 +43,8 @@ scoped `AGENTS.md` in the same change. Agent-only ADRs stay under
   enforces Rust lint cleanliness.
 - `.github/scripts/test-docs-content-contract.sh` and `zensical build --clean`
   verify documentation contracts and rendering.
+- `.github/scripts/test-macos-installer-contract.sh` verifies the root macOS
+  installer command surface, strict validation, tap overrides, and update path.
 
 ## Coding Style & Naming Conventions
 

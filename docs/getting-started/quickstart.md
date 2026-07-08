@@ -12,22 +12,30 @@ commands work against the IDEA plugin backend and the Linux headless backend.
 
 ## 1. Prepare The Workspace
 
-Start with the host you are on. Developer machines use the JetBrains plugin to
-prepare workspace metadata; Linux servers prepare repository guidance from the
-CLI.
+Start with the host you are on. Developer machines use the root installer for
+the Homebrew and plugin path, then the JetBrains plugin prepares workspace
+metadata. Linux servers prepare repository guidance from the CLI.
 
 === "macOS developer machine"
 
-    Open the repository in IntelliJ IDEA or Android Studio with the
-    Homebrew-installed Kast plugin enabled. The plugin writes
-    `.agents/skills/kast/SKILL.md`, one managed `<kast>...</kast>` region, and
-    `.kast/setup/workspace.json`.
-
     ```console
     cd /path/to/your/repository
+    curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
+    chmod +x install.sh
+    ./install.sh install --workspace-root "$PWD"
     open .
     kast ready --for agent --workspace-root "$PWD"
     ```
+
+    Use the explicit update command when the hidden Homebrew path should be
+    refreshed:
+
+    ```console
+    ./install.sh update --workspace-root "$PWD"
+    ```
+
+    The plugin writes `.agents/skills/kast/SKILL.md`, one managed
+    `<kast>...</kast>` region, and `.kast/setup/workspace.json`.
 
 === "Linux or hosted agent"
 
