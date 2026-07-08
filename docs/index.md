@@ -20,16 +20,16 @@ hosted agents, and server images use the headless runtime.
 
 === "Developer machine"
 
-    Homebrew installs the global `kast` binary and version-coupled IDEA or
-    Android Studio plugin. The plugin prepares repository guidance and
-    invocation metadata when the workspace opens.
+    The root installer uses Homebrew for the global `kast` binary and refreshes
+    the IDEA or Android Studio plugin. The plugin prepares repository guidance
+    and invocation metadata when the workspace opens.
 
     ```console title="Install Kast, then enable one repository"
-    brew tap amichne/kast
-    brew install kast
-
-    kast developer machine plugin
-    open /path/to/your/repository
+    cd /path/to/your/repository
+    curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
+    chmod +x install.sh
+    ./install.sh install --workspace-root "$PWD"
+    open .
     ```
 
 === "Headless Linux"
@@ -71,7 +71,7 @@ flowchart LR
 | Machine install | `kast ready --for machine` | The active binary, manifest, and local paths are coherent |
 | macOS workspace setup | IntelliJ plugin activation | Agent-facing files and invocation metadata match the distribution version |
 | non-macOS repository resources | `kast setup ...` | Agent-facing files match the running CLI version |
-| Runtime backend | `kast developer runtime status` | A workspace backend is reachable and reports capabilities |
+| Runtime backend | `kast status` | A workspace backend is reachable and reports capabilities |
 | Semantic command layer | `kast agent ...` | The request uses compiler-backed Kotlin evidence |
 
 ## Command manual

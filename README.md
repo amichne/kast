@@ -17,21 +17,39 @@ Keep the install scopes separate:
 - **macOS workspace setup:** open the repository in IDEA or Android Studio with
   the Kast plugin enabled; the plugin prepares the workspace.
 
-Install the macOS developer distribution with Homebrew, then repair JetBrains
-profile links if needed:
+Install the macOS developer distribution through the root installer:
 
 ```console
-brew tap amichne/kast
-brew install kast
-kast developer machine plugin
+cd /path/to/your/repository
+curl --fail --location --remote-name https://raw.githubusercontent.com/amichne/kast/main/install.sh
+chmod +x install.sh
+./install.sh install --workspace-root "$PWD"
 ```
 
-`brew install kast` installs the global CLI and matching IntelliJ plugin
-artifact.
-Restart IDEA or Android Studio after Homebrew links or refreshes the plugin,
-then open the repository. On macOS, the IntelliJ plugin writes the skill-facing
-guidance, invocation metadata, and workspace setup manifest. The CLI does not
-support skill-only, runtime-only, or resource-only workspace setup on macOS.
+Use these commands to refresh or check the same installation:
+
+```console
+./install.sh update --workspace-root "$PWD"
+./install.sh verify --workspace-root "$PWD"
+```
+
+The installer defaults to the public `amichne/kast` Homebrew tap. Internal
+mirrors can pass both a tap name and Git URL:
+
+```console
+./install.sh install \
+  --tap internal/kast \
+  --tap-url https://git.example.com/internal/homebrew-kast.git \
+  --workspace-root "$PWD"
+```
+
+The script installs or updates the global `kast` binary, refreshes the matching
+IDEA plugin through the CLI, and fails before mutation when the host or
+arguments are invalid. Restart IDEA or Android Studio after the installer
+refreshes the plugin, then open the repository. On macOS, the IntelliJ plugin
+writes the skill-facing guidance, invocation metadata, and workspace setup
+manifest. The CLI does not support skill-only, runtime-only, or resource-only
+workspace setup on macOS.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
@@ -43,7 +61,7 @@ export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ```
 
 The [install guide](https://kast.michne.com/getting-started/install/) covers
-the Homebrew CLI and IDEA plugin, repository setup, manifest-backed paths, and
+the macOS installer, tap mirrors, repository setup, manifest-backed paths, and
 repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
 covers server and hosted-agent installs.
 
