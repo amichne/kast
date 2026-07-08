@@ -83,6 +83,7 @@ pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
     Ok(workspace_data_directory(workspace_root)?.join("cache/source-index.db"))
 }
 
+#[cfg(target_os = "macos")]
 pub fn default_socket_path(workspace_root: &Path) -> PathBuf {
     default_socket_path_for_config(&KastConfig::defaults(), workspace_root)
 }
