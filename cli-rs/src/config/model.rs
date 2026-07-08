@@ -130,12 +130,12 @@ impl Default for ProjectOpenConfig {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OnboardingConfig {
-    pub agent_up_completed: bool,
+    pub setup_completed: bool,
 }
 
 impl OnboardingConfig {
     fn is_default(&self) -> bool {
-        !self.agent_up_completed
+        !self.setup_completed
     }
 }
 

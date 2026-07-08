@@ -50,7 +50,8 @@ struct PartialProjectOpen {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PartialOnboarding {
-    agent_up_completed: Option<bool>,
+    #[serde(alias = "agentUpCompleted")]
+    setup_completed: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
