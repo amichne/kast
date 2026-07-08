@@ -5,14 +5,14 @@ import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vcs.FilePath
-import com.intellij.openapi.vcs.VcsFileListenerContextHelper
+import com.intellij.openapi.vcs.ProjectLevelVcsManager
+import com.intellij.openapi.vcs.VcsConfiguration
+import com.intellij.openapi.vcs.VcsShowConfirmationOption
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
-import com.intellij.vcsUtil.VcsUtil
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -87,14 +87,17 @@ internal class IdeaEditApplier(
             edits = validatedEdits,
             invocationId = invocationId,
         )
-        ignoreVcsFileListenerEvents(validatedFileOperations)
 
         // Validate and apply file operations first.
-        val (affectedFiles, createdFiles, deletedFiles) = applyFileOperations(
+        val (affectedFiles, createdFiles, deletedFiles) = withVcsFileOperationConfirmationsSuppressed(
             validatedFileOperations,
-            invocationId,
-            normalizedWorkspaceRoot,
-        )
+        ) {
+            applyFileOperations(
+                validatedFileOperations,
+                invocationId,
+                normalizedWorkspaceRoot,
+            )
+        }
 
         // Check hashes against current IDEA state
         validatedEdits.forEach { plan ->
@@ -399,46 +402,50 @@ internal class IdeaEditApplier(
         }
     }
 
-    private fun ignoreVcsFileListenerEvents(fileOperations: List<ValidatedFileOperation>) {
-        val helper = VcsFileListenerContextHelper.getInstance(project)
-        val addedFiles = mutableListOf<FilePath>()
-        val addedDirectories = mutableListOf<FilePath>()
-        val deletedFiles = mutableListOf<FilePath>()
-
-        fileOperations.forEach { operation ->
-            when (operation) {
-                is ValidatedFileOperation.CreateFile -> {
-                    val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
-                    addedFiles += VcsUtil.getFilePath(filePath, false)
-                    addedDirectories += missingParentDirectories(filePath)
-                        .map { parent -> VcsUtil.getFilePath(parent, true) }
-                }
-
-                is ValidatedFileOperation.DeleteFile -> {
-                    deletedFiles += VcsUtil.getFilePath(Path.of(operation.filePath).toAbsolutePath().normalize(), false)
-                }
+    private suspend fun <T> withVcsFileOperationConfirmationsSuppressed(
+        fileOperations: List<ValidatedFileOperation>,
+        action: suspend () -> T,
+    ): T {
+        val vcsManager = ProjectLevelVcsManager.getInstance(project)
+        val overrides = buildList {
+            if (fileOperations.any { operation -> operation is ValidatedFileOperation.CreateFile }) {
+                add(
+                    VcsConfirmationOverride(
+                        option = vcsManager.getStandardConfirmation(VcsConfiguration.StandardConfirmation.ADD, null),
+                        suppressedValue = VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY,
+                    ),
+                )
+            }
+            if (fileOperations.any { operation -> operation is ValidatedFileOperation.DeleteFile }) {
+                add(
+                    VcsConfirmationOverride(
+                        option = vcsManager.getStandardConfirmation(VcsConfiguration.StandardConfirmation.REMOVE, null),
+                        suppressedValue = VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY,
+                    ),
+                )
             }
         }
-
-        if (addedFiles.isNotEmpty()) {
-            helper.ignoreAdded(addedFiles)
-        }
-        if (addedDirectories.isNotEmpty()) {
-            helper.ignoreAddedRecursive(addedDirectories)
-        }
-        if (deletedFiles.isNotEmpty()) {
-            helper.ignoreDeleted(deletedFiles)
+        overrides.forEach { override -> override.apply() }
+        return try {
+            action()
+        } finally {
+            overrides.asReversed().forEach { override -> override.restore() }
         }
     }
 
-    private fun missingParentDirectories(filePath: Path): List<Path> {
-        val directories = mutableListOf<Path>()
-        var parent = filePath.parent
-        while (parent != null && !Files.exists(parent)) {
-            directories.add(parent)
-            parent = parent.parent
+    private class VcsConfirmationOverride(
+        private val option: VcsShowConfirmationOption,
+        private val suppressedValue: VcsShowConfirmationOption.Value,
+    ) {
+        private val previousValue: VcsShowConfirmationOption.Value = option.value
+
+        fun apply() {
+            option.value = suppressedValue
         }
-        return directories
+
+        fun restore() {
+            option.value = previousValue
+        }
     }
 
     private fun requireWorkspaceTarget(
