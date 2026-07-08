@@ -1,5 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{AgentSetupHarness, BackendName, DaemonStartArgs};
+use crate::cli::{BackendName, DaemonStartArgs};
 use crate::error::{CliError, Result};
 use crate::manifest;
 use serde::{Deserialize, Serialize};

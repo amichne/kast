@@ -55,21 +55,6 @@ pub struct AgentGuidanceSetupArgs {
     pub dry_run: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AgentSetupHarness {
-    Auto,
-    Copilot,
-    Skill,
-    Instructions,
-}
-
-impl AgentSetupHarness {
-    pub fn is_auto(self) -> bool {
-        matches!(self, Self::Auto)
-    }
-}
-
 #[derive(Debug, Args, Clone, Default)]
 pub struct AgentRuntimeArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.

@@ -5,28 +5,6 @@ pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
-fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast skill install");
-    mdln!(document);
-    mdln!(document, "- Installed at: `{}`", result.installed_at);
-    mdln!(document, "- Version: `{}`", result.version);
-    mdln!(
-        document,
-        "- Reused existing install: {}",
-        yes_no(result.skipped)
-    );
-    mdln!(document);
-    mdln!(document, "## Next steps");
-    mdln!(
-        document,
-        "- Read the installed skill entrypoint: `{}/SKILL.md`",
-        result.installed_at
-    );
-    mdln!(document, "- Read command help with: `kast help agent`");
-    print_markdown(&document.into_string())
-}
-
 fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     print_idea_plugin_install_summary(&mut document, result);
