@@ -5,25 +5,9 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && 
 metric_pack_dir="${repo_root}/.github/plugin-eval/kast-routing"
 target="${repo_root}/cli-rs/resources/kast-skill"
 tmp_file="$(mktemp "${TMPDIR:-/tmp}/kast-routing-evals.XXXXXX.json")"
-tools_file="$(mktemp "${TMPDIR:-/tmp}/kast-routing-tools.XXXXXX.json")"
-trap 'rm -f -- "$tmp_file" "$tools_file"' EXIT
+trap 'rm -f -- "$tmp_file"' EXIT
 
-if [[ -n "${KAST_BIN:-}" ]]; then
-  kast_bin="${KAST_BIN}"
-else
-  cargo build --manifest-path "${repo_root}/cli-rs/Cargo.toml" --bin kast --locked
-  kast_bin="${repo_root}/cli-rs/target/debug/kast"
-fi
-
-agent_tools_status=0
-if "$kast_bin" --output json agent tools --full >"$tools_file"; then
-  agent_tools_status=0
-else
-  agent_tools_status=$?
-fi
-KAST_AGENT_TOOLS_FILE="$tools_file" \
-  KAST_AGENT_TOOLS_EXIT_STATUS="$agent_tools_status" \
-  node "${metric_pack_dir}/emit-kast-routing-metrics.mjs" "$target" skill >"$tmp_file"
+node "${metric_pack_dir}/emit-kast-routing-metrics.mjs" "$target" skill >"$tmp_file"
 
 node --input-type=module - "$tmp_file" <<'NODE'
 import { readFileSync } from "node:fs";
