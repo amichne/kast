@@ -572,6 +572,7 @@ fn root_setup_runtime_command(args: &cli::RuntimeArgs, no_open_ide: bool) -> Vec
     command
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovedOperatorCommandEnvelope<'a> {
@@ -581,6 +582,7 @@ struct RemovedOperatorCommandEnvelope<'a> {
     schema_version: u32,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovedOperatorCommandError<'a> {
@@ -589,12 +591,14 @@ struct RemovedOperatorCommandError<'a> {
     details: RemovedOperatorCommandDetails<'a>,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovedOperatorCommandDetails<'a> {
     replacements: &'a [&'a str],
 }
 
+#[cfg(target_os = "macos")]
 fn removed_operator_command(
     method: &'static str,
     message: &'static str,
