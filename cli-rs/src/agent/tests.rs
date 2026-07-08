@@ -4,68 +4,6 @@ mod tests {
     use crate::cli::{AgentRawCallDirection, AgentRawResolveArgs, AgentSymbolKind, BackendName};
 
     #[test]
-    fn params_object_becomes_json_rpc_request() {
-        let request =
-            normalize_input("symbol/resolve", Some(json!({"symbol": "Widget"}))).expect("request");
-        assert_eq!(request["method"], "symbol/resolve");
-        assert_eq!(request["params"]["symbol"], "Widget");
-        assert_eq!(request["id"], 1);
-    }
-
-    #[test]
-    fn full_json_rpc_request_is_preserved() {
-        let input = json!({
-            "jsonrpc": "2.0",
-            "method": "symbol/resolve",
-            "params": { "symbol": "Widget" },
-            "id": 42
-        });
-        let request = normalize_input("symbol/resolve", Some(input.clone())).expect("request");
-        assert_eq!(request, input);
-    }
-
-    #[test]
-    fn prior_agent_envelope_request_is_pipe_compatible() {
-        let input = json!({
-            "ok": true,
-            "method": "symbol/resolve",
-            "request": {
-                "jsonrpc": "2.0",
-                "method": "symbol/resolve",
-                "params": { "symbol": "Widget" },
-                "id": 1
-            }
-        });
-        let request = normalize_input("symbol/resolve", Some(input)).expect("request");
-        assert_eq!(request["params"]["symbol"], "Widget");
-    }
-
-    #[test]
-    fn next_request_object_can_feed_the_selected_method() {
-        let input = json!({
-            "nextRequest": {
-                "symbol": "Widget",
-                "kind": "class"
-            }
-        });
-        let request = normalize_input("symbol/resolve", Some(input)).expect("request");
-        assert_eq!(request["method"], "symbol/resolve");
-        assert_eq!(request["params"]["kind"], "class");
-    }
-
-    #[test]
-    fn method_mismatch_is_rejected() {
-        let input = json!({
-            "jsonrpc": "2.0",
-            "method": "symbol/references",
-            "params": { "symbol": "Widget" },
-            "id": 1
-        });
-        let error = normalize_input("symbol/resolve", Some(input)).expect_err("mismatch");
-        assert_eq!(error.code, "AGENT_METHOD_MISMATCH");
-    }
-
-    #[test]
     fn raw_resolve_alias_builds_nested_position_params() {
         let args = AgentRawResolveArgs {
             position: AgentPositionArgs {

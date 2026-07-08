@@ -46,7 +46,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             ]),
         );
     }
-    let request: std::result::Result<AgentRequest, Box<AgentFailure>> = match command {
+    let request = match command {
         AgentCommand::Up(_)
         | AgentCommand::Ready(_)
         | AgentCommand::Setup(_)
@@ -54,20 +54,16 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
-        AgentCommand::Call(args) => {
-            if internal_agent_call_enabled() {
-                prepare_call(args)
-            } else {
-                return removed_agent_command(
-                    "agent/call",
-                    "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
-                    replacement_commands([
-                        "kast agent symbol --query <name> --workspace-root <repo>",
-                        "kast agent diagnostics --file-path <path> --workspace-root <repo>",
-                        "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
-                    ]),
-                );
-            }
+        AgentCommand::Call(_) => {
+            return removed_agent_command(
+                "agent/call",
+                "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
+                replacement_commands([
+                    "kast agent symbol --query <name> --workspace-root <repo>",
+                    "kast agent diagnostics --file-path <path> --workspace-root <repo>",
+                    "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
+                ]),
+            );
         }
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         AgentCommand::Verify(args) => return execute_agent_verify(args),
@@ -75,17 +71,9 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Impact(args) => return execute_agent_impact(args),
         AgentCommand::Diagnostics(args) => return execute_agent_diagnostics(args),
         AgentCommand::Rename(args) => return execute_agent_rename(args),
-        other => Ok(prepare_alias(other)),
-    };
-    let request = match request {
-        Ok(request) => request,
-        Err(error) => return error_envelope(error.method, error.request, error.error),
+        other => prepare_alias(other),
     };
     execute_request(request)
-}
-
-fn internal_agent_call_enabled() -> bool {
-    std::env::var_os("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL").is_some()
 }
 
 fn replacement_commands<const N: usize>(commands: [&str; N]) -> Vec<Value> {

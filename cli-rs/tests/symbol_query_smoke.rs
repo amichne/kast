@@ -13,20 +13,17 @@ fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     seed_source_index(&workspace);
 
-    let request = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "symbol/query",
-        "params": {
+    let response = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        44,
+        serde_json::json!({
             "query": "card payment",
             "modes": ["lexical"],
             "limit": 10
-        },
-        "id": 44
-    });
-    let (success, envelope, stderr) =
-        run_agent_call(&home, &config_home, &workspace, "symbol/query", request);
-    assert!(success, "stderr: {stderr}\nenvelope: {envelope:#}");
-    let response = envelope["response"].clone();
+        }),
+    );
     assert_symbol_query_response_matches_schema(&response);
     assert_eq!(
         response["result"]["results"][0]["declaration"]["fqName"],
