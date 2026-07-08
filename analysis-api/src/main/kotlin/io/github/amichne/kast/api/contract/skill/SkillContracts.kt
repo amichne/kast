@@ -210,6 +210,166 @@ data class KastWriteAndValidateReplaceRangeRequest(
 ) : KastWriteAndValidateRequest
 
 @Serializable
+enum class KastScopeMutationOperation {
+    ADD_FILE,
+    ADD_DECLARATION,
+    ADD_IMPLEMENTATION,
+    ADD_STATEMENT,
+    REPLACE_DECLARATION,
+}
+
+@Serializable
+@SerialName("ADD_FILE_REQUEST")
+data class KastAddFileRequest(
+    val workspaceRoot: String? = null,
+    val filePath: String,
+    val contentFile: String,
+)
+
+@Serializable
+sealed interface KastPlacementScopeSelector
+
+@Serializable
+@SerialName("NAMED_SCOPE")
+data class KastNamedPlacementScope(
+    val insideScope: String,
+    val fileHint: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+) : KastPlacementScopeSelector
+
+@Serializable
+@SerialName("FILE_SCOPE")
+data class KastFilePlacementScope(
+    val insideFile: String,
+) : KastPlacementScopeSelector
+
+@Serializable
+enum class KastPlacementAnchor {
+    @SerialName("body-start")
+    BODY_START,
+
+    @SerialName("body-end")
+    BODY_END,
+
+    @SerialName("file-top")
+    FILE_TOP,
+
+    @SerialName("file-bottom")
+    FILE_BOTTOM,
+
+    @SerialName("after-imports")
+    AFTER_IMPORTS,
+}
+
+@Serializable
+sealed interface KastPlacementAnchorSelector
+
+@Serializable
+@SerialName("AT_ANCHOR")
+data class KastAtPlacementAnchor(
+    val anchor: KastPlacementAnchor,
+) : KastPlacementAnchorSelector
+
+@Serializable
+@SerialName("AFTER_SYMBOL")
+data class KastAfterSymbolPlacementAnchor(
+    val symbol: String,
+    val fileHint: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+) : KastPlacementAnchorSelector
+
+@Serializable
+@SerialName("BEFORE_SYMBOL")
+data class KastBeforeSymbolPlacementAnchor(
+    val symbol: String,
+    val fileHint: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+) : KastPlacementAnchorSelector
+
+@Serializable
+data class KastPlacementSelector(
+    val scope: KastPlacementScopeSelector,
+    val anchor: KastPlacementAnchorSelector,
+)
+
+@Serializable
+data class KastResolvedPlacement(
+    val filePath: String,
+    val offset: Int,
+    val scope: KastPlacementScopeSelector,
+    val anchor: KastPlacementAnchorSelector,
+)
+
+@Serializable
+@SerialName("ADD_DECLARATION_REQUEST")
+data class KastAddDeclarationRequest(
+    val workspaceRoot: String? = null,
+    val placement: KastPlacementSelector,
+    val contentFile: String,
+)
+
+@Serializable
+@SerialName("ADD_IMPLEMENTATION_REQUEST")
+data class KastAddImplementationRequest(
+    val workspaceRoot: String? = null,
+    val placement: KastPlacementSelector,
+    val contentFile: String,
+)
+
+@Serializable
+@SerialName("ADD_STATEMENT_REQUEST")
+data class KastAddStatementRequest(
+    val workspaceRoot: String? = null,
+    val insideScope: String,
+    val anchor: KastPlacementAnchor,
+    val contentFile: String,
+)
+
+@Serializable
+@SerialName("REPLACE_DECLARATION_REQUEST")
+data class KastReplaceDeclarationRequest(
+    val workspaceRoot: String? = null,
+    val symbol: String,
+    val contentFile: String,
+    val fileHint: String? = null,
+    val kind: WrapperNamedSymbolKind? = null,
+    val containingType: String? = null,
+)
+
+@Serializable
+sealed interface KastScopeMutationResponse
+
+@Serializable
+@SerialName("SCOPE_MUTATION_SUCCESS")
+data class KastScopeMutationSuccessResponse(
+    val ok: Boolean,
+    val operation: KastScopeMutationOperation,
+    val applied: Boolean,
+    val affectedFiles: List<String>,
+    val createdFiles: List<String> = emptyList(),
+    val editCount: Int,
+    val importChanges: Int,
+    val diagnostics: KastDiagnosticsSummary,
+    val placement: KastResolvedPlacement? = null,
+    val logFile: String,
+) : KastScopeMutationResponse
+
+@Serializable
+@SerialName("SCOPE_MUTATION_FAILURE")
+data class KastScopeMutationFailureResponse(
+    val ok: Boolean = false,
+    val operation: KastScopeMutationOperation,
+    val stage: String,
+    val message: String,
+    val logFile: String,
+    val error: ApiErrorResponse? = null,
+    val errorText: String? = null,
+) : KastScopeMutationResponse
+
+@Serializable
 data class KastResolveQuery(
     val workspaceRoot: String,
     val symbol: String,

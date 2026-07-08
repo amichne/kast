@@ -19,6 +19,16 @@ pub enum AgentCommand {
     Diagnostics(AgentDiagnosticsArgs),
     /// Rename a compiler-resolved symbol by identity.
     Rename(AgentRenameArgs),
+    /// Create a new Kotlin file from content.
+    AddFile(AgentAddFileArgs),
+    /// Add a declaration inside a file or named scope.
+    AddDeclaration(AgentScopedMutationArgs),
+    /// Add implementation content inside a file or named scope.
+    AddImplementation(AgentScopedMutationArgs),
+    /// Add a statement inside a named executable scope.
+    AddStatement(AgentStatementMutationArgs),
+    /// Replace a named declaration by symbol identity.
+    ReplaceDeclaration(AgentReplaceDeclarationArgs),
     /// List catalog-backed tools for CLI-capable agent hosts.
     #[command(hide = true)]
     Tools(RemovedAgentCommandArgs),
@@ -144,6 +154,87 @@ pub struct AgentRenameArgs {
     pub apply: bool,
 }
 
+#[derive(Debug, Args, Clone)]
+pub struct AgentAddFileArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Absolute path of the Kotlin file to create.
+    #[arg(long)]
+    pub file_path: String,
+    /// File containing the complete content to write.
+    #[arg(long)]
+    pub content_file: PathBuf,
+    /// Apply the file creation. Without this flag, Kast only reports the planned request.
+    #[arg(long)]
+    pub apply: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentScopedMutationArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Named declaration scope that receives the content.
+    #[arg(long)]
+    pub inside_scope: Option<String>,
+    /// File scope that receives the content.
+    #[arg(long)]
+    pub inside_file: Option<String>,
+    /// Placement anchor inside the selected scope.
+    #[arg(long)]
+    pub at: Option<AgentPlacementAnchor>,
+    /// Insert after this named symbol.
+    #[arg(long)]
+    pub after_symbol: Option<String>,
+    /// Insert before this named symbol.
+    #[arg(long)]
+    pub before_symbol: Option<String>,
+    /// File containing the declaration or implementation content.
+    #[arg(long)]
+    pub content_file: PathBuf,
+    /// Apply the mutation. Without this flag, Kast only reports the planned request.
+    #[arg(long)]
+    pub apply: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentStatementMutationArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Named function or accessor scope that receives the statement.
+    #[arg(long)]
+    pub inside_scope: String,
+    /// Placement anchor inside the selected executable body.
+    #[arg(long)]
+    pub at: AgentStatementAnchor,
+    /// File containing the statement content.
+    #[arg(long)]
+    pub content_file: PathBuf,
+    /// Apply the mutation. Without this flag, Kast only reports the planned request.
+    #[arg(long)]
+    pub apply: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentReplaceDeclarationArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Existing declaration identity to replace.
+    #[arg(long)]
+    pub symbol: String,
+    /// File containing the replacement declaration content.
+    #[arg(long)]
+    pub content_file: PathBuf,
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    #[arg(long)]
+    pub file_hint: Option<String>,
+    #[arg(long)]
+    pub containing_type: Option<String>,
+    /// Apply the replacement. Without this flag, Kast only reports the planned request.
+    #[arg(long)]
+    pub apply: bool,
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AgentSymbolKind {
     Class,
@@ -161,6 +252,40 @@ impl AgentSymbolKind {
             Self::Object => "object",
             Self::Function => "function",
             Self::Property => "property",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentPlacementAnchor {
+    BodyStart,
+    BodyEnd,
+    FileTop,
+    FileBottom,
+    AfterImports,
+}
+
+impl AgentPlacementAnchor {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::BodyStart => "body-start",
+            Self::BodyEnd => "body-end",
+            Self::FileTop => "file-top",
+            Self::FileBottom => "file-bottom",
+            Self::AfterImports => "after-imports",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentStatementAnchor {
+    BodyEnd,
+}
+
+impl AgentStatementAnchor {
+    pub fn canonical(self) -> &'static str {
+        match self {
+            Self::BodyEnd => "body-end",
         }
     }
 }

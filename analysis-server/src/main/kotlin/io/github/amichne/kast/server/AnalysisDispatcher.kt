@@ -363,6 +363,31 @@ class RpcAnalysisDispatcher(
                 skillRpc.writeAndValidate(decodeParams(KastWriteAndValidateRequest.serializer(), params)),
             )
 
+            "symbol/add-file" -> encode(
+                KastScopeMutationResponse.serializer(),
+                skillRpc.addFile(decodeParams(KastAddFileRequest.serializer(), params)),
+            )
+
+            "symbol/add-declaration" -> encode(
+                KastScopeMutationResponse.serializer(),
+                skillRpc.addDeclaration(decodeParams(KastAddDeclarationRequest.serializer(), params)),
+            )
+
+            "symbol/add-implementation" -> encode(
+                KastScopeMutationResponse.serializer(),
+                skillRpc.addImplementation(decodeParams(KastAddImplementationRequest.serializer(), params)),
+            )
+
+            "symbol/add-statement" -> encode(
+                KastScopeMutationResponse.serializer(),
+                skillRpc.addStatement(decodeParams(KastAddStatementRequest.serializer(), params)),
+            )
+
+            "symbol/replace-declaration" -> encode(
+                KastScopeMutationResponse.serializer(),
+                skillRpc.replaceDeclaration(decodeParams(KastReplaceDeclarationRequest.serializer(), params)),
+            )
+
             "raw/implementations" -> encode(
                 ImplementationsResult.serializer(),
                 backend.implementations(

@@ -20,10 +20,32 @@ kast agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-roo
 kast agent impact --symbol com.example.OrderService --workspace-root "$PWD"
 kast agent rename --symbol com.example.OrderService --new-name Orders --workspace-root "$PWD"
 kast agent rename --symbol com.example.OrderService --new-name Orders --apply --workspace-root "$PWD"
+kast agent add-file --file-path "$PWD/src/main/kotlin/NewType.kt" --content-file /tmp/NewType.kt --workspace-root "$PWD"
+kast agent add-declaration --inside-file "$PWD/src/main/kotlin/App.kt" --at file-bottom --content-file /tmp/declaration.kt --workspace-root "$PWD"
+kast agent add-implementation --inside-scope com.example.Service --at body-end --content-file /tmp/member.kt --workspace-root "$PWD"
+kast agent add-statement --inside-scope com.example.Service.process --at body-end --content-file /tmp/statement.kt --workspace-root "$PWD"
+kast agent replace-declaration --symbol com.example.Service.process --kind function --content-file /tmp/replacement.kt --workspace-root "$PWD"
 ```
 
 `--symbol <fq-name>` means compiler identity. Use
 `kast agent symbol --query <name>` for lookup before mutation.
+
+## Mutations
+
+Agent mutations are plan-first. Without `--apply`, mutation commands emit a
+structured request plan and do not write files. Add `--apply` only after
+reviewing the generated request and content file.
+
+| Command | Selector | Placement |
+| --- | --- | --- |
+| `add-file` | `--file-path` | complete file from `--content-file` |
+| `add-declaration` | `--inside-file` or `--inside-scope` | `--at`, `--after-symbol`, or `--before-symbol` |
+| `add-implementation` | `--inside-file` or `--inside-scope` | `--at`, `--after-symbol`, or `--before-symbol` |
+| `add-statement` | `--inside-scope` | `--at body-end` |
+| `replace-declaration` | `--symbol` plus optional `--kind`, `--file-hint`, `--containing-type` | replaces the resolved declaration scope |
+
+Shared anchors are `file-top`, `file-bottom`, `after-imports`, `body-start`,
+and `body-end` where they apply to the selected scope.
 
 ## Readiness And Repair
 

@@ -188,10 +188,20 @@ fn generated_request_schemas_validate_every_catalog_sample() {
     collect_named_files(&requests_root, "minimal.json", &mut sample_paths);
     collect_named_files(&requests_root, "maximal.json", &mut sample_paths);
     sample_paths.sort();
+    let expected_sample_count: usize = commands
+        .values()
+        .map(|command| {
+            command
+                .get("variants")
+                .and_then(Value::as_object)
+                .filter(|variants| !variants.is_empty())
+                .map_or(2, |variants| variants.len() * 2)
+        })
+        .sum();
     assert_eq!(
         sample_paths.len(),
-        68,
-        "31 commands currently expand to 68 minimal/maximal sample payloads"
+        expected_sample_count,
+        "catalog commands should expand to one minimal and maximal sample per request shape"
     );
 
     for path in sample_paths {

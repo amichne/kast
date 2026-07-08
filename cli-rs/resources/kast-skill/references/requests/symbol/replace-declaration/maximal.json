@@ -1,0 +1,13 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "symbol/replace-declaration",
+  "params": {
+    "containingType": "com.example.Widget",
+    "contentFile": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "kind": "property",
+    "symbol": "Widget",
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
+}

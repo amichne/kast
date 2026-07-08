@@ -18,7 +18,7 @@ flowchart LR
     ready["ready<br/>read-only"]
     repair["repair<br/>plan/apply"]
     status["status"]
-    agent["agent<br/>verify, symbol, diagnostics, impact, rename"]
+    agent["agent<br/>verify, symbol, diagnostics, impact, rename, mutations"]
     runtime["developer runtime"]
     inspect["developer inspect"]
 
@@ -34,7 +34,7 @@ flowchart LR
 | Setup | `setup` | Non-macOS repository guidance setup; macOS workspace setup is owned by the IntelliJ plugin |
 | Readiness | `ready` | Read task readiness without mutation |
 | Repair | `repair` | Plan or apply managed install-state repair |
-| Agent automation | `agent verify`, `agent symbol`, `agent diagnostics`, `agent impact`, `agent rename`, `agent lsp` | Run typed compiler-backed agent operations |
+| Agent automation | `agent verify`, `agent symbol`, `agent diagnostics`, `agent impact`, `agent rename`, `agent add-file`, `agent add-declaration`, `agent add-implementation`, `agent add-statement`, `agent replace-declaration`, `agent lsp` | Run typed compiler-backed agent operations |
 | Runtime | `status`, `developer runtime ...` | Inspect, start, refresh, or stop the workspace backend |
 | Inspect | `developer inspect paths`, `developer inspect metrics`, `developer inspect demo`, `developer inspect catalog` | Inspect paths, demos, catalogs, and source-index metrics |
 | Machine | `developer machine plugin`, `developer machine defaults`, `developer machine shell` | Manage local IDE plugin links, developer defaults, and shell integration |

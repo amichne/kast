@@ -60,6 +60,21 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Impact(args) => execute_agent_impact(args),
         AgentCommand::Diagnostics(args) => execute_agent_diagnostics(args),
         AgentCommand::Rename(args) => execute_agent_rename(args),
+        AgentCommand::AddFile(args) => execute_agent_add_file(args),
+        AgentCommand::AddDeclaration(args) => execute_agent_scoped_mutation(
+            "agent/add-declaration",
+            "symbol/add-declaration",
+            "add-declaration",
+            args,
+        ),
+        AgentCommand::AddImplementation(args) => execute_agent_scoped_mutation(
+            "agent/add-implementation",
+            "symbol/add-implementation",
+            "add-implementation",
+            args,
+        ),
+        AgentCommand::AddStatement(args) => execute_agent_add_statement(args),
+        AgentCommand::ReplaceDeclaration(args) => execute_agent_replace_declaration(args),
     }
 }
 
@@ -220,6 +235,185 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
         runtime: args.runtime,
         full_response: true,
     })
+}
+
+fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
+    let params = json!({
+        "filePath": args.file_path,
+        "contentFile": args.content_file.display().to_string(),
+    });
+    execute_agent_mutation(
+        "agent/add-file",
+        "symbol/add-file",
+        "add-file",
+        params,
+        args.apply,
+        args.runtime,
+    )
+}
+
+fn execute_agent_scoped_mutation(
+    agent_method: &'static str,
+    request_method: &'static str,
+    command_name: &'static str,
+    args: AgentScopedMutationArgs,
+) -> AgentEnvelope {
+    let placement = match scoped_placement_params(
+        args.inside_scope,
+        args.inside_file,
+        args.at.map(|anchor| anchor.canonical().to_string()),
+        args.after_symbol,
+        args.before_symbol,
+    ) {
+        Ok(placement) => placement,
+        Err(error) => return error_envelope(agent_method.to_string(), None, error),
+    };
+    let params = json!({
+        "placement": placement,
+        "contentFile": args.content_file.display().to_string(),
+    });
+    execute_agent_mutation(
+        agent_method,
+        request_method,
+        command_name,
+        params,
+        args.apply,
+        args.runtime,
+    )
+}
+
+fn execute_agent_add_statement(args: AgentStatementMutationArgs) -> AgentEnvelope {
+    let params = json!({
+        "insideScope": args.inside_scope,
+        "anchor": args.at.canonical(),
+        "contentFile": args.content_file.display().to_string(),
+    });
+    execute_agent_mutation(
+        "agent/add-statement",
+        "symbol/add-statement",
+        "add-statement",
+        params,
+        args.apply,
+        args.runtime,
+    )
+}
+
+fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> AgentEnvelope {
+    let params = drop_nulls(json!({
+        "symbol": args.symbol,
+        "contentFile": args.content_file.display().to_string(),
+        "kind": args.kind.map(|kind| kind.canonical()),
+        "fileHint": args.file_hint,
+        "containingType": args.containing_type,
+    }));
+    execute_agent_mutation(
+        "agent/replace-declaration",
+        "symbol/replace-declaration",
+        "replace-declaration",
+        params,
+        args.apply,
+        args.runtime,
+    )
+}
+
+fn execute_agent_mutation(
+    agent_method: &'static str,
+    request_method: &'static str,
+    command_name: &'static str,
+    params: Value,
+    apply: bool,
+    runtime: AgentRuntimeArgs,
+) -> AgentEnvelope {
+    let request = json_rpc_request(request_method, params);
+    if !apply {
+        return mutation_plan_envelope(agent_method, command_name, request);
+    }
+    execute_request(AgentRequest {
+        method: request_method.to_string(),
+        request,
+        runtime,
+        full_response: true,
+    })
+}
+
+fn mutation_plan_envelope(
+    agent_method: &'static str,
+    command_name: &'static str,
+    request: Value,
+) -> AgentEnvelope {
+    let result = json!({
+        "type": "KAST_AGENT_MUTATION_PLAN",
+        "ok": true,
+        "mutates": true,
+        "applyRequired": true,
+        "request": request,
+        "help": [
+            format!("Run `kast agent {command_name} ... --apply --workspace-root <repo>` to apply this mutation.")
+        ],
+        "schemaVersion": SCHEMA_VERSION,
+    });
+    result_envelope(agent_method.to_string(), result)
+}
+
+fn scoped_placement_params(
+    inside_scope: Option<String>,
+    inside_file: Option<String>,
+    at: Option<String>,
+    after_symbol: Option<String>,
+    before_symbol: Option<String>,
+) -> std::result::Result<Value, AgentError> {
+    let scope = match (inside_scope, inside_file) {
+        (Some(inside_scope), None) => json!({
+            "type": "NAMED_SCOPE",
+            "insideScope": inside_scope,
+        }),
+        (None, Some(inside_file)) => json!({
+            "type": "FILE_SCOPE",
+            "insideFile": inside_file,
+        }),
+        (None, None) => {
+            return Err(agent_error(
+                "AGENT_USAGE",
+                "one of --inside-scope or --inside-file is required",
+            ));
+        }
+        (Some(_), Some(_)) => {
+            return Err(agent_error(
+                "AGENT_USAGE",
+                "--inside-scope and --inside-file cannot be used together",
+            ));
+        }
+    };
+    let anchor = match (at, after_symbol, before_symbol) {
+        (Some(anchor), None, None) => json!({
+            "type": "AT_ANCHOR",
+            "anchor": anchor,
+        }),
+        (None, Some(symbol), None) => json!({
+            "type": "AFTER_SYMBOL",
+            "symbol": symbol,
+        }),
+        (None, None, Some(symbol)) => json!({
+            "type": "BEFORE_SYMBOL",
+            "symbol": symbol,
+        }),
+        (None, None, None) => {
+            return Err(agent_error(
+                "AGENT_USAGE",
+                "one of --at, --after-symbol, or --before-symbol is required",
+            ));
+        }
+        _ => {
+            return Err(agent_error(
+                "AGENT_USAGE",
+                "use only one of --at, --after-symbol, or --before-symbol",
+            ));
+        }
+    };
+    Ok(json!({
+        "scope": scope,
+        "anchor": anchor,
+    }))
 }
 
 struct AgentPublicStep {

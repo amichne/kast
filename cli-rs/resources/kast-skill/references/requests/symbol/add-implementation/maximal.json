@@ -1,0 +1,19 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "symbol/add-implementation",
+  "params": {
+    "contentFile": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "placement": {
+      "anchor": {
+        "anchor": "body-end",
+        "type": "AT_ANCHOR"
+      },
+      "scope": {
+        "insideScope": "com.example.Widget",
+        "type": "NAMED_SCOPE"
+      }
+    },
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
+}

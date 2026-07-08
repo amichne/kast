@@ -106,6 +106,9 @@
             "$ref": "#/$defs/fieldName"
           },
           "uniqueItems": true
+        },
+        "sample": {
+          "description": "Concrete value used by generated request samples when the catalog shape is broader than one valid wire payload."
         }
       }
     },

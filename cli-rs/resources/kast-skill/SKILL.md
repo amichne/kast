@@ -3,7 +3,8 @@ name: kast
 description: >
   Kotlin semantic work in Gradle repositories. Use when an agent needs compiler-backed
   Kotlin `.kt` or `.kts` discovery, symbol identity, references, callers, diagnostics,
-  source-index impact, semantic rename, or focused Gradle validation.
+  source-index impact, semantic rename, typed scope mutation, or focused Gradle
+  validation.
 ---
 
 # Kast
@@ -19,12 +20,25 @@ the first iteration surface.
 2. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`. Add `--kind`, `--file-hint`, `--containing-type`, `--references`, or `--callers incoming|outgoing` only when needed.
 3. Check changed files with `kast agent diagnostics --file-path <path> --workspace-root "$PWD"`.
 4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`.
-5. Rename only by compiler identity: first run `kast agent rename --symbol <fq-name> --new-name <name> --workspace-root "$PWD"`, then add `--apply` after reviewing the plan.
+5. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply` after reviewing the plan and content file.
 6. Use `--output json` for JSON-only parsed scripts; otherwise `kast agent` defaults to compact TOON.
 
 Completion criterion: every Kotlin semantic claim, edit target, relationship set,
 and validation result is backed by a typed `kast agent` command, or the remaining
 work is explicitly outside Kotlin semantics.
+
+## Mutation Commands
+
+- `kast agent rename --symbol <fq-name> --new-name <name> --workspace-root "$PWD"` plans an identity-first rename.
+- `kast agent add-file --file-path <absolute.kt> --content-file <snippet.kt> --workspace-root "$PWD"` plans a file creation.
+- `kast agent add-declaration --inside-file <absolute.kt> --at file-bottom --content-file <snippet.kt> --workspace-root "$PWD"` plans declaration insertion.
+- `kast agent add-implementation --inside-scope <fq-name> --at body-end --content-file <snippet.kt> --workspace-root "$PWD"` plans implementation insertion.
+- `kast agent add-statement --inside-scope <fq-name> --at body-end --content-file <snippet.kt> --workspace-root "$PWD"` plans statement insertion.
+- `kast agent replace-declaration --symbol <fq-name> --kind function --content-file <snippet.kt> --workspace-root "$PWD"` plans declaration replacement.
+
+Use `--inside-file` or `--inside-scope` for scope selectors, and use `--at`,
+`--after-symbol`, or `--before-symbol` for declaration and implementation
+placement. Add `--apply` only after the plan is correct.
 
 ## Health
 

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `31`.
+Catalog version: `dev`. Methods: `36`.
 
 #### Method families
 
@@ -53,7 +53,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
-| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
@@ -93,6 +93,11 @@ uses a discriminated response envelope.
 | `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
 | `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
+| `symbol/add-file` | `symbol` | backend | Create a Kotlin file from a content file and validate the result | `filePath`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
+| `symbol/add-declaration` | `symbol` | backend | Insert declaration content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
+| `symbol/add-implementation` | `symbol` | backend | Insert implementation content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
+| `symbol/add-statement` | `symbol` | backend | Insert statement content into a named executable Kotlin scope and validate the result | `insideScope`<br>`anchor`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
+| `symbol/replace-declaration` | `symbol` | backend | Replace a named Kotlin declaration using declaration-scope evidence and validate the result | `symbol`<br>`contentFile` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `raw/resolve` | `raw` | backend | Resolve the symbol at a file position | `position` | `includeDeclarationScope`<br>`includeDocumentation` | `SymbolResult` | single result |
 | `raw/references` | `raw` | backend | Find all references to the symbol at a file position | `position` | `includeDeclaration`<br>`includeUsageSiteScope` | `ReferencesResult` | single result |
 | `raw/call-hierarchy` | `raw` | backend | Expand a bounded incoming or outgoing call tree | `position`<br>`direction` | `depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `CallHierarchyResult` | single result |
@@ -327,6 +332,80 @@ Result variants: `RENAME_SUCCESS`, `RENAME_FAILURE`.
 
 Response type: `KastWriteAndValidateResponse`.
 Result variants: `WRITE_AND_VALIDATE_SUCCESS`, `WRITE_AND_VALIDATE_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/add-file</code> - Create a Kotlin file from a content file and validate the result</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `filePath` | `string` | yes | no |  |
+| `contentFile` | `string` | yes | no |  |
+
+Response type: `KastScopeMutationResponse`.
+Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/add-declaration</code> - Insert declaration content into a file or named Kotlin scope and validate the result</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `placement` | `object` | yes | no |  |
+| `contentFile` | `string` | yes | no |  |
+
+Response type: `KastScopeMutationResponse`.
+Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/add-implementation</code> - Insert implementation content into a file or named Kotlin scope and validate the result</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `placement` | `object` | yes | no |  |
+| `contentFile` | `string` | yes | no |  |
+
+Response type: `KastScopeMutationResponse`.
+Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/add-statement</code> - Insert statement content into a named executable Kotlin scope and validate the result</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `insideScope` | `string` | yes | no |  |
+| `anchor` | `string` | yes | no | `body-start`<br>`body-end`<br>`file-top`<br>`file-bottom`<br>`after-imports` |
+| `contentFile` | `string` | yes | no |  |
+
+Response type: `KastScopeMutationResponse`.
+Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/replace-declaration</code> - Replace a named Kotlin declaration using declaration-scope evidence and validate the result</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `symbol` | `string` | yes | no |  |
+| `contentFile` | `string` | yes | no |  |
+| `fileHint` | `string` | no | yes |  |
+| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
+| `containingType` | `string` | no | yes |  |
+
+Response type: `KastScopeMutationResponse`.
+Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
 
 </details>
 

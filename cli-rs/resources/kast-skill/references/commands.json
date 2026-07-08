@@ -17,7 +17,12 @@
       "symbol/references",
       "symbol/callers",
       "symbol/rename",
-      "symbol/write-and-validate"
+      "symbol/write-and-validate",
+      "symbol/add-file",
+      "symbol/add-declaration",
+      "symbol/add-implementation",
+      "symbol/add-statement",
+      "symbol/replace-declaration"
     ],
     "raw": [
       "raw/resolve",
@@ -900,6 +905,408 @@
         "name": "kast_write_and_validate",
         "description": "Apply a Kotlin edit and validate it in one call. Pass the type discriminator plus the fields for that variant. Prefer this over generic edit/create tools for .kt and .kts changes."
       }
+    },
+    "symbol/add-file": {
+      "method": "symbol/add-file",
+      "category": "symbol",
+      "summary": "Create a Kotlin file from a content file and validate the result",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "contentFile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath",
+          "contentFile"
+        ]
+      },
+      "responseType": "KastScopeMutationResponse",
+      "successType": "SCOPE_MUTATION_SUCCESS",
+      "failureType": "SCOPE_MUTATION_FAILURE"
+    },
+    "symbol/add-declaration": {
+      "method": "symbol/add-declaration",
+      "category": "symbol",
+      "summary": "Insert declaration content into a file or named Kotlin scope and validate the result",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "placement": {
+            "type": "object",
+            "sample": {
+              "scope": {
+                "type": "NAMED_SCOPE",
+                "insideScope": "com.example.Widget"
+              },
+              "anchor": {
+                "type": "AT_ANCHOR",
+                "anchor": "body-end"
+              }
+            },
+            "fields": {
+              "scope": {
+                "type": "object",
+                "fields": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "NAMED_SCOPE",
+                      "FILE_SCOPE"
+                    ]
+                  },
+                  "insideScope": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "insideFile": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "fileHint": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  },
+                  "kind": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true,
+                    "enum": [
+                      "class",
+                      "interface",
+                      "object",
+                      "function",
+                      "property"
+                    ]
+                  },
+                  "containingType": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "anchor": {
+                "type": "object",
+                "fields": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "AT_ANCHOR",
+                      "AFTER_SYMBOL",
+                      "BEFORE_SYMBOL"
+                    ]
+                  },
+                  "anchor": {
+                    "type": "string",
+                    "optional": true,
+                    "enum": [
+                      "body-start",
+                      "body-end",
+                      "file-top",
+                      "file-bottom",
+                      "after-imports"
+                    ]
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "fileHint": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  },
+                  "kind": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true,
+                    "enum": [
+                      "class",
+                      "interface",
+                      "object",
+                      "function",
+                      "property"
+                    ]
+                  },
+                  "containingType": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            },
+            "required": [
+              "scope",
+              "anchor"
+            ]
+          },
+          "contentFile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "placement",
+          "contentFile"
+        ]
+      },
+      "responseType": "KastScopeMutationResponse",
+      "successType": "SCOPE_MUTATION_SUCCESS",
+      "failureType": "SCOPE_MUTATION_FAILURE"
+    },
+    "symbol/add-implementation": {
+      "method": "symbol/add-implementation",
+      "category": "symbol",
+      "summary": "Insert implementation content into a file or named Kotlin scope and validate the result",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "placement": {
+            "type": "object",
+            "sample": {
+              "scope": {
+                "type": "NAMED_SCOPE",
+                "insideScope": "com.example.Widget"
+              },
+              "anchor": {
+                "type": "AT_ANCHOR",
+                "anchor": "body-end"
+              }
+            },
+            "fields": {
+              "scope": {
+                "type": "object",
+                "fields": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "NAMED_SCOPE",
+                      "FILE_SCOPE"
+                    ]
+                  },
+                  "insideScope": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "insideFile": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "fileHint": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  },
+                  "kind": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true,
+                    "enum": [
+                      "class",
+                      "interface",
+                      "object",
+                      "function",
+                      "property"
+                    ]
+                  },
+                  "containingType": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "anchor": {
+                "type": "object",
+                "fields": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "AT_ANCHOR",
+                      "AFTER_SYMBOL",
+                      "BEFORE_SYMBOL"
+                    ]
+                  },
+                  "anchor": {
+                    "type": "string",
+                    "optional": true,
+                    "enum": [
+                      "body-start",
+                      "body-end",
+                      "file-top",
+                      "file-bottom",
+                      "after-imports"
+                    ]
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "fileHint": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  },
+                  "kind": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true,
+                    "enum": [
+                      "class",
+                      "interface",
+                      "object",
+                      "function",
+                      "property"
+                    ]
+                  },
+                  "containingType": {
+                    "type": "string",
+                    "optional": true,
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            },
+            "required": [
+              "scope",
+              "anchor"
+            ]
+          },
+          "contentFile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "placement",
+          "contentFile"
+        ]
+      },
+      "responseType": "KastScopeMutationResponse",
+      "successType": "SCOPE_MUTATION_SUCCESS",
+      "failureType": "SCOPE_MUTATION_FAILURE"
+    },
+    "symbol/add-statement": {
+      "method": "symbol/add-statement",
+      "category": "symbol",
+      "summary": "Insert statement content into a named executable Kotlin scope and validate the result",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "insideScope": {
+            "type": "string"
+          },
+          "anchor": {
+            "type": "string",
+            "sample": "body-end",
+            "enum": [
+              "body-start",
+              "body-end",
+              "file-top",
+              "file-bottom",
+              "after-imports"
+            ]
+          },
+          "contentFile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "insideScope",
+          "anchor",
+          "contentFile"
+        ]
+      },
+      "responseType": "KastScopeMutationResponse",
+      "successType": "SCOPE_MUTATION_SUCCESS",
+      "failureType": "SCOPE_MUTATION_FAILURE"
+    },
+    "symbol/replace-declaration": {
+      "method": "symbol/replace-declaration",
+      "category": "symbol",
+      "summary": "Replace a named Kotlin declaration using declaration-scope evidence and validate the result",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "contentFile": {
+            "type": "string"
+          },
+          "fileHint": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "enum": [
+              "class",
+              "interface",
+              "object",
+              "function",
+              "property"
+            ]
+          },
+          "containingType": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          }
+        },
+        "required": [
+          "symbol",
+          "contentFile"
+        ]
+      },
+      "responseType": "KastScopeMutationResponse",
+      "successType": "SCOPE_MUTATION_SUCCESS",
+      "failureType": "SCOPE_MUTATION_FAILURE"
     },
     "raw/resolve": {
       "method": "raw/resolve",

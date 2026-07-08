@@ -147,6 +147,135 @@ fn agent_rename_without_apply_returns_identity_first_plan() {
 }
 
 #[test]
+fn agent_scope_mutations_without_apply_return_typed_request_plans() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let content_file = temp.path().join("snippet.kt");
+    std::fs::write(&content_file, "fun added() = Unit\n").expect("snippet");
+    let target_file = temp.path().join("Added.kt");
+
+    let cases = [
+        (
+            "add-file",
+            vec![
+                "agent",
+                "add-file",
+                "--file-path",
+                target_file.to_str().expect("target"),
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            "agent/add-file",
+            "symbol/add-file",
+        ),
+        (
+            "add-declaration",
+            vec![
+                "agent",
+                "add-declaration",
+                "--inside-file",
+                target_file.to_str().expect("target"),
+                "--at",
+                "file-bottom",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            "agent/add-declaration",
+            "symbol/add-declaration",
+        ),
+        (
+            "add-implementation",
+            vec![
+                "agent",
+                "add-implementation",
+                "--inside-scope",
+                "sample.Greeter",
+                "--at",
+                "body-end",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            "agent/add-implementation",
+            "symbol/add-implementation",
+        ),
+        (
+            "add-statement",
+            vec![
+                "agent",
+                "add-statement",
+                "--inside-scope",
+                "sample.greet",
+                "--at",
+                "body-end",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            "agent/add-statement",
+            "symbol/add-statement",
+        ),
+        (
+            "replace-declaration",
+            vec![
+                "agent",
+                "replace-declaration",
+                "--symbol",
+                "sample.greet",
+                "--kind",
+                "function",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            "agent/replace-declaration",
+            "symbol/replace-declaration",
+        ),
+    ];
+
+    for (name, args, agent_method, request_method) in cases {
+        let plan = kast(&home, &config_home)
+            .arg("--output")
+            .arg("json")
+            .args(args)
+            .output()
+            .unwrap_or_else(|error| panic!("{name} plan failed to launch: {error}"));
+
+        assert!(
+            plan.status.success(),
+            "{name} plan should succeed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&plan.stdout),
+            String::from_utf8_lossy(&plan.stderr)
+        );
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&plan.stdout).unwrap_or_else(|error| {
+                panic!(
+                    "{name} plan should emit json: {error}; stdout={}",
+                    String::from_utf8_lossy(&plan.stdout)
+                )
+            });
+        assert_eq!(stdout["method"], agent_method, "{stdout}");
+        assert_eq!(
+            stdout["result"]["type"], "KAST_AGENT_MUTATION_PLAN",
+            "{stdout}"
+        );
+        assert_eq!(stdout["result"]["applyRequired"], true, "{stdout}");
+        assert_eq!(
+            stdout["result"]["request"]["method"], request_method,
+            "{stdout}"
+        );
+        assert_eq!(
+            stdout["result"]["request"]["params"].get("type"),
+            None,
+            "{stdout}"
+        );
+        assert_eq!(
+            stdout["result"]["request"]["params"]["contentFile"],
+            content_file.to_str().expect("snippet"),
+            "{stdout}"
+        );
+    }
+}
+
+#[test]
 fn ready_flags_installed_backend_below_embedded_minimum() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

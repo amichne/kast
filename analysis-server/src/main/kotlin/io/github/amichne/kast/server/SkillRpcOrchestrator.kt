@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
@@ -92,6 +93,7 @@ import io.github.amichne.kast.api.contract.skill.WrapperScaffoldMode
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.protocol.ValidationException
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
@@ -390,6 +392,99 @@ internal class SkillRpcOrchestrator(
         is KastWriteAndValidateReplaceRangeRequest -> writeAndValidateReplace(request)
     }
 
+    suspend fun addFile(request: KastAddFileRequest): KastScopeMutationResponse {
+        val filePath = request.filePath.normalizedAbsolutePath()
+        return writeAndValidateCreate(
+            KastWriteAndValidateCreateFileRequest(
+                workspaceRoot = request.workspaceRoot,
+                filePath = request.filePath,
+                contentFile = request.contentFile,
+            ),
+        ).toScopeMutationResponse(
+            operation = KastScopeMutationOperation.ADD_FILE,
+            affectedFiles = listOf(filePath),
+            createdFiles = listOf(filePath),
+            editCount = 1,
+        )
+    }
+
+    suspend fun addDeclaration(request: KastAddDeclarationRequest): KastScopeMutationResponse =
+        addContentAtPlacement(
+            operation = KastScopeMutationOperation.ADD_DECLARATION,
+            workspaceRoot = request.workspaceRoot,
+            placement = request.placement,
+            contentFile = request.contentFile,
+            statementBody = false,
+        )
+
+    suspend fun addImplementation(request: KastAddImplementationRequest): KastScopeMutationResponse =
+        addContentAtPlacement(
+            operation = KastScopeMutationOperation.ADD_IMPLEMENTATION,
+            workspaceRoot = request.workspaceRoot,
+            placement = request.placement,
+            contentFile = request.contentFile,
+            statementBody = false,
+        )
+
+    suspend fun addStatement(request: KastAddStatementRequest): KastScopeMutationResponse {
+        val placement = KastPlacementSelector(
+            scope = KastNamedPlacementScope(insideScope = request.insideScope, kind = WrapperNamedSymbolKind.FUNCTION),
+            anchor = KastAtPlacementAnchor(request.anchor),
+        )
+        return addContentAtPlacement(
+            operation = KastScopeMutationOperation.ADD_STATEMENT,
+            workspaceRoot = request.workspaceRoot,
+            placement = placement,
+            contentFile = request.contentFile,
+            statementBody = true,
+        )
+    }
+
+    suspend fun replaceDeclaration(request: KastReplaceDeclarationRequest): KastScopeMutationResponse {
+        workspaceRootFor(request.workspaceRoot)
+        val resolved = resolveNamedSymbol(
+            symbolName = request.symbol,
+            fileHint = request.fileHint,
+            kind = request.kind,
+            containingType = request.containingType,
+            includeDeclarationScope = true,
+        ) ?: return KastScopeMutationFailureResponse(
+            operation = KastScopeMutationOperation.REPLACE_DECLARATION,
+            stage = "resolve",
+            message = "No symbol matching '${request.symbol}' found in workspace",
+            logFile = placeholderLogFile(),
+        )
+        val declarationScope = resolved.symbol.declarationScope ?: return KastScopeMutationFailureResponse(
+            operation = KastScopeMutationOperation.REPLACE_DECLARATION,
+            stage = "resolve",
+            message = "Resolved symbol '${request.symbol}' did not include declaration scope",
+            logFile = placeholderLogFile(),
+        )
+        val content = resolveContent(null, request.contentFile)
+        val response = applyEditsAndValidate(
+            filePath = resolved.filePath,
+            edits = listOf(
+                TextEdit(
+                    filePath = resolved.filePath,
+                    startOffset = declarationScope.startOffset,
+                    endOffset = declarationScope.endOffset,
+                    newText = content,
+                ),
+            ),
+            query = KastWriteAndValidateReplaceRangeQuery(
+                workspaceRoot = workspaceRootFor(request.workspaceRoot),
+                filePath = resolved.filePath,
+                startOffset = declarationScope.startOffset,
+                endOffset = declarationScope.endOffset,
+            ),
+        )
+        return response.toScopeMutationResponse(
+            operation = KastScopeMutationOperation.REPLACE_DECLARATION,
+            affectedFiles = listOf(resolved.filePath),
+            editCount = 1,
+        )
+    }
+
     private suspend fun renameBySymbol(request: KastRenameBySymbolRequest): KastRenameResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val resolved = resolveNamedSymbol(
@@ -581,7 +676,12 @@ internal class SkillRpcOrchestrator(
         query: KastWriteAndValidateQuery,
     ): KastWriteAndValidateResponse {
         requireMutationCapability(MutationCapability.APPLY_EDITS)
-        val applyResult = backend.applyEdits(ApplyEditsQuery(edits = edits, fileHashes = emptyList()).parsed())
+        val applyResult = backend.applyEdits(
+            ApplyEditsQuery(
+                edits = edits,
+                fileHashes = currentFileHashes(edits.map(TextEdit::filePath)),
+            ).parsed(),
+        )
         val optimized = optimizeImports(filePath)
         val diagnostics = validateFiles(listOf(filePath))
         return KastWriteAndValidateSuccessResponse(
@@ -593,6 +693,176 @@ internal class SkillRpcOrchestrator(
             logFile = placeholderLogFile(),
         )
     }
+
+    private suspend fun addContentAtPlacement(
+        operation: KastScopeMutationOperation,
+        workspaceRoot: String?,
+        placement: KastPlacementSelector,
+        contentFile: String,
+        statementBody: Boolean,
+    ): KastScopeMutationResponse {
+        workspaceRootFor(workspaceRoot)
+        val resolvedPlacement = resolvePlacement(placement, statementBody)
+        val content = resolveContent(null, contentFile)
+        val response = applyEditsAndValidate(
+            filePath = resolvedPlacement.filePath,
+            edits = listOf(
+                TextEdit(
+                    filePath = resolvedPlacement.filePath,
+                    startOffset = resolvedPlacement.offset,
+                    endOffset = resolvedPlacement.offset,
+                    newText = content,
+                ),
+            ),
+            query = KastWriteAndValidateInsertAtOffsetQuery(
+                workspaceRoot = workspaceRootFor(workspaceRoot),
+                filePath = resolvedPlacement.filePath,
+                offset = resolvedPlacement.offset,
+            ),
+        )
+        return response.toScopeMutationResponse(
+            operation = operation,
+            affectedFiles = listOf(resolvedPlacement.filePath),
+            editCount = 1,
+            placement = resolvedPlacement,
+        )
+    }
+
+    private suspend fun resolvePlacement(
+        placement: KastPlacementSelector,
+        statementBody: Boolean,
+    ): KastResolvedPlacement {
+        val filePath = placement.scope.filePathForPlacement()
+        val offset = when (val anchor = placement.anchor) {
+            is KastAtPlacementAnchor -> placement.scope.offsetForAnchor(anchor.anchor, statementBody)
+            is KastAfterSymbolPlacementAnchor -> {
+                val resolvedAnchor = resolveSymbolForPlacement(anchor.symbol, anchor.fileHint, anchor.kind, anchor.containingType)
+                requireAnchorInPlacementFile(filePath, resolvedAnchor)
+                resolvedAnchor.declarationEndOffset()
+            }
+            is KastBeforeSymbolPlacementAnchor -> {
+                val resolvedAnchor = resolveSymbolForPlacement(anchor.symbol, anchor.fileHint, anchor.kind, anchor.containingType)
+                requireAnchorInPlacementFile(filePath, resolvedAnchor)
+                resolvedAnchor.declarationStartOffset()
+            }
+        }
+        return KastResolvedPlacement(
+            filePath = filePath,
+            offset = offset,
+            scope = placement.scope,
+            anchor = placement.anchor,
+        )
+    }
+
+    private suspend fun KastPlacementScopeSelector.filePathForPlacement(): String = when (this) {
+        is KastFilePlacementScope -> insideFile.normalizedAbsolutePath()
+        is KastNamedPlacementScope -> resolveSymbolForPlacement(insideScope, fileHint, kind, containingType).filePath
+    }
+
+    private suspend fun KastPlacementScopeSelector.offsetForAnchor(
+        anchor: KastPlacementAnchor,
+        statementBody: Boolean,
+    ): Int = when (this) {
+        is KastFilePlacementScope -> fileOffsetForAnchor(insideFile.normalizedAbsolutePath(), anchor)
+        is KastNamedPlacementScope -> {
+            val resolved = resolveSymbolForPlacement(insideScope, fileHint, kind, containingType)
+            if (statementBody) {
+                executableBodyOffset(resolved, anchor)
+            } else {
+                symbolOffsetForAnchor(resolved, anchor)
+            }
+        }
+    }
+
+    private suspend fun fileOffsetForAnchor(filePath: String, anchor: KastPlacementAnchor): Int = when (anchor) {
+        KastPlacementAnchor.FILE_TOP -> 0
+        KastPlacementAnchor.FILE_BOTTOM -> Files.readString(Path.of(filePath)).length
+        KastPlacementAnchor.AFTER_IMPORTS -> semanticInsertionOffset(filePath, 0, SemanticInsertionTarget.AFTER_IMPORTS)
+        KastPlacementAnchor.BODY_START,
+        KastPlacementAnchor.BODY_END -> throw ValidationException("$anchor requires --inside-scope")
+    }
+
+    private suspend fun symbolOffsetForAnchor(
+        resolved: ResolvedNamedSymbol,
+        anchor: KastPlacementAnchor,
+    ): Int = when (anchor) {
+        KastPlacementAnchor.BODY_START -> semanticInsertionOffset(resolved.filePath, resolved.offset, SemanticInsertionTarget.CLASS_BODY_START)
+        KastPlacementAnchor.BODY_END -> semanticInsertionOffset(resolved.filePath, resolved.offset, SemanticInsertionTarget.CLASS_BODY_END)
+        KastPlacementAnchor.FILE_TOP -> 0
+        KastPlacementAnchor.FILE_BOTTOM -> Files.readString(Path.of(resolved.filePath)).length
+        KastPlacementAnchor.AFTER_IMPORTS -> semanticInsertionOffset(resolved.filePath, 0, SemanticInsertionTarget.AFTER_IMPORTS)
+    }
+
+    private fun executableBodyOffset(
+        resolved: ResolvedNamedSymbol,
+        anchor: KastPlacementAnchor,
+    ): Int {
+        if (anchor != KastPlacementAnchor.BODY_END) {
+            throw ValidationException("add-statement currently supports only body-end")
+        }
+        val declarationScope = resolved.symbol.declarationScope
+            ?: throw ValidationException("Resolved executable scope did not include declaration scope")
+        val sourceText = declarationScope.sourceText
+            ?: throw ValidationException("Resolved executable scope did not include source text")
+        val relativeOffset = sourceText.lastIndexOf('}')
+        if (relativeOffset < 0) {
+            throw ValidationException("Resolved executable scope does not have a block body")
+        }
+        return declarationScope.startOffset + relativeOffset
+    }
+
+    private suspend fun semanticInsertionOffset(
+        filePath: String,
+        offset: Int,
+        target: SemanticInsertionTarget,
+    ): Int {
+        requireReadCapability(ReadCapability.SEMANTIC_INSERTION_POINT)
+        return backend.semanticInsertionPoint(
+            io.github.amichne.kast.api.contract.SemanticInsertionQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                target = target,
+            ).parsed(),
+        ).insertionOffset
+    }
+
+    private suspend fun resolveSymbolForPlacement(
+        symbol: String,
+        fileHint: String?,
+        kind: WrapperNamedSymbolKind?,
+        containingType: String?,
+    ): ResolvedNamedSymbol =
+        resolveNamedSymbol(
+            symbolName = symbol,
+            fileHint = fileHint,
+            kind = kind,
+            containingType = containingType,
+            includeDeclarationScope = true,
+        ) ?: throw ValidationException("No symbol matching '$symbol' found in workspace")
+
+    private fun requireAnchorInPlacementFile(
+        placementFilePath: String,
+        resolvedAnchor: ResolvedNamedSymbol,
+    ) {
+        if (resolvedAnchor.filePath != placementFilePath) {
+            throw ValidationException(
+                "Anchor symbol '${resolvedAnchor.symbol.fqName}' resolved in ${resolvedAnchor.filePath}, outside placement file $placementFilePath",
+            )
+        }
+    }
+
+    private fun ResolvedNamedSymbol.declarationStartOffset(): Int =
+        symbol.declarationScope?.startOffset ?: symbol.location.startOffset
+
+    private fun ResolvedNamedSymbol.declarationEndOffset(): Int =
+        symbol.declarationScope?.endOffset ?: symbol.location.endOffset
+
+    private fun currentFileHashes(filePaths: List<String>): List<FileHash> =
+        filePaths.distinct().map { filePath ->
+            FileHash(
+                filePath = filePath,
+                hash = FileHashing.sha256(Files.readString(Path.of(filePath))),
+            )
+        }
 
     private suspend fun optimizeImports(filePath: String) = run {
         requireMutationCapability(MutationCapability.OPTIMIZE_IMPORTS)
@@ -606,11 +876,42 @@ internal class SkillRpcOrchestrator(
         )
     }
 
+    private fun KastWriteAndValidateResponse.toScopeMutationResponse(
+        operation: KastScopeMutationOperation,
+        affectedFiles: List<String>,
+        createdFiles: List<String> = emptyList(),
+        editCount: Int,
+        placement: KastResolvedPlacement? = null,
+    ): KastScopeMutationResponse = when (this) {
+        is KastWriteAndValidateSuccessResponse -> KastScopeMutationSuccessResponse(
+            ok = ok,
+            operation = operation,
+            applied = true,
+            affectedFiles = affectedFiles,
+            createdFiles = createdFiles,
+            editCount = editCount,
+            importChanges = importChanges,
+            diagnostics = diagnostics,
+            placement = placement,
+            logFile = logFile,
+        )
+
+        is KastWriteAndValidateFailureResponse -> KastScopeMutationFailureResponse(
+            operation = operation,
+            stage = stage,
+            message = message,
+            logFile = logFile,
+            error = error,
+            errorText = errorText,
+        )
+    }
+
     private suspend fun resolveNamedSymbol(
         symbolName: String,
         fileHint: String? = null,
         kind: WrapperNamedSymbolKind? = null,
         containingType: String? = null,
+        includeDeclarationScope: Boolean = false,
     ): ResolvedNamedSymbol? {
         val candidates = rankedNamedSymbolCandidates(
             symbolName = symbolName,
@@ -619,13 +920,13 @@ internal class SkillRpcOrchestrator(
             containingType = containingType,
             line = null,
             codeSnippet = null,
-            includeDeclarationScope = false,
+            includeDeclarationScope = includeDeclarationScope,
             searchLimit = minOf(config.maxResults, DEFAULT_DISCOVERY_SEARCH_LIMIT),
         )
         val best = candidates.firstOrNull() ?: return null
         val resolved = resolveNamedSymbol(
             candidate = best,
-            includeDeclarationScope = false,
+            includeDeclarationScope = includeDeclarationScope,
             includeDocumentation = false,
         ) ?: return null
         val alternativeFqNames = candidates
