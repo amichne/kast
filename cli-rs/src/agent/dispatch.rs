@@ -46,7 +46,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             ]),
         );
     }
-    let request = match command {
+    match command {
         AgentCommand::Up(_)
         | AgentCommand::Ready(_)
         | AgentCommand::Setup(_)
@@ -54,26 +54,22 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
-        AgentCommand::Call(_) => {
-            return removed_agent_command(
-                "agent/call",
-                "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
-                replacement_commands([
-                    "kast agent symbol --query <name> --workspace-root <repo>",
-                    "kast agent diagnostics --file-path <path> --workspace-root <repo>",
-                    "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
-                ]),
-            );
-        }
+        AgentCommand::Call(_) => removed_agent_command(
+            "agent/call",
+            "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
+            replacement_commands([
+                "kast agent symbol --query <name> --workspace-root <repo>",
+                "kast agent diagnostics --file-path <path> --workspace-root <repo>",
+                "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
+            ]),
+        ),
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
-        AgentCommand::Verify(args) => return execute_agent_verify(args),
-        AgentCommand::Symbol(args) => return execute_agent_symbol(args),
-        AgentCommand::Impact(args) => return execute_agent_impact(args),
-        AgentCommand::Diagnostics(args) => return execute_agent_diagnostics(args),
-        AgentCommand::Rename(args) => return execute_agent_rename(args),
-        other => prepare_alias(other),
-    };
-    execute_request(request)
+        AgentCommand::Verify(args) => execute_agent_verify(args),
+        AgentCommand::Symbol(args) => execute_agent_symbol(args),
+        AgentCommand::Impact(args) => execute_agent_impact(args),
+        AgentCommand::Diagnostics(args) => execute_agent_diagnostics(args),
+        AgentCommand::Rename(args) => execute_agent_rename(args),
+    }
 }
 
 fn replacement_commands<const N: usize>(commands: [&str; N]) -> Vec<Value> {
