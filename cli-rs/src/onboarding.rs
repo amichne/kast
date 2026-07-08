@@ -69,7 +69,7 @@ pub fn maybe_run_setup_onboarding(
         no_onboard: args.no_open_ide,
         ci: env_flag("CI"),
         dumb_terminal: env::var("TERM").is_ok_and(|term| term.eq_ignore_ascii_case("dumb")),
-        config_allows: config.can_run_agent_up_onboarding(),
+        config_allows: config.can_run_setup_onboarding(),
         homebrew_idea_plugin_installable: true,
     };
     if !eligibility.allows_prompt() {
@@ -96,7 +96,7 @@ pub fn maybe_run_setup_onboarding(
         .map_err(|error| CliError::new("PROMPT_FAILED", error.to_string()))?;
 
     if !accepted {
-        mark_agent_up_onboarding_completed()?;
+        mark_setup_onboarding_completed()?;
         return Ok(SetupOnboardingOutcome::Declined);
     }
 
@@ -114,7 +114,7 @@ pub fn maybe_run_setup_onboarding(
         },
         &mut reporter,
     )?;
-    apply_agent_up_onboarding_config(scope, workspace_root)?;
+    apply_setup_onboarding_config(scope, workspace_root)?;
     prepare_current_invocation_for_idea(args);
     eprintln!();
     eprintln!(
@@ -155,38 +155,35 @@ fn prepare_current_invocation_for_idea(args: &mut SetupArgs) {
     }
 }
 
-fn mark_agent_up_onboarding_completed() -> Result<()> {
+fn mark_setup_onboarding_completed() -> Result<()> {
     self_mgmt::update_global_config(|document| {
-        table(document, "onboarding")?.insert("agentUpCompleted".to_string(), true.into());
+        table(document, "onboarding")?.insert("setupCompleted".to_string(), true.into());
         Ok(())
     })?;
     Ok(())
 }
 
-fn apply_agent_up_onboarding_config(
-    scope: SetupOnboardingScope,
-    workspace_root: &Path,
-) -> Result<()> {
+fn apply_setup_onboarding_config(scope: SetupOnboardingScope, workspace_root: &Path) -> Result<()> {
     match scope {
-        SetupOnboardingScope::Global => self_mgmt::update_global_config(|document| {
-            write_agent_up_onboarding_defaults(document)
-        })?,
+        SetupOnboardingScope::Global => {
+            self_mgmt::update_global_config(write_setup_onboarding_defaults)?
+        }
         SetupOnboardingScope::Repository => {
             self_mgmt::update_workspace_config(workspace_root, |document| {
-                write_agent_up_onboarding_defaults(document)
+                write_setup_onboarding_defaults(document)
             })?
         }
     };
     Ok(())
 }
 
-fn write_agent_up_onboarding_defaults(document: &mut toml::Table) -> Result<()> {
+fn write_setup_onboarding_defaults(document: &mut toml::Table) -> Result<()> {
     self_mgmt::write_developer_machine_idea_defaults(document)?;
 
     let project_open = table(document, "projectOpen")?;
     project_open.insert("profileAutoInit".to_string(), true.into());
 
-    table(document, "onboarding")?.insert("agentUpCompleted".to_string(), true.into());
+    table(document, "onboarding")?.insert("setupCompleted".to_string(), true.into());
     Ok(())
 }
 
@@ -292,7 +289,7 @@ mod tests {
     fn onboarding_defaults_configure_idea_agent_flow() {
         let mut document = toml::Table::new();
 
-        write_agent_up_onboarding_defaults(&mut document).expect("defaults");
+        write_setup_onboarding_defaults(&mut document).expect("defaults");
 
         assert_eq!(
             document
@@ -322,17 +319,11 @@ mod tests {
                 .and_then(toml::Value::as_bool),
             Some(true)
         );
-        let project_open = document
-            .get("projectOpen")
-            .and_then(toml::Value::as_table)
-            .expect("project open");
-        assert!(
-            !project_open.contains_key("agentHarness"),
-            "onboarding must not force a harness-specific setup path"
-        );
         assert_eq!(
-            project_open
-                .get("profileAutoInit")
+            document
+                .get("projectOpen")
+                .and_then(toml::Value::as_table)
+                .and_then(|project_open| project_open.get("profileAutoInit"))
                 .and_then(toml::Value::as_bool),
             Some(true)
         );
@@ -340,7 +331,7 @@ mod tests {
             document
                 .get("onboarding")
                 .and_then(toml::Value::as_table)
-                .and_then(|onboarding| onboarding.get("agentUpCompleted"))
+                .and_then(|onboarding| onboarding.get("setupCompleted"))
                 .and_then(toml::Value::as_bool),
             Some(true)
         );

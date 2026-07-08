@@ -8,8 +8,8 @@ use crate::bundle::{
 };
 use crate::cli;
 use crate::cli::{
-    ActivateBundleArgs, CopilotInstallArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand,
-    InstallRepairArgs, ResourceInstallArgs, ShellInstallArgs, ShellKind,
+    ActivateBundleArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand, InstallRepairArgs,
+    ResourceInstallArgs, ShellInstallArgs, ShellKind,
 };
 use crate::config;
 use crate::error::{CliError, Result};
@@ -19,10 +19,9 @@ use crate::manifest::{
 };
 use crate::self_mgmt;
 use flate2::read::GzDecoder;
-use include_dir::{Dir, DirEntry, include_dir};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::env;
@@ -34,25 +33,12 @@ use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-static KAST_INSTRUCTIONS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/kast-instructions");
-static COPILOT_PLUGIN: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources/plugin");
 const KAST_FORMULA_NAME: &str = "kast";
 const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
 const DEFAULT_KAST_TAP: &str = "amichne/kast";
-const COPILOT_PACKAGE_MARKER: &str = ".kast-copilot-version";
 const RESOURCE_MARKER: &str = ".kast-version";
-const RETIRED_COPILOT_PACKAGE_OUTPUTS: &[&str] = &[
-    "instructions/kast-kotlin.instructions.md",
-    "agents/kast-reader.agent.md",
-    "agents/kast-writer.agent.md",
-    "extensions/kast/_shared/kast-agents.mjs",
-    "extensions/kast/_shared/commands.json",
-];
-const COPILOT_PRIMITIVE_MANIFEST: &str = "primitive-manifest.json";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
-const COPILOT_GIT_EXCLUDE_BLOCK_START: &str = "# >>> kast copilot package >>>";
-const COPILOT_GIT_EXCLUDE_BLOCK_END: &str = "# <<< kast copilot package <<<";
 const DEFAULT_AGENT_GUIDANCE_FILE: &str = "AGENTS.local.md";
 const KAST_MANAGED_FENCE_START: &str = "<kast>";
 const KAST_MANAGED_FENCE_END: &str = "</kast>";

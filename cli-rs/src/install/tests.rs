@@ -11,7 +11,6 @@ mod tests {
             source_dir: None,
             force: false,
             no_auto_exclude_git: false,
-            dry_run: false,
         };
         let first = install_skill(args.clone()).unwrap();
         assert!(!first.skipped);
@@ -26,30 +25,6 @@ mod tests {
     }
 
     #[test]
-    fn install_instructions_omits_marker_and_skips_matching_version() {
-        let temp = tempfile::tempdir().unwrap();
-        let args = ResourceInstallArgs {
-            target_dir: Some(temp.path().to_path_buf()),
-            name: Some("kast".to_string()),
-            source_dir: None,
-            force: false,
-            no_auto_exclude_git: false,
-            dry_run: false,
-        };
-        let first = install_instructions(args.clone()).unwrap();
-        assert!(!first.skipped);
-        assert!(temp.path().join("kast/README.md").is_file());
-        assert!(temp.path().join("kast/cli.md").is_file());
-        assert!(temp.path().join("kast/tools.md").is_file());
-        assert!(temp.path().join("kast/lsp.md").is_file());
-        assert!(!temp.path().join("kast/AGENTS.md").exists());
-        assert!(!temp.path().join("kast/rpc.md").exists());
-        assert!(!temp.path().join("kast/.kast-version").exists());
-        let second = install_instructions(args).unwrap();
-        assert!(second.skipped);
-    }
-
-    #[test]
     fn install_skill_replaces_retired_heavy_outputs_when_managed() {
         let temp = tempfile::tempdir().unwrap();
         let args = ResourceInstallArgs {
@@ -58,7 +33,6 @@ mod tests {
             source_dir: None,
             force: false,
             no_auto_exclude_git: false,
-            dry_run: false,
         };
         let first = install_skill(args.clone()).unwrap();
         assert!(!first.skipped);
@@ -85,37 +59,6 @@ mod tests {
     }
 
     #[test]
-    fn install_instructions_replaces_retired_rpc_output_when_managed() {
-        let temp = tempfile::tempdir().unwrap();
-        let args = ResourceInstallArgs {
-            target_dir: Some(temp.path().to_path_buf()),
-            name: Some("kast".to_string()),
-            source_dir: None,
-            force: false,
-            no_auto_exclude_git: false,
-            dry_run: false,
-        };
-        let first = install_instructions(args.clone()).unwrap();
-        assert!(!first.skipped);
-
-        let target = temp.path().join("kast");
-        fs::write(target.join("AGENTS.md"), "old source guide\n").unwrap();
-        fs::write(target.join("rpc.md"), "old raw rpc guide\n").unwrap();
-
-        let second = install_instructions(args.clone()).unwrap();
-        assert!(!second.skipped);
-        assert!(target.join("README.md").is_file());
-        assert!(target.join("cli.md").is_file());
-        assert!(target.join("tools.md").is_file());
-        assert!(target.join("lsp.md").is_file());
-        assert!(!target.join("AGENTS.md").exists());
-        assert!(!target.join("rpc.md").exists());
-
-        let third = install_instructions(args).unwrap();
-        assert!(third.skipped);
-    }
-
-    #[test]
     fn install_skill_source_override_requires_entrypoint() {
         let temp = tempfile::tempdir().unwrap();
         let source = temp.path().join("source");
@@ -126,34 +69,12 @@ mod tests {
             source_dir: Some(source),
             force: false,
             no_auto_exclude_git: false,
-            dry_run: false,
         };
 
         let error = install_skill(args).unwrap_err();
 
         assert_eq!(error.code, "RESOURCE_SOURCE_INCOMPLETE");
         assert!(error.message.contains("SKILL.md"));
-    }
-
-    #[test]
-    fn install_instructions_source_override_requires_thin_files() {
-        let temp = tempfile::tempdir().unwrap();
-        let source = temp.path().join("source");
-        fs::create_dir_all(&source).unwrap();
-        fs::write(source.join("README.md"), "# Guide\n").unwrap();
-        let args = ResourceInstallArgs {
-            target_dir: Some(temp.path().join("target")),
-            name: Some("kast".to_string()),
-            source_dir: Some(source),
-            force: false,
-            no_auto_exclude_git: false,
-            dry_run: false,
-        };
-
-        let error = install_instructions(args).unwrap_err();
-
-        assert_eq!(error.code, "RESOURCE_SOURCE_INCOMPLETE");
-        assert!(error.message.contains("cli.md"));
     }
 
     #[test]

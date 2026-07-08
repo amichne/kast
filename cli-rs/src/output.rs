@@ -3,8 +3,7 @@ use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
 use crate::install::{
     ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult,
-    InstallCopilotPackageResult, InstallIdeaPluginResult, InstallInstructionsResult, InstallResult,
-    InstallShellResult, InstallSkillResult,
+    InstallIdeaPluginResult, InstallResult, InstallShellResult,
 };
 use crate::orchestration::{SetupRuntimeNextAction, SetupRuntimeResult, SetupRuntimeStage};
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
