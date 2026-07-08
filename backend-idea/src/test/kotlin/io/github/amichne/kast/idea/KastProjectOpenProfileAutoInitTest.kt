@@ -77,6 +77,24 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
+    fun `legacy copilot project-open profile remains supported compatibility input`() {
+        val workspace = gradleWorkspace()
+        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
+
+        val result = KastProjectOpenProfileAutoInit.execute(
+            workspaceRoot = workspace,
+            config = autoInitConfig(profile = ProjectOpenProfile.COPILOT_LSP),
+            prepareWorkspace = { request ->
+                requests.add(request)
+                PluginWorkspaceBootstrapResult.Prepared(workspace.resolve(".kast/setup/workspace.json"), emptyList())
+            },
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertEquals(1, requests.size)
+    }
+
+    @Test
     fun `plugin bootstrap backs up and removes unknown prior managed artifacts`() {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
@@ -132,12 +150,13 @@ class KastProjectOpenProfileAutoInitTest {
 
     private fun autoInitConfig(
         enabled: Boolean = true,
+        profile: String = ProjectOpenProfile.JETBRAINS_PLUGIN,
         binaryPath: Path = fakeKastBinary(),
     ): KastConfig =
         KastConfig.defaults().copy(
             projectOpen = ProjectOpenConfig(
                 profileAutoInit = ProjectOpenProfileAutoInit(enabled),
-                profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
+                profile = ProjectOpenProfile(profile),
                 autoExcludeGit = ProjectOpenAutoExcludeGit(true),
             ),
             cli = CliConfig(CliBinaryPath(binaryPath.toString())),

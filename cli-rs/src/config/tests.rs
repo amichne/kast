@@ -533,10 +533,9 @@ dynamicOutput = false
 
         assert!(config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
-        assert_eq!(config.project_open.agent_harness, AgentSetupHarness::Auto);
         assert!(config.project_open.auto_exclude_git);
-        assert!(!config.onboarding.agent_up_completed);
-        assert!(config.can_run_agent_up_onboarding());
+        assert!(!config.onboarding.setup_completed);
+        assert!(config.can_run_setup_onboarding());
     }
 
     #[test]
@@ -548,7 +547,6 @@ dynamicOutput = false
             r#"[projectOpen]
 profileAutoInit = true
 profile = "copilot-lsp"
-agentHarness = "instructions"
 autoExcludeGit = false
 "#,
         )
@@ -559,16 +557,31 @@ autoExcludeGit = false
 
         assert!(config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
-        assert_eq!(
-            config.project_open.agent_harness,
-            AgentSetupHarness::Instructions
-        );
         assert!(!config.project_open.auto_exclude_git);
-        assert!(!config.can_run_agent_up_onboarding());
+        assert!(!config.can_run_setup_onboarding());
     }
 
     #[test]
-    fn parses_agent_up_onboarding_state() {
+    fn parses_setup_onboarding_state() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[onboarding]
+setupCompleted = true
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert!(config.onboarding.setup_completed);
+        assert!(!config.can_run_setup_onboarding());
+    }
+
+    #[test]
+    fn reads_legacy_agent_up_onboarding_state() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
         fs::write(
@@ -582,27 +595,8 @@ agentUpCompleted = true
         let mut config = KastConfig::defaults();
         config.apply(read_partial_config(&config_file).unwrap());
 
-        assert!(config.onboarding.agent_up_completed);
-        assert!(!config.can_run_agent_up_onboarding());
-    }
-
-    #[test]
-    fn rejects_invalid_project_open_agent_harness() {
-        let temp = tempfile::tempdir().unwrap();
-        let config_file = temp.path().join("config.toml");
-        fs::write(
-            &config_file,
-            r#"[projectOpen]
-agentHarness = "mcp"
-"#,
-        )
-        .unwrap();
-
-        let error = read_partial_config(&config_file).unwrap_err();
-
-        assert_eq!(error.code, "CONFIG_ERROR");
-        assert!(error.message.contains("mcp"), "{}", error.message);
-        assert!(error.message.contains("instructions"), "{}", error.message);
+        assert!(config.onboarding.setup_completed);
+        assert!(!config.can_run_setup_onboarding());
     }
 
     #[test]

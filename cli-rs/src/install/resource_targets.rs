@@ -17,25 +17,6 @@ fn default_skill_target_dir() -> PathBuf {
         .join("skills")
 }
 
-fn default_instructions_target_dir() -> PathBuf {
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for candidate in [
-        ".agents/instructions",
-        ".codex/instructions",
-        ".github/instructions",
-        ".claude/instructions",
-    ] {
-        let path = cwd.join(candidate);
-        if path.is_dir() {
-            return config::normalize(path);
-        }
-    }
-    manifest::resolve_paths()
-        .unwrap_or_else(|_| manifest::default_resolved_paths())
-        .lib_dir
-        .join("instructions")
-}
-
 fn resource_repo_root(target: &Path) -> Option<PathBuf> {
     let start = if target.is_dir() {
         target

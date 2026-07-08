@@ -3,7 +3,7 @@ package io.github.amichne.kast.idea
 import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
-import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
+import io.github.amichne.kast.api.client.fields.ProjectOpenProfileKind
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -20,7 +20,7 @@ object KastProjectOpenProfileAutoInit {
         if (!config.projectOpen.profileAutoInit.value) {
             return ProjectOpenProfileAutoInitResult.Skipped("disabled")
         }
-        if (config.projectOpen.profile.value != ProjectOpenProfile.COPILOT_LSP) {
+        if (config.projectOpen.profile.kind != ProjectOpenProfileKind.JETBRAINS_PLUGIN) {
             return ProjectOpenProfileAutoInitResult.Skipped("unsupported profile")
         }
         if (!workspaceRoot.hasGradleMarker()) {

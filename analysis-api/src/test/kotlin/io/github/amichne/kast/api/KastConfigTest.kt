@@ -78,8 +78,18 @@ class KastConfigTest {
         assertEquals("profileAutoInit", config.projectOpen.profileAutoInit.key)
         assertEquals(ConfigurationDefault(true), config.projectOpen.profileAutoInit.default)
         assertEquals(true, config.projectOpen.profileAutoInit.value)
-        assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals(ProjectOpenProfile.JETBRAINS_PLUGIN, config.projectOpen.profile.value)
+        assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(true, config.projectOpen.autoExcludeGit.value)
+    }
+
+    @Test
+    fun `legacy copilot project open profile remains a compatibility alias`() {
+        val profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP)
+
+        assertEquals(ProjectOpenProfile.COPILOT_LSP, profile.value)
+        assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, profile.kind)
+        assertEquals(ConfigurationDefault(ProjectOpenProfile.JETBRAINS_PLUGIN), profile.default)
     }
 
     @Test
@@ -326,6 +336,7 @@ class KastConfigTest {
         assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
         assertEquals(true, config.projectOpen.profileAutoInit.value)
         assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals(45_000L, config.server.requestTimeoutMillis.value)
         assertEquals(
@@ -421,6 +432,7 @@ class KastConfigTest {
         assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
         assertEquals("idea", config.runtime.defaultBackend.value)
         assertEquals(true, config.projectOpen.profileAutoInit.value)
+        assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals(false, config.backends.idea.enabled.value)
     }
@@ -588,6 +600,7 @@ class KastConfigTest {
         assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
         assertEquals(true, config.projectOpen.profileAutoInit.value)
         assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals("/opt/kast/runtime-libs", config.backends.headless.runtimeLibsDir.value.orNull)
         assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)

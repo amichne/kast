@@ -50,7 +50,7 @@ Internal catalog changes can affect:
 Run the catalog and docs checks after internal catalog changes:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 python3 .github/scripts/render-rpc-contract-summary.py --check
 .github/scripts/test-kast-routing-evals.sh
 .github/scripts/run-kast-format-impact-report.sh

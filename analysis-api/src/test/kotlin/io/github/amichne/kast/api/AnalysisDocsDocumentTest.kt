@@ -44,6 +44,15 @@ class AnalysisDocsDocumentTest {
     }
 
     @Test
+    fun `generated protocol examples are not labeled as public CLI examples`() {
+        val markdown = DocsDocument.renderApiReference()
+
+        assertTrue(markdown.contains("=== \"Internal protocol\""))
+        assertTrue(!markdown.contains("=== \"CLI\""), "Removed internal calls must not render as public CLI examples")
+        assertTrue(!markdown.contains("kast agent call"), "Removed raw-call commands must not appear in generated docs")
+    }
+
+    @Test
     fun `every schema field in generated markdown exists in the OpenAPI spec`() {
         val yaml = OpenApiDocument.renderYaml()
         val markdown = DocsDocument.renderApiReference()

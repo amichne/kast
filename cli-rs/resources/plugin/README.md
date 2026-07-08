@@ -9,10 +9,11 @@ The package source is `plugin.json` plus `primitive-manifest.json`; generated
 files under `.github` are install outputs. When validating the SDK extension in
 Copilot CLI, load this source directory explicitly with `--plugin-dir`.
 
-Install into a repository:
+Repository-local installation is retired. The package is loaded from source by
+Copilot CLI during validation:
 
 ```console
-cli-rs/resources/plugin/scripts/install-local.sh --target /path/to/repo --force
+copilot -C /path/to/repo --plugin-dir cli-rs/resources/plugin
 ```
 
 Validate this package from the Kast repository:

@@ -122,9 +122,10 @@ if (buildRs.includes("symbol/resolve") || buildRs.includes("database/metrics")) 
   fail("LSP route generation must read method names from the catalog instead of hard-coding routes");
 }
 
-requireText("cli-rs/src/install.rs", {
-  "embedded plugin package": "COPILOT_PLUGIN",
-  "explicit primitive manifest": "COPILOT_PRIMITIVE_MANIFEST",
+requireText("cli-rs/resources/plugin/scripts/install-local.sh", {
+  "retired local installer": "PLUGIN_INSTALL_REMOVED",
+  "direct plugin replacement": "copilot --plugin-dir cli-rs/resources/plugin",
+  "machine plugin replacement": "kast developer machine plugin",
 });
 
 requireText("cli-rs/src/rpc.rs", {
@@ -169,6 +170,7 @@ const allowedFailClosed = new Set([
   "DAEMON_START_ERROR",
   "HEADLESS_BACKEND_NOT_INSTALLED",
   "IDEA_NOT_RUNNING",
+  "MACOS_PLUGIN_WORKSPACE_REQUIRED",
   "NO_BACKEND_AVAILABLE",
   "RUNTIME_TIMEOUT",
 ]);
