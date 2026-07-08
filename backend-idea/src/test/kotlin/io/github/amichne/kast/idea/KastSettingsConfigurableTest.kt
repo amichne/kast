@@ -24,6 +24,7 @@ class KastSettingsConfigurableTest {
             backendsIdeaEnabled = false
             projectOpenProfileAutoInit = false
             projectOpenAutoExcludeGit = false
+            projectOpenGradleLoadEnabled = false
         }
 
         val toml = state.toWorkspaceToml()
@@ -33,6 +34,7 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("[projectOpen]"))
         assertTrue(toml.contains("profileAutoInit = false"))
         assertTrue(toml.contains("autoExcludeGit = false"))
+        assertTrue(toml.contains("gradleLoadEnabled = false"))
         assertFalse(toml.contains("[cli]"))
         assertTrue(toml.contains("[backends.idea]"))
         assertTrue(toml.contains("enabled = false"))
@@ -59,6 +61,7 @@ class KastSettingsConfigurableTest {
             profileAutoInit = false
             profile = "copilot-lsp"
             autoExcludeGit = true
+            gradleLoadEnabled = true
 
             [backends.idea]
             enabled = false
@@ -71,6 +74,7 @@ class KastSettingsConfigurableTest {
             runtimeDefaultBackend = "idea"
             projectOpenProfileAutoInit = false
             projectOpenAutoExcludeGit = false
+            projectOpenGradleLoadEnabled = false
         }
 
         val toml = mergePublicWorkspaceToml(existingToml, state)
@@ -86,11 +90,13 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("[projectOpen]"))
         assertTrue(toml.contains("profileAutoInit = false"))
         assertTrue(toml.contains("autoExcludeGit = false"))
+        assertTrue(toml.contains("gradleLoadEnabled = false"))
         assertTrue(toml.contains("[cli]"))
         assertTrue(toml.contains("binaryPath = \"/old/kast\""))
         assertFalse(toml.contains("defaultBackend = \"headless\""))
         assertFalse(toml.contains("profileAutoInit = true"))
         assertFalse(toml.contains("autoExcludeGit = true"))
+        assertFalse(toml.contains("gradleLoadEnabled = true"))
         assertFalse(toml.contains("binaryPath = \"/new/kast\""))
     }
 
@@ -102,6 +108,7 @@ class KastSettingsConfigurableTest {
             projectOpenProfileAutoInit = true
             projectOpenProfile = "copilot-lsp"
             projectOpenAutoExcludeGit = false
+            projectOpenGradleLoadEnabled = false
         }
         val override = state.toOverride()
 
@@ -109,6 +116,7 @@ class KastSettingsConfigurableTest {
         assertEquals(true, override.projectOpen?.profileAutoInit?.value)
         assertEquals("copilot-lsp", override.projectOpen?.profile?.value)
         assertEquals(false, override.projectOpen?.autoExcludeGit?.value)
+        assertEquals(false, override.projectOpen?.gradleLoadEnabled?.value)
         assertEquals(false, override.backends?.idea?.enabled?.value)
         assertEquals(null, override.cli)
         assertEquals(null, override.server)

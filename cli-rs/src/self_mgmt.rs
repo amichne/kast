@@ -194,7 +194,11 @@ pub fn doctor(
                 )),
             }
         }
-        for repo in &install.repos {
+        for repo in install
+            .repos
+            .iter()
+            .filter(|repo| should_verify_repo_resources_for_target(target, workspace_root, repo))
+        {
             if !repo.copilot_package_version.trim().is_empty()
                 && !repo
                     .resources
@@ -286,6 +290,30 @@ fn apply_ready_target_checks(
             }
         }
     }
+}
+
+#[cfg(target_os = "macos")]
+fn should_verify_repo_resources_for_target(
+    target: ReadyTarget,
+    _workspace_root: Option<&Path>,
+    _repo: &ManagedRepo,
+) -> bool {
+    !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn should_verify_repo_resources_for_target(
+    target: ReadyTarget,
+    workspace_root: Option<&Path>,
+    repo: &ManagedRepo,
+) -> bool {
+    if matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
+        return workspace_root.is_some_and(|workspace_root| {
+            config::normalize(PathBuf::from(&repo.path))
+                == config::normalize(workspace_root.to_path_buf())
+        });
+    }
+    true
 }
 
 #[cfg(target_os = "macos")]
@@ -820,6 +848,104 @@ mod tests {
             installed_at: format!("installed-{version}"),
             history: vec![],
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_plugin_workspace_metadata_accepts_resolved_config_socket_path() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let workspace_root = config::normalize(temp.path().join("workspace"));
+        fs::create_dir_all(workspace_root.join(".agents/skills/kast")).expect("skill dir");
+        fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
+        fs::write(
+            workspace_root.join(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
+            "skill",
+        )
+        .expect("skill file");
+        let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
+        fs::write(&metadata_path, "{}").expect("metadata file");
+        let socket_path = config::KastConfig::defaults()
+            .paths
+            .socket_dir
+            .join(format!(
+                "kast-{}.sock",
+                config::workspace_hash(&workspace_root)
+            ));
+
+        validate_macos_plugin_workspace_metadata(
+            &workspace_root,
+            &metadata_path,
+            MacosPluginWorkspaceMetadata {
+                schema_version: MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION,
+                prepared_by: MACOS_PLUGIN_WORKSPACE_PREPARED_BY.to_string(),
+                plugin_version: cli::version().to_string(),
+                cli_version: cli::version().to_string(),
+                workspace_root: workspace_root.clone(),
+                cli_binary: env::current_exe().expect("current exe"),
+                backend: MACOS_PLUGIN_WORKSPACE_BACKEND.to_string(),
+                socket_path,
+                required_artifacts: vec![
+                    PathBuf::from(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
+                    PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE),
+                ],
+            },
+        )
+        .expect("resolved config socket path should be accepted");
+    }
+
+    #[test]
+    fn agent_readiness_scopes_repo_resource_verification_to_requested_workspace() {
+        let workspace_root = Path::new("/workspace/kast/.worktrees/feature");
+        let parent_repo = ManagedRepo {
+            path: "/workspace/kast".to_string(),
+            copilot_package_version: String::new(),
+            resources: vec![],
+        };
+        #[cfg(not(target_os = "macos"))]
+        let workspace_repo = ManagedRepo {
+            path: workspace_root.display().to_string(),
+            copilot_package_version: String::new(),
+            resources: vec![],
+        };
+
+        assert!(!should_verify_repo_resources_for_target(
+            ReadyTarget::Agent,
+            Some(workspace_root),
+            &parent_repo
+        ));
+        #[cfg(not(target_os = "macos"))]
+        assert!(should_verify_repo_resources_for_target(
+            ReadyTarget::Agent,
+            Some(workspace_root),
+            &workspace_repo
+        ));
+        assert!(should_verify_repo_resources_for_target(
+            ReadyTarget::Machine,
+            Some(workspace_root),
+            &parent_repo
+        ));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_agent_readiness_uses_plugin_metadata_instead_of_manifest_repo_resources() {
+        let workspace_root = Path::new("/workspace/kast/.worktrees/feature");
+        let workspace_repo = ManagedRepo {
+            path: workspace_root.display().to_string(),
+            copilot_package_version: String::new(),
+            resources: vec![],
+        };
+
+        assert!(!should_verify_repo_resources_for_target(
+            ReadyTarget::Agent,
+            Some(workspace_root),
+            &workspace_repo
+        ));
+        assert!(!should_verify_repo_resources_for_target(
+            ReadyTarget::Kotlin,
+            Some(workspace_root),
+            &workspace_repo
+        ));
     }
 
     #[test]

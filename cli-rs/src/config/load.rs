@@ -165,6 +165,9 @@ impl KastConfig {
             if let Some(value) = project_open.auto_exclude_git {
                 self.project_open.auto_exclude_git = value;
             }
+            if let Some(value) = project_open.gradle_load_enabled {
+                self.project_open.gradle_load_enabled = value;
+            }
         }
         if let Some(onboarding) = partial.onboarding
             && let Some(value) = onboarding.setup_completed

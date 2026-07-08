@@ -2,10 +2,48 @@ package io.github.amichne.kast.idea
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class IdeaProjectIndexerModuleNameTest {
     private val workspaceRoot = Path.of("/workspace/kast")
+
+    @TempDir
+    lateinit var tempDir: Path
+
+    @Test
+    fun `filesystem fallback refuses to scan filesystem root`() {
+        val filesystemRoot = tempDir.root
+
+        val paths = discoverWorkspaceKotlinFilePaths(filesystemRoot) { false }
+
+        assertEquals(emptyList<String>(), paths)
+    }
+
+    @Test
+    fun `filesystem fallback discovers eligible workspace Kotlin files and skips generated directories`() {
+        val workspace = tempDir.resolve("workspace")
+        val sourceFile = workspace.resolve("analysis-api/src/main/kotlin/demo/Fallback.kt")
+        val testFile = workspace.resolve("analysis-api/src/test/kotlin/demo/FallbackTest.kt")
+        val generatedFile = workspace.resolve("analysis-api/build/generated/demo/Generated.kt")
+        val hiddenFile = workspace.resolve(".gradle/caches/demo/Cached.kt")
+        Files.createDirectories(sourceFile.parent)
+        Files.createDirectories(testFile.parent)
+        Files.createDirectories(generatedFile.parent)
+        Files.createDirectories(hiddenFile.parent)
+        Files.writeString(sourceFile, "package demo\nclass Fallback\n")
+        Files.writeString(testFile, "package demo\nclass FallbackTest\n")
+        Files.writeString(generatedFile, "package demo\nclass Generated\n")
+        Files.writeString(hiddenFile, "package demo\nclass Cached\n")
+
+        val paths = discoverWorkspaceKotlinFilePaths(workspace) { false }
+
+        assertEquals(
+            listOf(sourceFile, testFile).map { path -> path.toAbsolutePath().normalize().toString() },
+            paths,
+        )
+    }
 
     @Test
     fun `index module name uses Gradle project path and testFixtures source set`() {

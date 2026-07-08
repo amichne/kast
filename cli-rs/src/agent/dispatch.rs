@@ -439,15 +439,35 @@ fn execute_agent_steps(
     runtime: AgentRuntimeArgs,
     steps: Vec<AgentPublicStep>,
 ) -> AgentEnvelope {
+    let daemon_step_count = steps
+        .iter()
+        .filter(|step| agent_step_uses_daemon(step.method))
+        .count();
+    let session = if daemon_step_count > 1 {
+        match runtime::raw_rpc_session(runtime.workspace_root.clone(), runtime.backend_name) {
+            Ok(session) => Some(session),
+            Err(error) => {
+                return error_envelope(method.to_string(), None, AgentError::from_cli_error(error));
+            }
+        }
+    } else {
+        None
+    };
     let mut step_results = Vec::with_capacity(steps.len());
     let mut issues = Vec::new();
     for step in steps {
-        let envelope = execute_request(AgentRequest {
-            method: step.method.to_string(),
-            request: json_rpc_request(step.method, step.params),
-            runtime: runtime.clone(),
-            full_response: false,
-        });
+        let step_session = session
+            .as_ref()
+            .filter(|_| agent_step_uses_daemon(step.method));
+        let envelope = execute_request_with_session(
+            AgentRequest {
+                method: step.method.to_string(),
+                request: json_rpc_request(step.method, step.params),
+                runtime: runtime.clone(),
+                full_response: false,
+            },
+            step_session,
+        );
         if !envelope.ok {
             issues.push(json!({
                 "code": "AGENT_STEP_FAILED",
@@ -492,4 +512,8 @@ fn execute_agent_steps(
         error,
         schema_version: SCHEMA_VERSION,
     }
+}
+
+fn agent_step_uses_daemon(method: &str) -> bool {
+    !matches!(method, "database/metrics" | "symbol/query")
 }

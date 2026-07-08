@@ -84,6 +84,10 @@ pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
 }
 
 pub fn default_socket_path(workspace_root: &Path) -> PathBuf {
+    default_socket_path_for_config(&KastConfig::defaults(), workspace_root)
+}
+
+fn fallback_socket_path(workspace_root: &Path) -> PathBuf {
     env::temp_dir().join(format!("kast-{}.sock", workspace_hash(workspace_root)))
 }
 
@@ -93,7 +97,7 @@ fn default_socket_path_for_config(config: &KastConfig, workspace_root: &Path) ->
         .socket_dir
         .join(format!("kast-{}.sock", workspace_hash(workspace_root)));
     if socket_path_too_long(&configured) {
-        default_socket_path(workspace_root)
+        fallback_socket_path(workspace_root)
     } else {
         configured
     }

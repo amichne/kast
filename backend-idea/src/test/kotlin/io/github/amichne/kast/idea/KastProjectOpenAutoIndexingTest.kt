@@ -12,7 +12,12 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.ProjectOpenConfig
 import io.github.amichne.kast.api.client.RemoteIndexConfig
+import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
+import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
+import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
+import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
@@ -23,6 +28,8 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
+import org.jetbrains.plugins.gradle.settings.GradleSettings
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -55,10 +62,12 @@ class KastProjectOpenAutoIndexingTest {
     private val callerFileFixture = sourceRootFixture.psiFileFixture("Caller.kt", callerSource)
 
     @Test
-    fun `project open starts backend and reference indexing when idea backend is enabled`() {
+    fun `project open starts backend and then requests Gradle load when idea backend is enabled`() {
         val project = projectFixture.get()
         var loadedWorkspaceRoot: Path? = null
+        var loadedGradleWorkspaceRoot: Path? = null
         var startedProject: Project? = null
+        val events = mutableListOf<String>()
 
         val started = KastProjectOpenAutoIndexing.execute(
             project = project,
@@ -72,13 +81,121 @@ class KastProjectOpenAutoIndexingTest {
                     backups = emptyList(),
                 )
             },
-            startBackendAndIndexReferences = { startedProject = it },
+            loadGradleProject = { workspaceRoot, _ ->
+                events.add("gradle")
+                loadedGradleWorkspaceRoot = workspaceRoot
+                ProjectOpenGradleLoadResult.Requested(GradleProjectLoadRequest.Link(workspaceRoot))
+            },
+            startBackendAndIndexReferences = {
+                events.add("backend")
+                startedProject = it
+            },
         )
 
         assertTrue(started)
         assertSame(project, startedProject)
+        assertEquals(listOf("backend", "gradle"), events)
         assertNotNull(loadedWorkspaceRoot)
+        assertEquals(loadedWorkspaceRoot, loadedGradleWorkspaceRoot)
         assertEquals(loadedWorkspaceRoot, loadedWorkspaceRoot?.toAbsolutePath()?.normalize())
+    }
+
+    @Test
+    fun `Gradle project load request schedules background work`() {
+        val project = projectFixture.get()
+        Files.writeString(tempDir.resolve("settings.gradle.kts"), "pluginManagement {}\n")
+        var scheduled = false
+
+        val result = KastProjectOpenGradleLoad.execute(
+            project = project,
+            workspaceRoot = tempDir,
+            enabled = ProjectOpenGradleLoadEnabled(true),
+            scheduleGradleLoad = {
+                scheduled = true
+            },
+        )
+
+        assertEquals(
+            ProjectOpenGradleLoadResult.Requested(
+                GradleProjectLoadRequest.Link(tempDir.toAbsolutePath().normalize()),
+            ),
+            result,
+        )
+        assertTrue(scheduled)
+    }
+
+    @Test
+    fun `Gradle project load refreshes already linked Gradle project`() {
+        val project = projectFixture.get()
+        val linkedWorkspaceRoot = tempDir.toAbsolutePath().normalize()
+        Files.writeString(linkedWorkspaceRoot.resolve("settings.gradle.kts"), "pluginManagement {}\n")
+        val gradleSettings = GradleSettings.getInstance(project)
+        val previousSettings = gradleSettings.linkedProjectsSettings.toList()
+        var scheduled = false
+
+        try {
+            gradleSettings.setLinkedProjectsSettings(
+                listOf(
+                    GradleProjectSettings().apply {
+                        externalProjectPath = linkedWorkspaceRoot.toString()
+                    },
+                ),
+            )
+
+            val result = KastProjectOpenGradleLoad.execute(
+                project = project,
+                workspaceRoot = linkedWorkspaceRoot,
+                enabled = ProjectOpenGradleLoadEnabled(true),
+                scheduleGradleLoad = {
+                    scheduled = true
+                },
+            )
+
+            assertEquals(
+                ProjectOpenGradleLoadResult.Requested(
+                    GradleProjectLoadRequest.Refresh(linkedWorkspaceRoot),
+                ),
+                result,
+            )
+            assertTrue(scheduled)
+        } finally {
+            gradleSettings.setLinkedProjectsSettings(previousSettings)
+        }
+    }
+
+    @Test
+    fun `project open skips Gradle load when project open Gradle load is disabled`() {
+        val project = projectFixture.get()
+        var requestedGradleLoad = false
+        var startedProject: Project? = null
+        val disabledConfig = KastConfig.defaults().copy(
+            projectOpen = ProjectOpenConfig(
+                profileAutoInit = ProjectOpenProfileAutoInit(true),
+                profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
+                autoExcludeGit = ProjectOpenAutoExcludeGit(true),
+                gradleLoadEnabled = ProjectOpenGradleLoadEnabled(false),
+            ),
+        )
+
+        val started = KastProjectOpenAutoIndexing.execute(
+            project = project,
+            loadConfig = { disabledConfig },
+            installProjectOpenProfile = { workspaceRoot, _ ->
+                ProjectOpenProfileAutoInitResult.Installed(
+                    metadataPath = workspaceRoot.resolve(".kast/setup/workspace.json"),
+                    backups = emptyList(),
+                )
+            },
+            loadGradleProject = { workspaceRoot, config ->
+                requestedGradleLoad = true
+                KastProjectOpenGradleLoad.execute(project, workspaceRoot, config.projectOpen.gradleLoadEnabled)
+            },
+            startBackendAndIndexReferences = { startedProject = it },
+        )
+
+        assertTrue(started)
+        assertFalse(requestedGradleLoad)
+        assertSame(project, startedProject)
     }
 
     @Test

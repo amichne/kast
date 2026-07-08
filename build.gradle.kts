@@ -159,6 +159,7 @@ val kastDevBinary = kastBinDirectory.absoluteFile.normalize().resolve("kast-dev"
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "build"
     description = "Builds the repo-local Rust kast CLI in debug mode."
+    environment("KAST_VERSION", project.version.toString())
     commandLine(
         cargoExecutable,
         "build",
@@ -170,8 +171,9 @@ val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
 
 tasks.register<Copy>("installDevelopmentCli") {
     group = "distribution"
-    description = "Builds and installs the debug Rust CLI as kast-dev in the configured local Kast bin directory."
+    description = "Builds and installs the debug Rust CLI as kast and kast-dev in the configured local Kast bin directory."
     dependsOn(buildDevelopmentCli)
+    from(cliDebugBinary)
     from(cliDebugBinary) {
         rename("kast", "kast-dev")
     }
@@ -259,6 +261,17 @@ fun newestIntellijIdeaProfile(configRoot: File): File? =
         )
         ?.profileDirectory
 
+fun runningIntellijIdeaProfile(configRoot: File): File? {
+    val processArgs = providers.exec {
+        commandLine("ps", "-axo", "args")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.orNull.orEmpty()
+    return Regex("""/JetBrains/(IntelliJIdea\d{4}\.\d+(?:\.\d+)?)""")
+        .findAll(processArgs)
+        .map { match -> configRoot.resolve(match.groupValues[1]).absoluteFile.normalize() }
+        .firstOrNull(File::isDirectory)
+}
+
 fun jetBrainsConfigRoot(): File =
     providers.gradleProperty("kastDevJetBrainsConfigRoot")
         .orNull
@@ -295,6 +308,9 @@ fun resolveDevelopmentJetBrainsPluginsDir(): File {
             val profile = resolveJetBrainsProfile(raw, configRoot).absoluteFile.normalize()
             return if (profile.name == "plugins") profile else profile.resolve("plugins")
         }
+
+    runningIntellijIdeaProfile(configRoot)
+        ?.let { return it.resolve("plugins").absoluteFile.normalize() }
 
     val profile = newestIntellijIdeaProfile(configRoot)
                   ?: throw GradleException(

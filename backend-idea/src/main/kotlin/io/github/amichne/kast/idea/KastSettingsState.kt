@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.client.ProjectOpenConfigOverride
 import io.github.amichne.kast.api.client.RuntimeConfigOverride
 import io.github.amichne.kast.api.client.fields.IdeaBackendEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
+import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import io.github.amichne.kast.api.client.fields.RuntimeDefaultBackend
@@ -27,6 +28,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var projectOpenProfileAutoInit: Boolean? = null
     var projectOpenProfile: String? = null
     var projectOpenAutoExcludeGit: Boolean? = null
+    var projectOpenGradleLoadEnabled: Boolean? = null
 
     override fun getState(): KastSettingsState = this
 
@@ -38,6 +40,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         projectOpenProfileAutoInit = config.projectOpen.profileAutoInit.value
         projectOpenProfile = config.projectOpen.profile.value
         projectOpenAutoExcludeGit = config.projectOpen.autoExcludeGit.value
+        projectOpenGradleLoadEnabled = config.projectOpen.gradleLoadEnabled.value
     }
 
     fun toOverride(): KastConfigOverride = KastConfigOverride(
@@ -48,6 +51,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
             profileAutoInit = projectOpenProfileAutoInit?.let(::ProjectOpenProfileAutoInit),
             profile = projectOpenProfile?.takeIf(String::isNotBlank)?.let(::ProjectOpenProfile),
             autoExcludeGit = projectOpenAutoExcludeGit?.let(::ProjectOpenAutoExcludeGit),
+            gradleLoadEnabled = projectOpenGradleLoadEnabled?.let(::ProjectOpenGradleLoadEnabled),
         ).takeIfAny(),
         backends = BackendsConfigOverride(
             idea = IdeaBackendConfigOverride(enabled = backendsIdeaEnabled?.let(::IdeaBackendEnabled)).takeIfAny(),
@@ -63,7 +67,7 @@ private fun RuntimeConfigOverride.takeIfAny(): RuntimeConfigOverride? =
     takeIf { defaultBackend != null || ideaLaunch != null }
 
 private fun ProjectOpenConfigOverride.takeIfAny(): ProjectOpenConfigOverride? =
-    takeIf { profileAutoInit != null || profile != null || autoExcludeGit != null }
+    takeIf { profileAutoInit != null || profile != null || autoExcludeGit != null || gradleLoadEnabled != null }
 
 private fun BackendsConfigOverride.takeIfAny(): BackendsConfigOverride? =
     takeIf { headless != null || idea != null }

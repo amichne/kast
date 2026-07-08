@@ -64,6 +64,7 @@ data class KastConfig(
                     profileAutoInit = ProjectOpenProfileAutoInit(true),
                     profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
                     autoExcludeGit = ProjectOpenAutoExcludeGit(true),
+                    gradleLoadEnabled = ProjectOpenGradleLoadEnabled(true),
                 ),
                 indexing = IndexingConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
@@ -262,11 +263,13 @@ private data class RuntimeProjectOpenConfig(
     val profileAutoInit: Boolean? = null,
     val profile: String? = null,
     val autoExcludeGit: Boolean? = null,
+    val gradleLoadEnabled: Boolean? = null,
 ) {
     fun toOverride(): ProjectOpenConfigOverride = ProjectOpenConfigOverride(
         profileAutoInit = profileAutoInit?.let(::ProjectOpenProfileAutoInit),
         profile = profile?.let(::ProjectOpenProfile),
         autoExcludeGit = autoExcludeGit?.let(::ProjectOpenAutoExcludeGit),
+        gradleLoadEnabled = gradleLoadEnabled?.let(::ProjectOpenGradleLoadEnabled),
     )
 }
 
@@ -564,8 +567,9 @@ private fun Map<String, String>.projectOpenOverride(): ProjectOpenConfigOverride
     val profileAutoInit = booleanValue("projectopen.profileautoinit")?.let(::ProjectOpenProfileAutoInit)
     val profile = stringValue("projectopen.profile")?.let(::ProjectOpenProfile)
     val autoExcludeGit = booleanValue("projectopen.autoexcludegit")?.let(::ProjectOpenAutoExcludeGit)
-    return takeIfAny(profileAutoInit, profile, autoExcludeGit) {
-        ProjectOpenConfigOverride(profileAutoInit, profile, autoExcludeGit)
+    val gradleLoadEnabled = booleanValue("projectopen.gradleloadenabled")?.let(::ProjectOpenGradleLoadEnabled)
+    return takeIfAny(profileAutoInit, profile, autoExcludeGit, gradleLoadEnabled) {
+        ProjectOpenConfigOverride(profileAutoInit, profile, autoExcludeGit, gradleLoadEnabled)
     }
 }
 
@@ -698,6 +702,7 @@ data class ProjectOpenConfig(
     val profileAutoInit: ProjectOpenProfileAutoInit,
     val profile: ProjectOpenProfile,
     val autoExcludeGit: ProjectOpenAutoExcludeGit,
+    val gradleLoadEnabled: ProjectOpenGradleLoadEnabled,
 )
 
 data class IdeaLaunchConfig(
@@ -801,6 +806,7 @@ data class ProjectOpenConfigOverride(
     val profileAutoInit: ProjectOpenProfileAutoInit? = null,
     val profile: ProjectOpenProfile? = null,
     val autoExcludeGit: ProjectOpenAutoExcludeGit? = null,
+    val gradleLoadEnabled: ProjectOpenGradleLoadEnabled? = null,
 )
 
 data class RuntimeConfigOverride(
@@ -937,6 +943,7 @@ private fun ProjectOpenConfig.merge(override: ProjectOpenConfigOverride?): Proje
     profileAutoInit = override?.profileAutoInit ?: profileAutoInit,
     profile = override?.profile ?: profile,
     autoExcludeGit = override?.autoExcludeGit ?: autoExcludeGit,
+    gradleLoadEnabled = override?.gradleLoadEnabled ?: gradleLoadEnabled,
 )
 
 private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLaunchConfig = copy(

@@ -16,6 +16,7 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
                 "profileAutoInit" to projectOpenProfileAutoInit.changedFrom(defaults.projectOpen.profileAutoInit.value),
                 "profile" to projectOpenProfile.changedFrom(defaults.projectOpen.profile.value),
                 "autoExcludeGit" to projectOpenAutoExcludeGit.changedFrom(defaults.projectOpen.autoExcludeGit.value),
+                "gradleLoadEnabled" to projectOpenGradleLoadEnabled.changedFrom(defaults.projectOpen.gradleLoadEnabled.value),
             ),
         )
         add(tomlSection("backends.idea", "enabled" to backendsIdeaEnabled.changedFrom(defaults.backends.idea.enabled.value)))
@@ -66,6 +67,7 @@ private val managedPublicKeys = setOf(
     "projectopen.profileautoinit",
     "projectopen.profile",
     "projectopen.autoexcludegit",
+    "projectopen.gradleloadenabled",
     "backends.idea.enabled",
 )
 

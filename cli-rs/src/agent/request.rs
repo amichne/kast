@@ -1,4 +1,11 @@
 fn execute_request(request: AgentRequest) -> AgentEnvelope {
+    execute_request_with_session(request, None)
+}
+
+fn execute_request_with_session(
+    request: AgentRequest,
+    session: Option<&runtime::RawRpcSession>,
+) -> AgentEnvelope {
     let validation = validate_request(&request.method, &request.request);
     if let Err(error) = validation {
         return error_envelope(request.method, Some(request.request), error);
@@ -13,11 +20,18 @@ fn execute_request(request: AgentRequest) -> AgentEnvelope {
             );
         }
     };
-    let response = runtime::raw_request_passthrough(
-        raw_request,
-        request.runtime.workspace_root,
-        request.runtime.backend_name,
-    );
+    let response = match session {
+        Some(session) => runtime::raw_request_passthrough_in_session(
+            raw_request,
+            request.runtime.workspace_root,
+            session,
+        ),
+        None => runtime::raw_request_passthrough(
+            raw_request,
+            request.runtime.workspace_root,
+            request.runtime.backend_name,
+        ),
+    };
     match response {
         Ok(raw_response) => response_envelope(
             request.method,
