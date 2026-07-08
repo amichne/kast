@@ -27,56 +27,6 @@ fn print_skill_install(result: &InstallSkillResult) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
-fn print_instructions_install(result: &InstallInstructionsResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# Kast instructions install");
-    mdln!(document);
-    mdln!(document, "- Installed at: `{}`", result.installed_at);
-    mdln!(document, "- Version: `{}`", result.version);
-    mdln!(
-        document,
-        "- Reused existing install: {}",
-        yes_no(result.skipped)
-    );
-    mdln!(document);
-    mdln!(document, "## Next steps");
-    mdln!(
-        document,
-        "- Read the installed guide: `{}/README.md`",
-        result.installed_at
-    );
-    print_markdown(&document.into_string())
-}
-
-fn print_copilot_install(title: &str, result: &InstallCopilotPackageResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    mdln!(document, "# {title}");
-    mdln!(document);
-    mdln!(document, "- Package path: `{}`", result.installed_at);
-    mdln!(document, "- Version: `{}`", result.version);
-    mdln!(
-        document,
-        "- Reused existing install: {}",
-        yes_no(result.skipped)
-    );
-    if result.git_exclude.attempted {
-        mdln!(
-            document,
-            "- Git info/exclude updated: {}",
-            yes_no(result.git_exclude.updated)
-        );
-        print_optional(
-            &mut document,
-            "Git info/exclude",
-            result.git_exclude.exclude_file.as_deref(),
-        );
-    } else if let Some(reason) = &result.git_exclude.reason {
-        mdln!(document, "- Git info/exclude: {reason}");
-    }
-    print_warnings(&mut document, &result.warnings);
-    print_markdown(&document.into_string())
-}
-
 fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     print_idea_plugin_install_summary(&mut document, result);
