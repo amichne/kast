@@ -270,6 +270,7 @@ jobs:
         with:
           path: |
             ~/.gradle/kast/headless-idea-distributions
+            ~/.gradle/kast/shared-idea-distributions
             ~/.gradle/kast/backend-idea-distributions
           key: intellij-runtime-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: |
@@ -608,6 +609,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
+            ~/.gradle/kast/shared-idea-distributions
             ~/.gradle/kast/backend-idea-distributions
             ~/.cache/pluginVerifier/ides
           key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
