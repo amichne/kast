@@ -362,7 +362,7 @@ fn run_package_verify_step(
     workspace_root: &Path,
     options: &AgentPackageVerifyOptions,
 ) -> Result<(i32, Value)> {
-    let doctor = self_mgmt::doctor(false, ReadyTarget::Agent)?;
+    let doctor = self_mgmt::doctor(false, ReadyTarget::Agent, Some(workspace_root))?;
     let required_resources = required_package_resources(&doctor, workspace_root, options)?;
     let mut summary = serde_json::to_value(&doctor)?;
     let ok = doctor.ok && required_resources.ok;

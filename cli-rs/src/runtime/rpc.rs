@@ -3,6 +3,8 @@ pub fn raw_request_passthrough(
     requested_workspace_root: Option<PathBuf>,
     backend_name: Option<BackendName>,
 ) -> Result<String> {
+    let workspace_root = workspace_root(requested_workspace_root.clone())?;
+    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     if let Some(response) =
         crate::metrics::try_handle_raw_rpc(&raw_request, requested_workspace_root.clone())?
     {
@@ -13,7 +15,6 @@ pub fn raw_request_passthrough(
     {
         return Ok(response);
     }
-    let workspace_root = workspace_root(requested_workspace_root)?;
     let ensure = workspace_ensure(RuntimeArgs {
         workspace_root: Some(workspace_root),
         backend_name,

@@ -6,13 +6,24 @@ RPC catalogs and protocol samples remain internal contracts.
 
 ## Install and readiness
 
-`kast setup` installs or repairs only the repository agent assets:
+On macOS, the IntelliJ plugin prepares workspace guidance and metadata when the
+project opens. `kast setup` fails closed there so agents cannot create partial
+runtime/resource state.
+
+On non-macOS headless/server installs, `kast setup` installs or repairs only
+the repository agent assets:
 
 - `.agents/skills/kast/SKILL.md`
 - one managed `<kast>...</kast>` guidance region in the selected repo context file
 
-It does not install Copilot packages, portable Markdown instruction packages,
-session hooks, generated catalog copies, or workflow helper assets.
+For IDEA plugin install or repair, use the typed machine command:
+
+```console
+kast developer machine plugin
+```
+
+Setup does not install Copilot packages, portable Markdown instruction
+packages, session hooks, generated catalog copies, or workflow helper assets.
 
 Use these health boundaries:
 

@@ -14,7 +14,7 @@ accepts `--output json` for scripts.
 
 ```mermaid
 flowchart LR
-    setup["setup<br/>skill + managed guidance"]
+    setup["setup<br/>non-macOS guidance"]
     ready["ready<br/>read-only"]
     repair["repair<br/>plan/apply"]
     status["status"]
@@ -31,7 +31,7 @@ flowchart LR
 
 | Group | Commands | Use when |
 | --- | --- | --- |
-| Setup | `setup` | Install `.agents/skills/kast/SKILL.md` and one managed `<kast>...</kast>` region |
+| Setup | `setup` | Non-macOS repository guidance setup; macOS workspace setup is owned by the IntelliJ plugin |
 | Readiness | `ready` | Read task readiness without mutation |
 | Repair | `repair` | Plan or apply managed install-state repair |
 | Agent automation | `agent verify`, `agent symbol`, `agent diagnostics`, `agent impact`, `agent rename`, `agent lsp` | Run typed compiler-backed agent operations |

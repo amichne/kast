@@ -1,14 +1,16 @@
 # ADR 0001: Agent-first install and docs operating model
 
-Status: Accepted; public documentation model superseded by ADR 0003
+Status: Accepted; public documentation model superseded by ADR 0003; macOS
+workspace setup model superseded by ADR 0007
 
 Date: 2026-06-17
 
 This ADR records the current delivery contract for Kast documentation and
 agent-facing setup. It exists so future agents can update the site from a
 checked-in operating model instead of preserving stale conversation context.
-ADR 0003 supersedes the public documentation topology; this ADR still owns the
-machine, repository, and headless install-scope split.
+ADR 0003 supersedes the public documentation topology. ADR 0007 supersedes the
+macOS repository setup authority and Homebrew distribution relationship. This
+ADR still records the older split for historical context.
 
 ## Context
 
@@ -42,15 +44,15 @@ kast agent setup copilot
 This is the primary macOS developer-machine path. The reader should understand
 the macOS machine layer, the repository layer, and the separate Linux
 headless-server lane before seeing detailed runtime material. The Homebrew
-formula installs or refreshes the matching `kast-plugin` cask, equivalent to
-the direct repair path `brew install --cask kast-plugin`.
+formula installs or refreshes the matching IntelliJ plugin artifact as part of
+the same developer workstation distribution.
 
 | Scope | Owner | Current command | Documentation role |
 |-------|-------|-----------------|--------------------|
-| Machine CLI + IDE plugin | Global `kast` binary plus Homebrew-managed JetBrains plugin links | `brew install kast` | First step for developer machines |
-| Machine IDE plugin repair | Homebrew-managed JetBrains plugin links | `brew install --cask kast-plugin` | Direct cask repair path |
-| Repository | Copilot/LSP package files under `.github` | `kast agent setup copilot` | First step per repository |
-| Repository harness selection | Copilot package, packaged skill, or Markdown instructions | `kast agent setup auto --harness ...` or `projectOpen.agentHarness` | Explicit enterprise/portable harness path |
+| Machine CLI + IDE plugin | Global `kast` binary plus Homebrew-managed JetBrains plugin artifact | `brew install kast` | First step for developer machines |
+| Machine IDE plugin repair | Homebrew-managed JetBrains plugin links | `kast developer machine plugin` | Profile-link repair path |
+| macOS repository | IntelliJ plugin writes skill-facing guidance and workspace metadata | Open the repository with the Kast plugin active | First step per macOS repository |
+| non-macOS repository | Skill and managed context guidance | `kast setup --workspace-root <repo>` | Headless/server repository path |
 | Headless server | Linux bundle with binary, config, and runtime | `scripts/install-ubuntu-debian.sh install` | Second lane for hosted agents |
 
 Detailed backend, API, repair, shell, release, and local-development material

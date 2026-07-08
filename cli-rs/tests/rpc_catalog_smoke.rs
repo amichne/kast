@@ -613,7 +613,12 @@ fn copilot_agent_setup_reports_removed_without_installing_package_outputs() {
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("removed command json");
     assert_eq!(stdout["ok"], false, "{stdout}");
-    assert_eq!(stdout["method"], "agent/setup/copilot", "{stdout}");
+    let expected_method = if cfg!(target_os = "macos") {
+        "agent/setup"
+    } else {
+        "agent/setup/copilot"
+    };
+    assert_eq!(stdout["method"], expected_method, "{stdout}");
     assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
     assert!(!target.join("lsp.json").exists());
     assert!(

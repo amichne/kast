@@ -10,6 +10,7 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
 
     let up = kast(&home, &config_home)
         .args([
@@ -47,6 +48,7 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -87,6 +89,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -128,6 +131,7 @@ fn agent_verify_uses_configured_default_backend_when_auto_starting() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -164,6 +168,7 @@ fn agent_verify_backend_flag_overrides_configured_default_backend() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",

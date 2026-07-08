@@ -5,6 +5,8 @@ use crate::config::{self, PathResolutionReport};
 use crate::error::Result;
 use crate::install::{self, InstallRepairResult};
 use crate::manifest;
+#[cfg(target_os = "macos")]
+use serde::Deserialize;
 use serde::Serialize;
 use std::env;
 use std::fs;
@@ -16,6 +18,16 @@ pub use crate::manifest::{
 };
 
 const MANAGED_RESOURCE_HISTORY_LIMIT: usize = 5;
+#[cfg(target_os = "macos")]
+const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
+#[cfg(target_os = "macos")]
+const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 1;
+#[cfg(target_os = "macos")]
+const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
+#[cfg(target_os = "macos")]
+const MACOS_PLUGIN_WORKSPACE_BACKEND: &str = "idea";
+#[cfg(target_os = "macos")]
+const MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE: &str = ".agents/skills/kast/SKILL.md";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,7 +99,11 @@ pub struct SelfDoctorResult {
     pub schema_version: u32,
 }
 
-pub fn doctor(repair: bool, target: ReadyTarget) -> Result<SelfDoctorResult> {
+pub fn doctor(
+    repair: bool,
+    target: ReadyTarget,
+    workspace_root: Option<&Path>,
+) -> Result<SelfDoctorResult> {
     let config_path = config::global_config_path();
     let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
@@ -212,7 +228,13 @@ pub fn doctor(repair: bool, target: ReadyTarget) -> Result<SelfDoctorResult> {
             manifest_path.display()
         ));
     }
-    apply_ready_target_checks(target, install.as_ref(), &binary, &mut issues);
+    apply_ready_target_checks(
+        target,
+        workspace_root,
+        install.as_ref(),
+        &binary,
+        &mut issues,
+    );
     Ok(SelfDoctorResult {
         target,
         installed: install.is_some(),
@@ -234,10 +256,12 @@ pub fn doctor(repair: bool, target: ReadyTarget) -> Result<SelfDoctorResult> {
 
 fn apply_ready_target_checks(
     target: ReadyTarget,
+    workspace_root: Option<&Path>,
     install: Option<&InstallState>,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
+    apply_macos_plugin_workspace_check(target, workspace_root, issues);
     match target {
         ReadyTarget::Agent | ReadyTarget::Release => {}
         ReadyTarget::Machine => {
@@ -262,6 +286,218 @@ fn apply_ready_target_checks(
             }
         }
     }
+}
+
+#[cfg(target_os = "macos")]
+fn apply_macos_plugin_workspace_check(
+    target: ReadyTarget,
+    workspace_root: Option<&Path>,
+    issues: &mut Vec<String>,
+) {
+    if !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
+        return;
+    }
+    match workspace_root {
+        Some(workspace_root) => {
+            if let Err(error) = validate_macos_plugin_workspace(workspace_root) {
+                issues.push(error.message);
+            }
+        }
+        None => issues.push(
+            "macOS agent and Kotlin readiness require --workspace-root so the plugin-prepared workspace metadata can be verified".to_string(),
+        ),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn apply_macos_plugin_workspace_check(
+    _target: ReadyTarget,
+    _workspace_root: Option<&Path>,
+    _issues: &mut Vec<String>,
+) {
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MacosPluginWorkspaceMetadata {
+    schema_version: u32,
+    prepared_by: String,
+    plugin_version: String,
+    cli_version: String,
+    workspace_root: PathBuf,
+    cli_binary: PathBuf,
+    backend: String,
+    socket_path: PathBuf,
+    required_artifacts: Vec<PathBuf>,
+}
+
+#[cfg(target_os = "macos")]
+pub fn validate_macos_plugin_workspace(workspace_root: &Path) -> Result<()> {
+    let workspace_root = config::normalize(workspace_root.to_path_buf());
+    let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
+    let raw = fs::read_to_string(&metadata_path).map_err(|error| {
+        macos_plugin_workspace_error(format!(
+            "macOS Kast invocation requires workspace metadata prepared by the Kast IntelliJ plugin at {}: {error}",
+            metadata_path.display()
+        ))
+    })?;
+    let metadata: MacosPluginWorkspaceMetadata = serde_json::from_str(&raw).map_err(|error| {
+        macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata is not valid JSON for this version at {}: {error}",
+            metadata_path.display()
+        ))
+    })?;
+    validate_macos_plugin_workspace_metadata(&workspace_root, &metadata_path, metadata)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn validate_macos_plugin_workspace(_workspace_root: &Path) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn validate_macos_plugin_workspace_metadata(
+    workspace_root: &Path,
+    metadata_path: &Path,
+    metadata: MacosPluginWorkspaceMetadata,
+) -> Result<()> {
+    if metadata.schema_version != MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata schemaVersion {} is not recognized by this Kast version; expected {} at {}",
+            metadata.schema_version,
+            MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION,
+            metadata_path.display()
+        )));
+    }
+    if metadata.prepared_by != MACOS_PLUGIN_WORKSPACE_PREPARED_BY {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata was prepared by `{}` instead of `{}` at {}",
+            metadata.prepared_by,
+            MACOS_PLUGIN_WORKSPACE_PREPARED_BY,
+            metadata_path.display()
+        )));
+    }
+    let current_version = cli::version();
+    if metadata.plugin_version != current_version || metadata.cli_version != current_version {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata version relationship is invalid at {}: pluginVersion={}, cliVersion={}, runningCliVersion={}",
+            metadata_path.display(),
+            metadata.plugin_version,
+            metadata.cli_version,
+            current_version
+        )));
+    }
+    let metadata_workspace_root = config::normalize(metadata.workspace_root);
+    if metadata_workspace_root != workspace_root {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata root {} does not match requested workspace {}",
+            metadata_workspace_root.display(),
+            workspace_root.display()
+        )));
+    }
+    if metadata.backend != MACOS_PLUGIN_WORKSPACE_BACKEND {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata backend `{}` is not recognized by this Kast version; expected `{}`",
+            metadata.backend, MACOS_PLUGIN_WORKSPACE_BACKEND
+        )));
+    }
+    let expected_socket_path = config::default_socket_path(workspace_root);
+    if metadata.socket_path != expected_socket_path {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata socketPath {} does not match expected socket {}",
+            metadata.socket_path.display(),
+            expected_socket_path.display()
+        )));
+    }
+    validate_macos_plugin_cli_binary(&metadata.cli_binary)?;
+    validate_macos_plugin_required_artifacts(workspace_root, &metadata.required_artifacts)
+}
+
+#[cfg(target_os = "macos")]
+fn validate_macos_plugin_cli_binary(cli_binary: &Path) -> Result<()> {
+    let configured = fs::canonicalize(cli_binary).map_err(|error| {
+        macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata cliBinary {} cannot be resolved: {error}",
+            cli_binary.display()
+        ))
+    })?;
+    let running = env::current_exe()
+        .map_err(|error| {
+            macos_plugin_workspace_error(format!(
+                "Current Kast executable cannot be resolved for macOS workspace validation: {error}"
+            ))
+        })
+        .and_then(|path| {
+            fs::canonicalize(&path).map_err(|error| {
+                macos_plugin_workspace_error(format!(
+                    "Current Kast executable {} cannot be canonicalized for macOS workspace validation: {error}",
+                    path.display()
+                ))
+            })
+        })?;
+    if configured != running {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata cliBinary {} does not match the running Kast executable {}",
+            configured.display(),
+            running.display()
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn validate_macos_plugin_required_artifacts(
+    workspace_root: &Path,
+    required_artifacts: &[PathBuf],
+) -> Result<()> {
+    if !required_artifacts
+        .iter()
+        .any(|artifact| artifact == Path::new(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE))
+    {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata does not declare required artifact `{}`",
+            MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE
+        )));
+    }
+    if !required_artifacts
+        .iter()
+        .any(|artifact| artifact == Path::new(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE))
+    {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace metadata does not declare required artifact `{}`",
+            MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE
+        )));
+    }
+    for artifact in required_artifacts {
+        if !is_safe_relative_artifact(artifact) {
+            return Err(macos_plugin_workspace_error(format!(
+                "macOS Kast workspace metadata contains an unsupported artifact path `{}`",
+                artifact.display()
+            )));
+        }
+        let path = workspace_root.join(artifact);
+        if !path.exists() {
+            return Err(macos_plugin_workspace_error(format!(
+                "macOS Kast workspace metadata requires missing artifact {}",
+                path.display()
+            )));
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn is_safe_relative_artifact(path: &Path) -> bool {
+    path.is_relative()
+        && path
+            .components()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+}
+
+#[cfg(target_os = "macos")]
+fn macos_plugin_workspace_error(message: String) -> crate::error::CliError {
+    crate::error::CliError::new("MACOS_PLUGIN_WORKSPACE_REQUIRED", message)
 }
 
 fn configuration_diagnostic(

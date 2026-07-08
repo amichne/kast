@@ -333,10 +333,42 @@ fn update_context_git_filter(
         .unwrap_or_else(|| repo_root.join(".git/tools"));
     let filter_script = tools_dir.join("kast-context-region-filter");
     fs::create_dir_all(&tools_dir)?;
+    let start = KAST_MANAGED_FENCE_START.replace('"', "\\\"");
+    let attribute_start = ATTRIBUTE_KAST_MANAGED_FENCE_START.replace('"', "\\\"");
+    let end = KAST_MANAGED_FENCE_END.replace('"', "\\\"");
     let filter_script_contents = format!(
-        "#!/usr/bin/env sh\nawk '\n  $0 == \"{}\" {{ in_kast = 1; next }}\n  in_kast && $0 == \"{}\" {{ in_kast = 0; next }}\n  !in_kast {{ print }}\n'\n",
-        KAST_MANAGED_FENCE_START.replace('"', "\\\""),
-        KAST_MANAGED_FENCE_END.replace('"', "\\\"")
+        r#"#!/usr/bin/env sh
+exec awk '
+  function flush_blank_lines(    i) {{
+    for (i = 0; i < blank_line_count; i++) {{
+      print ""
+    }}
+    blank_line_count = 0
+  }}
+
+  in_kast {{
+    if ($0 == "{end}") {{
+      in_kast = 0
+    }}
+    next
+  }}
+
+  $0 == "{start}" || $0 == "{attribute_start}" {{
+    in_kast = 1
+    next
+  }}
+
+  $0 == "" {{
+    blank_line_count++
+    next
+  }}
+
+  {{
+    flush_blank_lines()
+    print
+  }}
+'
+"#
     );
     write_file_atomically(
         &filter_script,

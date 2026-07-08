@@ -31,6 +31,50 @@ pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
     default_install_root(home).join("install.json")
 }
 
+pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
+    #[cfg(target_os = "macos")]
+    {
+        let workspace: PathBuf = workspace.components().collect();
+        let skill = workspace.join(".agents/skills/kast/SKILL.md");
+        std::fs::create_dir_all(skill.parent().expect("skill parent")).expect("skill dir");
+        std::fs::write(&skill, "# Kast\n").expect("skill");
+        let metadata = workspace.join(".kast/setup/workspace.json");
+        std::fs::create_dir_all(metadata.parent().expect("metadata parent")).expect("metadata dir");
+        std::fs::write(
+            metadata,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schemaVersion": 1,
+                "preparedBy": "kast-intellij-plugin",
+                "pluginVersion": env!("CARGO_PKG_VERSION"),
+                "cliVersion": env!("CARGO_PKG_VERSION"),
+                "workspaceRoot": workspace.display().to_string(),
+                "cliBinary": env!("CARGO_BIN_EXE_kast"),
+                "backend": "idea",
+                "socketPath": default_socket_path_for_test(&workspace).display().to_string(),
+                "requiredArtifacts": [
+                    ".agents/skills/kast/SKILL.md",
+                    ".kast/setup/workspace.json"
+                ]
+            }))
+            .expect("metadata json"),
+        )
+        .expect("metadata");
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = workspace;
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn default_socket_path_for_test(workspace: &Path) -> PathBuf {
+    use sha2::{Digest, Sha256};
+
+    let normalized: PathBuf = workspace.components().collect();
+    let digest = Sha256::digest(normalized.to_string_lossy().as_bytes());
+    std::env::temp_dir().join(format!("kast-{}.sock", &hex::encode(digest)[0..12]))
+}
+
 pub(crate) fn path_report_entry<'a>(
     report: &'a serde_json::Value,
     key: &str,

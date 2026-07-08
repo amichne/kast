@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -19,23 +20,21 @@ class KastProjectOpenProfileAutoInitTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `explicitly disabled project-open setup skips without running command`() {
-        val workspace = tempDir.resolve("workspace")
-        Files.createDirectories(workspace)
-        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
-        val commands = mutableListOf<List<String>>()
+    fun `explicitly disabled project-open setup skips without preparing workspace`() {
+        val workspace = gradleWorkspace()
+        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
 
         val result = KastProjectOpenProfileAutoInit.execute(
             workspaceRoot = workspace,
             config = autoInitConfig(enabled = false),
-            runCommand = { command ->
-                commands.add(command)
-                CommandRunResult(success = true, message = "")
+            prepareWorkspace = { request ->
+                requests.add(request)
+                PluginWorkspaceBootstrapResult.Prepared(workspace.resolve("unused"), emptyList())
             },
         )
 
         assertEquals(ProjectOpenProfileAutoInitResult.Skipped("disabled"), result)
-        assertEquals(emptyList<List<String>>(), commands)
+        assertEquals(emptyList<PluginWorkspaceBootstrapRequest>(), requests)
     }
 
     @Test
@@ -46,81 +45,108 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.execute(
             workspaceRoot = workspace,
             config = autoInitConfig(),
-            runCommand = { CommandRunResult(success = true, message = "") },
+            prepareWorkspace = {
+                error("bootstrap should not run for non-Gradle workspace")
+            },
         )
 
         assertEquals(ProjectOpenProfileAutoInitResult.Skipped("not a Gradle project"), result)
     }
 
     @Test
-    fun `enabled project-open profile installs shared agent guidance for Gradle project`() {
-        val workspace = tempDir.resolve("workspace")
-        Files.createDirectories(workspace)
-        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
-        val commands = mutableListOf<List<String>>()
+    fun `enabled project-open profile materializes plugin-owned workspace setup`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
 
         val result = KastProjectOpenProfileAutoInit.execute(
             workspaceRoot = workspace,
-            config = autoInitConfig(autoExcludeGit = true),
-            runCommand = { command ->
-                commands.add(command)
-                CommandRunResult(success = true, message = "ok")
-            },
+            config = autoInitConfig(binaryPath = binary),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
-        assertEquals(
-            listOf(
-                "/opt/kast/bin/kast",
-                "agent",
-                "setup",
-                "--workspace-root",
-                workspace.toAbsolutePath().normalize().toString(),
-            ),
-            commands.single(),
-        )
+        val installed = result as ProjectOpenProfileAutoInitResult.Installed
+        assertEquals(workspace.resolve(".kast/setup/workspace.json"), installed.metadataPath)
+        assertEquals(emptyList<Path>(), installed.backups)
+        assertTrue(workspace.resolve(".agents/skills/kast/SKILL.md").isRegularFile())
+        assertTrue(workspace.resolve("AGENTS.local.md").isRegularFile())
+        val guidance = Files.readString(workspace.resolve("AGENTS.local.md"))
+        assertTrue(guidance.contains("the IntelliJ plugin owns workspace bootstrap"), guidance)
+        val metadata = Files.readString(installed.metadataPath)
+        assertTrue(metadata.contains("\"preparedBy\": \"kast-intellij-plugin\""), metadata)
+        assertTrue(metadata.contains("\"cliBinary\": \"${binary.toString().jsonEscaped()}\""), metadata)
     }
 
     @Test
-    fun `auto exclude opt-out is passed to agent setup command`() {
-        val workspace = tempDir.resolve("workspace")
-        Files.createDirectories(workspace)
-        Files.writeString(workspace.resolve("build.gradle"), "")
-
-        val command = KastProjectOpenProfileAutoInit.buildInstallCommand(
-            workspaceRoot = workspace,
-            config = autoInitConfig(autoExcludeGit = false),
-        )
-
-        assertEquals("--no-auto-exclude-git", command.last())
-    }
-
-    @Test
-    fun `failed project-open install returns non-throwing failure result`() {
-        val workspace = tempDir.resolve("workspace")
-        Files.createDirectories(workspace)
-        Files.writeString(workspace.resolve("settings.gradle"), "")
+    fun `plugin bootstrap backs up and removes unknown prior managed artifacts`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        Files.createDirectories(workspace.resolve(".agents/instructions/kast"))
+        Files.writeString(workspace.resolve(".agents/instructions/kast/README.md"), "old")
+        Files.createDirectories(workspace.resolve(".github/extensions/kast"))
+        Files.writeString(workspace.resolve(".github/extensions/kast/extension.mjs"), "old")
+        Files.createDirectories(workspace.resolve(".agents/skills/kast"))
+        Files.writeString(workspace.resolve(".agents/skills/kast/old.txt"), "old")
 
         val result = KastProjectOpenProfileAutoInit.execute(
             workspaceRoot = workspace,
-            config = autoInitConfig(),
-            runCommand = { CommandRunResult(success = false, message = "nope") },
+            config = autoInitConfig(binaryPath = binary),
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        val installed = result as ProjectOpenProfileAutoInitResult.Installed
+        assertTrue(installed.backups.isNotEmpty())
+        assertFalse(workspace.resolve(".agents/instructions/kast").exists())
+        assertFalse(workspace.resolve(".github/extensions/kast").exists())
+        assertFalse(workspace.resolve(".agents/skills/kast/old.txt").exists())
+        assertTrue(workspace.resolve(".agents/skills/kast/SKILL.md").isRegularFile())
+        assertTrue(installed.backups.all { backup -> backup.startsWith(workspace.resolve(".kast/backups")) })
+    }
+
+    @Test
+    fun `missing cli binary fails closed`() {
+        val workspace = gradleWorkspace()
+
+        val result = KastProjectOpenProfileAutoInit.execute(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = workspace.resolve("missing-kast")),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
-        assertEquals("nope", (result as ProjectOpenProfileAutoInitResult.Failed).message)
+        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("Kast CLI binary is missing"))
+        assertFalse(workspace.resolve(".agents/skills/kast/SKILL.md").exists())
+    }
+
+    private fun gradleWorkspace(): Path {
+        val workspace = tempDir.resolve("workspace-${System.nanoTime()}")
+        Files.createDirectories(workspace)
+        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
+        return workspace
+    }
+
+    private fun fakeKastBinary(): Path {
+        val binary = tempDir.resolve("bin/kast-${System.nanoTime()}")
+        Files.createDirectories(binary.parent)
+        Files.writeString(binary, "#!/usr/bin/env sh\n")
+        return binary
     }
 
     private fun autoInitConfig(
         enabled: Boolean = true,
-        autoExcludeGit: Boolean = true,
+        binaryPath: Path = fakeKastBinary(),
     ): KastConfig =
         KastConfig.defaults().copy(
             projectOpen = ProjectOpenConfig(
                 profileAutoInit = ProjectOpenProfileAutoInit(enabled),
                 profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP),
-                autoExcludeGit = ProjectOpenAutoExcludeGit(autoExcludeGit),
+                autoExcludeGit = ProjectOpenAutoExcludeGit(true),
             ),
-            cli = CliConfig(CliBinaryPath("/opt/kast/bin/kast")),
+            cli = CliConfig(CliBinaryPath(binaryPath.toString())),
         )
 }
+
+private fun Path.exists(): Boolean = Files.exists(this)
+
+private fun Path.isRegularFile(): Boolean = Files.isRegularFile(this)
+
+private fun String.jsonEscaped(): String =
+    replace("\\", "\\\\").replace("\"", "\\\"")

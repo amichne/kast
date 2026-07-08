@@ -1,4 +1,4 @@
-use super::kast;
+use super::{kast, write_macos_plugin_workspace_metadata};
 use rusqlite::{Connection, params};
 use serde_json::Value;
 
@@ -131,6 +131,7 @@ pub(crate) fn assert_declaration_facets<const N: usize>(response: &Value, expect
 }
 
 pub(crate) fn seed_source_index(workspace: &std::path::Path) {
+    write_macos_plugin_workspace_metadata(workspace);
     let db_path = workspace.join(".gradle/kast/cache/source-index.db");
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
     seed_source_files(workspace);

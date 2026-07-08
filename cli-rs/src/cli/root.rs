@@ -38,6 +38,7 @@ pub enum Command {
     /// Print compact workspace context for agents and hooks.
     Context(RuntimeArgs),
     /// Set up Kast for this repository.
+    #[cfg_attr(target_os = "macos", command(hide = true))]
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
@@ -59,6 +60,9 @@ pub struct SetupArgs {
     /// Absolute workspace root for repository guidance setup.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
+    /// Backend to warm after repository guidance setup.
+    #[arg(long = "backend", value_enum, hide = true)]
+    pub backend_name: Option<BackendName>,
     /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
     #[arg(long = "skill-target-dir")]
     pub skill_target_dir: Option<PathBuf>,

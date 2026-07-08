@@ -13,6 +13,7 @@ fn reads_metrics_directly_from_source_index_db() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
     seed_source_index(&workspace);
+    write_macos_plugin_workspace_metadata(&workspace);
 
     let fan_in = kast(&home, &config_home)
         .args([

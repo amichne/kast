@@ -12,7 +12,12 @@ fn assert_removed(output: &std::process::Output, method: &str) -> serde_json::Va
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("removed command json");
     assert_eq!(stdout["ok"], false, "{stdout}");
-    assert_eq!(stdout["method"], method, "{stdout}");
+    let expected_method = if cfg!(target_os = "macos") && method.starts_with("agent/setup/") {
+        "agent/setup"
+    } else {
+        method
+    };
+    assert_eq!(stdout["method"], expected_method, "{stdout}");
     assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
     stdout
 }
@@ -53,12 +58,21 @@ agentHarness = "instructions"
     let replacements = stdout["error"]["details"]["replacements"]
         .as_array()
         .expect("replacement commands");
-    assert!(
-        replacements
-            .iter()
-            .any(|replacement| replacement == "kast setup --workspace-root <repo>"),
-        "{stdout}"
-    );
+    if cfg!(target_os = "macos") {
+        assert!(
+            replacements
+                .iter()
+                .any(|replacement| replacement == "kast developer machine plugin"),
+            "{stdout}"
+        );
+    } else {
+        assert!(
+            replacements
+                .iter()
+                .any(|replacement| replacement == "kast setup --workspace-root <repo>"),
+            "{stdout}"
+        );
+    }
     assert!(!target_root.exists(), "removed auto setup must not write");
 }
 
@@ -111,6 +125,7 @@ fn legacy_copilot_and_instruction_setup_report_removed_without_writing() {
     assert!(!instructions_dir.join("kast/README.md").exists());
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn skill_installs_add_managed_git_info_exclude_blocks() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -204,6 +219,7 @@ fn skill_installs_add_managed_git_info_exclude_blocks() {
     assert_eq!(resource_kinds, vec!["SKILL", "SKILL"]);
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn ready_reports_tampered_manifest_backed_skill_resource() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -247,7 +263,7 @@ fn ready_reports_tampered_manifest_backed_skill_resource() {
     std::fs::write(skill_dir.join("kast/SKILL.md"), b"# tampered\n").expect("tamper skill");
 
     let ready = kast(&home, &config_home)
-        .args(["--output", "json", "ready"])
+        .args(["--output", "json", "ready", "--for", "machine"])
         .output()
         .expect("ready");
     assert!(
@@ -321,7 +337,7 @@ fn ready_resolves_relative_managed_paths_under_install_root() {
     .expect("manifest");
 
     let ready = kast(&home, &config_home)
-        .args(["--output", "json", "ready"])
+        .args(["--output", "json", "ready", "--for", "machine"])
         .output()
         .expect("ready");
 

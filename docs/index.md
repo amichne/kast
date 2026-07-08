@@ -21,15 +21,15 @@ hosted agents, and server images use the headless runtime.
 === "Developer machine"
 
     Homebrew installs the global `kast` binary and version-coupled IDEA or
-    Android Studio plugin. The repository command writes `.agents/skills/kast`
-    plus one managed `<kast>...</kast>` guidance region.
+    Android Studio plugin. The plugin prepares repository guidance and
+    invocation metadata when the workspace opens.
 
     ```console title="Install Kast, then enable one repository"
     brew tap amichne/kast
     brew install kast
 
-    cd /path/to/your/repository
-    kast setup
+    kast developer machine plugin
+    open /path/to/your/repository
     ```
 
 === "Headless Linux"
@@ -47,14 +47,14 @@ hosted agents, and server images use the headless runtime.
 
 ## Operating model
 
-Kast separates the machine install, repository agent resources, runtime
-backend, and semantic command layer. Keep those layers separate when debugging
-or automating a workspace.
+Kast separates distribution, plugin-owned macOS workspace setup, runtime
+backend, and semantic commands. Keep those layers separate when debugging or
+automating a workspace.
 
 ```mermaid
 flowchart LR
-    machine["Machine install<br/>kast binary and runtime files"]
-    repo["Repository resources<br/>skill and managed guidance"]
+    machine["Distribution<br/>kast binary and plugin artifact"]
+    repo["Workspace setup<br/>skill, guidance, metadata"]
     backend["Workspace backend<br/>IDEA or headless"]
     commands["Semantic commands<br/>typed kast agent commands"]
     evidence["Evidence<br/>JSON envelopes, hashes, diagnostics"]
@@ -68,8 +68,9 @@ flowchart LR
 
 | Layer | First command | Proves |
 |-------|---------------|--------|
-| Machine install | `kast ready` | The active binary, manifest, and local paths are coherent |
-| Repository resources | `kast setup ...` | Agent-facing files match the running CLI version |
+| Machine install | `kast ready --for machine` | The active binary, manifest, and local paths are coherent |
+| macOS workspace setup | IntelliJ plugin activation | Agent-facing files and invocation metadata match the distribution version |
+| non-macOS repository resources | `kast setup ...` | Agent-facing files match the running CLI version |
 | Runtime backend | `kast developer runtime status` | A workspace backend is reachable and reports capabilities |
 | Semantic command layer | `kast agent ...` | The request uses compiler-backed Kotlin evidence |
 

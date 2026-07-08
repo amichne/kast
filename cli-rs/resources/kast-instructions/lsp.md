@@ -14,26 +14,28 @@ Kast backend. These instructions assume the installed `kast` binary is on
 
 ## Startup
 
-For local developer machines, warm the IDEA backend before LSP startup if
-semantic state is missing:
+For local macOS developer machines, reopen the repository in IntelliJ IDEA or
+Android Studio with the Kast plugin enabled if semantic state is missing. The
+plugin prepares `.kast/setup/workspace.json` and owns IDEA backend activation:
 
 ```sh
-kast setup --workspace-root "$PWD" --backend idea --no-open-ide
+kast ready --for agent --workspace-root "$PWD"
 ```
 
 For hosted Linux agents, warm the headless backend after installing the Linux
 headless bundle:
 
 ```sh
-kast setup --workspace-root "$PWD" --backend headless --no-open-ide
+kast setup --workspace-root "$PWD"
+kast developer runtime up --workspace-root "$PWD" --backend headless
 ```
 
 ## Capabilities
 
 During initialization, Kast exposes normal LSP capabilities plus custom
 `kast/*` methods under `capabilities.experimental.kastMethods`. CLI-capable
-hosts should prefer `kast agent tools` for the same catalog-backed method
-metadata unless they specifically need LSP transport.
+hosts should prefer typed `kast agent` commands unless they specifically need
+LSP transport.
 
 Use the built-in LSP methods for standard editor flows such as definition,
 references, hover, document symbols, implementations, call hierarchy, type

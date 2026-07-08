@@ -89,7 +89,7 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Idea => {
             error.details.insert(
                 "installCommand".to_string(),
-                "brew install --cask amichne/kast/kast-plugin".to_string(),
+                "kast developer machine plugin".to_string(),
             );
         }
     }

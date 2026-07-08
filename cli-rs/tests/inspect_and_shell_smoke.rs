@@ -109,7 +109,12 @@ fn top_level_help_exposes_production_and_developer_commands() {
         .expect("help");
     assert!(help.status.success());
     let stdout = String::from_utf8_lossy(&help.stdout);
-    for command in ["help", "version", "setup", "ready", "status", "developer"] {
+    let commands = if cfg!(target_os = "macos") {
+        vec!["help", "version", "ready", "status", "developer"]
+    } else {
+        vec!["help", "version", "setup", "ready", "status", "developer"]
+    };
+    for command in commands {
         assert!(
             stdout
                 .lines()
@@ -388,11 +393,18 @@ fn developer_machine_defaults_configures_idea_plugin_backend() {
         String::from_utf8_lossy(&up.stdout),
         String::from_utf8_lossy(&up.stderr)
     );
-    assert!(combined.contains("IDEA_PLUGIN_NOT_INSTALLED"), "{combined}");
-    assert!(
-        !combined.contains("Linux headless tarball"),
-        "developer defaults should not fall through to headless guidance: {combined}"
-    );
+    if cfg!(target_os = "macos") {
+        assert!(
+            combined.contains("MACOS_PLUGIN_WORKSPACE_REQUIRED"),
+            "{combined}"
+        );
+    } else {
+        assert!(combined.contains("IDEA_PLUGIN_NOT_INSTALLED"), "{combined}");
+        assert!(
+            !combined.contains("Linux headless tarball"),
+            "developer defaults should not fall through to headless guidance: {combined}"
+        );
+    }
 }
 
 #[test]

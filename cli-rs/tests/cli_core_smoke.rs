@@ -31,16 +31,29 @@ fn smoke_core_cli_commands() {
     assert!(help.status.success());
     let help_stdout = String::from_utf8_lossy(&help.stdout);
     assert!(help_stdout.contains("Usage: kast"));
-    for command in [
-        "help",
-        "version",
-        "setup",
-        "ready",
-        "repair",
-        "status",
-        "developer",
-        "agent",
-    ] {
+    let expected_commands = if cfg!(target_os = "macos") {
+        vec![
+            "help",
+            "version",
+            "ready",
+            "repair",
+            "status",
+            "developer",
+            "agent",
+        ]
+    } else {
+        vec![
+            "help",
+            "version",
+            "setup",
+            "ready",
+            "repair",
+            "status",
+            "developer",
+            "agent",
+        ]
+    };
+    for command in expected_commands {
         assert!(
             help_lists_command(&help_stdout, command),
             "top-level help should show {command}: {help_stdout}"
@@ -160,56 +173,80 @@ fn smoke_core_cli_commands() {
         "{rename_plan_json:#}"
     );
 
-    let setup_help = kast(&home, &config_home)
-        .args(["setup", "--help"])
-        .output()
-        .expect("setup help");
-    assert!(setup_help.status.success());
-    let setup_help_stdout = String::from_utf8_lossy(&setup_help.stdout);
-    for flag in [
-        "--workspace-root",
-        "--skill-target-dir",
-        "--context-file",
-        "--dry-run",
-    ] {
+    if cfg!(target_os = "macos") {
+        let setup = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "setup",
+                "--workspace-root",
+                workspace.to_str().expect("workspace path"),
+            ])
+            .output()
+            .expect("setup macos refusal");
         assert!(
-            setup_help_stdout.contains(flag),
-            "setup help should expose {flag}: {setup_help_stdout}"
+            !setup.status.success(),
+            "setup should fail closed on macOS: stdout={}, stderr={}",
+            String::from_utf8_lossy(&setup.stdout),
+            String::from_utf8_lossy(&setup.stderr)
+        );
+        let setup_json: serde_json::Value =
+            serde_json::from_slice(&setup.stdout).expect("setup refusal json");
+        assert_eq!(setup_json["ok"], false);
+        assert_eq!(setup_json["method"], "setup");
+        assert_eq!(setup_json["error"]["code"], "AGENT_COMMAND_REMOVED");
+    } else {
+        let setup_help = kast(&home, &config_home)
+            .args(["setup", "--help"])
+            .output()
+            .expect("setup help");
+        assert!(setup_help.status.success());
+        let setup_help_stdout = String::from_utf8_lossy(&setup_help.stdout);
+        for flag in [
+            "--workspace-root",
+            "--skill-target-dir",
+            "--context-file",
+            "--dry-run",
+        ] {
+            assert!(
+                setup_help_stdout.contains(flag),
+                "setup help should expose {flag}: {setup_help_stdout}"
+            );
+        }
+        assert!(
+            !setup_help_stdout.contains("--backend"),
+            "setup should not expose backend/runtime selection: {setup_help_stdout}"
+        );
+        let setup_plan = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "setup",
+                "--workspace-root",
+                workspace.to_str().expect("workspace path"),
+                "--dry-run",
+            ])
+            .output()
+            .expect("setup dry-run");
+        assert!(
+            setup_plan.status.success(),
+            "setup dry-run should plan without requiring installed backend: stdout={}, stderr={}",
+            String::from_utf8_lossy(&setup_plan.stdout),
+            String::from_utf8_lossy(&setup_plan.stderr)
+        );
+        let setup_plan_json: serde_json::Value =
+            serde_json::from_slice(&setup_plan.stdout).expect("setup plan json");
+        assert_eq!(setup_plan_json["type"], "AGENT_SETUP_PLAN");
+        assert_eq!(setup_plan_json["dryRun"], true);
+        assert_eq!(
+            setup_plan_json["installCommand"][1], "setup",
+            "root setup dry-run should advertise root setup, not hidden agent setup: {setup_plan_json:#}"
+        );
+        assert!(
+            setup_plan_json.get("runtimeCommand").is_none(),
+            "setup without --backend should not plan runtime warmup: {setup_plan_json:#}"
         );
     }
-    assert!(
-        !setup_help_stdout.contains("--backend"),
-        "setup should not expose backend/runtime selection: {setup_help_stdout}"
-    );
-    let setup_plan = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "setup",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-            "--dry-run",
-        ])
-        .output()
-        .expect("setup dry-run");
-    assert!(
-        setup_plan.status.success(),
-        "setup dry-run should plan without requiring installed backend: stdout={}, stderr={}",
-        String::from_utf8_lossy(&setup_plan.stdout),
-        String::from_utf8_lossy(&setup_plan.stderr)
-    );
-    let setup_plan_json: serde_json::Value =
-        serde_json::from_slice(&setup_plan.stdout).expect("setup plan json");
-    assert_eq!(setup_plan_json["type"], "AGENT_SETUP_PLAN");
-    assert_eq!(setup_plan_json["dryRun"], true);
-    assert_eq!(
-        setup_plan_json["installCommand"][1], "setup",
-        "root setup dry-run should advertise root setup, not hidden agent setup: {setup_plan_json:#}"
-    );
-    assert!(
-        setup_plan_json.get("runtimeCommand").is_none(),
-        "setup should not plan runtime warmup: {setup_plan_json:#}"
-    );
     assert!(
         !install_manifest_path(&home).exists(),
         "setup --dry-run must not run readiness repair or write install state"
@@ -332,17 +369,42 @@ fn smoke_core_cli_commands() {
         .args(["--output", "json", "repair", "--apply"])
         .output()
         .expect("repair apply");
-    assert!(
-        repair.status.success(),
-        "repair --apply should converge the install: stdout={}, stderr={}",
-        String::from_utf8_lossy(&repair.stdout),
-        String::from_utf8_lossy(&repair.stderr)
-    );
-    let repair_json: serde_json::Value =
-        serde_json::from_slice(&repair.stdout).expect("repair json");
-    assert_eq!(repair_json["type"], "KAST_REPAIR");
-    assert_eq!(repair_json["applied"], true);
-    assert!(install_manifest_path(&home).is_file());
+    #[cfg(not(target_os = "macos"))]
+    {
+        assert!(
+            repair.status.success(),
+            "repair --apply should converge the install: stdout={}, stderr={}",
+            String::from_utf8_lossy(&repair.stdout),
+            String::from_utf8_lossy(&repair.stderr)
+        );
+        let repair_json: serde_json::Value =
+            serde_json::from_slice(&repair.stdout).expect("repair json");
+        assert_eq!(repair_json["type"], "KAST_REPAIR");
+        assert_eq!(repair_json["applied"], true);
+        assert!(install_manifest_path(&home).is_file());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        assert!(
+            !repair.status.success(),
+            "macOS repair --apply should not report agent-ready without plugin metadata"
+        );
+        let repair_json: serde_json::Value =
+            serde_json::from_slice(&repair.stdout).expect("repair json");
+        assert_eq!(repair_json["type"], "KAST_REPAIR");
+        assert_eq!(repair_json["applied"], true);
+        assert!(
+            repair_json["ready"]["issues"]
+                .as_array()
+                .expect("ready issues")
+                .iter()
+                .any(|issue| issue
+                    .as_str()
+                    .is_some_and(|issue| issue.contains("plugin-prepared workspace metadata"))),
+            "{repair_json:#}"
+        );
+        assert!(install_manifest_path(&home).is_file());
+    }
 
     let skill_dir = temp.path().join("skills");
     let skill = kast(&home, &config_home)
@@ -369,6 +431,19 @@ fn smoke_core_cli_commands() {
         ])
         .output()
         .expect("status");
-    assert!(status.status.success());
-    assert!(String::from_utf8_lossy(&status.stdout).contains("\"candidates\": []"));
+    #[cfg(not(target_os = "macos"))]
+    {
+        assert!(status.status.success());
+        assert!(String::from_utf8_lossy(&status.stdout).contains("\"candidates\": []"));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        assert!(
+            !status.status.success(),
+            "macOS status should fail without plugin-prepared workspace metadata"
+        );
+        let status_json: serde_json::Value =
+            serde_json::from_slice(&status.stdout).expect("status json");
+        assert_eq!(status_json["code"], "MACOS_PLUGIN_WORKSPACE_REQUIRED");
+    }
 }

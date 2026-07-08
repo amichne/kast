@@ -151,6 +151,19 @@ fn required_resource_recovery_argv(
     kind: self_mgmt::ManagedResourceKind,
     target_paths: &[String],
 ) -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = kind;
+        let _ = target_paths;
+        vec![
+            current_executable_argument(),
+            "developer".to_string(),
+            "machine".to_string(),
+            "plugin".to_string(),
+        ]
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
     if kind == self_mgmt::ManagedResourceKind::AgentGuidance {
         let mut argv = vec![
             current_executable_argument(),
@@ -176,8 +189,10 @@ fn required_resource_recovery_argv(
     }
     argv.push("--force".to_string());
     argv
+    }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn required_resource_recovery_target_dir(
     kind: self_mgmt::ManagedResourceKind,
     target_paths: &[String],
@@ -194,6 +209,7 @@ fn required_resource_recovery_target_dir(
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn required_resource_harness(kind: self_mgmt::ManagedResourceKind) -> &'static str {
     match kind {
         self_mgmt::ManagedResourceKind::CopilotPackage => "copilot",

@@ -66,6 +66,7 @@ fn removed_agent_tools_response() -> &'static str {
     r#"{"ok":false,"method":"agent/tools","error":{"code":"AGENT_COMMAND_REMOVED","message":"removed"},"schemaVersion":3}"#
 }
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn packaged_verifier_prefers_manifest_resource_checksums() {
     let temp = tempfile::tempdir().expect("tempdir");

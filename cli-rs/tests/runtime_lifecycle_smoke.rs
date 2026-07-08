@@ -10,6 +10,7 @@ fn lifecycle_commands_render_human_text_when_selected_and_json_when_selected() {
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
 
     let human = kast(&home, &config_home)
         .args([
@@ -87,6 +88,7 @@ fn stop_removes_every_matching_stale_headless_descriptor() {
     let descriptor_dir = default_descriptor_dir(&home);
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
@@ -181,6 +183,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
     let socket_path = temp.path().join("idea.sock");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
@@ -333,6 +336,7 @@ fn restart_requests_reachable_idea_backend_restart() {
     let socket_path = temp.path().join("idea.sock");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
@@ -503,6 +507,8 @@ fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
         "pluginManagement {}\n",
     )
     .expect("settings marker");
+    let expected_workspace = std::fs::canonicalize(&workspace).expect("canonical workspace");
+    write_macos_plugin_workspace_metadata(&expected_workspace);
 
     let status = Command::new(env!("CARGO_BIN_EXE_kast"))
         .current_dir(&nested)
@@ -519,7 +525,6 @@ fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
         String::from_utf8_lossy(&status.stderr)
     );
     let stdout: serde_json::Value = serde_json::from_slice(&status.stdout).expect("status json");
-    let expected_workspace = std::fs::canonicalize(&workspace).expect("canonical workspace");
     assert_eq!(
         stdout["workspaceRoot"].as_str().expect("workspace root"),
         expected_workspace.to_str().expect("workspace path")
