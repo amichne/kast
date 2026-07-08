@@ -18,6 +18,8 @@ import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -52,6 +54,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -67,6 +70,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import kotlin.io.path.readText
@@ -329,6 +333,210 @@ class AnalysisDispatcherTest {
         assertEquals(true, success.ok)
         assertEquals(1, success.affectedFiles.size)
         assertTrue(file.readText().contains("fun hello()"))
+    }
+
+    @Test
+    fun `symbol write and validate insert computes file hashes before apply`() {
+        val backend = CapturingApplyEditsBackend(FakeAnalysisBackend.sample(tempDir))
+        val file = sampleFile()
+        val originalContent = file.readText()
+        val content = "\nfun added() = Unit\n"
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/write-and-validate",
+                    params = json.encodeToJsonElement(
+                        KastWriteAndValidateRequest.serializer(),
+                        KastWriteAndValidateInsertAtOffsetRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = file.toString(),
+                            offset = originalContent.length,
+                            content = content,
+                        ),
+                    ),
+                ),
+            )
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(
+            KastWriteAndValidateResponse.serializer(),
+            response.result,
+        )
+
+        val success = result as KastWriteAndValidateSuccessResponse
+        assertEquals(true, success.ok)
+        assertEquals(1, success.appliedEdits)
+        assertEquals(
+            listOf(file.toString() to FileHashing.sha256(originalContent)),
+            backend.appliedFileHashes,
+        )
+        assertTrue(file.readText().endsWith(content))
+    }
+
+    @Test
+    fun `symbol add file dispatches file creation and diagnostics`() {
+        FakeAnalysisBackend.sample(tempDir)
+        val targetFile = tempDir.resolve("src").resolve("Added.kt")
+        val contentFile = tempDir.resolve("added-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Added\n")
+
+        val result = dispatchSuccess<KastScopeMutationResponse>(
+            method = "symbol/add-file",
+            params = json.encodeToJsonElement(
+                KastAddFileRequest.serializer(),
+                KastAddFileRequest(
+                    workspaceRoot = tempDir.toString(),
+                    filePath = targetFile.toString(),
+                    contentFile = contentFile.toString(),
+                ),
+            ),
+        )
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertEquals(KastScopeMutationOperation.ADD_FILE, success.operation)
+        assertEquals(true, success.applied)
+        assertEquals(1, success.editCount)
+        assertEquals(listOf(targetFile.toString()), success.createdFiles)
+        assertEquals("package sample\n\nclass Added\n", targetFile.readText())
+    }
+
+    @Test
+    fun `symbol add declaration dispatches file scope insertion`() {
+        val targetFile = sampleFile()
+        val contentFile = tempDir.resolve("declaration-content.kt")
+        Files.writeString(contentFile, "\nfun added() = Unit\n")
+
+        val result = dispatchSuccess<KastScopeMutationResponse>(
+            method = "symbol/add-declaration",
+            params = json.encodeToJsonElement(
+                KastAddDeclarationRequest.serializer(),
+                KastAddDeclarationRequest(
+                    workspaceRoot = tempDir.toString(),
+                    placement = KastPlacementSelector(
+                        scope = KastFilePlacementScope(targetFile.toString()),
+                        anchor = KastAtPlacementAnchor(KastPlacementAnchor.FILE_BOTTOM),
+                    ),
+                    contentFile = contentFile.toString(),
+                ),
+            ),
+        )
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertEquals(KastScopeMutationOperation.ADD_DECLARATION, success.operation)
+        assertEquals(true, success.applied)
+        assertEquals(targetFile.toString(), success.placement?.filePath)
+        assertTrue(targetFile.readText().endsWith("\nfun added() = Unit\n"))
+    }
+
+    @Test
+    fun `symbol add declaration after symbol uses declaration scope end`() {
+        val targetFile = sampleFile()
+        val contentFile = tempDir.resolve("after-declaration-content.kt")
+        Files.writeString(contentFile, "\nfun added() = Unit\n")
+
+        val result = dispatchSuccess<KastScopeMutationResponse>(
+            method = "symbol/add-declaration",
+            params = json.encodeToJsonElement(
+                KastAddDeclarationRequest.serializer(),
+                KastAddDeclarationRequest(
+                    workspaceRoot = tempDir.toString(),
+                    placement = KastPlacementSelector(
+                        scope = KastFilePlacementScope(targetFile.toString()),
+                        anchor = KastAfterSymbolPlacementAnchor(
+                            symbol = "greet",
+                            fileHint = targetFile.toString(),
+                            kind = WrapperNamedSymbolKind.FUNCTION,
+                        ),
+                    ),
+                    contentFile = contentFile.toString(),
+                ),
+            ),
+        )
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertEquals(KastScopeMutationOperation.ADD_DECLARATION, success.operation)
+        assertEquals(true, success.applied)
+        assertTrue(targetFile.readText().contains("fun greet() = \"hi\"\nfun added() = Unit\n"))
+        assertFalse(targetFile.readText().contains("fun greet\nfun added()"))
+    }
+
+    @Test
+    fun `scope mutation request interfaces do not change wire payloads`() {
+        val request = KastAddStatementRequest(
+            workspaceRoot = tempDir.toString(),
+            insideScope = "sample.greet",
+            anchor = KastStatementPlacementAnchor.BODY_END,
+            contentFile = tempDir.resolve("statement.kt").toString(),
+        )
+
+        val payload = json.encodeToJsonElement(KastAddStatementRequest.serializer(), request).jsonObject
+
+        assertEquals(KastScopeMutationOperation.ADD_STATEMENT, request.operation)
+        assertEquals(NormalizedPath.ofAbsolute(tempDir), request.requestedWorkspaceRoot)
+        assertEquals(NonBlankString("sample.greet"), request.requestedInsideScope)
+        assertEquals(NormalizedPath.ofAbsolute(tempDir.resolve("statement.kt")), request.contentFilePath)
+        assertFalse(payload.containsKey("operation"))
+        assertFalse(payload.containsKey("requestedWorkspaceRoot"))
+        assertFalse(payload.containsKey("requestedInsideScope"))
+        assertFalse(payload.containsKey("contentFilePath"))
+        assertEquals(JsonPrimitive("body-end"), payload["anchor"])
+    }
+
+    @Test
+    fun `symbol replace declaration dispatches declaration scope edit`() {
+        val targetFile = sampleFile()
+        val contentFile = tempDir.resolve("replacement-content.kt")
+        Files.writeString(contentFile, "fun greet() = \"bye\"")
+
+        val result = dispatchSuccess<KastScopeMutationResponse>(
+            method = "symbol/replace-declaration",
+            params = json.encodeToJsonElement(
+                KastReplaceDeclarationRequest.serializer(),
+                KastReplaceDeclarationRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "greet",
+                    contentFile = contentFile.toString(),
+                    fileHint = targetFile.toString(),
+                    kind = WrapperNamedSymbolKind.FUNCTION,
+                ),
+            ),
+        )
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertEquals(KastScopeMutationOperation.REPLACE_DECLARATION, success.operation)
+        assertEquals(true, success.applied)
+        assertEquals(1, success.editCount)
+        assertTrue(targetFile.readText().contains("fun greet() = \"bye\""))
+        assertFalse(targetFile.readText().contains("fun greet() = \"hi\""))
+    }
+
+    @Test
+    fun `symbol replace declaration resolves fully qualified names through simple-name search`() {
+        val targetFile = sampleFile()
+        val contentFile = tempDir.resolve("fq-replacement-content.kt")
+        Files.writeString(contentFile, "fun greet() = \"fq\"")
+
+        val result = dispatchSuccess<KastScopeMutationResponse>(
+            method = "symbol/replace-declaration",
+            params = json.encodeToJsonElement(
+                KastReplaceDeclarationRequest.serializer(),
+                KastReplaceDeclarationRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "sample.greet",
+                    contentFile = contentFile.toString(),
+                    kind = WrapperNamedSymbolKind.FUNCTION,
+                ),
+            ),
+        )
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertEquals(KastScopeMutationOperation.REPLACE_DECLARATION, success.operation)
+        assertEquals(true, success.applied)
+        assertEquals(1, success.editCount)
+        assertTrue(targetFile.readText().contains("fun greet() = \"fq\""))
+        assertFalse(targetFile.readText().contains("fun greet() = \"hi\""))
     }
 
     @Test
@@ -945,4 +1153,18 @@ private class DispatcherCancellationHealthBackend(
     private val delegate: AnalysisBackend,
 ) : AnalysisBackend by delegate {
     override suspend fun health() = throw CancellationException("backend cancelled")
+}
+
+private class CapturingApplyEditsBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    var appliedFileHashes: List<Pair<String, String>> = emptyList()
+        private set
+
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        appliedFileHashes = query.fileHashes.map { fileHash ->
+            fileHash.filePath.value to fileHash.hash
+        }
+        return delegate.applyEdits(query)
+    }
 }

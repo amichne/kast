@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.ProjectOpenConfig
 import io.github.amichne.kast.api.client.fields.CliBinaryPath
 import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
+import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -158,6 +159,7 @@ class KastProjectOpenProfileAutoInitTest {
                 profileAutoInit = ProjectOpenProfileAutoInit(enabled),
                 profile = ProjectOpenProfile(profile),
                 autoExcludeGit = ProjectOpenAutoExcludeGit(true),
+                gradleLoadEnabled = ProjectOpenGradleLoadEnabled(true),
             ),
             cli = CliConfig(CliBinaryPath(binaryPath.toString())),
         )

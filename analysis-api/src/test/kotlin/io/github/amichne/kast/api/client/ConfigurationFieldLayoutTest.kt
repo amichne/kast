@@ -83,6 +83,7 @@ class ConfigurationFieldLayoutTest {
             "ProfilingOtlpEndpoint.kt",
             "ProfilingOutputDir.kt",
             "ProjectOpenAutoExcludeGit.kt",
+            "ProjectOpenGradleLoadEnabled.kt",
             "ProjectOpenProfile.kt",
             "ProjectOpenProfileAutoInit.kt",
             "ServerMaxConcurrentRequests.kt",

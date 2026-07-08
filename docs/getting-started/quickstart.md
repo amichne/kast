@@ -6,27 +6,54 @@ icon: lucide/zap
 
 # Quickstart
 
+Use this path when you want to prove Kast is installed, connected to the
+workspace, and ready for compiler-backed Kotlin work. The same `kast agent`
+commands work against the IDEA plugin backend and the Linux headless backend.
+
 ## 1. Prepare The Workspace
 
-```console
-cd /path/to/your/repository
-kast ready --for agent --workspace-root "$PWD"
-```
+Start with the host you are on. Developer machines use the JetBrains plugin to
+prepare workspace metadata; Linux servers prepare repository guidance from the
+CLI.
 
-On macOS, open the repository in IntelliJ IDEA or Android Studio with the
-Homebrew-installed Kast plugin enabled. The plugin writes
-`.agents/skills/kast/SKILL.md`, one managed `<kast>...</kast>` region, and
-`.kast/setup/workspace.json`. On non-macOS headless/server hosts, run
-`kast setup --workspace-root "$PWD"` before the readiness check.
+=== "macOS developer machine"
 
-## 2. Check Readiness
+    Open the repository in IntelliJ IDEA or Android Studio with the
+    Homebrew-installed Kast plugin enabled. The plugin writes
+    `.agents/skills/kast/SKILL.md`, one managed `<kast>...</kast>` region, and
+    `.kast/setup/workspace.json`.
+
+    ```console
+    cd /path/to/your/repository
+    open .
+    kast ready --for agent --workspace-root "$PWD"
+    ```
+
+=== "Linux or hosted agent"
+
+    Run setup once for the repository, then check readiness. This path is for
+    headless hosts without an open developer IDE.
+
+    ```console
+    cd /path/to/your/repository
+    kast setup --workspace-root "$PWD"
+    kast ready --for agent --workspace-root "$PWD"
+    ```
+
+## 2. Check The Backend
+
+Readiness verifies install state. `agent verify` verifies the semantic backend
+that will answer symbol, diagnostics, impact, rename, and mutation commands.
 
 ```console
 kast ready --for agent --workspace-root "$PWD"
 kast agent verify --workspace-root "$PWD"
 ```
 
-If readiness asks for repair, plan first and apply explicitly:
+!!! success "Ready signal"
+    A ready workspace reports backend health, runtime status, capabilities, and
+    the active workspace root. If the command reports install drift, repair with
+    an explicit plan/apply pair before running semantic commands.
 
 ```console
 kast repair --for agent --workspace-root "$PWD"
@@ -34,6 +61,9 @@ kast repair --for agent --workspace-root "$PWD" --apply
 ```
 
 ## 3. Resolve Symbol Identity
+
+Run lookup before editing. Kast resolves compiler identity first, then can add
+references or callers when you need usage evidence.
 
 ```console
 kast agent symbol --query OrderService --workspace-root "$PWD"
@@ -43,11 +73,34 @@ kast agent symbol --query process --callers incoming --workspace-root "$PWD"
 
 ## 4. Validate And Rename
 
+Diagnostics and rename commands are plan-first. Review the plan, then rerun
+with `--apply` when the target identity and write set are correct.
+
 ```console
 kast agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-root "$PWD"
 kast agent rename --symbol com.example.OrderService --new-name Orders --workspace-root "$PWD"
 kast agent rename --symbol com.example.OrderService --new-name Orders --apply --workspace-root "$PWD"
 ```
 
-Rename plans are identity-first; local-variable rename is deferred until Kast has
-a typed non-offset selector for locals.
+Rename plans are identity-first; local-variable rename is deferred until Kast
+has a typed non-offset selector for locals.
+
+## 5. Plan A Scope Mutation
+
+Use mutation commands when you want Kast to place Kotlin content with semantic
+scope evidence. Content always comes from a file so shell quoting never changes
+the Kotlin being applied.
+
+```console
+cat >/tmp/member.kt <<'KOTLIN'
+fun newBehavior(): String = "ready"
+KOTLIN
+
+kast agent add-implementation \
+  --inside-scope com.example.OrderService \
+  --at body-end \
+  --content-file /tmp/member.kt \
+  --workspace-root "$PWD"
+```
+
+Add `--apply` only after reviewing the planned request and the content file.

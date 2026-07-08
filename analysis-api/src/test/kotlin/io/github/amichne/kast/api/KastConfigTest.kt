@@ -81,6 +81,10 @@ class KastConfigTest {
         assertEquals(ProjectOpenProfile.JETBRAINS_PLUGIN, config.projectOpen.profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(true, config.projectOpen.autoExcludeGit.value)
+        assertEquals("projectOpen", config.projectOpen.gradleLoadEnabled.section)
+        assertEquals("gradleLoadEnabled", config.projectOpen.gradleLoadEnabled.key)
+        assertEquals(ConfigurationDefault(true), config.projectOpen.gradleLoadEnabled.default)
+        assertEquals(true, config.projectOpen.gradleLoadEnabled.value)
     }
 
     @Test
@@ -176,6 +180,7 @@ class KastConfigTest {
             "projectOpen" to "profileAutoInit",
             "projectOpen" to "profile",
             "projectOpen" to "autoExcludeGit",
+            "projectOpen" to "gradleLoadEnabled",
             "backends.headless" to "enabled",
             "backends.headless" to "runtimeLibsDir",
             "backends.headless" to "ideaHome",
@@ -308,6 +313,7 @@ class KastConfigTest {
                 profile-auto-init = true
                 profile = "copilot-lsp"
                 auto-exclude-git = false
+                gradle-load-enabled = false
 
                 [cache]
                 enabled = false
@@ -338,6 +344,7 @@ class KastConfigTest {
         assertEquals("copilot-lsp", config.projectOpen.profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
+        assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
         assertEquals(45_000L, config.server.requestTimeoutMillis.value)
         assertEquals(
             KastConfig.defaults().server.maxConcurrentRequests.value,
@@ -405,6 +412,7 @@ class KastConfigTest {
                 profileAutoInit = true
                 profile = "copilot-lsp"
                 autoExcludeGit = false
+                gradleLoadEnabled = false
 
                 [backends.idea]
                 enabled = false
@@ -434,6 +442,7 @@ class KastConfigTest {
         assertEquals(true, config.projectOpen.profileAutoInit.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
+        assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
         assertEquals(false, config.backends.idea.enabled.value)
     }
 
@@ -529,7 +538,8 @@ class KastConfigTest {
                   "projectOpen": {
                     "profileAutoInit": true,
                     "profile": "copilot-lsp",
-                    "autoExcludeGit": false
+                    "autoExcludeGit": false,
+                    "gradleLoadEnabled": false
                   },
                   "backends": {
                     "headless": {
@@ -602,6 +612,7 @@ class KastConfigTest {
         assertEquals("copilot-lsp", config.projectOpen.profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
+        assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
         assertEquals("/opt/kast/runtime-libs", config.backends.headless.runtimeLibsDir.value.orNull)
         assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)
         assertEquals(false, config.backends.idea.enabled.value)

@@ -25,6 +25,7 @@ internal class KastSettingsConfigurable(
     private lateinit var backendsIdeaEnabled: JBCheckBox
     private lateinit var projectOpenProfileAutoInit: JBCheckBox
     private lateinit var projectOpenAutoExcludeGit: JBCheckBox
+    private lateinit var projectOpenGradleLoadEnabled: JBCheckBox
 
     override fun getDisplayName(): String = "Kast"
 
@@ -36,7 +37,8 @@ internal class KastSettingsConfigurable(
         return selectedRuntimeDefaultBackend().configValue != state.runtimeDefaultBackend ||
             backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false) ||
             projectOpenProfileAutoInit.isSelected != (state.projectOpenProfileAutoInit ?: false) ||
-            projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true)
+            projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true) ||
+            projectOpenGradleLoadEnabled.isSelected != (state.projectOpenGradleLoadEnabled ?: true)
     }
 
     override fun reset() {
@@ -83,6 +85,9 @@ internal class KastSettingsConfigurable(
                 projectOpenProfileAutoInit = checkBox("Install Kast agent guidance for Gradle projects").component
             }
             row {
+                projectOpenGradleLoadEnabled = checkBox("Load Gradle project model on open").component
+            }
+            row {
                 projectOpenAutoExcludeGit = checkBox("Exclude managed setup files from Git").component
             }
         }
@@ -101,6 +106,7 @@ internal class KastSettingsConfigurable(
         backendsIdeaEnabled.isSelected = state.backendsIdeaEnabled ?: false
         projectOpenProfileAutoInit.isSelected = state.projectOpenProfileAutoInit ?: false
         projectOpenAutoExcludeGit.isSelected = state.projectOpenAutoExcludeGit ?: true
+        projectOpenGradleLoadEnabled.isSelected = state.projectOpenGradleLoadEnabled ?: true
     }
 
     private fun updateStateFromFields(state: KastSettingsState) {
@@ -109,6 +115,7 @@ internal class KastSettingsConfigurable(
         state.projectOpenProfileAutoInit = projectOpenProfileAutoInit.isSelected
         state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.JETBRAINS_PLUGIN
         state.projectOpenAutoExcludeGit = projectOpenAutoExcludeGit.isSelected
+        state.projectOpenGradleLoadEnabled = projectOpenGradleLoadEnabled.isSelected
     }
 
     private fun selectedRuntimeDefaultBackend(): KastRuntimeDefaultBackendOption =

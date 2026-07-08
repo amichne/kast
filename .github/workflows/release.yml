@@ -613,12 +613,31 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v5
+      - name: Free disk for IDEA plugin build
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
 
-      - uses: actions/cache@v5
+      - uses: gradle/actions/setup-gradle@v5
         with:
-          path: ~/.gradle/kast/idea-distributions
-          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+          cache-cleanup: always
+
+      - name: Cache IDEA plugin build inputs
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/kast/shared-idea-distributions
+            ~/.gradle/kast/backend-idea-distributions
+          key: release-idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            release-idea-plugin-inputs-${{ runner.os }}-
 
       - name: Build IDEA plugin
         run: >
@@ -701,12 +720,31 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v5
+      - name: Free disk for headless backend release
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
 
-      - uses: actions/cache@v5
+      - uses: gradle/actions/setup-gradle@v5
         with:
-          path: ~/.gradle/kast/idea-distributions
-          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+          cache-cleanup: always
+
+      - name: Cache headless backend runtime inputs
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/kast/shared-idea-distributions
+            ~/.gradle/kast/headless-idea-distributions
+          key: release-headless-runtime-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            release-headless-runtime-${{ runner.os }}-
 
       - name: Build headless backend
         run: ./kast.sh build headless -Pversion="${{ needs.prepare-release.outputs.release_version }}"

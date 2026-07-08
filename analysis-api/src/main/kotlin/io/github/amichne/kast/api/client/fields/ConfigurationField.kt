@@ -42,6 +42,7 @@ sealed class ConfigurationField<T> {
             ProjectOpenProfileAutoInit(true),
             ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
             ProjectOpenAutoExcludeGit(true),
+            ProjectOpenGradleLoadEnabled(true),
             HeadlessBackendEnabled(true),
             HeadlessRuntimeLibsDir(OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir().toString())),
             HeadlessIdeaHome(OptionalConfigString.Unset),

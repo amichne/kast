@@ -342,6 +342,10 @@ fn request_required(request: &Value) -> Result<Vec<String>> {
 }
 
 fn sample_field(name: &str, field: &Value, maximal: bool) -> Result<Value> {
+    if let Some(sample) = field.get("sample") {
+        return Ok(sample.clone());
+    }
+
     if let Some(enum_values) = field.get("enum").and_then(Value::as_array)
         && let Some(value) = if maximal {
             enum_values.last()
@@ -606,6 +610,55 @@ mod tests {
             minimal,
             "{\n  \"id\": 1,\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"symbol/example\",\n  \"params\": {\n    \"query\": \"Widget\"\n  }\n}\n"
         );
+    }
+
+    #[test]
+    fn generated_samples_use_field_sample_override() {
+        let catalog = json!({
+            "commands": {
+                "symbol/example": {
+                    "method": "symbol/example",
+                    "category": "symbol",
+                    "request": {
+                        "fields": {
+                            "placement": {
+                                "type": "object",
+                                "sample": {
+                                    "scope": {
+                                        "type": "NAMED_SCOPE",
+                                        "insideScope": "com.example.Widget"
+                                    },
+                                    "anchor": {
+                                        "type": "AT_ANCHOR",
+                                        "anchor": "body-end"
+                                    }
+                                },
+                                "fields": {
+                                    "scope": { "type": "object" },
+                                    "anchor": { "type": "object" }
+                                }
+                            }
+                        },
+                        "required": ["placement"]
+                    }
+                }
+            }
+        });
+        let files = generated_files_from_catalog(
+            &catalog,
+            Path::new("/tmp/commands.yaml"),
+            Path::new("/tmp/requests"),
+        )
+        .expect("generated files");
+        let minimal = files
+            .get(Path::new("/tmp/requests/symbol/example/minimal.json"))
+            .expect("minimal sample");
+
+        assert!(
+            minimal.contains("\"insideScope\": \"com.example.Widget\""),
+            "{minimal}"
+        );
+        assert!(minimal.contains("\"anchor\": \"body-end\""), "{minimal}");
     }
 
     #[test]

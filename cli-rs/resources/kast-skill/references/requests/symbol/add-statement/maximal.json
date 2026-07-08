@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "symbol/add-statement",
+  "params": {
+    "anchor": "body-end",
+    "contentFile": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
+    "insideScope": "example-insideScope",
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
+}

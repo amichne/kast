@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "symbol/add-implementation"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "contentFile": {
+          "type": "string"
+        },
+        "placement": {
+          "additionalProperties": false,
+          "properties": {
+            "anchor": {
+              "additionalProperties": false,
+              "properties": {
+                "anchor": {
+                  "enum": [
+                    "body-start",
+                    "body-end",
+                    "file-top",
+                    "file-bottom",
+                    "after-imports"
+                  ],
+                  "type": "string"
+                },
+                "containingType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fileHint": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "enum": [
+                    "class",
+                    "interface",
+                    "object",
+                    "function",
+                    "property",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "symbol": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "AT_ANCHOR",
+                    "AFTER_SYMBOL",
+                    "BEFORE_SYMBOL"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "scope": {
+              "additionalProperties": false,
+              "properties": {
+                "containingType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fileHint": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "insideFile": {
+                  "type": "string"
+                },
+                "insideScope": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "class",
+                    "interface",
+                    "object",
+                    "function",
+                    "property",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "type": {
+                  "enum": [
+                    "NAMED_SCOPE",
+                    "FILE_SCOPE"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "scope",
+            "anchor"
+          ],
+          "type": "object"
+        },
+        "workspaceRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "placement",
+        "contentFile"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast symbol/add-implementation JSON-RPC request",
+  "type": "object"
+}

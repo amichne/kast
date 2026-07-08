@@ -72,11 +72,11 @@ class FakeAnalysisBackend private constructor(
     private val limits: ServerLimits,
     private val backendName: String,
 ) : AnalysisBackend {
-    private val availableFiles: Set<String> = buildSet {
+    private val availableFiles: MutableSet<String> = buildSet {
         addAll(symbolAnchors.map(Location::filePath))
         addAll(diagnosticsByFile.keys)
         addAll(typeHierarchyAnchors.map(Location::filePath))
-    }
+    }.toMutableSet()
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = backendName,
@@ -317,12 +317,14 @@ class FakeAnalysisBackend private constructor(
                         path.parent?.let(Files::createDirectories)
                         Files.writeString(path, operation.content)
                         createdFiles += operation.filePath
+                        availableFiles.add(operation.filePath)
                     }
 
                     is ValidatedFileOperation.DeleteFile -> {
                         ensureFixtureFileHash(operation.filePath, operation.expectedHash)
                         Files.delete(Path.of(operation.filePath))
                         deletedFiles += operation.filePath
+                        availableFiles.remove(operation.filePath)
                     }
                 }
                 affectedFiles += operation.filePath

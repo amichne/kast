@@ -29,6 +29,11 @@ categories:
   - symbol/callers
   - symbol/rename
   - symbol/write-and-validate
+  - symbol/add-file
+  - symbol/add-declaration
+  - symbol/add-implementation
+  - symbol/add-statement
+  - symbol/replace-declaration
   system:
   - health
   - runtime/status
@@ -545,6 +550,268 @@ commands:
       fields: {}
     responseType: RuntimeStatusResponse
     summary: Detailed runtime state including indexing progress
+  symbol/add-declaration:
+    category: symbol
+    dataSource: backend
+    failureType: SCOPE_MUTATION_FAILURE
+    method: symbol/add-declaration
+    request:
+      fields:
+        contentFile:
+          type: string
+        placement:
+          fields:
+            anchor:
+              fields:
+                anchor:
+                  enum:
+                  - body-start
+                  - body-end
+                  - file-top
+                  - file-bottom
+                  - after-imports
+                  optional: true
+                  type: string
+                containingType:
+                  nullable: true
+                  optional: true
+                  type: string
+                fileHint:
+                  nullable: true
+                  optional: true
+                  type: string
+                kind:
+                  enum:
+                  - class
+                  - interface
+                  - object
+                  - function
+                  - property
+                  nullable: true
+                  optional: true
+                  type: string
+                symbol:
+                  optional: true
+                  type: string
+                type:
+                  enum:
+                  - AT_ANCHOR
+                  - AFTER_SYMBOL
+                  - BEFORE_SYMBOL
+                  type: string
+              required:
+              - type
+              type: object
+            scope:
+              fields:
+                containingType:
+                  nullable: true
+                  optional: true
+                  type: string
+                fileHint:
+                  nullable: true
+                  optional: true
+                  type: string
+                insideFile:
+                  optional: true
+                  type: string
+                insideScope:
+                  optional: true
+                  type: string
+                kind:
+                  enum:
+                  - class
+                  - interface
+                  - object
+                  - function
+                  - property
+                  nullable: true
+                  optional: true
+                  type: string
+                type:
+                  enum:
+                  - NAMED_SCOPE
+                  - FILE_SCOPE
+                  type: string
+              required:
+              - type
+              type: object
+          required:
+          - scope
+          - anchor
+          sample:
+            anchor:
+              anchor: body-end
+              type: AT_ANCHOR
+            scope:
+              insideScope: com.example.Widget
+              type: NAMED_SCOPE
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - placement
+      - contentFile
+    responseType: KastScopeMutationResponse
+    successType: SCOPE_MUTATION_SUCCESS
+    summary: Insert declaration content into a file or named Kotlin scope and validate the result
+  symbol/add-file:
+    category: symbol
+    dataSource: backend
+    failureType: SCOPE_MUTATION_FAILURE
+    method: symbol/add-file
+    request:
+      fields:
+        contentFile:
+          type: string
+        filePath:
+          type: string
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - filePath
+      - contentFile
+    responseType: KastScopeMutationResponse
+    successType: SCOPE_MUTATION_SUCCESS
+    summary: Create a Kotlin file from a content file and validate the result
+  symbol/add-implementation:
+    category: symbol
+    dataSource: backend
+    failureType: SCOPE_MUTATION_FAILURE
+    method: symbol/add-implementation
+    request:
+      fields:
+        contentFile:
+          type: string
+        placement:
+          fields:
+            anchor:
+              fields:
+                anchor:
+                  enum:
+                  - body-start
+                  - body-end
+                  - file-top
+                  - file-bottom
+                  - after-imports
+                  optional: true
+                  type: string
+                containingType:
+                  nullable: true
+                  optional: true
+                  type: string
+                fileHint:
+                  nullable: true
+                  optional: true
+                  type: string
+                kind:
+                  enum:
+                  - class
+                  - interface
+                  - object
+                  - function
+                  - property
+                  nullable: true
+                  optional: true
+                  type: string
+                symbol:
+                  optional: true
+                  type: string
+                type:
+                  enum:
+                  - AT_ANCHOR
+                  - AFTER_SYMBOL
+                  - BEFORE_SYMBOL
+                  type: string
+              required:
+              - type
+              type: object
+            scope:
+              fields:
+                containingType:
+                  nullable: true
+                  optional: true
+                  type: string
+                fileHint:
+                  nullable: true
+                  optional: true
+                  type: string
+                insideFile:
+                  optional: true
+                  type: string
+                insideScope:
+                  optional: true
+                  type: string
+                kind:
+                  enum:
+                  - class
+                  - interface
+                  - object
+                  - function
+                  - property
+                  nullable: true
+                  optional: true
+                  type: string
+                type:
+                  enum:
+                  - NAMED_SCOPE
+                  - FILE_SCOPE
+                  type: string
+              required:
+              - type
+              type: object
+          required:
+          - scope
+          - anchor
+          sample:
+            anchor:
+              anchor: body-end
+              type: AT_ANCHOR
+            scope:
+              insideScope: com.example.Widget
+              type: NAMED_SCOPE
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - placement
+      - contentFile
+    responseType: KastScopeMutationResponse
+    successType: SCOPE_MUTATION_SUCCESS
+    summary: Insert implementation content into a file or named Kotlin scope and validate the result
+  symbol/add-statement:
+    category: symbol
+    dataSource: backend
+    failureType: SCOPE_MUTATION_FAILURE
+    method: symbol/add-statement
+    request:
+      fields:
+        anchor:
+          enum:
+          - body-end
+          sample: body-end
+          type: string
+        contentFile:
+          type: string
+        insideScope:
+          type: string
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - insideScope
+      - anchor
+      - contentFile
+    responseType: KastScopeMutationResponse
+    successType: SCOPE_MUTATION_SUCCESS
+    summary: Insert statement content into a named executable Kotlin scope and validate the result
   symbol/callers:
     category: symbol
     dataSource: backend
@@ -981,6 +1248,45 @@ commands:
         required:
         - symbol
         - newName
+  symbol/replace-declaration:
+    category: symbol
+    dataSource: backend
+    failureType: SCOPE_MUTATION_FAILURE
+    method: symbol/replace-declaration
+    request:
+      fields:
+        containingType:
+          nullable: true
+          optional: true
+          type: string
+        contentFile:
+          type: string
+        fileHint:
+          nullable: true
+          optional: true
+          type: string
+        kind:
+          enum:
+          - class
+          - interface
+          - object
+          - function
+          - property
+          nullable: true
+          optional: true
+          type: string
+        symbol:
+          type: string
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - symbol
+      - contentFile
+    responseType: KastScopeMutationResponse
+    successType: SCOPE_MUTATION_SUCCESS
+    summary: Replace a named Kotlin declaration using declaration-scope evidence and validate the result
   symbol/resolve:
     category: symbol
     dataSource: backend

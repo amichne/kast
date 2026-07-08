@@ -58,6 +58,9 @@ own:
   compiler-backed relationships instead of matching strings.
 - **Plan edits before applying them.** Rename and edit flows surface conflicts
   before they touch files.
+- **Place Kotlin changes with scope evidence.** Typed mutation commands create
+  files, insert declarations or statements, and replace declarations from
+  content files after a dry-run plan.
 - **Report completeness and bounds.** Reference and hierarchy responses tell
   agents whether evidence was exhaustive, truncated, or limited.
 
@@ -73,6 +76,11 @@ Kast has two runtime modes behind the same command surface:
 Repository agent guidance can use either runtime because agents call the same
 global `kast` binary and command surface. The Linux headless bundle is a
 server/hosted-agent distribution, not the local macOS developer fallback.
+
+On developer machines, the JetBrains plugin starts the Kast backend when the
+project opens and can request a Gradle refresh by default. The backend reports
+indexing and source-index readiness through `kast agent verify`, so automation
+can wait on evidence instead of guessing from IDE state.
 
 ## Documentation
 

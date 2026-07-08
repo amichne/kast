@@ -107,6 +107,7 @@ pub struct ProjectOpenConfig {
     pub profile_auto_init: bool,
     pub profile: ProjectOpenProfile,
     pub auto_exclude_git: bool,
+    pub gradle_load_enabled: bool,
 }
 
 impl ProjectOpenConfig {
@@ -114,6 +115,7 @@ impl ProjectOpenConfig {
         self.profile_auto_init
             && self.profile == ProjectOpenProfile::CopilotLsp
             && self.auto_exclude_git
+            && self.gradle_load_enabled
     }
 }
 
@@ -123,6 +125,7 @@ impl Default for ProjectOpenConfig {
             profile_auto_init: true,
             profile: ProjectOpenProfile::CopilotLsp,
             auto_exclude_git: true,
+            gradle_load_enabled: true,
         }
     }
 }

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -188,6 +189,11 @@ class AnalysisServerSocketTest {
         } finally {
             Thread.setDefaultUncaughtExceptionHandler(previousHandler)
         }
+    }
+
+    @Test
+    fun `expected client disconnects include macOS disconnected socket errors`() {
+        assertTrue(isExpectedClientDisconnect(IOException("Socket is not connected")))
     }
 
     private fun callSocket(

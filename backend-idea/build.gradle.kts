@@ -24,24 +24,67 @@ kotlin {
     jvmToolchain(21)
 }
 
+private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+private val ideaDistributionVersion = catalog.findVersion("idea").get().requiredVersion
+
+val ideaDistribution: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+private val extractedIdeaDistributionDirectory = objects.directoryProperty().apply {
+    set(file(gradle.gradleUserHomeDir.resolve("kast/backend-idea-distributions/$ideaDistributionVersion")))
+}
+
+val extractIdeaDistribution: TaskProvider<ExtractIdeaDistributionTask> by tasks.registering(ExtractIdeaDistributionTask::class) {
+    archives.from(ideaDistribution)
+    ideaVersion.set(ideaDistributionVersion)
+    outputDirectory.set(extractedIdeaDistributionDirectory)
+}
+
+private fun extractedIdeaFiles(
+    configure: ConfigurableFileTree.() -> Unit,
+) = files(
+    extractedIdeaDistributionDirectory.map { directory ->
+        fileTree(directory) {
+            configure()
+        }
+    },
+).builtBy(extractIdeaDistribution)
+
+val gradlePluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("plugins/gradle/lib/*.jar")
+    include("plugins/gradle/lib/**/*.jar")
+    include("plugins/gradle-java/lib/*.jar")
+    include("plugins/gradle-java/lib/**/*.jar")
+}
+
 dependencies {
+    ideaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
+        isTransitive = false
+    }
+
     implementation(project(":analysis-api"))
     implementation(project(":analysis-server"))
     implementation(project(":backend-shared"))
     implementation(project(":index-store"))
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
+    compileOnly(gradlePluginLibs)
 
     intellijPlatform {
         intellijIdea("2025.3")
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
+        bundledPlugin("com.intellij.gradle")
+        bundledPlugin("org.jetbrains.plugins.gradle")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.JUnit5)
     }
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation(gradlePluginLibs)
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
 }

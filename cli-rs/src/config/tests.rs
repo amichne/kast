@@ -87,7 +87,7 @@ mod tests {
         ));
         assert_eq!(
             default_socket_path_for_config(&config, &workspace_root),
-            default_socket_path(&workspace_root),
+            fallback_socket_path(&workspace_root),
         );
     }
 
@@ -534,6 +534,7 @@ dynamicOutput = false
         assert!(config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
         assert!(config.project_open.auto_exclude_git);
+        assert!(config.project_open.gradle_load_enabled);
         assert!(!config.onboarding.setup_completed);
         assert!(config.can_run_setup_onboarding());
     }
@@ -548,6 +549,7 @@ dynamicOutput = false
 profileAutoInit = true
 profile = "copilot-lsp"
 autoExcludeGit = false
+gradleLoadEnabled = false
 "#,
         )
         .unwrap();
@@ -558,6 +560,7 @@ autoExcludeGit = false
         assert!(config.project_open.profile_auto_init);
         assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
         assert!(!config.project_open.auto_exclude_git);
+        assert!(!config.project_open.gradle_load_enabled);
         assert!(!config.can_run_setup_onboarding());
     }
 

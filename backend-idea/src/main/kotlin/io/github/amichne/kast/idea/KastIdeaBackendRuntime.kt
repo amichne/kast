@@ -264,6 +264,18 @@ internal class KastIdeaProjectIndexing(
 }
 
 private fun SqliteSourceIndexStore.loadKastSourceIndexSummary(): KastSourceIndexSummary {
-    loadSourceIndexSnapshot()
-    return KastSourceIndexSummary(state = KastIndexState.READY)
+    val snapshot = loadSourceIndexSnapshot()
+    return KastSourceIndexSummary(
+        state = KastIndexState.READY,
+        fileCount = snapshot.packageByPath.size,
+        identifierCount = snapshot.candidatePathsByIdentifier.size,
+        moduleCount = snapshot.moduleNameByPath.values
+            .asSequence()
+            .filter(String::isNotBlank)
+            .map { moduleName -> moduleName.substringBefore("[") }
+            .distinct()
+            .count(),
+        importCount = snapshot.importsByPath.values.sumOf(List<String>::size) +
+            snapshot.wildcardImportPackagesByPath.values.sumOf(List<String>::size),
+    )
 }

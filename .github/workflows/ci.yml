@@ -248,15 +248,33 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Free disk for headless backend distribution
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-cleanup: always
 
-      - uses: actions/cache@v5
+      - name: Cache IntelliJ runtime distributions
+        uses: actions/cache@v5
         with:
           path: |
-            ~/.gradle/kast/idea-distributions
-          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+            ~/.gradle/kast/headless-idea-distributions
+            ~/.gradle/kast/shared-idea-distributions
+            ~/.gradle/kast/backend-idea-distributions
+          key: intellij-runtime-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            intellij-runtime-${{ runner.os }}-
 
       - name: Test JVM backend modules
         run: >
@@ -587,12 +605,16 @@ jobs:
         with:
           cache-cleanup: always
 
-      - uses: actions/cache@v5
+      - name: Cache IntelliJ plugin verification inputs
+        uses: actions/cache@v5
         with:
           path: |
-            ~/.gradle/kast/idea-distributions
+            ~/.gradle/kast/shared-idea-distributions
+            ~/.gradle/kast/backend-idea-distributions
             ~/.cache/pluginVerifier/ides
-          key: idea-dist-${{ hashFiles('gradle/libs.versions.toml') }}
+          key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            idea-plugin-inputs-${{ runner.os }}-
 
       - name: Test IDEA plugin
         run: >

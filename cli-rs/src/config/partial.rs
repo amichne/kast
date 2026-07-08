@@ -45,6 +45,7 @@ struct PartialProjectOpen {
     profile_auto_init: Option<bool>,
     profile: Option<ProjectOpenProfile>,
     auto_exclude_git: Option<bool>,
+    gradle_load_enabled: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
