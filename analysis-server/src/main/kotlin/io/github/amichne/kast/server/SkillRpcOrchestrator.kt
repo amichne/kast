@@ -984,15 +984,24 @@ internal class SkillRpcOrchestrator(
         searchLimit: Int,
     ): List<RankedNamedSymbolCandidate> {
         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
-        val result = backend.workspaceSymbolSearch(
-            WorkspaceSymbolQuery(
-                pattern = symbolName,
-                maxResults = searchLimit,
-                includeDeclarationScope = includeDeclarationScope,
-            ).parsed(),
-        ).withLimit(searchLimit) { workspaceSymbolPageToken(searchLimit) }
+        val symbols = symbolSearchPatterns(symbolName)
+            .flatMap { pattern ->
+                backend.workspaceSymbolSearch(
+                    WorkspaceSymbolQuery(
+                        pattern = pattern,
+                        maxResults = searchLimit,
+                        includeDeclarationScope = includeDeclarationScope,
+                    ).parsed(),
+                ).withLimit(searchLimit) { workspaceSymbolPageToken(searchLimit) }.symbols
+            }
+            .distinctBy { symbol -> Triple(symbol.fqName, symbol.location.filePath, symbol.location.startOffset) }
+        val filteredSymbols = if (symbolName.contains('.')) {
+            symbols.filter { symbol -> symbol.fqName == symbolName }
+        } else {
+            symbols
+        }
 
-        return result.symbols
+        return filteredSymbols
             .asSequence()
             .map { candidate ->
                 rankCandidate(
@@ -1014,6 +1023,12 @@ internal class SkillRpcOrchestrator(
             .toList()
     }
 
+    private fun symbolSearchPatterns(symbolName: String): List<String> =
+        listOf(symbolName, symbolName.substringAfterLast('.'))
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .distinct()
+
     private fun rankCandidate(
         candidate: Symbol,
         requestedSymbol: String,
@@ -1026,10 +1041,14 @@ internal class SkillRpcOrchestrator(
         var score = 20
         val reasons = mutableListOf<String>()
         val simpleName = candidate.fqName.substringAfterLast('.')
-        if (simpleName == requestedSymbol) {
+        val requestedSimpleName = requestedSymbol.substringAfterLast('.')
+        if (candidate.fqName == requestedSymbol) {
+            score += 50
+            reasons += "exact fully-qualified match"
+        } else if (simpleName == requestedSimpleName) {
             score += 35
             reasons += "exact simple-name match"
-        } else if (simpleName.contains(requestedSymbol, ignoreCase = true)) {
+        } else if (simpleName.contains(requestedSimpleName, ignoreCase = true)) {
             score += 10
             reasons += "simple name contains query"
         }

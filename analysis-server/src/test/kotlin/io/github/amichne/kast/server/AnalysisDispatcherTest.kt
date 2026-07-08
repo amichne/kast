@@ -513,6 +513,33 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `symbol replace declaration resolves fully qualified names through simple-name search`() {
+        val targetFile = sampleFile()
+        val contentFile = tempDir.resolve("fq-replacement-content.kt")
+        Files.writeString(contentFile, "fun greet() = \"fq\"")
+
+        val result = dispatchSuccess<KastScopeMutationResponse>(
+            method = "symbol/replace-declaration",
+            params = json.encodeToJsonElement(
+                KastReplaceDeclarationRequest.serializer(),
+                KastReplaceDeclarationRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "sample.greet",
+                    contentFile = contentFile.toString(),
+                    kind = WrapperNamedSymbolKind.FUNCTION,
+                ),
+            ),
+        )
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertEquals(KastScopeMutationOperation.REPLACE_DECLARATION, success.operation)
+        assertEquals(true, success.applied)
+        assertEquals(1, success.editCount)
+        assertTrue(targetFile.readText().contains("fun greet() = \"fq\""))
+        assertFalse(targetFile.readText().contains("fun greet() = \"hi\""))
+    }
+
+    @Test
     fun `references dispatches without HTTP`() {
         val file = sampleFile()
 

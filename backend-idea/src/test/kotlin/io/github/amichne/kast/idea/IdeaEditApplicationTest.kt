@@ -185,6 +185,27 @@ class IdeaEditApplicationTest {
     }
 
     @Test
+    fun `applyEdits creates missing parent directories for new files inside active workspace`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val newFile = workspaceRoot.resolve("nested/source/CreatedInside.kt")
+        val content = "package demo.nested\n\nfun createdInsideNested(): Int = 1\n"
+
+        val result = backend(workspaceRoot).applyEdits(
+            ApplyEditsQuery(
+                edits = emptyList(),
+                fileHashes = emptyList(),
+                fileOperations = listOf(FileOperation.CreateFile(newFile.toString(), content)),
+            ),
+        )
+
+        assertEquals(listOf(newFile.toString()), result.createdFiles)
+        assertTrue(Files.isDirectory(newFile.parent), "Create file should materialize missing parent directories")
+        assertEquals(content, Files.readString(newFile))
+    }
+
+    @Test
     fun `applyEdits deletes files inside active workspace and verifies disk state`() = runBlocking {
         ensureProjectReady()
 

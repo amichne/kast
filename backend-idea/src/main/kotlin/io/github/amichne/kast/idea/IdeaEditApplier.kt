@@ -5,10 +5,14 @@ import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.FilePath
+import com.intellij.openapi.vcs.VcsFileListenerContextHelper
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
+import com.intellij.vcsUtil.VcsUtil
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -83,11 +87,11 @@ internal class IdeaEditApplier(
             edits = validatedEdits,
             invocationId = invocationId,
         )
+        ignoreVcsFileListenerEvents(validatedFileOperations)
 
         // Validate and apply file operations first.
         val (affectedFiles, createdFiles, deletedFiles) = applyFileOperations(
             validatedFileOperations,
-            vfsManager,
             invocationId,
             normalizedWorkspaceRoot,
         )
@@ -209,7 +213,6 @@ internal class IdeaEditApplier(
 
     private suspend fun applyFileOperations(
         operations: List<ValidatedFileOperation>,
-        vfsManager: VirtualFileManager,
         invocationId: String,
         workspaceRoot: Path,
     ): Triple<MutableList<String>, MutableList<String>, MutableList<String>> {
@@ -232,10 +235,14 @@ internal class IdeaEditApplier(
                             ),
                         )
                         writeAction {
-                            val parentPath = operation.filePath.substringBeforeLast('/')
-                            val fileName = operation.filePath.substringAfterLast('/')
-                            val parentFile = vfsManager.findFileByUrl("file://$parentPath")
-                                ?: throw IllegalStateException("Parent directory not found: $parentPath")
+                            val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
+                            val parentPath = checkNotNull(filePath.parent) {
+                                "Create file target has no parent directory: ${operation.filePath}"
+                            }
+                            val fileName = checkNotNull(filePath.fileName) {
+                                "Create file target has no file name: ${operation.filePath}"
+                            }.toString()
+                            val parentFile = VfsUtil.createDirectories(parentPath.toString())
 
                             if (parentFile.findChild(fileName) != null) {
                                 throw ConflictException(
@@ -390,6 +397,48 @@ internal class IdeaEditApplier(
         edits.forEach { plan ->
             requireWorkspaceTarget(workspaceIdentity, plan.filePath, IdeaWorkspaceMutation.TEXT_EDIT, invocationId)
         }
+    }
+
+    private fun ignoreVcsFileListenerEvents(fileOperations: List<ValidatedFileOperation>) {
+        val helper = VcsFileListenerContextHelper.getInstance(project)
+        val addedFiles = mutableListOf<FilePath>()
+        val addedDirectories = mutableListOf<FilePath>()
+        val deletedFiles = mutableListOf<FilePath>()
+
+        fileOperations.forEach { operation ->
+            when (operation) {
+                is ValidatedFileOperation.CreateFile -> {
+                    val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
+                    addedFiles += VcsUtil.getFilePath(filePath, false)
+                    addedDirectories += missingParentDirectories(filePath)
+                        .map { parent -> VcsUtil.getFilePath(parent, true) }
+                }
+
+                is ValidatedFileOperation.DeleteFile -> {
+                    deletedFiles += VcsUtil.getFilePath(Path.of(operation.filePath).toAbsolutePath().normalize(), false)
+                }
+            }
+        }
+
+        if (addedFiles.isNotEmpty()) {
+            helper.ignoreAdded(addedFiles)
+        }
+        if (addedDirectories.isNotEmpty()) {
+            helper.ignoreAddedRecursive(addedDirectories)
+        }
+        if (deletedFiles.isNotEmpty()) {
+            helper.ignoreDeleted(deletedFiles)
+        }
+    }
+
+    private fun missingParentDirectories(filePath: Path): List<Path> {
+        val directories = mutableListOf<Path>()
+        var parent = filePath.parent
+        while (parent != null && !Files.exists(parent)) {
+            directories.add(parent)
+            parent = parent.parent
+        }
+        return directories
     }
 
     private fun requireWorkspaceTarget(
