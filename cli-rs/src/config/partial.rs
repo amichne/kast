@@ -44,7 +44,6 @@ struct PartialIdeaLaunch {
 struct PartialProjectOpen {
     profile_auto_init: Option<bool>,
     profile: Option<ProjectOpenProfile>,
-    agent_harness: Option<AgentSetupHarness>,
     auto_exclude_git: Option<bool>,
 }
 

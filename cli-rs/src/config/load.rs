@@ -162,9 +162,6 @@ impl KastConfig {
             if let Some(value) = project_open.profile {
                 self.project_open.profile = value;
             }
-            if let Some(value) = project_open.agent_harness {
-                self.project_open.agent_harness = value;
-            }
             if let Some(value) = project_open.auto_exclude_git {
                 self.project_open.auto_exclude_git = value;
             }

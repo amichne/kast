@@ -322,17 +322,11 @@ mod tests {
                 .and_then(toml::Value::as_bool),
             Some(true)
         );
-        let project_open = document
-            .get("projectOpen")
-            .and_then(toml::Value::as_table)
-            .expect("project open");
-        assert!(
-            !project_open.contains_key("agentHarness"),
-            "onboarding must not force a harness-specific setup path"
-        );
         assert_eq!(
-            project_open
-                .get("profileAutoInit")
+            document
+                .get("projectOpen")
+                .and_then(toml::Value::as_table)
+                .and_then(|project_open| project_open.get("profileAutoInit"))
                 .and_then(toml::Value::as_bool),
             Some(true)
         );
