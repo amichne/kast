@@ -102,7 +102,7 @@ need to move together.
 After any routing change:
 
 1. Re-run `.github/scripts/test-kast-routing-evals.sh`, which validates the
-   static routing corpus and the removed `kast agent tools` envelope.
+   static routing corpus and public typed-command boundaries.
 2. When `plugin-eval` is available, run
    `plugin-eval analyze cli-rs/resources/kast-skill --metric-pack .github/plugin-eval/kast-routing/manifest.json`.
 3. Compare against the previous baseline.

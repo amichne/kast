@@ -439,50 +439,28 @@ fn outputs_for_case(
     case: &ImpactCase,
 ) -> Result<Vec<FormatOutput>, Box<dyn Error>> {
     match case.input_artifact.kind.as_str() {
-        "agent-tools" => command_outputs(
+        "agent-rename-plan" => command_outputs(
             kast_bin,
             run_root,
-            &["--output", "json", "agent", "tools", "--full"],
-            &["agent", "tools", "--full"],
+            &[
+                "--output",
+                "json",
+                "agent",
+                "rename",
+                "--symbol",
+                "com.example.EventBean",
+                "--new-name",
+                "EventRecord",
+            ],
+            &[
+                "agent",
+                "rename",
+                "--symbol",
+                "com.example.EventBean",
+                "--new-name",
+                "EventRecord",
+            ],
         ),
-        "validation-error" => command_outputs(
-            kast_bin,
-            run_root,
-            &["--output", "json", "agent", "call", "symbol/resolve"],
-            &["agent", "call", "symbol/resolve"],
-        ),
-        "workflow-dry-run" => {
-            let out_dir = run_root.join("workflow").join(&case.id);
-            let out_dir = out_dir.to_str().ok_or("workflow path must be utf-8")?;
-            command_outputs(
-                kast_bin,
-                run_root,
-                &[
-                    "--output",
-                    "json",
-                    "agent",
-                    "workflow",
-                    "symbol",
-                    "--dry-run",
-                    "--out-dir",
-                    out_dir,
-                    "--symbol",
-                    "Kast",
-                    "--references",
-                ],
-                &[
-                    "agent",
-                    "workflow",
-                    "symbol",
-                    "--dry-run",
-                    "--out-dir",
-                    out_dir,
-                    "--symbol",
-                    "Kast",
-                    "--references",
-                ],
-            )
-        }
         "synthetic-envelope" => synthetic_outputs(case),
         "routing-case" => model_input_outputs(case),
         "prompt-only" => Ok(vec![
@@ -591,29 +569,41 @@ fn encode_value_outputs(value: Value) -> Result<Vec<FormatOutput>, Box<dyn Error
 fn synthetic_value(case: &ImpactCase) -> Value {
     json!({
         "ok": true,
-        "method": "symbol/resolve",
-        "request": {
-            "method": "symbol/resolve",
-            "params": {
-                "symbol": "EventBean",
-                "kind": "class"
-            }
-        },
+        "method": "agent/symbol",
         "result": {
-            "type": "SYMBOL_RESOLVE_SUCCESS",
-            "symbol": {
-                "name": "EventBean",
-                "kind": "CLASS",
-                "fqName": "com.example.EventBean",
-                "location": {
-                    "filePath": "src/main/kotlin/com/example/EventBean.kt",
-                    "offset": 128
+            "type": "KAST_AGENT_COMMAND",
+            "ok": true,
+            "steps": [
+                {
+                    "name": "symbol-query",
+                    "method": "symbol/query",
+                    "mutates": false,
+                    "ok": true
+                },
+                {
+                    "name": "symbol-resolve",
+                    "method": "symbol/resolve",
+                    "mutates": false,
+                    "ok": true,
+                    "result": {
+                        "type": "SYMBOL_RESOLVE_SUCCESS",
+                        "symbol": {
+                            "name": "EventBean",
+                            "kind": "CLASS",
+                            "fqName": "com.example.EventBean",
+                            "location": {
+                                "filePath": "src/main/kotlin/com/example/EventBean.kt",
+                                "offset": 128
+                            }
+                        }
+                    }
                 }
-            },
+            ],
+            "issues": [],
             "nextActions": if case.id.contains("relationship") {
-                json!(["symbol/references", "symbol/callers"])
+                json!(["kast agent symbol --query EventBean --references", "kast agent symbol --query EventBean --callers incoming"])
             } else {
-                json!(["symbol/scaffold"])
+                json!(["kast agent diagnostics --file-path src/main/kotlin/com/example/EventBean.kt"])
             }
         }
     })

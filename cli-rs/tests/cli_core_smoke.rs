@@ -109,6 +109,26 @@ fn smoke_core_cli_commands() {
             "hidden agent command {hidden} should not appear in agent help: {agent_help_stdout}"
         );
     }
+    for retired_alias in [
+        "health",
+        "runtime-status",
+        "capabilities",
+        "resolve",
+        "references",
+        "raw-resolve",
+        "raw-diagnostics",
+        "workspace-files",
+        "metrics",
+    ] {
+        let alias_help = kast(&home, &config_home)
+            .args(["agent", retired_alias, "--help"])
+            .output()
+            .unwrap_or_else(|error| panic!("agent {retired_alias} --help: {error}"));
+        assert!(
+            !alias_help.status.success(),
+            "retired agent alias {retired_alias} should not be callable"
+        );
+    }
 
     let agent_tools = kast(&home, &config_home)
         .args(["--output", "json", "agent", "tools", "--full"])

@@ -58,8 +58,9 @@ target.
 
 ## Removed surfaces
 
-The following commands are intentionally not public v1 assets: `kast agent tools`,
-`kast agent call`, `kast agent workflow`, workflow package verification,
-`rename-plan`, `write-validate`, hook installers, Copilot package installers, and
-portable instruction package installers. If a stale binary exposes them, prefer the
-typed commands above and update the active Kast binary.
+The following commands are intentionally not public v1 assets: `kast agent up`,
+`kast agent ready`, `kast agent setup`, `kast agent tools`, `kast agent call`,
+`kast agent workflow`, workflow package verification, `rename-plan`,
+`write-validate`, Copilot package installers, and portable instruction package
+installers. If a stale binary exposes them, prefer root `kast setup`, root
+`kast ready`, the typed commands above, and update the active Kast binary.

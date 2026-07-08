@@ -13,8 +13,5 @@
       "extensions/kast/extension.mjs"
     ],
     "manifest": "primitive-manifest.json"
-  },
-  "install": {
-    "script": "scripts/install-local.sh"
   }
 }

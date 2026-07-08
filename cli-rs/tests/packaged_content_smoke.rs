@@ -310,12 +310,12 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
     let routing_script = std::fs::read_to_string(&routing_script_path)
         .unwrap_or_else(|error| panic!("read {}: {error}", routing_script_path.display()));
     assert!(
-        routing_script.contains("--output json agent tools --full"),
-        "routing metric-pack should capture the removed agent tools envelope in JSON: {routing_script}"
+        !routing_script.contains("agent tools"),
+        "routing metric-pack should not invoke removed agent tools at runtime: {routing_script}"
     );
     assert!(
-        routing_script.contains("KAST_AGENT_TOOLS_EXIT_STATUS"),
-        "routing metric-pack should pass the removed agent tools exit status: {routing_script}"
+        !routing_script.contains("KAST_AGENT_TOOLS"),
+        "routing metric-pack should not pass removed agent tools runtime probes: {routing_script}"
     );
 }
 
@@ -350,7 +350,7 @@ fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
     let cases = eval["cases"].as_array().expect("format impact eval cases");
     assert!(
         cases.len() >= 7,
-        "format impact eval should cover tool catalog, symbol extraction, relationship navigation, validation recovery, workflow evidence, negative routing, and large read-only output"
+        "format impact eval should cover typed command plans, symbol extraction, relationship navigation, plan recovery, typed sequence evidence, negative routing, and large read-only output"
     );
 
     let case_ids = cases
@@ -358,13 +358,13 @@ fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
         .map(|case| case["id"].as_str().expect("case id"))
         .collect::<BTreeSet<_>>();
     for required in [
-        "tool-catalog-comprehension",
+        "typed-command-plan-comprehension",
         "symbol-result-extraction",
         "relationship-navigation-continuation",
-        "validation-error-recovery",
-        "workflow-evidence-json-artifacts",
+        "read-only-plan-recovery",
+        "typed-sequence-evidence",
         "non-kotlin-negative-routing",
-        "large-read-only-catalog-efficiency",
+        "large-typed-output-efficiency",
     ] {
         assert!(
             case_ids.contains(required),
@@ -418,8 +418,11 @@ fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
             assert!(
                 forbidden_actions
                     .iter()
-                    .any(|action| action == "kast agent call"),
-                "negative format-impact cases should forbid Kast calls: {case:#}"
+                    .any(|action| action == "kast agent symbol")
+                    && forbidden_actions
+                        .iter()
+                        .any(|action| action == "kast agent impact"),
+                "negative format-impact cases should forbid Kast semantic routes: {case:#}"
             );
         } else {
             assert!(
