@@ -917,7 +917,7 @@ jobs:
             --backend-archive "$backend_asset" \
             --version "$tag" \
             --bundle-output "$bundle_asset"
-          ./scripts/package-devin-runtime.sh \
+          ./scripts/package-headless-runtime.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$version" \

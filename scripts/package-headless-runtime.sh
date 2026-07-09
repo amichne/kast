@@ -60,7 +60,7 @@ PY
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: scripts/package-devin-runtime.sh --cli-archive <zip> --backend-archive <zip> --version <version> --output <tar.zst> --manifest-output <json>
+Usage: scripts/package-headless-runtime.sh --cli-archive <zip> --backend-archive <zip> --version <version> --output <tar.zst> --manifest-output <json>
 
 Build kast-headless-linux-x64.tar.zst and the kast-runtime-manifest.json
 sidecar from the Rust CLI archive and headless backend portable archive.
@@ -126,7 +126,7 @@ need_tool python3
 need_tool tar
 need_tool zstd
 
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-runtime.XXXXXX")"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-headless-runtime.XXXXXX")"
 cleanup() {
   rm -rf "$tmp_dir"
 }

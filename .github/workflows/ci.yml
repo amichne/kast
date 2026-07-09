@@ -83,9 +83,9 @@ jobs:
             sudo apt-get install -y --no-install-recommends zstd
           fi
 
-      - name: Test Devin artifact packagers
+      - name: Test headless runtime packagers
         shell: bash
-        run: ./.github/scripts/test-devin-artifact-packagers.sh
+        run: ./.github/scripts/test-headless-runtime-packagers.sh
 
       - name: Test CI Gradle retry helper
         shell: bash
@@ -509,7 +509,7 @@ jobs:
             --artifact "ci-rust-cli-linux-x64=${cli_asset}" \
             --artifact "ci-headless-ubuntu-latest=${backend_asset}"
 
-          ./scripts/package-devin-runtime.sh \
+          ./scripts/package-headless-runtime.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$runtime_version" \
@@ -518,8 +518,8 @@ jobs:
 
           gradle_seed="${RUNNER_TEMP}/gradle-ro-seed"
           rm -rf "$gradle_seed"
-          mkdir -p "$gradle_seed/caches/modules-2/files-2.1/devin/smoke"
-          printf '%s\n' "fixture" > "$gradle_seed/caches/modules-2/files-2.1/devin/smoke/artifact.pom"
+          mkdir -p "$gradle_seed/caches/modules-2/files-2.1/headless/smoke"
+          printf '%s\n' "fixture" > "$gradle_seed/caches/modules-2/files-2.1/headless/smoke/artifact.pom"
           ./scripts/package-gradle-ro-cache.sh \
             --gradle-user-home "$gradle_seed" \
             --output "dist/gradle-ro-dep-cache.tar.zst"

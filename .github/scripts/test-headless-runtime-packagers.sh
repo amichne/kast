@@ -100,7 +100,7 @@ PY
 }
 
 repo_root="$(resolve_repo_root)"
-scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-devin-packagers.XXXXXX")"
+scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-headless-packagers.XXXXXX")"
 scratch_dir="$(cd -- "$scratch_dir" && pwd)"
 cleanup() {
   rm -rf "$scratch_dir"
@@ -114,7 +114,7 @@ write_fixture_backend_zip "$backend_zip" "${scratch_dir}/backend"
 
 unsafe_path_zip="${scratch_dir}/unsafe-path.zip"
 write_unsafe_zip "$unsafe_path_zip" path
-if "${repo_root}/scripts/package-devin-runtime.sh" \
+if "${repo_root}/scripts/package-headless-runtime.sh" \
   --cli-archive "$unsafe_path_zip" \
   --backend-archive "$backend_zip" \
   --version 9.8.7 \
@@ -127,7 +127,7 @@ grep -Fq "unsafe zip member" "${scratch_dir}/unsafe-path.err" || die "unsafe pat
 
 unsafe_symlink_zip="${scratch_dir}/unsafe-symlink.zip"
 write_unsafe_zip "$unsafe_symlink_zip" symlink
-if "${repo_root}/scripts/package-devin-runtime.sh" \
+if "${repo_root}/scripts/package-headless-runtime.sh" \
   --cli-archive "$unsafe_symlink_zip" \
   --backend-archive "$backend_zip" \
   --version 9.8.7 \
@@ -140,7 +140,7 @@ grep -Fq "unsafe zip member type" "${scratch_dir}/unsafe-symlink.err" || die "un
 
 runtime_artifact="${scratch_dir}/kast-headless-linux-x64.tar.zst"
 runtime_manifest="${scratch_dir}/kast-runtime-manifest.json"
-"${repo_root}/scripts/package-devin-runtime.sh" \
+"${repo_root}/scripts/package-headless-runtime.sh" \
   --cli-archive "$cli_zip" \
   --backend-archive "$backend_zip" \
   --version 9.8.7 \
@@ -187,4 +187,4 @@ fi
 grep -Fq "$(compute_sha256 "$cache_artifact")" "${scratch_dir}/gradle-ro-dep-cache.sha256" \
   || die "Gradle cache checksum sidecar does not match"
 
-printf '%s\n' "Devin artifact packager contracts passed"
+printf '%s\n' "Headless runtime packager contracts passed"

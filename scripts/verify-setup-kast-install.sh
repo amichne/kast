@@ -5,7 +5,7 @@ usage() {
   cat >&2 <<'USAGE'
 Usage: scripts/verify-setup-kast-install.sh [options]
 
-Verify a setup-kast installation in a CI runner, Devin snapshot, or local smoke.
+Verify a setup-kast installation in a CI runner, hosted-agent image, or local smoke.
 
 Options:
   --install-dir <path>              Installed current runtime directory. Defaults to $KAST_INSTALL_ROOT/current.

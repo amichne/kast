@@ -18,18 +18,18 @@ mod tests {
 
     #[test]
     fn workspace_cache_directory_uses_explicit_workspace_id() {
-        let cache_home = PathBuf::from("/home/devin/.cache/kast");
+        let cache_home = PathBuf::from("/home/agent/.cache/kast");
         let workspace_root = PathBuf::from("/workspace/kast");
 
         assert_eq!(
             workspace_cache_directory(&cache_home, &workspace_root, Some("org/repo main")),
-            PathBuf::from("/home/devin/.cache/kast/workspaces/org-repo-main"),
+            PathBuf::from("/home/agent/.cache/kast/workspaces/org-repo-main"),
         );
     }
 
     #[test]
     fn workspace_cache_directory_defaults_to_workspace_hash() {
-        let cache_home = PathBuf::from("/home/devin/.cache/kast");
+        let cache_home = PathBuf::from("/home/agent/.cache/kast");
         let workspace_root = PathBuf::from("/workspace/kast");
 
         assert_eq!(
@@ -43,13 +43,13 @@ mod tests {
     #[test]
     fn workspace_cache_environment_moves_runtime_state_out_of_install_root() {
         let workspace_root = PathBuf::from("/workspace/kast");
-        let cache_home = PathBuf::from("/home/devin/.cache/kast");
+        let cache_home = PathBuf::from("/home/agent/.cache/kast");
         let mut config = KastConfig::defaults();
         config.paths.install_root = PathBuf::from("/opt/kast/current");
         config.apply_workspace_cache_home(&cache_home, &workspace_root, Some("kast-main"));
 
         assert_eq!(config.paths.cache_dir, cache_home);
-        let workspace_dir = PathBuf::from("/home/devin/.cache/kast/workspaces/kast-main");
+        let workspace_dir = PathBuf::from("/home/agent/.cache/kast/workspaces/kast-main");
         assert_eq!(config.paths.logs_dir, workspace_dir.join("logs"));
         assert_eq!(config.paths.descriptor_dir, workspace_dir);
         assert!(!config.paths.descriptor_dir.starts_with("/opt/kast"));
@@ -59,12 +59,12 @@ mod tests {
     fn configured_socket_dir_uses_workspace_local_socket_name() {
         let workspace_root = PathBuf::from("/workspace/kast");
         let mut config = KastConfig::defaults();
-        config.paths.socket_dir = PathBuf::from("/home/devin/.cache/kast/workspaces/kast-main");
+        config.paths.socket_dir = PathBuf::from("/home/agent/.cache/kast/workspaces/kast-main");
 
         assert_eq!(
             default_socket_path_for_config(&config, &workspace_root),
             PathBuf::from(format!(
-                "/home/devin/.cache/kast/workspaces/kast-main/kast-{}.sock",
+                "/home/agent/.cache/kast/workspaces/kast-main/kast-{}.sock",
                 workspace_hash(&workspace_root)
             )),
         );

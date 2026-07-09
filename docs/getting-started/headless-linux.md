@@ -92,12 +92,12 @@ kast developer release package ubuntu-debian-bundle \
   --bundle-output dist/kast-ubuntu-debian-headless-x86_64-<version>.tar.gz
 ```
 
-## Devin and ephemeral agents
+## Hosted agents
 
-Devin blueprints and other short-lived Linux x64 workspaces can use the
-`kast-action` repository instead of running the Ubuntu/Debian installer directly.
-That path installs `kast` under `/opt/kast/current`, activates an install
-manifest, and seeds an optional read-only Gradle dependency cache.
+Short-lived Linux x64 workspaces can use the `kast-action` repository instead
+of running the Ubuntu/Debian installer directly. That path installs `kast`
+under `/opt/kast/current`, activates an install manifest, and seeds an optional
+read-only Gradle dependency cache.
 
 The [runtime artifact contract](../distribution/runtime-artifact-contract.md)
 defines the artifact names, manifest schema, cache layout, and
