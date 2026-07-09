@@ -944,7 +944,7 @@ commands:
     failureType: SYMBOL_QUERY_FAILURE
     method: symbol/query
     notes:
-    - Use this as the public source-index search surface before file reads or raw offset calls.
+    - Use this as the public source-index search surface before file reads or lower-level internal requests.
     - Hard filters are enforced by source-index and compiler facts, never by semantic score.
     - Nested filters include gradleProject, relativePathPrefix, productionOnly, excludePatterns, and usageFacets.
     - usageFacets is the supported public filter for computed declaration facets; symbol/query does not expose clusterKinds.
@@ -1133,7 +1133,7 @@ commands:
     successType: SYMBOL_QUERY_SUCCESS
     summary: Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence
     tool:
-      description: Search the Kotlin source index for declarations by name, lexical text, graph evidence, and hard filters. Start here for unknown symbols, broad navigation, and .kt/.kts discovery before reading files or using raw offset tools.
+      description: Search the Kotlin source index for declarations by name, lexical text, graph evidence, and hard filters. Start here for unknown symbols, broad navigation, and .kt/.kts discovery before reading files or lower-level internal requests.
       name: kast_symbol_query
   symbol/references:
     category: symbol

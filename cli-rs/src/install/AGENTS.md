@@ -9,7 +9,7 @@ Each part file must own one install contract:
 - `dispatch.rs` owns top-level install command dispatch.
 - `bundle_entrypoint.rs` owns the public activation gateway.
 - `agent_guidance.rs` owns `AGENTS.local.md` guidance setup and explicit
-  `--agents-md` target patching.
+  `--context-file` target patching.
 - `bundle_source.rs` owns bundle source and tarball extraction.
 - `bundle_validation.rs` owns manifest and artifact validation.
 - `bundle_install.rs` owns writing the activated bundle to disk.

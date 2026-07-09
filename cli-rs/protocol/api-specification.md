@@ -228,7 +228,7 @@ Result variants: `SYMBOL_QUERY_SUCCESS`, `SYMBOL_QUERY_FAILURE`.
 
 Notes:
 
-- Use this as the public source-index search surface before file reads or raw offset calls.
+- Use this as the public source-index search surface before file reads or lower-level internal requests.
 - Hard filters are enforced by source-index and compiler facts, never by semantic score.
 - Nested filters include gradleProject, relativePathPrefix, productionOnly, excludePatterns, and usageFacets.
 - usageFacets is the supported public filter for computed declaration facets; symbol/query does not expose clusterKinds.
@@ -384,7 +384,7 @@ Result variants: `SCOPE_MUTATION_SUCCESS`, `SCOPE_MUTATION_FAILURE`.
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
 | `insideScope` | `string` | yes | no |  |
-| `anchor` | `string` | yes | no | `body-start`<br>`body-end`<br>`file-top`<br>`file-bottom`<br>`after-imports` |
+| `anchor` | `string` | yes | no | `body-end` |
 | `contentFile` | `string` | yes | no |  |
 
 Response type: `KastScopeMutationResponse`.

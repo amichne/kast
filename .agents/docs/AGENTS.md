@@ -7,21 +7,28 @@ content. The `docs` unit is the source for the published Zensical site, with
 
 ## Site structure
 
-The published documentation is a CLI command manual for developers:
+The published documentation is journey-first CLI documentation for developers,
+agents, operators, and release engineers:
 
-- `docs/index.md` — landing page for the command manual and install path.
-- `docs/getting-started/install.md` — macOS developer-machine install, managed
-  repository files, repair commands, and source checkout notes.
-- `docs/getting-started/headless-linux.md` — Linux server, CI, hosted-agent,
-  mirror, and image-build install path.
-- `docs/getting-started/quickstart.md` — first lifecycle and `kast agent`
-  semantic commands.
-- `docs/commands/` — command group documentation for lifecycle, install and
-  repair, agent automation, metrics, and LSP.
-- `docs/recipes.md` — copy-paste command sequences.
-- `docs/troubleshooting.md` — command-oriented diagnosis.
-- `docs/distribution/runtime-artifact-contract.md` — distribution commands,
-  bundle activation, and release verification.
+- `docs/index.md` — landing page for reader journeys and the operating model.
+- `docs/install/` — install lanes for macOS developer machines and headless
+  Linux or hosted-agent environments.
+- `docs/learn/` — guided first-run and explanation pages for readers building
+  a mental model.
+- `docs/use/` — task-oriented how-to guides for choosing commands, inspecting
+  Kotlin, planning safe edits, and automating with agents.
+- `docs/reference/` — compact command, agent-command, selector, runtime, and
+  output-mode reference pages.
+- `docs/troubleshoot.md` — diagnostic matrix for install drift, backend state,
+  indexing, semantic failures, and mutation planning.
+- `docs/distribute/` — release, mirror, hosted-agent, bundle, and runtime
+  artifact contract pages.
+- `docs/design/` — short public explanations that help readers operate Kast.
+
+Use `documentation-journeys.md` before creating, moving, or substantially
+rewriting published docs. It records the intended reader journeys, Diataxis
+page roles, known documentation gaps, and validation expectations for this
+site.
 
 RPC/OpenAPI material is generated and distributed from `cli-rs/protocol/`.
 There is no separate `cli-rs` docs site. Generated protocol markdown and YAML
@@ -36,7 +43,7 @@ CLI workflow.
 - Keep docs aligned with the code that exists today. Mark planned or
   missing behavior explicitly instead of implying it already works.
 - Keep broad product-story changes aligned with
-  `.agents/adr/0003-cli-command-documentation-operating-model.md` or a
+  `.agents/adr/0011-journey-first-documentation-operating-model.md` or a
   superseding ADR.
 - Keep agent resource, package, manifest-trust, and typed `kast agent`
   changes aligned with `.agents/adr/` records. Agent-only ADRs must not be

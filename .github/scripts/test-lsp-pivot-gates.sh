@@ -122,21 +122,9 @@ if (buildRs.includes("symbol/resolve") || buildRs.includes("database/metrics")) 
   fail("LSP route generation must read method names from the catalog instead of hard-coding routes");
 }
 
-requireText("cli-rs/resources/plugin/scripts/install-local.sh", {
-  "retired local installer": "PLUGIN_INSTALL_REMOVED",
-  "direct plugin replacement": "copilot --plugin-dir cli-rs/resources/plugin",
-  "machine plugin replacement": "kast developer machine plugin",
-});
-
 requireText("cli-rs/src/rpc.rs", {
   "backend error code preservation": '"backendCode"',
   "backend code test": "preserves_backend_error_code",
-});
-requireText(".github/copilot-instructions.md", {
-  "primary Copilot package": "cli-rs/resources/plugin/",
-  "generated copy wording": "Generated install copies",
-  "tool extension": "catalog-backed `kast_*`",
-  "runtime guidance": "extension runtime hook",
 });
 
 const skillShadowing = readJson(".github/skill-shadowing.json");

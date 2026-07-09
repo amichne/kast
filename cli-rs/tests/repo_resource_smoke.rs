@@ -47,7 +47,6 @@ fn setup_installs_add_managed_git_info_exclude_blocks() {
             "--output",
             "json",
             "setup",
-            "--no-open-ide",
             "--skill-target-dir",
             skill_dir.to_str().expect("skill path"),
         ])
@@ -70,7 +69,6 @@ fn setup_installs_add_managed_git_info_exclude_blocks() {
             "--output",
             "json",
             "setup",
-            "--no-open-ide",
             "--skill-target-dir",
             codex_skill_dir.to_str().expect("codex skill path"),
         ])
@@ -148,7 +146,6 @@ fn ready_reports_tampered_manifest_backed_skill_resource() {
             "--output",
             "json",
             "setup",
-            "--no-open-ide",
             "--skill-target-dir",
             skill_dir.to_str().expect("skill path"),
         ])

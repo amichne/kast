@@ -14,23 +14,35 @@ copyright = """
 Copyright &copy; 2026 amichne
 """
 nav = [
-  { "Overview" = "index.md" },
+  { "Start" = "index.md" },
   { "Install" = [
-    { "Developer machine" = "getting-started/install.md" },
-    { "Headless Linux server" = "getting-started/headless-linux.md" },
+    { "macOS developer machine" = "install/macos.md" },
+    { "Headless Linux and hosted agents" = "install/headless-linux.md" },
   ]},
-  { "Quickstart" = "getting-started/quickstart.md" },
-  { "Commands" = [
-    { "Overview" = "commands/index.md" },
-    { "Lifecycle" = "commands/lifecycle.md" },
-    { "Install and repair" = "commands/install-repair.md" },
-    { "Agent automation" = "commands/agent.md" },
-    { "Metrics" = "commands/metrics.md" },
-    { "LSP" = "commands/lsp.md" },
+  { "Learn" = [
+    { "First semantic workflow" = "learn/first-semantic-workflow.md" },
+    { "How Kast thinks about evidence" = "learn/evidence-model.md" },
   ]},
-  { "Recipes" = "recipes.md" },
-  { "Troubleshooting" = "troubleshooting.md" },
-  { "Distribution" = "distribution/runtime-artifact-contract.md" },
+  { "Use Kast" = [
+    { "Choose a command" = "use/choose-a-command.md" },
+    { "Inspect Kotlin" = "use/inspect-kotlin.md" },
+    { "Plan safe edits" = "use/plan-safe-edits.md" },
+    { "Automate with agents" = "use/automate-with-agents.md" },
+  ]},
+  { "Reference" = [
+    { "Command surface" = "reference/commands.md" },
+    { "Agent commands" = "reference/agent-commands.md" },
+    { "Mutation selectors" = "reference/mutation-selectors.md" },
+    { "Runtime and output modes" = "reference/runtime-and-output.md" },
+  ]},
+  { "Troubleshoot" = "troubleshoot.md" },
+  { "Distribute" = [
+    { "Release and mirror workflow" = "distribute/release-and-mirror.md" },
+    { "Runtime artifact contract" = "distribute/runtime-artifact-contract.md" },
+  ]},
+  { "Design Notes" = [
+    { "Operating model" = "design/operating-model.md" },
+  ]},
 ]
 
 [project.markdown_extensions.admonition]

@@ -54,7 +54,7 @@ Use focused checks for the changed surface, then broaden before release:
 
 ```console
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workflow_smoke --test agent_output_format_smoke
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_command_surface_smoke --test agent_output_format_smoke
 ./gradlew :analysis-api:test :analysis-server:test
 .github/scripts/test-docs-content-contract.sh
 git diff --check

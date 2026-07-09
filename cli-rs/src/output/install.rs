@@ -5,6 +5,73 @@ pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
     print_markdown(&document.into_string())
 }
 
+pub fn print_install_result(result: &InstallResult) -> Result<()> {
+    match result {
+        InstallResult::ActivateBundle(result) => print_activate_bundle_install(result),
+        InstallResult::AgentGuidance(result) => print_agent_guidance_setup_result(result),
+        InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
+        InstallResult::Shell(result) => print_shell_install(result),
+    }
+}
+
+pub fn print_agent_guidance_setup_plan(result: &AgentGuidanceSetupPlan) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast setup plan");
+    mdln!(document);
+    mdln!(document, "- Skill target: `{}`", result.skill_target);
+    mdln!(
+        document,
+        "- Would run: `{}`",
+        result.install_command.join(" ")
+    );
+    mdln!(document, "- Force: {}", yes_no(result.force));
+    mdln!(document, "- Dry run: {}", yes_no(result.dry_run));
+    if !result.agents_md_targets.is_empty() {
+        mdln!(document);
+        mdln!(document, "## Agent guidance targets");
+        for target in &result.agents_md_targets {
+            mdln!(
+                document,
+                "- `{}` exists {} will create {} will modify {}: {}",
+                target.path,
+                yes_no(target.exists),
+                yes_no(target.will_create),
+                yes_no(target.will_modify),
+                target.reason
+            );
+        }
+    }
+    print_markdown(&document.into_string())
+}
+
+pub fn print_agent_guidance_setup_result(result: &AgentGuidanceSetupResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast setup");
+    mdln!(document);
+    mdln!(document, "- Skill target: `{}`", result.skill.installed_at);
+    mdln!(
+        document,
+        "- Reused existing skill install: {}",
+        yes_no(result.skill.skipped)
+    );
+    mdln!(document, "- Setup skipped: {}", yes_no(result.skipped));
+    if !result.agents_md_targets.is_empty() {
+        mdln!(document);
+        mdln!(document, "## Agent guidance targets");
+        for target in &result.agents_md_targets {
+            mdln!(
+                document,
+                "- `{}` created {} updated {} skipped {}",
+                target.path,
+                yes_no(target.created),
+                yes_no(target.updated),
+                yes_no(target.skipped)
+            );
+        }
+    }
+    print_markdown(&document.into_string())
+}
+
 fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     print_idea_plugin_install_summary(&mut document, result);

@@ -565,12 +565,6 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
             && !extension.contains("rpcArgs("),
         "extension must inject typed command guidance without dynamic tool registration"
     );
-    let install_local = std::fs::read_to_string(plugin_root.join("scripts/install-local.sh"))
-        .expect("local plugin installer");
-    assert!(
-        !install_local.contains("python3"),
-        "local plugin installer must not depend on inline Python"
-    );
     let repo_root = manifest_dir.parent().expect("repo root");
     let package_contract =
         std::fs::read_to_string(repo_root.join(".github/scripts/test-kast-copilot-plugin.sh"))

@@ -1,132 +1,115 @@
 ---
 title: Kast
-description: Developer-oriented command documentation for the Kast CLI.
-icon: lucide/terminal
+description: Journey-first documentation for the Kast CLI and semantic command surface.
+icon: lucide/network
 hide:
   - toc
 ---
 
 # Kast
 
-Kast is a CLI for compiler-backed Kotlin code intelligence. Install the
-machine-level binary once, add minimal repository guidance where agents should
-use it, then drive the workspace with typed `kast` commands.
+Kast gives agents compiler-backed Kotlin and Gradle evidence while keeping the
+developer path simple: install the machine support, open the project, and let
+the agent use Kast when a task needs semantic confidence.
 
-## Start here
+## Start By Reader Job
 
-Choose the path by host first, then run the same semantic command surface from
-the repository. Developer machines use the IDE-backed runtime; CI runners,
-hosted agents, and server images use the headless runtime.
-
-=== "Developer machine"
-
-    The root installer uses Homebrew for the global `kast` binary and refreshes
-    the IDEA or Android Studio plugin. The plugin prepares repository guidance
-    and invocation metadata when the workspace opens.
-
-    ```console title="Install Kast, then enable one repository"
-    cd /path/to/your/repository
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
-    open .
-    ```
-
-=== "Headless Linux"
-
-    Use the Linux headless bundle when the machine is a CI runner, hosted
-    agent, server image, or other host without Homebrew or an open developer
-    IDE.
-
-    ```console title="Install on Ubuntu or Debian"
-    export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
-    ./scripts/install-ubuntu-debian.sh install
-    ./scripts/install-ubuntu-debian.sh verify
-    kast setup --workspace-root "$PWD"
-    ```
-
-## Operating model
-
-Kast separates distribution, plugin-owned macOS workspace setup, runtime
-backend, and semantic commands. Keep those layers separate when debugging or
-automating a workspace.
-
-```mermaid
-flowchart LR
-    machine["Distribution<br/>kast binary and plugin artifact"]
-    repo["Workspace setup<br/>skill, guidance, metadata"]
-    backend["Workspace backend<br/>IDEA or headless"]
-    commands["Semantic commands<br/>typed kast agent commands"]
-    evidence["Evidence<br/>JSON envelopes, hashes, diagnostics"]
-
-    machine --> repo
-    machine --> backend
-    repo --> commands
-    backend --> commands
-    commands --> evidence
-```
-
-| Layer | First command | Proves |
-|-------|---------------|--------|
-| Machine install | `kast ready --for machine` | The active binary, manifest, and local paths are coherent |
-| macOS workspace setup | IntelliJ plugin activation | Agent-facing files and invocation metadata match the distribution version |
-| non-macOS repository resources | `kast setup ...` | Agent-facing files match the running CLI version |
-| Runtime backend | `kast status` | A workspace backend is reachable and reports capabilities |
-| Semantic command layer | `kast agent ...` | The request uses compiler-backed Kotlin evidence |
-
-## Command manual
-
-The published docs are organized around the commands a developer can run.
-`kast help` is the local command tree; these pages explain which command to
-choose, what it reads or writes, and how to verify the result.
-Automation should use typed Kast agent commands rather than generic catalog
-dispatch.
+Choose the path by what you are trying to do. Every path converges on the same
+typed `kast` command surface.
 
 <div class="grid cards" markdown>
 
--   :octicons-download-24:{ .lg .middle } **Install**
+-   :octicons-download-24:{ .lg .middle } **Install on macOS**
 
     ---
 
-    Install the machine binary, plugin, repository files, shell integration,
-    and Linux headless bundle.
+    Install the Homebrew binary and matching JetBrains plugin, then open your
+    project.
 
-    [:octicons-arrow-right-24: Install](getting-started/install.md)
+    [:octicons-arrow-right-24: macOS install](install/macos.md)
 
--   :octicons-zap-24:{ .lg .middle } **Quickstart**
-
-    ---
-
-    Start a backend, resolve a symbol, and find references through the CLI.
-
-    [:octicons-arrow-right-24: Quickstart](getting-started/quickstart.md)
-
--   :octicons-terminal-24:{ .lg .middle } **Commands**
+-   :octicons-server-24:{ .lg .middle } **Install on Linux**
 
     ---
 
-    Read the command groups: readiness, agent automation, runtime, inspect,
-    machine, and release.
+    Install the headless bundle for CI, hosted agents, server images, or
+    mirrored artifact stores.
 
-    [:octicons-arrow-right-24: Command overview](commands/index.md)
+    [:octicons-arrow-right-24: Headless install](install/headless-linux.md)
 
--   :octicons-book-24:{ .lg .middle } **Recipes**
+-   :octicons-zap-24:{ .lg .middle } **Run the first workflow**
 
     ---
 
-    Copy focused command sequences for common Kotlin inspection, validation,
-    and safe-edit workflows.
+    See the semantic workflow agents run behind the scenes.
 
-    [:octicons-arrow-right-24: Recipes](recipes.md)
+    [:octicons-arrow-right-24: First semantic workflow](learn/first-semantic-workflow.md)
+
+-   :octicons-terminal-24:{ .lg .middle } **Choose a command**
+
+    ---
+
+    Pick the high-level command family for inspection, editing, automation, or
+    release work.
+
+    [:octicons-arrow-right-24: Choose a command](use/choose-a-command.md)
 
 </div>
 
-## What Kast commands prove
+## Operating Model
 
-Kast commands are useful when text search is not enough. They resolve the
-declaration the Kotlin analysis engine sees, report whether reference and
-hierarchy evidence was complete or bounded, and plan mutations with file hashes
-before applying edits.
+Kast separates the visible install path from the agent-facing semantic work.
+That keeps setup foolproof for developers while still giving agents typed,
+compiler-backed operations when they need evidence.
 
-!!! tip "Automation boundary"
-    Use `--output json` on operator commands when automation needs structured
-    payloads. Use typed `kast agent` commands for compiler-backed semantic
-    calls.
+```mermaid
+flowchart LR
+    distribution["Distribution<br/>binary, plugin, bundle"]
+    setup["Workspace setup<br/>skill, guidance, metadata"]
+    runtime["Runtime backend<br/>IDEA or headless"]
+    commands["Typed commands<br/>kast agent ..."]
+    evidence["Evidence<br/>symbols, diagnostics, plans"]
+
+    distribution --> setup
+    distribution --> runtime
+    setup --> commands
+    runtime --> commands
+    commands --> evidence
+```
+
+| Layer | Reader question | First page |
+| --- | --- | --- |
+| Distribution | How do I install Kast? | [Install](install/macos.md) |
+| Workspace setup | What prepares a project for agents? | [Automate with agents](use/automate-with-agents.md) |
+| Runtime backend | What answers semantic requests? | [Runtime and output](reference/runtime-and-output.md) |
+| Semantic commands | What does the agent ask Kast to do? | [Agent commands](reference/agent-commands.md) |
+| Evidence | What does Kast prove that text search cannot? | [How Kast thinks about evidence](learn/evidence-model.md) |
+
+## Reference Paths
+
+Use reference pages when you need lookup accuracy rather than a task flow.
+
+- [Command surface](reference/commands.md) lists curated public command groups.
+- [Agent commands](reference/agent-commands.md) lists typed semantic commands.
+- [Mutation selectors](reference/mutation-selectors.md) describes edit targets
+  and anchors.
+- [Runtime and output](reference/runtime-and-output.md) covers backend
+  selection and readable or JSON output.
+- [Runtime artifact contract](distribute/runtime-artifact-contract.md) records
+  bundle, manifest, checksum, and ledger facts.
+
+## When Something Fails
+
+Use the [troubleshooting matrix](troubleshoot.md) to separate install issues,
+backend state, indexing, semantic failures, and mutation planning. Most readers
+should start with the visible symptom, not the internal command sequence.
+
+??? info "Agent checks"
+    Agents and support scripts can use read-only checks before retrying a
+    semantic operation.
+
+    ```console
+    kast --output json ready --for agent --workspace-root "$PWD"
+    kast --output json agent verify --workspace-root "$PWD"
+    kast --output json status --workspace-root "$PWD"
+    ```

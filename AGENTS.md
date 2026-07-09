@@ -80,7 +80,7 @@ edit the source tree and regenerate.
 <kast>
 ## Kast routing
 Use `/Users/amichne/code/kast/.agents/skills/kast/SKILL.md` before Kotlin or Gradle semantic work.
-Use `kast`, `kast help`, `kast ready`, and `kast agent verify --workspace-root "$PWD"` to orient.
+Use `kast agent verify --workspace-root "$PWD"` to verify the plugin-prepared workspace.
 Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.
-Run `kast repair --apply` only when readiness output asks for install-state repair.
+Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.
 </kast>

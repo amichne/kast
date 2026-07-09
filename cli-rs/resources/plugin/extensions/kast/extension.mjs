@@ -7,7 +7,7 @@ import { joinSession } from "@github/copilot-sdk/extension";
 import { createTraceEmitter } from "./_shared/kast-trace.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT_MARKER = "workspace.repos.toml";
+const ROOT_MARKERS = ["settings.gradle.kts", "settings.gradle", "build.gradle.kts", "build.gradle"];
 const KAST_TOOLING_CONTEXT = [
   "Kast tooling preference:",
   "For Kotlin or Gradle semantic work, use the configured kotlin LSP server first for standard editor operations.",
@@ -28,7 +28,7 @@ let kastBinary = null;
 let resolveError = null;
 
 function hasRepoMarker(path) {
-  return existsSync(resolve(path, ROOT_MARKER)) && existsSync(resolve(path, ".github"));
+  return existsSync(resolve(path, ".github")) && ROOT_MARKERS.some((marker) => existsSync(resolve(path, marker)));
 }
 
 function findRepoRoot(start) {

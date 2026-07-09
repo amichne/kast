@@ -15,7 +15,7 @@ metadata.
   lookup material.
 - `references/workflows.md` owns install/config/package verification, project
   readiness, semantic workflow sequencing, and recovery ownership.
-- `scripts/verify-kast-state.py` is an internal deterministic helper for
+- `scripts/verify-kast-state.py` is the internal deterministic helper for
   read-only state checks.
 
 The current source-of-truth contract for the public product surface, workflows,
@@ -33,8 +33,8 @@ AXI command dialect, and validation gates is
 - Keep recovery guidance resolve-first and compiler-backed.
 - Skill guidance routes agents to `kast ready`, `kast repair`, and typed
   `kast agent` commands.
-- Scripts are internal verification helpers. Keep them JSON-emitting, eager
-  about input validation, and read-only by default.
+- The packaged script is an internal verification helper. Keep it
+  JSON-emitting, eager about input validation, and read-only by default.
 
 ## Downstream surfaces
 

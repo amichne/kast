@@ -60,18 +60,12 @@ pub struct SetupArgs {
     /// Absolute workspace root for repository guidance setup.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Backend to warm after repository guidance setup.
-    #[arg(long = "backend", value_enum, hide = true)]
-    pub backend_name: Option<BackendName>,
     /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
     #[arg(long = "skill-target-dir")]
     pub skill_target_dir: Option<PathBuf>,
     /// Repository context file to patch with Kast managed guidance.
     #[arg(long = "context-file")]
     pub context_files: Vec<PathBuf>,
-    /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
-    #[arg(long = "agents-md", hide = true)]
-    pub agents_md: Vec<PathBuf>,
     /// Overwrite existing managed resources.
     #[arg(short = 'f', long)]
     pub force: bool,
@@ -81,9 +75,6 @@ pub struct SetupArgs {
     /// Explain repository setup without writing files.
     #[arg(long)]
     pub dry_run: bool,
-    /// Skip automatic IDE onboarding/opening steps.
-    #[arg(long = "no-open-ide", alias = "no-onboard", hide = true)]
-    pub no_open_ide: bool,
 }
 
 #[derive(Debug, Args, Clone)]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only Kast install, package, and workspace verifier."""
+"""Read-only Kast CLI, skill, and workspace verifier."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
+MACOS_SKILL_RECOVERY = "reopen the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled"
 
 
 def setup_recovery_command(
@@ -35,18 +36,11 @@ def recovery_commands(kast_executable: str | None) -> dict[str, str]:
     executable = kast_executable or "kast"
     return {
         "ready": shlex.join([executable, "repair", "--apply"]),
-        "skill": setup_recovery_command(kast_executable),
         "development": "./gradlew installDevelopmentLocal",
     }
 
 
 RECOVERY = recovery_commands("kast")
-COPILOT_FILES = [
-    "lsp.json",
-    "extensions/kast/extension.mjs",
-    "extensions/kast/_shared/kast-tools.mjs",
-    "extensions/kast/_shared/kast-trace.mjs",
-]
 
 
 def parse_args() -> argparse.Namespace:
@@ -351,7 +345,12 @@ def verify_ready_and_paths(
     timeout: int,
     tolerate_resource_output_issues: bool = False,
 ) -> dict[str, Any] | None:
-    ready = command_record(kast_command + ["--output", "json", "ready"], workspace_root, timeout)
+    ready = command_record(
+        kast_command
+        + ["--output", "json", "ready", "--for", "agent", "--workspace-root", str(workspace_root)],
+        workspace_root,
+        timeout,
+    )
     ready_json = parse_json_output(ready)
     ready_issues = ready_json.get("issues", []) if isinstance(ready_json, dict) else []
     tolerated_resource_issues = (
@@ -374,10 +373,10 @@ def verify_ready_and_paths(
             add_warning(
                 result,
                 "KAST_READY_RESOURCE_OUTPUTS",
-                "`kast --output json ready` reported manifest resource output issues; explicit --skill-root verification checks the selected skill target separately.",
+                "`kast --output json ready --for agent --workspace-root <repo>` reported manifest resource output issues; explicit --skill-root verification checks the selected skill target separately.",
             )
         else:
-            message = "`kast --output json ready` did not prove a healthy install."
+            message = "`kast --output json ready --for agent --workspace-root <repo>` did not prove a healthy install."
             if isinstance(ready_json, dict) and ready_json.get("issues"):
                 message = f"{message} Issues: {ready_json['issues']}"
             add_issue(result, "KAST_READY_UNHEALTHY", message, RECOVERY["ready"])
@@ -385,7 +384,7 @@ def verify_ready_and_paths(
         add_warning(
             result,
             "KAST_READY_WARNINGS",
-            f"`kast --output json ready` reported warnings: {ready_json['warnings']}",
+            f"`kast --output json ready --for agent --workspace-root <repo>` reported warnings: {ready_json['warnings']}",
         )
 
     paths = command_record(
@@ -508,116 +507,21 @@ def verify_workspace(result: dict[str, Any], workspace_root: Path, require_gradl
         )
 
 
-def verify_copilot(
-    result: dict[str, Any],
-    workspace_root: Path,
-    expected_version: str | None,
-    required: bool,
-    ready_json: dict[str, Any] | None,
-    kast_executable: str | None = None,
-    target_dirs: list[Path] | None = None,
-) -> None:
-    target_dirs = target_dirs or [workspace_root / ".github"]
-    targets = [
-        copilot_target_check(github_dir, expected_version, ready_json)
-        for github_dir in target_dirs
-    ]
-    check = dict(targets[0]) if targets else {"targets": []}
-    check["targets"] = targets
-    result["checks"]["copilotPackage"] = check
-    stale_targets = [target for target in targets if not target["current"]]
-    stale_installed_targets = [
-        target
-        for target in targets
-        if target["exists"]
-        and (
-            target["manifestOutputMismatches"]
-            or not target["versionMatchesExpected"]
-            or not target["manifestResource"]
-            or target["retiredMarkerExists"]
-        )
-    ]
-    if required and stale_targets:
-        recovery = copilot_recovery_command(kast_executable, workspace_root, stale_targets, target_dirs)
-        add_issue(
-            result,
-            "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package is missing or stale under {stale_targets[0]['target']}.",
-            recovery,
-        )
-    elif stale_installed_targets:
-        add_warning(
-            result,
-            "COPILOT_PACKAGE_STALE",
-            f"Repository Copilot package differs from the manifest-backed expected state under {stale_installed_targets[0]['target']}.",
-        )
-
-
-def copilot_target_check(
-    github_dir: Path,
-    expected_version: str | None,
-    ready_json: dict[str, Any] | None,
-) -> dict[str, Any]:
-    files = {
-        relative: {
-            "path": str(github_dir / relative),
-            "exists": (github_dir / relative).is_file(),
-        }
-        for relative in COPILOT_FILES
-    }
-    retired_marker_exists = (github_dir / ".kast-copilot-version").exists()
-    resource = resource_record_for_target(ready_json, "COPILOT_PACKAGE", github_dir)
-    output_mismatches = manifest_output_mismatches(resource)
-    missing = [relative for relative, info in files.items() if not info["exists"]]
-    stale = bool(output_mismatches) if resource else False
-    version_mismatch = expected_version and resource and expected_version != resource.get("primitiveVersion")
-    missing_record = github_dir.is_dir() and resource is None
-    retired_marker = retired_marker_exists
-    current = not (missing or stale or version_mismatch or missing_record or retired_marker)
-    return {
-        "target": str(github_dir),
-        "exists": github_dir.is_dir(),
-        "current": current,
-        "files": files,
-        "retiredMarkerExists": retired_marker_exists,
-        "expectedVersion": expected_version,
-        "manifestResource": resource,
-        "manifestOutputMismatches": output_mismatches,
-        "versionMatchesExpected": bool(
-            resource and expected_version and resource.get("primitiveVersion") == expected_version
-        ),
-    }
-
-
-def copilot_recovery_command(
-    kast_executable: str | None,
-    workspace_root: Path,
-    stale_targets: list[dict[str, Any]],
-    target_dirs: list[Path],
-) -> str:
-    default_target = workspace_root / ".github"
-    target = Path(stale_targets[0]["target"]) if stale_targets else default_target
-    if target_dirs and normalize(target_dirs[0]) != normalize(default_target):
-        return setup_recovery_command(kast_executable, "copilot", target)
-    return setup_recovery_command(kast_executable, "copilot")
-
-
 def resource_target_from_target_dir(target_dir: Path) -> Path:
     if target_dir.name == "kast":
         return target_dir
     return target_dir / "kast"
 
 
-def resource_targets(
+def skill_targets(
     workspace_root: Path,
-    kind: str,
     target_dirs: list[Path] | None = None,
 ) -> list[Path]:
     targets = [
-        workspace_root / ".agents" / kind / "kast",
-        workspace_root / ".codex" / kind / "kast",
-        workspace_root / ".github" / kind / "kast",
-        workspace_root / ".claude" / kind / "kast",
+        workspace_root / ".agents" / "skills" / "kast",
+        workspace_root / ".codex" / "skills" / "kast",
+        workspace_root / ".github" / "skills" / "kast",
+        workspace_root / ".claude" / "skills" / "kast",
     ]
     for target_dir in target_dirs or []:
         target = resource_target_from_target_dir(target_dir)
@@ -626,10 +530,9 @@ def resource_targets(
     return targets
 
 
-def resource_recovery_command(
+def skill_recovery_command(
     kast_executable: str | None,
     workspace_root: Path,
-    kind: str,
     stale_targets: list[dict[str, Any]],
     target_dirs: list[Path] | None = None,
 ) -> str:
@@ -638,15 +541,16 @@ def resource_recovery_command(
     elif target_dirs:
         target_dir = target_dirs[0]
     else:
-        target_dir = resource_targets(workspace_root, kind)[0].parent
+        target_dir = skill_targets(workspace_root)[0].parent
+    if sys.platform == "darwin":
+        return MACOS_SKILL_RECOVERY
     return setup_recovery_command(kast_executable, target_dir)
 
 
-def verify_resource_install(
+def verify_skill_install(
     result: dict[str, Any],
     workspace_root: Path,
     expected_version: str | None,
-    kind: str,
     required: bool,
     source_root: Path | None = None,
     content_files: list[str] | None = None,
@@ -655,9 +559,8 @@ def verify_resource_install(
     target_dirs: list[Path] | None = None,
 ) -> None:
     targets = []
-    manifest_kind = "SKILL" if kind == "skills" else "INSTRUCTIONS"
-    for target in resource_targets(workspace_root, kind, target_dirs):
-        resource = resource_record_for_target(ready_json, manifest_kind, target)
+    for target in skill_targets(workspace_root, target_dirs):
+        resource = resource_record_for_target(ready_json, "SKILL", target)
         output_mismatches = manifest_output_mismatches(resource)
         retired_marker_exists = (target / ".kast-version").exists()
         content_mismatches: list[str] = []
@@ -681,7 +584,7 @@ def verify_resource_install(
                 "contentMismatches": content_mismatches,
             }
         )
-    result["checks"][kind] = {"targets": targets}
+    result["checks"]["skills"] = {"targets": targets}
     installed = [target for target in targets if target["exists"]]
     stale = [
         target
@@ -693,31 +596,29 @@ def verify_resource_install(
         or target["contentMismatches"]
     ]
     if required and (not installed or stale):
-        recovery = resource_recovery_command(
+        recovery = skill_recovery_command(
             kast_executable,
             workspace_root,
-            kind,
             stale,
             target_dirs,
         )
         add_issue(
             result,
-            f"{kind.upper()}_STALE",
-            f"No current repository-local Kast {kind} install was found.",
+            "SKILLS_STALE",
+            "No current repository-local Kast skills install was found.",
             recovery,
         )
     elif stale:
-        recovery = resource_recovery_command(
+        recovery = skill_recovery_command(
             kast_executable,
             workspace_root,
-            kind,
             stale,
             target_dirs,
         )
         add_warning(
             result,
-            f"{kind.upper()}_STALE",
-            f"A repository-local Kast {kind} install exists but does not match the current expected state. Recovery: {recovery}",
+            "SKILLS_STALE",
+            f"A repository-local Kast skills install exists but does not match the current expected state. Recovery: {recovery}",
         )
 
 
@@ -780,11 +681,10 @@ def main() -> int:
 
     expected_version = result["checks"].get("commandSurface", {}).get("cliVersion")
     verify_workspace(result, workspace_root, args.require_gradle_project)
-    verify_resource_install(
+    verify_skill_install(
         result,
         workspace_root,
         expected_version,
-        "skills",
         args.require_skill,
         skill_root,
         ["SKILL.md"],

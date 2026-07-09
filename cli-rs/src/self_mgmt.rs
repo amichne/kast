@@ -682,14 +682,6 @@ pub fn update_global_config(
     update_config_file(&path, mutator)
 }
 
-pub fn update_workspace_config(
-    workspace_root: &Path,
-    mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
-) -> Result<PathBuf> {
-    let path = config::workspace_data_directory(workspace_root)?.join("config.toml");
-    update_config_file(&path, mutator)
-}
-
 pub fn configure_developer_machine_defaults(
     dry_run: bool,
 ) -> Result<DeveloperMachineDefaultsResult> {

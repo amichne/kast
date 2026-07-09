@@ -149,41 +149,4 @@ if (!record.canonicalTargetFilePath?.endsWith("extensions/kast/extension.mjs")) 
 }
 NODE
 
-install_status=0
-if "${plugin_root}/scripts/install-local.sh" --target "$tmp_dir" --force >"${tmp_dir}/install.json"; then
-  install_status=0
-else
-  install_status=$?
-fi
-if [[ "$install_status" -eq 0 ]]; then
-  printf '%s\n' "expected removed Copilot installer to fail" >&2
-  exit 1
-fi
-
-test ! -e "$tmp_dir/.github/lsp.json"
-test ! -e "$tmp_dir/.github/extensions/kast/extension.mjs"
-test ! -e "$tmp_dir/.github/extensions/kast/_shared/kast-trace.mjs"
-test ! -e "$tmp_dir/.github/extensions/kast/_shared/kast-tools.mjs"
-test ! -e "$tmp_dir/.github/.kast-copilot-version"
-
-node --input-type=module - "$tmp_dir/install.json" <<'NODE'
-import { readFileSync } from "node:fs";
-
-const payload = JSON.parse(readFileSync(process.argv[2], "utf8"));
-if (payload.ok !== false || payload.method !== "plugin/install-local" || payload.error?.code !== "PLUGIN_INSTALL_REMOVED") {
-  throw new Error(`unexpected removed Copilot installer envelope: ${JSON.stringify(payload)}`);
-}
-const replacements = new Set(payload.error?.details?.replacements ?? []);
-for (const expected of [
-  "copilot --plugin-dir cli-rs/resources/plugin",
-  "brew install amichne/kast/kast",
-  "kast developer machine plugin",
-  "kast agent verify --workspace-root <repo>",
-]) {
-  if (!replacements.has(expected)) {
-    throw new Error(`removed Copilot installer missing replacement: ${expected}`);
-  }
-}
-NODE
-
 printf 'Kast Copilot plugin tests passed\n'
