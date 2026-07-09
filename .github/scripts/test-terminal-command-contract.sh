@@ -44,7 +44,6 @@ set +e
 setup_json="$(
   TERM=dumb run_kast --output json setup \
     --workspace-root "$workspace" \
-    --backend idea \
     --dry-run
 )"
 setup_status=$?
@@ -69,18 +68,14 @@ if payload.get("ok") is False:
     sys.exit(0)
 
 assert status == 0, payload
-assert payload["type"] == "SETUP_RUNTIME", payload
-assert payload["ok"] is True, payload
-assert payload["stage"] == "DRY_RUN", payload
+assert payload["type"] == "AGENT_SETUP_PLAN", payload
 assert payload["dryRun"] is True, payload
-assert payload["setup"]["type"] == "AGENT_SETUP_PLAN", payload
-assert payload["setup"]["skillTarget"] == f"{workspace}/.agents/skills/kast", payload
-assert len(payload["setup"]["agentsMdTargets"]) == 1, payload
-assert payload["setup"]["agentsMdTargets"][0]["path"] == f"{workspace}/AGENTS.local.md", payload
-assert payload["setup"]["agentsMdTargets"][0]["willCreate"] is True, payload
-assert payload["nextActions"][0]["label"] == "Run setup", payload
-assert "--workspace-root" in payload["nextActions"][0]["argv"], payload
-assert "--backend" in payload["nextActions"][0]["argv"], payload
+assert payload["skillTarget"] == f"{workspace}/.agents/skills/kast", payload
+assert len(payload["agentsMdTargets"]) == 1, payload
+assert payload["agentsMdTargets"][0]["path"] == f"{workspace}/AGENTS.local.md", payload
+assert payload["agentsMdTargets"][0]["willCreate"] is True, payload
+assert "--workspace-root" in payload["installCommand"], payload
+assert "--backend" not in payload["installCommand"], payload
 PY
 
-printf '%s\n' "Terminal onboarding contract passed"
+printf '%s\n' "Terminal command contract passed"

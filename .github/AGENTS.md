@@ -20,8 +20,8 @@ path is the headless runtime plus the published `kast-action` contract smoke.
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
-For CLI terminal onboarding or command-example changes, run
-`.github/scripts/test-terminal-onboarding-contract.sh`.
+For CLI terminal command or executable example changes, run
+`.github/scripts/test-terminal-command-contract.sh`.
 
 Publishable CI artifacts are single-producer per commit. Producer jobs must
 write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
@@ -54,10 +54,10 @@ For docs contract changes, run:
 zensical build --clean
 ```
 
-For terminal onboarding and executable command examples, run:
+For terminal commands and executable examples, run:
 
 ```console
-.github/scripts/test-terminal-onboarding-contract.sh
+.github/scripts/test-terminal-command-contract.sh
 ```
 
 For plugin-eval metric pack changes, run the script that owns the changed pack,

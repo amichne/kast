@@ -5,8 +5,6 @@ pub struct KastConfig {
     pub runtime: RuntimeConfig,
     #[serde(skip_serializing_if = "ProjectOpenConfig::is_default")]
     pub project_open: ProjectOpenConfig,
-    #[serde(skip_serializing_if = "OnboardingConfig::is_default")]
-    pub onboarding: OnboardingConfig,
     pub indexing: IndexingConfig,
     pub cache: CacheConfig,
     pub watcher: WatcherConfig,
@@ -127,18 +125,6 @@ impl Default for ProjectOpenConfig {
             auto_exclude_git: true,
             gradle_load_enabled: true,
         }
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OnboardingConfig {
-    pub setup_completed: bool,
-}
-
-impl OnboardingConfig {
-    fn is_default(&self) -> bool {
-        !self.setup_completed
     }
 }
 

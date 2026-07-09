@@ -12,7 +12,6 @@ impl KastConfig {
             },
             runtime: RuntimeConfig::default(),
             project_open: ProjectOpenConfig::default(),
-            onboarding: OnboardingConfig::default(),
             indexing: IndexingConfig {
                 phase2_enabled: true,
                 phase2_batch_size: 50,
@@ -95,12 +94,6 @@ impl KastConfig {
         Ok(config)
     }
 
-    pub fn can_run_setup_onboarding(&self) -> bool {
-        !self.onboarding.setup_completed
-            && self.runtime.is_default()
-            && self.project_open.is_default()
-    }
-
     fn apply_workspace_cache_environment(&mut self, workspace_root: &Path) {
         let Some(cache_home) = env_path("KAST_CACHE_HOME") else {
             return;
@@ -168,11 +161,6 @@ impl KastConfig {
             if let Some(value) = project_open.gradle_load_enabled {
                 self.project_open.gradle_load_enabled = value;
             }
-        }
-        if let Some(onboarding) = partial.onboarding
-            && let Some(value) = onboarding.setup_completed
-        {
-            self.onboarding.setup_completed = value;
         }
         if let Some(indexing) = partial.indexing {
             if let Some(value) = indexing.phase2_enabled {

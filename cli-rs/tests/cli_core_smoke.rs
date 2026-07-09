@@ -475,6 +475,22 @@ fn smoke_core_cli_commands() {
         !agents_md.status.success(),
         "root setup should not accept legacy --agents-md context aliases"
     );
+    let setup_backend = kast(&home, &config_home)
+        .args(["setup", "--backend", "idea"])
+        .output()
+        .expect("setup backend rejected");
+    assert!(
+        !setup_backend.status.success(),
+        "root setup should not accept hidden runtime warmup flags"
+    );
+    let no_open_ide = kast(&home, &config_home)
+        .args(["setup", "--no-open-ide"])
+        .output()
+        .expect("setup no-open-ide rejected");
+    assert!(
+        !no_open_ide.status.success(),
+        "root setup should not accept hidden IDE-opening suppression flags"
+    );
     let no_onboard = kast(&home, &config_home)
         .args(["setup", "--no-onboard"])
         .output()

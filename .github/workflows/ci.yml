@@ -46,9 +46,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Test terminal onboarding contract
+      - name: Test terminal command contract
         shell: bash
-        run: ./.github/scripts/test-terminal-onboarding-contract.sh
+        run: ./.github/scripts/test-terminal-command-contract.sh
 
       - name: Test Kast routing evals
         shell: bash

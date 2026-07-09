@@ -4,7 +4,6 @@ struct PartialConfig {
     server: Option<PartialServer>,
     runtime: Option<PartialRuntime>,
     project_open: Option<PartialProjectOpen>,
-    onboarding: Option<PartialOnboarding>,
     indexing: Option<PartialIndexing>,
     cache: Option<PartialCache>,
     watcher: Option<PartialWatcher>,
@@ -46,12 +45,6 @@ struct PartialProjectOpen {
     profile: Option<ProjectOpenProfile>,
     auto_exclude_git: Option<bool>,
     gradle_load_enabled: Option<bool>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialOnboarding {
-    setup_completed: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

@@ -60,9 +60,6 @@ pub struct SetupArgs {
     /// Absolute workspace root for repository guidance setup.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Backend to warm after repository guidance setup.
-    #[arg(long = "backend", value_enum, hide = true)]
-    pub backend_name: Option<BackendName>,
     /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
     #[arg(long = "skill-target-dir")]
     pub skill_target_dir: Option<PathBuf>,
@@ -78,9 +75,6 @@ pub struct SetupArgs {
     /// Explain repository setup without writing files.
     #[arg(long)]
     pub dry_run: bool,
-    /// Skip automatic IDE onboarding/opening steps.
-    #[arg(long = "no-open-ide", hide = true)]
-    pub no_open_ide: bool,
 }
 
 #[derive(Debug, Args, Clone)]

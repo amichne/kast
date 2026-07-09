@@ -5,7 +5,6 @@ use crate::install::{
     ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult,
     InstallIdeaPluginResult, InstallResult, InstallShellResult,
 };
-use crate::orchestration::{SetupRuntimeNextAction, SetupRuntimeResult, SetupRuntimeStage};
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
@@ -31,7 +30,6 @@ macro_rules! mdln {
 }
 
 include!("output/core.rs");
-include!("output/setup_runtime.rs");
 include!("output/package_runtime.rs");
 include!("output/ready.rs");
 include!("output/tables.rs");
