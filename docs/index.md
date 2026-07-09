@@ -8,9 +8,10 @@ hide:
 
 # Kast
 
-Kast is a CLI for compiler-backed Kotlin code intelligence. Install the
-machine-level binary once, add minimal repository guidance where agents should
-use it, then drive the workspace with typed `kast` commands.
+Kast is an agent-first, compiler-backed Kotlin and Gradle semantic control
+plane exposed through typed CLI commands. Install the machine-level binary once,
+add minimal repository guidance where agents should use it, then drive the
+workspace with typed `kast` commands.
 
 ## Start here
 

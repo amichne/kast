@@ -17,14 +17,14 @@ cd /path/to/your/repository
 ```
 
 The installer is macOS-only. It uses Homebrew to install the global `kast`
-binary, invokes the version-coupled IDEA plugin installer, and asks you to open
-the repository so the plugin can prepare workspace metadata. Run it from the
-repository root; the current directory is the default workspace root. Like the
-Homebrew installer, mutating commands explain what they will do and pause before
-they change the machine. Use `NONINTERACTIVE=1` only when automation has
-already accepted that plan. The script fails before mutation for unsupported
-hosts, unknown commands, invalid flags, invalid tap values, invalid tap URLs,
-or missing workspace roots.
+binary, invokes the version-coupled IntelliJ IDEA or Android Studio plugin
+installer, and asks you to open the repository so the plugin can prepare workspace metadata.
+Run it from the repository root; the current directory is the default
+workspace root. Like the Homebrew installer, mutating commands explain what they
+will do and pause before they change the machine. Use `NONINTERACTIVE=1` only
+when automation has already accepted that plan. The script fails before mutation
+for unsupported hosts, unknown commands, invalid flags, invalid tap values,
+invalid tap URLs, or missing workspace roots.
 
 Use `update` when the Homebrew path is hidden behind the installer:
 

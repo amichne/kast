@@ -8,6 +8,9 @@ icon: lucide/bot
 
 `kast agent` is the typed, machine-oriented surface for agents and scripts. It
 defaults to compact TOON; pass `--output json` when a script needs JSON.
+The V1 surface is `kast agent verify`, `kast agent symbol`,
+`kast agent diagnostics`, `kast agent impact`, `kast agent rename`, mutation
+commands, and `kast agent lsp`.
 
 ## Start With Readiness
 
