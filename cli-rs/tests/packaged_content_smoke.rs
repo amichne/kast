@@ -91,6 +91,10 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         "raw hidden aliases should not be installed as the primary skill route: {skill}"
     );
     assert!(
+        !skill.contains("`kast runtime "),
+        "retired top-level runtime alias should not be installed as skill guidance: {skill}"
+    );
+    assert!(
         !skill.contains("| Need | Use |"),
         "installed skill should stay thin instead of shipping a bulky route table: {skill}"
     );
@@ -98,6 +102,23 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         skill.lines().count() <= 70,
         "installed skill should stay thin: {} lines",
         skill.lines().count()
+    );
+}
+
+#[test]
+fn packaged_workflow_reference_uses_current_runtime_surface() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflows_path = root.join("resources/kast-skill/references/workflows.md");
+    let workflows = std::fs::read_to_string(&workflows_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", workflows_path.display()));
+
+    assert!(
+        workflows.contains("`kast developer runtime status --workspace-root \"$PWD\"`"),
+        "{workflows}"
+    );
+    assert!(
+        !workflows.contains("`kast runtime "),
+        "workflow reference should not teach retired top-level runtime aliases: {workflows}"
     );
 }
 

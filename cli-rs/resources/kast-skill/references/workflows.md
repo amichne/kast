@@ -32,7 +32,7 @@ Use these health boundaries:
 | workspace/runtime state | `kast status --workspace-root "$PWD"` |
 | readiness for a task | `kast ready --for agent --workspace-root "$PWD"` |
 | semantic backend capability | `kast agent verify --workspace-root "$PWD"` |
-| daemon lifecycle | `kast runtime status --workspace-root "$PWD"` |
+| daemon lifecycle | `kast developer runtime status --workspace-root "$PWD"` |
 | install-state repair plan | `kast repair --for agent --workspace-root "$PWD"` |
 | install-state repair apply | `kast repair --for agent --workspace-root "$PWD" --apply` |
 
