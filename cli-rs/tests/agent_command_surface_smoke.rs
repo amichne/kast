@@ -2,7 +2,7 @@ mod support;
 
 use support::*;
 
-fn assert_removed_workflow(stdout: &serde_json::Value) {
+fn assert_removed_agent_workflow(stdout: &serde_json::Value) {
     assert_eq!(stdout["ok"], false, "{stdout}");
     assert_eq!(stdout["method"], "agent/workflow", "{stdout}");
     assert_eq!(stdout["error"]["code"], "AGENT_COMMAND_REMOVED", "{stdout}");
@@ -24,7 +24,7 @@ fn assert_removed_workflow(stdout: &serde_json::Value) {
 }
 
 #[test]
-fn agent_workflow_package_verify_reports_removed_command() {
+fn removed_agent_workflow_package_verify_fails_closed() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -54,11 +54,11 @@ fn agent_workflow_package_verify_reports_removed_command() {
     );
     let stdout: serde_json::Value =
         serde_json::from_slice(&workflow.stdout).expect("workflow removal json");
-    assert_removed_workflow(&stdout);
+    assert_removed_agent_workflow(&stdout);
 }
 
 #[test]
-fn agent_workflow_write_validate_reports_removed_command_before_mutation() {
+fn removed_agent_workflow_write_validate_fails_before_mutation() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -91,7 +91,7 @@ fn agent_workflow_write_validate_reports_removed_command_before_mutation() {
     );
     let stdout: serde_json::Value =
         serde_json::from_slice(&workflow.stdout).expect("workflow removal json");
-    assert_removed_workflow(&stdout);
+    assert_removed_agent_workflow(&stdout);
 }
 
 #[test]
