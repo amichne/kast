@@ -63,11 +63,9 @@ ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-d
 devin_runtime_packager="${repo_root}/scripts/package-devin-runtime.sh"
 gradle_ro_cache_packager="${repo_root}/scripts/package-gradle-ro-cache.sh"
 setup_kast_verifier="${repo_root}/scripts/verify-setup-kast-install.sh"
-devin_snapshot_build_verifier="${repo_root}/scripts/verify-devin-snapshot-build.sh"
 ci_gradle_retry="${repo_root}/scripts/ci-gradle-retry.sh"
 ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
 devin_packager_test="${repo_root}/.github/scripts/test-devin-artifact-packagers.sh"
-devin_snapshot_build_verifier_test="${repo_root}/.github/scripts/test-devin-snapshot-build-verifier.sh"
 ci_artifact_ledger_test="${repo_root}/.github/scripts/test-ci-artifact-ledger.sh"
 runtime_artifact_contract="${repo_root}/docs/distribution/runtime-artifact-contract.md"
 kast_script="${repo_root}/kast.sh"
@@ -95,11 +93,9 @@ for path in \
   "$devin_runtime_packager" \
   "$gradle_ro_cache_packager" \
   "$setup_kast_verifier" \
-  "$devin_snapshot_build_verifier" \
   "$ci_gradle_retry" \
   "$ci_gradle_retry_test" \
   "$devin_packager_test" \
-  "$devin_snapshot_build_verifier_test" \
   "$ci_artifact_ledger_test" \
   "$runtime_artifact_contract" \
   "$kast_script"
@@ -167,7 +163,6 @@ require_not_contains "$ci_workflow" "cargo run --manifest-path cli-rs/Cargo.toml
 require_contains "$ubuntu_debian_validator" "docker pull --platform linux/amd64" "Ubuntu/Debian container validation must pre-pull matrix images with retry before docker run"
 require_contains "$ci_workflow" "Test Devin artifact packagers" "CI must test Devin runtime and Gradle cache packagers"
 require_not_contains "$ci_workflow" "npm --prefix setup-kast" "CI must not build a deleted in-repo setup-kast action"
-require_contains "$ci_workflow" "Test Devin snapshot build verifier" "CI must test the Devin snapshot build verifier"
 require_contains "$ci_workflow" "Ensure zstd is available" "CI workflow contracts must install zstd before zstd-dependent local tests"
 require_contains "$ci_workflow" "kast-action runtime contract" "CI must install and start the real kast-action runtime contract"
 require_contains "$ci_workflow" "Package kast-action runtime inputs" "CI must package kast-action inputs from real Linux artifacts"
@@ -370,15 +365,6 @@ require_contains "$setup_kast_verifier" "read-only tree has writable entries" "s
 require_contains "$setup_kast_verifier" "run_gradle_warm_command" "setup-kast verifier must own repo-level Gradle warm checks"
 require_contains "$setup_kast_verifier" "dependencies --no-daemon" "setup-kast verifier must run the Gradle dependencies warm task"
 require_contains "$setup_kast_verifier" "buildEnvironment --no-daemon" "setup-kast verifier must run the Gradle buildEnvironment warm task"
-require_contains "$devin_snapshot_build_verifier" "snapshot-setup/builds" "Devin snapshot verifier must use the documented snapshot setup builds API"
-require_contains "$devin_snapshot_build_verifier" "DEVIN_SERVICE_USER_TOKEN" "Devin snapshot verifier must read the service-user token from the environment"
-require_contains "$devin_snapshot_build_verifier" "DEVIN_API_TOKEN" "Devin snapshot verifier must support the fallback Devin token environment variable"
-require_contains "$devin_snapshot_build_verifier" "--trigger" "Devin snapshot verifier must support triggering a new build"
-require_contains "$devin_snapshot_build_verifier" "ManageOrgSnapshots" "Devin snapshot verifier must document trigger permissions"
-require_contains "$devin_snapshot_build_verifier" "ManageRepoBlueprints" "Devin snapshot verifier must document polling permissions"
-require_contains "$devin_snapshot_build_verifier_test" "fake Devin API" "Devin snapshot verifier test must use a local fake API"
-require_contains "$devin_snapshot_build_verifier_test" "build-ok" "Devin snapshot verifier test must cover successful polling"
-require_contains "$devin_snapshot_build_verifier_test" "build-failed" "Devin snapshot verifier test must cover terminal failure"
 require_contains "$runtime_artifact_contract" "kast developer release package ubuntu-debian-bundle" "Runtime artifact docs must document bundle packaging"
 require_contains "$runtime_artifact_contract" "kast developer release activate bundle" "Runtime artifact docs must document bundle activation"
 require_contains "$runtime_artifact_contract" "scripts/install-ubuntu-debian.sh" "Runtime artifact docs must document the server installer"
