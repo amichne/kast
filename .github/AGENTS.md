@@ -11,7 +11,6 @@ change:
 
 - `.github/workflows/*.yml`
 - `.github/scripts/*`
-- `.github/copilot-instructions.md`
 - `.github/dependabot.yml`
 - `.github/skill-shadowing.json`
 
@@ -28,26 +27,16 @@ against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
 the publisher consume an existing one.
 
-## Generated Copilot package outputs
+## Copilot Package Source
 
-These files are repository-local install outputs from
-`kast agent setup copilot`:
-
-- `.github/lsp.json`
-- `.github/extensions/kast/extension.mjs`
-- `.github/extensions/kast/_shared/kast-tools.mjs`
-- `.github/extensions/kast/_shared/kast-trace.mjs`
-
-Do not make these the source of truth for package behavior. Edit
-`cli-rs/resources/plugin/` first, then reinstall or regenerate the package
-outputs. Copilot loads catalog-derived tool specs from the active CLI through
-`kast agent tools`; no command catalog is copied into `.github`. The global
-`install.json` records installed resource versions and checksums. The durable
-agent-only contract is `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+Repository-local Copilot install outputs are not checked-in V1 sources. The
+retained package source lives under `cli-rs/resources/plugin/` for LSP config
+and prompt-time typed command guidance. Do not add generated `.github`
+package copies or local installer shims here.
 
 ## Verify
 
-For generated Copilot package changes, run:
+For Copilot package source changes, run:
 
 ```console
 .github/scripts/test-kast-copilot-plugin.sh

@@ -165,8 +165,8 @@ kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
 ```
 
 The default context target is the first existing file from `AGENTS.md`,
-`CODEX.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or
-`AGENTS.local.md`; otherwise setup creates ignored `AGENTS.local.md`.
+`CODEX.md`, `CLAUDE.md`, or `AGENTS.local.md`; otherwise setup creates ignored
+`AGENTS.local.md`.
 
 `kast setup` does not install Copilot package files, portable Markdown
 instruction packages, session hooks, generated catalog copies, or workflow

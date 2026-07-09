@@ -80,7 +80,7 @@ fn resolve_agents_md_targets(
             return Err(CliError::new(
                 "AGENT_GUIDANCE_TARGET_INVALID",
                 format!(
-                    "Kast context files must be AGENTS.md, CODEX.md, CLAUDE.md, .github/copilot-instructions.md, or AGENTS.local.md: {}",
+                    "Kast context files must be AGENTS.md, CODEX.md, CLAUDE.md, or AGENTS.local.md: {}",
                     path.display()
                 ),
             ));
@@ -119,7 +119,6 @@ fn default_context_target(workspace_root: &Path) -> AgentsMdTarget {
         "AGENTS.md",
         "CODEX.md",
         "CLAUDE.md",
-        ".github/copilot-instructions.md",
         DEFAULT_AGENT_GUIDANCE_FILE,
     ] {
         let path = workspace_root.join(candidate);
@@ -138,11 +137,7 @@ fn default_context_target(workspace_root: &Path) -> AgentsMdTarget {
     }
 }
 
-fn is_supported_context_file(workspace_root: &Path, path: &Path) -> bool {
-    let relative = path.strip_prefix(workspace_root).unwrap_or(path);
-    if relative.to_str() == Some(".github/copilot-instructions.md") {
-        return true;
-    }
+fn is_supported_context_file(_workspace_root: &Path, path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|name| {

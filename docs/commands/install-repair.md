@@ -25,8 +25,8 @@ kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
 ```
 
 If no supported context file exists, setup creates ignored `AGENTS.local.md`.
-Pass `--context-file` for an explicit `AGENTS.md`, `CODEX.md`, `CLAUDE.md`,
-`.github/copilot-instructions.md`, or `AGENTS.local.md` target.
+Pass `--context-file` for an explicit `AGENTS.md`, `CODEX.md`, `CLAUDE.md`, or
+`AGENTS.local.md` target.
 
 JSON dry-runs report `skillTarget`, `agentsMdTargets`, and `installCommand`.
 
