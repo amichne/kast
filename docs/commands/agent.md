@@ -171,15 +171,3 @@ The default context target is the first existing file from `AGENTS.md`,
 `kast setup` does not install Copilot package files, portable Markdown
 instruction packages, session hooks, generated catalog copies, or workflow
 helper assets.
-
-## Removed Surfaces
-
-The old generic surfaces are intentionally removed from the public dialect.
-Current binaries return targeted replacement hints for stale invocations.
-
-- `kast agent tools`
-- `kast agent call`
-- `kast agent workflow`
-- offset-shaped rename plans
-
-Use `kast help agent` and the installed skill for the current command dialect.

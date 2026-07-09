@@ -59,19 +59,3 @@ kast --output json agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" -
 
 For mutation commands, rerun without `--apply` first. Review the planned
 request, selected scope, content file, and diagnostics before applying.
-
-## Stale Command Surface
-
-Current binaries intentionally remove generic helper commands from the public
-agent dialect. Use the targeted replacement in the structured error.
-
-??? question "What replaced `kast agent tools`?"
-    Use `kast`, `kast help agent`, and the installed Kast skill for command
-    discovery. Agent automation should call typed commands such as
-    `kast agent verify`, `kast agent symbol`, `kast agent diagnostics`, and the
-    plan-first mutation commands.
-
-??? question "What replaced `kast agent call` and `kast agent workflow`?"
-    Use the public typed commands. The raw catalog remains an implementation
-    detail for generated protocol assets and internal adapters, not the normal
-    agent-facing CLI.
