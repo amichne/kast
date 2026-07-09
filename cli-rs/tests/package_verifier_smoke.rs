@@ -66,6 +66,19 @@ fn removed_agent_tools_response() -> &'static str {
     r#"{"ok":false,"method":"agent/tools","error":{"code":"AGENT_COMMAND_REMOVED","message":"removed"},"schemaVersion":3}"#
 }
 
+fn expected_skill_recovery_text(binary: &str, target_dir: &Path) -> String {
+    if cfg!(target_os = "macos") {
+        "reopen the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled"
+            .to_string()
+    } else {
+        format!(
+            "{} setup --skill-target-dir {} --force",
+            binary,
+            target_dir.display()
+        )
+    }
+}
+
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn packaged_verifier_prefers_manifest_resource_checksums() {
@@ -243,11 +256,8 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
     )
     .parent()
     .expect("tampered target parent");
-    let expected_tampered_recovery = format!(
-        "{} setup --skill-target-dir {} --force",
-        env!("CARGO_BIN_EXE_kast"),
-        expected_tampered_target_dir.display()
-    );
+    let expected_tampered_recovery =
+        expected_skill_recovery_text(env!("CARGO_BIN_EXE_kast"), expected_tampered_target_dir);
     let tampered_issue = tampered_json["issues"]
         .as_array()
         .expect("issues")
@@ -353,11 +363,8 @@ fn packaged_verifier_uses_selected_binary_in_skill_recovery() {
     )
     .parent()
     .expect("default skill target parent");
-    let expected_skill_recovery = format!(
-        "{} setup --skill-target-dir {} --force",
-        expected_binary,
-        expected_skill_target_dir.display()
-    );
+    let expected_skill_recovery =
+        expected_skill_recovery_text(&expected_binary, expected_skill_target_dir);
     let skill_issue = stdout["issues"]
         .as_array()
         .expect("issues")
