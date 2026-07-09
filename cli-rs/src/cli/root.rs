@@ -79,7 +79,7 @@ pub struct SetupArgs {
     #[arg(long)]
     pub dry_run: bool,
     /// Skip automatic IDE onboarding/opening steps.
-    #[arg(long = "no-open-ide", alias = "no-onboard", hide = true)]
+    #[arg(long = "no-open-ide", hide = true)]
     pub no_open_ide: bool,
 }
 

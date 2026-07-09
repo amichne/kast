@@ -475,6 +475,14 @@ fn smoke_core_cli_commands() {
         !agents_md.status.success(),
         "root setup should not accept legacy --agents-md context aliases"
     );
+    let no_onboard = kast(&home, &config_home)
+        .args(["setup", "--no-onboard"])
+        .output()
+        .expect("setup no-onboard rejected");
+    assert!(
+        !no_onboard.status.success(),
+        "root setup should not accept legacy --no-onboard aliases"
+    );
 
     let status = kast(&home, &config_home)
         .args([
