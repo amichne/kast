@@ -584,7 +584,7 @@ setupCompleted = true
     }
 
     #[test]
-    fn reads_legacy_agent_up_onboarding_state() {
+    fn ignores_legacy_agent_up_onboarding_state() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
         fs::write(
@@ -598,8 +598,8 @@ agentUpCompleted = true
         let mut config = KastConfig::defaults();
         config.apply(read_partial_config(&config_file).unwrap());
 
-        assert!(config.onboarding.setup_completed);
-        assert!(!config.can_run_setup_onboarding());
+        assert!(!config.onboarding.setup_completed);
+        assert!(config.can_run_setup_onboarding());
     }
 
     #[test]
