@@ -106,6 +106,7 @@ done
 [[ ! -e "${repo_root}/setup-kast" ]] || die "setup-kast action source must live in amichne/kast-action, not this repository"
 [[ ! -e "${repo_root}/.github/scripts/test-setup-kast-action.sh" ]] || die "setup-kast fixture tests must live in amichne/kast-action"
 [[ ! -e "${repo_root}/.github/workflows/copilot-setup-steps.yml" ]] || die "GitHub coding-agent setup workflow is obsolete"
+[[ ! -e "${repo_root}/.github/workflows/claude.yml" ]] || die "Provider-specific assistant trigger workflows are outside the V1 GitHub surface"
 [[ ! -e "${repo_root}/docs/distribution/setup-kast-action.md" ]] || die "Detailed action docs must live in the kast-action repository"
 
 for workflow in "$ci_workflow" "$release_workflow" "$snapshot_workflow" "$docs_workflow" "$seed_gradle_ro_cache_workflow"; do

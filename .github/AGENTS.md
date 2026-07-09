@@ -14,6 +14,9 @@ change:
 - `.github/dependabot.yml`
 - `.github/skill-shadowing.json`
 
+Do not add provider-specific assistant trigger workflows. The V1 hosted-agent
+path is the headless runtime plus the published `kast-action` contract smoke.
+
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
