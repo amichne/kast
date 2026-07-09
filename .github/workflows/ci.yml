@@ -58,10 +58,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-kast-copilot-plugin.sh
 
-      - name: Test workspace repo coordination
-        shell: bash
-        run: ./.github/scripts/test-workspace-sync-status.sh
-
       - name: Test release asset verifier
         shell: bash
         run: ./.github/scripts/test-release-asset-verifier.sh

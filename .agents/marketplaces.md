@@ -36,8 +36,6 @@ or security reason.
   changed.
 - `.github/skill-shadowing.json` maps the repo-local `kast` skill to the
   CLI/RPC contract. The packaged Copilot integration itself is LSP-only.
-- `workspace.repos.toml` records sibling repositories that move with Kast. Treat
-  those entries as checkouts, not vendored marketplace or plugin source.
 
 ## Refresh
 
