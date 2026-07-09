@@ -67,7 +67,8 @@ ci_gradle_retry="${repo_root}/scripts/ci-gradle-retry.sh"
 ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
 headless_packager_test="${repo_root}/.github/scripts/test-headless-runtime-packagers.sh"
 ci_artifact_ledger_test="${repo_root}/.github/scripts/test-ci-artifact-ledger.sh"
-runtime_artifact_contract="${repo_root}/docs/distribution/runtime-artifact-contract.md"
+runtime_artifact_contract="${repo_root}/docs/distribute/runtime-artifact-contract.md"
+release_and_mirror_doc="${repo_root}/docs/distribute/release-and-mirror.md"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -98,6 +99,7 @@ for path in \
   "$headless_packager_test" \
   "$ci_artifact_ledger_test" \
   "$runtime_artifact_contract" \
+  "$release_and_mirror_doc" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -107,7 +109,7 @@ done
 [[ ! -e "${repo_root}/.github/scripts/test-setup-kast-action.sh" ]] || die "setup-kast fixture tests must live in amichne/kast-action"
 [[ ! -e "${repo_root}/.github/workflows/copilot-setup-steps.yml" ]] || die "GitHub coding-agent setup workflow is obsolete"
 [[ ! -e "${repo_root}/.github/workflows/claude.yml" ]] || die "Provider-specific assistant trigger workflows are outside the V1 GitHub surface"
-[[ ! -e "${repo_root}/docs/distribution/setup-kast-action.md" ]] || die "Detailed action docs must live in the kast-action repository"
+[[ ! -e "${repo_root}/docs/distribute/setup-kast-action.md" ]] || die "Detailed action docs must live in the kast-action repository"
 
 for workflow in "$ci_workflow" "$release_workflow" "$snapshot_workflow" "$docs_workflow" "$seed_gradle_ro_cache_workflow"; do
   require_not_contains "$workflow" "actions/cache@v4" "Workflow actions must not use the Node 20 cache action"
@@ -361,10 +363,10 @@ require_contains "$setup_kast_verifier" "read-only tree has writable entries" "s
 require_contains "$setup_kast_verifier" "run_gradle_warm_command" "setup-kast verifier must own repo-level Gradle warm checks"
 require_contains "$setup_kast_verifier" "dependencies --no-daemon" "setup-kast verifier must run the Gradle dependencies warm task"
 require_contains "$setup_kast_verifier" "buildEnvironment --no-daemon" "setup-kast verifier must run the Gradle buildEnvironment warm task"
-require_contains "$runtime_artifact_contract" "kast developer release package ubuntu-debian-bundle" "Runtime artifact docs must document bundle packaging"
-require_contains "$runtime_artifact_contract" "kast developer release activate bundle" "Runtime artifact docs must document bundle activation"
-require_contains "$runtime_artifact_contract" "scripts/install-ubuntu-debian.sh" "Runtime artifact docs must document the server installer"
-require_contains "$runtime_artifact_contract" "scripts/verify-release-assets.sh" "Runtime artifact docs must document release asset verification"
+require_contains "$release_and_mirror_doc" "kast developer release package ubuntu-debian-bundle" "Release workflow docs must document bundle packaging"
+require_contains "$release_and_mirror_doc" "kast developer release activate bundle" "Release workflow docs must document bundle activation"
+require_contains "$release_and_mirror_doc" "scripts/install-ubuntu-debian.sh" "Release workflow docs must document the server installer"
+require_contains "$release_and_mirror_doc" "scripts/verify-release-assets.sh" "Release workflow docs must document release asset verification"
 require_contains "$runtime_artifact_contract" "scripts/verify-ci-artifact-ledger.py verify" "Runtime artifact docs must document build receipt verification"
 require_not_contains "$runtime_artifact_contract" "setup-kast action" "Runtime artifact docs must not publish setup-kast as the action name"
 require_not_contains "$runtime_artifact_contract" "amichne/kast-action@v1" "Runtime artifact docs must not document the old action line"
