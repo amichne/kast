@@ -91,10 +91,13 @@ navigation:
 2. Keep each page tied to one primary reader job and Diataxis role.
 3. Update `.agents/docs/documentation-journeys.md` when reader journeys or page
    roles change.
-4. Keep examples command-first and prefer typed `kast agent` commands over raw
-   transport or workflow helpers.
-5. Keep generated protocol docs outside `docs/`.
-6. Update docs contract scripts so stale public paths and unsupported claims
+4. Keep developer-facing paths minimal. Put agent execution details, support
+   commands, and copy-paste command sequences in collapsed blocks unless the
+   page is explicitly a reference lookup page.
+5. Prefer typed `kast agent` commands over raw transport or workflow helpers
+   when command detail is needed.
+6. Keep generated protocol docs outside `docs/`.
+7. Update docs contract scripts so stale public paths and unsupported claims
    fail loudly.
 
 ## Validation

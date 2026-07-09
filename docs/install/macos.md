@@ -1,89 +1,66 @@
 ---
 title: macOS Developer Machine
-description: Install the Homebrew binary and JetBrains plugin, then verify a repository.
+description: Install Kast on a macOS developer machine with the root installer.
 icon: lucide/apple
 ---
 
 # macOS Developer Machine
 
-Use this path when you work on a local macOS repository with IntelliJ IDEA or
-Android Studio. The machine install places the global `kast` binary and the
-version-coupled JetBrains plugin on the machine; the plugin prepares repository
-metadata when the project opens.
+Use this path when you work on a local macOS project with IntelliJ IDEA or
+Android Studio. The normal install is intentionally short: run the installer,
+restart the IDE if prompted, and open the project.
 
 ## Install The Machine Distribution
 
-Run the root installer from the repository where agents should use Kast. The
-current directory is the default workspace root.
+Run the root installer once for the machine.
 
 ```console title="Install Kast on macOS"
-cd /path/to/your/repository
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
-open .
 ```
 
 The installer is macOS-only. It uses Homebrew to install the global `kast`
-binary, installs or refreshes the matching IDEA or Android Studio plugin, and
-fails before mutation for unsupported hosts, unknown commands, invalid flags,
-invalid tap values, invalid tap URLs, or missing workspace roots.
+binary and installs or refreshes the matching IDEA or Android Studio plugin.
+It explains planned machine changes before mutating anything.
 
-!!! note "Mutation gate"
-    Mutating installer commands explain the planned Homebrew and plugin actions
-    before changing the machine. Use `NONINTERACTIVE=1` only when automation has
-    already accepted that plan.
+## Open Your Project
 
-## Refresh Or Verify The Install
+Restart IntelliJ IDEA or Android Studio after the installer updates the plugin,
+then open the project. The plugin prepares the project so agents can use Kast
+without a separate directory-specific install step.
 
-Use the explicit update command when the hidden Homebrew path should be
-refreshed or local JetBrains profile links need repair.
+Normal developer use does not require running readiness, repair, or setup commands by hand.
+Those checks are part of the agent and plugin workflow.
 
-```console title="Refresh and verify"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update --workspace-root "$PWD"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- verify --workspace-root "$PWD"
-```
+??? question "What the IDE and agents handle"
+    On macOS, workspace setup is owned by the IntelliJ plugin. It prepares the
+    project guidance and metadata agents need when the project opens.
 
-The default Homebrew tap is `amichne/kast`. Pass both `--tap` and `--tap-url`
-when a mirror lives on a custom Git host.
+    The CLI does not install skill-only, runtime-only, Copilot package,
+    portable instruction, session hook, generated catalog, workflow helper, or
+    resource-only workspace setup on macOS. If prior Kast-managed files are not
+    required or recognized by the incoming plugin version, the plugin backs them up and removes them
+    from the active setup path.
 
-```console title="Install from an internal Homebrew tap"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install \
-  --tap internal/kast \
-  --tap-url https://git.example.com/internal/homebrew-kast.git \
-  --workspace-root "$PWD"
-```
+??? info "Advanced installer controls"
+    Most users do not need these commands. They exist for automation, mirrors,
+    and support cases.
 
-## Open The Repository
+    ```console title="Refresh or verify the machine install"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- verify
+    ```
 
-On macOS, workspace setup is owned by the IntelliJ plugin. Open the repository
-after the installer refreshes the plugin. The plugin writes:
+    The default Homebrew tap is `amichne/kast`. Pass both `--tap` and
+    `--tap-url` when a mirror lives on a custom Git host.
 
-- `.agents/skills/kast/SKILL.md`
-- one managed `<kast>...</kast>` guidance region in the selected context file
-- `.kast/setup/workspace.json` with plugin-prepared invocation metadata
+    ```console title="Install from an internal Homebrew tap"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install \
+      --tap internal/kast \
+      --tap-url https://git.example.com/internal/homebrew-kast.git
+    ```
 
-The CLI does not install skill-only, runtime-only, Copilot package, portable
-instruction, session hook, generated catalog, workflow helper, or resource-only
-workspace setup on macOS. If prior Kast-managed files are not required or
-recognized by the incoming plugin version, the plugin backs them up and removes them
-from the active setup path.
+    Use `NONINTERACTIVE=1` only when automation has already accepted the
+    installer plan.
 
-## Verify Readiness
-
-Run readiness before semantic commands. Readiness does not mutate install
-state.
-
-```console title="Check readiness"
-kast ready --for agent --workspace-root "$PWD"
-kast ready --for kotlin --workspace-root "$PWD"
-kast --output json ready --for agent --workspace-root "$PWD"
-```
-
-Plan repair before applying it when readiness reports drift.
-
-```console title="Plan and apply repair"
-kast repair --for agent --workspace-root "$PWD"
-kast repair --for agent --workspace-root "$PWD" --apply
-```
-
-Continue with the [first semantic workflow](../learn/first-semantic-workflow.md)
-after readiness reports the repository and backend state clearly.
+Continue with [how Kast thinks about evidence](../learn/evidence-model.md) to
+understand what agents do with the installed semantic backend.

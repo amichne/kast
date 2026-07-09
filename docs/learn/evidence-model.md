@@ -8,68 +8,61 @@ icon: lucide/search-check
 
 Kast is useful when text search can show where a spelling appears, but cannot
 prove which Kotlin declaration a name resolves to, which callers are real, or
-whether a planned edit targets the intended symbol. The command surface is
-designed to return compiler-backed evidence before mutation.
+whether a planned edit targets the intended symbol. Agents use Kast to get that
+evidence before they act.
 
 ## Identity Comes Before Text
 
-Typed agent commands use compiler identity where public workflows need safety.
-For example, `--symbol com.example.OrderService` means a compiler-resolved
-declaration, not every matching string in the repository.
+Typed agent operations use compiler identity where public workflows need
+safety. A fully qualified symbol means a compiler-resolved declaration, not
+every matching string in the repository.
 
-```console
-kast agent symbol --query OrderService --workspace-root "$PWD"
-kast agent rename --symbol com.example.OrderService --new-name Orders --workspace-root "$PWD"
-```
-
-Resolve broad queries first. Use the selected identity only after the result
-matches the target declaration.
+The practical rule is: resolve broad names first, then act only after the
+selected identity matches the target declaration.
 
 ## Evidence Can Be Bounded
 
 Reference, caller, hierarchy, and impact evidence may be bounded by depth,
 timeout, traversal limits, or source-index availability. A bounded result is
-still useful, but readers and agents should treat it differently from an
-exhaustive answer.
-
-Use `kast agent verify` before relying on source-index-backed commands in a
-fresh or recently refreshed workspace.
-
-```console
-kast agent verify --workspace-root "$PWD"
-kast agent impact --symbol com.example.OrderService --workspace-root "$PWD" --depth 3
-```
+still useful, but agents should treat it differently from an exhaustive answer.
 
 ## Plans Carry Write Evidence
 
-Mutation commands plan before writing. Plans identify the requested target,
-content file, selected scope, and write set so a developer or agent can review
-the operation before `--apply`.
+Mutation plans identify the requested target, content source, selected scope,
+diagnostics, conflicts, and write set. That plan is the review surface before
+anything writes to disk.
 
-```console
-kast agent replace-declaration \
-  --symbol com.example.OrderService.process \
-  --kind function \
-  --content-file /tmp/replacement.kt \
-  --workspace-root "$PWD"
-```
-
-This plan-first shape is part of the public command contract. The CLI should
-fail loudly for removed raw surfaces or unsupported selectors instead of
-silently falling back to text edits.
+This plan-first shape is part of the public command contract. Kast should fail
+loudly for removed raw surfaces or unsupported selectors instead of silently
+falling back to text edits.
 
 ## Layers Stay Separate
 
 Kast separates distribution, workspace setup, runtime backends, semantic
-commands, and evidence. That separation makes troubleshooting concrete:
+commands, and evidence. That separation keeps developer setup simple while
+letting agents diagnose the layer that actually failed.
 
-| Layer | Question | First check |
-| --- | --- | --- |
-| Distribution | Is the right binary, plugin, or bundle active? | `kast ready --for machine` |
-| Workspace setup | Did the repository receive agent guidance and metadata? | `kast ready --for agent` |
-| Runtime backend | Is IDEA or headless analysis reachable? | `kast agent verify` |
-| Semantic command | Did the request use typed public flags? | `kast agent --help` |
-| Evidence | Is the result complete or bounded? | Command output and diagnostics |
+| Layer | Question |
+| --- | --- |
+| Distribution | Is the right binary, plugin, or bundle installed? |
+| Workspace setup | Has the project been prepared for agents? |
+| Runtime backend | Is IDEA or headless analysis available? |
+| Semantic command | Did the request use typed public behavior? |
+| Evidence | Is the result complete, bounded, or blocked? |
+
+??? info "Example agent checks"
+    These examples show the agent-facing execution shape behind the evidence
+    model.
+
+    ```console
+    kast agent symbol --query OrderService --workspace-root "$PWD"
+    kast agent impact --symbol com.example.OrderService --workspace-root "$PWD" --depth 3
+    kast agent replace-declaration \
+      --symbol com.example.OrderService.process \
+      --kind function \
+      --content-file /tmp/replacement.kt \
+      --workspace-root "$PWD"
+    ```
 
 Use the [operating model](../design/operating-model.md) for the full system
 boundary, and use [troubleshooting](../troubleshoot.md) when one layer fails.

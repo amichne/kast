@@ -1,82 +1,58 @@
 ---
 title: Mutation Selectors
-description: Reference for selectors, anchors, and apply gates on Kast mutation commands.
+description: Reference for the target model agents use when planning Kotlin edits.
 icon: lucide/crosshair
 ---
 
 # Mutation Selectors
 
-Mutation selectors describe which Kotlin file, declaration, scope, or anchor a
-plan targets. Public mutation commands are identity-first and plan-first:
-without `--apply`, Kast reports the planned request instead of writing files.
+Mutation selectors describe the target of a planned Kotlin edit. The visible
+rule is simple: the agent should plan against a typed file, declaration, or
+scope target, then apply only after the plan matches the requested change.
 
-## Mutation Commands
+## Selector Concepts
 
-| Command | Target selector | Content selector | Apply gate |
-| --- | --- | --- | --- |
-| `kast agent rename` | `--symbol <fq-name>` plus optional `--kind`, `--file-hint`, `--containing-type` | `--new-name <name>` | `--apply` |
-| `kast agent add-file` | `--file-path <absolute-path>` | `--content-file <path>` | `--apply` |
-| `kast agent add-declaration` | `--inside-file <path>` or `--inside-scope <fq-name>` | `--content-file <path>` | `--apply` |
-| `kast agent add-implementation` | `--inside-file <path>` or `--inside-scope <fq-name>` | `--content-file <path>` | `--apply` |
-| `kast agent add-statement` | `--inside-scope <fq-name>` and `--at body-end` | `--content-file <path>` | `--apply` |
-| `kast agent replace-declaration` | `--symbol <fq-name>` plus optional `--kind`, `--file-hint`, `--containing-type` | `--content-file <path>` | `--apply` |
-
-## Identity Selectors
-
-`--symbol <fq-name>` means compiler-resolved declaration identity. It is not a
-repository-wide string match.
-
-Optional narrowing flags are available where the command help exposes them:
-
-| Flag | Applies to | Meaning |
-| --- | --- | --- |
-| `--kind <class|interface|object|function|property>` | `symbol`, `rename`, `replace-declaration` | Restrict by declaration kind |
-| `--file-hint <path>` | `symbol`, `rename`, `replace-declaration` | Prefer or disambiguate a declaration associated with a file |
-| `--containing-type <fq-name>` | `symbol`, `rename`, `replace-declaration` | Restrict candidates to a containing declaration |
-
-Local-variable rename is not part of the current public dialect. Use named
-declaration identities until Kast has a typed non-offset selector for locals.
-
-## Scope Selectors
-
-Insertion commands select either a file scope or a named declaration scope.
-
-| Selector | Meaning |
+| Concept | Meaning |
 | --- | --- |
-| `--inside-file <path>` | The selected file receives the declaration or implementation content |
-| `--inside-scope <fq-name>` | The named declaration scope receives the content |
-| `--after-symbol <fq-name>` | Insert after a named symbol inside the selected scope |
-| `--before-symbol <fq-name>` | Insert before a named symbol inside the selected scope |
+| Identity selector | A compiler-resolved declaration, not a text match |
+| File selector | A complete Kotlin file target |
+| Scope selector | A named declaration or executable body that receives content |
+| Placement anchor | A supported location inside the selected file or scope |
+| Content file | The Kotlin content the agent asks Kast to insert or replace |
 
-`add-statement` is narrower than declaration insertion. It requires
-`--inside-scope <fq-name>` where the scope is a named function or accessor.
+Local-variable rename is not part of the current public dialect. Agents should
+use named declaration identities until Kast has a typed non-offset selector for
+locals.
 
-## Placement Anchors
+## Plan Review
 
-Anchors are command-specific. Use only anchors shown by the command help for
-the selected command.
+A mutation plan should expose the selected identity or scope, content source,
+diagnostics, conflicts, and write set. If any of those facts are wrong, the
+agent should refine the request before applying it.
 
-| Anchor | Applies to |
-| --- | --- |
-| `file-top` | `add-declaration`, `add-implementation` when a file scope is selected |
-| `after-imports` | `add-declaration`, `add-implementation` when a file scope is selected |
-| `file-bottom` | `add-declaration`, `add-implementation` when a file scope is selected |
-| `body-start` | `add-declaration`, `add-implementation` when a body scope is selected |
-| `body-end` | `add-declaration`, `add-implementation`, `add-statement` |
+??? info "Selector flags for agent authors"
+    Exact selectors are useful for agent authors and support workflows.
 
-## Content Files
+    | Command family | Target selector | Content selector |
+    | --- | --- | --- |
+    | Rename | `--symbol <fq-name>` plus optional narrowing flags | `--new-name <name>` |
+    | Create file | `--file-path <absolute-path>` | `--content-file <path>` |
+    | Add declaration | `--inside-file <path>` or `--inside-scope <fq-name>` | `--content-file <path>` |
+    | Add implementation | `--inside-file <path>` or `--inside-scope <fq-name>` | `--content-file <path>` |
+    | Add statement | `--inside-scope <fq-name>` and `--at body-end` | `--content-file <path>` |
+    | Replace declaration | `--symbol <fq-name>` plus optional narrowing flags | `--content-file <path>` |
 
-Mutation commands read Kotlin content from `--content-file`. This keeps shell
-quoting, editor formatting, and agent prompt text outside the command-line
-argument itself.
+    Optional narrowing flags include `--kind`, `--file-hint`, and
+    `--containing-type` where the command supports them.
 
-```console
-kast agent replace-declaration \
-  --symbol com.example.OrderService.process \
-  --kind function \
-  --content-file /tmp/replacement.kt \
-  --workspace-root "$PWD"
-```
+??? info "Placement anchors"
+    Anchors are command-specific. Use only anchors shown by the command help for
+    the selected command.
 
-The planned write set, selected target, diagnostics, and content file path are
-the review surface before `--apply`.
+    | Anchor | Applies to |
+    | --- | --- |
+    | `file-top` | File-scope declaration or implementation insertion |
+    | `after-imports` | File-scope declaration or implementation insertion |
+    | `file-bottom` | File-scope declaration or implementation insertion |
+    | `body-start` | Body-scope declaration or implementation insertion |
+    | `body-end` | Body-scope declaration, implementation, or statement insertion |

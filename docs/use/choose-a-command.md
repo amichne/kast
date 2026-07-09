@@ -6,68 +6,35 @@ icon: lucide/list-tree
 
 # Choose A Command
 
-Use this guide when you know the job but not the Kast command family. Kast
-keeps public workflows on typed commands: setup, readiness, runtime lifecycle,
-Kotlin inspection, safe edits, and release work each have a different entry
-point.
+Use this guide when you know the job but not the Kast command family. The public
+shape should stay simple: developers install and open projects; agents and CI
+use typed command families when they need semantic evidence.
 
 ## Start With The Job
 
 | Reader job | Start with | Why |
 | --- | --- | --- |
-| Print workspace context for an agent | `kast context` | Shows compact context and command hints |
-| Check whether a task surface is ready | `kast ready --for <target>` | Read-only readiness by task surface |
-| Repair install or guidance drift | `kast repair` then `kast repair --apply` | Plan before mutation |
-| Check runtime state | `kast status` | Workspace status without choosing a developer subcommand |
-| Start or inspect a backend | `kast developer runtime ...` | Runtime lifecycle and capabilities |
-| Inspect Kotlin semantically | `kast agent symbol`, `diagnostics`, or `impact` | Compiler-backed evidence |
-| Plan safe Kotlin edits | `kast agent rename` or mutation commands | Identity-first, plan-before-apply edits |
-| Run an editor adapter | `kast agent lsp --stdio` | LSP bridge for editor integration |
-| Package or verify release artifacts | `kast developer release ...` | Release engineering commands |
+| Install on a macOS developer machine | Install | Installs the CLI and matching JetBrains plugin |
+| Prepare Linux CI or hosted agents | Headless install | Installs the self-contained CLI and backend bundle |
+| Understand what an agent will do | Agent commands | Explains the typed semantic capabilities |
+| Inspect Kotlin safely | Semantic inspection | Resolves identity before relying on usage evidence |
+| Plan a Kotlin edit | Safe edits | Reviews target, diagnostics, conflicts, and write set first |
+| Build or mirror artifacts | Distribution | Packages and validates release artifacts |
 
 Use [command surface reference](../reference/commands.md) when you need the
 curated command group list.
 
-## Use Readiness Before Repair
+??? info "Agent and operator command families"
+    The exact command names are useful for agent authors, CI, and support.
 
-Readiness is read-only. Run it before applying repair, especially in automation.
-
-```console
-kast ready --for agent --workspace-root "$PWD"
-kast ready --for kotlin --workspace-root "$PWD"
-```
-
-Repair plans by default and mutates only with `--apply`.
-
-```console
-kast repair --for agent --workspace-root "$PWD"
-kast repair --for agent --workspace-root "$PWD" --apply
-```
-
-## Use Agent Commands For Kotlin Work
-
-Use typed `kast agent` commands when text search is not enough.
-
-```console
-kast agent verify --workspace-root "$PWD"
-kast agent symbol --query OrderService --workspace-root "$PWD"
-kast agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-root "$PWD"
-```
+    | Need | Command family |
+    | --- | --- |
+    | Check task readiness | `kast ready` |
+    | Repair managed state | `kast repair` |
+    | Inspect runtime state | `kast status` and `kast developer runtime ...` |
+    | Inspect Kotlin semantically | `kast agent symbol`, `diagnostics`, or `impact` |
+    | Plan Kotlin edits | `kast agent rename` and mutation commands |
+    | Package release artifacts | `kast developer release ...` |
 
 Prefer typed agent commands over raw transport, generated catalog lookup, byte
 offset selectors, or implementation class names.
-
-## Use Developer Commands For Operators
-
-Developer commands inspect or manage runtime, machine, release, and generated
-contract surfaces. They are public operator commands, but they should not
-become the default agent automation path.
-
-```console
-kast developer runtime status --workspace-root "$PWD"
-kast developer inspect paths
-kast developer release validate --help
-```
-
-Use [runtime and output modes](../reference/runtime-and-output.md) for backend
-selection and structured output behavior.

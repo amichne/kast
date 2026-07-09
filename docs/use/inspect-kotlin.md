@@ -1,89 +1,49 @@
 ---
 title: Inspect Kotlin
-description: Resolve symbols, references, callers, diagnostics, and impact before editing.
+description: Understand how agents resolve symbols, diagnostics, and impact before editing.
 icon: lucide/search
 ---
 
 # Inspect Kotlin
 
 Use semantic inspection when a name, caller, diagnostic, or impact question
-needs compiler-backed evidence. Start by proving the backend is ready, then
-resolve identity before asking for broader usage evidence.
+needs compiler-backed evidence. In normal use, the agent runs these checks for
+you after Kast is installed and the project is open.
 
-## Verify The Backend
+## Resolve Identity First
 
-`agent verify` checks backend health, runtime state, capabilities, and the
-workspace root the backend is serving.
+The agent starts broad, then narrows until the target declaration is clear.
+That avoids treating every matching string as the same Kotlin symbol.
 
-```console
-kast agent verify --workspace-root "$PWD"
-```
+## Gather The Right Evidence
 
-If verification reports a missing or stale backend, use the runtime commands
-before retrying the semantic query.
+Different questions need different evidence:
 
-```console
-kast developer runtime status --workspace-root "$PWD"
-kast developer runtime up --backend=headless --workspace-root "$PWD"
-kast agent verify --workspace-root "$PWD"
-```
+| Question | Evidence |
+| --- | --- |
+| Which declaration is this? | Symbol identity |
+| Where is this used? | References |
+| Who calls this? | Caller evidence |
+| What files might be affected? | Source-index impact |
+| Does the backend see a clean file? | Diagnostics |
 
-## Resolve A Symbol
+## Continue To Safe Edits
 
-Start broad, then refine if multiple candidates match.
+After the target identity and file state are clear, an agent can plan an edit.
+Continue with [plan safe edits](plan-safe-edits.md) for the mutation flow.
 
-```console
-kast agent symbol --query OrderService --workspace-root "$PWD"
-```
+??? info "Agent inspection commands"
+    These commands are examples for agent authors and support workflows.
 
-Use references when the question is "where is this declaration used?"
-
-```console
-kast agent symbol \
-  --query OrderService \
-  --references \
-  --workspace-root "$PWD"
-```
-
-Use callers when the question is about execution relationships.
-
-```console
-kast agent symbol \
-  --query process \
-  --callers incoming \
-  --workspace-root "$PWD"
-```
-
-## Run Diagnostics
-
-Diagnostics refresh the touched file first unless you opt out with
-`--skip-refresh`.
-
-```console
-kast agent diagnostics \
-  --file-path "$PWD/src/main/kotlin/App.kt" \
-  --workspace-root "$PWD"
-```
-
-Run diagnostics before safe edits when you need to confirm the backend sees the
-same file state you intend to change.
-
-## Inspect Impact
-
-Impact uses the source index and a compiler identity. Verify first when a
-workspace was just opened or refreshed.
-
-```console
-kast agent verify --workspace-root "$PWD"
-kast agent impact \
-  --symbol com.example.OrderService \
-  --workspace-root "$PWD" \
-  --depth 3
-```
-
-Impact results may be bounded by source-index state, depth, timeout, or
-traversal limits. Treat bounded results as evidence with stated limits, not as
-exhaustive proof.
-
-Continue with [plan safe edits](plan-safe-edits.md) after the target identity
-and file state are clear.
+    ```console
+    kast agent verify --workspace-root "$PWD"
+    kast agent symbol --query OrderService --workspace-root "$PWD"
+    kast agent symbol --query OrderService --references --workspace-root "$PWD"
+    kast agent diagnostics \
+      --file-path "$PWD/src/main/kotlin/App.kt" \
+      --workspace-root "$PWD"
+    kast agent impact \
+      --symbol com.example.OrderService \
+      --workspace-root "$PWD" \
+      --depth 3
+    ```

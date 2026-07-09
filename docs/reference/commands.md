@@ -22,13 +22,13 @@ agent work.
 | `kast version` | Print the packaged CLI version |
 | `kast context` | Print compact workspace context for agents and hooks |
 | `kast ready` | Verify that Kast is ready for a task |
-| `kast repair` | Plan or apply safe repair of install state |
+| `kast repair` | Plan or apply safe repair when support workflows need it |
 | `kast status` | Check current workspace status |
 | `kast developer ...` | Run operator, inspection, machine, and release commands |
 | `kast agent ...` | Run typed agent, semantic, and LSP commands |
 
-The global output selector is `--output <human|json|toon>`. Use `json` for
-scripts that need a stable parser contract.
+Human-facing output is readable. Scripts and CI can request JSON when they need
+a stable parser contract.
 
 ## Public Command Groups
 
@@ -55,15 +55,18 @@ Many commands accept `--workspace-root <path>` and `--backend <idea|headless>`.
 `--workspace-root` should be an absolute repository root when automation needs
 to avoid current-directory ambiguity.
 
-```console
-kast ready --for agent --workspace-root "$PWD"
-kast status --backend=headless --workspace-root "$PWD"
-kast agent verify --backend=idea --workspace-root "$PWD"
-```
-
 Backend selection pins a command to the selected runtime. It does not redefine
 the semantic command dialect; both IDEA and headless runtimes serve the same
 typed agent command surface.
+
+??? info "Workspace and backend examples"
+    These examples are for automation and support workflows.
+
+    ```console
+    kast ready --for agent --workspace-root "$PWD"
+    kast status --backend=headless --workspace-root "$PWD"
+    kast agent verify --backend=idea --workspace-root "$PWD"
+    ```
 
 ## Setup Boundary
 

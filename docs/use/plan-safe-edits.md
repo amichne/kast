@@ -1,109 +1,101 @@
 ---
 title: Plan Safe Edits
-description: Plan identity-first renames and scope mutations before applying them.
+description: Understand how agents plan identity-first Kotlin edits before applying them.
 icon: lucide/pencil-ruler
 ---
 
 # Plan Safe Edits
 
-Use Kast mutation commands when a Kotlin edit should be tied to compiler
-identity, a named scope, a content file, and a reviewable write set. Every public mutation path is plan-first.
-Add `--apply` only after reviewing the planned request.
+Use this page to understand what happens when an agent asks Kast to change
+Kotlin. The developer-facing rule is simple: Kast plans first, then writes only
+after the selected symbol, scope, diagnostics, and write set make sense.
 
-## Resolve The Target First
+## What The Agent Checks
 
-Resolve broad names before using `--symbol` in mutation commands.
+Every public mutation path is plan-first. Before an edit is applied, the agent
+should have evidence for:
 
-```console
-kast agent symbol --query OrderService --workspace-root "$PWD"
-```
+- the symbol or scope Kast selected;
+- whether diagnostics show stale or broken source state;
+- the content that would be inserted or replaced;
+- the files that would change;
+- whether the edit target is supported by the public selector model.
 
-`--symbol <fq-name>` means compiler identity, not a text match. If several
-candidates match the query, refine the lookup before planning the edit.
+That plan is what prevents a semantic task from becoming a blind text edit.
 
-## Plan And Apply Rename
+## Rename Boundary
 
-Run the plan first.
+Rename uses compiler identity, not string replacement. Local-variable rename is not part of the current public dialect;
+agents should use named declaration identities until Kast has a typed non-offset
+selector for locals.
 
-```console
-kast agent rename \
-  --symbol com.example.OrderService \
-  --new-name Orders \
-  --workspace-root "$PWD"
-```
+## Add Or Replace Kotlin
 
-Apply only after the reported target identity, diagnostics, conflicts, and
-write set match the intended change.
+For insertions and replacements, agents provide content through a file and ask
+Kast to place it inside a typed file, declaration, or executable scope. This
+keeps shell quoting and prompt text out of the source code being applied.
 
-```console
-kast agent rename \
-  --symbol com.example.OrderService \
-  --new-name Orders \
-  --apply \
-  --workspace-root "$PWD"
-```
+Use [mutation selectors](../reference/mutation-selectors.md) when you need the
+exact selector contract.
 
-Local-variable rename is not part of the current public dialect. Use named
-declaration identities until Kast has a typed non-offset selector for locals.
+??? info "Mutation command examples"
+    These examples show the agent-facing execution shape. They are not required
+    for normal developer use.
 
-## Add Kotlin From A File
+    === "Rename"
 
-Mutation commands read Kotlin content from files so shell quoting cannot
-change the code being applied.
+        ```console
+        kast agent rename \
+          --symbol com.example.OrderService \
+          --new-name Orders \
+          --workspace-root "$PWD"
 
-=== "Create file"
+        kast agent rename \
+          --symbol com.example.OrderService \
+          --new-name Orders \
+          --apply \
+          --workspace-root "$PWD"
+        ```
 
-    ```console
-    cat >/tmp/NewType.kt <<'KOTLIN'
-    package com.example
+    === "Create file"
 
-    class NewType
-    KOTLIN
+        ```console
+        cat >/tmp/NewType.kt <<'KOTLIN'
+        package com.example
 
-    kast agent add-file \
-      --file-path "$PWD/src/main/kotlin/NewType.kt" \
-      --content-file /tmp/NewType.kt \
-      --workspace-root "$PWD"
-    ```
+        class NewType
+        KOTLIN
 
-=== "Insert implementation"
+        kast agent add-file \
+          --file-path "$PWD/src/main/kotlin/NewType.kt" \
+          --content-file /tmp/NewType.kt \
+          --workspace-root "$PWD"
+        ```
 
-    ```console
-    cat >/tmp/member.kt <<'KOTLIN'
-    fun newBehavior(): String = "ready"
-    KOTLIN
+    === "Insert implementation"
 
-    kast agent add-implementation \
-      --inside-scope com.example.OrderService \
-      --at body-end \
-      --content-file /tmp/member.kt \
-      --workspace-root "$PWD"
-    ```
+        ```console
+        cat >/tmp/member.kt <<'KOTLIN'
+        fun newBehavior(): String = "ready"
+        KOTLIN
 
-=== "Replace declaration"
+        kast agent add-implementation \
+          --inside-scope com.example.OrderService \
+          --at body-end \
+          --content-file /tmp/member.kt \
+          --workspace-root "$PWD"
+        ```
 
-    ```console
-    cat >/tmp/replacement.kt <<'KOTLIN'
-    fun process(): String = "ready"
-    KOTLIN
+    === "Replace declaration"
 
-    kast agent replace-declaration \
-      --symbol com.example.OrderService.process \
-      --kind function \
-      --content-file /tmp/replacement.kt \
-      --workspace-root "$PWD"
-    ```
+        ```console
+        cat >/tmp/replacement.kt <<'KOTLIN'
+        fun process(): String = "ready"
+        KOTLIN
 
-## Review Before Apply
-
-Before adding `--apply`, check:
-
-- the command selected the intended symbol or scope;
-- diagnostics do not describe a stale or broken file state;
-- the content file contains exactly the Kotlin you intend to apply;
-- the write set is expected;
-- the selector matches the desired placement.
-
-Use [mutation selectors](../reference/mutation-selectors.md) for lookup details.
-Use [troubleshooting](../troubleshoot.md) when a plan fails or reports an
-unexpected target.
+        kast agent replace-declaration \
+          --symbol com.example.OrderService.process \
+          --kind function \
+          --content-file /tmp/replacement.kt \
+          --workspace-root "$PWD"
+        ```

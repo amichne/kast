@@ -19,11 +19,11 @@ or navigation.
 
 | Reader | Entry point | Reader job | Next page |
 | --- | --- | --- | --- |
-| macOS developer | `docs/install/macos.md` | Install the binary and plugin, open a repository, and verify readiness | `docs/learn/first-semantic-workflow.md` |
-| Linux or hosted-agent operator | `docs/install/headless-linux.md` | Install a headless bundle, prepare repository guidance, and verify the backend | `docs/learn/first-semantic-workflow.md` |
-| Agent or script author | `docs/use/automate-with-agents.md` | Learn the public typed `kast agent` paths and output-mode expectations | `docs/reference/agent-commands.md` |
-| CLI operator | `docs/use/choose-a-command.md` | Choose the command group that matches setup, readiness, runtime, inspection, or edit work | `docs/reference/commands.md` |
-| Kotlin maintainer | `docs/use/inspect-kotlin.md` | Resolve Kotlin symbols, references, callers, diagnostics, and impact before acting | `docs/use/plan-safe-edits.md` |
+| macOS developer | `docs/install/macos.md` | Install Kast, restart the IDE, and open the project | `docs/learn/evidence-model.md` |
+| Linux or hosted-agent operator | `docs/install/headless-linux.md` | Install a headless bundle for CI, hosted agents, or server images | `docs/distribute/runtime-artifact-contract.md` |
+| Agent or script author | `docs/use/automate-with-agents.md` | Understand the typed semantic operations agents use behind the scenes | `docs/reference/agent-commands.md` |
+| CLI operator | `docs/use/choose-a-command.md` | Choose the high-level command family for inspection, editing, automation, or release work | `docs/reference/commands.md` |
+| Kotlin maintainer | `docs/use/inspect-kotlin.md` | Understand how agents resolve Kotlin symbols, references, callers, diagnostics, and impact before acting | `docs/use/plan-safe-edits.md` |
 | Release or mirror engineer | `docs/distribute/release-and-mirror.md` | Package, verify, mirror, or activate release artifacts | `docs/distribute/runtime-artifact-contract.md` |
 | Stuck reader | `docs/troubleshoot.md` | Separate install drift, backend state, indexing, semantic failures, and mutation planning | Relevant install, use, or reference page |
 | Architecture-curious reader | `docs/design/operating-model.md` | Understand why Kast separates distribution, setup, runtime, semantic commands, and evidence | Relevant journey page |
@@ -37,19 +37,19 @@ turning one page into a mixed narrative.
 | Page | Diataxis role | Reader job | Watch point |
 | --- | --- | --- | --- |
 | `docs/index.md` | Landing/index with short explanation | Route readers by journey and show the operating layers | Keep context brief and command-facing |
-| `docs/install/macos.md` | How-to guide | Install or repair a macOS developer-machine setup | Do not absorb headless Linux details |
-| `docs/install/headless-linux.md` | How-to guide | Install, mirror, or image a Linux headless runtime | Link deep release contract details instead of duplicating them |
-| `docs/learn/first-semantic-workflow.md` | Guided first-run workflow | Give a first semantic command sequence | Do not claim true tutorial reliability without a verified fixture |
+| `docs/install/macos.md` | How-to guide | Install the macOS machine support with one visible path | Keep setup, readiness, repair, and support commands collapsed |
+| `docs/install/headless-linux.md` | How-to guide | Install, mirror, or image a Linux headless runtime | Keep repository guidance and backend checks collapsed |
+| `docs/learn/first-semantic-workflow.md` | Explanation with collapsed execution detail | Show the semantic workflow agents run behind the scenes | Do not present agent commands as normal developer steps |
 | `docs/learn/evidence-model.md` | Explanation | Explain semantic evidence, bounded results, and plan-first edits | Keep instructions in use/reference pages |
-| `docs/use/choose-a-command.md` | How-to guide | Pick the right command family for a task | Link to reference for option detail |
-| `docs/use/inspect-kotlin.md` | How-to guide | Use semantic lookup before code changes | Keep examples task-oriented |
-| `docs/use/plan-safe-edits.md` | How-to guide | Plan and apply safe renames or scope mutations | Preserve plan-before-apply guidance |
-| `docs/use/automate-with-agents.md` | How-to guide | Use typed agent commands in scripts and agents | Keep raw transport out of public workflow |
-| `docs/reference/commands.md` | Reference | Look up curated public command groups | State that this is curated guidance, not generated exhaustive reference |
-| `docs/reference/agent-commands.md` | Reference | Look up typed `kast agent` commands | Mirror live `kast agent --help` command names |
-| `docs/reference/mutation-selectors.md` | Reference | Look up mutation selectors and anchors | Keep examples minimal and source-backed |
-| `docs/reference/runtime-and-output.md` | Reference | Look up runtime, readiness, repair, backend, and output-mode facts | Keep procedure in how-to pages |
-| `docs/troubleshoot.md` | Diagnostic how-to/reference matrix | Diagnose readiness, backend, indexing, semantic, and mutation failures | Use symptom, cause, check, fix shape |
+| `docs/use/choose-a-command.md` | How-to guide | Pick the right command family for a task | Keep exact command families collapsed when they are agent/operator detail |
+| `docs/use/inspect-kotlin.md` | Explanation/how-to hybrid | Understand semantic lookup before code changes | Keep command examples collapsed |
+| `docs/use/plan-safe-edits.md` | Explanation/how-to hybrid | Understand safe rename and scope mutation planning | Keep mutation commands collapsed |
+| `docs/use/automate-with-agents.md` | How-to guide | Use typed semantic operations in scripts and agents | Keep raw transport out and setup commands collapsed |
+| `docs/reference/commands.md` | Reference | Look up curated public command groups | Mention only readable and JSON output publicly |
+| `docs/reference/agent-commands.md` | Reference | Understand typed `kast agent` capabilities | Keep command names and examples collapsed |
+| `docs/reference/mutation-selectors.md` | Reference | Understand mutation selector concepts | Keep exact flags collapsed |
+| `docs/reference/runtime-and-output.md` | Reference | Look up runtime and public output behavior | Mention only readable and JSON output publicly |
+| `docs/troubleshoot.md` | Diagnostic how-to/reference matrix | Diagnose visible install, backend, indexing, semantic, and mutation failures | Keep read-only command sequences collapsed |
 | `docs/distribute/release-and-mirror.md` | How-to guide | Build, verify, mirror, and activate release artifacts | Link runtime manifest facts to contract reference |
 | `docs/distribute/runtime-artifact-contract.md` | Reference | Look up bundle, manifest, checksum, and ledger contracts | Keep schema link current |
 | `docs/design/operating-model.md` | Explanation | Understand system boundaries that affect operations | Do not turn into broad architecture essay |
@@ -62,7 +62,7 @@ touches the same area.
 
 | Gap | Why it matters | Good next action |
 | --- | --- | --- |
-| Verified tutorial fixture | The first semantic workflow uses readable placeholder symbols, so the page cannot guarantee every step works for a new reader | Add or link a small real Kotlin fixture and expected output before calling it a full tutorial |
+| Verified tutorial fixture | The first semantic workflow is intentionally explanatory because agent commands are normally hidden | Add or link a small real Kotlin fixture only if the page becomes a real tutorial |
 | Command reference completeness | Reference pages are curated; readers may not know whether missing flags are unsupported or just undocumented | Generate/check command coverage from `kast --help`, or keep the explicit curated-scope note |
 | Example provenance | Placeholder names such as `OrderService` are readable but not verifiable | Prefer examples backed by fixtures, tests, command output, or clearly marked placeholders |
 | Public explanation boundary | The site needs short conceptual context, but broad product decisions still belong in ADRs | Keep public explanation tied to operating Kast, and link deep reasoning to ADRs only when useful |

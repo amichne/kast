@@ -1,82 +1,56 @@
 ---
 title: Automate With Agents
-description: Use typed Kast commands from agents, scripts, and repository guidance.
+description: Use Kast as the hidden semantic layer behind agent workflows.
 icon: lucide/bot
 ---
 
 # Automate With Agents
 
-Use typed `kast agent` commands when an agent or script needs compiler-backed
-Kotlin evidence. Keep automation on the public command dialect instead of raw
-transport, generated catalog lookup, byte offsets, or implementation class
-names.
+Use this guide when you are authoring or reviewing an agent workflow. For most
+developers, Kast should be out of sight: the developer installs it, opens the
+project, and the agent uses typed semantic operations when a task needs
+compiler-backed evidence.
 
-## Prepare Repository Guidance
+## Keep The Public Dialect Typed
 
-On macOS, the IntelliJ plugin prepares repository guidance when the workspace
-opens. On non-macOS headless or server hosts, run setup once per repository.
+Agents should ask for named semantic operations: readiness, symbol identity,
+diagnostics, impact, rename planning, and scoped Kotlin mutations. They should
+not depend on raw transport, generated catalog lookup, byte offsets, or
+implementation class names.
 
-```console
-kast setup --dry-run --workspace-root "$PWD"
-kast setup --workspace-root "$PWD"
-```
+Keep automation on the public command dialect so agent behavior stays
+reviewable.
 
-Setup installs only:
+## Prefer Readable Or JSON Output
 
-- `.agents/skills/kast/SKILL.md`
-- one managed `<kast>...</kast>` guidance region in the selected context file
+Human-facing output should be readable. Agent and CI workflows that need a
+stable parser contract should request JSON explicitly. Public documentation
+should not require readers to understand internal compact output choices.
 
-Use `--context-file` when the repository needs an explicit `AGENTS.md`,
-`CODEX.md`, `CLAUDE.md`, or `AGENTS.local.md` target.
+## Let Setup Stay Invisible
 
-```console
-kast setup --context-file "$PWD/cli-rs/AGENTS.md" --force
-```
+On macOS, the IntelliJ plugin prepares the project when it opens. On non-macOS
+headless hosts, repository guidance is normally part of image bootstrap or the
+agent setup flow.
 
-Setup does not install Copilot package files, portable Markdown instruction
-packages, session hooks, generated catalog copies, or workflow helper assets.
+??? info "Agent bootstrap commands"
+    These commands are for agent authors and hosted environments, not normal
+    developer setup.
 
-## Use Structured Output Deliberately
+    ```console
+    kast setup --dry-run --workspace-root "$PWD"
+    kast setup --workspace-root "$PWD"
+    kast agent verify --workspace-root "$PWD"
+    ```
 
-Human operator commands default to readable output in interactive terminals and
-accept `--output json`. Captured or agent-run commands may default to compact
-TOON. Pass the output mode explicitly when automation needs a stable parser
-contract.
+    Setup installs only the packaged Kast skill and one managed guidance region
+    in the selected context file.
 
-```console
-kast --output json ready --for agent --workspace-root "$PWD"
-kast --output json developer runtime status --workspace-root "$PWD"
-kast agent symbol --query OrderService --output json --workspace-root "$PWD"
-```
+## Use Evidence Before Edits
 
-## Verify Before Depending On Answers
+An agent should resolve identity and check backend state before it asks Kast to
+plan an edit. It should apply an edit only after reviewing the planned target,
+diagnostics, conflicts, and write set.
 
-Run `agent verify` before relying on semantic answers in a fresh, moved, or
-recently repaired workspace.
-
-```console
-kast agent verify --workspace-root "$PWD"
-```
-
-The command reports backend health, runtime state, capabilities, and the active
-workspace root. If verification fails, diagnose the runtime before retrying
-symbol, diagnostics, impact, or mutation commands.
-
-## Prefer Typed Agent Commands
-
-The public V1 semantic surface is:
-
-- `kast agent verify`
-- `kast agent symbol`
-- `kast agent diagnostics`
-- `kast agent impact`
-- `kast agent rename`
-- `kast agent add-file`
-- `kast agent add-declaration`
-- `kast agent add-implementation`
-- `kast agent add-statement`
-- `kast agent replace-declaration`
-- `kast agent lsp --stdio`
-
-Use [agent command reference](../reference/agent-commands.md) for command
-lookup and [plan safe edits](plan-safe-edits.md) for mutation workflows.
+Use [agent commands](../reference/agent-commands.md) for the high-level command
+surface and [plan safe edits](plan-safe-edits.md) for mutation behavior.

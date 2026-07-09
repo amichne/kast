@@ -8,10 +8,9 @@ hide:
 
 # Kast
 
-Kast is a compiler-backed Kotlin and Gradle semantic control plane for
-terminals, CI, hosted agents, and IDE-backed developer machines. Start from the
-job you need to complete, then use the reference pages when you need exact
-command names, selectors, or output-mode behavior.
+Kast gives agents compiler-backed Kotlin and Gradle evidence while keeping the
+developer path simple: install the machine support, open the project, and let
+the agent use Kast when a task needs semantic confidence.
 
 ## Start By Reader Job
 
@@ -24,8 +23,8 @@ typed `kast` command surface.
 
     ---
 
-    Install the Homebrew binary, refresh the JetBrains plugin, open a
-    repository, and verify readiness.
+    Install the Homebrew binary and matching JetBrains plugin, then open your
+    project.
 
     [:octicons-arrow-right-24: macOS install](install/macos.md)
 
@@ -42,8 +41,7 @@ typed `kast` command surface.
 
     ---
 
-    Verify the backend, resolve a symbol, run diagnostics, and plan a safe
-    edit.
+    See the semantic workflow agents run behind the scenes.
 
     [:octicons-arrow-right-24: First semantic workflow](learn/first-semantic-workflow.md)
 
@@ -51,8 +49,8 @@ typed `kast` command surface.
 
     ---
 
-    Pick the command family for setup, readiness, runtime, Kotlin inspection,
-    safe edits, or release work.
+    Pick the high-level command family for inspection, editing, automation, or
+    release work.
 
     [:octicons-arrow-right-24: Choose a command](use/choose-a-command.md)
 
@@ -60,10 +58,9 @@ typed `kast` command surface.
 
 ## Operating Model
 
-Kast separates the install path, workspace setup, runtime backend, semantic
-commands, and evidence returned to agents or scripts. Keeping those layers
-separate makes failures easier to diagnose and keeps public automation on typed
-commands instead of raw transport.
+Kast separates the visible install path from the agent-facing semantic work.
+That keeps setup foolproof for developers while still giving agents typed,
+compiler-backed operations when they need evidence.
 
 ```mermaid
 flowchart LR
@@ -82,10 +79,10 @@ flowchart LR
 
 | Layer | Reader question | First page |
 | --- | --- | --- |
-| Distribution | How do I install the binary and runtime? | [Install](install/macos.md) |
-| Workspace setup | How does a repository become ready for agents? | [Automate with agents](use/automate-with-agents.md) |
-| Runtime backend | How do I prove a backend is reachable? | [Runtime and output modes](reference/runtime-and-output.md) |
-| Semantic commands | How do I inspect Kotlin safely? | [Inspect Kotlin](use/inspect-kotlin.md) |
+| Distribution | How do I install Kast? | [Install](install/macos.md) |
+| Workspace setup | What prepares a project for agents? | [Automate with agents](use/automate-with-agents.md) |
+| Runtime backend | What answers semantic requests? | [Runtime and output](reference/runtime-and-output.md) |
+| Semantic commands | What does the agent ask Kast to do? | [Agent commands](reference/agent-commands.md) |
 | Evidence | What does Kast prove that text search cannot? | [How Kast thinks about evidence](learn/evidence-model.md) |
 
 ## Reference Paths
@@ -96,20 +93,23 @@ Use reference pages when you need lookup accuracy rather than a task flow.
 - [Agent commands](reference/agent-commands.md) lists typed semantic commands.
 - [Mutation selectors](reference/mutation-selectors.md) describes edit targets
   and anchors.
-- [Runtime and output modes](reference/runtime-and-output.md) covers readiness,
-  repair, backend selection, and structured output.
+- [Runtime and output](reference/runtime-and-output.md) covers backend
+  selection and readable or JSON output.
 - [Runtime artifact contract](distribute/runtime-artifact-contract.md) records
   bundle, manifest, checksum, and ledger facts.
 
 ## When Something Fails
 
-Start with read-only checks before applying repair or retrying mutations.
+Use the [troubleshooting matrix](troubleshoot.md) to separate install issues,
+backend state, indexing, semantic failures, and mutation planning. Most readers
+should start with the visible symptom, not the internal command sequence.
 
-```console
-kast --output json ready --for agent --workspace-root "$PWD"
-kast --output json agent verify --workspace-root "$PWD"
-kast --output json status --workspace-root "$PWD"
-```
+??? info "Agent checks"
+    Agents and support scripts can use read-only checks before retrying a
+    semantic operation.
 
-Use the [troubleshooting matrix](troubleshoot.md) to separate install drift,
-backend state, indexing, semantic failures, and mutation planning.
+    ```console
+    kast --output json ready --for agent --workspace-root "$PWD"
+    kast --output json agent verify --workspace-root "$PWD"
+    kast --output json status --workspace-root "$PWD"
+    ```

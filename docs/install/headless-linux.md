@@ -15,13 +15,12 @@ Most macOS developers should use the [macOS install](macos.md) instead.
 ## Install The Bundle
 
 The Ubuntu/Debian bundle installs the binary, install manifest, and backend
-runtime together.
+runtime together. For most hosted-agent images, this is the only install step
+you need before the agent starts using Kast.
 
 ```bash title="Install Kast on Ubuntu or Debian"
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh install
-./scripts/install-ubuntu-debian.sh verify
-kast developer runtime up --backend=headless
 ```
 
 The release asset is
@@ -39,24 +38,37 @@ runtime, `scripts/install-ubuntu-debian.sh`, metadata, and the license notice.
     Java 21 or newer must be available on `PATH` or through `JAVA_HOME` when
     the Linux headless runtime starts.
 
-## Prepare Repository Guidance
+## Let Agents Use Kast
 
-Run `kast setup` once per repository on non-macOS headless or server hosts.
-Setup installs only the repository agent assets:
+On hosted Linux, repository guidance is still project-specific, but it is
+normally part of image bootstrap or the agent setup flow rather than a manual
+developer step.
 
-- `.agents/skills/kast/SKILL.md`
-- one managed `<kast>...</kast>` guidance region in the selected context file
+??? info "Agent bootstrap details"
+    On non-macOS headless or server hosts, setup installs only the repository
+    agent assets:
 
-```console title="Prepare the repository"
-kast setup --dry-run --workspace-root "$PWD"
-kast setup --workspace-root "$PWD"
-kast ready --for agent --workspace-root "$PWD"
-kast agent verify --workspace-root "$PWD"
-```
+    - `.agents/skills/kast/SKILL.md`
+    - one managed `<kast>...</kast>` guidance region in the selected context
+      file
 
-The default context target is the first existing file from `AGENTS.md`,
-`CODEX.md`, `CLAUDE.md`, or `AGENTS.local.md`. If no supported context file
-exists, setup creates ignored `AGENTS.local.md`.
+    ```console title="Prepare a repository for agents"
+    kast setup --dry-run --workspace-root "$PWD"
+    kast setup --workspace-root "$PWD"
+    ```
+
+    The default context target is the first existing file from `AGENTS.md`,
+    `CODEX.md`, `CLAUDE.md`, or `AGENTS.local.md`. If no supported context file
+    exists, setup creates ignored `AGENTS.local.md`.
+
+??? info "Backend checks"
+    Agents and CI scripts can start or verify the headless backend when they
+    need semantic evidence.
+
+    ```console title="Headless backend check"
+    kast developer runtime up --backend=headless --workspace-root "$PWD"
+    kast agent verify --workspace-root "$PWD"
+    ```
 
 ## Use Mirrors And Image Layers
 
@@ -67,7 +79,6 @@ private artifact store or baked image layer.
 export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 export KAST_UBUNTU_DEBIAN_ARTIFACT_PATH="/artifacts/kast-ubuntu-debian-headless-x86_64-v1.2.3.tar.gz"
 ./scripts/install-ubuntu-debian.sh install
-./scripts/install-ubuntu-debian.sh verify
 ```
 
 ??? question "Ubuntu/Debian installer overrides"
@@ -96,5 +107,5 @@ defines artifact names, manifest fields, cache layout, and `kast-action@v2`
 compatibility requirements. Detailed action inputs and enterprise mirror
 guidance live in the sibling `kast-action` repository.
 
-Continue with the [first semantic workflow](../learn/first-semantic-workflow.md)
-after the bundle, repository guidance, and backend are ready.
+Continue with [how Kast thinks about evidence](../learn/evidence-model.md) to
+understand what agents do with the installed headless backend.
