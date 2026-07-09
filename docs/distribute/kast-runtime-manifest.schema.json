@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kast.michne.com/distribution/kast-runtime-manifest.schema.json",
+  "$id": "https://kast.michne.com/distribute/kast-runtime-manifest.schema.json",
   "title": "Kast runtime manifest",
   "type": "object",
   "additionalProperties": false,

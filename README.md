@@ -60,9 +60,9 @@ export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh verify
 ```
 
-The [install guide](https://kast.michne.com/getting-started/install/) covers
-the macOS installer, tap mirrors, repository setup, manifest-backed paths, and
-repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+The [macOS install guide](https://kast.michne.com/install/macos/) covers the
+root installer, tap mirrors, plugin-owned repository setup, manifest-backed
+paths, and repair commands. The [headless Linux guide](https://kast.michne.com/install/headless-linux/)
 covers server and hosted-agent installs.
 
 ## Why Kast instead of text search?
@@ -103,7 +103,10 @@ can wait on evidence instead of guessing from IDE state.
 ## Documentation
 
 - Read the [documentation site](https://kast.michne.com/).
-- Follow the [install guide](https://kast.michne.com/getting-started/install/).
-- Run the [quickstart](https://kast.michne.com/getting-started/quickstart/).
-- Browse the [command manual](https://kast.michne.com/commands/).
-- Use [recipes](https://kast.michne.com/recipes/) for common CLI workflows.
+- Follow the [macOS install guide](https://kast.michne.com/install/macos/) or
+  [headless Linux guide](https://kast.michne.com/install/headless-linux/).
+- Run the [first semantic workflow](https://kast.michne.com/learn/first-semantic-workflow/).
+- Browse the [command reference](https://kast.michne.com/reference/commands/).
+- Use [inspect Kotlin](https://kast.michne.com/use/inspect-kotlin/) and
+  [plan safe edits](https://kast.michne.com/use/plan-safe-edits/) for common
+  CLI workflows.
