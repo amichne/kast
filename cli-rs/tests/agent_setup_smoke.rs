@@ -320,7 +320,7 @@ fn agent_setup_creates_local_guidance_without_root_agents_md() {
 
 #[cfg(not(target_os = "macos"))]
 #[test]
-fn agent_setup_creates_explicit_agents_md_target() {
+fn agent_setup_creates_explicit_context_file_target() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -337,7 +337,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
             "json",
             "setup",
             "--no-open-ide",
-            "--agents-md",
+            "--context-file",
             scoped_agents.to_str().expect("agents path"),
         ])
         .output()
@@ -345,7 +345,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
 
     assert!(
         setup.status.success(),
-        "explicit AGENTS.md target should be created: stdout={}, stderr={}",
+        "explicit context file target should be created: stdout={}, stderr={}",
         String::from_utf8_lossy(&setup.stdout),
         String::from_utf8_lossy(&setup.stderr)
     );

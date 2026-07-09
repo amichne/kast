@@ -463,6 +463,18 @@ fn smoke_core_cli_commands() {
         !skill.status.success(),
         "root setup should not accept legacy --target-dir asset installs"
     );
+    let agents_md = kast(&home, &config_home)
+        .args([
+            "setup",
+            "--agents-md",
+            workspace.join("AGENTS.md").to_str().expect("agents path"),
+        ])
+        .output()
+        .expect("setup agents-md rejected");
+    assert!(
+        !agents_md.status.success(),
+        "root setup should not accept legacy --agents-md context aliases"
+    );
 
     let status = kast(&home, &config_home)
         .args([

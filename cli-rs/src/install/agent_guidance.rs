@@ -67,9 +67,8 @@ fn resolve_agents_md_targets(
     args: &cli::AgentGuidanceSetupArgs,
 ) -> Result<Vec<AgentsMdTarget>> {
     let mut targets = Vec::new();
-    let explicit_targets = merge_context_files(args.context_files.clone(), args.agents_md.clone());
     targets.push(default_context_target(workspace_root));
-    for target in &explicit_targets {
+    for target in &args.context_files {
         let path = if target.is_absolute() {
             target.clone()
         } else {
@@ -94,15 +93,6 @@ fn resolve_agents_md_targets(
         }
     }
     Ok(targets)
-}
-
-fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>) -> Vec<PathBuf> {
-    for target in agents_md {
-        if !context_files.iter().any(|existing| existing == &target) {
-            context_files.push(target);
-        }
-    }
-    context_files
 }
 
 fn agent_guidance_skill_target_dir(

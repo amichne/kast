@@ -51,9 +51,6 @@ pub struct AgentGuidanceSetupArgs {
     /// Repository context file to patch with Kast managed guidance.
     #[arg(long = "context-file")]
     pub context_files: Vec<PathBuf>,
-    /// Additional AGENTS.md or AGENTS.local.md files to patch with Kast managed guidance.
-    #[arg(long = "agents-md", hide = true)]
-    pub agents_md: Vec<PathBuf>,
     /// Overwrite modified Kast managed regions.
     #[arg(short = 'f', long)]
     pub force: bool,

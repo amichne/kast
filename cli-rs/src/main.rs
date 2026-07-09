@@ -360,21 +360,11 @@ fn setup_to_agent_guidance_args(args: cli::SetupArgs) -> cli::AgentGuidanceSetup
     cli::AgentGuidanceSetupArgs {
         workspace_root: args.workspace_root,
         skill_target_dir: args.skill_target_dir,
-        context_files: merge_context_files(args.context_files, args.agents_md.clone()),
-        agents_md: args.agents_md,
+        context_files: args.context_files,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
         dry_run: args.dry_run,
     }
-}
-
-fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>) -> Vec<PathBuf> {
-    for target in agents_md {
-        if !context_files.iter().any(|existing| existing == &target) {
-            context_files.push(target);
-        }
-    }
-    context_files
 }
 
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
@@ -532,8 +522,7 @@ fn setup_runtime_guidance_args(
     cli::AgentGuidanceSetupArgs {
         workspace_root: Some(workspace_root.to_path_buf()),
         skill_target_dir: args.skill_target_dir.clone(),
-        context_files: merge_context_files(args.context_files.clone(), args.agents_md.clone()),
-        agents_md: args.agents_md.clone(),
+        context_files: args.context_files.clone(),
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
         dry_run: args.dry_run,
@@ -677,10 +666,6 @@ fn root_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<String> {
         command.push("--context-file".to_string());
         command.push(target.display().to_string());
     }
-    for target in &args.agents_md {
-        command.push("--agents-md".to_string());
-        command.push(target.display().to_string());
-    }
     if args.force {
         command.push("--force".to_string());
     }
@@ -714,10 +699,6 @@ fn root_setup_runtime_setup_command(
     if let Some(backend) = runtime_args.backend_name {
         command.push("--backend".to_string());
         command.push(backend.canonical().to_string());
-    }
-    for target in &setup_args.agents_md {
-        command.push("--agents-md".to_string());
-        command.push(target.display().to_string());
     }
     if setup_args.force {
         command.push("--force".to_string());
