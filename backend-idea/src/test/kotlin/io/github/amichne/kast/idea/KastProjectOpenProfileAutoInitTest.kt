@@ -25,7 +25,7 @@ class KastProjectOpenProfileAutoInitTest {
         val workspace = gradleWorkspace()
         val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
 
-        val result = KastProjectOpenProfileAutoInit.execute(
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(enabled = false),
             prepareWorkspace = { request ->
@@ -43,7 +43,7 @@ class KastProjectOpenProfileAutoInitTest {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
 
-        val result = KastProjectOpenProfileAutoInit.execute(
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(),
             prepareWorkspace = {
@@ -59,9 +59,10 @@ class KastProjectOpenProfileAutoInitTest {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
 
-        val result = KastProjectOpenProfileAutoInit.execute(
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = binary),
+            loadHomebrewReceipt = matchingHomebrewReceipt(binary),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
@@ -78,13 +79,70 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
+    fun `macOS project-open setup uses Homebrew receipt binary instead of config binary`() {
+        val workspace = gradleWorkspace()
+        val legacyBinary = fakeKastBinary()
+        val homebrewBinary = fakeKastBinary()
+        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = legacyBinary),
+            loadHomebrewReceipt = { pluginVersion ->
+                MacosHomebrewReceiptLoadResult.Loaded(
+                    MacosHomebrewInstallReceipt(
+                        cliBinary = homebrewBinary,
+                        formulaPrefix = homebrewBinary.parent,
+                        cliVersion = pluginVersion,
+                        caskToken = "amichne/kast/kast-plugin",
+                        pluginVersion = pluginVersion,
+                    ),
+                )
+            },
+            prepareWorkspace = { request ->
+                requests.add(request)
+                PluginWorkspaceBootstrapResult.Prepared(
+                    workspace.resolve(".kast/setup/workspace.json"),
+                    emptyList(),
+                )
+            },
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertEquals(homebrewBinary, requests.single().cliBinary)
+    }
+
+    @Test
+    fun `non-macOS project-open setup keeps configured binary authority`() {
+        val workspace = gradleWorkspace()
+        val configuredBinary = fakeKastBinary()
+        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
+
+        val result = KastProjectOpenProfileAutoInit.executeWithConfiguredBinary(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = configuredBinary),
+            prepareWorkspace = { request ->
+                requests.add(request)
+                PluginWorkspaceBootstrapResult.Prepared(
+                    workspace.resolve(".kast/setup/workspace.json"),
+                    emptyList(),
+                )
+            },
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertEquals(configuredBinary, requests.single().cliBinary)
+    }
+
+    @Test
     fun `legacy copilot project-open profile remains supported compatibility input`() {
         val workspace = gradleWorkspace()
         val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
 
-        val result = KastProjectOpenProfileAutoInit.execute(
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(profile = ProjectOpenProfile.COPILOT_LSP),
+            loadHomebrewReceipt = matchingHomebrewReceipt(fakeKastBinary()),
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(workspace.resolve(".kast/setup/workspace.json"), emptyList())
@@ -106,9 +164,10 @@ class KastProjectOpenProfileAutoInitTest {
         Files.createDirectories(workspace.resolve(".agents/skills/kast"))
         Files.writeString(workspace.resolve(".agents/skills/kast/old.txt"), "old")
 
-        val result = KastProjectOpenProfileAutoInit.execute(
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = binary),
+            loadHomebrewReceipt = matchingHomebrewReceipt(binary),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
@@ -125,9 +184,10 @@ class KastProjectOpenProfileAutoInitTest {
     fun `missing cli binary fails closed`() {
         val workspace = gradleWorkspace()
 
-        val result = KastProjectOpenProfileAutoInit.execute(
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = workspace.resolve("missing-kast")),
+            loadHomebrewReceipt = matchingHomebrewReceipt(workspace.resolve("missing-kast")),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
@@ -163,6 +223,20 @@ class KastProjectOpenProfileAutoInitTest {
             ),
             cli = CliConfig(CliBinaryPath(binaryPath.toString())),
         )
+
+    private fun matchingHomebrewReceipt(
+        binary: Path,
+    ): (PluginVersion) -> MacosHomebrewReceiptLoadResult = { pluginVersion ->
+        MacosHomebrewReceiptLoadResult.Loaded(
+            MacosHomebrewInstallReceipt(
+                cliBinary = binary,
+                formulaPrefix = binary.parent,
+                cliVersion = pluginVersion,
+                caskToken = "amichne/kast/kast-plugin",
+                pluginVersion = pluginVersion,
+            ),
+        )
+    }
 }
 
 private fun Path.exists(): Boolean = Files.exists(this)

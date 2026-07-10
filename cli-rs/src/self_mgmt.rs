@@ -77,11 +77,35 @@ pub struct DeveloperMachineDefaultsResult {
     pub schema_version: u32,
 }
 
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InstallAuthority {
+    MacosHomebrew,
+    ManagedLocal,
+    Missing,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyShadowDiagnostic {
+    pub path: String,
+    pub managed: bool,
+    pub writable: bool,
+    pub homebrew_is_next: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cleanup_command: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
+    pub install_authority: InstallAuthority,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub homebrew_install: Option<install::MacosHomebrewInstallReceipt>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legacy_shadow: Option<LegacyShadowDiagnostic>,
     pub config_path: String,
     pub manifest_path: String,
     pub configuration: DoctorConfigurationDiagnostic,
@@ -109,7 +133,9 @@ pub fn doctor(
     let mut issues = vec![];
     let mut warnings = vec![];
     let repair_result = if repair {
-        manifest::install_current_executable()?;
+        if !install::macos_homebrew_authority_is_active()? {
+            manifest::install_current_executable()?;
+        }
         Some(install::repair_install_state(InstallRepairArgs {
             apply: true,
             jetbrains_config_root: None,
@@ -117,6 +143,10 @@ pub fn doctor(
     } else {
         None
     };
+    #[cfg(target_os = "macos")]
+    let homebrew_install = install::read_macos_homebrew_receipt()?;
+    #[cfg(not(target_os = "macos"))]
+    let homebrew_install = None;
     let global_config = match config::KastConfig::load_global() {
         Ok(global_config) => global_config,
         Err(error) => {
@@ -157,7 +187,28 @@ pub fn doctor(
         ));
     }
     let minimum_backend_version = minimum_backend_version();
-    if let Some(install) = &install {
+    let legacy_shadow = homebrew_install
+        .as_ref()
+        .and_then(|receipt| legacy_shadow_diagnostic(receipt, install.as_ref()));
+    if let Some(shadow) = &legacy_shadow {
+        if let Some(command) = &shadow.cleanup_command {
+            warnings.push(format!(
+                "Legacy kast at {} shadows Homebrew on PATH; clean it up with: {command}",
+                shadow.path
+            ));
+        } else {
+            warnings.push(format!(
+                "kast at {} shadows the authoritative Homebrew executable; no automatic cleanup is safe",
+                shadow.path
+            ));
+        }
+    }
+    if homebrew_install.is_some() && install.is_some() {
+        warnings.push(format!(
+            "Inactive legacy install manifest remains at {}; the macOS Homebrew receipt is authoritative",
+            manifest_path.display()
+        ));
+    } else if let Some(install) = &install {
         for path in &install.managed_paths {
             let managed_path = managed_path(&install_root, path);
             if !managed_path.exists() {
@@ -226,7 +277,7 @@ pub fn doctor(
                 }
             }
         }
-    } else {
+    } else if homebrew_install.is_none() {
         issues.push(format!(
             "Install manifest is missing at {}",
             manifest_path.display()
@@ -236,12 +287,22 @@ pub fn doctor(
         target,
         workspace_root,
         install.as_ref(),
+        homebrew_install.is_some(),
         &binary,
         &mut issues,
     );
     Ok(SelfDoctorResult {
         target,
-        installed: install.is_some(),
+        installed: homebrew_install.is_some() || install.is_some(),
+        install_authority: if homebrew_install.is_some() {
+            InstallAuthority::MacosHomebrew
+        } else if install.is_some() {
+            InstallAuthority::ManagedLocal
+        } else {
+            InstallAuthority::Missing
+        },
+        homebrew_install,
+        legacy_shadow,
         config_path: config_path.display().to_string(),
         manifest_path: manifest_path.display().to_string(),
         configuration,
@@ -258,10 +319,55 @@ pub fn doctor(
     })
 }
 
+fn legacy_shadow_diagnostic(
+    receipt: &install::MacosHomebrewInstallReceipt,
+    legacy_install: Option<&InstallState>,
+) -> Option<LegacyShadowDiagnostic> {
+    let candidates = env::var_os("PATH")
+        .map(|path| {
+            env::split_paths(&path)
+                .map(|directory| directory.join("kast"))
+                .filter(|candidate| candidate.is_file())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let first = candidates.first()?;
+    if same_binary_path(first, &receipt.cli.binary) {
+        return None;
+    }
+    let managed = legacy_install.is_some_and(|install| {
+        let shim = Path::new(&install.entrypoints.shim);
+        config::normalize(shim.to_path_buf()) == config::normalize(first.to_path_buf())
+            && manifest::is_managed_shim_for(shim, Path::new(&install.entrypoints.active_binary))
+    });
+    let writable = managed && install::path_parent_is_writable(first);
+    let homebrew_is_next = candidates
+        .get(1)
+        .is_some_and(|candidate| same_binary_path(candidate, &receipt.cli.binary));
+    let cleanup_command = (managed && writable && homebrew_is_next).then(|| {
+        format!(
+            "{} repair --for machine --apply && hash -r",
+            shell_quote_for_remediation(&receipt.cli.binary.display().to_string())
+        )
+    });
+    Some(LegacyShadowDiagnostic {
+        path: first.display().to_string(),
+        managed,
+        writable,
+        homebrew_is_next,
+        cleanup_command,
+    })
+}
+
+fn shell_quote_for_remediation(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
 fn apply_ready_target_checks(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
     install: Option<&InstallState>,
+    homebrew_install: bool,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
@@ -282,7 +388,7 @@ fn apply_ready_target_checks(
             }
         }
         ReadyTarget::Kotlin => {
-            if install.is_none_or(|install| install.backends.is_empty()) {
+            if !homebrew_install && install.is_none_or(|install| install.backends.is_empty()) {
                 issues.push(
                     "Kotlin readiness requires an installed semantic backend in the manifest"
                         .to_string(),

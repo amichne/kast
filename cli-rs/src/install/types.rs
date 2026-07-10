@@ -81,6 +81,7 @@ pub struct InstallIdeaPluginResult {
     pub brew_prefix: String,
     pub formula_prefix: String,
     pub cli_path: String,
+    pub homebrew_receipt: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jetbrains_config_root: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]

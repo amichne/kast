@@ -15,6 +15,11 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
     mdln!(document, "- Installed: {}", yes_no(result.installed));
     mdln!(
         document,
+        "- Install authority: `{}`",
+        install_authority_label(result.install_authority)
+    );
+    mdln!(
+        document,
         "- Config valid: {}",
         yes_no(result.configuration.valid)
     );
@@ -40,6 +45,39 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
         "- Minimum backend version: `{}`",
         result.minimum_backend_version
     );
+    if let Some(receipt) = &result.homebrew_install {
+        mdln!(document);
+        mdln!(document, "## macOS Homebrew authority");
+        mdln!(
+            document,
+            "- Receipt: `{}`",
+            compact_path_for_output(
+                &crate::install::default_macos_homebrew_receipt_path().display().to_string()
+            )
+        );
+        mdln!(
+            document,
+            "- CLI: `{}` (`{}`)",
+            compact_path_for_output(&receipt.cli.binary.display().to_string()),
+            receipt.cli.version
+        );
+        mdln!(
+            document,
+            "- Plugin: `{}` (`{}`)",
+            receipt.plugin.cask_token,
+            receipt.plugin.version
+        );
+    }
+    if let Some(shadow) = &result.legacy_shadow {
+        mdln!(document);
+        mdln!(document, "## Legacy PATH shadow");
+        mdln!(document, "- Path: `{}`", compact_path_for_output(&shadow.path));
+        mdln!(document, "- Kast-managed: {}", yes_no(shadow.managed));
+        mdln!(document, "- Writable: {}", yes_no(shadow.writable));
+        if let Some(command) = &shadow.cleanup_command {
+            mdln!(document, "- Safe cleanup: `{command}`");
+        }
+    }
     print_path_resolution(&mut document, &result.path_resolution);
     print_messages(&mut document, "Issues", &result.issues);
     print_warnings(&mut document, &result.warnings);
@@ -86,6 +124,14 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
         mdln!(document, "No blocking issues were found.");
     }
     print_markdown(&document.into_string())
+}
+
+fn install_authority_label(authority: crate::self_mgmt::InstallAuthority) -> &'static str {
+    match authority {
+        crate::self_mgmt::InstallAuthority::MacosHomebrew => "macos-homebrew",
+        crate::self_mgmt::InstallAuthority::ManagedLocal => "managed-local",
+        crate::self_mgmt::InstallAuthority::Missing => "missing",
+    }
 }
 
 fn print_path_resolution(document: &mut MarkdownDocument, report: &PathResolutionReport) {
