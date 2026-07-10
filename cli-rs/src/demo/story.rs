@@ -118,7 +118,7 @@ fn run_public_without_index(request: DemoRequest, output_format: OutputFormat) -
         file: None,
         module: None,
     };
-    let selected_story = selected_demo_story(&candidate, Some(&connection), &mut warnings);
+    let selected_story = load_selected_demo_story(&connection, &candidate, || false)?;
     warnings.push(
         "Source-index ranking and impact evidence are unavailable; this story uses the ready compiler backend."
             .to_string(),
