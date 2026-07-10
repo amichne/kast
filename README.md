@@ -53,7 +53,9 @@ kast demo
 Kast ranks high-signal symbols from the source index, adds live compiler
 identity, references, and diagnostics when the backend is available, then
 hands each chapter back to an equivalent typed `kast agent` command. It does
-not change source files. Use `kast --output json demo` for a deterministic
+not change source files. Semantic status colors distinguish compiler, index,
+verified, and plan-only evidence at a glance; `NO_COLOR=1 kast demo` preserves
+the same hierarchy in monochrome. Use `kast --output json demo` for a deterministic
 captured snapshot, or add `--symbol <name>` to choose the story anchor.
 
 The [repository demo guide](https://kast.michne.com/learn/repository-demo/) explains
