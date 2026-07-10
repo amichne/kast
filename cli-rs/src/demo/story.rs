@@ -184,9 +184,7 @@ impl DemoRequest {
             workspace_root,
             database,
             symbol: args.symbol,
-            query: None,
             limit: 30,
-            json: false,
             backend_name: args.runtime.backend_name,
         })
     }

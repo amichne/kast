@@ -68,39 +68,6 @@ pub struct MetricsSearchArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct DemoArgs {
-    /// Absolute workspace root containing the Kast source-index cache.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
-    /// Read a specific source-index.db instead of the workspace default.
-    #[arg(long)]
-    pub database: Option<PathBuf>,
-    /// Fully-qualified symbol to open first.
-    #[arg(long)]
-    pub symbol: Option<String>,
-    /// Initial symbol search query.
-    #[arg(long)]
-    pub query: Option<String>,
-    /// Maximum rows per demo pane.
-    #[arg(long, default_value_t = 30)]
-    pub limit: usize,
-    /// Print a deterministic JSON snapshot instead of entering the TUI.
-    #[arg(long)]
-    pub json: bool,
-    /// Demo visualization to run.
-    #[arg(long, value_enum, default_value = "compare")]
-    pub view: DemoView,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum DemoView {
-    /// Dual-pane comparison between lexical index candidates and Kast semantic matches.
-    Compare,
-    /// Existing source-index-backed symbol walk.
-    Symbol,
-}
-
-#[derive(Debug, Args, Clone)]
 pub struct PublicDemoArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,

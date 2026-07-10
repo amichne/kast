@@ -1,5 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{BackendName, DemoArgs, DemoView, OutputFormat, PublicDemoArgs, RuntimeArgs};
+use crate::cli::{BackendName, OutputFormat, PublicDemoArgs, RuntimeArgs};
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::output;
@@ -31,7 +31,6 @@ use std::time::Duration;
 const PREVIEW_RADIUS: usize = 7;
 
 include!("demo/model.rs");
-include!("demo/entrypoints.rs");
 include!("demo/database.rs");
 include!("demo/evidence.rs");
 include!("demo/story.rs");

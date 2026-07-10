@@ -3,18 +3,8 @@ struct DemoRequest {
     workspace_root: PathBuf,
     database: PathBuf,
     symbol: Option<String>,
-    query: Option<String>,
     limit: usize,
-    json: bool,
     backend_name: Option<BackendName>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct DemoResponse {
-    ok: bool,
-    snapshot: DemoSnapshot,
-    schema_version: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -111,14 +101,6 @@ struct PreviewLine {
     number: usize,
     text: String,
     highlighted: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CompareDemoResponse {
-    ok: bool,
-    snapshot: CompareSnapshot,
-    schema_version: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
