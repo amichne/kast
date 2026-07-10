@@ -150,6 +150,32 @@ class MacosHomebrewInstallReceiptTest {
     }
 
     @Test
+    @EnabledOnOs(OS.MAC, OS.LINUX)
+    fun `receipt accepts Homebrew bin symlink that resolves inside formula`() {
+        val cellarPrefix = tempDir.resolve("Cellar/kast/1.2.3")
+        val formulaBinary = cellarPrefix.resolve("bin/kast")
+        Files.createDirectories(formulaBinary.parent)
+        Files.writeString(formulaBinary, "#!/usr/bin/env sh\n")
+        check(formulaBinary.toFile().setExecutable(true))
+        val optPrefix = tempDir.resolve("opt/kast")
+        Files.createDirectories(optPrefix.parent)
+        Files.createSymbolicLink(optPrefix, cellarPrefix)
+        val linkedBinary = tempDir.resolve("bin/kast")
+        Files.createDirectories(linkedBinary.parent)
+        Files.createSymbolicLink(linkedBinary, formulaBinary)
+        val receipt = writeReceipt(
+            binary = linkedBinary,
+            formulaPrefix = optPrefix,
+            cliVersion = "1.2.3",
+            pluginVersion = "1.2.3",
+        )
+
+        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+
+        assertTrue(result is MacosHomebrewReceiptLoadResult.Loaded)
+    }
+
+    @Test
     fun `default receipt path uses macOS application support`() {
         assertEquals(
             tempDir.resolve("Library/Application Support/Kast/homebrew-install.json"),
@@ -167,6 +193,7 @@ class MacosHomebrewInstallReceiptTest {
 
     private fun writeReceipt(
         binary: Path,
+        formulaPrefix: Path = binary.parent.parent,
         cliVersion: String,
         pluginVersion: String,
         includeUpdatedAt: Boolean = true,
@@ -180,7 +207,7 @@ class MacosHomebrewInstallReceiptTest {
               "authority": "macos-homebrew",
               "cli": {
                 "binary": "${binary.toString().jsonEscaped()}",
-                "formulaPrefix": "${binary.parent.parent.toString().jsonEscaped()}",
+                "formulaPrefix": "${formulaPrefix.toString().jsonEscaped()}",
                 "version": "$cliVersion"
               },
               "plugin": {

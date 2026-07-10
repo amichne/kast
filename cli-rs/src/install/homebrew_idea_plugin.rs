@@ -3,6 +3,7 @@ struct HomebrewContext {
     brew_prefix: PathBuf,
     formula_prefix: PathBuf,
     cli_path: PathBuf,
+    running_cli_path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -171,16 +172,20 @@ fn jetbrains_profile_count_label(count: usize) -> String {
 fn discover_homebrew_context() -> Result<HomebrewContext> {
     let brew_prefix = homebrew_prefix(&["--prefix"])?;
     let formula_prefix = homebrew_prefix(&["--prefix", KAST_FORMULA_NAME])?;
-    let cli_path = env::current_exe()?;
+    let cli_path = formula_prefix.join("bin/kast");
+    let running_cli_path = env::current_exe()?;
     Ok(HomebrewContext {
         brew_prefix,
         formula_prefix,
         cli_path,
+        running_cli_path,
     })
 }
 
 fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
-    if path_is_below_homebrew_formula(&homebrew.cli_path, &homebrew.formula_prefix) {
+    if path_is_below_homebrew_formula(&homebrew.cli_path, &homebrew.formula_prefix)
+        && paths_resolve_to_same_file(&homebrew.running_cli_path, &homebrew.cli_path)
+    {
         return Ok(());
     }
     let mut error = CliError::new(
@@ -192,6 +197,10 @@ fn verify_homebrew_cli(homebrew: &HomebrewContext) -> Result<()> {
     );
     error.details.insert(
         "cliPath".to_string(),
+        homebrew.running_cli_path.display().to_string(),
+    );
+    error.details.insert(
+        "formulaCliPath".to_string(),
         homebrew.cli_path.display().to_string(),
     );
     error.details.insert(
@@ -481,6 +490,13 @@ fn command_error(code: &'static str, message: &str, args: &[String], output: &Ou
 fn path_is_below_homebrew_formula(path: &Path, formula_prefix: &Path) -> bool {
     match (fs::canonicalize(path), fs::canonicalize(formula_prefix)) {
         (Ok(path), Ok(formula_prefix)) => path.starts_with(formula_prefix),
+        _ => false,
+    }
+}
+
+fn paths_resolve_to_same_file(left: &Path, right: &Path) -> bool {
+    match (fs::canonicalize(left), fs::canonicalize(right)) {
+        (Ok(left), Ok(right)) => left == right,
         _ => false,
     }
 }
