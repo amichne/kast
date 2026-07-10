@@ -500,3 +500,36 @@ fn spawn_ready_demo_backend(
         methods
     })
 }
+
+#[test]
+fn developer_inspect_demo_returns_targeted_moved_guidance() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let old_demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "inspect",
+            "demo",
+            "--view",
+            "compare",
+            "--query",
+            "Foo",
+        ])
+        .output()
+        .expect("old demo");
+
+    assert!(!old_demo.status.success());
+    let response: Value = serde_json::from_slice(&old_demo.stdout).expect("moved error json");
+    assert_eq!(response["code"], "DEMO_COMMAND_MOVED");
+    assert!(
+        response["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("kast demo")),
+        "old invocations should self-correct in one turn: {response:#}"
+    );
+}

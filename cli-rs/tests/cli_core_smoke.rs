@@ -390,13 +390,14 @@ fn smoke_core_cli_commands() {
         "machine shell help should expose --profile: {shell_help_stdout}"
     );
     let demo_help = kast(&home, &config_home)
-        .args(["developer", "inspect", "demo", "--help"])
+        .args(["demo", "--help"])
         .output()
-        .expect("developer inspect demo help");
+        .expect("public demo help");
     assert!(demo_help.status.success());
     let demo_help_stdout = String::from_utf8_lossy(&demo_help.stdout);
-    assert!(demo_help_stdout.contains("source-index demo"));
-    assert!(demo_help_stdout.contains("compare"));
+    assert!(demo_help_stdout.contains("--workspace-root"));
+    assert!(demo_help_stdout.contains("--backend"));
+    assert!(demo_help_stdout.contains("--symbol"));
 
     let repair_plan = kast(&home, &config_home)
         .args(["--output", "json", "repair"])

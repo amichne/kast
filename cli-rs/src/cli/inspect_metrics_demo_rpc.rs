@@ -108,3 +108,11 @@ pub struct PublicDemoArgs {
     #[arg(long)]
     pub symbol: Option<String>,
 }
+
+#[derive(Debug, Args, Clone, Default)]
+#[command(disable_help_flag = true)]
+pub struct RemovedDemoArgs {
+    /// Stale demo arguments retained only to emit replacement guidance.
+    #[arg(allow_hyphen_values = true, trailing_var_arg = true)]
+    pub args: Vec<String>,
+}

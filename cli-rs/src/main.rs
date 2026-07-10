@@ -795,7 +795,18 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
     match command {
         cli::InspectCommand::Paths(args) => run_paths(args, output_format),
         cli::InspectCommand::Metrics { command } => metrics::run(command, output_format),
-        cli::InspectCommand::Demo(args) => demo::run(args),
+        cli::InspectCommand::Demo(args) => {
+            let _ = args;
+            let mut error = CliError::new(
+                "DEMO_COMMAND_MOVED",
+                "`kast developer inspect demo` moved to the public `kast demo` experience.",
+            );
+            error.details.insert(
+                "replacement".to_string(),
+                "kast demo --workspace-root <repo>".to_string(),
+            );
+            Err(error)
+        }
         cli::InspectCommand::Catalog(args) => run_validate(args),
     }
 }
