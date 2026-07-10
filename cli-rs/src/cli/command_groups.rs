@@ -33,8 +33,9 @@ pub enum InspectCommand {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Open the interactive source-index demo backed by source-index.db.
-    Demo(DemoArgs),
+    /// Retired developer-only demo; use the root `kast demo` command.
+    #[command(hide = true)]
+    Demo(RemovedDemoArgs),
     /// Validate catalog requests and checked-in sample payloads.
     Catalog(ValidateArgs),
 }

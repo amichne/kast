@@ -37,6 +37,15 @@ typed `kast` command surface.
 
     [:octicons-arrow-right-24: Headless install](install/headless-linux.md)
 
+-   :octicons-play-24:{ .lg .middle } **Try it on your code**
+
+    ---
+
+    Open a read-only semantic story built from symbols, relationships, impact,
+    and diagnostics in the repository you already have open.
+
+    [:octicons-arrow-right-24: Run the repository demo](learn/repository-demo.md)
+
 -   :octicons-zap-24:{ .lg .middle } **Run the first workflow**
 
     ---

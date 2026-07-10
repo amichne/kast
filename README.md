@@ -39,6 +39,24 @@ The [macOS install guide](https://kast.michne.com/install/macos/) covers the
 root installer and IDE handoff. The [headless Linux guide](https://kast.michne.com/install/headless-linux/)
 covers server and hosted-agent installs.
 
+## Try it on your code
+
+Once the workspace is prepared and its backend is ready, run the read-only
+repository tour:
+
+```console
+kast demo
+```
+
+Kast ranks high-signal symbols from the source index, adds live compiler
+identity, references, and diagnostics when the backend is available, then
+hands each chapter back to an equivalent typed `kast agent` command. It does
+not change source files. Use `kast --output json demo` for a deterministic
+captured snapshot, or add `--symbol <name>` to choose the story anchor.
+
+The [repository demo guide](https://kast.michne.com/learn/repository-demo/) explains
+the full, index-only, and backend-only evidence modes.
+
 ## Why Kast instead of text search?
 
 Kast answers questions that `grep` and `rg` cannot answer reliably on their
@@ -75,7 +93,9 @@ when they need compiler-backed evidence.
 - Read the [documentation site](https://kast.michne.com/).
 - Follow the [macOS install guide](https://kast.michne.com/install/macos/) or
   [headless Linux guide](https://kast.michne.com/install/headless-linux/).
-- Run the [first semantic workflow](https://kast.michne.com/learn/first-semantic-workflow/).
+- Run the [first semantic workflow](https://kast.michne.com/learn/first-semantic-workflow/)
+  or explore your repository with the
+  [read-only demo](https://kast.michne.com/learn/repository-demo/).
 - Browse the [command reference](https://kast.michne.com/reference/commands/).
 - Use [inspect Kotlin](https://kast.michne.com/use/inspect-kotlin/) and
   [plan safe edits](https://kast.michne.com/use/plan-safe-edits/) for common

@@ -21,6 +21,7 @@ nav = [
   ]},
   { "Learn" = [
     { "First semantic workflow" = "learn/first-semantic-workflow.md" },
+    { "Repository demo" = "learn/repository-demo.md" },
     { "How Kast thinks about evidence" = "learn/evidence-model.md" },
   ]},
   { "Use Kast" = [

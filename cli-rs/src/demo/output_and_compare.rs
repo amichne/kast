@@ -1,25 +1,3 @@
-fn print_json_snapshot(snapshot: DemoSnapshot) -> Result<i32> {
-    let response = DemoResponse {
-        ok: true,
-        snapshot,
-        schema_version: SCHEMA_VERSION,
-    };
-    serde_json::to_writer_pretty(io::stdout(), &serde_json::to_value(response)?)?;
-    println!();
-    Ok(0)
-}
-
-fn print_compare_json_snapshot(snapshot: CompareSnapshot) -> Result<i32> {
-    let response = CompareDemoResponse {
-        ok: true,
-        snapshot,
-        schema_version: SCHEMA_VERSION,
-    };
-    serde_json::to_writer_pretty(io::stdout(), &serde_json::to_value(response)?)?;
-    println!();
-    Ok(0)
-}
-
 fn compare_row_from_detail(detail: SymbolDetail, badge: CompareBadge) -> CompareRow {
     let relation_kinds = detail.by_edge_kind.keys().cloned().collect();
     let path = detail.path.clone();

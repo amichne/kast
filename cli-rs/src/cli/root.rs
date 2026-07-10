@@ -46,6 +46,8 @@ pub enum Command {
     Repair(RepairArgs),
     /// Check the current workspace status.
     Status(RuntimeArgs),
+    /// Explore a guided semantic story from this Kotlin repository.
+    Demo(PublicDemoArgs),
     /// Developer and release-engineering commands.
     Developer(DeveloperArgs),
     /// Backward-compatible alias for `ready`. Used by kast-action v2.

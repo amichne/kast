@@ -24,6 +24,7 @@ agent work.
 | `kast ready` | Verify that Kast is ready for a task |
 | `kast repair` | Plan or apply safe repair when support workflows need it |
 | `kast status` | Check current workspace status |
+| `kast demo` | Explore a read-only semantic story from the current repository |
 | `kast developer ...` | Run operator, inspection, machine, and release commands |
 | `kast agent ...` | Run typed agent, semantic, and LSP commands |
 
@@ -43,8 +44,9 @@ not public reader paths.
 | Readiness | `kast ready --for agent|kotlin|release|machine` | Report task readiness without mutation |
 | Repair | `kast repair --for agent|kotlin|release|machine` | Plan by default and apply only with `--apply` |
 | Status | `kast status` | Inspect workspace and runtime status |
+| Demo | `kast demo` | Tour compiler and source-index evidence without changing files |
 | Runtime | `kast developer runtime up|status|stop|restart|capabilities` | Manage backend lifecycle |
-| Inspection | `kast developer inspect paths|metrics|demo|catalog` | Inspect local state, source-index metrics, demos, and catalog samples |
+| Inspection | `kast developer inspect paths|metrics|catalog` | Inspect local state, source-index metrics, and catalog samples |
 | Machine | `kast developer machine ...` | Manage local developer-machine integrations |
 | Release | `kast developer release package|activate|generate|validate` | Build, activate, regenerate, and validate release artifacts |
 | Agent | `kast agent verify|symbol|impact|diagnostics|rename|add-file|add-declaration|add-implementation|add-statement|replace-declaration|lsp` | Run typed semantic and editor-adapter commands |

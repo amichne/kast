@@ -13,6 +13,10 @@ Superseded in part by
 [ADR 0011](0011-journey-first-documentation-operating-model.md) for published
 documentation structure and public docs source paths.
 
+Superseded in part by
+[ADR 0012](0012-repo-native-semantic-story-demo.md) for the public, read-only
+repository demo and its evidence-degradation contract.
+
 This ADR defines Kast as it should be evaluated going forward. It is an audit
 charter, not a migration log. Historical surfaces, compatibility aliases, and
 deprecation candidates are evidence only when they prove that the forward

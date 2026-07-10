@@ -213,6 +213,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Ready(args) => run_ready(args, output_format),
         Command::Repair(args) => run_repair(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
+        Command::Demo(args) => demo::run_public(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args, output_format),
         Command::Agent(args) => run_agent(args, output_format),
@@ -621,7 +622,18 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
     match command {
         cli::InspectCommand::Paths(args) => run_paths(args, output_format),
         cli::InspectCommand::Metrics { command } => metrics::run(command, output_format),
-        cli::InspectCommand::Demo(args) => demo::run(args),
+        cli::InspectCommand::Demo(args) => {
+            let _ = args;
+            let mut error = CliError::new(
+                "DEMO_COMMAND_MOVED",
+                "`kast developer inspect demo` moved to the public `kast demo` experience.",
+            );
+            error.details.insert(
+                "replacement".to_string(),
+                "kast demo --workspace-root <repo>".to_string(),
+            );
+            Err(error)
+        }
         cli::InspectCommand::Catalog(args) => run_validate(args),
     }
 }

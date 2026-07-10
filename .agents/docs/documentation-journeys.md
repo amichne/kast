@@ -21,6 +21,7 @@ or navigation.
 | --- | --- | --- | --- |
 | macOS developer | `docs/install/macos.md` | Install Kast, restart the IDE, and open the project | `docs/learn/evidence-model.md` |
 | Linux or hosted-agent operator | `docs/install/headless-linux.md` | Install a headless bundle for CI, hosted agents, or server images | `docs/distribute/runtime-artifact-contract.md` |
+| Developer evaluator | `docs/learn/repository-demo.md` | Explore semantic evidence from the Kotlin repository already open | `docs/learn/evidence-model.md` |
 | Agent or script author | `docs/use/automate-with-agents.md` | Understand the typed semantic operations agents use behind the scenes | `docs/reference/agent-commands.md` |
 | CLI operator | `docs/use/choose-a-command.md` | Choose the high-level command family for inspection, editing, automation, or release work | `docs/reference/commands.md` |
 | Kotlin maintainer | `docs/use/inspect-kotlin.md` | Understand how agents resolve Kotlin symbols, references, callers, diagnostics, and impact before acting | `docs/use/plan-safe-edits.md` |
@@ -40,6 +41,7 @@ turning one page into a mixed narrative.
 | `docs/install/macos.md` | How-to guide | Install the macOS machine support with one visible path | Keep setup, readiness, repair, and support commands collapsed |
 | `docs/install/headless-linux.md` | How-to guide | Install, mirror, or image a Linux headless runtime | Keep repository guidance and backend checks collapsed |
 | `docs/learn/first-semantic-workflow.md` | Explanation with collapsed execution detail | Show the semantic workflow agents run behind the scenes | Do not present agent commands as normal developer steps |
+| `docs/learn/repository-demo.md` | Tutorial | Learn Kast by exploring read-only evidence from the current repository | Keep the path deterministic and state degraded evidence explicitly |
 | `docs/learn/evidence-model.md` | Explanation | Explain semantic evidence, bounded results, and plan-first edits | Keep instructions in use/reference pages |
 | `docs/use/choose-a-command.md` | How-to guide | Pick the right command family for a task | Keep exact command families collapsed when they are agent/operator detail |
 | `docs/use/inspect-kotlin.md` | Explanation/how-to hybrid | Understand semantic lookup before code changes | Keep command examples collapsed |

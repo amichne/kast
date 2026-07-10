@@ -13,8 +13,8 @@ agents, operators, and release engineers:
 - `docs/index.md` — landing page for reader journeys and the operating model.
 - `docs/install/` — install lanes for macOS developer machines and headless
   Linux or hosted-agent environments.
-- `docs/learn/` — guided first-run and explanation pages for readers building
-  a mental model.
+- `docs/learn/` — guided first-run, repo-native demo, and explanation pages for
+  readers building a mental model.
 - `docs/use/` — task-oriented how-to guides for choosing commands, inspecting
   Kotlin, planning safe edits, and automating with agents.
 - `docs/reference/` — compact command, agent-command, selector, runtime, and
