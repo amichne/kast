@@ -8,13 +8,13 @@ analysis backend as a JVM process and keeps CLI-owned work in Rust:
 - command parsing with `clap`
 - config read/write from `config.toml`
 - headless daemon launch via `java -cp <runtime-libs/classpath.txt>`
-- catalog calls over Unix domain sockets through `kast agent call`
+- typed semantic calls over Unix domain sockets through `kast agent`
 - descriptor-based runtime lifecycle under `kast developer runtime`
 - embedded skill and Copilot LSP plugin installation
 - Homebrew cask-backed IDEA plugin download and optional profile linking
 - install state recorded directly in `config.toml`
 - direct read-only `source-index.db` metrics through `rusqlite`
-- interactive symbol walking and spatial structure demos through `ratatui`
+- a public, repo-native semantic story and focused exploration through `ratatui`
 
 The public binary keeps a small production surface, with development and
 release commands grouped under `kast developer`:
@@ -27,7 +27,9 @@ brew install --cask kast-plugin
 kast setup
 kast ready
 kast status
-kast agent call health --params '{}'
+kast demo --workspace-root "$PWD"
+kast agent verify --workspace-root "$PWD"
+kast agent symbol --query OrderService --references --workspace-root "$PWD"
 kast developer inspect metrics fan-in
 ```
 

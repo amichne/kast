@@ -24,6 +24,7 @@ nav = [
     { "Overview" = "commands/index.md" },
     { "Lifecycle" = "commands/lifecycle.md" },
     { "Install and repair" = "commands/install-repair.md" },
+    { "Repository demo" = "commands/demo.md" },
     { "Agent automation" = "commands/agent.md" },
     { "Metrics" = "commands/metrics.md" },
     { "LSP" = "commands/lsp.md" },

@@ -65,6 +65,25 @@ the macOS installer, tap mirrors, repository setup, manifest-backed paths, and
 repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
 covers server and hosted-agent installs.
 
+## Try it on your code
+
+Once the workspace is prepared and its backend is ready, run the read-only
+repository tour:
+
+```console
+kast demo --workspace-root "$PWD"
+```
+
+Kast ranks high-signal symbols from the source index, adds live compiler
+identity, references, and diagnostics when the backend is available, then
+hands each chapter back to an equivalent typed `kast agent` command. It does
+not change source files. Use `kast --output json demo --workspace-root "$PWD"`
+for a deterministic captured snapshot, or add `--symbol <name>` to choose the
+story anchor.
+
+The [repository demo guide](https://kast.michne.com/commands/demo/) explains
+the full, index-only, and backend-only evidence modes.
+
 ## Why Kast instead of text search?
 
 Kast answers questions that `grep` and `rg` cannot answer reliably on their

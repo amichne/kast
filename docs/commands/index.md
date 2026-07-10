@@ -18,12 +18,15 @@ flowchart LR
     ready["ready<br/>read-only"]
     repair["repair<br/>plan/apply"]
     status["status"]
+    demo["demo<br/>read-only repository tour"]
     agent["agent<br/>verify, symbol, diagnostics, impact, rename, mutations"]
     runtime["developer runtime"]
     inspect["developer inspect"]
 
     setup --> ready
     ready --> agent
+    ready --> demo
+    demo --> agent
     ready -. install drift .-> repair
     status --> runtime
     inspect --> agent
@@ -34,9 +37,10 @@ flowchart LR
 | Setup | `setup` | Non-macOS repository guidance setup; macOS workspace setup is owned by the IntelliJ plugin |
 | Readiness | `ready` | Read task readiness without mutation |
 | Repair | `repair` | Plan or apply managed install-state repair |
+| Demo | `demo` | Tour semantic evidence from the current repository without changing files |
 | Agent automation | `agent verify`, `agent symbol`, `agent diagnostics`, `agent impact`, `agent rename`, `agent add-file`, `agent add-declaration`, `agent add-implementation`, `agent add-statement`, `agent replace-declaration`, `agent lsp` | Run typed compiler-backed agent operations |
 | Runtime | `status`, `developer runtime ...` | Inspect, start, refresh, or stop the workspace backend |
-| Inspect | `developer inspect paths`, `developer inspect metrics`, `developer inspect demo`, `developer inspect catalog` | Inspect paths, demos, catalogs, and source-index metrics |
+| Inspect | `developer inspect paths`, `developer inspect metrics`, `developer inspect catalog` | Inspect paths, catalogs, and source-index metrics |
 | Machine | `developer machine plugin`, `developer machine defaults`, `developer machine shell` | Manage local IDE plugin links, developer defaults, and shell integration |
 | Release | `developer release package ...`, `developer release activate bundle`, `developer release generate`, `developer release validate` | Build, activate, or validate release artifacts |
 

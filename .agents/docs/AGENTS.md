@@ -16,8 +16,8 @@ The published documentation is a CLI command manual for developers:
   mirror, and image-build install path.
 - `docs/getting-started/quickstart.md` — first lifecycle and `kast agent`
   semantic commands.
-- `docs/commands/` — command group documentation for lifecycle, install and
-  repair, agent automation, metrics, and LSP.
+- `docs/commands/` — command documentation for lifecycle, install and repair,
+  the repo-native demo, agent automation, metrics, and LSP.
 - `docs/recipes.md` — copy-paste command sequences.
 - `docs/troubleshooting.md` — command-oriented diagnosis.
 - `docs/distribution/runtime-artifact-contract.md` — distribution commands,

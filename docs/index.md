@@ -99,6 +99,15 @@ dispatch.
 
     [:octicons-arrow-right-24: Quickstart](getting-started/quickstart.md)
 
+-   :octicons-play-24:{ .lg .middle } **Try it on your code**
+
+    ---
+
+    Open a read-only semantic story built from symbols, relationships, impact,
+    and diagnostics in the repository you already have open.
+
+    [:octicons-arrow-right-24: Run the repository demo](commands/demo.md)
+
 -   :octicons-terminal-24:{ .lg .middle } **Commands**
 
     ---

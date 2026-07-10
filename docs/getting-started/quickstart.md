@@ -66,7 +66,29 @@ kast repair --for agent --workspace-root "$PWD"
 kast repair --for agent --workspace-root "$PWD" --apply
 ```
 
-## 3. Resolve Symbol Identity
+## 3. Tour Your Repository
+
+Let Kast choose a high-signal story from the codebase before reaching for an
+individual command. The interactive tour is read-only and grounds each chapter
+in source-index or compiler evidence from this workspace.
+
+```console
+kast demo --workspace-root "$PWD"
+```
+
+Captured sessions can request deterministic JSON, and `--symbol` can anchor the
+story when you already know the declaration to inspect.
+
+```console
+kast --output json demo --workspace-root "$PWD"
+kast demo --symbol com.example.OrderService --workspace-root "$PWD"
+```
+
+The tour covers identity, semantic versus lexical matches, relationships,
+impact, diagnostics, and a plan-only rename preview when the required evidence
+is available. It never changes user code.
+
+## 4. Resolve Symbol Identity
 
 Run lookup before editing. Kast resolves compiler identity first, then can add
 references or callers when you need usage evidence.
@@ -77,7 +99,7 @@ kast agent symbol --query OrderService --references --workspace-root "$PWD"
 kast agent symbol --query process --callers incoming --workspace-root "$PWD"
 ```
 
-## 4. Validate And Rename
+## 5. Validate And Rename
 
 Diagnostics and rename commands are plan-first. Review the plan, then rerun
 with `--apply` when the target identity and write set are correct.
@@ -91,7 +113,7 @@ kast agent rename --symbol com.example.OrderService --new-name Orders --apply --
 Rename plans are identity-first; local-variable rename is deferred until Kast
 has a typed non-offset selector for locals.
 
-## 5. Plan A Scope Mutation
+## 6. Plan A Scope Mutation
 
 Use mutation commands when you want Kast to place Kotlin content with semantic
 scope evidence. Content always comes from a file so shell quoting never changes
