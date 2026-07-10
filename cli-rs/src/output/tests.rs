@@ -174,7 +174,7 @@ mod tests {
         assert!(rendered.contains("Homebrew action"), "{rendered}");
         assert!(rendered.contains("Brew command"), "{rendered}");
         assert!(
-            rendered.contains("Restart any open IntelliJ IDEA"),
+            rendered.contains("Open IntelliJ IDEA or Android Studio"),
             "{rendered}"
         );
         assert!(
@@ -220,6 +220,8 @@ mod tests {
             brew_prefix: "/opt/homebrew".to_string(),
             formula_prefix: "/opt/homebrew/Cellar/kast/9.8.7".to_string(),
             cli_path: "/opt/homebrew/bin/kast".to_string(),
+            homebrew_receipt:
+                "/Users/test/Library/Application Support/Kast/homebrew-install.json".to_string(),
             jetbrains_config_root: Some("/tmp/JetBrains".to_string()),
             plugin_directories: vec!["/tmp/JetBrains/IntelliJIdea2026.1/plugins".to_string()],
             dry_run,

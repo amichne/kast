@@ -10,7 +10,8 @@ are real, or whether a planned edit is safe to apply.
 
 ## Install
 
-For a macOS developer machine, run the installer and then open your project in IntelliJ IDEA or Android Studio.
+For a macOS developer machine, close IntelliJ IDEA and Android Studio, run the
+installer, and then open your project in IntelliJ IDEA or Android Studio.
 Kast handles the CLI, matching plugin, and agent-facing project guidance from
 there.
 
@@ -19,8 +20,11 @@ there.
 ```
 
 The installer defaults to the public `amichne/kast` Homebrew tap. It explains
-the planned machine changes before mutating anything. Restart the IDE after an
-install or update, then open the project you want agents to work in.
+the planned machine changes before mutating anything and stops if a JetBrains
+IDE is still running. Homebrew owns the macOS CLI and matching plugin; Kast
+records and uses the exact formula binary instead of trusting ambient `PATH`.
+Open the IDE after an install or update, then open the project you want agents
+to work in.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:

@@ -53,7 +53,7 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
     let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
         .parent()
         .expect("binary parent");
-    write_fake_brew(&brew_bin, formula_prefix);
+    let brew_prefix = write_fake_brew(&brew_bin, formula_prefix);
 
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
@@ -106,7 +106,348 @@ fn plugin_install_gateway_installs_homebrew_cask_and_links_profiles() {
     assert_eq!(
         std::fs::read_link(jetbrains_root.join("IntelliJIdea2026.1/plugins/kast"))
             .expect("plugin symlink"),
-        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
+        brew_prefix
+            .join("Caskroom/kast-plugin")
+            .join(env!("CARGO_PKG_VERSION"))
+            .join("backend-idea")
+    );
+}
+
+#[test]
+fn plugin_install_writes_homebrew_authority_receipt_after_success() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "plugin install should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let receipt_path = home.join("Library/Application Support/Kast/homebrew-install.json");
+    let stdout: serde_json::Value = serde_json::from_slice(&install.stdout).expect("install json");
+    assert_eq!(
+        stdout["homebrewReceipt"],
+        receipt_path.display().to_string(),
+        "{stdout}"
+    );
+    let receipt: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&receipt_path).expect("Homebrew install receipt"))
+            .expect("receipt json");
+    assert_eq!(receipt["authority"], "macos-homebrew");
+    assert_eq!(receipt["cli"]["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(receipt["plugin"]["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(receipt["plugin"]["caskToken"], "amichne/kast/kast-plugin");
+}
+
+#[test]
+fn plugin_install_refuses_receipt_when_every_profile_has_an_unmanaged_plugin_path() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    let unmanaged_plugin = jetbrains_root.join("IntelliJIdea2026.1/plugins/kast");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&unmanaged_plugin).expect("unmanaged plugin path");
+    std::fs::write(unmanaged_plugin.join("marker"), "unmanaged\n").expect("unmanaged marker");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        !install.status.success(),
+        "unmanaged plugin conflicts must prevent authority receipt: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install error json");
+    assert_eq!(stdout["code"], "JETBRAINS_PLUGIN_LINK_CONFLICT", "{stdout}");
+    assert!(unmanaged_plugin.join("marker").is_file());
+    assert!(!config_home.join("config.toml").exists());
+    assert!(
+        !home
+            .join("Library/Application Support/Kast/homebrew-install.json")
+            .exists()
+    );
+}
+
+#[test]
+fn plugin_install_refuses_receipt_when_any_profile_has_an_unmanaged_plugin_path() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    let unmanaged_plugin = jetbrains_root.join("AndroidStudio2026.2/plugins/kast");
+    let clean_profile_plugin = jetbrains_root.join("IntelliJIdea2026.1/plugins/kast");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&unmanaged_plugin).expect("unmanaged plugin path");
+    std::fs::create_dir_all(clean_profile_plugin.parent().expect("clean plugin parent"))
+        .expect("clean profile");
+    std::fs::write(unmanaged_plugin.join("marker"), "unmanaged\n").expect("unmanaged marker");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        !install.status.success(),
+        "one unmanaged profile must prevent machine authority convergence: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install error json");
+    assert_eq!(stdout["code"], "JETBRAINS_PLUGIN_LINK_CONFLICT", "{stdout}");
+    assert!(unmanaged_plugin.join("marker").is_file());
+    assert!(
+        !clean_profile_plugin.exists(),
+        "conflict preflight must avoid partially mutating otherwise clean profiles"
+    );
+    assert!(
+        !home.join(".fake-brew-kast-plugin-version").exists(),
+        "conflict preflight must run before mutating the Homebrew cask"
+    );
+    assert!(!config_home.join("config.toml").exists());
+    assert!(
+        !home
+            .join("Library/Application Support/Kast/homebrew-install.json")
+            .exists()
+    );
+}
+
+#[test]
+fn plugin_install_refuses_receipt_when_the_homebrew_plugin_target_is_missing() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    let brew_prefix = write_fake_brew(&brew_bin, formula_prefix);
+    std::fs::remove_dir_all(
+        brew_prefix
+            .join("Caskroom/kast-plugin")
+            .join(env!("CARGO_PKG_VERSION")),
+    )
+    .expect("remove staged plugin target");
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_BREW_CASK_VERSION", env!("CARGO_PKG_VERSION"))
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        !install.status.success(),
+        "missing staged plugin target must prevent authority receipt: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install error json");
+    assert_eq!(stdout["code"], "HOMEBREW_PLUGIN_TARGET_MISSING", "{stdout}");
+    assert!(!config_home.join("config.toml").exists());
+    assert!(
+        !home
+            .join("Library/Application Support/Kast/homebrew-install.json")
+            .exists()
+    );
+}
+
+#[test]
+fn plugin_install_skips_homebrew_when_matching_cask_is_installed() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_BREW_CASK_VERSION", env!("CARGO_PKG_VERSION"))
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "matching plugin install should converge: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&install.stdout).expect("install json");
+    assert_eq!(stdout["brewAction"], "none", "{stdout}");
+    assert_eq!(stdout["brewCommand"], serde_json::json!([]), "{stdout}");
+}
+
+#[test]
+fn plugin_install_refuses_mutation_while_intellij_is_running() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_PS_JETBRAINS", "IntelliJ IDEA")
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(!install.status.success(), "running IDEA must block install");
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install error json");
+    assert_eq!(stdout["code"], "JETBRAINS_IDE_RUNNING", "{stdout}");
+    assert_eq!(stdout["details"]["products"], "IntelliJ IDEA", "{stdout}");
+    assert!(!config_home.join("config.toml").exists());
+    assert!(
+        !home
+            .join("Library/Application Support/Kast/homebrew-install.json")
+            .exists()
+    );
+}
+
+#[test]
+fn plugin_install_rejects_cask_version_that_differs_from_cli() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_BREW_PLUGIN_VERSION", "9.8.7")
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        !install.status.success(),
+        "mismatched plugin must fail closed"
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&install.stdout).expect("install error json");
+    assert_eq!(
+        stdout["code"], "HOMEBREW_PLUGIN_VERSION_MISMATCH",
+        "{stdout}"
+    );
+    assert!(!config_home.join("config.toml").exists());
+    assert!(
+        !home
+            .join("Library/Application Support/Kast/homebrew-install.json")
+            .exists()
     );
 }
 
@@ -175,7 +516,7 @@ fn plugin_install_human_output_reports_progress_and_summary_tables() {
         "captured summary should not use table borders: {stdout}"
     );
     assert!(
-        stdout.contains("Restart any open IntelliJ IDEA or Android Studio windows"),
+        stdout.contains("Open IntelliJ IDEA or Android Studio"),
         "{stdout}"
     );
 }
@@ -190,16 +531,16 @@ fn plugin_install_repairs_stale_homebrew_profile_link() {
     let plugins_dir = jetbrains_root.join("IntelliJIdea2026.1/plugins");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&plugins_dir).expect("profile plugins");
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(
-        "/opt/homebrew/Caskroom/kast-plugin/0.7.35/backend-idea",
-        plugins_dir.join("kast"),
-    )
-    .expect("stale plugin symlink");
     let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
         .parent()
         .expect("binary parent");
-    write_fake_brew(&brew_bin, formula_prefix);
+    let brew_prefix = write_fake_brew(&brew_bin, formula_prefix);
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        brew_prefix.join("Caskroom/kast-plugin/0.7.35/backend-idea"),
+        plugins_dir.join("kast"),
+    )
+    .expect("stale plugin symlink");
 
     let install = kast(&home, &config_home)
         .env("PATH", &brew_bin)
@@ -224,6 +565,9 @@ fn plugin_install_repairs_stale_homebrew_profile_link() {
     #[cfg(unix)]
     assert_eq!(
         std::fs::read_link(plugins_dir.join("kast")).expect("plugin symlink after repair"),
-        Path::new("/opt/homebrew/Caskroom/kast-plugin/9.8.7/backend-idea")
+        brew_prefix
+            .join("Caskroom/kast-plugin")
+            .join(env!("CARGO_PKG_VERSION"))
+            .join("backend-idea")
     );
 }

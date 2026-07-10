@@ -403,7 +403,7 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         .as_deref()
         .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
         .transpose()?;
-    if apply {
+    if apply && !install::macos_homebrew_authority_is_active()? {
         manifest::install_current_executable()?;
     }
     let repair = install::repair_install_state(cli::InstallRepairArgs {

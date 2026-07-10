@@ -363,7 +363,7 @@ installRoot = "{}"
         let entries = path_resolution_entries(
             &config,
             PathResolutionMode::Cli,
-            PathResolutionEntryContext::from_states(false, false, false, false),
+            PathResolutionEntryContext::from_states(false, false, false, false, false),
         );
         let entry = |key: &str| report_entry(&entries, key);
 
@@ -411,7 +411,7 @@ installRoot = "{}"
         let entries = path_resolution_entries(
             &config,
             PathResolutionMode::Cli,
-            PathResolutionEntryContext::from_states(true, true, true, false),
+            PathResolutionEntryContext::from_states(true, false, true, true, false),
         );
         let entry = |key: &str| report_entry(&entries, key);
 
@@ -444,6 +444,35 @@ installRoot = "{}"
         assert_eq!(
             entry("backends.headless.runtimeLibsDir").source,
             PathResolutionSource::Manifest
+        );
+    }
+
+    #[test]
+    fn homebrew_receipt_makes_legacy_manifest_inactive_for_path_sources() {
+        let config = KastConfig::defaults();
+
+        let entries = path_resolution_entries(
+            &config,
+            PathResolutionMode::Cli,
+            PathResolutionEntryContext::from_states(true, true, false, false, false),
+        );
+        let entry = |key: &str| report_entry(&entries, key);
+
+        assert_eq!(
+            entry("paths.installRoot").source,
+            PathResolutionSource::Default
+        );
+        assert_eq!(
+            entry("paths.binDir").source,
+            PathResolutionSource::HomebrewReceipt
+        );
+        assert_eq!(
+            entry("cli.binaryPath").source,
+            PathResolutionSource::HomebrewReceipt
+        );
+        assert_eq!(
+            entry("paths.runtimeDir").source,
+            PathResolutionSource::Default
         );
     }
 

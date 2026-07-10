@@ -207,6 +207,23 @@ pub struct ResolvedKastPaths {
 }
 
 pub fn resolve_paths() -> Result<ResolvedKastPaths> {
+    #[cfg(target_os = "macos")]
+    if let Some(receipt) = crate::install::read_macos_homebrew_receipt()? {
+        let mut paths = default_resolved_paths();
+        let bin_dir = receipt.cli.binary.parent().ok_or_else(|| {
+            CliError::new(
+                "MACOS_HOMEBREW_RECEIPT_INVALID",
+                format!(
+                    "macOS Homebrew receipt CLI has no parent directory: {}",
+                    receipt.cli.binary.display()
+                ),
+            )
+        })?;
+        paths.bin_dir = bin_dir.to_path_buf();
+        paths.shim_path = receipt.cli.binary.clone();
+        paths.active_binary = receipt.cli.binary;
+        return Ok(paths);
+    }
     let manifest_path = default_install_manifest_path();
     if manifest_path.is_file() {
         return paths_from_manifest(&read_manifest_at(&manifest_path)?);
@@ -501,12 +518,26 @@ pub(crate) fn write_shim(shim_path: &Path, active_binary: &Path) -> Result<()> {
     if let Some(parent) = shim_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let content = format!(
-        "#!/usr/bin/env bash\nset -euo pipefail\nexec {} \"$@\"\n",
-        shell_quote(&active_binary.display().to_string())
-    );
+    let content = render_shim(active_binary);
     fs::write(shim_path, content)?;
     make_executable(shim_path)
+}
+
+pub(crate) fn is_managed_shim_for(shim_path: &Path, active_binary: &Path) -> bool {
+    if fs::read_link(shim_path)
+        .ok()
+        .is_some_and(|target| normalize(target) == normalize(active_binary.to_path_buf()))
+    {
+        return true;
+    }
+    fs::read_to_string(shim_path).is_ok_and(|content| content == render_shim(active_binary))
+}
+
+fn render_shim(active_binary: &Path) -> String {
+    format!(
+        "#!/usr/bin/env bash\nset -euo pipefail\nexec {} \"$@\"\n",
+        shell_quote(&active_binary.display().to_string())
+    )
 }
 
 #[cfg(unix)]

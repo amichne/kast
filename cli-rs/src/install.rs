@@ -20,7 +20,7 @@ use crate::manifest::{
 use crate::self_mgmt;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
@@ -49,6 +49,7 @@ const LEGACY_KAST_MANAGED_FENCE_END: &str = "<!-- END KAST MANAGED -->";
 
 include!("install/reporting.rs");
 include!("install/types.rs");
+include!("install/macos_homebrew_receipt.rs");
 include!("install/dispatch.rs");
 include!("install/bundle_entrypoint.rs");
 include!("install/agent_guidance.rs");

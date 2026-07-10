@@ -3,6 +3,108 @@ mod tests {
     use super::*;
 
     #[test]
+    fn macos_homebrew_receipt_round_trips_from_application_support() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let version = cli::version().to_string();
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
+        let binary = formula_prefix.join("bin/kast");
+        fs::create_dir_all(binary.parent().expect("binary parent")).expect("formula bin");
+        fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
+        crate::manifest::make_executable(&binary).expect("executable binary");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            version.clone(),
+            "amichne/kast/kast-plugin".to_string(),
+            version,
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let loaded = read_macos_homebrew_receipt_at(&receipt_path).expect("read receipt");
+
+        assert_eq!(loaded, receipt);
+        assert_eq!(
+            receipt_path,
+            temp.path()
+                .join("Library/Application Support/Kast/homebrew-install.json")
+        );
+    }
+
+    #[test]
+    fn macos_homebrew_receipt_rejects_a_stale_version() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let formula_prefix = temp.path().join("Cellar/kast/0.0.0");
+        let binary = formula_prefix.join("bin/kast");
+        fs::create_dir_all(binary.parent().expect("binary parent")).expect("formula bin");
+        fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
+        crate::manifest::make_executable(&binary).expect("executable binary");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            "0.0.0".to_string(),
+            "amichne/kast/kast-plugin".to_string(),
+            "0.0.0".to_string(),
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("stale receipt");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH");
+        assert!(error.message.contains(cli::version()), "{}", error.message);
+    }
+
+    #[test]
+    fn macos_homebrew_receipt_rejects_a_missing_binary() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let version = cli::version().to_string();
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
+        fs::create_dir_all(&formula_prefix).expect("formula prefix");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            formula_prefix.join("bin/kast"),
+            formula_prefix,
+            version.clone(),
+            "amichne/kast/kast-plugin".to_string(),
+            version,
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("missing binary");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_BINARY_MISSING");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn macos_homebrew_receipt_rejects_a_binary_symlink_escape() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let version = cli::version().to_string();
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
+        let binary = formula_prefix.join("bin/kast");
+        let outside_binary = temp.path().join("outside/kast");
+        fs::create_dir_all(binary.parent().expect("formula bin")).expect("formula bin");
+        fs::create_dir_all(outside_binary.parent().expect("outside bin")).expect("outside bin");
+        fs::write(&outside_binary, "#!/usr/bin/env sh\n").expect("outside binary");
+        crate::manifest::make_executable(&outside_binary).expect("executable outside binary");
+        std::os::unix::fs::symlink(&outside_binary, &binary).expect("formula symlink");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            version.clone(),
+            "amichne/kast/kast-plugin".to_string(),
+            version,
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("escaping receipt");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_INVALID");
+    }
+
+    #[test]
     fn install_skill_omits_marker_and_skips_matching_version() {
         let temp = tempfile::tempdir().unwrap();
         let args = ResourceInstallArgs {
@@ -159,6 +261,22 @@ mod tests {
     }
 
     #[test]
+    fn running_jetbrains_product_detection_includes_named_app_variants() {
+        let processes = r#"
+/Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea /workspace
+/Applications/Android Studio Preview.app/Contents/MacOS/studio /workspace
+"#;
+
+        assert_eq!(
+            running_jetbrains_products(processes),
+            BTreeSet::from([
+                RunningJetBrainsProduct::IntelliJIdea,
+                RunningJetBrainsProduct::AndroidStudio,
+            ])
+        );
+    }
+
+    #[test]
     fn parses_homebrew_formula_tap() {
         let json = r#"{"formulae":[{"name":"kast","tap":"amichne/kast"}],"casks":[]}"#;
         assert_eq!(
@@ -184,13 +302,54 @@ mod tests {
 
     #[test]
     fn homebrew_formula_path_check_accepts_cellar_binary() {
-        let prefix = Path::new("/opt/homebrew/Cellar/kast/0.7.16");
-        let cli = Path::new("/opt/homebrew/Cellar/kast/0.7.16/bin/kast");
+        let temp = tempfile::tempdir().expect("tempdir");
+        let prefix = temp.path().join("Cellar/kast/0.7.16");
+        let cli = prefix.join("bin/kast");
+        let outside = temp.path().join("outside/kast");
+        fs::create_dir_all(cli.parent().expect("formula bin")).expect("formula bin");
+        fs::create_dir_all(outside.parent().expect("outside bin")).expect("outside bin");
+        fs::write(&cli, "#!/usr/bin/env sh\n").expect("formula binary");
+        fs::write(&outside, "#!/usr/bin/env sh\n").expect("outside binary");
 
-        assert!(path_is_below_homebrew_formula(cli, prefix));
+        assert!(path_is_below_homebrew_formula(&cli, &prefix));
+        assert!(!path_is_below_homebrew_formula(&outside, &prefix));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn homebrew_formula_path_check_rejects_a_symlink_that_escapes_the_formula() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let formula_prefix = temp.path().join("Cellar/kast/1.2.3");
+        let formula_binary = formula_prefix.join("bin/kast");
+        let outside_binary = temp.path().join("outside/kast");
+        fs::create_dir_all(formula_binary.parent().expect("formula bin")).expect("formula bin");
+        fs::create_dir_all(outside_binary.parent().expect("outside bin")).expect("outside bin");
+        fs::write(&outside_binary, "#!/usr/bin/env sh\n").expect("outside binary");
+        std::os::unix::fs::symlink(&outside_binary, &formula_binary).expect("formula symlink");
+
         assert!(!path_is_below_homebrew_formula(
-            Path::new("/Users/example/kast/target/release/kast"),
-            prefix
+            &formula_binary,
+            &formula_prefix
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn homebrew_plugin_link_classifier_rejects_a_parent_directory_escape() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let plugin_link = temp.path().join("profile/plugins/kast");
+        fs::create_dir_all(plugin_link.parent().expect("plugin parent")).expect("plugin parent");
+        let expected = PathBuf::from(
+            "/opt/homebrew/Caskroom/kast-plugin/1.2.3/backend-idea",
+        );
+        let escaping = PathBuf::from(
+            "/opt/homebrew/Caskroom/kast-plugin/../../user-owned/backend-idea",
+        );
+        std::os::unix::fs::symlink(&escaping, &plugin_link).expect("plugin link");
+
+        assert!(matches!(
+            classify_homebrew_plugin_profile_path(&expected, &plugin_link),
+            HomebrewPluginProfilePath::Unmanaged { .. }
         ));
     }
 

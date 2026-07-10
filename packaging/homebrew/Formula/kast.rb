@@ -39,9 +39,8 @@ class Kast < Formula
   end
 
   def post_install
-    cask_action = quiet_system("brew", "list", "--cask", "kast-plugin") ? "reinstall" : "install"
-    ohai "#{cask_action.capitalize}ing version-coupled Kast IDEA plugin cask"
-    system "brew", cask_action, "--cask", PLUGIN_CASK
+    ohai "Converging version-coupled Kast IDEA plugin and Homebrew install receipt"
+    system bin/"kast", "developer", "machine", "plugin", "--cask-token", PLUGIN_CASK
   end
 
   test do
