@@ -35,7 +35,7 @@
 - Consumes: approved design at `.agents/superpowers/specs/2026-07-10-readme-demo-recording-design.md`, plugin-prepared workspace metadata, live IDEA backend, source-index database
 - Produces: `DEMO_REPO`, `SOURCE_ROOT`, `KAST_BIN`, `FIRST_SYMBOL`, and a full-evidence JSON proof used by the recording task
 
-- [ ] **Step 1: Define the two workspace roles and evidence directory**
+- [x] **Step 1: Define the two workspace roles and evidence directory**
 
 Run from `/tmp/kast-pr-327-sync`:
 
@@ -52,7 +52,7 @@ Expected: the prepared workspace metadata exists. Task 1 Step 3 verifies the
 source index through the public `kast demo` response because Git worktrees may
 store the physical database outside the repository root.
 
-- [ ] **Step 2: Prove the released CLI and plugin share the 0.12.4 contract**
+- [x] **Step 2: Prove the released CLI and plugin share the 0.12.4 contract**
 
 Run:
 
@@ -69,7 +69,7 @@ test "$(jq -er '.plugin.version' "$HOME/Library/Application Support/Kast/homebre
 Expected: the executable, Homebrew formula, install receipt, workspace CLI,
 and workspace plugin all report the independently verified 0.12.4 release.
 
-- [ ] **Step 3: Fail closed unless the real backend and index return complete evidence**
+- [x] **Step 3: Fail closed unless the real backend and index return complete evidence**
 
 Run:
 
@@ -99,7 +99,7 @@ export FIRST_SYMBOL="$(jq -er '.candidates[0].fqName' "$EVIDENCE_DIR/preflight.j
 
 Expected: `jq` prints `true`, and `FIRST_SYMBOL` is a fully qualified declaration owned by `DEMO_REPO`. Any `indexOnly`, `backendOnly`, missing compiler field, or unavailable chapter stops the implementation without creating a cast.
 
-- [ ] **Step 4: Record the immutable Kotlin baseline**
+- [x] **Step 4: Record the immutable Kotlin baseline**
 
 Run:
 
@@ -128,7 +128,7 @@ Expected: the checksum file is non-empty and contains every tracked Kotlin sourc
 - Consumes: `KAST_BIN`, `DEMO_REPO`, `FIRST_SYMBOL`, and `kotlin-before.sha256` from Task 1
 - Produces: an auditable 120x40 Asciinema v2 recording with full compiler and source-index evidence
 
-- [ ] **Step 1: Start a prompt-free Asciinema v2 capture in a real PTY**
+- [x] **Step 1: Start a prompt-free Asciinema v2 capture in a real PTY**
 
 Run the following with a PTY from `DEMO_REPO`:
 
@@ -149,7 +149,7 @@ asciinema record \
 
 Expected: the first visible frame says `Kast Semantic Story`, `compiler + index evidence ready`, `Choose a story from your codebase`, and `read-only`. The cast header records `command` as `kast demo`, not an absolute binary or workspace path.
 
-- [ ] **Step 2: Drive one coherent 10-to-15-second story**
+- [x] **Step 2: Drive one coherent 10-to-15-second story**
 
 Send these keys to the recording PTY with roughly one second between visible states:
 
@@ -180,7 +180,7 @@ read-only
 
 Wait for `Loading compiler evidence…` to be replaced by compiler identity before navigating away from Identity. The two initial `Right` keys move through `Why semantics` and land on `Relationships`; do not send them as one burst.
 
-- [ ] **Step 3: Inspect the alternate-screen event stream and validate its public content**
+- [x] **Step 3: Inspect the alternate-screen event stream and validate its public content**
 
 Run:
 
@@ -207,7 +207,7 @@ present. The TUI uses the terminal's alternate screen, so plain-text conversion
 intentionally yields no final scrollback; raw conversion preserves the
 auditable event stream rendered into the GIF.
 
-- [ ] **Step 4: Validate recording metadata, timing, and source immutability**
+- [x] **Step 4: Validate recording metadata, timing, and source immutability**
 
 Run:
 
@@ -227,7 +227,7 @@ diff -u "$EVIDENCE_DIR/kotlin-before.sha256" "$EVIDENCE_DIR/kotlin-after.sha256"
 
 Expected: metadata validation prints `true`, recorded duration is 8–18 seconds, and the source checksum diff is empty. Re-record if text is clipped, evidence is degraded, timing falls outside the bound, or any source hash changes.
 
-- [ ] **Step 5: Commit the audited source recording as its own slice**
+- [x] **Step 5: Commit the audited source recording as its own slice**
 
 Run:
 
@@ -251,7 +251,7 @@ Expected: one commit containing only `kast-demo.cast`.
 - Consumes: the validated Asciinema v2 cast from Task 2
 - Produces: a sub-8-MiB inline GIF and a GitHub-relative README embed
 
-- [ ] **Step 1: Install or verify the pinned GIF renderer**
+- [x] **Step 1: Install or verify the pinned GIF renderer**
 
 Run:
 
@@ -262,7 +262,7 @@ test "$(agg --version | awk '{print $2}')" = "1.9.0"
 
 Expected: `agg 1.9.0` is available. If Homebrew has moved past 1.9.0, inspect `agg --help` and use the installed compatible version only after confirming all options in Step 2 still exist.
 
-- [ ] **Step 2: Render a legible, compact looping GIF**
+- [x] **Step 2: Render a legible, compact looping GIF**
 
 Run:
 
@@ -274,30 +274,42 @@ agg \
   --idle-time-limit 1 \
   --fps-cap 15 \
   --last-frame-duration 2 \
+  --select event:1..event:106 \
   docs/assets/demo/kast-demo.cast \
   docs/assets/demo/kast-demo.gif
 ```
 
-Expected: `agg` exits 0 and creates a looping animated GIF from the audited cast without changing the 120x40 terminal geometry.
+Expected: `agg` exits 0 and creates a looping animated GIF from the audited
+cast without changing the 120x40 terminal geometry. The event selection drops
+the terminal-query frame before the alternate screen is drawn and the blank
+frame after the TUI restores the caller's screen.
 
-- [ ] **Step 3: Validate dimensions, animation, duration, and size**
+- [x] **Step 3: Validate dimensions, animation, duration, and size**
 
 Run:
 
 ```bash
-test "$(magick identify -format '%wx%h\n' docs/assets/demo/kast-demo.gif | sort -u | wc -l | tr -d ' ')" = "1"
-test "$(magick identify docs/assets/demo/kast-demo.gif | wc -l | tr -d ' ')" -gt 10
+test "$(magick identify -format '%[page]\n' docs/assets/demo/kast-demo.gif | sort -u | wc -l | tr -d ' ')" = "1"
+test "$(magick identify docs/assets/demo/kast-demo.gif | wc -l | tr -d ' ')" -ge 10
 test "$(stat -f '%z' docs/assets/demo/kast-demo.gif)" -lt 8388608
 gif_duration_cs="$(magick identify -format '%T\n' docs/assets/demo/kast-demo.gif | awk '{ total += $1 } END { print total }')"
 test "$gif_duration_cs" -ge 800
 test "$gif_duration_cs" -le 2200
-magick identify -format 'dimensions=%wx%h frames=%n bytes=%b\n' docs/assets/demo/kast-demo.gif | head -n 1
+printf 'canvas=%s frames=%s bytes=%s\n' \
+  "$(magick identify -format '%[page]\n' docs/assets/demo/kast-demo.gif | sort -u)" \
+  "$(magick identify docs/assets/demo/kast-demo.gif | wc -l | tr -d ' ')" \
+  "$(stat -f '%z' docs/assets/demo/kast-demo.gif)"
 printf 'duration=%s.%02ss\n' "$((gif_duration_cs / 100))" "$((gif_duration_cs % 100))"
 ```
 
-Expected: all frames have one consistent dimension, there are more than 10 frames, the animation lasts 8–22 seconds including its final-frame hold, the file is below 8 MiB, and ImageMagick prints the concrete dimensions/frame count/duration/size for PR evidence. Inspect the animation visually with the local image viewer before editing the README; re-render if any terminal label is unreadable or clipped.
+Expected: every optimized GIF subframe shares one logical canvas, there are at
+least 10 frames, the animation lasts 8–22 seconds including its final-frame
+hold, the file is below 8 MiB, and ImageMagick prints the concrete canvas/frame
+count/duration/size for PR evidence. Inspect the coalesced animation frames
+visually before editing the README; re-render if any terminal label is
+unreadable or clipped or if the first or final frame is blank.
 
-- [ ] **Step 4: Add the inline asset immediately after the README introduction**
+- [x] **Step 4: Add the inline asset immediately after the README introduction**
 
 Use `apply_patch` to change the opening of `## Try it on your code` to exactly:
 
@@ -316,7 +328,7 @@ kast demo
 
 Expected: the existing command and repository-demo guide prose remain unchanged below the new image.
 
-- [ ] **Step 5: Render and inspect the README locally**
+- [x] **Step 5: Render and inspect the README locally**
 
 Run:
 
@@ -330,7 +342,7 @@ Open `http://127.0.0.1:8765/README.preview.html#try-it-on-your-code` with Playwr
 
 Expected: the local GitHub-flavored Markdown preview resolves `docs/assets/demo/kast-demo.gif` from the repository-relative path and displays it inline.
 
-- [ ] **Step 6: Validate and commit the README slice**
+- [x] **Step 6: Validate and commit the README slice**
 
 Run:
 

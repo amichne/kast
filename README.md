@@ -44,6 +44,8 @@ covers server and hosted-agent installs.
 Once the workspace is prepared and its backend is ready, run the read-only
 repository tour:
 
+![Read-only Kast semantic story moving through identity, relationships, impact, and safety evidence](docs/assets/demo/kast-demo.gif)
+
 ```console
 kast demo
 ```
