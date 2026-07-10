@@ -14,23 +14,88 @@ struct JetBrainsPluginDir {
     path: PathBuf,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum RunningJetBrainsProduct {
+    IntelliJIdea,
+    AndroidStudio,
+}
+
+impl RunningJetBrainsProduct {
+    fn label(self) -> &'static str {
+        match self {
+            Self::IntelliJIdea => "IntelliJ IDEA",
+            Self::AndroidStudio => "Android Studio",
+        }
+    }
+}
+
+fn require_jetbrains_ides_closed() -> Result<()> {
+    let output = ProcessCommand::new("ps")
+        .args(["-axo", "args"])
+        .output()
+        .map_err(|error| {
+            CliError::new(
+                "JETBRAINS_PROCESS_CHECK_FAILED",
+                format!("Could not inspect running JetBrains IDEs: {error}"),
+            )
+        })?;
+    if !output.status.success() {
+        return Err(CliError::new(
+            "JETBRAINS_PROCESS_CHECK_FAILED",
+            "Could not inspect running JetBrains IDEs with `ps -axo args`.",
+        ));
+    }
+    let products = running_jetbrains_products(&String::from_utf8_lossy(&output.stdout));
+    if products.is_empty() {
+        return Ok(());
+    }
+    let labels = products
+        .iter()
+        .map(|product| product.label())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let mut error = CliError::new(
+        "JETBRAINS_IDE_RUNNING",
+        format!(
+            "Close {labels} before installing or updating the Kast plugin, then rerun the same command."
+        ),
+    );
+    error.details.insert("products".to_string(), labels);
+    Err(error)
+}
+
+fn running_jetbrains_products(processes: &str) -> BTreeSet<RunningJetBrainsProduct> {
+    let mut products = BTreeSet::new();
+    for process in processes.lines() {
+        if process.contains("/IntelliJ IDEA.app/Contents/MacOS/idea") {
+            products.insert(RunningJetBrainsProduct::IntelliJIdea);
+        }
+        if process.contains("/Android Studio.app/Contents/MacOS/studio") {
+            products.insert(RunningJetBrainsProduct::AndroidStudio);
+        }
+    }
+    products
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HomebrewCaskInstallAction {
+    None,
     Install,
     Reinstall,
 }
 
 impl HomebrewCaskInstallAction {
-    fn for_installed_cask(installed: bool) -> Self {
-        if installed {
-            Self::Reinstall
-        } else {
-            Self::Install
+    fn for_versions(installed: Option<&str>, expected: &str, force: bool) -> Self {
+        match installed {
+            None => Self::Install,
+            Some(installed) if installed == expected && !force => Self::None,
+            Some(_) => Self::Reinstall,
         }
     }
 
     fn as_brew_arg(self) -> &'static str {
         match self {
+            Self::None => "none",
             Self::Install => "install",
             Self::Reinstall => "reinstall",
         }
@@ -38,6 +103,7 @@ impl HomebrewCaskInstallAction {
 
     fn completion_label(self) -> &'static str {
         match self {
+            Self::None => "Homebrew cask already matches",
             Self::Install => "Homebrew install complete",
             Self::Reinstall => "Homebrew reinstall complete",
         }
@@ -45,12 +111,16 @@ impl HomebrewCaskInstallAction {
 
     fn failure_label(self) -> &'static str {
         match self {
+            Self::None => "Homebrew cask convergence failed",
             Self::Install => "Homebrew install failed",
             Self::Reinstall => "Homebrew reinstall failed",
         }
     }
 
     fn brew_args(self, cask_token: &str, force: bool) -> Vec<String> {
+        if self == Self::None {
+            return Vec::new();
+        }
         let mut args = vec![
             self.as_brew_arg().to_string(),
             "--cask".to_string(),

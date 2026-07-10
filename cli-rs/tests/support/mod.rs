@@ -31,6 +31,88 @@ pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
     default_install_root(home).join("install.json")
 }
 
+pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Path) -> PathBuf {
+    let receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
+    std::fs::create_dir_all(receipt.parent().expect("receipt parent")).expect("receipt dir");
+    std::fs::write(
+        &receipt,
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "schemaVersion": 1,
+            "authority": "macos-homebrew",
+            "cli": {
+                "binary": cli_binary.display().to_string(),
+                "formulaPrefix": cli_binary.parent().expect("formula prefix").display().to_string(),
+                "version": env!("CARGO_PKG_VERSION")
+            },
+            "plugin": {
+                "caskToken": "amichne/kast/kast-plugin",
+                "version": env!("CARGO_PKG_VERSION")
+            },
+            "updatedAt": "unix:1"
+        }))
+        .expect("receipt json"),
+    )
+    .expect("receipt");
+    receipt
+}
+
+pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Path) -> PathBuf {
+    let install_root = default_install_root(home);
+    let shim = default_bin_dir(home).join("kast");
+    let active_binary = install_root.join("versions/0.12.3/bin/kast");
+    std::fs::create_dir_all(active_binary.parent().expect("active binary parent"))
+        .expect("active binary dir");
+    std::fs::create_dir_all(shim.parent().expect("shim parent")).expect("shim dir");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &active_binary).expect("active binary");
+    std::fs::write(
+        &shim,
+        format!(
+            "#!/usr/bin/env bash\nset -euo pipefail\nexec '{}' \"$@\"\n",
+            active_binary.display()
+        ),
+    )
+    .expect("shim");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755)).expect("shim mode");
+    }
+    std::fs::create_dir_all(&install_root).expect("install root");
+    std::fs::write(
+        install_manifest_path(home),
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "tool": "kast",
+            "installId": "legacy-test-install",
+            "profile": "user-local",
+            "activeVersion": "0.12.3",
+            "createdAt": "unix:1",
+            "updatedAt": "unix:1",
+            "roots": {
+                "install": install_root.display().to_string(),
+                "bin": default_bin_dir(home).display().to_string(),
+                "config": config_home.display().to_string(),
+                "data": install_root.join("state").display().to_string(),
+                "cache": home.join(".cache/kast").display().to_string(),
+                "runtime": install_root.join("runtime").display().to_string(),
+                "logs": home.join(".local/state/kast/logs").display().to_string(),
+                "locks": install_root.join("locks").display().to_string()
+            },
+            "entrypoints": {
+                "shim": shim.display().to_string(),
+                "activeBinary": active_binary.display().to_string()
+            },
+            "schemas": {"manifest": 1, "workspaceRegistry": 1, "symbolIndex": 3},
+            "version": "0.12.3",
+            "components": ["cli", "config"],
+            "ownedPaths": [shim.display().to_string()],
+            "schemaVersion": 3
+        }))
+        .expect("legacy manifest json"),
+    )
+    .expect("legacy manifest");
+    shim
+}
+
 pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
     #[cfg(target_os = "macos")]
     {
@@ -89,6 +171,7 @@ pub(crate) fn path_report_entry<'a>(
 
 pub(crate) fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf {
     let brew = bin_dir.join("brew");
+    let ps = bin_dir.join("ps");
     std::fs::create_dir_all(bin_dir).expect("brew bin");
     std::fs::write(
         &brew,
@@ -96,6 +179,7 @@ pub(crate) fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf 
             r#"#!/bin/sh
 set -eu
 state_file="${{HOME:-/tmp}}/.fake-brew-kast-plugin-version"
+plugin_version="${{KAST_FAKE_BREW_PLUGIN_VERSION:-{}}}"
 if [ "$1" = "--prefix" ] && [ "$#" -eq 1 ]; then
   printf '%s\n' "/opt/homebrew"
 elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
@@ -103,7 +187,7 @@ elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
 elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "kast" ]; then
   printf '%s\n' '{{"formulae":[{{"name":"kast","tap":"amichne/kast"}}],"casks":[]}}'
 elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "--cask" ]; then
-  printf '%s\n' '{{"formulae":[],"casks":[{{"token":"kast-plugin","full_token":"amichne/kast/kast-plugin","version":"9.8.7"}}]}}'
+  printf '%s\n' "{{\"formulae\":[],\"casks\":[{{\"token\":\"kast-plugin\",\"full_token\":\"amichne/kast/kast-plugin\",\"version\":\"${{plugin_version}}\"}}]}}"
 elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
   cache="${{HOME:-/tmp}}/000--kast-plugin.zip"
   printf 'fake plugin zip\n' > "$cache"
@@ -111,10 +195,10 @@ elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
 elif [ "$1" = "--cache" ] && [ "$2" = "--cask" ]; then
   printf '%s\n' "${{HOME:-/tmp}}/000--kast-plugin.zip"
 elif [ "$1" = "install" ] && [ "$2" = "--cask" ]; then
-  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-9.8.7}}" > "$state_file"
+  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-${{plugin_version}}}}" > "$state_file"
   printf 'fake brew installed kast plugin\n' >&2
 elif [ "$1" = "reinstall" ] && [ "$2" = "--cask" ]; then
-  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-9.8.7}}" > "$state_file"
+  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-${{plugin_version}}}}" > "$state_file"
   printf 'fake brew reinstalled kast plugin\n' >&2
 elif [ "$1" = "list" ] && [ "$2" = "--cask" ]; then
   if [ "${{KAST_FAKE_BREW_CASK_VERSION:-}}" != "" ]; then
@@ -132,18 +216,33 @@ else
   exit 64
 fi
 "#,
+            env!("CARGO_PKG_VERSION"),
             formula_prefix.display()
         ),
     )
     .expect("brew script");
+    std::fs::write(
+        &ps,
+        r#"#!/bin/sh
+set -eu
+case "${KAST_FAKE_PS_JETBRAINS:-}" in
+  "IntelliJ IDEA") printf '%s\n' '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea /workspace' ;;
+  "Android Studio") printf '%s\n' '/Applications/Android Studio.app/Contents/MacOS/studio /workspace' ;;
+  *) printf '%s\n' 'COMMAND' ;;
+esac
+"#,
+    )
+    .expect("ps script");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut permissions = std::fs::metadata(&brew)
-            .expect("brew metadata")
-            .permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(&brew, permissions).expect("brew mode");
+        for executable in [&brew, &ps] {
+            let mut permissions = std::fs::metadata(executable)
+                .expect("fake executable metadata")
+                .permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(executable, permissions).expect("fake executable mode");
+        }
     }
     brew
 }

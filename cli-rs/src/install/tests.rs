@@ -3,6 +3,80 @@ mod tests {
     use super::*;
 
     #[test]
+    fn macos_homebrew_receipt_round_trips_from_application_support() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let version = cli::version().to_string();
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
+        let binary = formula_prefix.join("bin/kast");
+        fs::create_dir_all(binary.parent().expect("binary parent")).expect("formula bin");
+        fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
+        crate::manifest::make_executable(&binary).expect("executable binary");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            version.clone(),
+            "amichne/kast/kast-plugin".to_string(),
+            version,
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let loaded = read_macos_homebrew_receipt_at(&receipt_path).expect("read receipt");
+
+        assert_eq!(loaded, receipt);
+        assert_eq!(
+            receipt_path,
+            temp.path()
+                .join("Library/Application Support/Kast/homebrew-install.json")
+        );
+    }
+
+    #[test]
+    fn macos_homebrew_receipt_rejects_a_stale_version() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let formula_prefix = temp.path().join("Cellar/kast/0.0.0");
+        let binary = formula_prefix.join("bin/kast");
+        fs::create_dir_all(binary.parent().expect("binary parent")).expect("formula bin");
+        fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
+        crate::manifest::make_executable(&binary).expect("executable binary");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            "0.0.0".to_string(),
+            "amichne/kast/kast-plugin".to_string(),
+            "0.0.0".to_string(),
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("stale receipt");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH");
+        assert!(error.message.contains(cli::version()), "{}", error.message);
+    }
+
+    #[test]
+    fn macos_homebrew_receipt_rejects_a_missing_binary() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let version = cli::version().to_string();
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
+        fs::create_dir_all(&formula_prefix).expect("formula prefix");
+        let receipt = MacosHomebrewInstallReceipt::new(
+            formula_prefix.join("bin/kast"),
+            formula_prefix,
+            version.clone(),
+            "amichne/kast/kast-plugin".to_string(),
+            version,
+        );
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("missing binary");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_BINARY_MISSING");
+    }
+
+    #[test]
     fn install_skill_omits_marker_and_skips_matching_version() {
         let temp = tempfile::tempdir().unwrap();
         let args = ResourceInstallArgs {

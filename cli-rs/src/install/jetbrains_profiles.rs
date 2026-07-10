@@ -49,21 +49,16 @@ fn install_idea_plugin_into_jetbrains_profiles(
     }
 
     let cask_name = cask_name(&cask_token);
-    let cask_installed = run_reported_step(
+    let installed_cask_version = run_reported_step(
         reporter,
         &format!("Checking installed Homebrew cask {cask_name}"),
-        |installed| {
-            if *installed {
-                "Existing Homebrew cask found; reinstall will refresh it".to_string()
-            } else {
-                "Homebrew cask is not installed yet".to_string()
-            }
+        |installed: &Option<String>| match installed {
+            Some(version) => format!("Found installed Homebrew cask version {version}"),
+            None => "Homebrew cask is not installed yet".to_string(),
         },
         "Could not check installed Homebrew cask",
-        || homebrew_cask_installed(&cask_name),
+        || homebrew_cask_version(&cask_name),
     )?;
-    let brew_action = HomebrewCaskInstallAction::for_installed_cask(cask_installed);
-    let brew_args = brew_action.brew_args(&cask_token, args.force);
     let download_plan = run_reported_step(
         reporter,
         &format!("Reading Homebrew cask metadata for {cask_token}"),
@@ -77,12 +72,39 @@ fn install_idea_plugin_into_jetbrains_profiles(
         "Could not read Homebrew cask metadata",
         || homebrew_cask_download_plan(&cask_token, &plugin_directories),
     )?;
+    if download_plan.plugin_version != cli::version() {
+        let mut error = CliError::new(
+            "HOMEBREW_PLUGIN_VERSION_MISMATCH",
+            format!(
+                "Homebrew Kast plugin version {} does not match running CLI version {}.",
+                download_plan.plugin_version,
+                cli::version()
+            ),
+        );
+        error.details.insert(
+            "cliVersion".to_string(),
+            cli::version().to_string(),
+        );
+        error.details.insert(
+            "pluginVersion".to_string(),
+            download_plan.plugin_version.clone(),
+        );
+        return Err(error);
+    }
+    let brew_action = HomebrewCaskInstallAction::for_versions(
+        installed_cask_version.as_deref(),
+        &download_plan.plugin_version,
+        args.force,
+    );
+    let brew_args = brew_action.brew_args(&cask_token, args.force);
     reporter.idea_plugin_plan(&download_plan)?;
     let downloaded_bytes = if args.dry_run {
         reporter.idea_plugin_step_started(
             "Dry run requested; skipping fetch, Homebrew install, and profile links",
         )?;
         reporter.idea_plugin_step_finished("Dry run complete; no files changed")?;
+        file_size(&download_plan.download_cache).unwrap_or(0)
+    } else if brew_action == HomebrewCaskInstallAction::None {
         file_size(&download_plan.download_cache).unwrap_or(0)
     } else {
         prefetch_homebrew_cask(
@@ -93,28 +115,33 @@ fn install_idea_plugin_into_jetbrains_profiles(
         )?
     };
     if !args.dry_run {
-        reporter.idea_plugin_step_started(&format!(
-            "Running Homebrew {} ({})",
-            brew_action.as_brew_arg(),
-            brew_command_display(&brew_args)
-        ))?;
-        let output = match run_brew_with_jetbrains_root(&brew_args, &jetbrains_config_root) {
-            Ok(output) => output,
-            Err(error) => {
-                reporter.idea_plugin_step_failed("Could not start Homebrew")?;
-                return Err(error);
+        if brew_action == HomebrewCaskInstallAction::None {
+            reporter.idea_plugin_step_started("Matching Homebrew cask is already installed")?;
+            reporter.idea_plugin_step_finished(brew_action.completion_label())?;
+        } else {
+            reporter.idea_plugin_step_started(&format!(
+                "Running Homebrew {} ({})",
+                brew_action.as_brew_arg(),
+                brew_command_display(&brew_args)
+            ))?;
+            let output = match run_brew_with_jetbrains_root(&brew_args, &jetbrains_config_root) {
+                Ok(output) => output,
+                Err(error) => {
+                    reporter.idea_plugin_step_failed("Could not start Homebrew")?;
+                    return Err(error);
+                }
+            };
+            if !output.status.success() {
+                reporter.idea_plugin_step_failed(brew_action.failure_label())?;
+                return Err(command_error(
+                    "HOMEBREW_CASK_INSTALL_FAILED",
+                    "Homebrew failed to install the Kast IDEA plugin cask",
+                    &brew_args,
+                    &output,
+                ));
             }
-        };
-        if !output.status.success() {
-            reporter.idea_plugin_step_failed(brew_action.failure_label())?;
-            return Err(command_error(
-                "HOMEBREW_CASK_INSTALL_FAILED",
-                "Homebrew failed to install the Kast IDEA plugin cask",
-                &brew_args,
-                &output,
-            ));
+            reporter.idea_plugin_step_finished(brew_action.completion_label())?;
         }
-        reporter.idea_plugin_step_finished(brew_action.completion_label())?;
         reporter.idea_plugin_step_started(&format!(
             "Linking Kast plugin into {}",
             jetbrains_profile_count_label(plugin_directories.len())
@@ -146,6 +173,17 @@ fn install_idea_plugin_into_jetbrains_profiles(
         ))?;
         defaults
     };
+    let homebrew_receipt = if args.dry_run {
+        default_macos_homebrew_receipt_path()
+    } else {
+        write_macos_homebrew_receipt(&MacosHomebrewInstallReceipt::new(
+            homebrew.cli_path.clone(),
+            homebrew.formula_prefix.clone(),
+            cli::version().to_string(),
+            cask_token.clone(),
+            download_plan.plugin_version.clone(),
+        ))?
+    };
 
     Ok(InstallIdeaPluginResult {
         cask_token,
@@ -153,12 +191,17 @@ fn install_idea_plugin_into_jetbrains_profiles(
         download_cache: download_plan.download_cache.display().to_string(),
         downloaded_bytes,
         brew_action: brew_action.as_brew_arg().to_string(),
-        brew_command: std::iter::once("brew".to_string())
-            .chain(brew_args)
-            .collect(),
+        brew_command: if brew_args.is_empty() {
+            Vec::new()
+        } else {
+            std::iter::once("brew".to_string())
+                .chain(brew_args)
+                .collect()
+        },
         brew_prefix: homebrew.brew_prefix.display().to_string(),
         formula_prefix: homebrew.formula_prefix.display().to_string(),
         cli_path: homebrew.cli_path.display().to_string(),
+        homebrew_receipt: homebrew_receipt.display().to_string(),
         jetbrains_config_root: Some(jetbrains_config_root.display().to_string()),
         plugin_directories: plugin_directories
             .into_iter()

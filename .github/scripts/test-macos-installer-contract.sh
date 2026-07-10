@@ -74,7 +74,7 @@ case "$*" in
     exit 0
     ;;
   "--prefix kast")
-    printf '%s\n' "/opt/homebrew/Cellar/kast/9.8.7"
+    printf '%s\n' "${KAST_INSTALL_TEST_FORMULA_PREFIX:?}"
     exit 0
     ;;
   *)
@@ -86,7 +86,8 @@ case "$*" in
 esac
 SH
 
-  cat >"${bin_dir}/kast" <<'SH'
+  mkdir -p "${KAST_INSTALL_TEST_FORMULA_PREFIX:?}/bin"
+  cat >"${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'kast' >>"${KAST_INSTALL_TEST_LOG:?}"
@@ -97,7 +98,17 @@ printf '\n' >>"${KAST_INSTALL_TEST_LOG:?}"
 exit 0
 SH
 
-  chmod +x "${bin_dir}/brew" "${bin_dir}/kast"
+  cat >"${bin_dir}/ps" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+case "${KAST_INSTALL_TEST_PS:-}" in
+  "IntelliJ IDEA") printf '%s\n' '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea /workspace' ;;
+  "Android Studio") printf '%s\n' '/Applications/Android Studio.app/Contents/MacOS/studio /workspace' ;;
+  *) printf '%s\n' 'COMMAND' ;;
+esac
+SH
+
+  chmod +x "${bin_dir}/brew" "${bin_dir}/ps" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
 }
 
 run_installer() {
@@ -114,6 +125,9 @@ run_installer_noninteractive() {
 
 repo_root="$(resolve_repo_root)"
 installer="${repo_root}/install.sh"
+if grep -Fq -- "sudo" "$installer"; then
+  die "installer must not invoke or recommend sudo"
+fi
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-macos-installer.XXXXXX")"
 trap 'rm -rf "$tmp_root"' EXIT
 
@@ -123,6 +137,8 @@ workspace="$(cd -- "$workspace" && pwd -P)"
 
 log_file="${tmp_root}/tool-calls.log"
 fake_bin="${tmp_root}/bin"
+export KAST_INSTALL_TEST_FORMULA_PREFIX="${tmp_root}/formula"
+export KAST_INSTALL_TEST_PS=""
 write_fake_tools "$fake_bin" "$log_file"
 export KAST_INSTALL_TEST_LOG="$log_file"
 export PATH="${fake_bin}:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -155,13 +171,30 @@ run_installer_noninteractive "$repo_root" update \
 require_log_contains "$log_file" "brew tap custom/tap https://git.example.test/homebrew/kast.git" "update should accept an explicit tap URL for custom hosts"
 require_log_contains "$log_file" "brew update" "update should refresh Homebrew metadata"
 require_log_contains "$log_file" "brew upgrade kast" "update should upgrade the Kast formula"
-require_log_contains "$log_file" "kast developer machine plugin --force" "update should force-refresh plugin links"
+require_log_contains "$log_file" "kast developer machine plugin" "update should converge plugin state through the Homebrew binary"
+require_log_not_contains_prefix "$log_file" "kast developer machine plugin --force" "update should not force a second cask reinstall"
 require_log_not_contains_prefix "$log_file" "kast setup" "update should leave macOS workspace setup to the plugin"
 
 : >"$log_file"
 run_installer "$repo_root" verify --workspace-root "$workspace"
 require_log_contains "$log_file" "brew --prefix kast" "verify should prove Homebrew owns the formula"
 require_log_contains "$log_file" "kast ready --for agent --workspace-root ${workspace}" "verify should check repository readiness"
+
+: >"$log_file"
+stderr_file="${tmp_root}/running-idea.stderr"
+if KAST_INSTALL_TEST_PS="IntelliJ IDEA" run_installer_noninteractive "$repo_root" update --workspace-root "$workspace" 2>"$stderr_file"; then
+  die "installer should stop before plugin mutation while IntelliJ IDEA is running"
+fi
+require_stderr_contains "$stderr_file" "Close IntelliJ IDEA" "running IDE preflight should name the blocking product"
+require_no_tool_calls "$log_file" "running IDE preflight must fail before invoking brew or kast"
+
+: >"$log_file"
+stderr_file="${tmp_root}/running-android-studio.stderr"
+if KAST_INSTALL_TEST_PS="Android Studio" run_installer_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$stderr_file"; then
+  die "installer should stop before plugin mutation while Android Studio is running"
+fi
+require_stderr_contains "$stderr_file" "Close Android Studio" "running IDE preflight should name Android Studio"
+require_no_tool_calls "$log_file" "running Android Studio preflight must fail before invoking brew or kast"
 
 : >"$log_file"
 stderr_file="${tmp_root}/unsupported-os.stderr"

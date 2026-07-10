@@ -19,7 +19,21 @@ Each part file must own one install contract:
 - `shell.rs` owns shell profile integration.
 - `embedded_resources.rs` owns packaged resource copying and checksums.
 - `homebrew_idea_plugin.rs` and `jetbrains_profiles.rs` own IDE plugin flows.
+- `macos_homebrew_receipt.rs` owns the trusted macOS machine-install authority
+  shared with the IntelliJ plugin.
 - `resource_targets.rs` owns default resource target discovery.
 
 Packaged resources, manifests, and generated outputs match the current
 contract and report mismatches through typed install or repair reports.
+
+On macOS, a valid `~/Library/Application Support/Kast/homebrew-install.json`
+receipt makes Homebrew authoritative. Do not restore `install.json`, global
+config, or ambient `PATH` as competing binary authorities. Plugin setup must
+converge the version-coupled cask while JetBrains products are closed, then
+write the receipt only after links and defaults succeed. Repair may retire only
+an exactly recognized, writable legacy shim and manifest; it must not use
+`sudo` or delete unknown state.
+
+Run the installer contract, Homebrew formula contract, focused plugin and
+repair smoke tests, and `:backend-idea:test` when this boundary changes. Run
+full Rust formatting, clippy, and tests when shared install code moves.

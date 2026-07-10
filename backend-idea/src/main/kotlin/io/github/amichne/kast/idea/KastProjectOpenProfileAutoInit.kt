@@ -14,8 +14,57 @@ object KastProjectOpenProfileAutoInit {
     fun execute(
         workspaceRoot: Path,
         config: KastConfig,
+    ): ProjectOpenProfileAutoInitResult = if (isMacosHost()) {
+        executeWithDependencies(workspaceRoot, config)
+    } else {
+        executeWithConfiguredBinary(workspaceRoot, config)
+    }
+
+    internal fun executeWithConfiguredBinary(
+        workspaceRoot: Path,
+        config: KastConfig,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
             PluginWorkspaceBootstrap::prepare,
+    ): ProjectOpenProfileAutoInitResult =
+        executeWithCliBinaryResolver(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            resolveCliBinary = {
+                CliBinaryLoadResult.Loaded(
+                    Path.of(config.cli.binaryPath.value).toAbsolutePath().normalize(),
+                )
+            },
+            prepareWorkspace = prepareWorkspace,
+        )
+
+    internal fun executeWithDependencies(
+        workspaceRoot: Path,
+        config: KastConfig,
+        loadHomebrewReceipt: (PluginVersion) -> MacosHomebrewReceiptLoadResult = { pluginVersion ->
+            MacosHomebrewReceiptLoader.load(expectedPluginVersion = pluginVersion)
+        },
+        prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
+            PluginWorkspaceBootstrap::prepare,
+    ): ProjectOpenProfileAutoInitResult =
+        executeWithCliBinaryResolver(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            resolveCliBinary = { pluginVersion ->
+                when (val result = loadHomebrewReceipt(pluginVersion)) {
+                    is MacosHomebrewReceiptLoadResult.Loaded ->
+                        CliBinaryLoadResult.Loaded(result.receipt.cliBinary)
+                    is MacosHomebrewReceiptLoadResult.Rejected ->
+                        CliBinaryLoadResult.Rejected(result.message)
+                }
+            },
+            prepareWorkspace = prepareWorkspace,
+        )
+
+    private fun executeWithCliBinaryResolver(
+        workspaceRoot: Path,
+        config: KastConfig,
+        resolveCliBinary: (PluginVersion) -> CliBinaryLoadResult,
+        prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult,
     ): ProjectOpenProfileAutoInitResult {
         if (!config.projectOpen.profileAutoInit.value) {
             return ProjectOpenProfileAutoInitResult.Skipped("disabled")
@@ -31,9 +80,14 @@ object KastProjectOpenProfileAutoInit {
             ?: return ProjectOpenProfileAutoInitResult.Failed(
                 "Kast plugin version resource is missing or invalid; refusing workspace setup.",
             )
+        val cliBinary = when (val result = resolveCliBinary(pluginVersion)) {
+            is CliBinaryLoadResult.Loaded -> result.binary
+            is CliBinaryLoadResult.Rejected ->
+                return ProjectOpenProfileAutoInitResult.Failed(result.message)
+        }
         val request = PluginWorkspaceBootstrapRequest(
             workspaceRoot = workspaceRoot.toAbsolutePath().normalize(),
-            cliBinary = Path.of(config.cli.binaryPath.value).toAbsolutePath().normalize(),
+            cliBinary = cliBinary,
             pluginVersion = pluginVersion,
         )
         return when (val result = prepareWorkspace(request)) {
@@ -45,6 +99,15 @@ object KastProjectOpenProfileAutoInit {
             is PluginWorkspaceBootstrapResult.Rejected ->
                 ProjectOpenProfileAutoInitResult.Failed(result.message)
         }
+    }
+
+    private fun isMacosHost(): Boolean =
+        System.getProperty("os.name").orEmpty().startsWith("Mac", ignoreCase = true)
+
+    private sealed interface CliBinaryLoadResult {
+        data class Loaded(val binary: Path) : CliBinaryLoadResult
+
+        data class Rejected(val message: String) : CliBinaryLoadResult
     }
 
     private fun Path.hasGradleMarker(): Boolean =

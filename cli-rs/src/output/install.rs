@@ -98,6 +98,10 @@ fn print_idea_plugin_install_summary(document: &mut MarkdownDocument, result: &I
         ("Homebrew prefix", compact_path_for_output(&result.brew_prefix)),
         ("Formula prefix", compact_path_for_output(&result.formula_prefix)),
         ("Running CLI", compact_path_for_output(&result.cli_path)),
+        (
+            "Homebrew receipt",
+            compact_path_for_output(&result.homebrew_receipt),
+        ),
     ];
     if !result.brew_command.is_empty() {
         rows.push(("Brew command", result.brew_command.join(" ")));
@@ -137,7 +141,7 @@ fn print_idea_plugin_install_summary(document: &mut MarkdownDocument, result: &I
     } else {
         mdln!(
             document,
-            "- Restart any open IntelliJ IDEA or Android Studio windows so JetBrains reloads the linked plugin."
+            "- Open IntelliJ IDEA or Android Studio so JetBrains loads the linked plugin."
         );
         mdln!(
             document,
@@ -198,7 +202,7 @@ pub fn print_developer_machine_defaults(result: &DeveloperMachineDefaultsResult)
     mdln!(document, "## Next steps");
     mdln!(
         document,
-        "- Restart any open IntelliJ IDEA or Android Studio windows after updating the plugin."
+        "- Open IntelliJ IDEA or Android Studio after updating the plugin."
     );
     mdln!(
         document,

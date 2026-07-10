@@ -18,6 +18,15 @@ pub fn install_idea_plugin(
             Ok(homebrew)
         },
     )?;
+    if !args.dry_run {
+        run_reported_step(
+            reporter,
+            "Checking for running JetBrains IDEs",
+            |_| "No running IntelliJ IDEA or Android Studio processes found".to_string(),
+            "A JetBrains IDE is still running",
+            require_jetbrains_ides_closed,
+        )?;
+    }
     let mut warnings = vec![];
     reporter.idea_plugin_step_started("Resolving Kast Homebrew tap")?;
     let formula_tap = match homebrew_formula_tap() {

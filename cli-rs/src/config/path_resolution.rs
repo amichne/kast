@@ -20,6 +20,11 @@ pub fn path_resolution_report(
 ) -> Result<PathResolutionReport> {
     let install_manifest = manifest::default_install_manifest_path();
     let install_manifest_exists = install_manifest.is_file();
+    #[cfg(target_os = "macos")]
+    let homebrew_receipt = crate::install::default_macos_homebrew_receipt_path();
+    #[cfg(not(target_os = "macos"))]
+    let homebrew_receipt = PathBuf::new();
+    let homebrew_receipt_exists = homebrew_receipt.is_file();
     let global_config = global_config_path();
     let workspace_config = workspace_root
         .map(workspace_data_directory)
@@ -51,12 +56,20 @@ pub fn path_resolution_report(
             ));
         }
     }
-    let entry_context =
-        PathResolutionEntryContext::from_environment(workspace_root, install_manifest_exists);
+    let entry_context = PathResolutionEntryContext::from_environment(
+        workspace_root,
+        install_manifest_exists,
+        homebrew_receipt_exists,
+    );
     let entries = path_resolution_entries(config, mode, entry_context);
     Ok(PathResolutionReport {
         root: config.paths.install_root.display().to_string(),
-        config_files: config_files(install_manifest, global_config, workspace_config),
+        config_files: config_files(
+            homebrew_receipt,
+            install_manifest,
+            global_config,
+            workspace_config,
+        ),
         entries,
         warnings,
         schema_version: SCHEMA_VERSION,
@@ -219,11 +232,20 @@ fn path_entry(
 }
 
 fn config_files(
+    homebrew_receipt: PathBuf,
     install_manifest: PathBuf,
     global_config: PathBuf,
     workspace_config: Option<PathBuf>,
 ) -> Vec<PathResolutionConfigFile> {
-    let mut files = vec![
+    let mut files = Vec::new();
+    if !homebrew_receipt.as_os_str().is_empty() {
+        files.push(PathResolutionConfigFile {
+            scope: "macos-homebrew-receipt".to_string(),
+            exists: homebrew_receipt.is_file(),
+            path: homebrew_receipt.display().to_string(),
+        });
+    }
+    files.extend([
         PathResolutionConfigFile {
             scope: "install-manifest".to_string(),
             exists: install_manifest.is_file(),
@@ -234,7 +256,7 @@ fn config_files(
             exists: global_config.is_file(),
             path: global_config.display().to_string(),
         },
-    ];
+    ]);
     if let Some(workspace_config) = workspace_config {
         files.push(PathResolutionConfigFile {
             scope: "workspace".to_string(),

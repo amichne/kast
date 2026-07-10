@@ -70,6 +70,7 @@ dependencies {
     implementation(project(":index-store"))
     implementation(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)
+    implementation(libs.serialization.json)
     compileOnly(gradlePluginLibs)
 
     intellijPlatform {

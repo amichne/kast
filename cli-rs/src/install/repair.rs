@@ -158,6 +158,10 @@ fn repair_install_config_state(
     let Some(mut install) = self_mgmt::read_global_install_state()? else {
         return Ok(());
     };
+    if macos_homebrew_authority_is_active()? {
+        repair_legacy_macos_install_identity(args, &install, result, backup_root)?;
+        return Ok(());
+    }
     let mut install_changed = false;
     if install.version.trim() != cli::version() {
         push_repair_action(
@@ -296,6 +300,83 @@ fn repair_install_config_state(
     Ok(())
 }
 
+fn repair_legacy_macos_install_identity(
+    args: &InstallRepairArgs,
+    install: &self_mgmt::InstallState,
+    result: &mut InstallRepairResult,
+    backup_root: &Path,
+) -> Result<()> {
+    let manifest_path = manifest::default_install_manifest_path();
+    let shim = PathBuf::from(&install.entrypoints.shim);
+    let active_binary = PathBuf::from(&install.entrypoints.active_binary);
+    let managed_shim = manifest::is_managed_shim_for(&shim, &active_binary);
+    push_repair_action(
+        result,
+        "retire-legacy-macos-install",
+        &manifest_path,
+        "Back up and retire legacy managed-local install identity; the macOS Homebrew receipt remains authoritative.",
+        Some("kast repair --for machine --apply".to_string()),
+    );
+    if !managed_shim && path_exists_or_symlink(&shim) {
+        result.warnings.push(format!(
+            "Legacy manifest shim {} is not a confirmed Kast-managed shim; leaving it unchanged",
+            shim.display()
+        ));
+    }
+    if !args.apply {
+        return Ok(());
+    }
+    if managed_shim {
+        retire_inactive_legacy_path(&shim, backup_root, result)?;
+    }
+    retire_inactive_legacy_path(&manifest_path, backup_root, result)
+}
+
+fn retire_inactive_legacy_path(
+    path: &Path,
+    backup_root: &Path,
+    result: &mut InstallRepairResult,
+) -> Result<()> {
+    if !path_parent_is_writable(path) {
+        result.warnings.push(format!(
+            "Cannot remove {}; leaving inactive legacy path unchanged because its parent directory is not writable by the current user",
+            path.display()
+        ));
+        return Ok(());
+    }
+    backup_existing_path(path, backup_root, result)?;
+    remove_existing_path(path)
+}
+
+#[cfg(unix)]
+pub(crate) fn path_parent_is_writable(path: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    let Ok(metadata) = fs::metadata(parent) else {
+        return false;
+    };
+    let current_uid = [Path::new("/usr/bin/id"), Path::new("/bin/id")]
+        .into_iter()
+        .find(|candidate| candidate.is_file())
+        .and_then(|id| ProcessCommand::new(id).arg("-u").output().ok())
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|output| output.trim().parse::<u32>().ok());
+    let mode = metadata.mode();
+    current_uid.is_some_and(|uid| metadata.uid() == uid && mode & 0o200 != 0)
+        || mode & 0o002 != 0
+}
+
+#[cfg(not(unix))]
+pub(crate) fn path_parent_is_writable(path: &Path) -> bool {
+    path.parent()
+        .and_then(|parent| fs::metadata(parent).ok())
+        .is_some_and(|metadata| !metadata.permissions().readonly())
+}
+
 fn repair_install_shell_sources(
     args: &InstallRepairArgs,
     result: &mut InstallRepairResult,
@@ -384,6 +465,7 @@ fn repair_install_jetbrains_profiles(
         .clone()
         .map(config::normalize)
         .unwrap_or_else(default_jetbrains_config_root);
+    let mut stale_links = Vec::new();
     for plugin_dir in jetbrains_plugin_dirs(&jetbrains_config_root)? {
         let plugin_link = plugin_dir.join("kast");
         if !path_exists_or_symlink(&plugin_link) {
@@ -403,9 +485,13 @@ fn repair_install_jetbrains_profiles(
                 "Back up and relink a stale IDEA or Android Studio profile plugin to {}.",
                 expected_plugin_target.display()
             ),
-            Some("kast developer machine plugin --force".to_string()),
+            Some("kast developer machine plugin".to_string()),
         );
-        if args.apply {
+        stale_links.push(plugin_link);
+    }
+    if args.apply && !stale_links.is_empty() {
+        require_jetbrains_ides_closed()?;
+        for plugin_link in stale_links {
             backup_existing_path(&plugin_link, backup_root, result)?;
             remove_existing_path(&plugin_link)?;
             if let Some(parent) = plugin_link.parent() {

@@ -41,7 +41,7 @@ fn idea_plugin_install_uses_profile_install_mode() {
     assert_eq!(stdout["brewAction"], "install");
     assert_eq!(stdout["brewCommand"][1], "install");
     assert_eq!(stdout["brewCommand"][2], "--cask");
-    assert_eq!(stdout["pluginVersion"], "9.8.7");
+    assert_eq!(stdout["pluginVersion"], env!("CARGO_PKG_VERSION"));
     assert_eq!(
         stdout["downloadCache"],
         home.join("000--kast-plugin.zip").display().to_string()
@@ -145,4 +145,51 @@ version = "0.7.35"
     assert!(config_after.contains("runtimeLibsDir"));
     assert!(config_after.contains("[install]"));
     assert!(config_after.contains("binaryPath"));
+}
+
+#[cfg(unix)]
+#[test]
+fn repair_does_not_relink_plugins_while_a_jetbrains_ide_is_running() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    let plugin_dir = jetbrains_root.join("IntelliJIdea2026.1/plugins");
+    let stale_target = temp.path().join("stale-kast-plugin");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&plugin_dir).expect("plugin dir");
+    std::fs::create_dir_all(&stale_target).expect("stale target");
+    std::os::unix::fs::symlink(&stale_target, plugin_dir.join("kast")).expect("stale link");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+
+    let repair = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_PS_JETBRAINS", "IntelliJ IDEA")
+        .env("KAST_FAKE_BREW_CASK_VERSION", env!("CARGO_PKG_VERSION"))
+        .args([
+            "--output",
+            "json",
+            "repair",
+            "--for",
+            "machine",
+            "--apply",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("repair");
+
+    assert!(!repair.status.success(), "running IDE should block relink");
+    let stdout: serde_json::Value = serde_json::from_slice(&repair.stdout).expect("error json");
+    assert_eq!(stdout["code"], "JETBRAINS_IDE_RUNNING", "{stdout}");
+    assert_eq!(
+        std::fs::read_link(plugin_dir.join("kast")).expect("unchanged link"),
+        stale_target
+    );
 }

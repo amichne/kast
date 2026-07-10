@@ -101,8 +101,12 @@ require('shell_output("#{bin}/kast version")' in kast, "kast formula test must u
 require("strategy :github_releases" in kast, "kast formula livecheck must ignore unpublished draft tags")
 require("def post_install" in kast, "kast formula must couple the IDEA plugin cask during install")
 require('PLUGIN_CASK = "amichne/kast/kast-plugin"' in kast, "kast formula must name the version-coupled plugin cask")
-require('"brew", cask_action, "--cask", PLUGIN_CASK' in kast, "kast formula must install or reinstall the plugin cask")
-require('"list", "--cask", "kast-plugin"' in kast, "kast formula must detect existing plugin cask installs before choosing install or reinstall")
+require(
+    'system bin/"kast", "developer", "machine", "plugin", "--cask-token", PLUGIN_CASK' in kast,
+    "kast formula must delegate convergent plugin and receipt setup to the installed CLI",
+)
+require("cask_action" not in kast, "kast formula must not independently choose a second cask mutation")
+require("sudo" not in kast, "kast formula must not invoke or recommend sudo")
 
 require('cask "kast-plugin"' in plugin, "kast-plugin cask token is missing")
 require("HOMEBREW_KAST_ARTIFACT_ROOT" in plugin, "kast-plugin cask must support a shared artifact mirror root")
@@ -114,6 +118,7 @@ require("https://github.com/amichne/kast/releases" in plugin, "kast-plugin cask 
 require("postflight do" in plugin, "kast-plugin cask must link into IDEA after install")
 require("uninstall_postflight do" in plugin, "kast-plugin cask must remove IDEA links on uninstall")
 require("KAST_JETBRAINS_CONFIG_ROOT" in plugin, "kast-plugin cask must support testable JetBrains config roots")
+require("sudo" not in plugin, "kast-plugin cask must not invoke or recommend sudo")
 
 with tempfile.TemporaryDirectory() as tmp:
     tap_root = Path(tmp)

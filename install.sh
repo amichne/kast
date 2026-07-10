@@ -157,7 +157,7 @@ print_mutation_plan() {
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - run brew update"
       log_note "  - upgrade or reinstall the Homebrew formula kast"
-      log_note "  - run kast developer machine plugin --force"
+      log_note "  - converge the version-coupled IDEA plugin through the Homebrew Kast binary"
       log_note "  - leave workspace metadata refresh to IntelliJ IDEA or Android Studio"
       ;;
     *)
@@ -197,6 +197,32 @@ tap_homebrew() {
   fi
 }
 
+require_jetbrains_ides_closed() {
+  local process_args
+  local products=""
+  process_args="$(ps -axo args)" || die "Could not inspect running JetBrains IDEs"
+  if [[ "$process_args" == *"/IntelliJ IDEA.app/Contents/MacOS/idea"* ]]; then
+    products="IntelliJ IDEA"
+  fi
+  if [[ "$process_args" == *"/Android Studio.app/Contents/MacOS/studio"* ]]; then
+    if [[ -n "$products" ]]; then
+      products="${products}, Android Studio"
+    else
+      products="Android Studio"
+    fi
+  fi
+  [[ -z "$products" ]] || die "Close ${products} before installing or updating the Kast plugin, then rerun this command."
+}
+
+resolve_homebrew_kast() {
+  local formula_prefix
+  local kast_binary
+  formula_prefix="$(brew --prefix kast)" || die "Homebrew formula 'kast' is not installed"
+  kast_binary="${formula_prefix}/bin/kast"
+  [[ -x "$kast_binary" ]] || die "Homebrew Kast executable is missing or not executable: ${kast_binary}"
+  printf '%s\n' "$kast_binary"
+}
+
 install_kast() {
   local tap="$1"
   local tap_url="$2"
@@ -207,8 +233,9 @@ install_kast() {
   require_command brew
   tap_homebrew "$tap" "$tap_url"
   run brew install kast
-  require_command kast
-  run kast developer machine plugin
+  local kast_binary
+  kast_binary="$(resolve_homebrew_kast)"
+  run "$kast_binary" developer machine plugin
   log_note "Open ${workspace_root} in IntelliJ IDEA or Android Studio so the plugin can prepare workspace metadata."
   log_success "Install complete"
 }
@@ -228,8 +255,9 @@ update_kast() {
     log_note "brew upgrade kast did not complete; reinstalling kast"
     run brew reinstall kast
   fi
-  require_command kast
-  run kast developer machine plugin --force
+  local kast_binary
+  kast_binary="$(resolve_homebrew_kast)"
+  run "$kast_binary" developer machine plugin
   log_note "Reopen ${workspace_root} in IntelliJ IDEA or Android Studio so the plugin can refresh workspace metadata."
   log_success "Update complete"
 }
@@ -240,10 +268,10 @@ verify_kast() {
   log_section "Kast developer verify"
   log_note "Workspace: ${workspace_root}"
   require_command brew
-  require_command kast
   log_step "brew --prefix kast"
-  brew --prefix kast >/dev/null || die "Homebrew formula 'kast' is not installed"
-  run kast ready --for agent --workspace-root "$workspace_root"
+  local kast_binary
+  kast_binary="$(resolve_homebrew_kast)"
+  run "$kast_binary" ready --for agent --workspace-root "$workspace_root"
   log_success "Verification complete"
 }
 
@@ -325,6 +353,7 @@ main() {
 
   case "$command_name" in
     install|update)
+      require_jetbrains_ides_closed
       confirm_mutation "$command_name" "$tap" "$tap_url" "$workspace_root"
       ;;
   esac
