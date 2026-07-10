@@ -4,14 +4,14 @@
 
 **Goal:** Add a trustworthy inline GIF of the real `kast demo` experience to the README while retaining the auditable Asciinema v2 source recording.
 
-**Architecture:** Build the current Rust CLI with the version recorded by the already prepared Kast workspace, prove that the live compiler backend and source index both return full evidence, then record the TUI in a fixed terminal without a shell prompt. Validate the cast before rendering it with `agg`, embed the GIF through a relative README path, and verify both the local artifacts and GitHub's actual README rendering before babysitting PR #327 to green.
+**Architecture:** Use the independently verified Homebrew 0.12.4 release and matching IntelliJ plugin against the real user checkout, prove that the live compiler backend and source index both return full evidence, then record the TUI in a fixed terminal without a shell prompt. Validate the cast before rendering it with `agg`, embed the GIF through a relative README path, and verify both the local artifacts and GitHub's actual README rendering before babysitting the follow-up pull request to green.
 
 **Tech Stack:** Rust/Cargo, Kast IDEA backend and SQLite source index, Asciinema 3.2.0 asciicast v2, agg 1.9.0, ImageMagick, GitHub-flavored Markdown, Playwright, Zensical, GitHub Actions.
 
 ## Global Constraints
 
 - The capture uses a 120-column by 40-row terminal with an `xterm-256color` environment.
-- Run the source-built `kast` binary against the current, plugin-prepared Kast repository and an already reachable, version-compatible backend.
+- Run the released Homebrew `kast` 0.12.4 binary against the real user checkout prepared by the matching IntelliJ plugin and an already reachable, version-compatible backend.
 - Do not substitute a fake backend or fixture responses.
 - Stop without committing recording assets if full compiler and source-index evidence is unavailable.
 - Demonstrate ranked repository stories, a repository-owned declaration, identity, relationships, impact, safety, and a hypothetical plan-only rename.
@@ -27,10 +27,9 @@
 ### Task 1: Prove The Full-Evidence Recording Prerequisites
 
 **Files:**
-- Read: `/Users/amichne/.codex/worktrees/31894d48-3b23-4ff4-82de-e373ef92e7db/kast/.kast/setup/workspace.json`
+- Read: `/Users/amichne/code/kast/.kast/setup/workspace.json`
 - Generate outside Git: `/tmp/kast-demo-evidence/preflight.json`
 - Generate outside Git: `/tmp/kast-demo-evidence/kotlin-before.sha256`
-- Build output only: `cli-rs/target/debug/kast`
 
 **Interfaces:**
 - Consumes: approved design at `.agents/superpowers/specs/2026-07-10-readme-demo-recording-design.md`, plugin-prepared workspace metadata, live IDEA backend, source-index database
@@ -42,8 +41,9 @@ Run from `/tmp/kast-pr-327-sync`:
 
 ```bash
 export SOURCE_ROOT=/tmp/kast-pr-327-sync
-export DEMO_REPO=/Users/amichne/.codex/worktrees/31894d48-3b23-4ff4-82de-e373ef92e7db/kast
+export DEMO_REPO=/Users/amichne/code/kast
 export EVIDENCE_DIR=/tmp/kast-demo-evidence
+export KAST_BIN=/opt/homebrew/bin/kast
 mkdir -p "$EVIDENCE_DIR"
 test -f "$DEMO_REPO/.kast/setup/workspace.json"
 ```
@@ -52,19 +52,22 @@ Expected: the prepared workspace metadata exists. Task 1 Step 3 verifies the
 source index through the public `kast demo` response because Git worktrees may
 store the physical database outside the repository root.
 
-- [ ] **Step 2: Build the current CLI with the prepared workspace's version contract**
+- [ ] **Step 2: Prove the released CLI and plugin share the 0.12.4 contract**
 
 Run:
 
 ```bash
-export KAST_VERSION="$(jq -er '.cliVersion' "$DEMO_REPO/.kast/setup/workspace.json")"
-cargo build --manifest-path "$SOURCE_ROOT/cli-rs/Cargo.toml" --bin kast --locked
-export KAST_BIN="$SOURCE_ROOT/cli-rs/target/debug/kast"
 test -x "$KAST_BIN"
-test "$($KAST_BIN --version | awk '{print $2}')" = "$KAST_VERSION"
+test "$($KAST_BIN --version | awk '{print $2}')" = "0.12.4"
+test "$(jq -er '.cliVersion' "$DEMO_REPO/.kast/setup/workspace.json")" = "0.12.4"
+test "$(jq -er '.pluginVersion' "$DEMO_REPO/.kast/setup/workspace.json")" = "0.12.4"
+test "$(brew list --versions kast | awk '{print $2}')" = "0.12.4"
+test "$(jq -er '.cli.version' "$HOME/Library/Application Support/Kast/homebrew-install.json")" = "0.12.4"
+test "$(jq -er '.plugin.version' "$HOME/Library/Application Support/Kast/homebrew-install.json")" = "0.12.4"
 ```
 
-Expected: Cargo exits 0 and the source-built binary reports the exact `cliVersion` prepared for the workspace.
+Expected: the executable, Homebrew formula, install receipt, workspace CLI,
+and workspace plugin all report the independently verified 0.12.4 release.
 
 - [ ] **Step 3: Fail closed unless the real backend and index return complete evidence**
 
@@ -344,10 +347,10 @@ Expected: both docs contract scripts pass, Zensical reports a successful build, 
 
 ---
 
-### Task 4: Prove The GitHub Experience And Return PR #327 To Green
+### Task 4: Prove The GitHub Experience And Bring The Follow-Up PR To Green
 
 **Files:**
-- Modify remotely: PR #327 description, if its current summary does not mention the recording
+- Create remotely: follow-up pull request for `docs/readme-demo-recording`
 - Generate outside Git: `/tmp/kast-demo-evidence/github-readme.png`
 
 **Interfaces:**
@@ -359,8 +362,8 @@ Expected: both docs contract scripts pass, Zensical reports a successful build, 
 Run:
 
 ```bash
-git push origin HEAD:feature/repo-native-demo
-git ls-remote --heads origin feature/repo-native-demo
+git push -u origin docs/readme-demo-recording
+git ls-remote --heads origin docs/readme-demo-recording
 ```
 
 Expected: the remote branch SHA matches `git rev-parse HEAD`.
@@ -378,25 +381,34 @@ Verify that the `Try it on your code` section contains an `<img>` whose alt text
 
 Expected: GitHub renders the GIF inline from the committed relative path; no broken-image icon or authentication-only content appears.
 
-- [ ] **Step 3: Update PR evidence without replacing existing implementation detail**
+- [ ] **Step 3: Create the follow-up PR with concrete recording evidence**
 
 Run:
 
 ```bash
-gh pr view 327 --json url,body,headRefOid,isDraft,mergeable,mergeStateStatus
+gh pr create \
+  --base main \
+  --head docs/readme-demo-recording \
+  --title "docs: add interactive kast demo recording" \
+  --body-file "$EVIDENCE_DIR/pr-body.md"
 ```
 
-If the body does not mention the recording, update it to add:
+The body must explain that the pull request:
 
 ```markdown
 - embeds a source-backed `kast demo` GIF in the README and retains its auditable Asciinema v2 cast
 ```
 
-Under verification, add the concrete cast validation, source-hash comparison, ImageMagick dimensions/frame count/size, docs contract commands, and browser-render proof. Preserve all existing PR summary and validation entries.
+Under verification, include the concrete cast validation, source-hash
+comparison, ImageMagick dimensions/frame count/size, docs contract commands,
+released-version proof, and browser-render proof.
 
 - [ ] **Step 4: Babysit every check for the final head SHA**
 
-Run `gh pr checks 327` in bounded polling intervals and use `gh run view <run-id> --json jobs` for any non-terminal or failed workflow. Keep polling until every check at `git rev-parse HEAD` is success, skipped, or neutral.
+Run `gh pr checks <number>` in bounded polling intervals and use
+`gh run view <run-id> --json jobs` for any non-terminal or failed workflow.
+Keep polling until every check at `git rev-parse HEAD` is success, skipped, or
+neutral.
 
 Expected terminal evidence:
 
@@ -416,7 +428,10 @@ Run:
 ```bash
 git status --short --branch
 git log -4 --oneline --decorate
-gh pr view 327 --json url,headRefOid,isDraft,mergeable,mergeStateStatus,statusCheckRollup
+gh pr view <number> --json url,headRefOid,isDraft,mergeable,mergeStateStatus,statusCheckRollup
 ```
 
-Expected: the temporary implementation worktree is clean, PR #327 is ready for review, all checks for its final head are terminal-green/skipped/neutral, and any remaining `BLOCKED` state is attributable only to review or branch policy.
+Expected: the temporary implementation worktree is clean, the follow-up pull
+request is ready for review, all checks for its final head are
+terminal-green/skipped/neutral, and any remaining `BLOCKED` state is
+attributable only to review or branch policy.
