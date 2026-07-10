@@ -364,17 +364,20 @@ fn ranked_demo_candidates(db: &DemoDatabase) -> Result<Vec<DemoCandidate>> {
 
     let hits = db.search("", 30)?;
     let mut candidates = Vec::new();
+    let mut selected_symbols = BTreeSet::new();
     if let Some((hit, score)) = highest_impact_hit(&hits) {
+        selected_symbols.insert(hit.fq_name.clone());
         candidates.push(demo_candidate(DemoCandidateKind::ImpactHub, hit, score));
     }
-    if let Some((hit, score)) = highest_call_chain_hit(db, &hits)? {
+    if let Some((hit, score)) = highest_call_chain_hit(db, &hits, &selected_symbols)? {
+        selected_symbols.insert(hit.fq_name.clone());
         candidates.push(demo_candidate(
             DemoCandidateKind::CallChainHub,
             hit,
             score,
         ));
     }
-    if let Some((hit, score)) = highest_ambiguity_hit(db, &hits)? {
+    if let Some((hit, score)) = highest_ambiguity_hit(db, &hits, &selected_symbols)? {
         candidates.push(demo_candidate(
             DemoCandidateKind::SemanticAmbiguity,
             hit,
@@ -391,6 +394,7 @@ fn highest_impact_hit(hits: &[SymbolHit]) -> Option<(SymbolHit, i64)> {
 fn highest_call_chain_hit(
     db: &DemoDatabase,
     hits: &[SymbolHit],
+    excluded: &BTreeSet<String>,
 ) -> Result<Option<(SymbolHit, i64)>> {
     let mut scored = Vec::new();
     for hit in hits {
@@ -406,12 +410,13 @@ fn highest_call_chain_hit(
             scored.push((hit.clone(), score));
         }
     }
-    Ok(best_ranked_candidate(scored))
+    Ok(best_ranked_candidate_excluding(scored, excluded))
 }
 
 fn highest_ambiguity_hit(
     db: &DemoDatabase,
     hits: &[SymbolHit],
+    excluded: &BTreeSet<String>,
 ) -> Result<Option<(SymbolHit, i64)>> {
     let mut scored = Vec::new();
     for hit in hits {
@@ -423,7 +428,7 @@ fn highest_ambiguity_hit(
             scored.push((hit.clone(), score));
         }
     }
-    Ok(best_ranked_candidate(scored))
+    Ok(best_ranked_candidate_excluding(scored, excluded))
 }
 
 fn best_scored_hit(
@@ -438,7 +443,15 @@ fn best_scored_hit(
     )
 }
 
-fn best_ranked_candidate(mut scored: Vec<(SymbolHit, i64)>) -> Option<(SymbolHit, i64)> {
+fn best_ranked_candidate(scored: Vec<(SymbolHit, i64)>) -> Option<(SymbolHit, i64)> {
+    best_ranked_candidate_excluding(scored, &BTreeSet::new())
+}
+
+fn best_ranked_candidate_excluding(
+    mut scored: Vec<(SymbolHit, i64)>,
+    excluded: &BTreeSet<String>,
+) -> Option<(SymbolHit, i64)> {
+    scored.retain(|(hit, _)| !excluded.contains(&hit.fq_name));
     scored.sort_by(|(left_hit, left_score), (right_hit, right_score)| {
         right_score
             .cmp(left_score)

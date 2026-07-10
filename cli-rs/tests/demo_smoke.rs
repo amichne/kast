@@ -35,6 +35,7 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
     seed_source_index(&workspace);
+    seed_external_reference_target(&workspace);
 
     let demo = kast(&home, &config_home)
         .args([
@@ -59,6 +60,12 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
     assert_eq!(response["workspaceRoot"], workspace.display().to_string());
     assert_eq!(response["mutates"], false);
     let candidates = response["candidates"].as_array().expect("candidates");
+    assert!(
+        candidates
+            .iter()
+            .all(|candidate| candidate["fqName"] != "kotlin.String"),
+        "automatic stories must stay grounded in workspace declarations: {response:#}"
+    );
     assert!(
         candidates.iter().any(|candidate| {
             candidate["kind"] == "impactHub" && candidate["fqName"] == "lib.Foo"
@@ -91,6 +98,26 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
                 .is_some_and(|entry| { entry.contains("kast agent impact --symbol lib.Foo") })),
         "snapshot should expose an exact reusable public command: {response:#}"
     );
+}
+
+fn seed_external_reference_target(workspace: &std::path::Path) {
+    let connection =
+        rusqlite::Connection::open(workspace.join(".gradle/kast/cache/source-index.db"))
+            .expect("source index");
+    connection
+        .execute(
+            "INSERT INTO fq_names(fq_id, fq_name) VALUES (99, 'kotlin.String')",
+            [],
+        )
+        .expect("external fq name");
+    for offset in 100..110 {
+        connection
+            .execute(
+                "INSERT INTO symbol_references(src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id, edge_kind) VALUES (1, 'A.kt', ?, 1, 99, 'TYPE_REF')",
+                [offset],
+            )
+            .expect("external reference");
+    }
 }
 
 #[test]

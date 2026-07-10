@@ -308,22 +308,15 @@ impl DemoDatabase {
                 r#"
                 SELECT names.fq_name
                 FROM fq_names names
-                JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
+                JOIN declarations declarations ON declarations.fq_id = names.fq_id
+                LEFT JOIN symbol_references refs ON refs.target_fq_id = names.fq_id
                 GROUP BY names.fq_id
-                ORDER BY COUNT(*) DESC, names.fq_name ASC
+                ORDER BY COUNT(refs.target_fq_id) DESC, names.fq_name ASC
                 LIMIT ?
                 "#,
             )
             .map_err(sql_error)?;
-        let mut values = string_column(stmt.query_map(params![limit as i64], |row| row.get(0)))?;
-        if values.is_empty() {
-            let mut fallback = self
-                .conn
-                .prepare("SELECT fq_name FROM fq_names ORDER BY fq_name ASC LIMIT ?")
-                .map_err(sql_error)?;
-            values = string_column(fallback.query_map(params![limit as i64], |row| row.get(0)))?;
-        }
-        Ok(values)
+        string_column(stmt.query_map(params![limit as i64], |row| row.get(0)))
     }
 
     fn exact_symbol_match(&self, query: &str, limit: usize) -> Result<Vec<String>> {

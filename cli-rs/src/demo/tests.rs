@@ -363,6 +363,21 @@ mod tests {
         );
     }
 
+    #[test]
+    fn public_demo_candidate_ranking_excludes_symbols_already_used_by_another_story() {
+        let selected = BTreeSet::from(["lib.Foo".to_string()]);
+        let candidate = best_ranked_candidate_excluding(
+            vec![
+                (sample_symbol_hit("lib.Foo"), 20),
+                (sample_symbol_hit("app.Bar"), 10),
+            ],
+            &selected,
+        )
+        .expect("next distinct candidate");
+
+        assert_eq!(candidate.0.fq_name, "app.Bar");
+    }
+
     fn sample_compare_row<const N: usize>(
         fq_name: Option<&str>,
         label: &str,
@@ -400,6 +415,19 @@ mod tests {
         };
         assign_compare_module_path(&mut row);
         row
+    }
+
+    fn sample_symbol_hit(fq_name: &str) -> SymbolHit {
+        SymbolHit {
+            fq_name: fq_name.to_string(),
+            simple_name: simple_symbol_name(fq_name).to_string(),
+            kind: Some("CLASS".to_string()),
+            path: Some(format!("/workspace/{}.kt", simple_symbol_name(fq_name))),
+            declaration_offset: Some(1),
+            module_path: Some(":app".to_string()),
+            incoming_references: 0,
+            outgoing_references: 0,
+        }
     }
 
     fn sample_lexical_only_row(label: &str) -> CompareRow {
