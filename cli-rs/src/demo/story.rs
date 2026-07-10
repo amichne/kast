@@ -64,8 +64,23 @@ pub fn run_public(args: PublicDemoArgs, output_format: OutputFormat) -> Result<i
     }
     let db = DemoDatabase::open(request)?;
     let snapshot = public_demo_snapshot(&db)?;
+    if should_run_public_demo_tui(
+        output_format,
+        io::stdin().is_terminal(),
+        io::stdout().is_terminal(),
+    ) {
+        return run_public_demo_tui(db, snapshot);
+    }
     output::print_structured(&snapshot, output_format)?;
     Ok(0)
+}
+
+fn should_run_public_demo_tui(
+    output_format: OutputFormat,
+    stdin_terminal: bool,
+    stdout_terminal: bool,
+) -> bool {
+    output_format == OutputFormat::Human && stdin_terminal && stdout_terminal
 }
 
 fn public_missing_index_error(request: &DemoRequest) -> CliError {

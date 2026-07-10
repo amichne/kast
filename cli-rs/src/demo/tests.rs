@@ -173,6 +173,65 @@ mod tests {
         assert_eq!(CompareViewMode::Difference.toggle(), CompareViewMode::Full);
     }
 
+    #[test]
+    fn public_demo_enters_the_selected_story_on_enter() {
+        let mut app = PublicDemoApp::new(sample_public_demo_snapshot());
+
+        let outcome = app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert_eq!(outcome, PublicDemoOutcome::Continue);
+        assert_eq!(app.screen, PublicDemoScreen::Story);
+        assert_eq!(
+            app.selected_candidate().expect("selected candidate").fq_name,
+            "lib.Foo"
+        );
+        assert_eq!(
+            app.selected_chapter().expect("selected chapter").chapter,
+            DemoChapter::SemanticDifference,
+            "the story should open on the first available evidence chapter"
+        );
+    }
+
+    #[test]
+    fn public_demo_candidate_screen_renders_repo_specific_stories() {
+        let app = PublicDemoApp::new(sample_public_demo_snapshot());
+        let backend = ratatui::backend::TestBackend::new(100, 28);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+
+        terminal
+            .draw(|frame| render_public_demo(frame, &app))
+            .expect("render public demo");
+
+        let rendered = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>();
+        assert!(
+            rendered.contains("Choose a story from your codebase")
+                && rendered.contains("Trace the impact of Foo")
+                && rendered.contains("3 indexed evidence points"),
+            "candidate screen should explain the real story choices: {rendered}"
+        );
+    }
+
+    #[test]
+    fn public_demo_uses_tui_only_for_interactive_human_output() {
+        assert!(should_run_public_demo_tui(OutputFormat::Human, true, true));
+        assert!(!should_run_public_demo_tui(
+            OutputFormat::Human,
+            false,
+            true
+        ));
+        assert!(!should_run_public_demo_tui(
+            OutputFormat::Toon,
+            true,
+            true
+        ));
+    }
+
     fn sample_compare_row<const N: usize>(
         fq_name: Option<&str>,
         label: &str,
@@ -231,5 +290,28 @@ mod tests {
         };
         assign_compare_module_path(&mut row);
         row
+    }
+
+    fn sample_public_demo_snapshot() -> PublicDemoSnapshot {
+        PublicDemoSnapshot {
+            response_type: "KAST_DEMO",
+            ok: true,
+            availability: PublicDemoAvailability::IndexOnly,
+            workspace_root: "/workspace".to_string(),
+            mutates: false,
+            candidates: vec![DemoCandidate {
+                kind: DemoCandidateKind::ImpactHub,
+                fq_name: "lib.Foo".to_string(),
+                title: "Trace the impact of Foo".to_string(),
+                evidence_count: 3,
+                file: Some("/workspace/lib/Foo.kt".to_string()),
+                module: Some(":lib".to_string()),
+            }],
+            chapters: index_only_chapters(),
+            help: vec![
+                "kast agent impact --symbol lib.Foo --workspace-root <repo>".to_string(),
+            ],
+            schema_version: SCHEMA_VERSION,
+        }
     }
 }
