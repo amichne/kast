@@ -3,6 +3,7 @@
 enum PublicDemoAvailability {
     Full,
     IndexOnly,
+    BackendOnly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -11,6 +12,7 @@ enum DemoCandidateKind {
     ImpactHub,
     CallChainHub,
     SemanticAmbiguity,
+    SelectedSymbol,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -81,7 +83,7 @@ struct PublicDemoSnapshot {
 pub fn run_public(args: PublicDemoArgs, output_format: OutputFormat) -> Result<i32> {
     let request = DemoRequest::from_public_args(args)?;
     if !request.database.is_file() {
-        return Err(public_missing_index_error(&request));
+        return run_public_without_index(request, output_format);
     }
     let db = DemoDatabase::open(request)?;
     let interactive = should_run_public_demo_tui(
@@ -91,7 +93,62 @@ pub fn run_public(args: PublicDemoArgs, output_format: OutputFormat) -> Result<i
     );
     let (snapshot, connection) = public_demo_snapshot(&db, !interactive)?;
     if interactive {
-        return run_public_demo_tui(db, snapshot, connection);
+        return run_public_demo_tui(Some(db), snapshot, connection);
+    }
+    output::print_structured(&snapshot, output_format)?;
+    Ok(0)
+}
+
+fn run_public_without_index(request: DemoRequest, output_format: OutputFormat) -> Result<i32> {
+    let (connection, mut warnings) = detect_demo_backend(&request);
+    let Some(connection) = connection else {
+        return Err(public_missing_index_error(&request));
+    };
+    let symbol = request.symbol.as_deref().ok_or_else(|| {
+        CliError::new(
+            "DEMO_SYMBOL_REQUIRED",
+            "A ready compiler backend is available, but source-index ranking is not. Choose a Kotlin symbol with `kast demo --symbol <name> --workspace-root <repo>`.",
+        )
+    })?;
+    let candidate = DemoCandidate {
+        kind: DemoCandidateKind::SelectedSymbol,
+        fq_name: symbol.to_string(),
+        title: format!("Inspect compiler evidence for {symbol}"),
+        evidence_count: 0,
+        file: None,
+        module: None,
+    };
+    let selected_story = selected_demo_story(&candidate, Some(&connection), &mut warnings);
+    warnings.push(
+        "Source-index ranking and impact evidence are unavailable; this story uses the ready compiler backend."
+            .to_string(),
+    );
+    let snapshot = PublicDemoSnapshot {
+        response_type: "KAST_DEMO",
+        ok: true,
+        availability: PublicDemoAvailability::BackendOnly,
+        workspace_root: request.workspace_root.display().to_string(),
+        mutates: false,
+        backend: Some(connection.summary.clone()),
+        candidates: vec![candidate],
+        selected_story: Some(selected_story),
+        chapters: backend_only_chapters(),
+        warnings,
+        help: vec![
+            format!(
+                "kast agent symbol --query {symbol} --references --workspace-root <repo>"
+            ),
+            "Build the source index to unlock ranked impact and semantic-difference stories."
+                .to_string(),
+        ],
+        schema_version: SCHEMA_VERSION,
+    };
+    if should_run_public_demo_tui(
+        output_format,
+        io::stdin().is_terminal(),
+        io::stdout().is_terminal(),
+    ) {
+        return run_public_demo_tui(None, snapshot, Some(connection));
     }
     output::print_structured(&snapshot, output_format)?;
     Ok(0)
@@ -182,6 +239,9 @@ fn public_demo_snapshot(
         chapters: match availability {
             PublicDemoAvailability::Full => full_chapters(),
             PublicDemoAvailability::IndexOnly => index_only_chapters(),
+            PublicDemoAvailability::BackendOnly => {
+                unreachable!("indexed snapshots cannot be backend-only")
+            }
         },
         warnings,
         help,
@@ -254,6 +314,29 @@ fn full_chapters() -> Vec<DemoChapterAvailability> {
             "compiler references and callers",
         ),
         chapter(DemoChapter::Impact, true, "source-index impact graph"),
+        chapter(
+            DemoChapter::Safety,
+            true,
+            "compiler diagnostics and plan-first rename",
+        ),
+        chapter(DemoChapter::Recap, true, "public command handoff"),
+    ]
+}
+
+fn backend_only_chapters() -> Vec<DemoChapterAvailability> {
+    vec![
+        chapter(DemoChapter::Identity, true, "compiler-resolved declaration"),
+        chapter(
+            DemoChapter::SemanticDifference,
+            false,
+            "source index unavailable",
+        ),
+        chapter(
+            DemoChapter::Relationships,
+            true,
+            "compiler references and callers",
+        ),
+        chapter(DemoChapter::Impact, false, "source index unavailable"),
         chapter(
             DemoChapter::Safety,
             true,
@@ -370,6 +453,9 @@ fn demo_candidate(kind: DemoCandidateKind, hit: SymbolHit, evidence_count: i64) 
         DemoCandidateKind::CallChainHub => format!("Walk the call chain around {}", hit.simple_name),
         DemoCandidateKind::SemanticAmbiguity => {
             format!("Separate text matches from {}", hit.simple_name)
+        }
+        DemoCandidateKind::SelectedSymbol => {
+            format!("Inspect compiler evidence for {}", hit.simple_name)
         }
     };
     DemoCandidate {

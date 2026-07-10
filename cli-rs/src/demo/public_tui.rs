@@ -1,5 +1,5 @@
 fn run_public_demo_tui(
-    mut db: DemoDatabase,
+    db: Option<DemoDatabase>,
     snapshot: PublicDemoSnapshot,
     connection: Option<DemoBackendConnection>,
 ) -> Result<i32> {
@@ -16,13 +16,37 @@ fn run_public_demo_tui(
     terminal.show_cursor().ok();
 
     match outcome? {
-        PublicDemoOutcome::Explore(fq_name) => {
-            let request = db.request.clone();
-            let snapshot = db.snapshot(Some(&fq_name), "", Vec::new())?;
-            run_demo_tui(DemoApp::from_snapshot(db, request, snapshot))
-        }
+        PublicDemoOutcome::Explore(candidate) => db
+            .map(|db| run_public_demo_explorer(db, candidate))
+            .unwrap_or(Ok(0)),
         PublicDemoOutcome::Continue | PublicDemoOutcome::Quit => Ok(0),
         PublicDemoOutcome::Load(_) => unreachable!("load outcomes stay inside the event loop"),
+    }
+}
+
+fn run_public_demo_explorer(mut db: DemoDatabase, candidate: DemoCandidate) -> Result<i32> {
+    let request = db.request.clone();
+    match candidate.kind {
+        DemoCandidateKind::SemanticAmbiguity => {
+            let query = simple_symbol_name(&candidate.fq_name).to_string();
+            let snapshot = db.compare_snapshot(CompareSnapshotRequest {
+                query: &query,
+                filters: &CompareFilters::default(),
+                sort: CompareSort::Module,
+                view_mode: CompareViewMode::Full,
+                requested_symbol: Some(&candidate.fq_name),
+                selected_lexical: 0,
+                selected_semantic: 0,
+                active_pane: ComparePane::Semantic,
+            })?;
+            run_compare_tui(CompareApp::from_snapshot(db, request, snapshot))
+        }
+        DemoCandidateKind::ImpactHub
+        | DemoCandidateKind::CallChainHub
+        | DemoCandidateKind::SelectedSymbol => {
+            let snapshot = db.snapshot(Some(&candidate.fq_name), "", Vec::new())?;
+            run_demo_tui(DemoApp::from_snapshot(db, request, snapshot))
+        }
     }
 }
 

@@ -19,6 +19,7 @@ fn render_public_demo_header(frame: &mut Frame<'_>, area: Rect, app: &PublicDemo
     let availability = match app.snapshot.availability {
         PublicDemoAvailability::Full => "compiler + index evidence ready",
         PublicDemoAvailability::IndexOnly => "index evidence ready",
+        PublicDemoAvailability::BackendOnly => "compiler evidence ready",
     };
     let lines = vec![
         Line::from(vec![
@@ -322,6 +323,8 @@ fn render_public_demo_footer(frame: &mut Frame<'_>, area: Rect, app: &PublicDemo
         PublicDemoScreen::Story => {
             if app.input_mode == PublicDemoInputMode::Rename {
                 "type hypothetical name • Enter preview • Esc cancel • read-only"
+            } else if app.snapshot.availability == PublicDemoAvailability::BackendOnly {
+                "←/→ chapter • r rename preview • Esc stories • q quit • read-only"
             } else {
                 "←/→ chapter • r rename preview • e explore graph • Esc stories • q quit • read-only"
             }
@@ -340,6 +343,7 @@ fn demo_candidate_kind_label(kind: DemoCandidateKind) -> &'static str {
         DemoCandidateKind::ImpactHub => "High-impact symbol",
         DemoCandidateKind::CallChainHub => "Call-chain hub",
         DemoCandidateKind::SemanticAmbiguity => "Semantic ambiguity",
+        DemoCandidateKind::SelectedSymbol => "Selected symbol",
     }
 }
 

@@ -326,6 +326,43 @@ mod tests {
         assert_eq!(preview.request_type, "RENAME_BY_SYMBOL_REQUEST");
     }
 
+    #[test]
+    fn public_demo_ambiguity_story_hands_off_to_semantic_compare() {
+        let mut snapshot = sample_public_demo_snapshot();
+        snapshot.candidates.push(DemoCandidate {
+            kind: DemoCandidateKind::SemanticAmbiguity,
+            fq_name: "lib.FooWidget".to_string(),
+            title: "Separate text matches from FooWidget".to_string(),
+            evidence_count: 2,
+            file: Some("/workspace/lib/FooWidget.kt".to_string()),
+            module: Some(":lib".to_string()),
+        });
+        let expected = snapshot.candidates[1].clone();
+        let mut app = PublicDemoApp::new(snapshot);
+        app.on_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let outcome = app.on_key(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE));
+
+        assert_eq!(outcome, PublicDemoOutcome::Explore(expected));
+    }
+
+    #[test]
+    fn public_demo_backend_only_story_omits_index_dependent_chapters() {
+        let chapters = backend_only_chapters();
+
+        assert!(
+            chapters
+                .iter()
+                .any(|chapter| chapter.chapter == DemoChapter::Identity && chapter.available)
+        );
+        assert!(
+            chapters
+                .iter()
+                .any(|chapter| chapter.chapter == DemoChapter::Impact && !chapter.available)
+        );
+    }
+
     fn sample_compare_row<const N: usize>(
         fq_name: Option<&str>,
         label: &str,

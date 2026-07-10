@@ -228,12 +228,154 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let socket_path = temp.path().join("idea.sock");
-    let descriptor_dir = default_descriptor_dir(&home);
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     seed_source_index(&workspace);
+    let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 5);
+
+    let demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "demo",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
+        ])
+        .output()
+        .expect("full demo");
+
+    assert!(
+        demo.status.success(),
+        "full demo should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&demo.stdout),
+        String::from_utf8_lossy(&demo.stderr)
+    );
+    let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
+    assert_eq!(
+        handle.join().expect("fake backend"),
+        vec![
+            "runtime/status",
+            "capabilities",
+            "symbol/resolve",
+            "symbol/references",
+            "raw/diagnostics"
+        ]
+    );
+    assert_eq!(response["availability"], "full");
+    assert_eq!(response["backend"]["name"], "idea");
+    assert_eq!(response["backend"]["referenceIndexReady"], true);
+    assert_eq!(
+        response["selectedStory"]["compilerIdentity"]["fqName"],
+        "lib.Foo"
+    );
+    assert_eq!(response["selectedStory"]["compilerReferenceCount"], 2);
+    assert_eq!(response["selectedStory"]["diagnostics"]["clean"], true);
+    assert!(
+        response["chapters"]
+            .as_array()
+            .expect("chapters")
+            .iter()
+            .any(|chapter| chapter["chapter"] == "identity" && chapter["available"] == true),
+        "a ready backend should unlock compiler identity: {response:#}"
+    );
+}
+
+#[test]
+fn demo_uses_a_ready_backend_when_the_source_index_is_missing() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("idea.sock");
+    write_macos_plugin_workspace_metadata(&workspace);
+    let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 5);
+
+    let demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "demo",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
+            "--symbol",
+            "lib.Foo",
+        ])
+        .output()
+        .expect("backend-only demo");
+
+    assert!(
+        demo.status.success(),
+        "backend-only demo should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&demo.stdout),
+        String::from_utf8_lossy(&demo.stderr)
+    );
+    let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
+    assert_eq!(handle.join().expect("fake backend").len(), 5);
+    assert_eq!(response["availability"], "backendOnly");
+    assert_eq!(response["candidates"][0]["kind"], "selectedSymbol");
+    assert_eq!(
+        response["selectedStory"]["compilerIdentity"]["fqName"],
+        "lib.Foo"
+    );
+    assert!(
+        response["chapters"]
+            .as_array()
+            .expect("chapters")
+            .iter()
+            .any(|chapter| chapter["chapter"] == "impact" && chapter["available"] == false),
+        "backend-only output must not claim index-derived impact evidence: {response:#}"
+    );
+}
+
+#[test]
+fn backend_only_demo_requests_a_symbol_instead_of_inventing_a_ranked_story() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("idea.sock");
+    write_macos_plugin_workspace_metadata(&workspace);
+    let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 2);
+
+    let demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "demo",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
+        ])
+        .output()
+        .expect("backend-only demo without symbol");
+
+    assert!(!demo.status.success());
+    let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
+    assert_eq!(handle.join().expect("fake backend").len(), 2);
+    assert_eq!(response["code"], "DEMO_SYMBOL_REQUIRED");
+    assert!(
+        response["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("kast demo --symbol <name>")),
+        "the fallback should provide a one-turn recovery command: {response:#}"
+    );
+}
+
+fn spawn_ready_demo_backend(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    socket_path: &std::path::Path,
+    expected_requests: usize,
+) -> std::thread::JoinHandle<Vec<String>> {
+    let descriptor_dir = default_descriptor_dir(home);
+    std::fs::create_dir_all(home).expect("home");
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::create_dir_all(config_home).expect("config home");
+    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"idea\"\n",
@@ -258,13 +400,13 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
     )
     .expect("descriptor");
 
-    let listener = UnixListener::bind(&socket_path).expect("bind fake backend");
+    let listener = UnixListener::bind(socket_path).expect("bind fake backend");
     listener.set_nonblocking(true).expect("nonblocking backend");
-    let server_workspace = workspace.clone();
-    let handle = thread::spawn(move || {
+    let server_workspace = workspace.to_path_buf();
+    thread::spawn(move || {
         let mut methods = Vec::new();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while methods.len() < 5 && std::time::Instant::now() < deadline {
+        while methods.len() < expected_requests && std::time::Instant::now() < deadline {
             let (mut stream, _) = match listener.accept() {
                 Ok(connection) => connection,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
@@ -356,53 +498,5 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
             .expect("write response");
         }
         methods
-    });
-
-    let demo = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "demo",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-            "--backend",
-            "idea",
-        ])
-        .output()
-        .expect("full demo");
-
-    assert!(
-        demo.status.success(),
-        "full demo should succeed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&demo.stdout),
-        String::from_utf8_lossy(&demo.stderr)
-    );
-    let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
-    assert_eq!(
-        handle.join().expect("fake backend"),
-        vec![
-            "runtime/status",
-            "capabilities",
-            "symbol/resolve",
-            "symbol/references",
-            "raw/diagnostics"
-        ]
-    );
-    assert_eq!(response["availability"], "full");
-    assert_eq!(response["backend"]["name"], "idea");
-    assert_eq!(response["backend"]["referenceIndexReady"], true);
-    assert_eq!(
-        response["selectedStory"]["compilerIdentity"]["fqName"],
-        "lib.Foo"
-    );
-    assert_eq!(response["selectedStory"]["compilerReferenceCount"], 2);
-    assert_eq!(response["selectedStory"]["diagnostics"]["clean"], true);
-    assert!(
-        response["chapters"]
-            .as_array()
-            .expect("chapters")
-            .iter()
-            .any(|chapter| chapter["chapter"] == "identity" && chapter["available"] == true),
-        "a ready backend should unlock compiler identity: {response:#}"
-    );
+    })
 }

@@ -21,7 +21,7 @@ struct DemoRenamePreview {
 enum PublicDemoOutcome {
     Continue,
     Quit,
-    Explore(String),
+    Explore(DemoCandidate),
     Load(DemoCandidate),
 }
 
@@ -139,9 +139,10 @@ impl PublicDemoApp {
                 );
                 PublicDemoOutcome::Continue
             }
-            KeyCode::Char('e') => self
+            KeyCode::Char('e') if self.snapshot.availability != PublicDemoAvailability::BackendOnly => self
                 .selected_candidate()
-                .map(|candidate| PublicDemoOutcome::Explore(candidate.fq_name.clone()))
+                .cloned()
+                .map(PublicDemoOutcome::Explore)
                 .unwrap_or(PublicDemoOutcome::Continue),
             KeyCode::Char('r') if self.selected_chapter_is(DemoChapter::Safety) => {
                 self.input_mode = PublicDemoInputMode::Rename;
