@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 enum PublicDemoAvailability {
+    Full,
     IndexOnly,
 }
 
@@ -44,6 +45,20 @@ struct DemoChapterAvailability {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct DemoBackendSummary {
+    name: String,
+    version: String,
+    reference_index_ready: bool,
+}
+
+#[derive(Debug, Clone)]
+struct DemoBackendConnection {
+    summary: DemoBackendSummary,
+    socket_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PublicDemoSnapshot {
     #[serde(rename = "type")]
     response_type: &'static str,
@@ -51,8 +66,14 @@ struct PublicDemoSnapshot {
     availability: PublicDemoAvailability,
     workspace_root: String,
     mutates: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    backend: Option<DemoBackendSummary>,
     candidates: Vec<DemoCandidate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_story: Option<DemoSelectedStory>,
     chapters: Vec<DemoChapterAvailability>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
     help: Vec<String>,
     schema_version: u32,
 }
@@ -108,12 +129,19 @@ impl DemoRequest {
             query: None,
             limit: 30,
             json: false,
+            backend_name: args.runtime.backend_name,
         })
     }
 }
 
 fn public_demo_snapshot(db: &DemoDatabase) -> Result<PublicDemoSnapshot> {
     let candidates = ranked_demo_candidates(db)?;
+    let (connection, mut warnings) = detect_demo_backend(&db.request);
+    let availability = if connection.is_some() {
+        PublicDemoAvailability::Full
+    } else {
+        PublicDemoAvailability::IndexOnly
+    };
     let help = candidates
         .first()
         .map(|candidate| {
@@ -134,14 +162,97 @@ fn public_demo_snapshot(db: &DemoDatabase) -> Result<PublicDemoSnapshot> {
     Ok(PublicDemoSnapshot {
         response_type: "KAST_DEMO",
         ok: true,
-        availability: PublicDemoAvailability::IndexOnly,
+        availability,
         workspace_root: db.request.workspace_root.display().to_string(),
         mutates: false,
+        backend: connection
+            .as_ref()
+            .map(|connection| connection.summary.clone()),
+        selected_story: candidates.first().map(|candidate| {
+            selected_demo_story(candidate, connection.as_ref(), &mut warnings)
+        }),
         candidates,
-        chapters: index_only_chapters(),
+        chapters: match availability {
+            PublicDemoAvailability::Full => full_chapters(),
+            PublicDemoAvailability::IndexOnly => index_only_chapters(),
+        },
+        warnings,
         help,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn detect_demo_backend(request: &DemoRequest) -> (Option<DemoBackendConnection>, Vec<String>) {
+    let status = match runtime::workspace_status(demo_runtime_args(request)) {
+        Ok(status) => status,
+        Err(error) => return (None, vec![error.message]),
+    };
+    let Some(selected) = status
+        .selected
+        .filter(|candidate| candidate.ready && candidate.reachable)
+    else {
+        return (None, Vec::new());
+    };
+    let reference_index_ready = selected
+        .runtime_status
+        .as_ref()
+        .is_some_and(|status| status.reference_index_ready);
+    (
+        Some(DemoBackendConnection {
+            summary: DemoBackendSummary {
+                name: selected.descriptor.backend_name,
+                version: selected.descriptor.backend_version,
+                reference_index_ready,
+            },
+            socket_path: PathBuf::from(selected.descriptor.socket_path),
+        }),
+        Vec::new(),
+    )
+}
+
+fn demo_runtime_args(request: &DemoRequest) -> RuntimeArgs {
+    RuntimeArgs {
+        workspace_root: Some(request.workspace_root.clone()),
+        backend_name: request.backend_name,
+        idea_home: None,
+        wait_timeout_ms: 60_000,
+        accept_indexing: Some(false),
+        no_auto_start: Some(true),
+        socket_path: None,
+        module_name: None,
+        source_roots: None,
+        classpath: None,
+        request_timeout_ms: None,
+        max_results: None,
+        max_concurrent_requests: None,
+        profile: false,
+        profile_modes: None,
+        profile_duration: None,
+        profile_otlp_endpoint: None,
+    }
+}
+
+fn full_chapters() -> Vec<DemoChapterAvailability> {
+    vec![
+        chapter(DemoChapter::Identity, true, "compiler-resolved declaration"),
+        chapter(
+            DemoChapter::SemanticDifference,
+            true,
+            "compiler and source-index evidence",
+        ),
+        chapter(
+            DemoChapter::Relationships,
+            true,
+            "compiler references and callers",
+        ),
+        chapter(DemoChapter::Impact, true, "source-index impact graph"),
+        chapter(
+            DemoChapter::Safety,
+            true,
+            "compiler diagnostics and plan-first rename",
+        ),
+        chapter(DemoChapter::Recap, true, "public command handoff"),
+    ]
 }
 
 fn ranked_demo_candidates(db: &DemoDatabase) -> Result<Vec<DemoCandidate>> {

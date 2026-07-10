@@ -17,6 +17,7 @@ fn render_public_demo(frame: &mut Frame<'_>, app: &PublicDemoApp) {
 
 fn render_public_demo_header(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoApp) {
     let availability = match app.snapshot.availability {
+        PublicDemoAvailability::Full => "compiler + index evidence ready",
         PublicDemoAvailability::IndexOnly => "index evidence ready",
     };
     let lines = vec![
@@ -155,14 +156,77 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
         ));
         return lines;
     }
-    lines.extend(public_available_chapter_lines(candidate, chapter.chapter));
+    lines.extend(public_available_chapter_lines(
+        candidate,
+        chapter.chapter,
+        app.snapshot.selected_story.as_ref(),
+    ));
     lines
 }
 
 fn public_available_chapter_lines(
     candidate: &DemoCandidate,
     chapter: DemoChapter,
+    selected_story: Option<&DemoSelectedStory>,
 ) -> Vec<Line<'static>> {
+    if let Some(story) = selected_story.filter(|story| story.fq_name == candidate.fq_name) {
+        match chapter {
+            DemoChapter::Identity => {
+                if let Some(identity) = &story.compiler_identity {
+                    return vec![
+                        Line::from(format!("Compiler resolved {}", identity.fq_name)),
+                        Line::from(format!("Kind: {}", identity.kind)),
+                        Line::from(format!("{}:{}", identity.file_path, identity.line)),
+                        Line::from(""),
+                        Line::from(Span::styled(
+                            identity.preview.clone(),
+                            Style::default().fg(Color::Green),
+                        )),
+                    ];
+                }
+            }
+            DemoChapter::Relationships => {
+                if let Some(reference_count) = story.compiler_reference_count {
+                    return vec![
+                        Line::from(format!(
+                            "Compiler confirmed {reference_count} reference locations."
+                        )),
+                        Line::from(format!(
+                            "The source index records {} graph evidence points.",
+                            story.indexed_reference_count
+                        )),
+                        Line::from(""),
+                        Line::from(Span::styled(
+                            format!(
+                                "kast agent symbol --query {} --references --workspace-root <repo>",
+                                candidate.fq_name
+                            ),
+                            Style::default().fg(Color::Green),
+                        )),
+                    ];
+                }
+            }
+            DemoChapter::Safety => {
+                if let Some(diagnostics) = &story.diagnostics {
+                    return vec![
+                        Line::from(format!(
+                            "Compiler baseline: {}",
+                            if diagnostics.clean { "clean" } else { "diagnostics present" }
+                        )),
+                        Line::from(format!(
+                            "{} errors • {} warnings • {} info",
+                            diagnostics.error_count,
+                            diagnostics.warning_count,
+                            diagnostics.info_count
+                        )),
+                        Line::from(""),
+                        Line::from("Rename remains plan-first; this demo never exposes --apply."),
+                    ];
+                }
+            }
+            DemoChapter::SemanticDifference | DemoChapter::Impact | DemoChapter::Recap => {}
+        }
+    }
     let command = match chapter {
         DemoChapter::Identity => format!(
             "kast agent symbol --query {} --workspace-root <repo>",

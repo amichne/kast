@@ -220,3 +220,189 @@ fn interactive_demo_renders_in_a_real_pty_without_changing_sources() {
         "the interactive demo must not mutate user code"
     );
 }
+
+#[test]
+fn demo_reports_full_availability_from_an_existing_ready_backend() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("idea.sock");
+    let descriptor_dir = default_descriptor_dir(&home);
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    seed_source_index(&workspace);
+    std::fs::write(
+        config_home.join("config.toml"),
+        "[runtime]\ndefaultBackend = \"idea\"\n",
+    )
+    .expect("config");
+    std::fs::write(
+        descriptor_dir.join("daemons.json"),
+        format!(
+            r#"[{{
+  "workspaceRoot": "{}",
+  "backendName": "idea",
+  "backendVersion": "demo-test",
+  "transport": "uds",
+  "socketPath": "{}",
+  "pid": {},
+  "schemaVersion": 3
+}}]"#,
+            workspace.display(),
+            socket_path.display(),
+            std::process::id(),
+        ),
+    )
+    .expect("descriptor");
+
+    let listener = UnixListener::bind(&socket_path).expect("bind fake backend");
+    listener.set_nonblocking(true).expect("nonblocking backend");
+    let server_workspace = workspace.clone();
+    let handle = thread::spawn(move || {
+        let mut methods = Vec::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while methods.len() < 5 && std::time::Instant::now() < deadline {
+            let (mut stream, _) = match listener.accept() {
+                Ok(connection) => connection,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(std::time::Duration::from_millis(10));
+                    continue;
+                }
+                Err(error) => panic!("accept demo client: {error}"),
+            };
+            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
+            let mut request_line = String::new();
+            reader.read_line(&mut request_line).expect("read request");
+            let request: Value = serde_json::from_str(&request_line).expect("request json");
+            let method = request["method"].as_str().expect("method").to_string();
+            methods.push(method.clone());
+            let result = match method.as_str() {
+                "runtime/status" => serde_json::json!({
+                    "state": "READY",
+                    "healthy": true,
+                    "active": true,
+                    "indexing": false,
+                    "backendName": "idea",
+                    "backendVersion": "demo-test",
+                    "workspaceRoot": server_workspace.display().to_string(),
+                    "referenceIndexReady": true,
+                    "schemaVersion": 3
+                }),
+                "capabilities" => serde_json::json!({
+                    "backendName": "idea",
+                    "backendVersion": "demo-test",
+                    "workspaceRoot": server_workspace.display().to_string(),
+                    "readCapabilities": ["symbol/resolve", "symbol/references", "raw/diagnostics"],
+                    "mutationCapabilities": ["symbol/rename"],
+                    "limits": {
+                        "requestTimeoutMillis": 60000,
+                        "maxResults": 1000,
+                        "maxConcurrentRequests": 4
+                    },
+                    "schemaVersion": 3
+                }),
+                "symbol/resolve" => serde_json::json!({
+                    "type": "RESOLVE_SUCCESS",
+                    "ok": true,
+                    "symbol": {
+                        "fqName": "lib.Foo",
+                        "kind": "CLASS",
+                        "location": {
+                            "filePath": server_workspace.join("lib/Foo.kt").display().to_string(),
+                            "startOffset": 13,
+                            "endOffset": 22,
+                            "startLine": 3,
+                            "startColumn": 1,
+                            "preview": "class Foo"
+                        }
+                    }
+                }),
+                "symbol/references" => serde_json::json!({
+                    "type": "REFERENCES_SUCCESS",
+                    "ok": true,
+                    "references": [
+                        {
+                            "filePath": server_workspace.join("app/A.kt").display().to_string(),
+                            "startOffset": 55,
+                            "endOffset": 58,
+                            "startLine": 7,
+                            "startColumn": 9,
+                            "preview": "Foo()"
+                        },
+                        {
+                            "filePath": server_workspace.join("app/B.kt").display().to_string(),
+                            "startOffset": 21,
+                            "endOffset": 24,
+                            "startLine": 4,
+                            "startColumn": 9,
+                            "preview": "Foo()"
+                        }
+                    ]
+                }),
+                "raw/diagnostics" => serde_json::json!({
+                    "diagnostics": [],
+                    "schemaVersion": 3
+                }),
+                other => panic!("unexpected demo method: {other}"),
+            };
+            writeln!(
+                stream,
+                "{}",
+                serde_json::json!({"jsonrpc":"2.0","id":1,"result":result})
+            )
+            .expect("write response");
+        }
+        methods
+    });
+
+    let demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "demo",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
+        ])
+        .output()
+        .expect("full demo");
+
+    assert!(
+        demo.status.success(),
+        "full demo should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&demo.stdout),
+        String::from_utf8_lossy(&demo.stderr)
+    );
+    let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
+    assert_eq!(
+        handle.join().expect("fake backend"),
+        vec![
+            "runtime/status",
+            "capabilities",
+            "symbol/resolve",
+            "symbol/references",
+            "raw/diagnostics"
+        ]
+    );
+    assert_eq!(response["availability"], "full");
+    assert_eq!(response["backend"]["name"], "idea");
+    assert_eq!(response["backend"]["referenceIndexReady"], true);
+    assert_eq!(
+        response["selectedStory"]["compilerIdentity"]["fqName"],
+        "lib.Foo"
+    );
+    assert_eq!(response["selectedStory"]["compilerReferenceCount"], 2);
+    assert_eq!(response["selectedStory"]["diagnostics"]["clean"], true);
+    assert!(
+        response["chapters"]
+            .as_array()
+            .expect("chapters")
+            .iter()
+            .any(|chapter| chapter["chapter"] == "identity" && chapter["available"] == true),
+        "a ready backend should unlock compiler identity: {response:#}"
+    );
+}

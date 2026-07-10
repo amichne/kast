@@ -6,6 +6,7 @@ struct DemoRequest {
     query: Option<String>,
     limit: usize,
     json: bool,
+    backend_name: Option<BackendName>,
 }
 
 #[derive(Debug, Clone, Serialize)]

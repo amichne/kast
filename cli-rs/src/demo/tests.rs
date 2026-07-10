@@ -232,6 +232,58 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn public_demo_full_story_renders_compiler_identity_evidence() {
+        let mut snapshot = sample_public_demo_snapshot();
+        snapshot.availability = PublicDemoAvailability::Full;
+        snapshot.backend = Some(DemoBackendSummary {
+            name: "idea".to_string(),
+            version: "test".to_string(),
+            reference_index_ready: true,
+        });
+        snapshot.chapters = full_chapters();
+        snapshot.selected_story = Some(DemoSelectedStory {
+            fq_name: "lib.Foo".to_string(),
+            indexed_reference_count: 3,
+            compiler_identity: Some(DemoCompilerIdentity {
+                fq_name: "lib.Foo".to_string(),
+                kind: "CLASS".to_string(),
+                file_path: "/workspace/lib/Foo.kt".to_string(),
+                line: 3,
+                preview: "class Foo".to_string(),
+            }),
+            compiler_reference_count: Some(2),
+            diagnostics: Some(DemoDiagnosticsSummary {
+                clean: true,
+                error_count: 0,
+                warning_count: 0,
+                info_count: 0,
+            }),
+        });
+        let mut app = PublicDemoApp::new(snapshot);
+        app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        let backend = ratatui::backend::TestBackend::new(100, 28);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+
+        terminal
+            .draw(|frame| render_public_demo(frame, &app))
+            .expect("render full story");
+
+        let rendered = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>();
+        assert!(
+            rendered.contains("Compiler resolved lib.Foo")
+                && rendered.contains("CLASS")
+                && rendered.contains("class Foo"),
+            "identity chapter should show live compiler evidence: {rendered}"
+        );
+    }
+
     fn sample_compare_row<const N: usize>(
         fq_name: Option<&str>,
         label: &str,
@@ -299,6 +351,7 @@ mod tests {
             availability: PublicDemoAvailability::IndexOnly,
             workspace_root: "/workspace".to_string(),
             mutates: false,
+            backend: None,
             candidates: vec![DemoCandidate {
                 kind: DemoCandidateKind::ImpactHub,
                 fq_name: "lib.Foo".to_string(),
@@ -307,7 +360,9 @@ mod tests {
                 file: Some("/workspace/lib/Foo.kt".to_string()),
                 module: Some(":lib".to_string()),
             }],
+            selected_story: None,
             chapters: index_only_chapters(),
+            warnings: Vec::new(),
             help: vec![
                 "kast agent impact --symbol lib.Foo --workspace-root <repo>".to_string(),
             ],

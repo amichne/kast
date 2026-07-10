@@ -67,6 +67,7 @@ impl DemoRequest {
             query: args.query,
             limit: args.limit,
             json: args.json,
+            backend_name: None,
         })
     }
 }
