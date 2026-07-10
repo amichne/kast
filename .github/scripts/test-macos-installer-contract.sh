@@ -34,6 +34,17 @@ require_stderr_contains() {
   }
 }
 
+require_stderr_not_contains() {
+  local stderr_file="$1"
+  local unexpected="$2"
+  local description="$3"
+  if grep -Fq -- "$unexpected" "$stderr_file"; then
+    printf '%s\n' "stderr contents:" >&2
+    cat "$stderr_file" >&2
+    die "${description}: found '${unexpected}'"
+  fi
+}
+
 require_no_tool_calls() {
   local log_file="$1"
   local description="$2"
@@ -157,6 +168,8 @@ require_no_tool_calls "$log_file" "unconfirmed install must fail before invoking
 install_stderr="${tmp_root}/install.stderr"
 CLICOLOR_FORCE=1 run_installer_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$install_stderr"
 require_stderr_contains "$install_stderr" $'\033[1;36mKast developer install\033[0m' "install should use the kast.sh blue section style"
+require_stderr_contains "$install_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "install should render the Kast banner"
+require_stderr_contains "$install_stderr" "Kotlin semantic analysis — from your terminal" "install should render the original tagline"
 require_stderr_contains "$install_stderr" "NONINTERACTIVE=1 set; skipping confirmation prompt" "install should support unattended automation"
 require_log_contains "$log_file" "brew tap amichne/kast" "install should tap the default Homebrew repository"
 require_log_contains "$log_file" "brew install kast" "install should install the Kast formula"
@@ -164,10 +177,13 @@ require_log_contains "$log_file" "kast developer machine plugin" "install should
 require_log_not_contains_prefix "$log_file" "kast setup" "install should leave macOS workspace setup to the plugin"
 
 : >"$log_file"
+update_stderr="${tmp_root}/update.stderr"
 run_installer_noninteractive "$repo_root" update \
   --tap custom/tap \
   --tap-url https://git.example.test/homebrew/kast.git \
-  --workspace-root "$workspace"
+  --workspace-root "$workspace" 2>"$update_stderr"
+require_stderr_contains "$update_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "update should render the Kast banner"
+require_stderr_contains "$update_stderr" "Kotlin semantic analysis — from your terminal" "update should render the original tagline"
 require_log_contains "$log_file" "brew tap custom/tap https://git.example.test/homebrew/kast.git" "update should accept an explicit tap URL for custom hosts"
 require_log_contains "$log_file" "brew update" "update should refresh Homebrew metadata"
 require_log_contains "$log_file" "brew upgrade kast" "update should upgrade the Kast formula"
@@ -176,9 +192,15 @@ require_log_not_contains_prefix "$log_file" "kast developer machine plugin --for
 require_log_not_contains_prefix "$log_file" "kast setup" "update should leave macOS workspace setup to the plugin"
 
 : >"$log_file"
-run_installer "$repo_root" verify --workspace-root "$workspace"
+verify_stderr="${tmp_root}/verify.stderr"
+run_installer "$repo_root" verify --workspace-root "$workspace" 2>"$verify_stderr"
+require_stderr_not_contains "$verify_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "verify should remain banner-free"
 require_log_contains "$log_file" "brew --prefix kast" "verify should prove Homebrew owns the formula"
 require_log_contains "$log_file" "kast ready --for agent --workspace-root ${workspace}" "verify should check repository readiness"
+
+help_stderr="${tmp_root}/help.stderr"
+run_installer "$repo_root" --help 2>"$help_stderr"
+require_stderr_not_contains "$help_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "help should remain banner-free"
 
 : >"$log_file"
 stderr_file="${tmp_root}/running-idea.stderr"

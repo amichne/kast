@@ -50,6 +50,20 @@ colorize() {
   printf '%s' "$*"
 }
 
+print_banner() {
+  printf '\n' >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██╗  ██╗ █████╗ ███████╗████████╗')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██║ ██╔╝██╔══██╗██╔════╝╚══██╔══╝')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  █████╔╝ ███████║███████╗   ██║   ')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██╔═██╗ ██╔══██║╚════██║   ██║   ')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ██║  ██╗██║  ██║███████║   ██║   ')" >&2
+  printf '  %s\n' "$(colorize '1;36' '  ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝  ')" >&2
+  printf '\n' >&2
+  printf '  %s\n' "Kotlin semantic analysis — from your terminal" >&2
+  printf '  %s\n' "$(colorize '2' 'https://github.com/amichne/kast')" >&2
+  printf '\n' >&2
+}
+
 log_line() {
   printf '%s %s\n' "$1" "$2" >&2
 }
@@ -353,6 +367,7 @@ main() {
 
   case "$command_name" in
     install|update)
+      print_banner
       require_jetbrains_ides_closed
       confirm_mutation "$command_name" "$tap" "$tap_url" "$workspace_root"
       ;;
