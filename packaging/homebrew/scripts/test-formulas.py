@@ -79,7 +79,7 @@ major, minor, patch = (int(part) for part in kast_version.split("."))
 require(next_release == f"v{major}.{minor}.{patch + 1}", "release-state helper must compute the next patch release")
 
 require("brew install amichne/kast/kast" in docs, "README must document direct CLI installation")
-require("installs the matching `kast-plugin` cask" in docs, "README must document automatic cask coupling")
+require("kast developer machine plugin" in docs, "README must document explicit plugin convergence")
 require("brew reinstall --cask amichne/kast/kast-plugin" in docs, "README must document direct cask repair")
 require("brew tap amichne/kast" in docs, "README must document manual tap installation")
 require(
@@ -99,12 +99,10 @@ require("on_linux" not in kast, "kast formula must not define a Linux Homebrew d
 require('bin.install "kast"' in kast, "kast formula must install the single Rust binary directly")
 require('shell_output("#{bin}/kast version")' in kast, "kast formula test must use stable version output")
 require("strategy :github_releases" in kast, "kast formula livecheck must ignore unpublished draft tags")
-require("def post_install" in kast, "kast formula must couple the IDEA plugin cask during install")
+require("def post_install" not in kast, "kast formula must not mutate user profiles during Homebrew post-install")
 require('PLUGIN_CASK = "amichne/kast/kast-plugin"' in kast, "kast formula must name the version-coupled plugin cask")
-require(
-    'system bin/"kast", "developer", "machine", "plugin", "--cask-token", PLUGIN_CASK' in kast,
-    "kast formula must delegate convergent plugin and receipt setup to the installed CLI",
-)
+require("def caveats" in kast, "kast formula must guide direct Homebrew users to plugin convergence")
+require("kast developer machine plugin" in kast, "kast formula caveats must provide the convergence command")
 require("cask_action" not in kast, "kast formula must not independently choose a second cask mutation")
 require("sudo" not in kast, "kast formula must not invoke or recommend sudo")
 

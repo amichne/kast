@@ -38,9 +38,18 @@ class Kast < Formula
     bin.install "kast"
   end
 
-  def post_install
-    ohai "Converging version-coupled Kast IDEA plugin and Homebrew install receipt"
-    system bin/"kast", "developer", "machine", "plugin", "--cask-token", PLUGIN_CASK
+  def caveats
+    <<~EOS
+      This formula installs the Kast CLI without changing your IDE profiles.
+      To install or repair the version-matched #{PLUGIN_CASK} plugin:
+
+        1. Close IntelliJ IDEA and Android Studio.
+        2. Run:
+           #{opt_bin}/kast developer machine plugin
+
+      The recommended installer performs both steps for you:
+        curl -fsSL https://kast.dev/install.sh | bash
+    EOS
   end
 
   test do

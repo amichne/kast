@@ -11,10 +11,18 @@ Install directly from the tap:
 brew install amichne/kast/kast
 ```
 
-The `kast` formula installs the matching `kast-plugin` cask during
-`post_install`, so the CLI and IDEA plugin stay version-coupled. Homebrew will
-add the tap automatically. To add the tap first and then install by short
-token:
+The `kast` formula installs only the CLI, so Homebrew never mutates JetBrains
+profiles under its temporary `post_install` home. The recommended Kast
+installer owns the full developer setup and converges the version-matched IDEA
+plugin once in your real user environment. If you install the formula directly,
+close IntelliJ IDEA and Android Studio, then run:
+
+```bash
+$(brew --prefix kast)/bin/kast developer machine plugin
+```
+
+Homebrew will add the tap automatically. To add the tap first and then install
+by short token:
 
 ```bash
 brew tap amichne/kast

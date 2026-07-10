@@ -23,6 +23,20 @@ require_log_contains() {
   }
 }
 
+require_log_count() {
+  local log_file="$1"
+  local expected="$2"
+  local expected_count="$3"
+  local description="$4"
+  local actual_count
+  actual_count="$(grep -Fxc -- "$expected" "$log_file" || true)"
+  [[ "$actual_count" == "$expected_count" ]] || {
+    printf '%s\n' "log contents:" >&2
+    cat "$log_file" >&2
+    die "${description}: expected ${expected_count}, found ${actual_count}"
+  }
+}
+
 require_stderr_contains() {
   local stderr_file="$1"
   local expected="$2"
@@ -174,6 +188,7 @@ require_stderr_contains "$install_stderr" "NONINTERACTIVE=1 set; skipping confir
 require_log_contains "$log_file" "brew tap amichne/kast" "install should tap the default Homebrew repository"
 require_log_contains "$log_file" "brew install kast" "install should install the Kast formula"
 require_log_contains "$log_file" "kast developer machine plugin" "install should hide the developer plugin command"
+require_log_count "$log_file" "kast developer machine plugin" 1 "install should converge plugin state exactly once"
 require_log_not_contains_prefix "$log_file" "kast setup" "install should leave macOS workspace setup to the plugin"
 
 : >"$log_file"
@@ -188,6 +203,7 @@ require_log_contains "$log_file" "brew tap custom/tap https://git.example.test/h
 require_log_contains "$log_file" "brew update" "update should refresh Homebrew metadata"
 require_log_contains "$log_file" "brew upgrade kast" "update should upgrade the Kast formula"
 require_log_contains "$log_file" "kast developer machine plugin" "update should converge plugin state through the Homebrew binary"
+require_log_count "$log_file" "kast developer machine plugin" 1 "update should converge plugin state exactly once"
 require_log_not_contains_prefix "$log_file" "kast developer machine plugin --force" "update should not force a second cask reinstall"
 require_log_not_contains_prefix "$log_file" "kast setup" "update should leave macOS workspace setup to the plugin"
 
