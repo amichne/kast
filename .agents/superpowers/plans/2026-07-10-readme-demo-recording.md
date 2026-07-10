@@ -4,14 +4,14 @@
 
 **Goal:** Add a trustworthy inline GIF of the real `kast demo` experience to the README while retaining the auditable Asciinema v2 source recording.
 
-**Architecture:** Build the current Rust CLI with the version recorded by the already prepared Kast workspace, prove that the live compiler backend and source index both return full evidence, then record the TUI in a fixed terminal without a shell prompt. Validate the cast before rendering it with `agg`, embed the GIF through a relative README path, and verify both the local artifacts and GitHub's actual README rendering before babysitting PR #327 to green.
+**Architecture:** Use the independently verified Homebrew 0.12.4 release and matching IntelliJ plugin against the real user checkout, prove that the live compiler backend and source index both return full evidence, then record the TUI in a fixed terminal without a shell prompt. Validate the cast before rendering it with `agg`, embed the GIF through a relative README path, and verify both the local artifacts and GitHub's actual README rendering before babysitting the follow-up pull request to green.
 
 **Tech Stack:** Rust/Cargo, Kast IDEA backend and SQLite source index, Asciinema 3.2.0 asciicast v2, agg 1.9.0, ImageMagick, GitHub-flavored Markdown, Playwright, Zensical, GitHub Actions.
 
 ## Global Constraints
 
 - The capture uses a 120-column by 40-row terminal with an `xterm-256color` environment.
-- Run the source-built `kast` binary against the current, plugin-prepared Kast repository and an already reachable, version-compatible backend.
+- Run the released Homebrew `kast` 0.12.4 binary against the real user checkout prepared by the matching IntelliJ plugin and an already reachable, version-compatible backend.
 - Do not substitute a fake backend or fixture responses.
 - Stop without committing recording assets if full compiler and source-index evidence is unavailable.
 - Demonstrate ranked repository stories, a repository-owned declaration, identity, relationships, impact, safety, and a hypothetical plan-only rename.
@@ -27,23 +27,23 @@
 ### Task 1: Prove The Full-Evidence Recording Prerequisites
 
 **Files:**
-- Read: `/Users/amichne/.codex/worktrees/31894d48-3b23-4ff4-82de-e373ef92e7db/kast/.kast/setup/workspace.json`
+- Read: `/Users/amichne/code/kast/.kast/setup/workspace.json`
 - Generate outside Git: `/tmp/kast-demo-evidence/preflight.json`
 - Generate outside Git: `/tmp/kast-demo-evidence/kotlin-before.sha256`
-- Build output only: `cli-rs/target/debug/kast`
 
 **Interfaces:**
 - Consumes: approved design at `.agents/superpowers/specs/2026-07-10-readme-demo-recording-design.md`, plugin-prepared workspace metadata, live IDEA backend, source-index database
 - Produces: `DEMO_REPO`, `SOURCE_ROOT`, `KAST_BIN`, `FIRST_SYMBOL`, and a full-evidence JSON proof used by the recording task
 
-- [ ] **Step 1: Define the two workspace roles and evidence directory**
+- [x] **Step 1: Define the two workspace roles and evidence directory**
 
 Run from `/tmp/kast-pr-327-sync`:
 
 ```bash
 export SOURCE_ROOT=/tmp/kast-pr-327-sync
-export DEMO_REPO=/Users/amichne/.codex/worktrees/31894d48-3b23-4ff4-82de-e373ef92e7db/kast
+export DEMO_REPO=/Users/amichne/code/kast
 export EVIDENCE_DIR=/tmp/kast-demo-evidence
+export KAST_BIN=/opt/homebrew/bin/kast
 mkdir -p "$EVIDENCE_DIR"
 test -f "$DEMO_REPO/.kast/setup/workspace.json"
 ```
@@ -52,21 +52,24 @@ Expected: the prepared workspace metadata exists. Task 1 Step 3 verifies the
 source index through the public `kast demo` response because Git worktrees may
 store the physical database outside the repository root.
 
-- [ ] **Step 2: Build the current CLI with the prepared workspace's version contract**
+- [x] **Step 2: Prove the released CLI and plugin share the 0.12.4 contract**
 
 Run:
 
 ```bash
-export KAST_VERSION="$(jq -er '.cliVersion' "$DEMO_REPO/.kast/setup/workspace.json")"
-cargo build --manifest-path "$SOURCE_ROOT/cli-rs/Cargo.toml" --bin kast --locked
-export KAST_BIN="$SOURCE_ROOT/cli-rs/target/debug/kast"
 test -x "$KAST_BIN"
-test "$($KAST_BIN --version | awk '{print $2}')" = "$KAST_VERSION"
+test "$($KAST_BIN --version | awk '{print $2}')" = "0.12.4"
+test "$(jq -er '.cliVersion' "$DEMO_REPO/.kast/setup/workspace.json")" = "0.12.4"
+test "$(jq -er '.pluginVersion' "$DEMO_REPO/.kast/setup/workspace.json")" = "0.12.4"
+test "$(brew list --versions kast | awk '{print $2}')" = "0.12.4"
+test "$(jq -er '.cli.version' "$HOME/Library/Application Support/Kast/homebrew-install.json")" = "0.12.4"
+test "$(jq -er '.plugin.version' "$HOME/Library/Application Support/Kast/homebrew-install.json")" = "0.12.4"
 ```
 
-Expected: Cargo exits 0 and the source-built binary reports the exact `cliVersion` prepared for the workspace.
+Expected: the executable, Homebrew formula, install receipt, workspace CLI,
+and workspace plugin all report the independently verified 0.12.4 release.
 
-- [ ] **Step 3: Fail closed unless the real backend and index return complete evidence**
+- [x] **Step 3: Fail closed unless the real backend and index return complete evidence**
 
 Run:
 
@@ -96,7 +99,7 @@ export FIRST_SYMBOL="$(jq -er '.candidates[0].fqName' "$EVIDENCE_DIR/preflight.j
 
 Expected: `jq` prints `true`, and `FIRST_SYMBOL` is a fully qualified declaration owned by `DEMO_REPO`. Any `indexOnly`, `backendOnly`, missing compiler field, or unavailable chapter stops the implementation without creating a cast.
 
-- [ ] **Step 4: Record the immutable Kotlin baseline**
+- [x] **Step 4: Record the immutable Kotlin baseline**
 
 Run:
 
@@ -118,14 +121,14 @@ Expected: the checksum file is non-empty and contains every tracked Kotlin sourc
 
 **Files:**
 - Create: `docs/assets/demo/kast-demo.cast`
-- Generate outside Git: `/tmp/kast-demo-evidence/kast-demo.txt`
+- Generate outside Git: `/tmp/kast-demo-evidence/kast-demo.raw`
 - Generate outside Git: `/tmp/kast-demo-evidence/kotlin-after.sha256`
 
 **Interfaces:**
 - Consumes: `KAST_BIN`, `DEMO_REPO`, `FIRST_SYMBOL`, and `kotlin-before.sha256` from Task 1
 - Produces: an auditable 120x40 Asciinema v2 recording with full compiler and source-index evidence
 
-- [ ] **Step 1: Start a prompt-free Asciinema v2 capture in a real PTY**
+- [x] **Step 1: Start a prompt-free Asciinema v2 capture in a real PTY**
 
 Run the following with a PTY from `DEMO_REPO`:
 
@@ -146,7 +149,7 @@ asciinema record \
 
 Expected: the first visible frame says `Kast Semantic Story`, `compiler + index evidence ready`, `Choose a story from your codebase`, and `read-only`. The cast header records `command` as `kast demo`, not an absolute binary or workspace path.
 
-- [ ] **Step 2: Drive one coherent 10-to-15-second story**
+- [x] **Step 2: Drive one coherent 10-to-15-second story**
 
 Send these keys to the recording PTY with roughly one second between visible states:
 
@@ -177,31 +180,34 @@ read-only
 
 Wait for `Loading compiler evidence…` to be replaced by compiler identity before navigating away from Identity. The two initial `Right` keys move through `Why semantics` and land on `Relationships`; do not send them as one burst.
 
-- [ ] **Step 3: Convert the cast to text and validate its public content**
+- [x] **Step 3: Inspect the alternate-screen event stream and validate its public content**
 
 Run:
 
 ```bash
 asciinema convert \
   --overwrite \
-  --output-format txt \
+  --output-format raw \
   "$SOURCE_ROOT/docs/assets/demo/kast-demo.cast" \
-  "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Kast Semantic Story" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "compiler + index evidence ready" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "$FIRST_SYMBOL" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Relationships" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Impact" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Safety" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Plan only — apply is unavailable in the demo" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "New name: KastStoryPreview" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "read-only" "$EVIDENCE_DIR/kast-demo.txt"
-! rg -n "compiler backend unavailable|Compiler evidence unavailable|source index unavailable|No ready compiler backend" "$EVIDENCE_DIR/kast-demo.txt"
+  "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Kast Semantic Story" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "compiler + index evidence ready" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "$FIRST_SYMBOL" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Relationships" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Impact" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Safety" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Plan only — apply is unavailable in the demo" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "KastStoryPreview" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "read-only" "$EVIDENCE_DIR/kast-demo.raw"
+! rg -aF -e "compiler backend unavailable" -e "Compiler evidence unavailable" -e "source index unavailable" -e "No ready compiler backend" "$EVIDENCE_DIR/kast-demo.raw"
 ```
 
-Expected: every required term is found and no degraded-evidence message is present.
+Expected: every required term is found and no degraded-evidence message is
+present. The TUI uses the terminal's alternate screen, so plain-text conversion
+intentionally yields no final scrollback; raw conversion preserves the
+auditable event stream rendered into the GIF.
 
-- [ ] **Step 4: Validate recording metadata, timing, and source immutability**
+- [x] **Step 4: Validate recording metadata, timing, and source immutability**
 
 Run:
 
@@ -221,7 +227,7 @@ diff -u "$EVIDENCE_DIR/kotlin-before.sha256" "$EVIDENCE_DIR/kotlin-after.sha256"
 
 Expected: metadata validation prints `true`, recorded duration is 8–18 seconds, and the source checksum diff is empty. Re-record if text is clipped, evidence is degraded, timing falls outside the bound, or any source hash changes.
 
-- [ ] **Step 5: Commit the audited source recording as its own slice**
+- [x] **Step 5: Commit the audited source recording as its own slice**
 
 Run:
 
@@ -245,7 +251,7 @@ Expected: one commit containing only `kast-demo.cast`.
 - Consumes: the validated Asciinema v2 cast from Task 2
 - Produces: a sub-8-MiB inline GIF and a GitHub-relative README embed
 
-- [ ] **Step 1: Install or verify the pinned GIF renderer**
+- [x] **Step 1: Install or verify the pinned GIF renderer**
 
 Run:
 
@@ -256,7 +262,7 @@ test "$(agg --version | awk '{print $2}')" = "1.9.0"
 
 Expected: `agg 1.9.0` is available. If Homebrew has moved past 1.9.0, inspect `agg --help` and use the installed compatible version only after confirming all options in Step 2 still exist.
 
-- [ ] **Step 2: Render a legible, compact looping GIF**
+- [x] **Step 2: Render a legible, compact looping GIF**
 
 Run:
 
@@ -268,30 +274,42 @@ agg \
   --idle-time-limit 1 \
   --fps-cap 15 \
   --last-frame-duration 2 \
+  --select event:1..event:106 \
   docs/assets/demo/kast-demo.cast \
   docs/assets/demo/kast-demo.gif
 ```
 
-Expected: `agg` exits 0 and creates a looping animated GIF from the audited cast without changing the 120x40 terminal geometry.
+Expected: `agg` exits 0 and creates a looping animated GIF from the audited
+cast without changing the 120x40 terminal geometry. The event selection drops
+the terminal-query frame before the alternate screen is drawn and the blank
+frame after the TUI restores the caller's screen.
 
-- [ ] **Step 3: Validate dimensions, animation, duration, and size**
+- [x] **Step 3: Validate dimensions, animation, duration, and size**
 
 Run:
 
 ```bash
-test "$(magick identify -format '%wx%h\n' docs/assets/demo/kast-demo.gif | sort -u | wc -l | tr -d ' ')" = "1"
-test "$(magick identify docs/assets/demo/kast-demo.gif | wc -l | tr -d ' ')" -gt 10
+test "$(magick identify -format '%[page]\n' docs/assets/demo/kast-demo.gif | sort -u | wc -l | tr -d ' ')" = "1"
+test "$(magick identify docs/assets/demo/kast-demo.gif | wc -l | tr -d ' ')" -ge 10
 test "$(stat -f '%z' docs/assets/demo/kast-demo.gif)" -lt 8388608
 gif_duration_cs="$(magick identify -format '%T\n' docs/assets/demo/kast-demo.gif | awk '{ total += $1 } END { print total }')"
 test "$gif_duration_cs" -ge 800
 test "$gif_duration_cs" -le 2200
-magick identify -format 'dimensions=%wx%h frames=%n bytes=%b\n' docs/assets/demo/kast-demo.gif | head -n 1
+printf 'canvas=%s frames=%s bytes=%s\n' \
+  "$(magick identify -format '%[page]\n' docs/assets/demo/kast-demo.gif | sort -u)" \
+  "$(magick identify docs/assets/demo/kast-demo.gif | wc -l | tr -d ' ')" \
+  "$(stat -f '%z' docs/assets/demo/kast-demo.gif)"
 printf 'duration=%s.%02ss\n' "$((gif_duration_cs / 100))" "$((gif_duration_cs % 100))"
 ```
 
-Expected: all frames have one consistent dimension, there are more than 10 frames, the animation lasts 8–22 seconds including its final-frame hold, the file is below 8 MiB, and ImageMagick prints the concrete dimensions/frame count/duration/size for PR evidence. Inspect the animation visually with the local image viewer before editing the README; re-render if any terminal label is unreadable or clipped.
+Expected: every optimized GIF subframe shares one logical canvas, there are at
+least 10 frames, the animation lasts 8–22 seconds including its final-frame
+hold, the file is below 8 MiB, and ImageMagick prints the concrete canvas/frame
+count/duration/size for PR evidence. Inspect the coalesced animation frames
+visually before editing the README; re-render if any terminal label is
+unreadable or clipped or if the first or final frame is blank.
 
-- [ ] **Step 4: Add the inline asset immediately after the README introduction**
+- [x] **Step 4: Add the inline asset immediately after the README introduction**
 
 Use `apply_patch` to change the opening of `## Try it on your code` to exactly:
 
@@ -310,7 +328,7 @@ kast demo
 
 Expected: the existing command and repository-demo guide prose remain unchanged below the new image.
 
-- [ ] **Step 5: Render and inspect the README locally**
+- [x] **Step 5: Render and inspect the README locally**
 
 Run:
 
@@ -324,7 +342,7 @@ Open `http://127.0.0.1:8765/README.preview.html#try-it-on-your-code` with Playwr
 
 Expected: the local GitHub-flavored Markdown preview resolves `docs/assets/demo/kast-demo.gif` from the repository-relative path and displays it inline.
 
-- [ ] **Step 6: Validate and commit the README slice**
+- [x] **Step 6: Validate and commit the README slice**
 
 Run:
 
@@ -344,10 +362,10 @@ Expected: both docs contract scripts pass, Zensical reports a successful build, 
 
 ---
 
-### Task 4: Prove The GitHub Experience And Return PR #327 To Green
+### Task 4: Prove The GitHub Experience And Bring The Follow-Up PR To Green
 
 **Files:**
-- Modify remotely: PR #327 description, if its current summary does not mention the recording
+- Create remotely: follow-up pull request for `docs/readme-demo-recording`
 - Generate outside Git: `/tmp/kast-demo-evidence/github-readme.png`
 
 **Interfaces:**
@@ -359,8 +377,8 @@ Expected: both docs contract scripts pass, Zensical reports a successful build, 
 Run:
 
 ```bash
-git push origin HEAD:feature/repo-native-demo
-git ls-remote --heads origin feature/repo-native-demo
+git push -u origin docs/readme-demo-recording
+git ls-remote --heads origin docs/readme-demo-recording
 ```
 
 Expected: the remote branch SHA matches `git rev-parse HEAD`.
@@ -378,25 +396,34 @@ Verify that the `Try it on your code` section contains an `<img>` whose alt text
 
 Expected: GitHub renders the GIF inline from the committed relative path; no broken-image icon or authentication-only content appears.
 
-- [ ] **Step 3: Update PR evidence without replacing existing implementation detail**
+- [ ] **Step 3: Create the follow-up PR with concrete recording evidence**
 
 Run:
 
 ```bash
-gh pr view 327 --json url,body,headRefOid,isDraft,mergeable,mergeStateStatus
+gh pr create \
+  --base main \
+  --head docs/readme-demo-recording \
+  --title "docs: add interactive kast demo recording" \
+  --body-file "$EVIDENCE_DIR/pr-body.md"
 ```
 
-If the body does not mention the recording, update it to add:
+The body must explain that the pull request:
 
 ```markdown
 - embeds a source-backed `kast demo` GIF in the README and retains its auditable Asciinema v2 cast
 ```
 
-Under verification, add the concrete cast validation, source-hash comparison, ImageMagick dimensions/frame count/size, docs contract commands, and browser-render proof. Preserve all existing PR summary and validation entries.
+Under verification, include the concrete cast validation, source-hash
+comparison, ImageMagick dimensions/frame count/size, docs contract commands,
+released-version proof, and browser-render proof.
 
 - [ ] **Step 4: Babysit every check for the final head SHA**
 
-Run `gh pr checks 327` in bounded polling intervals and use `gh run view <run-id> --json jobs` for any non-terminal or failed workflow. Keep polling until every check at `git rev-parse HEAD` is success, skipped, or neutral.
+Run `gh pr checks <number>` in bounded polling intervals and use
+`gh run view <run-id> --json jobs` for any non-terminal or failed workflow.
+Keep polling until every check at `git rev-parse HEAD` is success, skipped, or
+neutral.
 
 Expected terminal evidence:
 
@@ -416,7 +443,10 @@ Run:
 ```bash
 git status --short --branch
 git log -4 --oneline --decorate
-gh pr view 327 --json url,headRefOid,isDraft,mergeable,mergeStateStatus,statusCheckRollup
+gh pr view <number> --json url,headRefOid,isDraft,mergeable,mergeStateStatus,statusCheckRollup
 ```
 
-Expected: the temporary implementation worktree is clean, PR #327 is ready for review, all checks for its final head are terminal-green/skipped/neutral, and any remaining `BLOCKED` state is attributable only to review or branch policy.
+Expected: the temporary implementation worktree is clean, the follow-up pull
+request is ready for review, all checks for its final head are
+terminal-green/skipped/neutral, and any remaining `BLOCKED` state is
+attributable only to review or branch policy.

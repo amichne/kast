@@ -1,4 +1,13 @@
 fn render_public_demo(frame: &mut Frame<'_>, app: &PublicDemoApp) {
+    let theme = PublicDemoTheme::detect();
+    render_public_demo_with_theme(frame, app, theme);
+}
+
+fn render_public_demo_with_theme(
+    frame: &mut Frame<'_>,
+    app: &PublicDemoApp,
+    theme: PublicDemoTheme,
+) {
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -7,45 +16,67 @@ fn render_public_demo(frame: &mut Frame<'_>, app: &PublicDemoApp) {
             Constraint::Length(3),
         ])
         .split(frame.area());
-    render_public_demo_header(frame, root[0], app);
+    render_public_demo_header(frame, root[0], app, theme);
     match app.screen {
-        PublicDemoScreen::Candidates => render_public_candidates(frame, root[1], app),
-        PublicDemoScreen::Story => render_public_story(frame, root[1], app),
+        PublicDemoScreen::Candidates => render_public_candidates(frame, root[1], app, theme),
+        PublicDemoScreen::Story => render_public_story(frame, root[1], app, theme),
     }
-    render_public_demo_footer(frame, root[2], app);
+    render_public_demo_footer(frame, root[2], app, theme);
 }
 
-fn render_public_demo_header(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoApp) {
-    let availability = match app.snapshot.availability {
-        PublicDemoAvailability::Full => "compiler + index evidence ready",
-        PublicDemoAvailability::IndexOnly => "index evidence ready",
-        PublicDemoAvailability::BackendOnly => "compiler evidence ready",
+fn render_public_demo_header(
+    frame: &mut Frame<'_>,
+    area: Rect,
+    app: &PublicDemoApp,
+    theme: PublicDemoTheme,
+) {
+    let (availability, availability_color) = match app.snapshot.availability {
+        PublicDemoAvailability::Full => (" FULL EVIDENCE ", theme.success),
+        PublicDemoAvailability::IndexOnly => (" INDEX READY ", theme.index),
+        PublicDemoAvailability::BackendOnly => (" COMPILER READY ", theme.compiler),
     };
     let lines = vec![
         Line::from(vec![
             Span::styled(
-                "Kast Semantic Story",
+                " Kast Semantic Story ",
                 Style::default()
-                    .fg(Color::Cyan)
+                    .fg(theme.accent)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::raw("  "),
-            Span::styled(availability, Style::default().fg(Color::Green)),
+            Span::styled(availability, theme.badge(availability_color)),
+            Span::raw("  "),
+            Span::styled(" READ ONLY ", theme.badge(theme.success)),
         ]),
-        Line::from(compact_path(&app.snapshot.workspace_root)),
-        Line::from("Live evidence from this repository. No files will be changed."),
+        Line::from(vec![
+            Span::styled(" repo  ", Style::default().fg(theme.muted)),
+            Span::styled(
+                compact_path(&app.snapshot.workspace_root),
+                Style::default().fg(theme.text),
+            ),
+        ]),
+        Line::from(Span::styled(
+            " Live semantic evidence from this repository. No files will be changed.",
+            Style::default().fg(theme.muted),
+        )),
     ];
     frame.render_widget(
         Paragraph::new(lines).block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::DarkGray)),
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(theme.muted)),
         ),
         area,
     );
 }
 
-fn render_public_candidates(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoApp) {
+fn render_public_candidates(
+    frame: &mut Frame<'_>,
+    area: Rect,
+    app: &PublicDemoApp,
+    theme: PublicDemoTheme,
+) {
     let items = app
         .snapshot
         .candidates
@@ -55,12 +86,12 @@ fn render_public_candidates(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoA
                 Line::from(vec![
                     Span::styled(
                         format!("{:<20}", demo_candidate_kind_label(candidate.kind)),
-                        Style::default().fg(Color::Magenta),
+                        Style::default().fg(theme.index),
                     ),
                     Span::styled(
                         candidate.title.clone(),
                         Style::default()
-                            .fg(Color::White)
+                            .fg(theme.text)
                             .add_modifier(Modifier::BOLD),
                     ),
                 ]),
@@ -73,17 +104,22 @@ fn render_public_candidates(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoA
             ])
         })
         .collect();
-    render_list(
+    render_public_list(
         frame,
         area,
         "Choose a story from your codebase".to_string(),
         items,
         app.selected_candidate,
-        true,
+        theme,
     );
 }
 
-fn render_public_story(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoApp) {
+fn render_public_story(
+    frame: &mut Frame<'_>,
+    area: Rect,
+    app: &PublicDemoApp,
+    theme: PublicDemoTheme,
+) {
     let sections = if area.width < 90 {
         Layout::default()
             .direction(Direction::Vertical)
@@ -100,37 +136,45 @@ fn render_public_story(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoApp) {
         .chapters
         .iter()
         .map(|chapter| {
-            let marker = if chapter.available { "✓" } else { "—" };
-            ListItem::new(format!(
-                "{marker} {}",
-                demo_chapter_label(chapter.chapter)
-            ))
+            let (marker, color) = if chapter.available {
+                ("●", theme.success)
+            } else {
+                ("○", theme.muted)
+            };
+            ListItem::new(Line::from(vec![
+                Span::styled(format!("{marker} "), Style::default().fg(color)),
+                Span::styled(
+                    demo_chapter_label(chapter.chapter),
+                    Style::default().fg(theme.text),
+                ),
+            ]))
         })
         .collect();
-    render_list(
+    render_public_list(
         frame,
         sections[0],
         "Story chapters".to_string(),
         chapter_items,
         app.selected_chapter,
-        true,
+        theme,
     );
 
-    let lines = public_story_lines(app);
+    let lines = public_story_lines(app, theme);
     frame.render_widget(
         Paragraph::new(lines)
             .block(
                 Block::default()
-                    .title("Evidence")
+                    .title(" Evidence ")
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Cyan)),
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(theme.accent)),
             )
             .wrap(Wrap { trim: false }),
         sections[1],
     );
 }
 
-fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
+fn public_story_lines(app: &PublicDemoApp, theme: PublicDemoTheme) -> Vec<Line<'static>> {
     let Some(candidate) = app.selected_candidate() else {
         return vec![Line::from("No story candidate is available.")];
     };
@@ -141,7 +185,7 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
         Line::from(Span::styled(
             candidate.title.clone(),
             Style::default()
-                .fg(Color::Yellow)
+                .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         )),
         Line::from(candidate.fq_name.clone()),
@@ -150,7 +194,7 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
     if app.loading {
         lines.push(Line::from(Span::styled(
             "Loading compiler evidence…",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme.compiler),
         )));
         lines.push(Line::from("You can keep navigating or press q to quit."));
         return lines;
@@ -158,7 +202,7 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
     if let Some(message) = &app.evidence_error {
         lines.push(Line::from(Span::styled(
             format!("Compiler evidence unavailable: {message}"),
-            Style::default().fg(Color::Red),
+            Style::default().fg(theme.danger),
         )));
         lines.push(Line::from("Index-backed chapters remain available."));
         return lines;
@@ -168,12 +212,12 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
             lines.push(Line::from("Hypothetical Kotlin name:"));
             lines.push(Line::from(Span::styled(
                 format!("> {}", app.rename_input),
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(theme.plan),
             )));
             if let Some(message) = &app.rename_error {
                 lines.push(Line::from(Span::styled(
                     message.clone(),
-                    Style::default().fg(Color::Red),
+                    Style::default().fg(theme.danger),
                 )));
             }
             lines.push(Line::from("Enter preview • Esc cancel • no files are written"));
@@ -182,7 +226,7 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
         if let Some(preview) = &app.rename_preview {
             lines.push(Line::from(Span::styled(
                 "Plan only — apply is unavailable in the demo",
-                Style::default().fg(Color::Green),
+                Style::default().fg(theme.plan),
             )));
             lines.push(Line::from(format!("Request: {}", preview.request_type)));
             lines.push(Line::from(format!("New name: {}", preview.new_name)));
@@ -194,7 +238,7 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
     if !chapter.available {
         lines.push(Line::from(Span::styled(
             format!("Unavailable: {}", chapter.basis),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         )));
         lines.push(Line::from(
             "Kast omits unsupported evidence instead of substituting a guess.",
@@ -205,6 +249,7 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
         candidate,
         chapter.chapter,
         app.snapshot.selected_story.as_ref(),
+        theme,
     ));
     lines
 }
@@ -213,6 +258,7 @@ fn public_available_chapter_lines(
     candidate: &DemoCandidate,
     chapter: DemoChapter,
     selected_story: Option<&DemoSelectedStory>,
+    theme: PublicDemoTheme,
 ) -> Vec<Line<'static>> {
     if let Some(story) = selected_story.filter(|story| story.fq_name == candidate.fq_name) {
         match chapter {
@@ -225,7 +271,7 @@ fn public_available_chapter_lines(
                         Line::from(""),
                         Line::from(Span::styled(
                             identity.preview.clone(),
-                            Style::default().fg(Color::Green),
+                            Style::default().fg(theme.success),
                         )),
                     ];
                 }
@@ -246,7 +292,7 @@ fn public_available_chapter_lines(
                                 "kast agent symbol --query {} --references --workspace-root <repo>",
                                 candidate.fq_name
                             ),
-                            Style::default().fg(Color::Green),
+                            Style::default().fg(theme.compiler),
                         )),
                     ];
                 }
@@ -311,31 +357,73 @@ fn public_available_chapter_lines(
             candidate.module.as_deref().unwrap_or("workspace")
         )),
         Line::from(""),
-        Line::from(Span::styled(command, Style::default().fg(Color::Green))),
+        Line::from(Span::styled(command, Style::default().fg(theme.index))),
     ]
 }
 
-fn render_public_demo_footer(frame: &mut Frame<'_>, area: Rect, app: &PublicDemoApp) {
-    let text = match app.screen {
-        PublicDemoScreen::Candidates => {
-            "↑/↓ choose • Enter begin story • q quit • read-only"
-        }
+fn render_public_demo_footer(
+    frame: &mut Frame<'_>,
+    area: Rect,
+    app: &PublicDemoApp,
+    theme: PublicDemoTheme,
+) {
+    let commands: Vec<(&str, &str)> = match app.screen {
+        PublicDemoScreen::Candidates => vec![("↑/↓", "choose"), ("Enter", "begin"), ("q", "quit")],
         PublicDemoScreen::Story => {
             if app.input_mode == PublicDemoInputMode::Rename {
-                "type hypothetical name • Enter preview • Esc cancel • read-only"
+                vec![("type", "name"), ("Enter", "preview"), ("Esc", "cancel")]
             } else if app.snapshot.availability == PublicDemoAvailability::BackendOnly {
-                "←/→ chapter • r rename preview • Esc stories • q quit • read-only"
+                vec![("←/→", "chapter"), ("r", "rename"), ("Esc", "stories"), ("q", "quit")]
             } else {
-                "←/→ chapter • r rename preview • e explore graph • Esc stories • q quit • read-only"
+                vec![("←/→", "chapter"), ("r", "rename"), ("e", "graph"), ("Esc", "stories"), ("q", "quit")]
             }
         }
     };
+    let mut spans = Vec::new();
+    for (index, (key, label)) in commands.into_iter().enumerate() {
+        if index > 0 {
+            spans.push(Span::styled("  ", Style::default().fg(theme.muted)));
+        }
+        spans.push(Span::styled(format!(" {key} "), theme.keycap()));
+        spans.push(Span::styled(format!(" {label}"), Style::default().fg(theme.text)));
+    }
+    spans.push(Span::raw("  "));
+    spans.push(Span::styled(" READ ONLY ", theme.badge(theme.success)));
     frame.render_widget(
-        Paragraph::new(text)
-            .block(Block::default().borders(Borders::TOP))
+        Paragraph::new(Line::from(spans))
+            .block(
+                Block::default()
+                    .borders(Borders::TOP)
+                    .border_style(Style::default().fg(theme.muted)),
+            )
             .wrap(Wrap { trim: true }),
         area,
     );
+}
+
+fn render_public_list(
+    frame: &mut Frame<'_>,
+    area: Rect,
+    title: String,
+    items: Vec<ListItem<'_>>,
+    selected: usize,
+    theme: PublicDemoTheme,
+) {
+    let mut state = ListState::default();
+    if !items.is_empty() {
+        state.select(Some(selected.min(items.len().saturating_sub(1))));
+    }
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title(format!(" {title} "))
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(theme.accent)),
+        )
+        .highlight_style(theme.selection())
+        .highlight_symbol("▌ ");
+    frame.render_stateful_widget(list, area, &mut state);
 }
 
 fn demo_candidate_kind_label(kind: DemoCandidateKind) -> &'static str {

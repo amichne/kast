@@ -24,11 +24,12 @@ retain enough source material to audit or rerender it later.
 ## Recording Contract
 
 The capture uses a 120-column by 40-row terminal with an `xterm-256color`
-environment. It runs the source-built `kast` binary against the current,
-plugin-prepared Kast repository and an already reachable, version-compatible
-backend. It must not substitute a fake backend or fixture responses. If full
-compiler and source-index evidence is unavailable, recording stops instead of
-publishing a degraded or synthetic session.
+environment. It runs the released Homebrew `kast` 0.12.4 binary against the
+real user checkout prepared by the matching 0.12.4 IntelliJ plugin and an
+already reachable, version-compatible backend. It must not substitute a fake
+backend or fixture responses. If full compiler and source-index evidence is
+unavailable, recording stops instead of publishing a degraded or synthetic
+session.
 
 The session lasts approximately 10 to 15 seconds and demonstrates one coherent
 flow:
@@ -63,17 +64,18 @@ width.
 
 Before committing the recording:
 
-1. Convert the cast to text and verify stable visible terms including
-   `Kast Semantic Story`, a repository-owned symbol, chapter labels, and
-   `read-only`.
+1. Convert the alternate-screen cast to its raw terminal event stream and
+   verify stable visible terms including `Kast Semantic Story`, a
+   repository-owned symbol, chapter labels, and `read-only`.
 2. Inspect the GIF dimensions, frame count, duration, and file size.
 3. Open the README locally and confirm the relative asset path renders.
 4. Compare relevant source-file hashes before and after the session.
 5. Run the README/docs content and navigation contracts, a clean Zensical
    build, and `git diff --check`.
 
-After pushing the recording commit, babysit PR #327 until every required check
-returns to a terminal passing, skipped, or neutral state.
+After pushing the recording commits, open a follow-up pull request and babysit
+it until every required check returns to a terminal passing, skipped, or
+neutral state.
 
 ## Failure Handling
 

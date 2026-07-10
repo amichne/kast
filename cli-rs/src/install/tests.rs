@@ -358,7 +358,8 @@ mod tests {
         let context = HomebrewContext {
             brew_prefix: PathBuf::from("/opt/homebrew"),
             formula_prefix: PathBuf::from("/opt/homebrew/opt/kast"),
-            cli_path: PathBuf::from("/Users/example/.local/bin/kast-dev"),
+            cli_path: PathBuf::from("/opt/homebrew/opt/kast/bin/kast"),
+            running_cli_path: PathBuf::from("/Users/example/.local/bin/kast-dev"),
         };
 
         let error = verify_homebrew_cli(&context).unwrap_err();
@@ -368,5 +369,29 @@ mod tests {
             error.details.get("cliPath").map(String::as_str),
             Some("/Users/example/.local/bin/kast-dev")
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn homebrew_cli_verification_accepts_bin_symlink_to_formula_binary() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let cellar_prefix = temp.path().join("Cellar/kast/1.2.3");
+        let formula_binary = cellar_prefix.join("bin/kast");
+        let opt_prefix = temp.path().join("opt/kast");
+        let invoked_binary = temp.path().join("bin/kast");
+        fs::create_dir_all(formula_binary.parent().expect("formula bin")).expect("formula bin");
+        fs::create_dir_all(opt_prefix.parent().expect("opt parent")).expect("opt parent");
+        fs::create_dir_all(invoked_binary.parent().expect("bin parent")).expect("bin parent");
+        fs::write(&formula_binary, "#!/usr/bin/env sh\n").expect("formula binary");
+        std::os::unix::fs::symlink(&cellar_prefix, &opt_prefix).expect("opt symlink");
+        std::os::unix::fs::symlink(&formula_binary, &invoked_binary).expect("bin symlink");
+        let context = HomebrewContext {
+            brew_prefix: temp.path().to_path_buf(),
+            cli_path: opt_prefix.join("bin/kast"),
+            formula_prefix: opt_prefix,
+            running_cli_path: invoked_binary,
+        };
+
+        assert!(verify_homebrew_cli(&context).is_ok());
     }
 }

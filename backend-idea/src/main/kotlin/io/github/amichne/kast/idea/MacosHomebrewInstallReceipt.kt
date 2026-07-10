@@ -78,7 +78,6 @@ internal object MacosHomebrewReceiptLoader {
             formulaPrefix == null ||
             !cliBinary.isAbsolute ||
             !formulaPrefix.isAbsolute ||
-            !cliBinary.normalize().startsWith(formulaPrefix.normalize()) ||
             cliVersion.isNullOrBlank() ||
             caskToken.isNullOrBlank() ||
             pluginVersion.isNullOrBlank() ||

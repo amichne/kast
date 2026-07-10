@@ -169,10 +169,12 @@ pub(crate) fn path_report_entry<'a>(
         .unwrap_or_else(|| panic!("missing path report entry {key}: {report:#?}"))
 }
 
-pub(crate) fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf {
+pub(crate) fn write_fake_brew(bin_dir: &Path, running_cli_dir: &Path) -> PathBuf {
     let brew = bin_dir.join("brew");
     let ps = bin_dir.join("ps");
     let brew_prefix = bin_dir.parent().expect("fake brew root").join("homebrew");
+    let formula_prefix = running_cli_dir.parent().expect("fake formula prefix");
+    let formula_cli = formula_prefix.join("bin/kast");
     std::fs::create_dir_all(
         brew_prefix
             .join("Caskroom/kast-plugin")
@@ -180,6 +182,16 @@ pub(crate) fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf 
             .join("backend-idea"),
     )
     .expect("fake Homebrew plugin target");
+    if !formula_cli.exists() {
+        match std::os::unix::fs::symlink(
+            running_cli_dir,
+            formula_cli.parent().expect("formula bin"),
+        ) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => panic!("fake Homebrew formula bin: {error}"),
+        }
+    }
     std::fs::create_dir_all(bin_dir).expect("brew bin");
     std::fs::write(
         &brew,

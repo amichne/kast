@@ -212,9 +212,51 @@ mod tests {
         assert!(
             rendered.contains("Choose a story from your codebase")
                 && rendered.contains("Trace the impact of Foo")
-                && rendered.contains("3 indexed evidence points"),
+                && rendered.contains("3 indexed evidence points")
+                && rendered.contains("INDEX READY")
+                && rendered.contains("READ ONLY"),
             "candidate screen should explain the real story choices: {rendered}"
         );
+    }
+
+    #[test]
+    fn public_demo_semantic_signal_theme_assigns_color_by_meaning() {
+        let theme = PublicDemoTheme::semantic_signal();
+
+        assert_eq!(theme.compiler, Color::Cyan);
+        assert_eq!(theme.index, Color::Magenta);
+        assert_eq!(theme.success, Color::Green);
+        assert_eq!(theme.plan, Color::Yellow);
+    }
+
+    #[test]
+    fn public_demo_monochrome_theme_honors_no_color_surfaces() {
+        let theme = PublicDemoTheme::monochrome();
+
+        assert_eq!(theme.compiler, Color::Reset);
+        assert_eq!(theme.index, Color::Reset);
+        assert_eq!(theme.success, Color::Reset);
+        assert_eq!(theme.plan, Color::Reset);
+    }
+
+    #[test]
+    fn public_demo_remains_legible_at_standard_terminal_size() {
+        let app = PublicDemoApp::new(sample_public_demo_snapshot());
+        let backend = ratatui::backend::TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+
+        terminal
+            .draw(|frame| render_public_demo_with_theme(frame, &app, PublicDemoTheme::monochrome()))
+            .expect("render compact public demo");
+
+        let rendered = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>();
+        assert!(rendered.contains("Kast Semantic Story") && rendered.contains("INDEX READY"));
     }
 
     #[test]
