@@ -10,46 +10,17 @@ are real, or whether a planned edit is safe to apply.
 
 ## Install
 
-Keep the install scopes separate:
-
-- **Machine install:** put the global `kast` binary and version-coupled IDEA
-  plugin on the machine once.
-- **macOS workspace setup:** open the repository in IDEA or Android Studio with
-  the Kast plugin enabled; the plugin prepares the workspace.
-
-Install the macOS developer distribution through the root installer:
+For a macOS developer machine, run the installer and then open your project in IntelliJ IDEA or Android Studio.
+Kast handles the CLI, matching plugin, and agent-facing project guidance from
+there.
 
 ```console
-cd /path/to/your/repository
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-Use these commands to refresh or check the same installation:
-
-```console
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update --workspace-root "$PWD"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- verify --workspace-root "$PWD"
-```
-
-The installer defaults to the public `amichne/kast` Homebrew tap. Internal
-mirrors can pass both a tap name and Git URL:
-
-```console
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install \
-  --tap internal/kast \
-  --tap-url https://git.example.com/internal/homebrew-kast.git \
-  --workspace-root "$PWD"
-```
-
-The script explains the planned Homebrew and plugin actions, pauses before
-`install` or `update`, and installs or updates the global `kast` binary plus
-matching IDEA plugin through the CLI. Set `NONINTERACTIVE=1` only for
-automation that has already accepted the plan. The script fails before mutation
-when the host or arguments are invalid. Restart IDEA or Android Studio after
-the installer refreshes the plugin, then open the repository. On macOS, the
-IntelliJ plugin writes the skill-facing guidance, invocation metadata, and
-workspace setup manifest. The CLI does not support skill-only, runtime-only, or
-resource-only workspace setup on macOS.
+The installer defaults to the public `amichne/kast` Homebrew tap. It explains
+the planned machine changes before mutating anything. Restart the IDE after an
+install or update, then open the project you want agents to work in.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
@@ -60,9 +31,8 @@ export KAST_UBUNTU_DEBIAN_VERSION="v1.2.3"
 ./scripts/install-ubuntu-debian.sh verify
 ```
 
-The [install guide](https://kast.michne.com/getting-started/install/) covers
-the macOS installer, tap mirrors, repository setup, manifest-backed paths, and
-repair commands. The [headless Linux guide](https://kast.michne.com/getting-started/headless-linux/)
+The [macOS install guide](https://kast.michne.com/install/macos/) covers the
+root installer and IDE handoff. The [headless Linux guide](https://kast.michne.com/install/headless-linux/)
 covers server and hosted-agent installs.
 
 ## Try it on your code
@@ -71,17 +41,16 @@ Once the workspace is prepared and its backend is ready, run the read-only
 repository tour:
 
 ```console
-kast demo --workspace-root "$PWD"
+kast demo
 ```
 
 Kast ranks high-signal symbols from the source index, adds live compiler
 identity, references, and diagnostics when the backend is available, then
 hands each chapter back to an equivalent typed `kast agent` command. It does
-not change source files. Use `kast --output json demo --workspace-root "$PWD"`
-for a deterministic captured snapshot, or add `--symbol <name>` to choose the
-story anchor.
+not change source files. Use `kast --output json demo` for a deterministic
+captured snapshot, or add `--symbol <name>` to choose the story anchor.
 
-The [repository demo guide](https://kast.michne.com/commands/demo/) explains
+The [repository demo guide](https://kast.michne.com/learn/repository-demo/) explains
 the full, index-only, and backend-only evidence modes.
 
 ## Why Kast instead of text search?
@@ -93,11 +62,8 @@ own:
   analysis engine which declaration a position refers to.
 - **Trace usage with semantic context.** Reference and caller queries follow
   compiler-backed relationships instead of matching strings.
-- **Plan edits before applying them.** Rename and edit flows surface conflicts
-  before they touch files.
-- **Place Kotlin changes with scope evidence.** Typed mutation commands create
-  files, insert declarations or statements, and replace declarations from
-  content files after a dry-run plan.
+- **Plan edits before applying them.** Agent edit flows surface identity,
+  scope, and conflict evidence before they touch files.
 - **Report completeness and bounds.** Reference and hierarchy responses tell
   agents whether evidence was exhaustive, truncated, or limited.
 
@@ -115,14 +81,18 @@ global `kast` binary and command surface. The Linux headless bundle is a
 server/hosted-agent distribution, not the local macOS developer fallback.
 
 On developer machines, the JetBrains plugin starts the Kast backend when the
-project opens and can request a Gradle refresh by default. The backend reports
-indexing and source-index readiness through `kast agent verify`, so automation
-can wait on evidence instead of guessing from IDE state.
+project opens and can request a Gradle refresh by default. Agents use that backend behind the scenes
+when they need compiler-backed evidence.
 
 ## Documentation
 
 - Read the [documentation site](https://kast.michne.com/).
-- Follow the [install guide](https://kast.michne.com/getting-started/install/).
-- Run the [quickstart](https://kast.michne.com/getting-started/quickstart/).
-- Browse the [command manual](https://kast.michne.com/commands/).
-- Use [recipes](https://kast.michne.com/recipes/) for common CLI workflows.
+- Follow the [macOS install guide](https://kast.michne.com/install/macos/) or
+  [headless Linux guide](https://kast.michne.com/install/headless-linux/).
+- Run the [first semantic workflow](https://kast.michne.com/learn/first-semantic-workflow/)
+  or explore your repository with the
+  [read-only demo](https://kast.michne.com/learn/repository-demo/).
+- Browse the [command reference](https://kast.michne.com/reference/commands/).
+- Use [inspect Kotlin](https://kast.michne.com/use/inspect-kotlin/) and
+  [plan safe edits](https://kast.michne.com/use/plan-safe-edits/) for common
+  CLI workflows.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kast.dev/schemas/json-rpc-commands.schema.json",
   "title": "Kast JSON-RPC command catalog",
-  "description": "Schema for the single Kast JSON-RPC operation catalog consumed by docs, skills, kast agent tools, and generated LSP metadata.",
+  "description": "Schema for the internal Kast JSON-RPC operation catalog consumed by docs, skill references, backend contracts, and generated LSP metadata.",
   "type": "object",
   "additionalProperties": false,
   "required": ["$schema", "version", "categories", "commands"],

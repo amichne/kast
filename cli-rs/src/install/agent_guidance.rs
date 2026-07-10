@@ -67,9 +67,8 @@ fn resolve_agents_md_targets(
     args: &cli::AgentGuidanceSetupArgs,
 ) -> Result<Vec<AgentsMdTarget>> {
     let mut targets = Vec::new();
-    let explicit_targets = merge_context_files(args.context_files.clone(), args.agents_md.clone());
     targets.push(default_context_target(workspace_root));
-    for target in &explicit_targets {
+    for target in &args.context_files {
         let path = if target.is_absolute() {
             target.clone()
         } else {
@@ -80,7 +79,7 @@ fn resolve_agents_md_targets(
             return Err(CliError::new(
                 "AGENT_GUIDANCE_TARGET_INVALID",
                 format!(
-                    "Kast context files must be AGENTS.md, CODEX.md, CLAUDE.md, .github/copilot-instructions.md, or AGENTS.local.md: {}",
+                    "Kast context files must be AGENTS.md, CODEX.md, CLAUDE.md, or AGENTS.local.md: {}",
                     path.display()
                 ),
             ));
@@ -94,15 +93,6 @@ fn resolve_agents_md_targets(
         }
     }
     Ok(targets)
-}
-
-fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>) -> Vec<PathBuf> {
-    for target in agents_md {
-        if !context_files.iter().any(|existing| existing == &target) {
-            context_files.push(target);
-        }
-    }
-    context_files
 }
 
 fn agent_guidance_skill_target_dir(
@@ -119,7 +109,6 @@ fn default_context_target(workspace_root: &Path) -> AgentsMdTarget {
         "AGENTS.md",
         "CODEX.md",
         "CLAUDE.md",
-        ".github/copilot-instructions.md",
         DEFAULT_AGENT_GUIDANCE_FILE,
     ] {
         let path = workspace_root.join(candidate);
@@ -138,11 +127,7 @@ fn default_context_target(workspace_root: &Path) -> AgentsMdTarget {
     }
 }
 
-fn is_supported_context_file(workspace_root: &Path, path: &Path) -> bool {
-    let relative = path.strip_prefix(workspace_root).unwrap_or(path);
-    if relative.to_str() == Some(".github/copilot-instructions.md") {
-        return true;
-    }
+fn is_supported_context_file(_workspace_root: &Path, path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|name| {

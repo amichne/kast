@@ -51,45 +51,70 @@ groups = zensical_groups(zensical["project"]["nav"])
 groups_by_name = {group["group"]: group["pages"] for group in groups}
 
 required_group_order = [
-    "Overview",
+    "Start",
     "Install",
-    "Quickstart",
-    "Commands",
-    "Recipes",
-    "Troubleshooting",
-    "Distribution",
+    "Learn",
+    "Use Kast",
+    "Reference",
+    "Troubleshoot",
+    "Distribute",
+    "Design Notes",
 ]
 actual_group_order = [group["group"] for group in groups]
 if actual_group_order != required_group_order:
-    print("Docs sidebar must stay a CLI command manual", file=sys.stderr)
+    print("Docs sidebar must stay journey-first", file=sys.stderr)
     print("expected:", required_group_order, file=sys.stderr)
     print("actual:", actual_group_order, file=sys.stderr)
     sys.exit(1)
 
 placement_checks = [
-    ("Overview", "index"),
-    ("Install", "getting-started/install"),
-    ("Install", "getting-started/headless-linux"),
-    ("Quickstart", "getting-started/quickstart"),
-    ("Commands", "commands/index"),
-    ("Commands", "commands/lifecycle"),
-    ("Commands", "commands/install-repair"),
-    ("Commands", "commands/agent"),
-    ("Commands", "commands/metrics"),
-    ("Commands", "commands/lsp"),
-    ("Recipes", "recipes"),
-    ("Troubleshooting", "troubleshooting"),
-    ("Distribution", "distribution/runtime-artifact-contract"),
+    ("Start", "index"),
+    ("Install", "install/macos"),
+    ("Install", "install/headless-linux"),
+    ("Learn", "learn/first-semantic-workflow"),
+    ("Learn", "learn/evidence-model"),
+    ("Use Kast", "use/choose-a-command"),
+    ("Use Kast", "use/inspect-kotlin"),
+    ("Use Kast", "use/plan-safe-edits"),
+    ("Use Kast", "use/automate-with-agents"),
+    ("Reference", "reference/commands"),
+    ("Reference", "reference/agent-commands"),
+    ("Reference", "reference/mutation-selectors"),
+    ("Reference", "reference/runtime-and-output"),
+    ("Troubleshoot", "troubleshoot"),
+    ("Distribute", "distribute/release-and-mirror"),
+    ("Distribute", "distribute/runtime-artifact-contract"),
+    ("Design Notes", "design/operating-model"),
 ]
 for group_name, page in placement_checks:
     if page not in groups_by_name.get(group_name, []):
         print(f"{page} must appear under {group_name} in the sidebar", file=sys.stderr)
         sys.exit(1)
 
+old_pages = {
+    "getting-started/install",
+    "getting-started/headless-linux",
+    "getting-started/quickstart",
+    "commands/index",
+    "commands/lifecycle",
+    "commands/install-repair",
+    "commands/agent",
+    "commands/metrics",
+    "commands/lsp",
+    "recipes",
+    "troubleshooting",
+    "distribution/runtime-artifact-contract",
+}
 for group in groups:
     for page in group["pages"]:
-        if page.startswith(("reference/", "architecture/", "for-agents/", "what-can-kast-do/")):
-            print(f"{page} must not be published in the command-manual nav", file=sys.stderr)
+        if page in old_pages:
+            print(f"{page} must not remain in the journey-first nav", file=sys.stderr)
+            sys.exit(1)
+        if page.startswith(("architecture/", "for-agents/", "what-can-kast-do/")):
+            print(f"{page} must not be published in the public nav", file=sys.stderr)
+            sys.exit(1)
+        if page.startswith("reference/api-"):
+            print(f"{page} must not publish generated protocol reference", file=sys.stderr)
             sys.exit(1)
 
 print("Docs navigation contract passed")

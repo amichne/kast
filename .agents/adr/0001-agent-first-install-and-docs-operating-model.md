@@ -1,7 +1,8 @@
 # ADR 0001: Agent-first install and docs operating model
 
-Status: Accepted; public documentation model superseded by ADR 0003; macOS
-workspace setup model superseded by ADR 0007
+Status: Accepted; public documentation model superseded by ADR 0003; forward
+product surface superseded by ADR 0006; macOS workspace setup model superseded
+by ADR 0007 and ADR 0010
 
 Date: 2026-06-17
 
@@ -10,7 +11,7 @@ agent-facing setup. It exists so future agents can update the site from a
 checked-in operating model instead of preserving stale conversation context.
 ADR 0003 supersedes the public documentation topology. ADR 0007 supersedes the
 macOS repository setup authority and Homebrew distribution relationship. This
-ADR still records the older split for historical context.
+ADR remains only as the install-scope split that newer ADRs refine.
 
 ## Context
 
@@ -24,28 +25,17 @@ The current product story separates install scope from runtime detail:
 
 - The `kast` binary and IDEA or Android Studio plugin are installed once at
   the macOS developer-machine level through Homebrew.
-- Copilot integrations are installed separately into each repository that
-  should use Kast.
+- Repository guidance is prepared by the Kast plugin on macOS and by
+  `kast setup` on non-macOS headless or server hosts.
 - Headless Linux installs are a second lane for hosted agents, CI runners, and
   servers that need their own binary and backend runtime.
 
 ## Decision
 
-The documentation will lead with an agent-first install model:
-
-```console
-brew tap amichne/kast
-brew install kast
-
-cd /path/to/your/repository
-kast agent setup copilot
-```
-
-This is the primary macOS developer-machine path. The reader should understand
-the macOS machine layer, the repository layer, and the separate Linux
-headless-server lane before seeing detailed runtime material. The Homebrew
-formula installs or refreshes the matching IntelliJ plugin artifact as part of
-the same developer workstation distribution.
+The documentation will lead with an agent-first install model. The reader
+should understand the macOS machine layer, the repository layer, and the
+separate Linux headless-server lane before seeing detailed runtime material.
+The current public macOS command path is owned by ADR 0010.
 
 | Scope | Owner | Current command | Documentation role |
 |-------|-------|-----------------|--------------------|
@@ -70,9 +60,8 @@ conversation summaries.
 | First reader path | `docs/index.md`, `docs/getting-started/install.md`, `docs/getting-started/quickstart.md`, `docs/commands/` | `.github/scripts/test-docs-content-contract.sh` |
 | Headless server path | `docs/getting-started/headless-linux.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |
-| Copilot package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
-| Installed Copilot outputs | `.github/lsp.json`, `.github/extensions/kast/` | `kast agent setup copilot --force` plus package tests |
-| RPC/tool catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- release generate contract --check` |
+| Plugin package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
+| Internal command catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check` |
 | Protocol artifacts | `cli-rs/protocol/` | `.github/scripts/render-rpc-contract-summary.py --check`, `./gradlew :analysis-api:test` |
 
 Generated or installed copies must not become independent product truth. When
@@ -95,8 +84,8 @@ Use this update matrix when the answer changes:
 | Change trigger | Required updates |
 |----------------|------------------|
 | Global binary or IDE plugin install changes | README, `docs/index.md`, install guide, docs content contract |
-| Repository Copilot package changes | `cli-rs/resources/plugin/`, generated `.github` outputs, install guide, command docs, package tests |
-| RPC or tool catalog changes | `commands.json`, generated contract artifacts under `cli-rs/protocol/`, `kast agent tools` contract tests |
+| Plugin package source changes | `cli-rs/resources/plugin/`, install guide, command docs, package tests |
+| Internal command catalog changes | `commands.json`, generated contract artifacts under `cli-rs/protocol/`, catalog smoke tests |
 | Primary reader path changes | New or superseding ADR, docs nav, landing page, install guide, command overview, content/navigation contracts |
 | Runtime support changes | Command docs, install guides, troubleshooting, README runtime table |
 | New optional complexity | Collapsible detail or reference page first; promote only after it becomes part of the golden path |
@@ -124,7 +113,7 @@ A docs iteration that changes the agent-first story is complete only when:
 - The primary developer-machine path stays separate from the headless server
   path.
 - `README.md`, `docs/index.md`, install docs, and agent docs agree.
-- Source package files and installed `.github` outputs have a clear owner.
+- Source package files and generated plugin artifacts have a clear owner.
 - Generated reference pages are regenerated or explicitly left untouched.
 - Local validation includes the docs content contract, docs navigation
   contract, `git diff --check`, and `zensical build --clean`.

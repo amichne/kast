@@ -11,15 +11,17 @@ change:
 
 - `.github/workflows/*.yml`
 - `.github/scripts/*`
-- `.github/copilot-instructions.md`
 - `.github/dependabot.yml`
 - `.github/skill-shadowing.json`
+
+Do not add provider-specific assistant trigger workflows. The V1 hosted-agent
+path is the headless runtime plus the published `kast-action` contract smoke.
 
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
-For CLI terminal onboarding or command-example changes, run
-`.github/scripts/test-terminal-onboarding-contract.sh`.
+For CLI terminal command or executable example changes, run
+`.github/scripts/test-terminal-command-contract.sh`.
 
 Publishable CI artifacts are single-producer per commit. Producer jobs must
 write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
@@ -28,26 +30,16 @@ against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
 the publisher consume an existing one.
 
-## Generated Copilot package outputs
+## Copilot Package Source
 
-These files are repository-local install outputs from
-`kast agent setup copilot`:
-
-- `.github/lsp.json`
-- `.github/extensions/kast/extension.mjs`
-- `.github/extensions/kast/_shared/kast-tools.mjs`
-- `.github/extensions/kast/_shared/kast-trace.mjs`
-
-Do not make these the source of truth for package behavior. Edit
-`cli-rs/resources/plugin/` first, then reinstall or regenerate the package
-outputs. Copilot loads catalog-derived tool specs from the active CLI through
-`kast agent tools`; no command catalog is copied into `.github`. The global
-`install.json` records installed resource versions and checksums. The durable
-agent-only contract is `.agents/adr/0002-agent-resource-and-workflow-source-of-truth.md`.
+Repository-local Copilot install outputs are not checked-in V1 sources. The
+retained package source lives under `cli-rs/resources/plugin/` for LSP config
+and prompt-time typed command guidance. Do not add generated `.github`
+package copies or local installer shims here.
 
 ## Verify
 
-For generated Copilot package changes, run:
+For Copilot package source changes, run:
 
 ```console
 .github/scripts/test-kast-copilot-plugin.sh
@@ -62,10 +54,10 @@ For docs contract changes, run:
 zensical build --clean
 ```
 
-For terminal onboarding and executable command examples, run:
+For terminal commands and executable examples, run:
 
 ```console
-.github/scripts/test-terminal-onboarding-contract.sh
+.github/scripts/test-terminal-command-contract.sh
 ```
 
 For plugin-eval metric pack changes, run the script that owns the changed pack,

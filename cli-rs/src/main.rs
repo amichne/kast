@@ -14,8 +14,6 @@ mod lsp;
 mod manifest;
 mod metrics;
 mod metrics_database;
-mod onboarding;
-mod orchestration;
 mod output;
 mod package;
 mod rpc;
@@ -349,9 +347,6 @@ fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        if args.backend_name.is_some() {
-            return run_setup_with_runtime(args, output_format);
-        }
         let guidance = setup_to_agent_guidance_args(args);
         run_agent_guidance_setup_with_command(guidance, output_format, root_setup_command)
     }
@@ -361,21 +356,11 @@ fn setup_to_agent_guidance_args(args: cli::SetupArgs) -> cli::AgentGuidanceSetup
     cli::AgentGuidanceSetupArgs {
         workspace_root: args.workspace_root,
         skill_target_dir: args.skill_target_dir,
-        context_files: merge_context_files(args.context_files, args.agents_md.clone()),
-        agents_md: args.agents_md,
+        context_files: args.context_files,
         force: args.force,
         no_auto_exclude_git: args.no_auto_exclude_git,
         dry_run: args.dry_run,
     }
-}
-
-fn merge_context_files(mut context_files: Vec<PathBuf>, agents_md: Vec<PathBuf>) -> Vec<PathBuf> {
-    for target in agents_md {
-        if !context_files.iter().any(|existing| existing == &target) {
-            context_files.push(target);
-        }
-    }
-    context_files
 }
 
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
@@ -452,125 +437,12 @@ fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
     }
 }
 
-fn run_setup_with_runtime(mut args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
-    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
-    let onboarding =
-        onboarding::maybe_run_setup_onboarding(&mut args, output_format, &workspace_root)?;
-    let setup_args = setup_runtime_guidance_args(&args, &workspace_root);
-    let no_open_ide = args.no_open_ide;
-    let runtime_args = setup_runtime_args(&args, &workspace_root);
-    let setup_command = root_setup_runtime_setup_command(&setup_args, &runtime_args, no_open_ide);
-    let setup_plan = install::agent_guidance_setup_plan(&setup_args, setup_command.clone())?;
-    let runtime_command = root_setup_runtime_command(&runtime_args, no_open_ide);
-    if args.dry_run {
-        let result = orchestration::SetupRuntimeResult::dry_run(setup_plan, runtime_command);
-        print_setup_runtime_result(&result, output_format)?;
-        return Ok(0);
-    }
-
-    let install = match install::install_agent_guidance(setup_args, setup_command) {
-        Ok(install) => install,
-        Err(error) => {
-            let result = orchestration::SetupRuntimeResult::failure(
-                setup_plan,
-                None,
-                None,
-                runtime_command,
-                error,
-            );
-            print_setup_runtime_result(&result, output_format)?;
-            return Ok(1);
-        }
-    };
-    let runtime = match runtime::workspace_ensure(runtime_args) {
-        Ok(runtime) => runtime,
-        Err(error) => {
-            let result = orchestration::SetupRuntimeResult::failure(
-                setup_plan,
-                Some(install::InstallResult::AgentGuidance(install)),
-                None,
-                runtime_command,
-                error,
-            );
-            print_setup_runtime_result(&result, output_format)?;
-            return Ok(1);
-        }
-    };
-    let result = orchestration::SetupRuntimeResult::success(
-        setup_plan,
-        install::InstallResult::AgentGuidance(install),
-        runtime,
-        runtime_command,
-    );
-    let result = match onboarding {
-        onboarding::SetupOnboardingOutcome::Applied => result.with_onboarding_stage(),
-        onboarding::SetupOnboardingOutcome::Declined => result.with_manual_step(format!(
-            "Automatic IDEA onboarding was skipped. To configure IDEA manually, run `kast developer machine plugin`, open `{}` in IntelliJ IDEA or Android Studio, then run `kast developer runtime up --workspace-root {} --backend idea`.",
-            workspace_root.display(),
-            workspace_root.display()
-        )),
-        onboarding::SetupOnboardingOutcome::NotEligible => result,
-    };
-    print_setup_runtime_result(&result, output_format)?;
-    Ok(0)
-}
-
-fn print_setup_runtime_result(
-    result: &orchestration::SetupRuntimeResult,
-    output_format: OutputFormat,
-) -> Result<()> {
-    if output_format.is_structured() {
-        output::print_structured(result, output_format)
-    } else {
-        output::print_setup_runtime_result(result)
-    }
-}
-
-fn setup_runtime_guidance_args(
-    args: &cli::SetupArgs,
-    workspace_root: &Path,
-) -> cli::AgentGuidanceSetupArgs {
-    cli::AgentGuidanceSetupArgs {
-        workspace_root: Some(workspace_root.to_path_buf()),
-        skill_target_dir: args.skill_target_dir.clone(),
-        context_files: merge_context_files(args.context_files.clone(), args.agents_md.clone()),
-        agents_md: args.agents_md.clone(),
-        force: args.force,
-        no_auto_exclude_git: args.no_auto_exclude_git,
-        dry_run: args.dry_run,
-    }
-}
-
 fn current_executable_argument() -> String {
     env::args_os()
         .next()
         .map(|arg| arg.to_string_lossy().into_owned())
         .filter(|arg| !arg.is_empty())
         .unwrap_or_else(|| "kast".to_string())
-}
-
-fn setup_runtime_args(args: &cli::SetupArgs, workspace_root: &Path) -> cli::RuntimeArgs {
-    cli::RuntimeArgs {
-        workspace_root: Some(workspace_root.to_path_buf()),
-        backend_name: args.backend_name,
-        ..default_runtime_args()
-    }
-}
-
-fn root_setup_runtime_command(args: &cli::RuntimeArgs, no_open_ide: bool) -> Vec<String> {
-    let mut command = vec![current_executable_argument(), "setup".to_string()];
-    if let Some(workspace_root) = &args.workspace_root {
-        command.push("--workspace-root".to_string());
-        command.push(workspace_root.display().to_string());
-    }
-    if let Some(backend) = args.backend_name {
-        command.push("--backend".to_string());
-        command.push(backend.canonical().to_string());
-    }
-    if no_open_ide {
-        command.push("--no-open-ide".to_string());
-    }
-    command
 }
 
 #[cfg(target_os = "macos")]
@@ -678,56 +550,11 @@ fn root_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<String> {
         command.push("--context-file".to_string());
         command.push(target.display().to_string());
     }
-    for target in &args.agents_md {
-        command.push("--agents-md".to_string());
-        command.push(target.display().to_string());
-    }
     if args.force {
         command.push("--force".to_string());
     }
     if args.no_auto_exclude_git {
         command.push("--no-auto-exclude-git".to_string());
-    }
-    command
-}
-
-fn root_setup_runtime_setup_command(
-    setup_args: &cli::AgentGuidanceSetupArgs,
-    runtime_args: &cli::RuntimeArgs,
-    no_open_ide: bool,
-) -> Vec<String> {
-    let mut command = vec![current_executable_argument(), "setup".to_string()];
-    if let Some(workspace_root) = &runtime_args.workspace_root {
-        command.push("--workspace-root".to_string());
-        command.push(workspace_root.display().to_string());
-    } else if let Some(workspace_root) = &setup_args.workspace_root {
-        command.push("--workspace-root".to_string());
-        command.push(workspace_root.display().to_string());
-    }
-    if let Some(skill_target_dir) = &setup_args.skill_target_dir {
-        command.push("--skill-target-dir".to_string());
-        command.push(skill_target_dir.display().to_string());
-    }
-    for target in &setup_args.context_files {
-        command.push("--context-file".to_string());
-        command.push(target.display().to_string());
-    }
-    if let Some(backend) = runtime_args.backend_name {
-        command.push("--backend".to_string());
-        command.push(backend.canonical().to_string());
-    }
-    for target in &setup_args.agents_md {
-        command.push("--agents-md".to_string());
-        command.push(target.display().to_string());
-    }
-    if setup_args.force {
-        command.push("--force".to_string());
-    }
-    if setup_args.no_auto_exclude_git {
-        command.push("--no-auto-exclude-git".to_string());
-    }
-    if no_open_ide {
-        command.push("--no-open-ide".to_string());
     }
     command
 }

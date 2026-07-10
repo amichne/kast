@@ -180,7 +180,6 @@ object PluginWorkspaceBootstrap {
             "AGENTS.md",
             "CODEX.md",
             "CLAUDE.md",
-            ".github/copilot-instructions.md",
             "AGENTS.local.md",
         )) {
             val path = workspaceRoot.resolve(candidate)

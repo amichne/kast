@@ -9,6 +9,14 @@ macOS developer-workstation setup boundary. `kast setup` remains the non-macOS
 headless/server repository guidance path, but the IntelliJ plugin is the macOS
 workspace setup authority.
 
+Superseded in part by
+[ADR 0011](0011-journey-first-documentation-operating-model.md) for published
+documentation structure and public docs source paths.
+
+Superseded in part by
+[ADR 0012](0012-repo-native-semantic-story-demo.md) for the public, read-only
+repository demo and its evidence-degradation contract.
+
 This ADR defines Kast as it should be evaluated going forward. It is an audit
 charter, not a migration log. Historical surfaces, compatibility aliases, and
 deprecation candidates are evidence only when they prove that the forward
@@ -36,14 +44,14 @@ The current public system is evaluated only through these surfaces:
 
 | Surface | Forward role | Source of truth |
 | --- | --- | --- |
-| Root AXI CLI | Content-first context, setup, readiness, repair, status, and developer operations | `cli-rs/src/cli/root.rs`, `cli-rs/src/main.rs`, `docs/commands/` |
-| Typed agent CLI | Compiler-backed semantic work through `kast agent verify`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp` | `cli-rs/src/cli/agent.rs`, `cli-rs/src/agent/`, `docs/commands/agent.md` |
+| Root AXI CLI | Content-first context, setup, readiness, repair, status, and developer operations | `cli-rs/src/cli/root.rs`, `cli-rs/src/main.rs`, `docs/reference/commands.md` |
+| Typed agent CLI | Compiler-backed semantic work through `kast agent verify`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp` | `cli-rs/src/cli/agent.rs`, `cli-rs/src/agent/`, `docs/reference/agent-commands.md` |
 | Repository agent assets | One packaged `SKILL.md` and one managed `<kast>...</kast>` guidance region | `cli-rs/resources/kast-skill/SKILL.md`, `cli-rs/src/install/agent_guidance.rs` |
 | Unified API layer | Host-agnostic request/response models, capabilities, descriptors, JSON-RPC wire models, and edit-plan semantics | `analysis-api/` |
 | Transport and dispatch layer | Line-delimited JSON-RPC dispatch, socket/stdio servers, descriptor lifecycle, timeout and error mapping | `analysis-server/` |
 | Runtime backends | IDEA or Android Studio plugin backend for developer machines; packaged headless backend for Linux CI, hosted agents, servers, and images | `backend-idea/`, `backend-headless/`, `backend-shared/` |
 | Source index | SQLite-backed declaration, reference, metrics, and impact data shared by runtimes and Rust CLI queries | `index-store/`, `cli-rs/src/metrics_database/`, `cli-rs/src/symbol_query/` |
-| Release and distribution | Homebrew developer install, version-coupled IDEA plugin cask, Linux headless bundle, runtime manifests, and validation receipts | `docs/getting-started/`, `docs/distribution/`, `cli-rs/src/package.rs` |
+| Release and distribution | Homebrew developer install, version-coupled IDEA plugin cask, Linux headless bundle, runtime manifests, and validation receipts | `docs/install/`, `docs/distribute/`, `cli-rs/src/package.rs` |
 
 Hidden, generated, or retained surfaces such as `kast agent tools`,
 `kast agent call`, `kast agent workflow`, raw offset aliases, Copilot package

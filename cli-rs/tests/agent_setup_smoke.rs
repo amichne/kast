@@ -79,7 +79,7 @@ fn agent_setup_installs_skill_and_writes_ignored_local_guidance() {
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "setup", "--no-open-ide"])
+        .args(["--output", "json", "setup"])
         .output()
         .expect("setup");
 
@@ -154,14 +154,7 @@ fn agent_setup_context_git_filter_strips_managed_region_for_each_tracked_target(
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args([
-            "--output",
-            "json",
-            "setup",
-            "--no-open-ide",
-            "--context-file",
-            "CODEX.md",
-        ])
+        .args(["--output", "json", "setup", "--context-file", "CODEX.md"])
         .output()
         .expect("setup");
     assert!(
@@ -275,7 +268,7 @@ fn agent_setup_creates_local_guidance_without_root_agents_md() {
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "setup", "--no-open-ide"])
+        .args(["--output", "json", "setup"])
         .output()
         .expect("setup");
 
@@ -320,7 +313,7 @@ fn agent_setup_creates_local_guidance_without_root_agents_md() {
 
 #[cfg(not(target_os = "macos"))]
 #[test]
-fn agent_setup_creates_explicit_agents_md_target() {
+fn agent_setup_creates_explicit_context_file_target() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -336,8 +329,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
             "--output",
             "json",
             "setup",
-            "--no-open-ide",
-            "--agents-md",
+            "--context-file",
             scoped_agents.to_str().expect("agents path"),
         ])
         .output()
@@ -345,7 +337,7 @@ fn agent_setup_creates_explicit_agents_md_target() {
 
     assert!(
         setup.status.success(),
-        "explicit AGENTS.md target should be created: stdout={}, stderr={}",
+        "explicit context file target should be created: stdout={}, stderr={}",
         String::from_utf8_lossy(&setup.stdout),
         String::from_utf8_lossy(&setup.stderr)
     );
@@ -366,7 +358,7 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     std::fs::create_dir_all(&repo).expect("repo");
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "setup", "--no-open-ide"])
+        .args(["--output", "json", "setup"])
         .output()
         .expect("setup");
     assert!(
@@ -382,7 +374,7 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
 
     let repaired_setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "setup", "--no-open-ide"])
+        .args(["--output", "json", "setup"])
         .output()
         .expect("setup repair");
     assert!(
@@ -454,7 +446,7 @@ fn setup_leaves_existing_hook_config_out_of_scope() {
 
     let setup = kast(&home, &config_home)
         .current_dir(&repo)
-        .args(["--output", "json", "setup", "--no-open-ide"])
+        .args(["--output", "json", "setup"])
         .output()
         .expect("setup");
     assert!(

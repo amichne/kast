@@ -1,6 +1,6 @@
 # ADR 0004: Repository context guidance operating model
 
-Status: Accepted
+Status: Accepted; public setup surface superseded by ADR 0006 and ADR 0007
 
 Date: 2026-07-02
 
@@ -9,9 +9,14 @@ still owns manifest-backed resources, package verification, and active-binary
 trust. This ADR owns how Kast chooses and patches the repository root context
 file that an agent host loads.
 
+ADR 0006 supersedes the compatibility alias described in the original record.
+The V1 setup command is root `kast setup`, explicit guidance targets use only
+`--context-file`, and repository-local `.github/copilot-instructions.md`
+outputs are not setup targets.
+
 ## Context
 
-`kast agent setup` currently installs the thin Kast skill and writes compact
+`kast setup` installs the thin Kast skill and writes compact
 Kast routing guidance to `AGENTS.local.md` by default. The file is added to
 `.git/info/exclude` so it stays clone-local. That minimizes tracked repository
 churn, but several agent hosts only load well-known root context files. In
@@ -38,9 +43,8 @@ The default context target resolver is:
 1. Existing `AGENTS.md`
 2. Existing `CODEX.md`
 3. Existing `CLAUDE.md`
-4. Existing `.github/copilot-instructions.md`
-5. Existing `AGENTS.local.md`
-6. Create `AGENTS.local.md`
+4. Existing `AGENTS.local.md`
+5. Create `AGENTS.local.md`
 
 Only the first default target is patched. Users may pass explicit context
 targets when more than one file should receive Kast guidance.
@@ -69,19 +73,18 @@ skill is installed outside the workspace, render an absolute path.
 | Managed region text | `cli-rs/src/install/agent_guidance.rs` | `<kast>...</kast>` region | Region checksum verification |
 | Packaged skill path | `install_skill` result and manifest state | Guidance reference to `SKILL.md` | Agent setup tests |
 | Clone-local Git filter | Rust installer-owned filter generation | `.git/config`, `.git/info/attributes`, `.git/tools/` | Git filter tests |
-| Managed resource trust | `$HOME/.local/share/kast/install.json` | Agent guidance resource record | `kast agent workflow package-verify` |
+| Managed resource trust | `$HOME/.local/share/kast/install.json` | Agent guidance resource record | `kast ready` and packaged verifier smoke tests |
 
 ## Implementation Contract
 
-The forward CLI option is `--context-file <path>`. The existing
-`--agents-md <path>` option remains as a compatibility alias.
+The forward CLI option is `--context-file <path>`. The old `--agents-md <path>`
+compatibility alias is removed from V1 command parsing.
 
 V1 supports these explicit context files:
 
 - `AGENTS.md`
 - `CODEX.md`
 - `CLAUDE.md`
-- `.github/copilot-instructions.md`
 - `AGENTS.local.md`
 
 Tracked context files use a clone-local Git filter strategy. Setup writes local
@@ -104,8 +107,8 @@ file. Because that file is intentionally local, setup keeps excluding it through
 ## Compatibility
 
 Existing `AGENTS.local.md` installations remain valid and may be refreshed in
-place. Existing `--agents-md` commands continue to work. Existing managed
-`<kast>` regions are replaced in place when current setup output changes.
+place. Existing managed `<kast>` regions are replaced in place when current
+setup output changes.
 
 If the current managed region differs from the last recorded manifest checksum,
 setup writes a timestamped backup, repairs only the managed region, and leaves
@@ -135,7 +138,6 @@ ADR/docs contract check. Normal validation includes:
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_setup_smoke
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_target_detection_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked install
 .github/scripts/test-docs-content-contract.sh
 git diff --check
@@ -146,12 +148,10 @@ Coverage must prove:
 - default setup appends to existing `AGENTS.md`
 - default setup selects existing `CODEX.md`
 - default setup selects existing `CLAUDE.md`
-- default setup selects existing `.github/copilot-instructions.md`
 - no known context file creates `AGENTS.local.md`
 - guidance points at the real installed `SKILL.md`
 - Git clean removes only the managed region
 - Git clean removes only the managed region from tracked content
 - setup injects the region when absent
 - scoped Git attributes affect only the selected context file
-- `--agents-md` compatibility still works
 - `--context-file` accepts supported v1 filenames and rejects unsupported ones
