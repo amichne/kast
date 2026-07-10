@@ -24,7 +24,7 @@ enum DemoChapter {
     Recap,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DemoCandidate {
     kind: DemoCandidateKind,
@@ -84,13 +84,14 @@ pub fn run_public(args: PublicDemoArgs, output_format: OutputFormat) -> Result<i
         return Err(public_missing_index_error(&request));
     }
     let db = DemoDatabase::open(request)?;
-    let snapshot = public_demo_snapshot(&db)?;
-    if should_run_public_demo_tui(
+    let interactive = should_run_public_demo_tui(
         output_format,
         io::stdin().is_terminal(),
         io::stdout().is_terminal(),
-    ) {
-        return run_public_demo_tui(db, snapshot);
+    );
+    let (snapshot, connection) = public_demo_snapshot(&db, !interactive)?;
+    if interactive {
+        return run_public_demo_tui(db, snapshot, connection);
     }
     output::print_structured(&snapshot, output_format)?;
     Ok(0)
@@ -134,7 +135,10 @@ impl DemoRequest {
     }
 }
 
-fn public_demo_snapshot(db: &DemoDatabase) -> Result<PublicDemoSnapshot> {
+fn public_demo_snapshot(
+    db: &DemoDatabase,
+    load_compiler_evidence: bool,
+) -> Result<(PublicDemoSnapshot, Option<DemoBackendConnection>)> {
     let candidates = ranked_demo_candidates(db)?;
     let (connection, mut warnings) = detect_demo_backend(&db.request);
     let availability = if connection.is_some() {
@@ -159,7 +163,12 @@ fn public_demo_snapshot(db: &DemoDatabase) -> Result<PublicDemoSnapshot> {
         .unwrap_or_else(|| {
             vec!["kast demo --symbol <name> --workspace-root <repo>".to_string()]
         });
-    Ok(PublicDemoSnapshot {
+    let selected_story = load_compiler_evidence.then(|| {
+        candidates.first().map(|candidate| {
+            selected_demo_story(candidate, connection.as_ref(), &mut warnings)
+        })
+    }).flatten();
+    let snapshot = PublicDemoSnapshot {
         response_type: "KAST_DEMO",
         ok: true,
         availability,
@@ -168,9 +177,7 @@ fn public_demo_snapshot(db: &DemoDatabase) -> Result<PublicDemoSnapshot> {
         backend: connection
             .as_ref()
             .map(|connection| connection.summary.clone()),
-        selected_story: candidates.first().map(|candidate| {
-            selected_demo_story(candidate, connection.as_ref(), &mut warnings)
-        }),
+        selected_story,
         candidates,
         chapters: match availability {
             PublicDemoAvailability::Full => full_chapters(),
@@ -179,7 +186,8 @@ fn public_demo_snapshot(db: &DemoDatabase) -> Result<PublicDemoSnapshot> {
         warnings,
         help,
         schema_version: SCHEMA_VERSION,
-    })
+    };
+    Ok((snapshot, connection))
 }
 
 fn detect_demo_backend(request: &DemoRequest) -> (Option<DemoBackendConnection>, Vec<String>) {

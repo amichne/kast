@@ -146,6 +146,50 @@ fn public_story_lines(app: &PublicDemoApp) -> Vec<Line<'static>> {
         Line::from(candidate.fq_name.clone()),
         Line::from(""),
     ];
+    if app.loading {
+        lines.push(Line::from(Span::styled(
+            "Loading compiler evidence…",
+            Style::default().fg(Color::Cyan),
+        )));
+        lines.push(Line::from("You can keep navigating or press q to quit."));
+        return lines;
+    }
+    if let Some(message) = &app.evidence_error {
+        lines.push(Line::from(Span::styled(
+            format!("Compiler evidence unavailable: {message}"),
+            Style::default().fg(Color::Red),
+        )));
+        lines.push(Line::from("Index-backed chapters remain available."));
+        return lines;
+    }
+    if chapter.chapter == DemoChapter::Safety {
+        if app.input_mode == PublicDemoInputMode::Rename {
+            lines.push(Line::from("Hypothetical Kotlin name:"));
+            lines.push(Line::from(Span::styled(
+                format!("> {}", app.rename_input),
+                Style::default().fg(Color::Yellow),
+            )));
+            if let Some(message) = &app.rename_error {
+                lines.push(Line::from(Span::styled(
+                    message.clone(),
+                    Style::default().fg(Color::Red),
+                )));
+            }
+            lines.push(Line::from("Enter preview • Esc cancel • no files are written"));
+            return lines;
+        }
+        if let Some(preview) = &app.rename_preview {
+            lines.push(Line::from(Span::styled(
+                "Plan only — apply is unavailable in the demo",
+                Style::default().fg(Color::Green),
+            )));
+            lines.push(Line::from(format!("Request: {}", preview.request_type)));
+            lines.push(Line::from(format!("New name: {}", preview.new_name)));
+            lines.push(Line::from(""));
+            lines.push(Line::from(preview.command.clone()));
+            return lines;
+        }
+    }
     if !chapter.available {
         lines.push(Line::from(Span::styled(
             format!("Unavailable: {}", chapter.basis),
@@ -276,7 +320,11 @@ fn render_public_demo_footer(frame: &mut Frame<'_>, area: Rect, app: &PublicDemo
             "↑/↓ choose • Enter begin story • q quit • read-only"
         }
         PublicDemoScreen::Story => {
-            "←/→ chapter • e explore live symbol graph • Esc stories • q quit • read-only"
+            if app.input_mode == PublicDemoInputMode::Rename {
+                "type hypothetical name • Enter preview • Esc cancel • read-only"
+            } else {
+                "←/→ chapter • r rename preview • e explore graph • Esc stories • q quit • read-only"
+            }
         }
     };
     frame.render_widget(

@@ -284,6 +284,48 @@ mod tests {
         );
     }
 
+    #[test]
+    fn public_demo_full_story_loads_compiler_evidence_after_selection() {
+        let mut snapshot = sample_public_demo_snapshot();
+        snapshot.availability = PublicDemoAvailability::Full;
+        snapshot.chapters = full_chapters();
+        let expected_candidate = snapshot.candidates[0].clone();
+        let mut app = PublicDemoApp::new(snapshot);
+
+        let outcome = app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert_eq!(outcome, PublicDemoOutcome::Load(expected_candidate));
+        assert_eq!(app.screen, PublicDemoScreen::Story);
+        assert!(app.loading, "the story should render a non-blocking loading state");
+    }
+
+    #[test]
+    fn public_demo_safety_chapter_builds_a_read_only_rename_preview() {
+        let mut snapshot = sample_public_demo_snapshot();
+        snapshot.availability = PublicDemoAvailability::Full;
+        snapshot.chapters = full_chapters();
+        let mut app = PublicDemoApp::new(snapshot);
+        app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        app.selected_chapter = app
+            .snapshot
+            .chapters
+            .iter()
+            .position(|chapter| chapter.chapter == DemoChapter::Safety)
+            .expect("safety chapter");
+
+        app.on_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::NONE));
+        for character in "BetterFoo".chars() {
+            app.on_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+        }
+        app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        let preview = app.rename_preview.as_ref().expect("rename preview");
+        assert_eq!(preview.new_name, "BetterFoo");
+        assert!(preview.command.contains("--new-name BetterFoo"));
+        assert!(!preview.command.contains("--apply"));
+        assert_eq!(preview.request_type, "RENAME_BY_SYMBOL_REQUEST");
+    }
+
     fn sample_compare_row<const N: usize>(
         fq_name: Option<&str>,
         label: &str,

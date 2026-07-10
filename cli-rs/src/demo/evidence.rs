@@ -83,7 +83,7 @@ fn selected_demo_story(
     warnings: &mut Vec<String>,
 ) -> DemoSelectedStory {
     let compiler = connection.and_then(|connection| {
-        compiler_story_evidence(connection, candidate)
+        compiler_story_evidence(connection, candidate, || false)
             .inspect_err(|error| warnings.push(error.message.clone()))
             .ok()
     });
@@ -105,6 +105,69 @@ fn selected_demo_story(
     }
 }
 
+struct DemoEvidenceWorker {
+    request_sender: mpsc::Sender<(u64, DemoCandidate)>,
+    result_receiver: mpsc::Receiver<std::result::Result<DemoSelectedStory, String>>,
+    generation: Arc<AtomicU64>,
+}
+
+impl DemoEvidenceWorker {
+    fn spawn(connection: DemoBackendConnection) -> Self {
+        let (request_sender, request_receiver) = mpsc::channel::<(u64, DemoCandidate)>();
+        let (result_sender, result_receiver) = mpsc::channel();
+        let generation = Arc::new(AtomicU64::new(0));
+        let worker_generation = Arc::clone(&generation);
+        std::thread::spawn(move || {
+            while let Ok((request_generation, candidate)) = request_receiver.recv() {
+                let result = load_selected_demo_story(&connection, &candidate, || {
+                    worker_generation.load(Ordering::Relaxed) != request_generation
+                })
+                .map_err(|error| error.message);
+                if result_sender.send(result).is_err() {
+                    break;
+                }
+            }
+        });
+        Self {
+            request_sender,
+            result_receiver,
+            generation,
+        }
+    }
+
+    fn request(&self, candidate: DemoCandidate) -> std::result::Result<(), String> {
+        let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
+        self.request_sender
+            .send((generation, candidate))
+            .map_err(|_| "The compiler evidence worker stopped unexpectedly.".to_string())
+    }
+
+    fn try_receive(&self) -> Option<std::result::Result<DemoSelectedStory, String>> {
+        self.result_receiver.try_recv().ok()
+    }
+}
+
+impl Drop for DemoEvidenceWorker {
+    fn drop(&mut self) {
+        self.generation.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+fn load_selected_demo_story(
+    connection: &DemoBackendConnection,
+    candidate: &DemoCandidate,
+    cancelled: impl Fn() -> bool,
+) -> Result<DemoSelectedStory> {
+    let compiler = compiler_story_evidence(connection, candidate, cancelled)?;
+    Ok(DemoSelectedStory {
+        fq_name: candidate.fq_name.clone(),
+        indexed_reference_count: candidate.evidence_count,
+        compiler_identity: Some(compiler.identity),
+        compiler_reference_count: Some(compiler.reference_count),
+        diagnostics: Some(compiler.diagnostics),
+    })
+}
+
 struct DemoCompilerEvidence {
     identity: DemoCompilerIdentity,
     reference_count: usize,
@@ -114,7 +177,9 @@ struct DemoCompilerEvidence {
 fn compiler_story_evidence(
     connection: &DemoBackendConnection,
     candidate: &DemoCandidate,
+    cancelled: impl Fn() -> bool,
 ) -> Result<DemoCompilerEvidence> {
+    ensure_demo_evidence_not_cancelled(&cancelled)?;
     let timeout = Duration::from_secs(10);
     let resolve: DemoResolveResponse = rpc::request_wait_for_close(
         &connection.socket_path,
@@ -133,6 +198,7 @@ fn compiler_story_evidence(
             return Err(CliError::new("DEMO_RESOLVE_FAILED", message));
         }
     };
+    ensure_demo_evidence_not_cancelled(&cancelled)?;
     let references: DemoReferencesResponse = rpc::request_wait_for_close(
         &connection.socket_path,
         "symbol/references",
@@ -149,6 +215,7 @@ fn compiler_story_evidence(
             return Err(CliError::new("DEMO_REFERENCES_FAILED", message));
         }
     };
+    ensure_demo_evidence_not_cancelled(&cancelled)?;
     let diagnostics: DemoDiagnosticsResult = rpc::request_wait_for_close(
         &connection.socket_path,
         "raw/diagnostics",
@@ -186,4 +253,15 @@ fn compiler_story_evidence(
             info_count,
         },
     })
+}
+
+fn ensure_demo_evidence_not_cancelled(cancelled: &impl Fn() -> bool) -> Result<()> {
+    if cancelled() {
+        Err(CliError::new(
+            "DEMO_EVIDENCE_CANCELLED",
+            "Compiler evidence loading was cancelled.",
+        ))
+    } else {
+        Ok(())
+    }
 }
