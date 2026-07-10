@@ -65,6 +65,14 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
         }),
         "ranked candidates should include the highest-impact symbol: {response:#}"
     );
+    assert_eq!(
+        candidates
+            .iter()
+            .map(|candidate| candidate["kind"].as_str().expect("candidate kind"))
+            .collect::<Vec<_>>(),
+        vec!["impactHub", "callChainHub", "semanticAmbiguity"],
+        "the fixture supports all three deterministic story kinds: {response:#}"
+    );
     assert!(
         response["chapters"]
             .as_array()
@@ -120,4 +128,38 @@ fn unavailable_demo_reports_the_platform_setup_authority() {
             "headless remediation should name the CLI-owned setup path: {response:#}"
         );
     }
+}
+
+#[test]
+fn requested_demo_symbol_fails_loudly_when_the_index_has_no_match() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    seed_source_index(&workspace);
+
+    let demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "demo",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--symbol",
+            "NoSuchSymbol",
+        ])
+        .output()
+        .expect("requested symbol demo");
+
+    assert!(!demo.status.success());
+    let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
+    assert_eq!(response["code"], "DEMO_SYMBOL_NOT_FOUND");
+    assert!(
+        response["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("NoSuchSymbol")),
+        "the error should preserve the user's missing symbol query: {response:#}"
+    );
 }
