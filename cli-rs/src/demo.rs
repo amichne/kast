@@ -1,7 +1,8 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{DemoArgs, DemoView};
+use crate::cli::{DemoArgs, DemoView, OutputFormat, PublicDemoArgs};
 use crate::config;
 use crate::error::{CliError, Result};
+use crate::output;
 use crate::source_index_db;
 use crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
@@ -28,6 +29,7 @@ const PREVIEW_RADIUS: usize = 7;
 include!("demo/model.rs");
 include!("demo/entrypoints.rs");
 include!("demo/database.rs");
+include!("demo/story.rs");
 include!("demo/symbol_app.rs");
 include!("demo/compare_app.rs");
 include!("demo/tui.rs");

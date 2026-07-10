@@ -99,3 +99,12 @@ pub enum DemoView {
     /// Existing source-index-backed symbol walk.
     Symbol,
 }
+
+#[derive(Debug, Args, Clone)]
+pub struct PublicDemoArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Open the story for a specific symbol query instead of ranked candidates.
+    #[arg(long)]
+    pub symbol: Option<String>,
+}
