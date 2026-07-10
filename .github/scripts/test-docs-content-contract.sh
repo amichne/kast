@@ -187,6 +187,8 @@ require_contains "$macos_install_doc" "??? info \"Advanced installer controls\""
 require_contains "$macos_install_doc" "workspace setup is owned by the IntelliJ plugin" "macOS install guide must make plugin-owned setup primary"
 require_contains "$macos_install_doc" "The CLI does not install skill-only, runtime-only" "macOS install guide must reject partial setup"
 require_contains "$macos_install_doc" "plugin backs them up and removes them" "macOS install guide must document intentional upgrade removal"
+require_contains "$macos_install_doc" 'Enter `y` to close the detected editor and continue' "macOS install guide must document interactive editor closure"
+require_contains "$macos_install_doc" 'kill -TERM <pid>' "macOS install guide must document the exact manual editor stop command"
 
 require_contains "$headless_doc" "Use this path for CI runners, hosted agents, server images" "Headless install guide must state the reader job"
 require_contains "$headless_doc" 'scripts/install-ubuntu-debian.sh' "Headless docs must document the canonical Linux installer"

@@ -126,14 +126,46 @@ SH
   cat >"${bin_dir}/ps" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -e "${KAST_INSTALL_TEST_PROCESS_STATE:?}" ]]; then
+  printf '%s\n' '4311 /bin/bash'
+  exit 0
+fi
 case "${KAST_INSTALL_TEST_PS:-}" in
-  "IntelliJ IDEA") printf '%s\n' '/Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea /workspace' ;;
-  "Android Studio") printf '%s\n' '/Applications/Android Studio Preview.app/Contents/MacOS/studio /workspace' ;;
+  "Installer Shell")
+    if [[ "$*" == "-axo args" ]]; then
+      printf '%s\n' '/bin/bash -c process_args="$(ps -axo args)"; [[ "$process_args" == *"/IntelliJ IDEA"*".app/Contents/MacOS/idea"* ]]'
+    else
+      printf '%s\n' '4311 /bin/bash'
+    fi
+    ;;
+  "IntelliJ IDEA") printf '%s\n' '4312 /Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea' ;;
+  "Android Studio") printf '%s\n' '4313 /Applications/Android Studio Preview.app/Contents/MacOS/studio' ;;
   *) printf '%s\n' 'COMMAND' ;;
 esac
 SH
 
-  chmod +x "${bin_dir}/brew" "${bin_dir}/ps" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
+  cat >"${bin_dir}/kill" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'kill' >>"${KAST_INSTALL_TEST_LOG:?}"
+for arg in "$@"; do
+  printf ' %s' "$arg" >>"${KAST_INSTALL_TEST_LOG:?}"
+done
+printf '\n' >>"${KAST_INSTALL_TEST_LOG:?}"
+case "$*" in
+  "-TERM 4312"|"-TERM 4313")
+    : >"${KAST_INSTALL_TEST_PROCESS_STATE:?}"
+    ;;
+  *)
+    printf 'unexpected fake kill args:' >&2
+    printf ' %s' "$@" >&2
+    printf '\n' >&2
+    exit 64
+    ;;
+esac
+SH
+
+  chmod +x "${bin_dir}/brew" "${bin_dir}/kill" "${bin_dir}/ps" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
 }
 
 run_installer() {
@@ -146,6 +178,12 @@ run_installer_noninteractive() {
   local repo_root="$1"
   shift
   NONINTERACTIVE=1 KAST_INSTALL_TEST_UNAME="Darwin" "$repo_root/install.sh" "$@"
+}
+
+run_installer_source_noninteractive() {
+  local repo_root="$1"
+  shift
+  NONINTERACTIVE=1 KAST_INSTALL_TEST_UNAME="Darwin" /bin/bash -c "$(<"${repo_root}/install.sh")" -- "$@"
 }
 
 repo_root="$(resolve_repo_root)"
@@ -163,6 +201,7 @@ workspace="$(cd -- "$workspace" && pwd -P)"
 log_file="${tmp_root}/tool-calls.log"
 fake_bin="${tmp_root}/bin"
 export KAST_INSTALL_TEST_FORMULA_PREFIX="${tmp_root}/formula"
+export KAST_INSTALL_TEST_PROCESS_STATE="${tmp_root}/jetbrains-stopped"
 export KAST_INSTALL_TEST_PS=""
 write_fake_tools "$fake_bin" "$log_file"
 export KAST_INSTALL_TEST_LOG="$log_file"
@@ -219,19 +258,64 @@ run_installer "$repo_root" --help 2>"$help_stderr"
 require_stderr_not_contains "$help_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "help should remain banner-free"
 
 : >"$log_file"
+self_detection_stderr="${tmp_root}/self-detection.stderr"
+KAST_INSTALL_TEST_PS="Installer Shell" run_installer_source_noninteractive "$repo_root" install \
+  --workspace-root "$workspace" 2>"$self_detection_stderr"
+require_stderr_not_contains "$self_detection_stderr" "Close IntelliJ IDEA" "source entrypoint must not detect its own shell as IntelliJ IDEA"
+require_log_contains "$log_file" "brew install kast" "source entrypoint should proceed when no IDE executable is running"
+
+: >"$log_file"
+rm -f "$KAST_INSTALL_TEST_PROCESS_STATE"
+stderr_file="${tmp_root}/running-idea-accepted.stderr"
+printf 'y\n\n' | KAST_INSTALL_TEST_PS="IntelliJ IDEA" run_installer "$repo_root" update \
+  --workspace-root "$workspace" 2>"$stderr_file"
+require_stderr_contains "$stderr_file" "Detected IntelliJ IDEA (PID 4312)" "interactive preflight should identify the exact process"
+require_stderr_contains "$stderr_file" "Close the detected editor and continue? [y/N]" "interactive preflight should offer to close the editor"
+require_stderr_contains "$stderr_file" "IntelliJ IDEA closed" "interactive preflight should wait for editor closure"
+require_log_contains "$log_file" "kill -TERM 4312" "interactive acceptance should terminate the detected editor"
+require_log_contains "$log_file" "brew upgrade kast" "install should continue after the editor exits"
+
+: >"$log_file"
+rm -f "$KAST_INSTALL_TEST_PROCESS_STATE"
+stderr_file="${tmp_root}/running-idea-declined.stderr"
+if printf 'n\n' | KAST_INSTALL_TEST_PS="IntelliJ IDEA" run_installer "$repo_root" update \
+  --workspace-root "$workspace" 2>"$stderr_file"; then
+  die "installer should exit when interactive editor closure is declined"
+fi
+require_stderr_contains "$stderr_file" "kill -TERM 4312" "declined closure should print the exact manual stop command"
+require_log_not_contains_prefix "$log_file" "kill " "declined closure must not stop the editor"
+require_no_tool_calls "$log_file" "declined closure must fail before invoking brew or kast"
+
+: >"$log_file"
+rm -f "$KAST_INSTALL_TEST_PROCESS_STATE"
+stderr_file="${tmp_root}/running-idea-eof.stderr"
+if KAST_INSTALL_TEST_PS="IntelliJ IDEA" run_installer "$repo_root" update \
+  --workspace-root "$workspace" </dev/null 2>"$stderr_file"; then
+  die "installer should exit when the editor closure prompt reaches EOF"
+fi
+require_stderr_contains "$stderr_file" "kill -TERM 4312" "EOF should print the exact manual stop command"
+require_log_not_contains_prefix "$log_file" "kill " "EOF must not stop the editor"
+require_no_tool_calls "$log_file" "EOF must fail before invoking brew or kast"
+
+: >"$log_file"
+rm -f "$KAST_INSTALL_TEST_PROCESS_STATE"
 stderr_file="${tmp_root}/running-idea.stderr"
 if KAST_INSTALL_TEST_PS="IntelliJ IDEA" run_installer_noninteractive "$repo_root" update --workspace-root "$workspace" 2>"$stderr_file"; then
   die "installer should stop before plugin mutation while IntelliJ IDEA is running"
 fi
-require_stderr_contains "$stderr_file" "Close IntelliJ IDEA" "running IDE preflight should name the blocking product"
+require_stderr_contains "$stderr_file" "Detected IntelliJ IDEA (PID 4312)" "non-interactive preflight should identify the exact process"
+require_stderr_contains "$stderr_file" "kill -TERM 4312" "non-interactive preflight should print the exact manual stop command"
+require_stderr_not_contains "$stderr_file" "Close the detected editor and continue?" "non-interactive preflight must not prompt"
 require_no_tool_calls "$log_file" "running IDE preflight must fail before invoking brew or kast"
 
 : >"$log_file"
+rm -f "$KAST_INSTALL_TEST_PROCESS_STATE"
 stderr_file="${tmp_root}/running-android-studio.stderr"
 if KAST_INSTALL_TEST_PS="Android Studio" run_installer_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$stderr_file"; then
   die "installer should stop before plugin mutation while Android Studio is running"
 fi
-require_stderr_contains "$stderr_file" "Close Android Studio" "running IDE preflight should name Android Studio"
+require_stderr_contains "$stderr_file" "Detected Android Studio (PID 4313)" "running IDE preflight should name the exact Android Studio process"
+require_stderr_contains "$stderr_file" "kill -TERM 4313" "Android Studio preflight should print the exact manual stop command"
 require_no_tool_calls "$log_file" "running Android Studio preflight must fail before invoking brew or kast"
 
 : >"$log_file"

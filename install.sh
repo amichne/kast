@@ -24,7 +24,7 @@ Options:
   -h, --help               Show this help.
 
 Environment:
-  NONINTERACTIVE=1          Skip the install/update confirmation prompt for automation.
+  NONINTERACTIVE=1          Skip the install/update plan prompt; never close a detected editor.
 USAGE
 }
 
@@ -211,21 +211,135 @@ tap_homebrew() {
   fi
 }
 
-require_jetbrains_ides_closed() {
-  local process_args
+JETBRAINS_PROCESS_PIDS=()
+JETBRAINS_PROCESS_PRODUCTS=()
+JETBRAINS_PROCESS_EXECUTABLES=()
+
+detect_running_jetbrains_ides() {
+  local process_table
+  local pid
+  local executable
+  local product
+
+  JETBRAINS_PROCESS_PIDS=()
+  JETBRAINS_PROCESS_PRODUCTS=()
+  JETBRAINS_PROCESS_EXECUTABLES=()
+  process_table="$(ps -axo pid=,comm=)" || die "Could not inspect running JetBrains IDEs"
+  while read -r pid executable; do
+    product=""
+    case "$executable" in
+      */IntelliJ\ IDEA*.app/Contents/MacOS/idea)
+        product="IntelliJ IDEA"
+        ;;
+      */Android\ Studio*.app/Contents/MacOS/studio)
+        product="Android Studio"
+        ;;
+    esac
+    if [[ -n "$product" && "$pid" =~ ^[0-9]+$ ]]; then
+      JETBRAINS_PROCESS_PIDS+=("$pid")
+      JETBRAINS_PROCESS_PRODUCTS+=("$product")
+      JETBRAINS_PROCESS_EXECUTABLES+=("$executable")
+    fi
+  done <<<"$process_table"
+}
+
+describe_running_jetbrains_ides() {
+  local index
+  for ((index = 0; index < ${#JETBRAINS_PROCESS_PIDS[@]}; index += 1)); do
+    log_note "Detected ${JETBRAINS_PROCESS_PRODUCTS[$index]} (PID ${JETBRAINS_PROCESS_PIDS[$index]}): ${JETBRAINS_PROCESS_EXECUTABLES[$index]}"
+  done
+}
+
+print_jetbrains_stop_command() {
+  local pid
+  printf '%s\n' "To stop what Kast detected manually, run:" >&2
+  printf '  kill -TERM' >&2
+  for pid in "${JETBRAINS_PROCESS_PIDS[@]}"; do
+    printf ' %s' "$pid" >&2
+  done
+  printf '\n' >&2
+}
+
+detected_jetbrains_products() {
+  local product
+  local intellij_idea=""
+  local android_studio=""
   local products=""
-  process_args="$(ps -axo args)" || die "Could not inspect running JetBrains IDEs"
-  if [[ "$process_args" == *"/IntelliJ IDEA"*".app/Contents/MacOS/idea"* ]]; then
+  for product in "${JETBRAINS_PROCESS_PRODUCTS[@]}"; do
+    case "$product" in
+      "IntelliJ IDEA") intellij_idea="1" ;;
+      "Android Studio") android_studio="1" ;;
+    esac
+  done
+  if [[ -n "$intellij_idea" ]]; then
     products="IntelliJ IDEA"
   fi
-  if [[ "$process_args" == *"/Android Studio"*".app/Contents/MacOS/studio"* ]]; then
-    if [[ -n "$products" ]]; then
-      products="${products}, Android Studio"
-    else
-      products="Android Studio"
-    fi
+  if [[ -n "$android_studio" ]]; then
+    [[ -z "$products" ]] || products="${products}, "
+    products="${products}Android Studio"
   fi
-  [[ -z "$products" ]] || die "Close ${products} before installing or updating the Kast plugin, then rerun this command."
+  printf '%s\n' "$products"
+}
+
+close_running_jetbrains_ides() {
+  local products="$1"
+  local deadline=$((SECONDS + 30))
+
+  log_step "Closing ${products}"
+  if ! env kill -TERM "${JETBRAINS_PROCESS_PIDS[@]}"; then
+    print_jetbrains_stop_command
+    die "Could not stop the detected JetBrains editor process."
+  fi
+
+  while ((SECONDS < deadline)); do
+    detect_running_jetbrains_ides
+    if ((${#JETBRAINS_PROCESS_PIDS[@]} == 0)); then
+      log_success "${products} closed"
+      return
+    fi
+    sleep 1
+  done
+
+  describe_running_jetbrains_ides
+  print_jetbrains_stop_command
+  die "Timed out waiting for the detected JetBrains editor process to stop."
+}
+
+require_jetbrains_ides_closed() {
+  local products
+  local reply=""
+
+  detect_running_jetbrains_ides
+  if ((${#JETBRAINS_PROCESS_PIDS[@]} == 0)); then
+    return
+  fi
+  describe_running_jetbrains_ides
+  products="$(detected_jetbrains_products)"
+
+  if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
+    print_jetbrains_stop_command
+    die "${products} must be closed before installing or updating the Kast plugin."
+  fi
+
+  trap 'printf "\n" >&2; print_jetbrains_stop_command; exit 130' INT TERM
+  printf '%s' "Close the detected editor and continue? [y/N]: " >&2
+  if ! IFS= read -r reply; then
+    printf '\n' >&2
+    print_jetbrains_stop_command
+    trap - INT TERM
+    die "Could not read editor closure confirmation."
+  fi
+  case "$reply" in
+    y|Y)
+      close_running_jetbrains_ides "$products"
+      trap - INT TERM
+      ;;
+    *)
+      print_jetbrains_stop_command
+      trap - INT TERM
+      die "Aborted while ${products} is running."
+      ;;
+  esac
 }
 
 resolve_homebrew_kast() {

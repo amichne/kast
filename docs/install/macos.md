@@ -7,8 +7,8 @@ icon: lucide/apple
 # macOS Developer Machine
 
 Use this path when you work on a local macOS project with IntelliJ IDEA or
-Android Studio. The normal install is intentionally short: close JetBrains
-IDEs, run the installer, and open the project.
+Android Studio. The normal install is intentionally short: run the installer,
+approve editor closure if prompted, and open the project.
 
 ## Install The Machine Distribution
 
@@ -20,9 +20,11 @@ Run the root installer once for the machine.
 
 The installer is macOS-only. It uses Homebrew to install the global `kast`
 binary and installs or refreshes the matching IDEA or Android Studio plugin.
-It explains planned machine changes before mutating anything. Close IntelliJ
-IDEA and Android Studio first; the installer stops before changing Homebrew or
-plugin files if either product is running.
+It explains planned machine changes before mutating anything. If IntelliJ IDEA
+or Android Studio is running, the installer reports the executable and process
+ID. Enter `y` to close the detected editor and continue. Any other response,
+end-of-input, or non-interactive invocation exits before changing Homebrew or
+plugin files and prints an exact `kill -TERM <pid>` command for manual cleanup.
 
 Homebrew is the machine-install authority on macOS. After the CLI, matching
 plugin, profile links, and defaults converge, Kast records the exact formula
@@ -68,16 +70,17 @@ Those checks are part of the agent and plugin workflow.
     ```
 
     Use `NONINTERACTIVE=1` only when automation has already accepted the
-    installer plan.
+    installer plan and confirmed that JetBrains editors are closed. Automation
+    never closes a detected editor; it exits with the manual stop command.
 
 ??? warning "Recover from an older local install"
     An older Kast installation may have left
     `~/.local/share/kast/install.json` and a `~/.local/bin/kast` shim. Do not
     delete them with `sudo`, and do not edit Kast's binary path by hand.
 
-    Close IntelliJ IDEA and Android Studio, then run the update command above.
-    Invoke `verify` after opening the project. Kast treats the Homebrew receipt
-    as authoritative and reports the old manifest as inactive. If a known,
+    Run the update command above and approve editor closure if prompted. Invoke
+    `verify` after opening the project. Kast treats the Homebrew receipt as
+    authoritative and reports the old manifest as inactive. If a known,
     writable Kast shim still shadows Homebrew on `PATH`, readiness prints a
     safe cleanup command that invokes the exact Homebrew binary. If the old
     path is administrator-owned or its contents are unknown, Kast leaves it in

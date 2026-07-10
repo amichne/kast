@@ -10,10 +10,11 @@ are real, or whether a planned edit is safe to apply.
 
 ## Install
 
-For a macOS developer machine, close IntelliJ IDEA and Android Studio, run the
-installer, and then open your project in IntelliJ IDEA or Android Studio.
-Kast handles the CLI, matching plugin, and agent-facing project guidance from
-there.
+For a macOS developer machine, run the installer first.
+Then open your project in IntelliJ IDEA or Android Studio. If either editor is
+already running, the installer identifies its process and can close it after
+explicit confirmation. Kast handles the CLI, matching plugin, and agent-facing
+project guidance from there.
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"

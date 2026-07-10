@@ -261,17 +261,23 @@ mod tests {
     }
 
     #[test]
-    fn running_jetbrains_product_detection_includes_named_app_variants() {
+    fn running_jetbrains_process_detection_includes_named_app_variants() {
         let processes = r#"
-/Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea /workspace
-/Applications/Android Studio Preview.app/Contents/MacOS/studio /workspace
+4312 /Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea
+4313 /Applications/Android Studio Preview.app/Contents/MacOS/studio
 "#;
 
         assert_eq!(
-            running_jetbrains_products(processes),
+            running_jetbrains_processes(processes),
             BTreeSet::from([
-                RunningJetBrainsProduct::IntelliJIdea,
-                RunningJetBrainsProduct::AndroidStudio,
+                RunningJetBrainsProcess {
+                    pid: 4312,
+                    product: RunningJetBrainsProduct::IntelliJIdea,
+                },
+                RunningJetBrainsProcess {
+                    pid: 4313,
+                    product: RunningJetBrainsProduct::AndroidStudio,
+                },
             ])
         );
     }

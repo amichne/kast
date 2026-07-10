@@ -396,11 +396,54 @@ fn plugin_install_refuses_mutation_while_intellij_is_running() {
         serde_json::from_slice(&install.stdout).expect("install error json");
     assert_eq!(stdout["code"], "JETBRAINS_IDE_RUNNING", "{stdout}");
     assert_eq!(stdout["details"]["products"], "IntelliJ IDEA", "{stdout}");
+    assert_eq!(stdout["details"]["processIds"], "4312", "{stdout}");
+    assert_eq!(
+        stdout["details"]["stopCommand"], "kill -TERM 4312",
+        "{stdout}"
+    );
     assert!(!config_home.join("config.toml").exists());
     assert!(
         !home
             .join("Library/Application Support/Kast/homebrew-install.json")
             .exists()
+    );
+}
+
+#[test]
+fn plugin_install_ignores_installer_source_in_parent_shell_process() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let brew_bin = temp.path().join("bin");
+    let jetbrains_root = temp.path().join("jetbrains");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(jetbrains_root.join("IntelliJIdea2026.1")).expect("profile");
+    let formula_prefix = Path::new(env!("CARGO_BIN_EXE_kast"))
+        .parent()
+        .expect("binary parent");
+    write_fake_brew(&brew_bin, formula_prefix);
+
+    let install = kast(&home, &config_home)
+        .env("PATH", &brew_bin)
+        .env("KAST_FAKE_BREW_CASK_VERSION", env!("CARGO_PKG_VERSION"))
+        .env("KAST_FAKE_PS_JETBRAINS", "Installer Shell")
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "machine",
+            "plugin",
+            "--jetbrains-config-root",
+            jetbrains_root.to_str().expect("jetbrains root"),
+        ])
+        .output()
+        .expect("install plugin");
+
+    assert!(
+        install.status.success(),
+        "installer source in the parent shell must not look like a live IDE: stdout={}, stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr),
     );
 }
 

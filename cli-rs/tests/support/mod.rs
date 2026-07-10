@@ -247,8 +247,15 @@ fi
         r#"#!/bin/sh
 set -eu
 case "${KAST_FAKE_PS_JETBRAINS:-}" in
-  "IntelliJ IDEA") printf '%s\n' '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea /workspace' ;;
-  "Android Studio") printf '%s\n' '/Applications/Android Studio.app/Contents/MacOS/studio /workspace' ;;
+  "Installer Shell")
+    if [ "$*" = "-axo args" ]; then
+      printf '%s\n' '/bin/bash -c process_args="$(ps -axo args)"; [[ "$process_args" == *"/IntelliJ IDEA"*".app/Contents/MacOS/idea"* ]]'
+    else
+      printf '%s\n' '4311 /bin/bash'
+    fi
+    ;;
+  "IntelliJ IDEA") printf '%s\n' '4312 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea' ;;
+  "Android Studio") printf '%s\n' '4313 /Applications/Android Studio.app/Contents/MacOS/studio' ;;
   *) printf '%s\n' 'COMMAND' ;;
 esac
 "#,

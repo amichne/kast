@@ -30,9 +30,15 @@ impl RunningJetBrainsProduct {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct RunningJetBrainsProcess {
+    pid: u32,
+    product: RunningJetBrainsProduct,
+}
+
 fn require_jetbrains_ides_closed() -> Result<()> {
     let output = ProcessCommand::new("ps")
-        .args(["-axo", "args"])
+        .args(["-axo", "pid=,comm="])
         .output()
         .map_err(|error| {
             CliError::new(
@@ -43,43 +49,67 @@ fn require_jetbrains_ides_closed() -> Result<()> {
     if !output.status.success() {
         return Err(CliError::new(
             "JETBRAINS_PROCESS_CHECK_FAILED",
-            "Could not inspect running JetBrains IDEs with `ps -axo args`.",
+            "Could not inspect running JetBrains IDEs with `ps -axo pid=,comm=`.",
         ));
     }
-    let products = running_jetbrains_products(&String::from_utf8_lossy(&output.stdout));
-    if products.is_empty() {
+    let processes = running_jetbrains_processes(&String::from_utf8_lossy(&output.stdout));
+    if processes.is_empty() {
         return Ok(());
     }
-    let labels = products
+    let labels = processes
         .iter()
-        .map(|product| product.label())
+        .map(|process| process.product)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(RunningJetBrainsProduct::label)
         .collect::<Vec<_>>()
         .join(", ");
+    let process_ids = processes
+        .iter()
+        .map(|process| process.pid.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let stop_command = format!("kill -TERM {process_ids}");
     let mut error = CliError::new(
         "JETBRAINS_IDE_RUNNING",
         format!(
-            "Close {labels} before installing or updating the Kast plugin, then rerun the same command."
+            "Close {labels} before installing or updating the Kast plugin, then rerun the same command. To stop the detected process manually, run `{stop_command}`."
         ),
     );
     error.details.insert("products".to_string(), labels);
+    error
+        .details
+        .insert("processIds".to_string(), process_ids);
+    error
+        .details
+        .insert("stopCommand".to_string(), stop_command);
     Err(error)
 }
 
-fn running_jetbrains_products(processes: &str) -> BTreeSet<RunningJetBrainsProduct> {
-    let mut products = BTreeSet::new();
-    for process in processes.lines() {
-        if process.contains("/IntelliJ IDEA")
-            && process.contains(".app/Contents/MacOS/idea")
+fn running_jetbrains_processes(process_table: &str) -> BTreeSet<RunningJetBrainsProcess> {
+    let mut processes = BTreeSet::new();
+    for row in process_table.lines() {
+        let mut fields = row.trim_start().splitn(2, char::is_whitespace);
+        let Some(pid) = fields.next().and_then(|value| value.parse::<u32>().ok()) else {
+            continue;
+        };
+        let Some(executable) = fields.next().map(str::trim_start) else {
+            continue;
+        };
+        let product = if executable.contains("/IntelliJ IDEA")
+            && executable.ends_with(".app/Contents/MacOS/idea")
         {
-            products.insert(RunningJetBrainsProduct::IntelliJIdea);
-        }
-        if process.contains("/Android Studio")
-            && process.contains(".app/Contents/MacOS/studio")
+            RunningJetBrainsProduct::IntelliJIdea
+        } else if executable.contains("/Android Studio")
+            && executable.ends_with(".app/Contents/MacOS/studio")
         {
-            products.insert(RunningJetBrainsProduct::AndroidStudio);
-        }
+            RunningJetBrainsProduct::AndroidStudio
+        } else {
+            continue;
+        };
+        processes.insert(RunningJetBrainsProcess { pid, product });
     }
-    products
+    processes
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
