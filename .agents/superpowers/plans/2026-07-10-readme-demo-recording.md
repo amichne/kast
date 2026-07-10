@@ -121,7 +121,7 @@ Expected: the checksum file is non-empty and contains every tracked Kotlin sourc
 
 **Files:**
 - Create: `docs/assets/demo/kast-demo.cast`
-- Generate outside Git: `/tmp/kast-demo-evidence/kast-demo.txt`
+- Generate outside Git: `/tmp/kast-demo-evidence/kast-demo.raw`
 - Generate outside Git: `/tmp/kast-demo-evidence/kotlin-after.sha256`
 
 **Interfaces:**
@@ -180,29 +180,32 @@ read-only
 
 Wait for `Loading compiler evidence…` to be replaced by compiler identity before navigating away from Identity. The two initial `Right` keys move through `Why semantics` and land on `Relationships`; do not send them as one burst.
 
-- [ ] **Step 3: Convert the cast to text and validate its public content**
+- [ ] **Step 3: Inspect the alternate-screen event stream and validate its public content**
 
 Run:
 
 ```bash
 asciinema convert \
   --overwrite \
-  --output-format txt \
+  --output-format raw \
   "$SOURCE_ROOT/docs/assets/demo/kast-demo.cast" \
-  "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Kast Semantic Story" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "compiler + index evidence ready" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "$FIRST_SYMBOL" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Relationships" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Impact" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Safety" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "Plan only — apply is unavailable in the demo" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "New name: KastStoryPreview" "$EVIDENCE_DIR/kast-demo.txt"
-rg -F "read-only" "$EVIDENCE_DIR/kast-demo.txt"
-! rg -n "compiler backend unavailable|Compiler evidence unavailable|source index unavailable|No ready compiler backend" "$EVIDENCE_DIR/kast-demo.txt"
+  "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Kast Semantic Story" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "compiler + index evidence ready" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "$FIRST_SYMBOL" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Relationships" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Impact" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Safety" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "Plan only — apply is unavailable in the demo" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "KastStoryPreview" "$EVIDENCE_DIR/kast-demo.raw"
+rg -aF "read-only" "$EVIDENCE_DIR/kast-demo.raw"
+! rg -aF -e "compiler backend unavailable" -e "Compiler evidence unavailable" -e "source index unavailable" -e "No ready compiler backend" "$EVIDENCE_DIR/kast-demo.raw"
 ```
 
-Expected: every required term is found and no degraded-evidence message is present.
+Expected: every required term is found and no degraded-evidence message is
+present. The TUI uses the terminal's alternate screen, so plain-text conversion
+intentionally yields no final scrollback; raw conversion preserves the
+auditable event stream rendered into the GIF.
 
 - [ ] **Step 4: Validate recording metadata, timing, and source immutability**
 

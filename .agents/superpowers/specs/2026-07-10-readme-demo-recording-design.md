@@ -64,9 +64,9 @@ width.
 
 Before committing the recording:
 
-1. Convert the cast to text and verify stable visible terms including
-   `Kast Semantic Story`, a repository-owned symbol, chapter labels, and
-   `read-only`.
+1. Convert the alternate-screen cast to its raw terminal event stream and
+   verify stable visible terms including `Kast Semantic Story`, a
+   repository-owned symbol, chapter labels, and `read-only`.
 2. Inspect the GIF dimensions, frame count, duration, and file size.
 3. Open the README locally and confirm the relative asset path renders.
 4. Compare relevant source-file hashes before and after the session.
