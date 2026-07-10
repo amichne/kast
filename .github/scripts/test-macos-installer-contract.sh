@@ -102,8 +102,8 @@ SH
 #!/usr/bin/env bash
 set -euo pipefail
 case "${KAST_INSTALL_TEST_PS:-}" in
-  "IntelliJ IDEA") printf '%s\n' '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea /workspace' ;;
-  "Android Studio") printf '%s\n' '/Applications/Android Studio.app/Contents/MacOS/studio /workspace' ;;
+  "IntelliJ IDEA") printf '%s\n' '/Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea /workspace' ;;
+  "Android Studio") printf '%s\n' '/Applications/Android Studio Preview.app/Contents/MacOS/studio /workspace' ;;
   *) printf '%s\n' 'COMMAND' ;;
 esac
 SH

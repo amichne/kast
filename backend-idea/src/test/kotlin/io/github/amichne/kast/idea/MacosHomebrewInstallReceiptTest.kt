@@ -3,6 +3,8 @@ package io.github.amichne.kast.idea
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
@@ -20,7 +22,7 @@ class MacosHomebrewInstallReceiptTest {
         val result = MacosHomebrewReceiptLoader.load(receipt, pluginVersion)
 
         assertTrue(result is MacosHomebrewReceiptLoadResult.Loaded)
-        assertEquals(binary, (result as MacosHomebrewReceiptLoadResult.Loaded).receipt.cliBinary)
+        assertEquals(binary.toRealPath(), (result as MacosHomebrewReceiptLoadResult.Loaded).receipt.cliBinary)
     }
 
     @Test
@@ -119,6 +121,30 @@ class MacosHomebrewInstallReceiptTest {
 
         assertEquals(
             MacosHomebrewReceiptFailure.MISSING_BINARY,
+            (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
+        )
+    }
+
+    @Test
+    @EnabledOnOs(OS.MAC, OS.LINUX)
+    fun `receipt binary symlink cannot escape the Homebrew formula`() {
+        val outsideBinary = tempDir.resolve("outside/kast")
+        Files.createDirectories(outsideBinary.parent)
+        Files.writeString(outsideBinary, "#!/usr/bin/env sh\n")
+        check(outsideBinary.toFile().setExecutable(true))
+        val formulaBinary = tempDir.resolve("Cellar/kast/1.2.3/bin/kast")
+        Files.createDirectories(formulaBinary.parent)
+        Files.createSymbolicLink(formulaBinary, outsideBinary)
+        val receipt = writeReceipt(
+            binary = formulaBinary,
+            cliVersion = "1.2.3",
+            pluginVersion = "1.2.3",
+        )
+
+        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+
+        assertEquals(
+            MacosHomebrewReceiptFailure.INVALID,
             (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
         )
     }

@@ -172,6 +172,14 @@ pub(crate) fn path_report_entry<'a>(
 pub(crate) fn write_fake_brew(bin_dir: &Path, formula_prefix: &Path) -> PathBuf {
     let brew = bin_dir.join("brew");
     let ps = bin_dir.join("ps");
+    let brew_prefix = bin_dir.parent().expect("fake brew root").join("homebrew");
+    std::fs::create_dir_all(
+        brew_prefix
+            .join("Caskroom/kast-plugin")
+            .join(env!("CARGO_PKG_VERSION"))
+            .join("backend-idea"),
+    )
+    .expect("fake Homebrew plugin target");
     std::fs::create_dir_all(bin_dir).expect("brew bin");
     std::fs::write(
         &brew,
@@ -181,7 +189,7 @@ set -eu
 state_file="${{HOME:-/tmp}}/.fake-brew-kast-plugin-version"
 plugin_version="${{KAST_FAKE_BREW_PLUGIN_VERSION:-{}}}"
 if [ "$1" = "--prefix" ] && [ "$#" -eq 1 ]; then
-  printf '%s\n' "/opt/homebrew"
+  printf '%s\n' "{}"
 elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
   printf '%s\n' "{}"
 elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "kast" ]; then
@@ -217,6 +225,7 @@ else
 fi
 "#,
             env!("CARGO_PKG_VERSION"),
+            brew_prefix.display(),
             formula_prefix.display()
         ),
     )
@@ -244,7 +253,7 @@ esac
             std::fs::set_permissions(executable, permissions).expect("fake executable mode");
         }
     }
-    brew
+    brew_prefix
 }
 
 pub(crate) fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {

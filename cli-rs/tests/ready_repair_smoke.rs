@@ -155,6 +155,51 @@ fn machine_repair_backs_up_and_retires_confirmed_legacy_identity() {
 
 #[cfg(target_os = "macos")]
 #[test]
+fn machine_repair_preserves_an_unrecognized_legacy_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let legacy_shim = write_legacy_local_install_for_test(&home, &config_home);
+    std::fs::write(&legacy_shim, b"#!/bin/sh\nprintf 'user-owned kast\\n'\n")
+        .expect("replace shim with unrecognized contents");
+
+    let repair = kast(&home, &config_home)
+        .args(["--output", "json", "repair", "--for", "machine", "--apply"])
+        .output()
+        .expect("machine repair");
+
+    assert!(
+        repair.status.success(),
+        "unknown legacy state should remain a non-blocking warning: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repair.stdout),
+        String::from_utf8_lossy(&repair.stderr),
+    );
+    assert_eq!(
+        std::fs::read_to_string(&legacy_shim).expect("preserved shim"),
+        "#!/bin/sh\nprintf 'user-owned kast\\n'\n"
+    );
+    assert!(
+        install_manifest_path(&home).is_file(),
+        "repair must preserve the manifest when it cannot prove the whole legacy identity is managed"
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&repair.stdout).expect("repair json");
+    assert!(
+        stdout["repair"]["warnings"]
+            .as_array()
+            .expect("warnings")
+            .iter()
+            .any(|warning| warning
+                .as_str()
+                .is_some_and(|warning| warning.contains("not a confirmed Kast-managed shim"))),
+        "repair must report why it preserved the legacy identity: {stdout}"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
 fn machine_repair_warns_when_legacy_identity_is_not_writable() {
     use std::os::unix::fs::PermissionsExt;
 

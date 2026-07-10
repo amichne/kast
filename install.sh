@@ -201,10 +201,10 @@ require_jetbrains_ides_closed() {
   local process_args
   local products=""
   process_args="$(ps -axo args)" || die "Could not inspect running JetBrains IDEs"
-  if [[ "$process_args" == *"/IntelliJ IDEA.app/Contents/MacOS/idea"* ]]; then
+  if [[ "$process_args" == *"/IntelliJ IDEA"*".app/Contents/MacOS/idea"* ]]; then
     products="IntelliJ IDEA"
   fi
-  if [[ "$process_args" == *"/Android Studio.app/Contents/MacOS/studio"* ]]; then
+  if [[ "$process_args" == *"/Android Studio"*".app/Contents/MacOS/studio"* ]]; then
     if [[ -n "$products" ]]; then
       products="${products}, Android Studio"
     else

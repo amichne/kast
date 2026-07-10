@@ -118,7 +118,7 @@ fn repair_install_config_state(
             result,
             "remove-install-owned-config",
             &config_path,
-            "Remove install-owned TOML keys so install identity and paths resolve only from install.json.",
+            "Remove install-owned TOML keys so install identity and paths resolve only from the active install authority.",
             None,
         );
     }
@@ -310,6 +310,13 @@ fn repair_legacy_macos_install_identity(
     let shim = PathBuf::from(&install.entrypoints.shim);
     let active_binary = PathBuf::from(&install.entrypoints.active_binary);
     let managed_shim = manifest::is_managed_shim_for(&shim, &active_binary);
+    if !managed_shim && path_exists_or_symlink(&shim) {
+        result.warnings.push(format!(
+            "Legacy manifest shim {} is not a confirmed Kast-managed shim; preserving the legacy shim and manifest unchanged",
+            shim.display()
+        ));
+        return Ok(());
+    }
     push_repair_action(
         result,
         "retire-legacy-macos-install",
@@ -317,12 +324,6 @@ fn repair_legacy_macos_install_identity(
         "Back up and retire legacy managed-local install identity; the macOS Homebrew receipt remains authoritative.",
         Some("kast repair --for machine --apply".to_string()),
     );
-    if !managed_shim && path_exists_or_symlink(&shim) {
-        result.warnings.push(format!(
-            "Legacy manifest shim {} is not a confirmed Kast-managed shim; leaving it unchanged",
-            shim.display()
-        ));
-    }
     if !args.apply {
         return Ok(());
     }
@@ -468,26 +469,31 @@ fn repair_install_jetbrains_profiles(
     let mut stale_links = Vec::new();
     for plugin_dir in jetbrains_plugin_dirs(&jetbrains_config_root)? {
         let plugin_link = plugin_dir.join("kast");
-        if !path_exists_or_symlink(&plugin_link) {
-            continue;
+        match classify_homebrew_plugin_profile_path(&expected_plugin_target, &plugin_link) {
+            HomebrewPluginProfilePath::Missing | HomebrewPluginProfilePath::Active => {}
+            HomebrewPluginProfilePath::ManagedStale { .. } => {
+                push_repair_action(
+                    result,
+                    "refresh-idea-plugin-link",
+                    &plugin_link,
+                    &format!(
+                        "Back up and relink a stale Homebrew-managed IDEA or Android Studio profile plugin to {}.",
+                        expected_plugin_target.display()
+                    ),
+                    Some("kast developer machine plugin".to_string()),
+                );
+                stale_links.push(plugin_link);
+            }
+            HomebrewPluginProfilePath::Unmanaged { current_target } => {
+                let existing_path = current_target.map_or_else(
+                    || plugin_link.display().to_string(),
+                    |target| format!("{} -> {}", plugin_link.display(), target.display()),
+                );
+                result.warnings.push(format!(
+                    "Preserved unmanaged JetBrains plugin path {existing_path}; Kast repair only replaces Homebrew-managed plugin links"
+                ));
+            }
         }
-        if fs::read_link(&plugin_link)
-            .ok()
-            .is_some_and(|target| target == expected_plugin_target)
-        {
-            continue;
-        }
-        push_repair_action(
-            result,
-            "refresh-idea-plugin-link",
-            &plugin_link,
-            &format!(
-                "Back up and relink a stale IDEA or Android Studio profile plugin to {}.",
-                expected_plugin_target.display()
-            ),
-            Some("kast developer machine plugin".to_string()),
-        );
-        stale_links.push(plugin_link);
     }
     if args.apply && !stale_links.is_empty() {
         require_jetbrains_ides_closed()?;
@@ -721,13 +727,19 @@ fn expected_homebrew_plugin_target_for_cask(
         ));
         return Ok(None);
     };
-    Ok(Some(
-        brew_prefix
-            .join("Caskroom")
-            .join(cask_name)
-            .join(version)
-            .join("backend-idea"),
-    ))
+    let target = brew_prefix
+        .join("Caskroom")
+        .join(cask_name)
+        .join(version)
+        .join("backend-idea");
+    if !target.is_dir() {
+        warnings.push(format!(
+            "Homebrew cask {cask_name} does not contain the expected Kast plugin directory at {}; skipping JetBrains plugin link repair",
+            target.display()
+        ));
+        return Ok(None);
+    }
+    Ok(Some(target))
 }
 
 #[cfg(unix)]

@@ -105,10 +105,22 @@ internal object MacosHomebrewReceiptLoader {
                 "Kast Homebrew CLI binary is missing or not executable at $cliBinary; rerun the Kast macOS installer.",
             )
         }
+        val canonicalFormulaPrefix = runCatching { formulaPrefix.toRealPath() }.getOrNull()
+        val canonicalCliBinary = runCatching { cliBinary.toRealPath() }.getOrNull()
+        if (
+            canonicalFormulaPrefix == null ||
+            canonicalCliBinary == null ||
+            !canonicalCliBinary.startsWith(canonicalFormulaPrefix)
+        ) {
+            return rejected(
+                MacosHomebrewReceiptFailure.INVALID,
+                "Kast Homebrew CLI binary at $cliBinary resolves outside its formula prefix; rerun the Kast macOS installer.",
+            )
+        }
         return MacosHomebrewReceiptLoadResult.Loaded(
             MacosHomebrewInstallReceipt(
-                cliBinary = cliBinary.toAbsolutePath().normalize(),
-                formulaPrefix = formulaPrefix.toAbsolutePath().normalize(),
+                cliBinary = canonicalCliBinary,
+                formulaPrefix = canonicalFormulaPrefix,
                 cliVersion = PluginVersion(cliVersion),
                 caskToken = caskToken,
                 pluginVersion = PluginVersion(pluginVersion),

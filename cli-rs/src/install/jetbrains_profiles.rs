@@ -91,6 +91,19 @@ fn install_idea_plugin_into_jetbrains_profiles(
         );
         return Err(error);
     }
+    let planned_plugin_target = homebrew
+        .brew_prefix
+        .join("Caskroom")
+        .join(&cask_name)
+        .join(&download_plan.plugin_version)
+        .join("backend-idea");
+    run_reported_step(
+        reporter,
+        "Checking existing JetBrains profile plugin paths",
+        |_| "No unmanaged JetBrains plugin paths found".to_string(),
+        "Found unmanaged JetBrains plugin paths",
+        || reject_unmanaged_homebrew_plugin_paths(&planned_plugin_target, &plugin_directories),
+    )?;
     let brew_action = HomebrewCaskInstallAction::for_versions(
         installed_cask_version.as_deref(),
         &download_plan.plugin_version,
@@ -223,57 +236,170 @@ fn ensure_homebrew_plugin_profile_links(
     let Some(expected_plugin_target) =
         expected_homebrew_plugin_target_for_cask(cask_name, &homebrew.brew_prefix, warnings)?
     else {
-        return Ok(());
+        return Err(CliError::new(
+            "HOMEBREW_PLUGIN_TARGET_MISSING",
+            format!(
+                "Homebrew cask {cask_name} did not expose an installed Kast plugin target after convergence."
+            ),
+        ));
     };
+    reject_unmanaged_homebrew_plugin_paths(&expected_plugin_target, plugin_directories)?;
+    let mut active_profiles = 0_usize;
     for plugin_dir in plugin_directories {
         let plugin_link = plugin_dir.join("kast");
-        ensure_homebrew_plugin_profile_link(&expected_plugin_target, &plugin_link, warnings)?;
+        let outcome =
+            ensure_homebrew_plugin_profile_link(&expected_plugin_target, &plugin_link, warnings)?;
+        if outcome.is_active() {
+            active_profiles += 1;
+        }
+    }
+    if active_profiles != plugin_directories.len() {
+        let mut error = CliError::new(
+            "JETBRAINS_PLUGIN_LINK_CONFLICT",
+            "Kast could not prove every JetBrains profile uses the Homebrew-managed plugin; no Homebrew authority receipt was written.",
+        );
+        error.details.insert(
+            "profileCount".to_string(),
+            plugin_directories.len().to_string(),
+        );
+        error.details.insert(
+            "activeProfileCount".to_string(),
+            active_profiles.to_string(),
+        );
+        return Err(error);
     }
     Ok(())
+}
+
+fn reject_unmanaged_homebrew_plugin_paths(
+    expected_plugin_target: &Path,
+    plugin_directories: &[PathBuf],
+) -> Result<()> {
+    let conflicting_profiles = plugin_directories
+        .iter()
+        .map(|plugin_dir| plugin_dir.join("kast"))
+        .filter_map(|plugin_link| {
+            match classify_homebrew_plugin_profile_path(expected_plugin_target, &plugin_link) {
+                HomebrewPluginProfilePath::Unmanaged { current_target } => {
+                    Some(current_target.map_or_else(
+                        || plugin_link.display().to_string(),
+                        |target| format!("{} -> {}", plugin_link.display(), target.display()),
+                    ))
+                }
+                HomebrewPluginProfilePath::Missing
+                | HomebrewPluginProfilePath::Active
+                | HomebrewPluginProfilePath::ManagedStale { .. } => None,
+            }
+        })
+        .collect::<Vec<_>>();
+    if !conflicting_profiles.is_empty() {
+        let mut error = CliError::new(
+            "JETBRAINS_PLUGIN_LINK_CONFLICT",
+            "Kast preserved unmanaged JetBrains plugin paths and did not certify Homebrew authority; remove or relocate those paths explicitly, then rerun the installer.",
+        );
+        error.details.insert(
+            "conflictingProfiles".to_string(),
+            conflicting_profiles.join("\n"),
+        );
+        return Err(error);
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HomebrewPluginProfileLinkOutcome {
+    AlreadyActive,
+    Linked,
+    PreservedConflict,
+}
+
+impl HomebrewPluginProfileLinkOutcome {
+    fn is_active(self) -> bool {
+        matches!(self, Self::AlreadyActive | Self::Linked)
+    }
 }
 
 fn ensure_homebrew_plugin_profile_link(
     expected_plugin_target: &Path,
     plugin_link: &Path,
     warnings: &mut Vec<String>,
-) -> Result<()> {
-    if fs::read_link(plugin_link)
-        .ok()
-        .is_some_and(|target| target == expected_plugin_target)
-    {
-        return Ok(());
-    }
-    if path_exists_or_symlink(plugin_link) {
-        let Some(current_target) = fs::read_link(plugin_link).ok() else {
-            warnings.push(format!(
-                "Not replacing existing JetBrains plugin path {}; run `kast repair --apply` for backed-up repair",
-                plugin_link.display()
-            ));
-            return Ok(());
-        };
-        if !current_target
-            .display()
-            .to_string()
-            .contains("/Caskroom/kast-plugin/")
-            && !current_target
-                .display()
-                .to_string()
-                .contains("/kast-plugin/")
-        {
-            warnings.push(format!(
-                "Not replacing existing JetBrains plugin link {} -> {}; run `kast repair --apply` for backed-up repair",
-                plugin_link.display(),
-                current_target.display()
-            ));
-            return Ok(());
+) -> Result<HomebrewPluginProfileLinkOutcome> {
+    match classify_homebrew_plugin_profile_path(expected_plugin_target, plugin_link) {
+        HomebrewPluginProfilePath::Active => {
+            return Ok(HomebrewPluginProfileLinkOutcome::AlreadyActive);
         }
-        remove_existing_path(plugin_link)?;
+        HomebrewPluginProfilePath::Missing => {}
+        HomebrewPluginProfilePath::ManagedStale { .. } => {
+            remove_existing_path(plugin_link)?;
+        }
+        HomebrewPluginProfilePath::Unmanaged { current_target } => {
+            let existing_path = current_target.map_or_else(
+                || plugin_link.display().to_string(),
+                |target| format!("{} -> {}", plugin_link.display(), target.display()),
+            );
+            warnings.push(format!(
+                "Not replacing unmanaged JetBrains plugin path {existing_path}"
+            ));
+            return Ok(HomebrewPluginProfileLinkOutcome::PreservedConflict);
+        }
     }
     if let Some(parent) = plugin_link.parent() {
         fs::create_dir_all(parent)?;
     }
     create_plugin_link(expected_plugin_target, plugin_link, warnings)?;
-    Ok(())
+    if fs::read_link(plugin_link)
+        .ok()
+        .is_some_and(|target| target == expected_plugin_target)
+    {
+        Ok(HomebrewPluginProfileLinkOutcome::Linked)
+    } else {
+        Err(CliError::new(
+            "JETBRAINS_PLUGIN_LINK_FAILED",
+            format!(
+                "Kast could not verify the JetBrains plugin link {} -> {} after creating it.",
+                plugin_link.display(),
+                expected_plugin_target.display()
+            ),
+        ))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum HomebrewPluginProfilePath {
+    Missing,
+    Active,
+    ManagedStale { current_target: PathBuf },
+    Unmanaged { current_target: Option<PathBuf> },
+}
+
+fn classify_homebrew_plugin_profile_path(
+    expected_plugin_target: &Path,
+    plugin_link: &Path,
+) -> HomebrewPluginProfilePath {
+    if !path_exists_or_symlink(plugin_link) {
+        return HomebrewPluginProfilePath::Missing;
+    }
+    let Ok(current_target) = fs::read_link(plugin_link) else {
+        return HomebrewPluginProfilePath::Unmanaged {
+            current_target: None,
+        };
+    };
+    if current_target == expected_plugin_target {
+        return HomebrewPluginProfilePath::Active;
+    }
+    let managed_cask_root = expected_plugin_target
+        .parent()
+        .and_then(Path::parent);
+    if managed_cask_root
+        .is_some_and(|root| current_target.parent().and_then(Path::parent) == Some(root))
+        && current_target.file_name().is_some_and(|name| name == "backend-idea")
+    {
+        HomebrewPluginProfilePath::ManagedStale { current_target }
+    } else {
+        HomebrewPluginProfilePath::Unmanaged {
+            current_target: Some(current_target),
+        }
+    }
 }
 
 fn current_timestamp() -> String {

@@ -111,7 +111,6 @@ pub fn read_macos_homebrew_receipt_at(path: &Path) -> Result<MacosHomebrewInstal
         || receipt.plugin.cask_token.trim().is_empty()
         || receipt.plugin.version.trim().is_empty()
         || receipt.updated_at.trim().is_empty()
-        || !path_is_below_homebrew_formula(&receipt.cli.binary, &receipt.cli.formula_prefix)
     {
         return Err(CliError::new(
             "MACOS_HOMEBREW_RECEIPT_INVALID",
@@ -142,6 +141,15 @@ pub fn read_macos_homebrew_receipt_at(path: &Path) -> Result<MacosHomebrewInstal
             format!(
                 "macOS Homebrew install receipt points to a missing formula prefix or non-executable CLI binary at {}; rerun the Kast macOS installer",
                 receipt.cli.binary.display()
+            ),
+        ));
+    }
+    if !path_is_below_homebrew_formula(&receipt.cli.binary, &receipt.cli.formula_prefix) {
+        return Err(CliError::new(
+            "MACOS_HOMEBREW_RECEIPT_INVALID",
+            format!(
+                "macOS Homebrew install receipt CLI resolves outside its formula prefix at {}",
+                path.display()
             ),
         ));
     }

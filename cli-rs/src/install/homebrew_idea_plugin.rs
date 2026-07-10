@@ -67,10 +67,14 @@ fn require_jetbrains_ides_closed() -> Result<()> {
 fn running_jetbrains_products(processes: &str) -> BTreeSet<RunningJetBrainsProduct> {
     let mut products = BTreeSet::new();
     for process in processes.lines() {
-        if process.contains("/IntelliJ IDEA.app/Contents/MacOS/idea") {
+        if process.contains("/IntelliJ IDEA")
+            && process.contains(".app/Contents/MacOS/idea")
+        {
             products.insert(RunningJetBrainsProduct::IntelliJIdea);
         }
-        if process.contains("/Android Studio.app/Contents/MacOS/studio") {
+        if process.contains("/Android Studio")
+            && process.contains(".app/Contents/MacOS/studio")
+        {
             products.insert(RunningJetBrainsProduct::AndroidStudio);
         }
     }
@@ -475,10 +479,10 @@ fn command_error(code: &'static str, message: &str, args: &[String], output: &Ou
 }
 
 fn path_is_below_homebrew_formula(path: &Path, formula_prefix: &Path) -> bool {
-    let canonical_path = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    let canonical_formula_prefix =
-        fs::canonicalize(formula_prefix).unwrap_or_else(|_| formula_prefix.to_path_buf());
-    canonical_path.starts_with(&canonical_formula_prefix) || path.starts_with(formula_prefix)
+    match (fs::canonicalize(path), fs::canonicalize(formula_prefix)) {
+        (Ok(path), Ok(formula_prefix)) => path.starts_with(formula_prefix),
+        _ => false,
+    }
 }
 
 fn default_jetbrains_config_root() -> PathBuf {

@@ -42,8 +42,15 @@ pub fn path_resolution_report(
         .chain(workspace_keys.iter())
         .filter(|key| install_owned_config_key(key))
     {
+        let authority = if homebrew_receipt_exists {
+            "the macOS Homebrew receipt"
+        } else if install_manifest_exists {
+            "install.json"
+        } else {
+            "install defaults"
+        };
         warnings.push(format!(
-            "config key {key} is ignored; install-owned paths are resolved from install.json"
+            "config key {key} is ignored; install-owned paths are resolved from {authority}"
         ));
     }
     if mode == PathResolutionMode::Idea {
