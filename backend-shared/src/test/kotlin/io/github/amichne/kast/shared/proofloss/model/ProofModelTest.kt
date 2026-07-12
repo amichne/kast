@@ -18,14 +18,14 @@ class ProofModelTest {
         val materializers = mutableSetOf<MaterializerDescriptor>(
             MaterializerDescriptor.NullableWithExit(materializerCallable),
         )
-        val obligations = mutableListOf(ProofObligation(ArgumentIndex.requireValid(0), predicateId))
+        val obligations = mutableListOf(Obligation(ArgumentIndex.requireValid(0), predicateId))
         val predicates = mutableListOf(
             PredicateDescriptor(predicateId, predicateCallable, ArgumentIndex.requireValid(0), materializers),
         )
         val boundaries = mutableListOf(BoundaryDescriptor(boundaryId, boundaryCallable, obligations))
 
         val model = assertInstanceOf(
-            ProofModelBuildResult.Valid::class.java,
+            ModelBuildResult.Valid::class.java,
             ProofModel.build(predicates, boundaries),
         ).model
 
@@ -54,29 +54,29 @@ class ProofModelTest {
             boundaryId,
             boundaryCallable,
             listOf(
-                ProofObligation(ArgumentIndex.requireValid(0), unknown),
-                ProofObligation(ArgumentIndex.requireValid(0), unknown),
+                Obligation(ArgumentIndex.requireValid(0), unknown),
+                Obligation(ArgumentIndex.requireValid(0), unknown),
             ),
         )
 
         val invalid = assertInstanceOf(
-            ProofModelBuildResult.Invalid::class.java,
+            ModelBuildResult.Invalid::class.java,
             ProofModel.build(
                 predicates = listOf(duplicatePredicate, duplicatePredicate),
                 boundaries = listOf(duplicateBoundary, duplicateBoundary),
             ),
         )
 
-        assertTrue(invalid.violations.value.any { it is ProofModelViolation.DuplicatePredicateId })
-        assertTrue(invalid.violations.value.any { it is ProofModelViolation.DuplicateBoundaryId })
-        assertTrue(invalid.violations.value.any { it is ProofModelViolation.UnknownPredicate })
-        assertTrue(invalid.violations.value.any { it is ProofModelViolation.DuplicateObligation })
+        assertTrue(invalid.violations.value.any { it is ModelViolation.DuplicatePredicateId })
+        assertTrue(invalid.violations.value.any { it is ModelViolation.DuplicateBoundaryId })
+        assertTrue(invalid.violations.value.any { it is ModelViolation.UnknownPredicate })
+        assertTrue(invalid.violations.value.any { it is ModelViolation.DuplicateObligation })
     }
 
     @Test
     fun `one callable cannot acquire multiple semantic roles`() {
         val invalid = assertInstanceOf(
-            ProofModelBuildResult.Invalid::class.java,
+            ModelBuildResult.Invalid::class.java,
             ProofModel.build(
                 predicates = listOf(
                     PredicateDescriptor(
@@ -90,25 +90,29 @@ class ProofModelTest {
                     BoundaryDescriptor(
                         boundaryId,
                         boundaryCallable,
-                        listOf(ProofObligation(ArgumentIndex.requireValid(0), predicateId)),
+                        listOf(Obligation(ArgumentIndex.requireValid(0), predicateId)),
                     ),
                 ),
             ),
         )
 
-        assertNotNull(invalid.violations.value.singleOrNull { it is ProofModelViolation.ConflictingCallableRoles })
+        val conflict = assertInstanceOf(
+            ModelViolation.ConflictingCallableRoles::class.java,
+            invalid.violations.value.singleOrNull { it is ModelViolation.ConflictingCallableRoles },
+        )
+        assertEquals(setOf(CallableRole.MATERIALIZER, CallableRole.BOUNDARY), conflict.roles)
     }
 
     @Test
     fun `constrained primitives reject blank and negative boundary input`() {
-        assertInstanceOf(ProofTextParseResult.Blank::class.java, PredicateId.parse("  "))
-        assertInstanceOf(ProofTextParseResult.Blank::class.java, KotlinTypeKey.parse(""))
+        assertInstanceOf(TextParseResult.Blank::class.java, PredicateId.parse("  "))
+        assertInstanceOf(TextParseResult.Blank::class.java, KotlinTypeKey.parse(""))
         assertInstanceOf(ArgumentIndexParseResult.Negative::class.java, ArgumentIndex.parse(-1))
     }
 
-    private fun callable(id: String, vararg parameters: String): ProofCallableKey = ProofCallableKey(
+    private fun callable(id: String, vararg parameters: String): CallableKey = CallableKey(
         callableId = CallableIdKey.requireValid(id),
-        kind = ProofCallableKind.FUNCTION,
+        kind = CallableKind.FUNCTION,
         receiverType = null,
         contextParameterTypes = emptyList(),
         valueParameterTypes = parameters.map(KotlinTypeKey::requireValid),
@@ -117,16 +121,16 @@ class ProofModelTest {
 }
 
 private fun PredicateId.Companion.requireValid(raw: String): PredicateId =
-    (parse(raw) as ProofTextParseResult.Valid).value
+    (parse(raw) as TextParseResult.Valid).value
 
 private fun BoundaryId.Companion.requireValid(raw: String): BoundaryId =
-    (parse(raw) as ProofTextParseResult.Valid).value
+    (parse(raw) as TextParseResult.Valid).value
 
 private fun CallableIdKey.Companion.requireValid(raw: String): CallableIdKey =
-    (parse(raw) as ProofTextParseResult.Valid).value
+    (parse(raw) as TextParseResult.Valid).value
 
 private fun KotlinTypeKey.Companion.requireValid(raw: String): KotlinTypeKey =
-    (parse(raw) as ProofTextParseResult.Valid).value
+    (parse(raw) as TextParseResult.Valid).value
 
 private fun ArgumentIndex.Companion.requireValid(raw: Int): ArgumentIndex =
     (parse(raw) as ArgumentIndexParseResult.Valid).value

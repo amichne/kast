@@ -15,7 +15,7 @@ import io.github.amichne.kast.shared.proofloss.ir.ExtractionResult
 import io.github.amichne.kast.shared.proofloss.ir.UnsupportedReason
 import io.github.amichne.kast.shared.proofloss.model.BoundaryId
 import io.github.amichne.kast.shared.proofloss.model.PredicateId
-import io.github.amichne.kast.shared.proofloss.model.ProofTextParseResult
+import io.github.amichne.kast.shared.proofloss.model.TextParseResult
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
-internal class IdeaProofIrExtractorTest {
+internal class IrExtractorTest {
     companion object {
         private val projectFixture: TestFixture<Project> = projectFixture()
         private val moduleFixture = projectFixture.moduleFixture("main")
@@ -62,39 +62,65 @@ internal class IdeaProofIrExtractorTest {
         readAction {
             val functions = PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java).associateBy { it.name }
             val calls = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
-            val declarationKey = requireNotNull(functions.getValue("isZip").toProofCallableKey())
-            val callKey = requireNotNull(calls.first { it.calleeExpression?.text == "isZip" }.toProofCallableKey())
+            val declarationKey = requireNotNull(functions.getValue("isZip").toCallableKey())
+            val callKey = requireNotNull(calls.first { it.calleeExpression?.text == "isZip" }.toCallableKey())
             assertEquals(declarationKey, callKey)
 
             val predicateId = PredicateId.id("zip")
             val boundaryId = BoundaryId.id("submit")
-            val model = requireNotNull(
-                resolveIdeaProofModel(
-                    IdeaProofModelSpec(
+            val rejected = assertInstanceOf(
+                ModelResolution.Rejected::class.java,
+                ModelSpec(
+                    predicates = listOf(
+                        ModelSpec.Predicate(
+                            predicateId,
+                            functions.getValue("isZip"),
+                            -1,
+                            emptyList(),
+                        ),
+                    ),
+                    boundaries = listOf(
+                        ModelSpec.Boundary(
+                            boundaryId,
+                            functions.getValue("submit"),
+                            listOf(-2 to predicateId),
+                        ),
+                    ),
+                ).resolve(),
+            )
+            assertEquals(
+                setOf(-1, -2),
+                rejected.failures.value
+                    .filterIsInstance<ModelResolutionFailure.InvalidArgumentIndex>()
+                    .map { it.value }
+                    .toSet(),
+            )
+            val model = assertInstanceOf(
+                ModelResolution.Resolved::class.java,
+                ModelSpec(
                         predicates = listOf(
-                            IdeaPredicateSpec(
+                            ModelSpec.Predicate(
                                 predicateId,
                                 functions.getValue("isZip"),
                                 0,
                                 listOf(
-                                    IdeaMaterializerSpec(
+                                    ModelSpec.Materializer(
                                         functions.getValue("parseZip"),
-                                        false
+                                        MaterializerKind.NULLABLE_WITH_EXIT,
                                     )
                                 )
                             )
                         ),
                         boundaries = listOf(
-                            IdeaBoundarySpec(
+                            ModelSpec.Boundary(
                                 boundaryId,
                                 functions.getValue("submit"),
                                 listOf(0 to predicateId)
                             )
                         ),
-                    ),
-                )
-            )
-            val extractor = IdeaProofIrExtractor(model)
+                    ).resolve(),
+            ).model
+            val extractor = IrExtractor(model)
             fun extract(name: String) = extractor.extract(functions.getValue(name))
             val positive = assertInstanceOf(ExtractionResult.Supported::class.java, extract("positive"))
             assertEquals(1, ProofLossAnalyzer(model).analyze(positive.function).size)
@@ -133,7 +159,7 @@ internal class IdeaProofIrExtractorTest {
                     extract("nested")
                 ).reasons.value.any { it is UnsupportedReason.NestedLambda })
             val overloadKeys = calls.filter { it.calleeExpression?.text == "overloaded" }
-                .mapNotNull { it.toProofCallableKey() }
+                .mapNotNull { it.toCallableKey() }
                 .toSet()
             assertEquals(2, overloadKeys.size)
             assertTrue(
@@ -150,5 +176,5 @@ internal class IdeaProofIrExtractorTest {
     }
 }
 
-private fun PredicateId.Companion.id(raw: String) = (parse(raw) as ProofTextParseResult.Valid).value
-private fun BoundaryId.Companion.id(raw: String) = (parse(raw) as ProofTextParseResult.Valid).value
+private fun PredicateId.Companion.id(raw: String) = (parse(raw) as TextParseResult.Valid).value
+private fun BoundaryId.Companion.id(raw: String) = (parse(raw) as TextParseResult.Valid).value

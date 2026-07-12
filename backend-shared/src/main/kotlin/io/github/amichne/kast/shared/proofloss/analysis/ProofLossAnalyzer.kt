@@ -1,102 +1,104 @@
 package io.github.amichne.kast.shared.proofloss.analysis
 
 import io.github.amichne.kast.shared.proofloss.ir.Block
-import io.github.amichne.kast.shared.proofloss.ir.BoundaryCall
-import io.github.amichne.kast.shared.proofloss.ir.ExitStatement
 import io.github.amichne.kast.shared.proofloss.ir.FunctionIr
-import io.github.amichne.kast.shared.proofloss.ir.IfStatement
-import io.github.amichne.kast.shared.proofloss.ir.LetStatement
-import io.github.amichne.kast.shared.proofloss.ir.NoOpStatement
 import io.github.amichne.kast.shared.proofloss.ir.PredicateCondition
-import io.github.amichne.kast.shared.proofloss.ir.ProofFunctionId
-import io.github.amichne.kast.shared.proofloss.ir.ProofSourceSpan
+import io.github.amichne.kast.shared.proofloss.ir.FunctionId
+import io.github.amichne.kast.shared.proofloss.ir.SourceSpan
+import io.github.amichne.kast.shared.proofloss.ir.Statement
 import io.github.amichne.kast.shared.proofloss.ir.TrackedValueId
 import io.github.amichne.kast.shared.proofloss.ir.ValueExpression
 import io.github.amichne.kast.shared.proofloss.model.ArgumentIndex
 import io.github.amichne.kast.shared.proofloss.model.BoundaryId
 import io.github.amichne.kast.shared.proofloss.model.PredicateId
-import io.github.amichne.kast.shared.proofloss.model.ProofCallableKey
+import io.github.amichne.kast.shared.proofloss.model.CallableKey
 import io.github.amichne.kast.shared.proofloss.model.ProofModel
 
 sealed interface ProofEstablishment {
-    val location: ProofSourceSpan
+    val location: SourceSpan
 
-    data class PredicateGuard(override val location: ProofSourceSpan) : ProofEstablishment
+    data class PredicateGuard(override val location: SourceSpan) : ProofEstablishment
     data class MaterializationSuccess(
-        override val location: ProofSourceSpan,
+        override val location: SourceSpan,
         val producedValue: TrackedValueId,
     ) : ProofEstablishment
 }
 
 data class ProofLossFinding(
-    val functionId: ProofFunctionId,
+    val functionId: FunctionId,
     val predicate: PredicateId,
-    val predicateCallable: ProofCallableKey,
+    val predicateCallable: CallableKey,
     val boundary: BoundaryId,
-    val boundaryCallable: ProofCallableKey,
+    val boundaryCallable: CallableKey,
     val argumentIndex: ArgumentIndex,
     val subject: TrackedValueId,
     val boundaryArgument: TrackedValueId,
     val proof: ProofEstablishment,
-    val boundaryCall: ProofSourceSpan,
+    val boundaryCall: SourceSpan,
     val valuePath: List<TrackedValueId>,
-    val suggestedMaterializers: Set<ProofCallableKey>,
+    val suggestedMaterializers: Set<CallableKey>,
 )
 
 class ProofLossAnalyzer(private val model: ProofModel) {
-    fun analyze(function: FunctionIr): List<ProofLossFinding> {
-        val initial = State(function.parameters.associateWith { Value(it, emptySet(), listOf(it)) }, emptyMap())
-        val findings = mutableListOf<ProofLossFinding>()
-        block(function, function.body, initial, findings)
-        return findings.distinct()
+    fun analyze(function: FunctionIr): List<ProofLossFinding> =
+        block(
+            function,
+            function.body,
+            State(function.parameters.associateWith { Value(it, emptySet(), listOf(it)) }, emptyMap()),
+        ).findings
+            .toList()
+            .distinct()
             .sortedWith(compareBy({ it.boundaryCall.filePath }, { it.boundaryCall.startOffset }, { it.argumentIndex }))
-    }
 
     private fun block(
-        fn: FunctionIr,
+        function: FunctionIr,
         block: Block,
         start: State,
-        out: MutableList<ProofLossFinding>,
-    ): State? {
-        var state: State? = start
-        block.statements.forEach { statement ->
-            state = state?.let { current ->
-                when (statement) {
-                    is LetStatement -> let(statement, current)
-                    is IfStatement -> branch(fn, statement, current, out)
-                    is BoundaryCall -> current.also { boundary(fn, statement, it, out) }
-                    is ExitStatement -> null
-                    is NoOpStatement -> current
-                }
+    ): AnalysisStep = block.statements.fold(AnalysisStep(start)) { accumulated, statement ->
+        accumulated.state
+            ?.let { analyze(function, statement, it) }
+            ?.let { current ->
+                AnalysisStep(current.state, accumulated.findings + current.findings)
             }
-        }
-        return state
+            ?: accumulated
     }
 
-    private fun let(
-        s: LetStatement,
+    private fun analyze(
+        function: FunctionIr,
+        statement: Statement,
         state: State,
-    ): State? = when (val e = s.expression) {
+    ): AnalysisStep = when (statement) {
+        is Statement.Let -> AnalysisStep(bind(statement, state))
+        is Statement.If -> branch(function, statement, state)
+        is Statement.BoundaryCall -> AnalysisStep(state, boundary(function, statement, state).asSequence())
+        is Statement.Exit -> AnalysisStep(null)
+        is Statement.NoOp -> AnalysisStep(state)
+    }
+
+    private fun bind(
+        statement: Statement.Let,
+        state: State,
+    ): State? = when (val expression = statement.expression) {
         is ValueExpression.Alias -> state.copy(
-            values = state.values + (s.target to state.resolve(e.source)
-                .let { it.copy(path = it.path + s.target) })
+            values = state.values + (statement.target to state.resolve(expression.source)
+                .let { it.copy(path = it.path + statement.target) })
         )
         is ValueExpression.Materialize -> {
-            requireNotNull(model.materializer(e.callable))
-            require(model.predicateForMaterializer(e.callable)?.id == e.predicate)
-            val source = state.resolve(e.source)
-            val key = FactKey(e.predicate, source.origin)
+            requireNotNull(model.materializer(expression.callable))
+            require(model.predicateForMaterializer(expression.callable)?.id == expression.predicate)
+            val source = state.resolve(expression.source)
+            val key = FactKey(expression.predicate, source.origin)
             val old = state.facts[key]
             if (old?.truth == false) null else state.copy(
-                values = state.values + (s.target to source.copy(
-                    proofs = source.proofs + e.predicate,
-                    path = source.path + s.target
+                values = state.values + (statement.target to source.copy(
+                    proofs = source.proofs + expression.predicate,
+                    path = source.path + statement.target
                 )),
                 facts = if (old == null) state.facts + (key to Fact(
                     true,
                     ProofEstablishment.MaterializationSuccess(
-                        s.location,
-                        s.target
+                        statement.location,
+                        statement.target
                     )
                 )) else state.facts,
             )
@@ -104,72 +106,90 @@ class ProofLossAnalyzer(private val model: ProofModel) {
     }
 
     private fun branch(
-        fn: FunctionIr,
-        s: IfStatement,
+        function: FunctionIr,
+        statement: Statement.If,
         state: State,
-        out: MutableList<ProofLossFinding>,
-    ): State? =
-        join(
-            state.assume(s.condition, true)?.let { block(fn, s.thenBranch, it, out) },
-            state.assume(s.condition, false)?.let { block(fn, s.elseBranch, it, out) })
+    ): AnalysisStep = mergeBranches(
+        state.assume(statement.condition, true)
+            ?.let { block(function, statement.thenBranch, it) }
+            ?: AnalysisStep(null),
+        state.assume(statement.condition, false)
+            ?.let { block(function, statement.elseBranch, it) }
+            ?: AnalysisStep(null),
+    )
+
+    private fun mergeBranches(
+        thenStep: AnalysisStep,
+        elseStep: AnalysisStep,
+    ): AnalysisStep = AnalysisStep(
+        join(thenStep.state, elseStep.state),
+        thenStep.findings + elseStep.findings,
+    )
 
     private fun boundary(
-        fn: FunctionIr,
-        call: BoundaryCall,
+        function: FunctionIr,
+        call: Statement.BoundaryCall,
         state: State,
-        out: MutableList<ProofLossFinding>,
-    ) {
-        val boundary = model.boundary(call.boundary)
-        boundary.obligations.forEach { obligation ->
+    ): List<ProofLossFinding> = model.boundary(call.boundary).let { boundary ->
+        boundary.obligations.mapNotNull { obligation ->
             val argumentId = requireNotNull(call.arguments[obligation.argumentIndex])
             val argument = state.resolve(argumentId)
             val fact = state.facts[FactKey(obligation.predicate, argument.origin)]?.takeIf { it.truth }
-                       ?: return@forEach
-            if (obligation.predicate in argument.proofs) return@forEach
-            val predicate = model.predicate(obligation.predicate)
-            out += ProofLossFinding(
-                fn.id,
-                predicate.id,
-                predicate.callable,
-                boundary.id,
-                boundary.callable,
-                obligation.argumentIndex,
-                argument.origin,
-                argumentId,
-                fact.proof,
-                call.location,
-                argument.path,
-                predicate.materializers.mapTo(mutableSetOf()) { it.callable })
+            fact?.takeUnless { obligation.predicate in argument.proofs }?.let {
+                val predicate = model.predicate(obligation.predicate)
+                ProofLossFinding(
+                    function.id,
+                    predicate.id,
+                    predicate.callable,
+                    boundary.id,
+                    boundary.callable,
+                    obligation.argumentIndex,
+                    argument.origin,
+                    argumentId,
+                    fact.proof,
+                    call.location,
+                    argument.path,
+                    predicate.materializers.map { it.callable }.toSet(),
+                )
+            }
         }
     }
 
     private fun State.assume(
-        c: PredicateCondition,
+        condition: PredicateCondition,
         result: Boolean,
-    ): State? {
-        val subject = resolve(c.subject)
-        val truth = if (result) c.conditionTrueMeansPredicate else !c.conditionTrueMeansPredicate
-        if (c.predicate in subject.proofs && !truth) return null
-        val key = FactKey(c.predicate, subject.origin)
-        val old = facts[key]
-        return if (old != null) if (old.truth == truth) this else null else copy(
-            facts = facts + (key to Fact(
-                truth,
-                ProofEstablishment.PredicateGuard(
-                    c.location
+    ): State? = resolve(condition.subject).let { subject ->
+        val truth = condition.polarity.predicateHoldsWhen(result)
+        if (condition.predicate in subject.proofs && !truth) null
+        else FactKey(condition.predicate, subject.origin).let { key ->
+            when (val fact = facts[key]) {
+                null -> copy(
+                    facts = facts + (key to Fact(
+                        truth,
+                        ProofEstablishment.PredicateGuard(condition.location),
+                    )),
                 )
-            ))
-        )
+                else -> takeIf { fact.truth == truth }
+            }
+        }
     }
 
     private fun join(
         a: State?,
         b: State?,
     ): State? = when {
-        a == null -> b; b == null -> a; else -> State(
+        a == null -> b
+        b == null -> a
+        else -> State(
             a.values.filter { b.values[it.key] == it.value },
-            a.facts.filter { b.facts[it.key] == it.value })
+            a.facts.filter { b.facts[it.key] == it.value },
+        )
     }
+
+    private data class AnalysisStep(
+        val state: State?,
+        val findings: Sequence<ProofLossFinding> = emptySequence(),
+    )
 
     private data class State(
         val values: Map<TrackedValueId, Value>,
