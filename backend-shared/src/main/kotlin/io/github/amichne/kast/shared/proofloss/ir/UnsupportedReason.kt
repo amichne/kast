@@ -1,20 +1,5 @@
 package io.github.amichne.kast.shared.proofloss.ir
 
-import io.github.amichne.kast.api.contract.NonEmptyList
-
-fun interface IrExtractor<S> {
-    fun extract(source: S): ExtractionResult
-}
-
-sealed interface ExtractionResult {
-    data class Supported(val function: FunctionIr) : ExtractionResult
-
-    data class Unsupported(
-        val functionId: FunctionId,
-        val reasons: NonEmptyList<UnsupportedReason>,
-    ) : ExtractionResult
-}
-
 sealed interface UnsupportedReason {
     val location: SourceSpan?
 

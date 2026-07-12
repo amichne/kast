@@ -4,7 +4,6 @@ import com.intellij.psi.PsiElement
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
-import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncationReason
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
@@ -106,35 +105,6 @@ class TypeHierarchyEngine(
                 ),
             )
     }
-}
-
-/** Budget tracker for type hierarchy traversal. */
-class TypeHierarchyBudget(
-    val maxResults: Int,
-) {
-    var totalNodes: Int = 0
-        private set
-    var maxDepthReached: Int = 0
-        private set
-    var truncated: Boolean = false
-        private set
-
-    fun recordNode(depth: Int) {
-        totalNodes += 1
-        if (depth > maxDepthReached) {
-            maxDepthReached = depth
-        }
-    }
-
-    fun recordTruncation() {
-        truncated = true
-    }
-
-    fun toStats() = TypeHierarchyStats(
-        totalNodes = totalNodes,
-        maxDepthReached = maxDepthReached,
-        truncated = truncated,
-    )
 }
 
 fun PsiElement.typeHierarchySymbolIdentityKey(symbol: Symbol): String = buildString {

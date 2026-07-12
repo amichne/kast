@@ -44,30 +44,39 @@ The design rejects deeper ownership chains such as
 variants remain peers unless one clear owner makes nesting improve the call
 site.
 
+## File isolation rule
+
+Every non-private top-level production type owns a same-named Kotlin file.
+This includes sealed roots, interfaces, fun interfaces, enums, data classes,
+and value classes. Direct sealed variants remain nested with their root, while
+companion objects and tightly coupled private implementation helpers remain
+with their owner. Top-level functions and extensions stay with their semantic
+owner rather than forcing artificial function-only files.
+
+This refactor converges the production types it already touches in
+`shared/hierarchy` and `shared/proofloss`; it does not trigger an unrelated
+repository-wide migration. ADR 0014 owns the future repository default.
+
 ## Shared model organization
 
-`backend-shared/.../proofloss/model/` has four semantic files:
+`backend-shared/.../proofloss/model/` gives each top-level domain type a
+same-named file. `TextParseResult.kt` also owns the internal text parsing
+helper; `ProofModel.kt` owns only the model and its private validation
+implementation. `ModelViolation` and `ModelBuildResult` remain sealed roots
+with direct nested variants in `ModelViolation.kt` and
+`ModelBuildResult.kt`.
 
-- `ProofText.kt` owns text parsing, text-backed IDs, and argument-index parsing.
-- `ProofCallable.kt` owns callable/type keys and callable kind.
-- `ProofVocabulary.kt` owns materializers, predicates, obligations, and
-  boundaries.
-- `ProofModel.kt` owns model violations, model build outcomes, validation, and
-  indexed lookup.
-
-This keeps the package below the horizontalization concern threshold while
-removing the current 213-line multi-owner model file.
+This removes topic-named aggregation files such as `ProofText.kt`,
+`ProofCallable.kt`, and `ProofVocabulary.kt` while preserving package cohesion.
 
 ## Shared IR organization
 
-`backend-shared/.../proofloss/ir/` has four semantic files:
-
-- `SourceIdentity.kt` owns offsets, spans, function IDs, and tracked-value IDs.
-- `Statement.kt` owns `FunctionIr`, `Block`, `PredicateCondition`, and the
-  `Statement` sealed hierarchy.
-- `ValueExpression.kt` owns the `ValueExpression` sealed hierarchy.
-- `Extraction.kt` owns the extractor contract, extraction result, and
-  unsupported-reason hierarchy.
+`backend-shared/.../proofloss/ir/` gives each top-level IR type a same-named
+file. `Statement.kt`, `ValueExpression.kt`, `ExtractionResult.kt`, and
+`UnsupportedReason.kt` each keep only their direct nested sealed variants.
+`SourceOffset`, `SourceSpan`, `FunctionId`, `TrackedValueId`, `FunctionIr`,
+`Block`, `PredicateCondition`, `PredicatePolarity`, `ExitKind`, and
+`IrExtractor` are isolated peers.
 
 The direct statement variants become `Statement.Let`, `Statement.If`,
 `Statement.BoundaryCall`, `Statement.Exit`, and `Statement.NoOp`. `ExitKind`
@@ -187,8 +196,8 @@ chains merely to remove every local declaration.
 
 The refactor proceeds in compiler-checked slices:
 
-1. Split model files without changing behavior and run shared tests.
-2. Split IR files and nest statement variants; use compiler errors to migrate
+1. Split model types into same-named files without changing behavior and run shared tests.
+2. Split IR types into same-named files and nest statement variants; use compiler errors to migrate
    all call sites; run shared tests.
 3. Apply approved type renames after Kast identity resolution; run focused
    tests after each coherent rename group.
@@ -200,7 +209,8 @@ The refactor proceeds in compiler-checked slices:
 7. Run Kast diagnostics on all touched Kotlin files,
    `:backend-shared:test`, `:backend-idea:test`, full `./gradlew test`, and
    `git diff --check`.
-8. Complete the Kotlin Engineering scorecard with no `Fail` dimension.
+8. Run the Kotlin file-isolation structural contract.
+9. Complete the Kotlin Engineering scorecard with no `Fail` dimension.
 
 No change is complete from formatting or compilation alone. The existing
 P0-P3 fixtures remain the behavioral oracle throughout.

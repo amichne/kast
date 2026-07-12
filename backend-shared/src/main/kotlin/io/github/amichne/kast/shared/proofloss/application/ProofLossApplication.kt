@@ -1,9 +1,7 @@
 package io.github.amichne.kast.shared.proofloss.application
 
 import io.github.amichne.kast.shared.proofloss.analysis.ProofLossAnalyzer
-import io.github.amichne.kast.shared.proofloss.analysis.ProofLossFinding
 import io.github.amichne.kast.shared.proofloss.ir.ExtractionResult
-import io.github.amichne.kast.shared.proofloss.ir.FunctionId
 import io.github.amichne.kast.shared.proofloss.ir.IrExtractor
 import io.github.amichne.kast.shared.proofloss.model.ProofModel
 
@@ -24,9 +22,3 @@ class ProofLossApplication<S>(
         )
     }
 }
-
-data class ProofLossRun(
-    val analyzedFunctionIds: List<FunctionId>,
-    val findings: List<ProofLossFinding>,
-    val unsupported: List<ExtractionResult.Unsupported>,
-)

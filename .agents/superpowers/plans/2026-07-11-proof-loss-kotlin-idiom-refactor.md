@@ -12,6 +12,7 @@
 
 - Preserve P0-P3 semantics, deterministic ordering, witnesses, and unsupported coverage.
 - Keep independent sealed roots top-level and nest only direct variants one level beneath them.
+- Give every non-private top-level production type a same-named Kotlin file; keep direct sealed variants and private implementation helpers with their owner.
 - Retain semantic locals that name proof transitions; remove incidental mutation, `!!`, `null.also`, non-local collection returns, and manual final returns.
 - Do not modify public API, JSON-RPC, CLI, headless, index, release, or P4 surfaces.
 - Resolve rename candidates with Kast first; use compiler failures and focused tests as exhaustive migration proof.
@@ -22,7 +23,7 @@
 
 **Files:**
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/ProofText.kt`
-- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/ProofCallable.kt`
+- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/CallableKind.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/ProofVocabulary.kt`
 - Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/ProofModel.kt`
 - Modify: proof-loss tests and IDEA imports reported by the compiler.
@@ -65,7 +66,7 @@ Run `./gradlew :backend-shared:test --tests '*.ProofModelTest'` and Kast diagnos
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/SourceIdentity.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/Statement.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/ValueExpression.kt`
-- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/Extraction.kt`
+- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/IrExtractor.kt`
 - Delete: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/ProofIr.kt`
 - Modify: analyzer, application, IDEA extractor, and tests.
 
@@ -191,3 +192,58 @@ Audit domain fidelity, boundary parsing, layout cohesion, error design, state sa
 ```console
 git commit -m "refactor: organize proof-loss Kotlin model"
 ```
+
+### Task 6: Ratchet top-level Kotlin type isolation
+
+**Files:**
+- Create: `backend-shared/src/test/kotlin/io/github/amichne/kast/shared/KotlinFileIsolationTest.kt`
+- Create: same-named production files for the remaining top-level types under `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/` and `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/`.
+- Delete: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/ProofText.kt`
+- Delete: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/model/ProofVocabulary.kt`
+- Delete: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/proofloss/ir/SourceIdentity.kt`
+- Modify: `AGENTS.md`
+- Modify: `.github/instructions/kotlin.instructions.md`
+- Add: `.agents/adr/0014-kotlin-top-level-type-file-isolation.md`
+
+**Interfaces:**
+- Preserves every Kotlin FQ name and runtime behavior.
+- Produces a repository default of one non-private top-level production type per same-named file.
+- Retains direct sealed variants, companion objects, and tightly coupled private helpers with their owner.
+
+- [x] **Step 1: Add the structural regression test**
+
+Add `KotlinFileIsolationTest` to scan the in-scope production packages and
+assert that each non-private top-level named type is declared in a matching
+filename.
+
+- [x] **Step 2: Run the test and verify RED**
+
+```console
+./gradlew :backend-shared:test --tests io.github.amichne.kast.shared.KotlinFileIsolationTest
+```
+
+Expected: failure listing the remaining topic-named or multi-type files.
+
+- [x] **Step 3: Isolate the remaining production types**
+
+Move declarations without renaming symbols or changing visibility. Keep nested
+sealed variants with their root and keep semantic top-level functions with the
+type they support.
+
+- [x] **Step 4: Encode the durable preference**
+
+Update root repository instructions, the Kotlin standard and self-audit
+checklist, ADR 0014, and this proof-loss design/plan so they describe the same
+boundary and exceptions.
+
+- [x] **Step 5: Verify GREEN and widen**
+
+```console
+./gradlew :backend-shared:test --tests io.github.amichne.kast.shared.KotlinFileIsolationTest
+./gradlew :backend-shared:test
+./gradlew test
+git diff --check
+```
+
+Run Kast diagnostics on every changed Kotlin production and test file before
+completion.

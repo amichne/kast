@@ -1,22 +1,5 @@
 package io.github.amichne.kast.shared.proofloss.model
 
-enum class CallableKind { FUNCTION }
-enum class CallableRole { PREDICATE, MATERIALIZER, BOUNDARY }
-
-@JvmInline
-value class CallableIdKey private constructor(val value: String) {
-    companion object {
-        fun parse(raw: String): TextParseResult<CallableIdKey> = parseText(raw, ::CallableIdKey)
-    }
-}
-
-@JvmInline
-value class KotlinTypeKey private constructor(val value: String) {
-    companion object {
-        fun parse(raw: String): TextParseResult<KotlinTypeKey> = parseText(raw, ::KotlinTypeKey)
-    }
-}
-
 data class CallableKey(
     val callableId: CallableIdKey,
     val kind: CallableKind,
