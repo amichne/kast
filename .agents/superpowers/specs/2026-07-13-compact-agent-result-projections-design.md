@@ -11,9 +11,11 @@ The Rust agent layer owns a typed projection boundary after response validation
 and before rendering. Command-specific projection arguments travel with the
 typed CLI command, so default symbol requests avoid generating documentation,
 member inventories, ranking evidence, and next-request explanations in the
-first place. The projection then parses the validated command result into a
-family model and emits one of four closed views: compact, selected fields,
-counts, or detailed.
+first place. Relationship requests carry the same typed result budget that the
+projection enforces: references preserve backend `PageInfo`, and caller
+traversal receives explicit total and per-node limits. The projection then
+parses the validated command result into a family model and emits one of four
+closed views: compact, selected fields, counts, or detailed.
 
 This keeps the backend protocol authoritative and full fidelity. It also avoids
 an untyped recursive JSON filter: each family defines its own accepted fields,
@@ -34,13 +36,18 @@ missing or malformed backend evidence produces a typed agent error.
 
 Symbol projections retain lookup mode, confidence mode, outcome, ambiguity,
 source, compact identity and location, candidates where ambiguity or discovery
-requires them, and only explicitly requested relationships. Diagnostics retain
+requires them, and only explicitly requested relationships. Each relationship
+reports total and returned cardinality, truncation, and the next page token
+when one exists. Diagnostics retain
 semantic outcome, requested/analyzed/skipped counts, severity counts, and
 actionable locations/messages. Mutation and operation projections retain stable
 identifiers, kind, lifecycle state, edit application state, cancellation,
-affected edits/files when a result supplies them, and diagnostic aggregates.
+affected edits/files when a result supplies them, exact edit replacement text,
+lossless protocol-error identity and details, and diagnostic aggregates.
 Verification retains health, runtime/backend/workspace identity, and read and
-mutation capabilities without raw steps.
+mutation capabilities without raw steps. Impact projections retain the queried
+symbol and depth, bounded impact nodes, confidence evidence, and explicit
+total/returned/truncated cardinality.
 
 ## Alternatives Rejected
 
@@ -58,7 +65,8 @@ so reviews see both policy and executable proof.
 
 ## Scope
 
-The change covers `agent symbol`, `diagnostics`, `verify`, all public mutation
-submission commands, and `agent operation status|cancel`. `agent impact` stays
-out of scope because its public metrics query is already bounded and issue 337
-does not request a new projection for it.
+The change covers `agent symbol`, `impact`, `diagnostics`, `verify`, all public
+mutation submission commands, and `agent operation status|cancel`. Public
+impact is included because it shares the compact-result promise and its
+existing metrics request must enforce, rather than merely declare, its typed
+limit.
