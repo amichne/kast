@@ -64,6 +64,14 @@ candidate by operating system or backend name. When exactly one backend kind
 is ready, automatic selection uses it even when it differs from the host
 fallback.
 
+## Workspace-relative file paths
+
+When a command supplies explicit `--workspace-root`, Kotlin target arguments
+such as diagnostics `--file-path`, add-file `--file-path`, and mutation
+`--inside-file` may be relative to that root. Kast resolves each target once,
+rejects workspace or symlink escapes, and reports the canonical absolute path
+sent to the backend. Absolute in-workspace targets remain supported.
+
 ## Mutation Boundary
 
 Agent edits are plan-first. Kast reports the selected target, planned write set,
@@ -132,7 +140,7 @@ canonical fully-qualified name.
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent diagnostics \
-      --file-path "$PWD/src/main/kotlin/App.kt" \
+      --file-path src/main/kotlin/App.kt \
       --workspace-root "$PWD"
     kast agent rename \
       --symbol com.example.OrderService \

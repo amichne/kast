@@ -52,7 +52,7 @@ agent should refine the request before applying it.
     | Command family | Target selector | Content selector |
     | --- | --- | --- |
     | Rename | `--symbol <fq-name>` plus optional narrowing flags | `--new-name <name>` |
-    | Create file | `--file-path <absolute-path>` | `--content-file <path>` |
+    | Create file | `--file-path <Kotlin-path>` | `--content-file <path>` |
     | Add declaration | `--inside-file <path>` or `--inside-scope <fq-name>` | `--content-file <path>` |
     | Add implementation | `--inside-file <path>` or `--inside-scope <fq-name>` | `--content-file <path>` |
     | Add statement | `--inside-scope <fq-name>` and `--at body-end` | `--content-file <path>` |
@@ -60,6 +60,10 @@ agent should refine the request before applying it.
 
     Optional narrowing flags include `--kind`, `--file-hint`, and
     `--containing-type` where the command supports them.
+
+    A Kotlin file target may be absolute or relative to explicit
+    `--workspace-root`. Kast canonicalizes and validates target paths before
+    planning; content files remain independent payload sources.
 
 ??? info "Placement anchors"
     Anchors are command-specific. Use only anchors shown by the command help for

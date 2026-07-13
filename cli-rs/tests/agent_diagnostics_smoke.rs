@@ -6,6 +6,189 @@ use std::time::{Duration, Instant};
 use support::*;
 
 #[test]
+fn relative_file_paths_are_canonical_in_backend_requests_and_json_output() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let first = workspace.join("src/First.kt");
+    let second = workspace.join("src/with spaces/Second.kt");
+    for file in [&first, &second] {
+        std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
+        std::fs::write(file, "class Example\n").expect("scenario source");
+    }
+    write_gradle_marker(&workspace);
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+
+    let expected = [&first, &second].map(|file| {
+        file.canonicalize()
+            .expect("canonical source")
+            .display()
+            .to_string()
+    });
+    let socket_path = workspace_socket_path(&workspace, temp.path());
+    write_descriptor(&home, &workspace, &socket_path);
+    let listener = bind_listener(&socket_path);
+    let backend = spawn_fake_backend(
+        listener,
+        workspace.clone(),
+        complete_refresh_for(&expected),
+        complete_clean_diagnostics_for(&expected),
+        4,
+    );
+    let output = run_diagnostics_arguments(
+        &home,
+        &config_home,
+        &workspace,
+        &["src/First.kt", "src/with spaces/Second.kt"],
+        "json",
+    );
+    let requests = backend.join().expect("fake diagnostics backend");
+    let document = decode_json(&output);
+
+    assert!(
+        output.status.success(),
+        "relative diagnostics should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(request_methods(&requests), expected_diagnostics_methods());
+    assert_eq!(
+        requests[2]["params"]["filePaths"],
+        json!(expected),
+        "refresh request: {:#}",
+        requests[2],
+    );
+    assert_eq!(
+        requests[3]["params"]["filePaths"],
+        json!(expected),
+        "diagnostics request: {:#}",
+        requests[3],
+    );
+    assert_eq!(document["result"]["filePaths"], json!(expected));
+}
+
+#[test]
+fn canonical_relative_path_is_reported_in_every_output_format() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let file = workspace.join("src/with spaces/Report.kt");
+    std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
+    std::fs::write(&file, "class Report\n").expect("scenario source");
+    write_gradle_marker(&workspace);
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    let expected = file
+        .canonicalize()
+        .expect("canonical source")
+        .display()
+        .to_string();
+
+    let socket_path = workspace_socket_path(&workspace, temp.path());
+    write_descriptor(&home, &workspace, &socket_path);
+    let listener = bind_listener(&socket_path);
+    let backend = spawn_fake_backend(
+        listener,
+        workspace.clone(),
+        complete_refresh_for(std::slice::from_ref(&expected)),
+        complete_clean_diagnostics_for(std::slice::from_ref(&expected)),
+        12,
+    );
+    let outputs = ["json", "human", "toon"].map(|format| {
+        run_diagnostics_arguments(
+            &home,
+            &config_home,
+            &workspace,
+            &["src/with spaces/Report.kt"],
+            format,
+        )
+    });
+    let requests = backend.join().expect("fake diagnostics backend");
+
+    for (format, output) in ["json", "human", "toon"].into_iter().zip(&outputs) {
+        let document = if format == "toon" {
+            decode_toon(output)
+        } else {
+            decode_json(output)
+        };
+        assert!(output.status.success(), "{format}: {document:#}");
+        assert_eq!(
+            document["result"]["filePaths"],
+            json!([expected]),
+            "{format}: {document:#}",
+        );
+    }
+    assert_eq!(
+        request_methods(&requests),
+        expected_diagnostics_methods().repeat(3)
+    );
+}
+
+#[test]
+fn deleted_relative_file_reaches_refresh_with_canonical_path() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let source_parent = workspace.join("src/deleted");
+    std::fs::create_dir_all(&source_parent).expect("source parent");
+    write_gradle_marker(&workspace);
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    let missing = source_parent
+        .canonicalize()
+        .expect("canonical source parent")
+        .join("Removed.kt");
+
+    let socket_path = workspace_socket_path(&workspace, temp.path());
+    write_descriptor(&home, &workspace, &socket_path);
+    let listener = bind_listener(&socket_path);
+    let backend = spawn_fake_backend(
+        listener,
+        workspace.clone(),
+        complete_removed_refresh(&missing),
+        incomplete_diagnostics(&missing),
+        4,
+    );
+    let output = run_diagnostics_arguments(
+        &home,
+        &config_home,
+        &workspace,
+        &["src/deleted/Removed.kt"],
+        "json",
+    );
+    let requests = backend.join().expect("fake diagnostics backend");
+    let document = decode_json(&output);
+    let expected = missing.display().to_string();
+
+    assert!(!output.status.success(), "{document:#}");
+    assert_eq!(
+        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+        "{document:#}",
+    );
+    assert_eq!(
+        requests[2]["params"]["filePaths"],
+        json!([expected]),
+        "refresh request: {:#}",
+        requests[2],
+    );
+    assert_eq!(document["result"]["filePaths"], json!([expected]));
+}
+
+#[test]
+fn relative_escape_is_rejected_before_runtime_resolution() {
+    assert_pre_dispatch_path_error("../Outside.kt", "AGENT_FILE_OUTSIDE_WORKSPACE");
+}
+
+#[test]
+fn unsupported_file_kind_is_rejected_before_runtime_resolution() {
+    assert_pre_dispatch_path_error("src/App.java", "AGENT_FILE_KIND_UNSUPPORTED");
+}
+
+#[test]
 fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -23,25 +206,19 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
-        complete_refresh(&file),
-        incomplete_diagnostics(&file),
+        complete_refresh(&canonical_test_path(&file)),
+        incomplete_diagnostics(&canonical_test_path(&file)),
         12,
     );
 
     let json_output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
     let human_output = run_diagnostics(&home, &config_home, &workspace, &file, "human");
     let toon_output = run_diagnostics(&home, &config_home, &workspace, &file, "toon");
-    let methods = backend.join().expect("fake diagnostics backend");
+    let requests = backend.join().expect("fake diagnostics backend");
 
     assert_eq!(
-        methods,
-        [
-            "runtime/status",
-            "capabilities",
-            "raw/workspace-refresh",
-            "raw/diagnostics"
-        ]
-        .repeat(3),
+        request_methods(&requests),
+        expected_diagnostics_methods().repeat(3),
     );
     for (format, output, document) in [
         ("json", &json_output, decode_json(&json_output)),
@@ -91,17 +268,17 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
-        incomplete_refresh(&file),
-        complete_clean_diagnostics(&file),
+        incomplete_refresh(&canonical_test_path(&file)),
+        complete_clean_diagnostics(&canonical_test_path(&file)),
         3,
     );
 
     let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
-    let methods = backend.join().expect("fake diagnostics backend");
+    let requests = backend.join().expect("fake diagnostics backend");
     let document = decode_json(&output);
 
     assert_eq!(
-        methods,
+        request_methods(&requests),
         ["runtime/status", "capabilities", "raw/workspace-refresh"],
     );
     assert!(!output.status.success(), "{document:#}");
@@ -303,13 +480,13 @@ fn run_single_json_scenario(
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
-        complete_refresh(&file),
-        diagnostics(&file),
+        complete_refresh(&canonical_test_path(&file)),
+        diagnostics(&canonical_test_path(&file)),
         4,
     );
     let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
-    let methods = backend.join().expect("fake diagnostics backend");
-    (output, methods)
+    let requests = backend.join().expect("fake diagnostics backend");
+    (output, request_methods(&requests))
 }
 
 fn run_diagnostics(
@@ -319,20 +496,83 @@ fn run_diagnostics(
     file: &Path,
     output_format: &str,
 ) -> Output {
-    kast(home, config_home)
-        .args([
-            "--output",
-            output_format,
-            "agent",
-            "diagnostics",
-            "--backend=idea",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-            "--file-path",
-            file.to_str().expect("file path"),
-        ])
-        .output()
-        .expect("agent diagnostics")
+    run_diagnostics_arguments(
+        home,
+        config_home,
+        workspace,
+        &[file.to_str().expect("file path")],
+        output_format,
+    )
+}
+
+fn run_diagnostics_arguments(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    file_paths: &[&str],
+    output_format: &str,
+) -> Output {
+    let mut command = kast(home, config_home);
+    command.args([
+        "--output",
+        output_format,
+        "agent",
+        "diagnostics",
+        "--backend=idea",
+        "--workspace-root",
+        workspace.to_str().expect("workspace path"),
+    ]);
+    for file_path in file_paths {
+        command.args(["--file-path", file_path]);
+    }
+    command.output().expect("agent diagnostics")
+}
+
+fn assert_pre_dispatch_path_error(file_path: &str, expected_code: &str) {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let output = run_diagnostics_arguments(&home, &config_home, &workspace, &[file_path], "json");
+    let document = decode_json(&output);
+
+    assert!(!output.status.success(), "{document:#}");
+    assert_eq!(document["error"]["code"], expected_code, "{document:#}");
+}
+
+fn request_methods(requests: &[Value]) -> Vec<String> {
+    requests
+        .iter()
+        .map(|request| {
+            request["method"]
+                .as_str()
+                .expect("request method")
+                .to_string()
+        })
+        .collect()
+}
+
+fn canonical_test_path(path: &Path) -> PathBuf {
+    if path.exists() {
+        return path.canonicalize().expect("canonical test file");
+    }
+    path.parent()
+        .expect("test file parent")
+        .canonicalize()
+        .expect("canonical test file parent")
+        .join(path.file_name().expect("test file name"))
+}
+
+fn expected_diagnostics_methods() -> Vec<&'static str> {
+    [
+        "runtime/status",
+        "capabilities",
+        "raw/workspace-refresh",
+        "raw/diagnostics",
+    ]
+    .to_vec()
 }
 
 fn write_gradle_marker(workspace: &Path) {
@@ -435,14 +675,14 @@ fn spawn_fake_backend(
     refresh: Value,
     diagnostics: Value,
     expected_requests: usize,
-) -> std::thread::JoinHandle<Vec<String>> {
+) -> std::thread::JoinHandle<Vec<Value>> {
     listener
         .set_nonblocking(true)
         .expect("nonblocking listener");
     thread::spawn(move || {
-        let mut methods = Vec::with_capacity(expected_requests);
+        let mut requests = Vec::with_capacity(expected_requests);
         let deadline = Instant::now() + Duration::from_secs(10);
-        while methods.len() < expected_requests && Instant::now() < deadline {
+        while requests.len() < expected_requests && Instant::now() < deadline {
             let (mut stream, _) = match listener.accept() {
                 Ok(connection) => connection,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
@@ -465,7 +705,7 @@ fn spawn_fake_backend(
                 .as_str()
                 .expect("request method")
                 .to_string();
-            methods.push(method.clone());
+            requests.push(request.clone());
             let result = match method.as_str() {
                 "runtime/status" => json!({
                     "state": "READY",
@@ -502,35 +742,66 @@ fn spawn_fake_backend(
             .expect("write diagnostics response");
         }
         assert_eq!(
-            methods.len(),
+            requests.len(),
             expected_requests,
             "fake backend request timeout"
         );
-        methods
+        requests
     })
 }
 
 fn complete_refresh(file: &Path) -> Value {
+    complete_refresh_for(&[file.display().to_string()])
+}
+
+fn complete_refresh_for(file_paths: &[String]) -> Value {
     json!({
-        "refreshedFiles": [file.display().to_string()],
+        "refreshedFiles": file_paths,
         "removedFiles": [],
         "fullRefresh": false,
-        "fileStatuses": [{
-            "filePath": file.display().to_string(),
-            "fileSystemDiscovery": "DISCOVERED",
-            "sourceModuleOwnership": "OWNED",
-            "indexAdmission": "ADMITTED",
-            "analysisAvailability": "AVAILABLE",
-            "analysisStatus": {
-                "filePath": file.display().to_string(),
-                "state": "ANALYZED"
-            }
-        }],
+        "fileStatuses": file_paths
+            .iter()
+            .map(|file_path| json!({
+                "filePath": file_path,
+                "fileSystemDiscovery": "DISCOVERED",
+                "sourceModuleOwnership": "OWNED",
+                "indexAdmission": "ADMITTED",
+                "analysisAvailability": "AVAILABLE",
+                "analysisStatus": {
+                    "filePath": file_path,
+                    "state": "ANALYZED"
+                }
+            }))
+            .collect::<Vec<_>>(),
         "semanticOutcome": "COMPLETE",
-        "requestedFileCount": 1,
-        "analyzedFileCount": 1,
+        "requestedFileCount": file_paths.len(),
+        "analyzedFileCount": file_paths.len(),
         "skippedFileCount": 0,
         "removedFileCount": 0,
+        "attemptCount": 1,
+        "elapsedMillis": 0,
+        "schemaVersion": 3
+    })
+}
+
+fn complete_removed_refresh(file: &Path) -> Value {
+    let file_path = file.display().to_string();
+    json!({
+        "refreshedFiles": [],
+        "removedFiles": [file_path],
+        "fullRefresh": false,
+        "fileStatuses": [{
+            "filePath": file_path,
+            "fileSystemDiscovery": "REMOVED",
+            "sourceModuleOwnership": "NOT_APPLICABLE",
+            "indexAdmission": "NOT_APPLICABLE",
+            "analysisAvailability": "NOT_APPLICABLE"
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 0,
+        "analyzedFileCount": 0,
+        "skippedFileCount": 0,
+        "removedFileCount": 1,
         "attemptCount": 1,
         "elapsedMillis": 0,
         "schemaVersion": 3
@@ -607,15 +878,22 @@ fn complete_compiler_diagnostics(file: &Path) -> Value {
 }
 
 fn complete_clean_diagnostics(file: &Path) -> Value {
+    complete_clean_diagnostics_for(&[file.display().to_string()])
+}
+
+fn complete_clean_diagnostics_for(file_paths: &[String]) -> Value {
     json!({
         "diagnostics": [],
-        "fileStatuses": [{
-            "filePath": file.display().to_string(),
-            "state": "ANALYZED"
-        }],
+        "fileStatuses": file_paths
+            .iter()
+            .map(|file_path| json!({
+                "filePath": file_path,
+                "state": "ANALYZED"
+            }))
+            .collect::<Vec<_>>(),
         "semanticOutcome": "COMPLETE",
-        "requestedFileCount": 1,
-        "analyzedFileCount": 1,
+        "requestedFileCount": file_paths.len(),
+        "analyzedFileCount": file_paths.len(),
         "skippedFileCount": 0,
         "schemaVersion": 3
     })

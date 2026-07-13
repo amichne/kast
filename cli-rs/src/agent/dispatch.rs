@@ -134,22 +134,34 @@ fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {
+    let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
+        Ok(normalizer) => normalizer,
+        Err(error) => return error_envelope("agent/diagnostics".to_string(), None, error),
+    };
+    let file_paths = match normalizer.normalize_all(&args.file_paths) {
+        Ok(file_paths) => file_paths,
+        Err(error) => return error_envelope("agent/diagnostics".to_string(), None, error),
+    };
     let mut steps = Vec::new();
     if !args.skip_refresh {
         steps.push(AgentPublicStep::new(
             "workspace-refresh",
             "raw/workspace-refresh",
-            json!({ "filePaths": args.file_paths }),
+            json!({ "filePaths": &file_paths }),
             false,
         ));
     }
     steps.push(AgentPublicStep::new(
         "diagnostics",
         "raw/diagnostics",
-        json!({ "filePaths": args.file_paths }),
+        json!({ "filePaths": &file_paths }),
         false,
     ));
-    execute_agent_steps("agent/diagnostics", args.runtime, steps)
+    let mut envelope = execute_agent_steps("agent/diagnostics", args.runtime, steps);
+    if let Some(result) = envelope.result.as_mut().and_then(Value::as_object_mut) {
+        result.insert("filePaths".to_string(), json!(file_paths));
+    }
+    envelope
 }
 
 fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
@@ -198,8 +210,12 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
+    let file_path = match normalize_agent_file_target(&args.runtime, &args.file_path) {
+        Ok(file_path) => file_path,
+        Err(error) => return error_envelope("agent/add-file".to_string(), None, error),
+    };
     let params = json!({
-        "filePath": args.file_path,
+        "filePath": file_path,
         "contentFile": args.content_file.display().to_string(),
     });
     execute_agent_mutation(
@@ -220,9 +236,16 @@ fn execute_agent_scoped_mutation(
     command_name: &'static str,
     args: AgentScopedMutationArgs,
 ) -> AgentEnvelope {
+    let inside_file = match args.inside_file {
+        Some(inside_file) => match normalize_agent_file_target(&args.runtime, &inside_file) {
+            Ok(inside_file) => Some(inside_file),
+            Err(error) => return error_envelope(agent_method.to_string(), None, error),
+        },
+        None => None,
+    };
     let placement = match scoped_placement_params(
         args.inside_scope,
-        args.inside_file,
+        inside_file,
         args.at.map(|anchor| anchor.canonical().to_string()),
         args.after_symbol,
         args.before_symbol,

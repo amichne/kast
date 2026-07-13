@@ -142,6 +142,43 @@ fn packaged_workflow_reference_uses_current_runtime_surface() {
 }
 
 #[test]
+fn packaged_guidance_prefers_workspace_relative_kotlin_targets() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let sources = [
+        "resources/kast-skill/SKILL.md",
+        "resources/kast-skill/references/quickstart.md",
+        "resources/kast-skill/references/runbook.md",
+        "resources/kast-skill/references/workflows.md",
+    ];
+    let guidance = sources
+        .iter()
+        .map(|source| {
+            let path = root.join(source);
+            std::fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    for expected in [
+        "kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root \"$PWD\"",
+        "kast agent add-file --file-path src/main/kotlin/NewType.kt",
+        "kast agent add-declaration --inside-file src/main/kotlin/App.kt",
+    ] {
+        assert!(
+            guidance.contains(expected),
+            "packaged guidance should contain {expected}: {guidance}"
+        );
+    }
+    for obsolete in ["$PWD/src/main/kotlin/App.kt", "<absolute.kt>"] {
+        assert!(
+            !guidance.contains(obsolete),
+            "packaged guidance should not require {obsolete}: {guidance}"
+        );
+    }
+}
+
+#[test]
 fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let routing_eval_path =

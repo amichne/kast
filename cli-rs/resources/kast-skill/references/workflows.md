@@ -48,7 +48,7 @@ Use compiler identity and typed selectors instead of offsets:
 | fuzzy symbol discovery | `kast agent symbol --query event --mode discovery --workspace-root "$PWD"` |
 | references | `kast agent symbol --query EventBean --references --workspace-root "$PWD"` |
 | callers | `kast agent symbol --query process --callers incoming --workspace-root "$PWD"` |
-| diagnostics | `kast agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-root "$PWD"` |
+| diagnostics | `kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"` |
 | source-index impact | `kast agent impact --symbol com.example.EventBean --workspace-root "$PWD"` |
 | rename plan | `kast agent rename --symbol com.example.EventBean --new-name DomainEvent --workspace-root "$PWD"` |
 | rename apply | `kast agent rename --symbol com.example.EventBean --new-name DomainEvent --apply --workspace-root "$PWD"` |
