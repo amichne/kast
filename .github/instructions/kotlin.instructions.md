@@ -255,6 +255,51 @@ value, not a debug representation, for types used in user-facing or wire context
 
 ---
 
+## Principle 7: Isolate top-level production types by file
+
+Every non-private top-level production type owns a file with the same name.
+Apply this to classes, data classes, value classes, enum classes, annotation
+classes, sealed roots, interfaces, fun interfaces, and named object
+declarations.
+
+Keep declarations nested when the owner is semantically meaningful: direct
+sealed variants remain beneath their sealed root, companion objects remain
+with their class, and anonymous objects remain at their use site. A tightly
+coupled private implementation helper may remain with its owner when extracting
+it would falsely advertise a reusable package-level concept.
+
+Top-level functions, extension functions, and properties follow semantic
+ownership rather than a mechanical one-declaration rule. Tests may keep private
+fixtures and scenario helpers beside the test that owns them.
+
+```kotlin
+// GOOD — OrderId.kt
+@JvmInline
+value class OrderId private constructor(val value: String) {
+companion object {
+fun parse(raw: String): OrderId = OrderId(raw)
+}
+}
+
+// GOOD — PaymentMethod.kt; variants share the sealed root's closed world
+sealed interface PaymentMethod {
+data class Card(val last4: CardLast4) : PaymentMethod
+data object Cash : PaymentMethod
+}
+
+// BAD — PaymentTypes.kt groups independent package-level concepts
+@JvmInline value class OrderId(val value: String)
+@JvmInline value class CustomerId(val value: String)
+data class PaymentReceipt(val order: OrderId, val customer: CustomerId)
+```
+
+**Language-agnostic rule:** Give each independently addressable production
+type its own same-named source file. Keep closed variants or private helpers
+with the type that owns them; do not use topic-named files as containers for
+unrelated public or internal types.
+
+---
+
 ## Anti-patterns to reject
 
 | # | Anti-pattern | Fix |
@@ -265,6 +310,7 @@ value, not a debug representation, for types used in user-facing or wire context
 | 4 | **Flat sealed hierarchies** — 15 of 20 variants share a shape but no common sub-interface | Extract a sub-interface for the shared shape |
 | 5 | **Validation at use-site** — `if (x.isBlank()) throw ...` at the call site instead of in the constructor | Move the check into the type's `init`/factory |
 | 6 | **String-based dispatch** — `when (tag)` / `switch (kind)` where a sealed `when` would compile-check | Replace the tag with a sealed subtype |
+| 7 | **Topic-named type containers** — multiple independent top-level production types share one file | Move each type to its same-named file; keep only nested variants and private owned helpers together |
 
 ---
 
@@ -279,4 +325,5 @@ handling? → If not, dispatch is string-based; refactor.
 a constant or, better, a type.
 - [ ] Does any `when`/`switch` branch on a string that could branch on a type? → Refactor.
 - [ ] Are defaults defined in exactly one place? → Consolidate.
-- [ ] Does every wrapper type have an explicit `toString()`? → Add it.gg
+- [ ] Does every wrapper type have an explicit `toString()`? → Add it.
+- [ ] Does every non-private top-level production type own a same-named file? → Isolate it unless it is a nested variant or private owned helper.

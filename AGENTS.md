@@ -55,6 +55,15 @@ dependencies declared through `gradle/libs.versions.toml` where possible. Rust
 uses edition 2024; keep CLI modules small, typed, and covered by `cargo fmt`
 and `clippy`.
 
+Production Kotlin source uses one non-private top-level named type per file,
+with a filename matching the type. This includes classes, data and value
+classes, enums, sealed roots, interfaces, fun interfaces, and named objects.
+Keep direct sealed variants, companion objects, and tightly coupled private
+implementation helpers with their owner. Top-level functions and extensions
+follow semantic ownership; tests may keep private fixtures beside the scenario
+that owns them. Apply this rule to new or materially edited code without
+triggering unrelated repository-wide file migrations.
+
 ## Testing Guidelines
 
 Use JUnit Jupiter for Kotlin tests under `src/test/kotlin`. Add focused tests
