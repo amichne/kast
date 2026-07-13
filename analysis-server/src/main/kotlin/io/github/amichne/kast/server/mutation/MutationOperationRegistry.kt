@@ -16,83 +16,78 @@ import io.github.amichne.kast.api.protocol.ApiErrorResponse
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.NotFoundException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.io.Closeable
 
 internal class MutationOperationRegistry(
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val scope: CoroutineScope,
     private val operationIdFactory: () -> KastMutationOperationId = KastMutationOperationId::random,
-) {
+) : Closeable {
     private val lock = Any()
     private val operationsById = mutableMapOf<KastMutationOperationId, OperationEntry>()
     private val operationsByKey = mutableMapOf<KastMutationIdempotencyKey, OperationEntry>()
+    private var closed = false
 
     fun submit(
         mutation: KastSemanticMutation,
         fingerprint: MutationFingerprint,
         execute: suspend (MutationProgressReporter) -> ExecutionOutcome,
     ): KastMutationSubmissionReceipt {
-        val existing = synchronized(lock) { operationsByKey[mutation.idempotencyKey] }
-        if (existing != null) {
-            if (existing.fingerprint != fingerprint) {
-                throw ConflictException(
-                    message = "Mutation idempotency key is already bound to another request",
-                    details = mapOf(
-                        "idempotencyKey" to mutation.idempotencyKey.value,
-                        "operationId" to existing.operationId.value,
-                    ),
-                )
+        val submission = synchronized(lock) {
+            if (closed) {
+                throw ConflictException("Mutation operation registry is shutting down")
             }
-            return synchronized(lock) {
-                KastMutationSubmissionReceipt(operation = existing.snapshot(), deduplicated = true)
-            }
-        }
-
-        val entry = synchronized(lock) {
-            operationsByKey[mutation.idempotencyKey]?.let { raced ->
-                if (raced.fingerprint != fingerprint) {
+            operationsByKey[mutation.idempotencyKey]?.let { existing ->
+                if (existing.fingerprint != fingerprint) {
                     throw ConflictException(
                         message = "Mutation idempotency key is already bound to another request",
                         details = mapOf(
                             "idempotencyKey" to mutation.idempotencyKey.value,
-                            "operationId" to raced.operationId.value,
+                            "operationId" to existing.operationId.value,
                         ),
                     )
                 }
-                return KastMutationSubmissionReceipt(operation = raced.snapshot(), deduplicated = true)
+                return@synchronized Submission.Existing(
+                    KastMutationSubmissionReceipt(operation = existing.snapshot(), deduplicated = true),
+                )
             }
-            OperationEntry(
+
+            lateinit var entry: OperationEntry
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                runOperation(entry, execute)
+            }
+            entry = OperationEntry(
                 operationId = uniqueOperationId(),
                 mutation = mutation,
                 fingerprint = fingerprint,
-            ).also { created ->
-                operationsById[created.operationId] = created
-                operationsByKey[mutation.idempotencyKey] = created
-            }
-        }
-
-        val queuedReceipt = synchronized(lock) {
-            KastMutationSubmissionReceipt(operation = entry.snapshot(), deduplicated = false)
-        }
-        val job = scope.launch {
-            runOperation(entry, execute)
-        }
-        synchronized(lock) {
-            entry.job = job
-        }
-        job.invokeOnCompletion { cause ->
-            if (cause is CancellationException) {
-                synchronized(lock) {
-                    entry.transitionToCancelledAfterStop()
+                job = job,
+            )
+            job.invokeOnCompletion { cause ->
+                if (cause is CancellationException) {
+                    synchronized(lock) {
+                        entry.transitionToCancelledAfterStop()
+                    }
                 }
             }
+            operationsById[entry.operationId] = entry
+            operationsByKey[mutation.idempotencyKey] = entry
+            Submission.New(
+                receipt = KastMutationSubmissionReceipt(operation = entry.snapshot(), deduplicated = false),
+                job = job,
+            )
         }
-        return queuedReceipt
+
+        if (submission is Submission.New) {
+            submission.job.start()
+        }
+        return submission.receipt
     }
 
     fun status(selector: KastMutationOperationSelector): KastMutationOperationSnapshot =
@@ -106,8 +101,29 @@ internal class MutationOperationRegistry(
             }
             entry.snapshot() to entry.job
         }
-        job?.cancel(CancellationException("Semantic mutation cancellation requested"))
+        job.cancel(CancellationException("Semantic mutation cancellation requested"))
         return snapshot
+    }
+
+    override fun close() {
+        val jobs = synchronized(lock) {
+            if (closed) {
+                return
+            }
+            closed = true
+            operationsById.values
+                .filterNot { it.state.isTerminal() }
+                .onEach { entry ->
+                    entry.state = entry.state.withCancellationRequested()
+                }
+                .map(OperationEntry::job)
+        }
+        jobs.forEach { job ->
+            job.cancel(CancellationException("Semantic mutation server is shutting down"))
+        }
+        runBlocking {
+            jobs.joinAll()
+        }
     }
 
     private suspend fun runOperation(
@@ -190,12 +206,25 @@ internal class MutationOperationRegistry(
         ) : ExecutionOutcome
     }
 
+    private sealed interface Submission {
+        val receipt: KastMutationSubmissionReceipt
+
+        data class Existing(
+            override val receipt: KastMutationSubmissionReceipt,
+        ) : Submission
+
+        data class New(
+            override val receipt: KastMutationSubmissionReceipt,
+            val job: Job,
+        ) : Submission
+    }
+
     private class OperationEntry(
         val operationId: KastMutationOperationId,
         val mutation: KastSemanticMutation,
         val fingerprint: MutationFingerprint,
         var state: KastMutationOperationState = KastMutationOperationState.Queued(),
-        var job: Job? = null,
+        val job: Job,
     ) {
         fun snapshot(): KastMutationOperationSnapshot = KastMutationOperationSnapshot(
             operationId = operationId,

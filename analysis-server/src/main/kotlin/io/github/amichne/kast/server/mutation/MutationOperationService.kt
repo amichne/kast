@@ -11,19 +11,28 @@ import io.github.amichne.kast.api.contract.skill.KastRenameSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.server.SkillRpcOrchestrator
+import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import java.io.Closeable
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
 internal class MutationOperationService(
     private val skillRpc: SkillRpcOrchestrator,
     private val json: Json,
-    private val registry: MutationOperationRegistry = MutationOperationRegistry(),
-) {
+) : Closeable {
+    private val operationJob: CompletableJob = SupervisorJob()
+    private val registry = MutationOperationRegistry(
+        CoroutineScope(operationJob + Dispatchers.Default),
+    )
+
     fun submit(mutation: KastSemanticMutation): KastMutationSubmissionReceipt = registry.submit(
         mutation = mutation,
         fingerprint = mutation.fingerprint(),
@@ -41,6 +50,11 @@ internal class MutationOperationService(
     fun status(selector: KastMutationOperationSelector): KastMutationOperationSnapshot = registry.status(selector)
 
     fun cancel(selector: KastMutationOperationSelector): KastMutationOperationSnapshot = registry.cancel(selector)
+
+    override fun close() {
+        registry.close()
+        operationJob.cancel()
+    }
 
     private fun KastSemanticMutation.fingerprint(): MutationFingerprint {
         val request = when (this) {
@@ -70,7 +84,11 @@ private fun JsonElement.canonical(): JsonElement = when (this) {
 }
 
 private fun KastRenameSuccessResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
-    MutationOperationRegistry.ExecutionOutcome.Succeeded(KastSemanticMutationResult.Rename(this))
+    if (ok) {
+        MutationOperationRegistry.ExecutionOutcome.Succeeded(KastSemanticMutationResult.Rename(this))
+    } else {
+        MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.AppliedInvalidRename(this))
+    }
 
 private fun KastRenameFailureResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
     MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.Rename(this))
@@ -83,8 +101,11 @@ private fun io.github.amichne.kast.api.contract.skill.KastRenameResponse.toOutco
 
 private fun io.github.amichne.kast.api.contract.skill.KastScopeMutationResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
     when (this) {
-        is KastScopeMutationSuccessResponse ->
+        is KastScopeMutationSuccessResponse -> if (ok) {
             MutationOperationRegistry.ExecutionOutcome.Succeeded(KastSemanticMutationResult.Scope(this))
+        } else {
+            MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.AppliedInvalidScope(this))
+        }
 
         is KastScopeMutationFailureResponse ->
             MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.Scope(this))

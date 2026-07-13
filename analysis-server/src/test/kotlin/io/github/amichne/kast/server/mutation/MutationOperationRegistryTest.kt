@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.api.protocol.ConflictException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,7 +27,11 @@ import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
+import kotlin.coroutines.CoroutineContext
 
 class MutationOperationRegistryTest {
     private val firstOperationId = KastMutationOperationId("00000000-0000-0000-0000-000000000001")
@@ -99,7 +104,7 @@ class MutationOperationRegistryTest {
         val terminal = awaitTerminal(registry, selector)
         val cancelled = terminal.state as KastMutationOperationState.Cancelled
         assertEquals(KastMutationEditApplicationState.NOT_STARTED, cancelled.trace.editApplicationState)
-        assertTrue(cancelled.trace.safeForFilesystemFallback)
+        assertTrue(terminal.safeForFilesystemFallback)
         assertEquals(terminal, registry.cancel(selector))
         assertEquals(terminal, registry.status(selector))
     }
@@ -123,8 +128,83 @@ class MutationOperationRegistryTest {
         val terminal = awaitTerminal(registry, selector)
         val cancelled = terminal.state as KastMutationOperationState.Cancelled
         assertEquals(KastMutationEditApplicationState.COMPLETED, cancelled.trace.editApplicationState)
-        assertFalse(cancelled.trace.safeForFilesystemFallback)
+        assertFalse(terminal.safeForFilesystemFallback)
         assertNotEquals(KastMutationOperationState.Queued(), cancelled)
+    }
+
+    @Test
+    fun `same-key cancellation cannot race worker attachment and start execution`() = runBlocking {
+        val blockingDispatcher = BlockingLaunchDispatcher()
+        val executionCount = AtomicInteger()
+        val submission = CompletableDeferred<Unit>()
+        val registry = MutationOperationRegistry(
+            scope = CoroutineScope(SupervisorJob() + blockingDispatcher),
+            operationIdFactory = { firstOperationId },
+        )
+        val mutation = addFileMutation("issue-333-attachment-race", "/workspace/Race.kt")
+        val fingerprint = MutationFingerprint("attachment-race")
+        val submitter = thread(name = "mutation-submit-race") {
+            registry.submit(mutation, fingerprint) {
+                executionCount.incrementAndGet()
+                MutationOperationRegistry.ExecutionOutcome.Succeeded(scopeSuccess())
+            }
+            submission.complete(Unit)
+        }
+        assertTrue(blockingDispatcher.awaitDispatch(), "worker launch never reached dispatcher")
+
+        val retry = registry.submit(mutation, fingerprint) {
+            error("same-key retry must not install another worker")
+        }
+        val cancelled = registry.cancel(
+            KastMutationOperationSelector.ByOperationId(retry.operation.operationId),
+        )
+        blockingDispatcher.release()
+        submission.await()
+        submitter.join()
+
+        val terminal = awaitTerminal(
+            registry,
+            KastMutationOperationSelector.ByOperationId(firstOperationId),
+        )
+        assertTrue(cancelled.state.cancellationRequested)
+        assertTrue(terminal.state is KastMutationOperationState.Cancelled)
+        assertEquals(0, executionCount.get())
+    }
+
+    @Test
+    fun `close cancels and joins workers while retaining truthful terminal trace`() = runBlocking {
+        val editStarted = CompletableDeferred<Unit>()
+        val workerStopped = CompletableDeferred<Unit>()
+        val registry = registry()
+        val receipt = registry.submit(
+            addFileMutation("issue-333-close", "/workspace/Close.kt"),
+            MutationFingerprint("close"),
+        ) { reporter ->
+            reporter.report(MutationProgressEvent.StageEntered(KastMutationProgressStage.EDIT_APPLICATION))
+            editStarted.complete(Unit)
+            try {
+                awaitCancellation()
+            } finally {
+                workerStopped.complete(Unit)
+            }
+        }
+        editStarted.await()
+
+        registry.close()
+
+        assertTrue(workerStopped.isCompleted)
+        val terminal = registry.status(
+            KastMutationOperationSelector.ByOperationId(receipt.operation.operationId),
+        )
+        val cancelled = terminal.state as KastMutationOperationState.Cancelled
+        assertEquals(KastMutationEditApplicationState.STARTED, cancelled.trace.editApplicationState)
+        assertTrue(cancelled.cancellationRequested)
+        assertThrows<ConflictException> {
+            registry.submit(
+                addFileMutation("issue-333-after-close", "/workspace/AfterClose.kt"),
+                MutationFingerprint("after-close"),
+            ) { MutationOperationRegistry.ExecutionOutcome.Succeeded(scopeSuccess()) }
+        }
     }
 
     private fun registry(): MutationOperationRegistry = MutationOperationRegistry(
@@ -169,4 +249,21 @@ class MutationOperationRegistryTest {
             delay(5)
         }
     }.single()
+}
+
+private class BlockingLaunchDispatcher : CoroutineDispatcher() {
+    private val dispatchEntered = CountDownLatch(1)
+    private val dispatchRelease = CountDownLatch(1)
+
+    override fun dispatch(context: CoroutineContext, block: Runnable) {
+        dispatchEntered.countDown()
+        check(dispatchRelease.await(5, TimeUnit.SECONDS)) { "Timed out waiting to release worker dispatch" }
+        Dispatchers.Default.dispatch(context, block)
+    }
+
+    fun awaitDispatch(): Boolean = dispatchEntered.await(5, TimeUnit.SECONDS)
+
+    fun release() {
+        dispatchRelease.countDown()
+    }
 }

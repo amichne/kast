@@ -123,19 +123,7 @@ class KastMutationContractTest {
             ),
             editApplicationState = KastMutationEditApplicationState.COMPLETED,
         )
-        val success = KastSemanticMutationResult.Scope(
-            KastScopeMutationSuccessResponse(
-                ok = true,
-                operation = KastScopeMutationOperation.ADD_FILE,
-                applied = true,
-                affectedFiles = listOf("/workspace/Added.kt"),
-                createdFiles = listOf("/workspace/Added.kt"),
-                editCount = 1,
-                importChanges = 0,
-                diagnostics = KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0),
-                logFile = "",
-            ),
-        )
+        val success = scopeSuccess()
         val completed = KastMutationOperationState.Completed(
             result = success,
             trace = trace,
@@ -162,6 +150,90 @@ class KastMutationContractTest {
         assertEquals(success, completed.result)
         assertEquals(KastMutationEditApplicationState.COMPLETED, failed.trace.editApplicationState)
         assertTrue(cancelled.cancellationRequested)
-        assertFalse(cancelled.trace.safeForFilesystemFallback)
     }
+
+    @Test
+    fun `filesystem fallback requires terminal no-write failure or cancellation`() {
+        val operationId = KastMutationOperationId(UUID.randomUUID().toString())
+        val key = KastMutationIdempotencyKey("issue-333-fallback")
+        val noWriteTrace = KastMutationExecutionTrace()
+        val identityTrace = noWriteTrace.entering(KastMutationProgressStage.IDENTITY_RESOLUTION)
+        val completedTrace = KastMutationExecutionTrace()
+            .entering(KastMutationProgressStage.EDIT_APPLICATION)
+            .editApplicationCompleted()
+        val thrown = KastMutationFailure.Thrown(
+            ApiErrorResponse(
+                requestId = operationId.value,
+                code = "TEST_FAILURE",
+                message = "failed",
+                retryable = false,
+            ),
+        )
+        fun snapshot(state: KastMutationOperationState) = KastMutationOperationSnapshot(
+            operationId = operationId,
+            idempotencyKey = key,
+            mutationKind = KastSemanticMutationKind.ADD_FILE,
+            state = state,
+        )
+
+        assertFalse(snapshot(KastMutationOperationState.Queued()).safeForFilesystemFallback)
+        assertFalse(
+            snapshot(
+                KastMutationOperationState.Applying(
+                    stage = KastMutationProgressStage.IDENTITY_RESOLUTION,
+                    trace = identityTrace,
+                    cancellationRequested = false,
+                ),
+            ).safeForFilesystemFallback,
+        )
+        assertFalse(
+            snapshot(
+                KastMutationOperationState.Completed(
+                    result = scopeSuccess(),
+                    trace = completedTrace,
+                    cancellationRequested = false,
+                ),
+            ).safeForFilesystemFallback,
+        )
+        assertTrue(
+            snapshot(
+                KastMutationOperationState.Failed(
+                    failure = thrown,
+                    trace = noWriteTrace,
+                    cancellationRequested = false,
+                ),
+            ).safeForFilesystemFallback,
+        )
+        assertTrue(
+            snapshot(
+                KastMutationOperationState.Cancelled(
+                    message = "Stopped before edit application.",
+                    trace = noWriteTrace,
+                ),
+            ).safeForFilesystemFallback,
+        )
+        assertFalse(
+            snapshot(
+                KastMutationOperationState.Failed(
+                    failure = thrown,
+                    trace = completedTrace,
+                    cancellationRequested = false,
+                ),
+            ).safeForFilesystemFallback,
+        )
+    }
+
+    private fun scopeSuccess(): KastSemanticMutationResult.Scope = KastSemanticMutationResult.Scope(
+            KastScopeMutationSuccessResponse(
+                ok = true,
+                operation = KastScopeMutationOperation.ADD_FILE,
+                applied = true,
+                affectedFiles = listOf("/workspace/Added.kt"),
+                createdFiles = listOf("/workspace/Added.kt"),
+                editCount = 1,
+                importChanges = 0,
+                diagnostics = KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0),
+                logFile = "",
+            ),
+        )
 }

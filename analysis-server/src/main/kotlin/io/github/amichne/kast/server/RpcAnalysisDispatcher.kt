@@ -74,6 +74,7 @@ import io.github.amichne.kast.server.mutation.MutationOperationService
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
+import java.io.Closeable
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CancellationException
 
@@ -86,7 +87,7 @@ class RpcAnalysisDispatcher(
         explicitNulls = false
         prettyPrint = false
     },
-) {
+) : Closeable {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
     private val mutationRpc = MutationOperationService(skillRpc, json)
     private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
@@ -449,6 +450,10 @@ class RpcAnalysisDispatcher(
         }
     }
 
+    override fun close() {
+        mutationRpc.close()
+    }
+
     private suspend fun requestLifecycle(action: RuntimeLifecycleAction): RuntimeLifecycleResponse {
         val afterResponseAction = lifecycleController.afterResponseAction(action)
             ?: throw CapabilityNotSupportedException(
@@ -497,14 +502,6 @@ class RpcAnalysisDispatcher(
         serializer: KSerializer<T>,
         value: T,
     ): JsonElement = json.encodeToJsonElement(serializer, value)
-}
-
-fun interface RuntimeLifecycleController {
-    fun afterResponseAction(action: RuntimeLifecycleAction): (() -> Unit)?
-
-    object Unavailable : RuntimeLifecycleController {
-        override fun afterResponseAction(action: RuntimeLifecycleAction): (() -> Unit)? = null
-    }
 }
 
 private class UnknownRpcMethodException(

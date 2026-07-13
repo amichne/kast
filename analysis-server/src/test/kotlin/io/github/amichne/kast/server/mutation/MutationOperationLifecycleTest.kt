@@ -1,6 +1,10 @@
 package io.github.amichne.kast.server.mutation
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.Diagnostic
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.mutation.KastMutationFailure
 import io.github.amichne.kast.api.contract.mutation.KastMutationEditApplicationState
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
@@ -11,15 +15,18 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceip
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.contract.skill.KastAtPlacementAnchor
 import io.github.amichne.kast.api.contract.skill.KastFilePlacementScope
 import io.github.amichne.kast.api.contract.skill.KastPlacementAnchor
 import io.github.amichne.kast.api.contract.skill.KastPlacementSelector
+import io.github.amichne.kast.api.contract.skill.KastRenameBySymbolRequest
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
+import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RpcAnalysisDispatcher
 import io.github.amichne.kast.testing.FakeAnalysisBackend
@@ -161,8 +168,66 @@ class MutationOperationLifecycleTest {
         assertTrue(acknowledged.state.cancellationRequested)
         val cancelled = terminal.state as KastMutationOperationState.Cancelled
         assertEquals(KastMutationEditApplicationState.STARTED, cancelled.trace.editApplicationState)
-        assertFalse(cancelled.trace.safeForFilesystemFallback)
+        assertFalse(terminal.safeForFilesystemFallback)
         assertFalse(Files.exists(target))
+    }
+
+    @Test
+    fun `applied scope response with invalid diagnostics is a typed failed operation`() = runBlocking {
+        val backend = InvalidDiagnosticsBackend(FakeAnalysisBackend.sample(tempDir))
+        val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
+        val contentFile = tempDir.resolve("invalid-scope-content.kt")
+        val target = tempDir.resolve("src/InvalidScope.kt")
+        Files.writeString(contentFile, "package sample\n\nclass InvalidScope\n")
+        val mutation = KastSemanticMutation.AddFile(
+            idempotencyKey = KastMutationIdempotencyKey("issue-333-invalid-scope"),
+            request = KastAddFileRequest(
+                workspaceRoot = tempDir.toString(),
+                filePath = target.toString(),
+                contentFile = contentFile.toString(),
+            ),
+        )
+
+        val receipt = submit(dispatcher, mutation)
+        val terminal = awaitTerminal(
+            dispatcher,
+            KastMutationOperationSelector.ByOperationId(receipt.operation.operationId),
+        )
+
+        val failed = terminal.state as KastMutationOperationState.Failed
+        val invalid = failed.failure as KastMutationFailure.AppliedInvalidScope
+        assertFalse(invalid.response.ok)
+        assertTrue(invalid.response.applied)
+        assertEquals(KastMutationEditApplicationState.COMPLETED, failed.trace.editApplicationState)
+        assertTrue(Files.exists(target))
+    }
+
+    @Test
+    fun `applied rename response with invalid diagnostics is a typed failed operation`() = runBlocking {
+        val backend = InvalidDiagnosticsBackend(FakeAnalysisBackend.sample(tempDir))
+        val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
+        val target = tempDir.resolve("src/Sample.kt")
+        val mutation = KastSemanticMutation.Rename(
+            idempotencyKey = KastMutationIdempotencyKey("issue-333-invalid-rename"),
+            request = KastRenameBySymbolRequest(
+                workspaceRoot = tempDir.toString(),
+                symbol = "greet",
+                fileHint = target.toString(),
+                newName = "hello",
+            ),
+        )
+
+        val receipt = submit(dispatcher, mutation)
+        val terminal = awaitTerminal(
+            dispatcher,
+            KastMutationOperationSelector.ByOperationId(receipt.operation.operationId),
+        )
+
+        val failed = terminal.state as KastMutationOperationState.Failed
+        val invalid = failed.failure as KastMutationFailure.AppliedInvalidRename
+        assertFalse(invalid.response.ok)
+        assertEquals(KastMutationEditApplicationState.COMPLETED, failed.trace.editApplicationState)
+        assertTrue(target.readText().contains("fun hello()"))
     }
 
     private suspend fun submit(
@@ -239,5 +304,29 @@ private class CancellableApplyBackend(
     override suspend fun applyEdits(query: ParsedApplyEditsQuery) = run {
         applyStarted.complete(Unit)
         awaitCancellation()
+    }
+}
+
+private class InvalidDiagnosticsBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
+        val filePath = query.filePaths.value.first().value
+        return DiagnosticsResult(
+            diagnostics = listOf(
+                Diagnostic(
+                    location = Location(
+                        filePath = filePath,
+                        startOffset = 0,
+                        endOffset = 1,
+                        startLine = 1,
+                        startColumn = 1,
+                        preview = "invalid",
+                    ),
+                    severity = DiagnosticSeverity.ERROR,
+                    message = "Synthetic invalid mutation diagnostic",
+                ),
+            ),
+        )
     }
 }

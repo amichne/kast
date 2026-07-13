@@ -21,9 +21,6 @@ data class KastMutationExecutionTrace(
     val currentStage: KastMutationProgressStage?
         get() = enteredStages.lastOrNull()
 
-    val safeForFilesystemFallback: Boolean
-        get() = editApplicationState == KastMutationEditApplicationState.NOT_STARTED
-
     fun entering(stage: KastMutationProgressStage): KastMutationExecutionTrace {
         val previousStage = currentStage
         require(stage !in enteredStages) { "Mutation progress stage $stage was already entered" }
