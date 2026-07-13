@@ -86,6 +86,18 @@ semantic tooling for compiler-backed evidence. Generated package, protocol,
 catalog, and site outputs come from their source owners and contract scripts;
 edit the source tree and regenerate.
 
+## Sub-Agent Delegation
+
+Agents may delegate concrete, bounded tasks to sub-agents when doing so is
+useful. Delegation is encouraged for independent investigation,
+implementation, testing, or review work that can proceed safely in parallel,
+but it is never mandatory.
+
+The primary agent remains responsible for scope, coordination, integration,
+reviewing delegated results, and final verification. Account for the shared
+workspace: do not delegate parallel work that would edit the same files,
+depend on unfinished shared state, or otherwise be tightly coupled.
+
 <kast>
 ## Kast routing
 Use `/Users/amichne/code/kast/.agents/skills/kast/SKILL.md` before Kotlin or Gradle semantic work.
