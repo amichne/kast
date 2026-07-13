@@ -148,6 +148,108 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
     }
 }
 
+pub(crate) fn spawn_scripted_idea_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    let descriptor_dir = default_descriptor_dir(home);
+    std::fs::create_dir_all(home).expect("home");
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::create_dir_all(config_home).expect("config home");
+    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    write_macos_plugin_workspace_metadata(workspace);
+    std::fs::write(
+        config_home.join("config.toml"),
+        "[runtime]\ndefaultBackend = \"idea\"\n",
+    )
+    .expect("config");
+    std::fs::write(
+        descriptor_dir.join("daemons.json"),
+        serde_json::to_vec_pretty(&serde_json::json!([{
+            "workspaceRoot": workspace.display().to_string(),
+            "backendName": "idea",
+            "backendVersion": "scripted-test",
+            "transport": "uds",
+            "socketPath": socket_path.display().to_string(),
+            "pid": std::process::id(),
+            "schemaVersion": 3
+        }]))
+        .expect("descriptor json"),
+    )
+    .expect("descriptor");
+
+    let listener = UnixListener::bind(socket_path).expect("bind scripted backend");
+    listener
+        .set_nonblocking(true)
+        .expect("nonblocking scripted backend");
+    let server_workspace = workspace.to_path_buf();
+    thread::spawn(move || {
+        let mut requests = Vec::new();
+        let mut scripted_results = scripted_results.into_iter();
+        let expected_requests = 2 + scripted_results.len();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        while requests.len() < expected_requests && std::time::Instant::now() < deadline {
+            let (mut stream, _) = match listener.accept() {
+                Ok(connection) => connection,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(std::time::Duration::from_millis(10));
+                    continue;
+                }
+                Err(error) => panic!("accept scripted backend client: {error}"),
+            };
+            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
+            let mut request_line = String::new();
+            reader.read_line(&mut request_line).expect("read request");
+            let request: serde_json::Value =
+                serde_json::from_str(&request_line).expect("request json");
+            let method = request["method"].as_str().expect("method");
+            let result = match method {
+                "runtime/status" => serde_json::json!({
+                    "state": "READY",
+                    "healthy": true,
+                    "active": true,
+                    "indexing": false,
+                    "backendName": "idea",
+                    "backendVersion": "scripted-test",
+                    "workspaceRoot": server_workspace.display().to_string(),
+                    "schemaVersion": 3
+                }),
+                "capabilities" => serde_json::json!({
+                    "backendName": "idea",
+                    "backendVersion": "scripted-test",
+                    "workspaceRoot": server_workspace.display().to_string(),
+                    "readCapabilities": ["symbol/resolve", "symbol/references", "symbol/callers"],
+                    "mutationCapabilities": [],
+                    "limits": {
+                        "requestTimeoutMillis": 60000,
+                        "maxResults": 1000,
+                        "maxConcurrentRequests": 4
+                    },
+                    "schemaVersion": 3
+                }),
+                _ => {
+                    let (expected_method, result) = scripted_results
+                        .next()
+                        .unwrap_or_else(|| panic!("unexpected scripted method: {method}"));
+                    assert_eq!(method, expected_method, "scripted method order");
+                    result
+                }
+            };
+            requests.push(request);
+            writeln!(
+                stream,
+                "{}",
+                serde_json::json!({"jsonrpc":"2.0","id":1,"result":result})
+            )
+            .expect("write scripted response");
+        }
+        requests
+    })
+}
+
 #[cfg(target_os = "macos")]
 fn default_socket_path_for_test(workspace: &Path) -> PathBuf {
     use sha2::{Digest, Sha256};

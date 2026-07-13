@@ -393,6 +393,48 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
     }
 }
 
+pub(crate) fn seed_exact_lookup_symbols(workspace: &std::path::Path) {
+    let db_path = workspace.join(".gradle/kast/cache/source-index.db");
+    let conn = Connection::open(db_path).expect("sqlite");
+    for (id, fq_name, filename, kind) in [
+        (20, "sample.when", "Keywords.kt", "FUNCTION"),
+        (21, "alpha.Parser", "AlphaParser.kt", "CLASS"),
+        (22, "beta.Parser", "BetaParser.kt", "CLASS"),
+        (
+            23,
+            "sample.MissingOrderServiceLegacy",
+            "MissingOrderServiceLegacy.kt",
+            "CLASS",
+        ),
+    ] {
+        std::fs::write(
+            workspace.join("lib").join(filename),
+            format!("// {fq_name}\n"),
+        )
+        .expect("exact lookup source");
+        conn.execute(
+            "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
+            params![id, fq_name],
+        )
+        .expect("exact lookup fq name");
+        conn.execute(
+            "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (2, ?, ':lib', 'main')",
+            params![filename],
+        )
+        .expect("exact lookup file metadata");
+        conn.execute(
+            "INSERT INTO file_manifest(prefix_id, filename, last_modified_millis) VALUES (2, ?, 1)",
+            params![filename],
+        )
+        .expect("exact lookup file manifest");
+        conn.execute(
+            "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, ?, 'PUBLIC', 2, ?, 1, ':lib', 'main')",
+            params![id, kind, filename],
+        )
+        .expect("exact lookup declaration");
+    }
+}
+
 pub(crate) fn source_index_schema_version() -> i64 {
     env!("KAST_SOURCE_INDEX_SCHEMA_VERSION")
         .parse()

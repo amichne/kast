@@ -6,7 +6,7 @@ use crate::cli::{
     AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentImpactArgs, AgentMutationApplyArgs,
     AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
     AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
-    AgentStatementMutationArgs, AgentSymbolArgs, AgentVerifyArgs,
+    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolMode, AgentVerifyArgs,
 };
 use crate::error::{CliError, Result};
 use crate::{output, runtime, validate};
@@ -21,6 +21,7 @@ include!("agent/request.rs");
 include!("agent/envelope.rs");
 include!("agent/input.rs");
 include!("agent/response.rs");
+include!("agent/symbol_lookup.rs");
 
 #[cfg(test)]
 mod semantic_analysis_evidence_tests {

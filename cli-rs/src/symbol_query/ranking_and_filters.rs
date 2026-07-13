@@ -91,15 +91,18 @@ fn exact_matches(
     anchor: &SymbolQueryAnchor,
 ) -> Vec<SignalMatch> {
     let trimmed = query.trim();
+    let normalized_query = normalized_kotlin_identity(trimmed);
+    let normalized_fq_name = normalized_kotlin_identity(&declaration.fq_name);
+    let normalized_simple_name = normalized_kotlin_identity(&declaration.simple_name);
     let mut matches = Vec::new();
-    if !trimmed.is_empty() && declaration.fq_name == trimmed {
+    if !trimmed.is_empty() && normalized_fq_name == normalized_query {
         matches.push(SignalMatch {
             field: "fq_names.fq_name",
             match_type: "EQUALS",
             evidence: Some(declaration.fq_name.clone()),
         });
     }
-    if !trimmed.is_empty() && declaration.simple_name == trimmed {
+    if !trimmed.is_empty() && normalized_simple_name == normalized_query {
         matches.push(SignalMatch {
             field: "fq_names.fq_name",
             match_type: "SIMPLE_NAME_EQUALS",
@@ -114,6 +117,19 @@ fn exact_matches(
         });
     }
     matches
+}
+
+fn normalized_kotlin_identity(value: &str) -> String {
+    value
+        .split('.')
+        .map(|segment| {
+            segment
+                .strip_prefix('`')
+                .and_then(|segment| segment.strip_suffix('`'))
+                .unwrap_or(segment)
+        })
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 fn anchor_matches(anchor: &SymbolQueryAnchor, declaration: &DeclarationRow) -> bool {

@@ -94,6 +94,9 @@ pub struct AgentSymbolArgs {
     /// Symbol query text. Use this for lookup; mutating commands use --symbol <fq-name>.
     #[arg(long)]
     pub query: String,
+    /// Exact identity lookup by default; use discovery for fuzzy candidates.
+    #[arg(long, value_enum, default_value_t)]
+    pub mode: AgentSymbolMode,
     #[arg(long, value_enum)]
     pub kind: Option<AgentSymbolKind>,
     #[arg(long)]
@@ -108,6 +111,14 @@ pub struct AgentSymbolArgs {
     pub caller_depth: u32,
     #[arg(long, default_value_t = 10)]
     pub limit: u32,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentSymbolMode {
+    #[default]
+    Exact,
+    Discovery,
 }
 
 #[derive(Debug, Args, Clone)]
