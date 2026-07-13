@@ -15,11 +15,11 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 include!("runtime/types.rs");
+include!("runtime/workspace_admission.rs");
 include!("runtime/workspace.rs");
 include!("runtime/lifecycle.rs");
 include!("runtime/rpc.rs");
 include!("runtime/inspect.rs");
-include!("runtime/workspace_identity.rs");
 include!("runtime/backend_selection.rs");
 include!("runtime/descriptors.rs");
 include!("runtime/idea_launch.rs");

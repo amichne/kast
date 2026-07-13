@@ -69,7 +69,11 @@ fn inspect_descriptor(
         socket_path,
         "runtime/status",
         Value::Object(Default::default()),
-    );
+    )
+    .and_then(|status| {
+        validate_runtime_status_identity(&registered.descriptor, &status)?;
+        Ok(status)
+    });
     let (runtime_status, error_message) = match status_result {
         Ok(status) => (Some(status), None),
         Err(error) => (None, Some(error.message)),
@@ -96,6 +100,27 @@ fn inspect_descriptor(
         error_message,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn validate_runtime_status_identity(
+    descriptor: &ServerInstanceDescriptor,
+    status: &RuntimeStatusResponse,
+) -> Result<()> {
+    let descriptor_root = config::normalize(PathBuf::from(&descriptor.workspace_root));
+    let status_root = config::normalize(PathBuf::from(&status.workspace_root));
+    if descriptor_root != status_root || descriptor.backend_name != status.backend_name {
+        return Err(CliError::new(
+            "RUNTIME_IDENTITY_MISMATCH",
+            format!(
+                "Runtime status identity {}:{} does not match descriptor identity {}:{}",
+                status_root.display(),
+                status.backend_name,
+                descriptor_root.display(),
+                descriptor.backend_name,
+            ),
+        ));
+    }
+    Ok(())
 }
 
 fn wait_for_servable(
@@ -207,15 +232,12 @@ fn find_compatible_descriptors(
 ) -> Result<Vec<RegisteredDescriptor>> {
     let descriptors = read_descriptors(descriptor_directory)?;
     let normalized = config::normalize(workspace_root.to_path_buf());
-    let workspace_identity = workspace_git_identity(&normalized);
     Ok(descriptors
         .into_iter()
         .filter(|descriptor| {
             backend_name.is_none_or(|backend| descriptor.backend_name == backend.canonical())
         })
-        .filter(|descriptor| {
-            descriptor_matches_workspace(descriptor, &normalized, workspace_identity.as_ref())
-        })
+        .filter(|descriptor| descriptor_matches_workspace(descriptor, &normalized))
         .map(|descriptor| RegisteredDescriptor {
             id: descriptor_id(&descriptor),
             descriptor,
@@ -226,20 +248,7 @@ fn find_compatible_descriptors(
 fn descriptor_matches_workspace(
     descriptor: &ServerInstanceDescriptor,
     workspace_root: &Path,
-    workspace_identity: Option<&WorkspaceGitIdentity>,
 ) -> bool {
     let descriptor_root = config::normalize(PathBuf::from(&descriptor.workspace_root));
-    if descriptor_root == workspace_root {
-        return true;
-    }
-    if descriptor.backend_name != BackendName::Idea.canonical() {
-        return false;
-    }
-    let Some(workspace_identity) = workspace_identity else {
-        return false;
-    };
-    let Some(descriptor_identity) = workspace_git_identity(&descriptor_root) else {
-        return false;
-    };
-    workspace_git_identities_are_compatible_for_idea(workspace_identity, &descriptor_identity)
+    descriptor_root == workspace_root
 }

@@ -22,7 +22,6 @@ pub fn raw_rpc_session(
     backend_name: Option<BackendName>,
 ) -> Result<RawRpcSession> {
     let workspace_root = workspace_root(requested_workspace_root)?;
-    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let response_timeout = Duration::from_millis(
         config

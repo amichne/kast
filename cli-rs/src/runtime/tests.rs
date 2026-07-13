@@ -65,56 +65,32 @@ mod tests {
         assert_eq!(selected.descriptor.backend_name, "headless");
     }
 
-    fn git_identity(common_dir: &str, branch: Option<&str>, head: &str) -> WorkspaceGitIdentity {
-        WorkspaceGitIdentity {
-            common_dir: PathBuf::from(common_dir),
-            branch: branch.map(str::to_string),
-            head: Some(head.to_string()),
-        }
+    #[test]
+    fn idea_descriptor_from_another_checkout_never_matches_requested_root() {
+        let requested_root = Path::new("/work/kast/.worktrees/feature");
+        let descriptor = ServerInstanceDescriptor {
+            workspace_root: "/work/kast".to_string(),
+            backend_name: "idea".to_string(),
+            backend_version: "test".to_string(),
+            transport: "uds".to_string(),
+            socket_path: "/tmp/kast.sock".to_string(),
+            pid: 1,
+            schema_version: SCHEMA_VERSION,
+        };
+
+        assert!(!descriptor_matches_workspace(&descriptor, requested_root));
     }
 
     #[test]
-    fn idea_workspace_compatibility_accepts_same_common_dir_and_branch() {
-        let invocation = git_identity("/work/kast/.git", Some("feature"), "abc123");
-        let candidate = git_identity("/work/kast/.git", Some("feature"), "def456");
+    fn runtime_status_from_another_checkout_is_rejected() {
+        let candidate = candidate("idea", RuntimeState::Ready, false);
+        let mut status = candidate.runtime_status.expect("runtime status");
+        status.workspace_root = "/work/kast/.worktrees/other".to_string();
 
-        assert!(workspace_git_identities_are_compatible_for_idea(
-            &invocation,
-            &candidate
-        ));
-    }
+        let error = validate_runtime_status_identity(&candidate.descriptor, &status)
+            .expect_err("other checkout status must be rejected");
 
-    #[test]
-    fn idea_workspace_compatibility_rejects_different_branches() {
-        let invocation = git_identity("/work/kast/.git", Some("feature"), "abc123");
-        let candidate = git_identity("/work/kast/.git", Some("main"), "abc123");
-
-        assert!(!workspace_git_identities_are_compatible_for_idea(
-            &invocation,
-            &candidate
-        ));
-    }
-
-    #[test]
-    fn idea_workspace_compatibility_accepts_detached_matching_head() {
-        let invocation = git_identity("/work/kast/.git", None, "abc123");
-        let candidate = git_identity("/work/kast/.git", Some("main"), "abc123");
-
-        assert!(workspace_git_identities_are_compatible_for_idea(
-            &invocation,
-            &candidate
-        ));
-    }
-
-    #[test]
-    fn idea_workspace_compatibility_rejects_same_remote_different_common_dir() {
-        let invocation = git_identity("/work/kast/.git", Some("feature"), "abc123");
-        let candidate = git_identity("/other/kast/.git", Some("feature"), "abc123");
-
-        assert!(!workspace_git_identities_are_compatible_for_idea(
-            &invocation,
-            &candidate
-        ));
+        assert_eq!(error.code, "RUNTIME_IDENTITY_MISMATCH");
     }
 
     #[test]
