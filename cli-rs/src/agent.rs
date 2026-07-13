@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
 include!("agent/types.rs");
+include!("agent/path.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");
 include!("agent/envelope.rs");
