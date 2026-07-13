@@ -1936,13 +1936,95 @@ components:
             type: string
         fullRefresh:
           type: boolean
+        fileStatuses:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SemanticAdmissionStatus"
+        semanticOutcome:
+          "$ref": "#/components/schemas/SemanticAnalysisOutcome"
+        requestedFileCount:
+          type: integer
+          format: int32
+        analyzedFileCount:
+          type: integer
+          format: int32
+        skippedFileCount:
+          type: integer
+          format: int32
+        removedFileCount:
+          type: integer
+          format: int32
+        attemptCount:
+          type: integer
+          format: int32
+        elapsedMillis:
+          type: integer
+          format: int64
         schemaVersion:
           type: integer
           format: int32
       additionalProperties: false
       required:
         - refreshedFiles
+        - removedFiles
         - fullRefresh
+        - fileStatuses
+        - semanticOutcome
+        - requestedFileCount
+        - analyzedFileCount
+        - skippedFileCount
+        - removedFileCount
+        - attemptCount
+        - elapsedMillis
+    SemanticAdmissionStatus:
+      type: object
+      properties:
+        filePath:
+          type: string
+        fileSystemDiscovery:
+          "$ref": "#/components/schemas/FileSystemDiscoveryState"
+        sourceModuleOwnership:
+          "$ref": "#/components/schemas/SourceModuleOwnershipState"
+        indexAdmission:
+          "$ref": "#/components/schemas/IndexAdmissionState"
+        analysisAvailability:
+          "$ref": "#/components/schemas/AnalysisAvailabilityState"
+        analysisStatus:
+          anyOf:
+            - "$ref": "#/components/schemas/FileAnalysisStatus"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - filePath
+        - fileSystemDiscovery
+        - sourceModuleOwnership
+        - indexAdmission
+        - analysisAvailability
+    FileSystemDiscoveryState:
+      type: string
+      enum:
+        - DISCOVERED
+        - PENDING
+        - REMOVED
+    SourceModuleOwnershipState:
+      type: string
+      enum:
+        - OWNED
+        - OUTSIDE_SOURCE_MODULES
+        - NOT_APPLICABLE
+    IndexAdmissionState:
+      type: string
+      enum:
+        - ADMITTED
+        - PENDING
+        - NOT_APPLICABLE
+    AnalysisAvailabilityState:
+      type: string
+      enum:
+        - AVAILABLE
+        - PENDING
+        - FAILED
+        - NOT_APPLICABLE
     FileOperation.CreateFile:
       type: object
       properties:

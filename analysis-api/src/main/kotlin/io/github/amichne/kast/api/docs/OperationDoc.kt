@@ -211,8 +211,8 @@ object OperationDocRegistry {
             behavioralNotes = listOf(
                 "Pass one or more absolute file paths. The daemon analyzes each " +
                     "file and returns all diagnostics sorted by location.",
-                "Diagnostics reflect the current daemon state. Call `raw/workspace-refresh` " +
-                    "first if files were modified outside the daemon.",
+                "Diagnostics reflect the current daemon state. A successful focused " +
+                    "`raw/workspace-refresh` is a semantic-admission barrier for externally modified files.",
             ),
             errorCodes = listOf("NOT_FOUND"),
         ),
@@ -392,15 +392,20 @@ object OperationDocRegistry {
             jsonRpcMethod = "raw/workspace-refresh",
             summary = "Force a targeted or full workspace state refresh",
             tag = "mutation",
-            capability = "REFRESH_WORKSPACE",            requestSchema = "RefreshQuery",
+            capability = "REFRESH_WORKSPACE",
+            requestSchema = "RefreshQuery",
             responseSchema = "RefreshResult",
-            description = "Forces the daemon to refresh its workspace state. Use this " +
-                "after external file modifications to ensure the daemon's view " +
-                "is current.",
+            description = "Refreshes the daemon after external file modifications. " +
+                "A successful focused refresh proves each existing requested Kotlin " +
+                "path is immediately available for semantic analysis.",
             behavioralNotes = listOf(
                 "Pass specific file paths for a targeted refresh, or omit for a " +
                     "full workspace refresh.",
-                "The result reports which files were refreshed and which were removed.",
+                "Each focused path separately reports filesystem discovery, source-module " +
+                    "ownership, index admission, and analysis availability.",
+                "Pending admission is retried for a bounded interval. The result reports " +
+                    "attempt and elapsed-time progress and fails closed if admission remains incomplete.",
+                "Removed paths are terminal refresh results and do not count as skipped analysis.",
             ),
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),

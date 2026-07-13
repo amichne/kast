@@ -5,6 +5,26 @@
         ],
         "removedFiles": [],
         "fullRefresh": false,
+        "fileStatuses": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "fileSystemDiscovery": "DISCOVERED",
+                "sourceModuleOwnership": "OWNED",
+                "indexAdmission": "ADMITTED",
+                "analysisAvailability": "AVAILABLE",
+                "analysisStatus": {
+                    "filePath": "/workspace/src/Sample.kt",
+                    "state": "ANALYZED"
+                }
+            }
+        ],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "removedFileCount": 0,
+        "attemptCount": 1,
+        "elapsedMillis": 0,
         "schemaVersion": 3
     },
     "id": 1,
