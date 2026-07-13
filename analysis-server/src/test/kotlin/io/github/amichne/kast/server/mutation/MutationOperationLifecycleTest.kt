@@ -16,6 +16,9 @@ import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisState
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
+import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.contract.skill.KastAtPlacementAnchor
@@ -203,6 +206,39 @@ class MutationOperationLifecycleTest {
     }
 
     @Test
+    fun `applied mutation with incomplete semantic evidence fails closed and remains observable`() = runBlocking {
+        val backend = IncompleteMutationDiagnosticsBackend(FakeAnalysisBackend.sample(tempDir))
+        val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
+        val contentFile = tempDir.resolve("incomplete-scope-content.kt")
+        val target = tempDir.resolve("src/IncompleteScope.kt")
+        Files.writeString(contentFile, "package sample\n\nclass IncompleteScope\n")
+        val mutation = KastSemanticMutation.AddFile(
+            idempotencyKey = KastMutationIdempotencyKey("issue-333-incomplete-scope"),
+            request = KastAddFileRequest(
+                workspaceRoot = tempDir.toString(),
+                filePath = target.toString(),
+                contentFile = contentFile.toString(),
+            ),
+        )
+
+        val receipt = submit(dispatcher, mutation)
+        val terminal = awaitTerminal(
+            dispatcher,
+            KastMutationOperationSelector.ByOperationId(receipt.operation.operationId),
+        )
+
+        val failed = terminal.state as KastMutationOperationState.Failed
+        val incomplete = failed.failure as KastMutationFailure.AppliedInvalidScope
+        assertFalse(incomplete.response.ok)
+        assertTrue(incomplete.response.applied)
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, incomplete.response.diagnostics.semanticOutcome)
+        assertEquals(1, incomplete.response.diagnostics.skippedFileCount)
+        assertEquals(KastMutationEditApplicationState.COMPLETED, failed.trace.editApplicationState)
+        assertFalse(terminal.safeForFilesystemFallback)
+        assertTrue(Files.exists(target))
+    }
+
+    @Test
     fun `applied rename response with invalid diagnostics is a typed failed operation`() = runBlocking {
         val backend = InvalidDiagnosticsBackend(FakeAnalysisBackend.sample(tempDir))
         val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
@@ -312,7 +348,7 @@ private class InvalidDiagnosticsBackend(
 ) : AnalysisBackend by delegate {
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
         val filePath = query.filePaths.value.first().value
-        return DiagnosticsResult(
+        return DiagnosticsResult.of(
             diagnostics = listOf(
                 Diagnostic(
                     location = Location(
@@ -327,6 +363,22 @@ private class InvalidDiagnosticsBackend(
                     message = "Synthetic invalid mutation diagnostic",
                 ),
             ),
+            fileStatuses = listOf(FileAnalysisStatus.analyzed(query.filePaths.value.first())),
         )
     }
+}
+
+private class IncompleteMutationDiagnosticsBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = DiagnosticsResult.of(
+        diagnostics = emptyList(),
+        fileStatuses = query.filePaths.value.map { filePath ->
+            FileAnalysisStatus.skipped(
+                filePath = filePath,
+                state = FileAnalysisState.BACKEND_FAILURE,
+                message = "Semantic analysis was unavailable after the mutation",
+            )
+        },
+    )
 }

@@ -1,5 +1,8 @@
 package io.github.amichne.kast.api.contract.mutation
 
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.contract.skill.KastAddImplementationRequest
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.nio.file.Path
 import java.util.UUID
 
 class KastMutationContractTest {
@@ -232,7 +236,16 @@ class KastMutationContractTest {
                 createdFiles = listOf("/workspace/Added.kt"),
                 editCount = 1,
                 importChanges = 0,
-                diagnostics = KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0),
+                diagnostics = KastDiagnosticsSummary.from(
+                    DiagnosticsResult.of(
+                        diagnostics = emptyList(),
+                        fileStatuses = listOf(
+                            FileAnalysisStatus.analyzed(
+                                NormalizedPath.ofAbsolute(Path.of("/workspace/Added.kt")),
+                            ),
+                        ),
+                    ),
+                ),
                 logFile = "",
             ),
         )

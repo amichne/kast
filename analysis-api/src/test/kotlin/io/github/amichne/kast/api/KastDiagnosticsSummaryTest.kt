@@ -57,6 +57,20 @@ class KastDiagnosticsSummaryTest {
         assertEquals(0, summary.skippedFileCount)
     }
 
+    @Test
+    fun `independently derived summaries retain value identity`() {
+        val result = DiagnosticsResult.of(
+            diagnostics = listOf(compilerError()),
+            fileStatuses = listOf(FileAnalysisStatus.analyzed(filePath)),
+        )
+
+        val first = KastDiagnosticsSummary.from(result)
+        val second = KastDiagnosticsSummary.from(result)
+
+        assertEquals(first, second)
+        assertEquals(first.hashCode(), second.hashCode())
+    }
+
     private fun compilerError(): Diagnostic = Diagnostic(
         location = Location(
             filePath = filePath.value,

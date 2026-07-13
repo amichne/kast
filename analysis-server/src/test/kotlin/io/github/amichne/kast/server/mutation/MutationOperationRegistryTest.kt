@@ -1,5 +1,6 @@
 package io.github.amichne.kast.server.mutation
 
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.mutation.KastMutationEditApplicationState
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationId
@@ -8,6 +9,8 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
 import io.github.amichne.kast.api.contract.mutation.KastMutationProgressStage
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
@@ -27,6 +30,7 @@ import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -227,7 +231,16 @@ class MutationOperationRegistryTest {
             createdFiles = listOf("/workspace/Added.kt"),
             editCount = 1,
             importChanges = 0,
-            diagnostics = KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0),
+            diagnostics = KastDiagnosticsSummary.from(
+                DiagnosticsResult.of(
+                    diagnostics = emptyList(),
+                    fileStatuses = listOf(
+                        FileAnalysisStatus.analyzed(
+                            NormalizedPath.ofAbsolute(Path.of("/workspace/Added.kt")),
+                        ),
+                    ),
+                ),
+            ),
             logFile = "",
         ),
     )
