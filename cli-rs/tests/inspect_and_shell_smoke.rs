@@ -399,7 +399,7 @@ fn developer_machine_defaults_configures_idea_plugin_backend() {
             "{combined}"
         );
     } else {
-        assert!(combined.contains("IDEA_PLUGIN_NOT_INSTALLED"), "{combined}");
+        assert!(combined.contains("NO_BACKEND_AVAILABLE"), "{combined}");
         assert!(
             !combined.contains("Linux headless tarball"),
             "developer defaults should not fall through to headless guidance: {combined}"
