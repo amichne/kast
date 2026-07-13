@@ -25,7 +25,6 @@ import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.ValidatedFileEdits
 import io.github.amichne.kast.api.validation.ValidatedFileOperation
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.nio.file.Path
 
 /**
@@ -42,6 +41,10 @@ internal class IdeaEditApplier(
     private val secureWorkspaceMutation: SecureWorkspaceMutation =
         SecureWorkspaceMutation(workspaceIdentity.canonicalWorkspaceRootPath),
     private val beforeSecureMutation: (Path, IdeaWorkspaceMutation) -> Unit = { _, _ -> },
+    private val afterFilesystemCommit: (Path, IdeaWorkspaceMutation) -> Unit = { _, _ -> },
+    private val runFileOperationWriteAction: suspend (() -> Unit) -> Unit = { operation ->
+        writeAction { operation() }
+    },
 ) {
     /**
      * Applies text edits and file operations through IDEA APIs.
@@ -105,45 +108,56 @@ internal class IdeaEditApplier(
 
         // Check hashes against current IDEA state
         validatedEdits.forEach { plan ->
-            val virtualFile = vfsManager.findFileByUrl("file://${plan.filePath}")
-                ?: throw NotFoundException(
-                    message = "The requested file does not exist",
-                    details = mapOf("filePath" to plan.filePath),
-                )
+            try {
+                val virtualFile = vfsManager.findFileByUrl("file://${plan.filePath}")
+                    ?: throw NotFoundException(
+                        message = "The requested file does not exist",
+                        details = mapOf("filePath" to plan.filePath),
+                    )
 
-            val currentContent = readAction {
-                val document = fileDocumentManager.getCachedDocument(virtualFile)
-                if (document != null) {
-                    document.text
-                } else {
-                    String(virtualFile.contentsToByteArray(), StandardCharsets.UTF_8)
+                val currentContent = readAction {
+                    val document = fileDocumentManager.getCachedDocument(virtualFile)
+                    if (document != null) {
+                        document.text
+                    } else {
+                        String(virtualFile.contentsToByteArray(), StandardCharsets.UTF_8)
+                    }
                 }
-            }
 
-            val currentHash = FileHashing.sha256(currentContent)
-            if (currentHash != plan.expectedHash) {
-                KastStructuredTrace.event(
-                    eventName = "idea.apply_edits.hash_conflict",
-                    project = project,
-                    workspaceRoot = normalizedWorkspaceRoot,
-                    fields = KastStructuredTraceFields(
-                        invocationId = invocationId,
-                        agentRole = "idea-edit-applier",
-                        targetFilePath = plan.filePath,
-                    ),
-                    outcome = "failed",
-                    detail = mapOf(
-                        "expectedHash" to plan.expectedHash,
-                        "actualHash" to currentHash,
-                    ),
-                )
-                throw ConflictException(
-                    message = "The file changed after the edit plan was created",
-                    details = mapOf(
-                        "filePath" to plan.filePath,
-                        "expectedHash" to plan.expectedHash,
-                        "actualHash" to currentHash,
-                    ),
+                val currentHash = FileHashing.sha256(currentContent)
+                if (currentHash != plan.expectedHash) {
+                    KastStructuredTrace.event(
+                        eventName = "idea.apply_edits.hash_conflict",
+                        project = project,
+                        workspaceRoot = normalizedWorkspaceRoot,
+                        fields = KastStructuredTraceFields(
+                            invocationId = invocationId,
+                            agentRole = "idea-edit-applier",
+                            targetFilePath = plan.filePath,
+                        ),
+                        outcome = "failed",
+                        detail = mapOf(
+                            "expectedHash" to plan.expectedHash,
+                            "actualHash" to currentHash,
+                        ),
+                    )
+                    throw ConflictException(
+                        message = "The file changed after the edit plan was created",
+                        details = mapOf(
+                            "filePath" to plan.filePath,
+                            "expectedHash" to plan.expectedHash,
+                            "actualHash" to currentHash,
+                        ),
+                    )
+                }
+            } catch (exception: Exception) {
+                if (affectedFiles.isEmpty()) throw exception
+                throw partialApplyFailure(
+                    failedFile = plan.filePath,
+                    appliedFiles = affectedFiles,
+                    createdFiles = createdFiles,
+                    deletedFiles = deletedFiles,
+                    exception = exception,
                 )
             }
         }
@@ -153,6 +167,7 @@ internal class IdeaEditApplier(
         val editAffectedFiles = mutableListOf<String>()
 
         validatedEdits.forEach { plan ->
+            var committedMutation: SecureWorkspaceMutationResult? = null
             try {
                 applyTextEdits(
                     plan,
@@ -161,11 +176,29 @@ internal class IdeaEditApplier(
                     psiDocumentManager,
                     invocationId,
                     normalizedWorkspaceRoot,
+                    onFilesystemCommitted = { mutationResult ->
+                        committedMutation = mutationResult
+                        editAffectedFiles += plan.filePath
+                        appliedEdits += plan.edits.sortedBy { it.startOffset }
+                        afterFilesystemCommit(
+                            Path.of(plan.filePath).toAbsolutePath().normalize(),
+                            IdeaWorkspaceMutation.TEXT_EDIT,
+                        )
+                    },
                 )
-                editAffectedFiles += plan.filePath
-                appliedEdits += plan.edits.sortedBy { it.startOffset }
+                checkNotNull(committedMutation).requireNoRecovery(
+                    committedFile = plan.filePath,
+                    appliedFiles = affectedFiles + editAffectedFiles,
+                    createdFiles = createdFiles,
+                    deletedFiles = deletedFiles,
+                )
             } catch (exception: Exception) {
-                if (exception is UnsafeWorkspaceMutationException && affectedFiles.isEmpty() && editAffectedFiles.isEmpty()) {
+                if (exception is PartialApplyException) throw exception
+                if (
+                    exception.isTypedSecureMutationFailure() &&
+                    affectedFiles.isEmpty() &&
+                    editAffectedFiles.isEmpty()
+                ) {
                     throw exception
                 }
                 KastStructuredTrace.event(
@@ -184,14 +217,13 @@ internal class IdeaEditApplier(
                     ),
                 )
                 throw PartialApplyException(
-                    details = mapOf(
-                        "failedFile" to plan.filePath,
-                        "appliedFiles" to (affectedFiles + editAffectedFiles).joinToString(","),
-                        "createdFiles" to createdFiles.joinToString(","),
-                        "deletedFiles" to deletedFiles.joinToString(","),
-                        "reason" to (exception.message ?: exception::class.java.simpleName),
-                        "exceptionClass" to (exception::class.qualifiedName ?: "Unknown"),
-                        "stackTrace" to exception.stackTraceToString().take(500),
+                    details = partialApplyDetails(
+                        failedFile = plan.filePath,
+                        appliedFiles = affectedFiles + editAffectedFiles,
+                        createdFiles = createdFiles,
+                        deletedFiles = deletedFiles,
+                        exception = exception,
+                        committedMutation = committedMutation,
                     ),
                 )
             }
@@ -231,6 +263,7 @@ internal class IdeaEditApplier(
         val deletedFiles = mutableListOf<String>()
 
         operations.forEach { operation ->
+            var committedMutation: SecureWorkspaceMutationResult? = null
             try {
                 when (operation) {
                     is ValidatedFileOperation.CreateFile -> {
@@ -244,11 +277,21 @@ internal class IdeaEditApplier(
                                 targetFilePath = operation.filePath,
                             ),
                         )
-                        writeAction {
+                        runFileOperationWriteAction {
                             val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
                             beforeSecureMutation(filePath, IdeaWorkspaceMutation.CREATE_FILE)
-                            secureWorkspaceMutation.createFile(filePath, operation.content)
+                            val mutationResult = secureWorkspaceMutation.createFile(filePath, operation.content)
+                            committedMutation = mutationResult
+                            createdFiles += operation.filePath
+                            affectedFiles += operation.filePath
+                            afterFilesystemCommit(filePath, IdeaWorkspaceMutation.CREATE_FILE)
                         }
+                        val mutationResult = checkNotNull(committedMutation)
+                        secureWorkspaceMutation.verifyCommittedFile(
+                            target = Path.of(operation.filePath).toAbsolutePath().normalize(),
+                            expectedContent = operation.content,
+                            mutation = IdeaWorkspaceMutation.CREATE_FILE,
+                        )
                         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
                             ?: throw ValidationException(
                                 message = "Kast IDEA could not refresh the securely created file",
@@ -262,7 +305,12 @@ internal class IdeaEditApplier(
                             invocationId = invocationId,
                             workspaceRoot = workspaceRoot,
                         )
-                        createdFiles += operation.filePath
+                        mutationResult.requireNoRecovery(
+                            committedFile = operation.filePath,
+                            appliedFiles = affectedFiles,
+                            createdFiles = createdFiles,
+                            deletedFiles = deletedFiles,
+                        )
                         KastStructuredTrace.event(
                             eventName = "idea.apply_edits.file_create_completed",
                             project = project,
@@ -287,11 +335,19 @@ internal class IdeaEditApplier(
                                 targetFilePath = operation.filePath,
                             ),
                         )
-                        writeAction {
+                        runFileOperationWriteAction {
                             val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
                             beforeSecureMutation(filePath, IdeaWorkspaceMutation.DELETE_FILE)
-                            secureWorkspaceMutation.deleteFile(filePath, operation.expectedHash)
+                            val mutationResult = secureWorkspaceMutation.deleteFile(filePath, operation.expectedHash)
+                            committedMutation = mutationResult
+                            deletedFiles += operation.filePath
+                            affectedFiles += operation.filePath
+                            afterFilesystemCommit(filePath, IdeaWorkspaceMutation.DELETE_FILE)
                         }
+                        val mutationResult = checkNotNull(committedMutation)
+                        secureWorkspaceMutation.verifyCommittedDeletion(
+                            Path.of(operation.filePath).toAbsolutePath().normalize(),
+                        )
                         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
                         verifyPostWrite(
                             filePath = operation.filePath,
@@ -301,7 +357,12 @@ internal class IdeaEditApplier(
                             invocationId = invocationId,
                             workspaceRoot = workspaceRoot,
                         )
-                        deletedFiles += operation.filePath
+                        mutationResult.requireNoRecovery(
+                            committedFile = operation.filePath,
+                            appliedFiles = affectedFiles,
+                            createdFiles = createdFiles,
+                            deletedFiles = deletedFiles,
+                        )
                         KastStructuredTrace.event(
                             eventName = "idea.apply_edits.file_delete_completed",
                             project = project,
@@ -315,9 +376,9 @@ internal class IdeaEditApplier(
                         )
                     }
                 }
-                affectedFiles += operation.filePath
             } catch (exception: Exception) {
-                if (exception is UnsafeWorkspaceMutationException && affectedFiles.isEmpty()) {
+                if (exception is PartialApplyException) throw exception
+                if (exception.isTypedSecureMutationFailure() && affectedFiles.isEmpty()) {
                     throw exception
                 }
                 KastStructuredTrace.event(
@@ -336,12 +397,13 @@ internal class IdeaEditApplier(
                     ),
                 )
                 throw PartialApplyException(
-                    details = mapOf(
-                        "failedFile" to operation.filePath,
-                        "appliedFiles" to affectedFiles.joinToString(","),
-                        "createdFiles" to createdFiles.joinToString(","),
-                        "deletedFiles" to deletedFiles.joinToString(","),
-                        "reason" to (exception.message ?: exception::class.java.simpleName),
+                    details = partialApplyDetails(
+                        failedFile = operation.filePath,
+                        appliedFiles = affectedFiles,
+                        createdFiles = createdFiles,
+                        deletedFiles = deletedFiles,
+                        exception = exception,
+                        committedMutation = committedMutation,
                     ),
                 )
             }
@@ -367,6 +429,70 @@ internal class IdeaEditApplier(
             requireWorkspaceTarget(workspaceIdentity, plan.filePath, IdeaWorkspaceMutation.TEXT_EDIT, invocationId)
         }
     }
+
+    private fun Exception.isTypedSecureMutationFailure(): Boolean =
+        this is UnsafeWorkspaceMutationException || this is ConflictException || this is NotFoundException
+
+    private fun SecureWorkspaceMutationResult.requireNoRecovery(
+        committedFile: String,
+        appliedFiles: List<String>,
+        createdFiles: List<String>,
+        deletedFiles: List<String>,
+    ) {
+        if (this !is SecureWorkspaceMutationResult.CommittedWithRecovery) return
+        throw PartialApplyException(
+            message = "The workspace mutation committed but retained recovery evidence",
+            details = mapOf(
+                "failedFile" to committedFile,
+                "appliedFiles" to appliedFiles.joinToString(","),
+                "createdFiles" to createdFiles.joinToString(","),
+                "deletedFiles" to deletedFiles.joinToString(","),
+                "recoveryFilePaths" to recoveryFilePaths.joinToString(","),
+                "reason" to "Committed filesystem mutation retained recovery entries",
+            ),
+        )
+    }
+
+    private fun partialApplyFailure(
+        failedFile: String,
+        appliedFiles: List<String>,
+        createdFiles: List<String>,
+        deletedFiles: List<String>,
+        exception: Exception,
+        committedMutation: SecureWorkspaceMutationResult? = null,
+    ): PartialApplyException = PartialApplyException(
+        details = partialApplyDetails(
+            failedFile = failedFile,
+            appliedFiles = appliedFiles,
+            createdFiles = createdFiles,
+            deletedFiles = deletedFiles,
+            exception = exception,
+            committedMutation = committedMutation,
+        ),
+    )
+
+    private fun partialApplyDetails(
+        failedFile: String,
+        appliedFiles: List<String>,
+        createdFiles: List<String>,
+        deletedFiles: List<String>,
+        exception: Exception,
+        committedMutation: SecureWorkspaceMutationResult? = null,
+    ): Map<String, String> = mapOf(
+        "failedFile" to failedFile,
+        "appliedFiles" to appliedFiles.joinToString(","),
+        "createdFiles" to createdFiles.joinToString(","),
+        "deletedFiles" to deletedFiles.joinToString(","),
+        "reason" to (exception.message ?: exception::class.java.simpleName),
+        "exceptionClass" to (exception::class.qualifiedName ?: "Unknown"),
+    ) + committedMutation.recoveryDetails()
+
+    private fun SecureWorkspaceMutationResult?.recoveryDetails(): Map<String, String> =
+        if (this is SecureWorkspaceMutationResult.CommittedWithRecovery) {
+            mapOf("recoveryFilePaths" to recoveryFilePaths.joinToString(","))
+        } else {
+            emptyMap()
+        }
 
     private suspend fun <T> withVcsFileOperationConfirmationsSuppressed(
         fileOperations: List<ValidatedFileOperation>,
@@ -444,6 +570,7 @@ internal class IdeaEditApplier(
         psiDocumentManager: PsiDocumentManager,
         invocationId: String,
         workspaceRoot: Path,
+        onFilesystemCommitted: (SecureWorkspaceMutationResult) -> Unit,
     ) {
         KastStructuredTrace.event(
             eventName = "idea.apply_edits.text_edit_started",
@@ -484,7 +611,13 @@ internal class IdeaEditApplier(
         WriteCommandAction.runWriteCommandAction(project) {
             val filePath = Path.of(plan.filePath).toAbsolutePath().normalize()
             beforeSecureMutation(filePath, IdeaWorkspaceMutation.TEXT_EDIT)
-            secureWorkspaceMutation.replaceFile(filePath, diskHash, updatedContent)
+            val mutationResult = secureWorkspaceMutation.replaceFile(filePath, diskHash, updatedContent)
+            onFilesystemCommitted(mutationResult)
+            secureWorkspaceMutation.verifyCommittedFile(
+                target = filePath,
+                expectedContent = updatedContent,
+                mutation = IdeaWorkspaceMutation.TEXT_EDIT,
+            )
             plan.edits.forEach { edit ->
                 document.replaceString(edit.startOffset, edit.endOffset, edit.newText)
             }
@@ -523,8 +656,7 @@ internal class IdeaEditApplier(
     ) {
         val path = Path.of(filePath).toAbsolutePath().normalize()
         val workspaceFile = workspaceIdentity.workspaceIdentity.contains(path)
-        val diskExists = Files.exists(path)
-        if (!workspaceFile || diskExists != expectedExists) {
+        if (!workspaceFile) {
             throw ValidationException(
                 message = "Kast IDEA post-write verification failed",
                 details = mapOf(
@@ -532,24 +664,10 @@ internal class IdeaEditApplier(
                     "mutation" to mutation.wireName,
                     "workspaceContained" to workspaceFile.toString(),
                     "expectedExists" to expectedExists.toString(),
-                    "diskExists" to diskExists.toString(),
                 ) + workspaceIdentity.stringTraceDetails(),
             )
         }
-        if (expectedExists && expectedContent != null) {
-            val diskContent = Files.readString(path)
-            if (diskContent != expectedContent) {
-                throw ConflictException(
-                    message = "Kast IDEA post-write content verification failed",
-                    details = mapOf(
-                        "filePath" to filePath,
-                        "mutation" to mutation.wireName,
-                        "expectedHash" to FileHashing.sha256(expectedContent),
-                        "actualHash" to FileHashing.sha256(diskContent),
-                    ),
-                )
-            }
-        }
+        val diskExists = expectedExists
 
         val refreshedFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
         val vfsExists = refreshedFile?.isValid == true

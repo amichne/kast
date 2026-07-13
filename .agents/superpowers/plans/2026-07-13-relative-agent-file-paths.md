@@ -9,7 +9,7 @@
 **Tech Stack:** Rust 2024, Clap, serde/serde_json, `std::fs`, Cargo integration tests, Markdown contract checks.
 
 **Review hardening:** Kotlin/JVM 21, IDEA VFS/Document APIs, JNA-backed POSIX
-`openat`/`mkdirat`/`renameat`/`unlinkat`, JUnit Jupiter.
+`openat`/`mkdirat`/`fstat`/`renameatx_np`/`renameat2`/`unlinkat`, JUnit Jupiter.
 
 ## Global Constraints
 
@@ -47,6 +47,50 @@
   newly created files/directories.
 - [x] Run the complete Kotlin, Rust, generated-contract, and docs gates and
   record final evidence in `.agent-turn/issue-341-report.md`.
+
+### Task 6: Close the Final-Entry Replacement Race
+
+**Owner:** `backend-idea` owns the shared implementation;
+`backend-headless` reuses it through `KastIdeaBackendRuntime` and is in the
+same mutation threat and validation scope.
+
+**Files:**
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/SecureWorkspaceMutation.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaEditApplier.kt`
+- Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/SecureWorkspaceMutationTest.kt`
+- Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaEditApplicationTest.kt`
+- Modify: ADR 0018, the approved design, and the ignored implementation report
+
+- [x] Prove a missing edit target maps to typed `NOT_FOUND` rather than a
+  pathname permission-read failure.
+- [x] Obtain permission mode and device/inode identity with `fstat` on the same
+  held descriptor used for hashing.
+- [x] Atomically detach existing targets to randomized quarantine names with
+  platform-correct exclusive/no-replace rename primitives.
+- [x] Install, restore, and reserve final entries only with no-replace
+  semantics; report blocked restoration and the recovery path through typed
+  `CONFLICT`.
+- [x] Move cleanup candidates behind randomized internal names, identity-check
+  immediately before `unlinkat`, retain deterministic recovery evidence when
+  cleanup fails, and document the deliberate internal-name-racer exclusion.
+- [x] Deterministically race replace and delete after detach/hash and prove the
+  concurrent entry plus the validated inode remain untouched and recoverable.
+- [x] Prove create commits prepared content with no-replace and never cleans a
+  concurrent final entry by name.
+- [x] Prove post-commit cleanup failures report replacement/deletion as applied
+  with retained recovery paths, and restoration precedes fallible prepared
+  cleanup on pre-commit conflicts.
+- [x] Restore detached originals across preparation and native final-rename
+  failures before best-effort prepared cleanup.
+- [x] Detect a late deletion-reservation replacement, restore the concurrent
+  entry to its public name with no-replace, and return typed conflict/recovery
+  evidence.
+- [x] Record typed filesystem commits in IDEA applied/created/deleted ledgers
+  before Document, VFS, later hash validation, or post-write verification.
+- [x] Open detached targets nonblocking, retain complete `fstat` mode/type, and
+  reject FIFOs, devices, and every other non-regular target before hashing.
+- [ ] Re-run focused and complete Kotlin, Rust, generated-contract, and docs
+  gates; update the report, commit, and leave the branch clean and unpushed.
 
 ---
 

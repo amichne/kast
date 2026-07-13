@@ -66,13 +66,39 @@ output identity agree.
 ### Revalidate pathname containment at the backend write seam
 
 Canonical CLI paths still cross a process boundary before the backend mutates
-the filesystem. An accepted ancestor can therefore be replaced by an escaping
-symlink after CLI parsing or server validation. The selected implementation
-repeats traversal at the final IDEA/headless mutation seam with POSIX directory
-descriptors: every path component is opened without following symlinks, and
-create, replace, and delete commit relative to the held parent descriptor.
-This is a separate write-boundary guarantee; it does not change request or
-rendered path identity.
+the filesystem. An accepted ancestor or final entry can therefore be replaced
+after CLI parsing or server validation. The selected implementation repeats
+traversal in the shared `backend-idea` mutation implementation with POSIX
+directory descriptors. The IDEA plugin uses that implementation directly;
+`backend-headless` exposes the same mutation capabilities through
+`KastIdeaBackendRuntime` and `KastPluginBackend`, so both hosts are in scope.
+Every path component is opened without following symlinks. Existing
+replace/delete
+targets are atomically detached to a randomized quarantine with macOS
+`renameatx_np(RENAME_EXCL)` or Linux `renameat2(RENAME_NOREPLACE)`, then hashed
+and inspected with `fstat` through the same held descriptor. The open is
+nonblocking and only a regular-file mode may proceed to hashing; FIFOs and
+devices fail closed. Prepared commits, restoration, and recovery never
+overwrite a concurrent final entry. Preparation/native commit failure restores
+the original before prepared cleanup. A late replacement of a deletion
+reservation is restored to the final name with no-replace and reported as a
+typed conflict rather than displaced as cleanup. Cleanup
+moves candidates behind randomized internal names and device/inode-checks them
+immediately before unlinking. Cleanup refusal retains a recovery path, and a
+replacement or deletion that already committed is reported as applied with
+that evidence. IDEA records the typed commit before any later Document/VFS
+work, hash validation, or post-write verification, so later failures retain
+the committed path in partial-apply evidence. This is a separate
+write-boundary guarantee; it does not change
+request or rendered path identity.
+
+The descriptor proves detached file identity; the held parent descriptor and
+no-replace operations govern namespace transitions. Because POSIX rename and
+unlink remain name-based, this protocol is not a directory lock or a general
+transaction against a process with write permission that deliberately races
+Kast's randomized internal names. Such authority is governed by directory
+permissions. Changes made after the operation returns are also outside the
+guarantee.
 
 ## Path Contract
 
@@ -157,8 +183,19 @@ IDEA backend tests deterministically replace a validated ancestor with an
 escaping symlink immediately before add-file creation and file-scoped text
 replacement. Both operations must return `UNSAFE_WORKSPACE_MUTATION` without
 touching either the outside target or the displaced in-workspace directory.
-The same suite proves normal creates, missing parent creation, VFS document
-synchronization, deletes, and existing source permissions remain intact.
+Separate post-detach tests create a concurrent final entry after the original
+inode has been hashed and `fstat`-inspected. Replacement and deletion must
+leave the concurrent entry untouched and either restore the validated inode or
+report its quarantine recovery path through typed `CONFLICT`. The same suite
+proves create never cleans a concurrent final entry by name, missing edit
+targets map to `NOT_FOUND`, original permissions come from the hashed inode,
+rollback restoration precedes fallible prepared cleanup, and committed
+cleanup failures retain deterministic recovery evidence without being
+reported as unapplied. Additional seams prove preparation/native-rename
+rollback, late deletion-reservation replacement, nonblocking FIFO rejection,
+and applied ledgers surviving post-commit create/delete/text and later hash
+failures. Normal create, VFS document synchronization, and delete behavior
+remain intact.
 
 Packaged-content tests pin the concise relative guidance. Final validation runs
 the locked Rust suite, formatting, Clippy with warnings denied, release
