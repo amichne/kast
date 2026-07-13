@@ -3,75 +3,160 @@
 ## Goal
 
 Expose `kast agent workspace-files` as a bounded public command that discovers
-Kotlin sources and scripts from semantic workspace evidence, reports index and
-filesystem drift honestly, and supplies a reusable uncapped inventory for the
-Gradle Kotlin DSL work in issue #340.
+Kotlin sources and scripts from exact-root semantic evidence, reports Kotlin
+source-index and filesystem drift honestly, and supplies an exhaustive
+project-model script inventory for the separate Gradle DSL index in issue
+#340.
 
 ## Current failure
 
 The backend advertises `WORKSPACE_FILES`, and the raw protocol implements
 `raw/workspace-files`, but the typed public `kast agent` command tree rejects
-`workspace-files`. Agents must either discover the hidden raw contract or fall
-back to `rg`, `find`, or Git paths. The existing raw result also lacks source
-set, package, index state, dirty state, and cross-source drift.
+`workspace-files`. Agents must discover a hidden raw contract or fall back to
+`rg`, `find`, or Git paths.
 
-The raw backend caps file paths per module. The source index contains
-`file_manifest`, `file_metadata`, `path_prefixes`, and `fq_names`, but index
-rows can be stale or belong to nested linked worktrees. Neither source is a
-complete public result by itself.
+The raw backend currently caps files per module without a page token. It also
+enumerates Kotlin files through module source scope, which does not guarantee
+root `build.gradle.kts`, `settings.gradle.kts`, convention-plugin scripts, or
+ordinary project scripts. The SQLite source index provides `.kt` manifest,
+module, source-set, and package facts, but `SourceIndexFilePolicy` deliberately
+rejects `.kts`. That policy remains correct: issue #340 owns a separate Gradle
+DSL index rather than mixing Gradle declarations into the Kotlin source index.
+
+Git and module ownership also need stronger boundaries. Porcelain paths are
+repository-root-relative, not admitted-workspace-relative. A physical source
+may be owned by more than one backend module. Both facts must be represented
+before public filtering can be truthful.
 
 ## Considered approaches
 
-### Backend-only projection
+### Expose the existing capped raw response
 
-The smallest change would expose `raw/workspace-files` through a typed Clap
-command. This preserves project-model ownership but cannot satisfy package,
-source-set, indexed-state, dirty-state, or index-drift requirements. The
-per-module cap also becomes easy to misread as complete discovery.
+This preserves current project-model ownership but cannot prove complete
+absence, omits project scripts, and lacks index, package, dirty, and drift
+evidence. It would make `INDEX_ONLY` and #340 reuse unreliable.
 
-### Source-index-only query
+### Put `.kts` into the Kotlin source index
 
-A direct SQLite command could provide module, source set, package, and manifest
-state without a daemon round trip. It would incorrectly treat every retained
-manifest row as current semantic ownership. The live index can contain nested
-worktree paths, and absence from a cache cannot establish current project-model
-state.
+This would make the existing SQL inventory convenient, but it would erase the
+intentional Kotlin-source versus Gradle-DSL boundary. Gradle task, plugin, and
+relationship facts need a separate schema and completeness model in #340.
+`SourceIndexFilePolicy` therefore stays `.kt`-only.
 
-### Typed hybrid inventory
+### Page project-model candidates and compose the `.kt` index
 
-The chosen approach joins backend ownership and source-index facts by exact
-normalized path, then adds only targeted filesystem and Git annotations. It
-preserves each source's authority, exposes uncertainty as types, and creates a
-Rust inventory that #340 can reuse. It requires more composition code, but it
-is the only approach that meets the acceptance criteria without changing the
-Kotlin protocol.
+This is the chosen approach. The Kotlin backend gains deterministic per-module
+paging and a project-model inventory that includes `.kt` and `.kts`. Rust
+exhausts those pages, unions physical paths while preserving all module owners,
+and joins only `.kt` candidates to the existing Kotlin source index. Scripts
+remain `NOT_APPLICABLE` to that index and become the authoritative input set
+for #340's separate Gradle DSL index.
 
 ## Architecture
 
-The implementation has two boundaries:
+The implementation has three boundaries:
 
-1. `workspace_inventory` collects all known candidates and source coverage.
-   It has no public result limit and applies no user filters.
-2. `agent workspace-files` validates typed filters, applies them to the
+1. `raw/workspace-files` pages compiler/project-model `.kt` and `.kts`
+   candidates deterministically by backend module.
+2. `workspace_inventory` exhausts backend pages and reads all exact-root `.kt`
+   index rows without applying public filters or limits.
+3. `agent workspace-files` validates filters, applies them to one typed
    snapshot, sorts deterministically, enforces the public limit, and projects
-   the ADR 0020 result views.
+   ADR 0020 result views.
 
-The command first performs ADR 0019 exact-root admission and opens one selected
-runtime session. It requests `raw/workspace-files` with `includeFiles=true`
-and no smaller CLI-owned per-module cap. In parallel with composition (not with
-shared mutation), it opens the configured source-index database read-only and
-reads all Kotlin manifest rows in one SQLite snapshot. The collector merges
-those sources after normalizing every path to the admitted root.
+The command performs ADR 0019 admission first and passes the admitted exact
+root and selected backend to one raw RPC session. It fetches module metadata,
+then pages every module. Only after the backend snapshot is complete or has
+typed per-module failures does it read the exact-root SQLite snapshot and
+compose records.
 
-The backend response already reports module name, source roots, dependency
-module names, file count, returned files, and `filesTruncated`. No Kotlin wire
-change is required. The index query is:
+## Typed raw paging
+
+`WorkspaceFilesQuery` gains `pageToken`. `WorkspaceModule` gains
+`returnedFileCount` and `nextPageToken`. The wire contract is:
+
+```kotlin
+@Serializable
+data class WorkspaceFilesQuery(
+    val moduleName: String? = null,
+    val includeFiles: Boolean = false,
+    val maxFilesPerModule: Int? = null,
+    val pageToken: String? = null,
+)
+
+@Serializable
+data class WorkspaceModule(
+    val name: String,
+    val sourceRoots: List<String>,
+    val contentRoots: List<String> = emptyList(),
+    val dependencyModuleNames: List<String>,
+    val files: List<String> = emptyList(),
+    val filesTruncated: Boolean = false,
+    val fileCount: Int,
+    val returnedFileCount: Int = files.size,
+    val nextPageToken: String? = null,
+)
+```
+
+`pageToken` is legal only when `includeFiles=true` and one nonblank
+`moduleName` is present. It is the canonical decimal encoding of a positive
+next offset; the absent token means offset zero. `WorkspaceFilePageOffset`
+validates canonical form and positivity at the Kotlin parse boundary. The
+server continues to enforce a positive `maxFilesPerModule` no greater than
+`maxResults`.
+
+The backend gathers the complete candidate set for a requested module, maps
+every path through exact-root containment, deduplicates, sorts by normalized
+absolute path, and only then slices `[offset, offset + limit)`. It returns the
+same `fileCount` on every page and a next token exactly when more sorted paths
+remain. An offset beyond `fileCount`, a non-advancing token, inconsistent
+counts, an overlapping page, or a changed module identity invalidates that
+module snapshot in Rust. `includeFiles=false` returns sorted module metadata
+without pages. An unpaged `includeFiles=true` call remains compatible by
+returning each module's first page; Rust uses exact-module requests for all
+subsequent pages.
+
+## Project-model `.kts` authority
+
+`backend-idea` introduces `IdeaWorkspaceFileInventory`, with one
+`IdeaWorkspaceFileModuleSnapshot` per backend module. It obtains candidates
+from IntelliJ project scope, module content/source roots, and linked Gradle
+project roots rather than a filesystem walk:
+
+- module/project `FileTypeIndex` supplies compiler-visible `.kt` and `.kts`;
+- `ModuleRootManager` content and source roots establish every module owner;
+- `GradleSettings` linked project roots establish root build/settings scripts
+  and included-build roots;
+- targeted `build.gradle.kts` and `settings.gradle.kts` lookups under those
+  model-proven roots admit the root scripts without recursive discovery; and
+- project-scope `.kts` candidates cover convention plugins and ordinary
+  scripts, then acquire every containing module owner.
+
+Root project scripts use every root module associated with the linked Gradle
+project. Included builds retain their linked root and module owners. If a
+project-scope script has no content-root owner despite being contained by a
+linked Gradle root, the corresponding root-module association owns it. A
+linked root without any backend root-module association fails the request as
+incomplete project-model evidence. A path outside the canonical workspace or
+linked root is rejected before it reaches paging.
+
+The fake backend implements the same sort/slice/token contract. Contract tests
+cover root build/settings scripts, a build-logic convention plugin, an
+ordinary `.kts`, included builds, multiple owners, two non-overlapping pages,
+and invalid tokens. `SourceIndexFilePolicyTest` continues to prove all `.kts`
+paths are rejected by the Kotlin source index.
+
+## Source-index snapshot and package evidence
+
+The read-only SQLite query is uncapped and `.kt`-only:
 
 ```sql
 SELECT prefixes.dir_path,
        manifest.filename,
+       metadata.prefix_id IS NOT NULL AS metadata_present,
        metadata.module_path,
        metadata.source_set,
+       metadata.package_fq_id,
        packages.fq_name
 FROM file_manifest AS manifest
 JOIN path_prefixes AS prefixes
@@ -84,21 +169,34 @@ LEFT JOIN fq_names AS packages
 ORDER BY prefixes.dir_path, manifest.filename
 ```
 
-The reader verifies the checked-in source-index schema version and required
-tables before querying. It decodes the existing `__kast_abs__/` and
-`__kast_rel__/` prefixes through the same path rules as current Rust
-source-index readers. It discards non-`.kt`/`.kts` rows and out-of-root paths
-with typed limitation evidence.
+The reader verifies the checked-in schema version and required tables. It
+decodes `__kast_abs__/` and `__kast_rel__/` through the existing path rules,
+rejects non-`.kt` and out-of-root rows with typed evidence, and distinguishes
+package states:
 
-## Internal type model
+```rust
+pub(crate) enum WorkspacePackageEvidence {
+    Named(WorkspacePackageName),
+    Root,
+    Unavailable,
+    InvalidReference { package_fq_id: i64 },
+}
+```
 
-The collector exposes these responsibilities as types rather than boolean
-combinations:
+No metadata row is `Unavailable`. A present row with null `package_fq_id` is
+`Root`. A non-null id with one valid joined name is `Named`. A non-null id
+without a joined row is `InvalidReference` and adds
+`PACKAGE_METADATA_INVALID`. This avoids using one null for four different
+facts.
+
+## Internal inventory model
+
+The collector exposes source completeness and ownership as types:
 
 ```rust
 pub(crate) struct WorkspaceInventorySnapshot {
     pub(crate) workspace_root: WorkspaceRoot,
-    pub(crate) modules: Vec<WorkspaceInventoryModule>,
+    pub(crate) modules: BTreeMap<BackendModuleName, WorkspaceInventoryModule>,
     pub(crate) files: Vec<WorkspaceInventoryFile>,
     pub(crate) backend_coverage: BackendWorkspaceCoverage,
     pub(crate) index_coverage: IndexWorkspaceCoverage,
@@ -108,33 +206,50 @@ pub(crate) struct WorkspaceInventorySnapshot {
 
 pub(crate) struct WorkspaceInventoryFile {
     pub(crate) path: WorkspaceFilePath,
-    pub(crate) module: WorkspaceModuleEvidence,
-    pub(crate) source_set: Option<WorkspaceSourceSet>,
+    pub(crate) backend_modules: BTreeSet<BackendModuleName>,
+    pub(crate) indexed_gradle_modules: BTreeSet<GradleModulePath>,
+    pub(crate) source_sets: BTreeSet<WorkspaceSourceSet>,
     pub(crate) kind: WorkspaceFileKind,
-    pub(crate) package_name: Option<WorkspacePackageName>,
+    pub(crate) package: WorkspacePackageEvidence,
     pub(crate) index_state: WorkspaceFileIndexState,
     pub(crate) drift: WorkspaceFileDrift,
     pub(crate) dirty_state: WorkspaceFileDirtyState,
     pub(crate) evidence: BTreeSet<WorkspaceEvidenceSource>,
 }
+
+pub(crate) enum BackendWorkspaceCoverage {
+    Available {
+        modules: BTreeMap<BackendModuleName, BackendModuleCoverage>,
+    },
+    Unavailable {
+        code: WorkspaceInventoryLimitationCode,
+    },
+}
+
+pub(crate) enum BackendModuleCoverage {
+    Complete,
+    Partial {
+        code: WorkspaceInventoryLimitationCode,
+        returned_count: usize,
+        expected_count: usize,
+    },
+}
 ```
 
-`WorkspaceFilePath` contains a proven workspace-relative path and its absolute
-counterpart. Its constructor rejects absolute relative input, parent
-traversal, an empty filename, and paths outside the exact root. Existing paths
-are canonicalized to prevent a symlink target from escaping the root. Missing
-index-only paths remain lexical evidence and can be emitted only after lexical
-root containment succeeds.
+One physical path produces one public record. Every backend owner and indexed
+Gradle identity is retained in a sorted set. Duplicate backend paths with
+different module names are valid. Conflicting facts within the same module
+page remain invalid.
 
-`WorkspaceModuleEvidence` preserves both optional backend module name and
-optional indexed Gradle module path. The public `--module` filter matches
-either exact value, while output retains both so an IDEA display name cannot
-silently replace Gradle identity. `WorkspaceSourceSet` and
-`WorkspacePackageName` are validated non-empty newtypes. Package validation
-accepts Kotlin identifier segments, including backticked segments, separated
-by dots.
+`WorkspaceFilePath` contains a proven workspace-relative path and canonical
+absolute counterpart. Its constructor rejects absolute relative input, parent
+traversal, empty filenames, and paths outside the exact root. Existing paths
+are canonicalized to prevent symlink escape. Missing `.kt` index paths remain
+lexical evidence only after lexical containment succeeds. Backend source and
+content roots receive the same proof before they can associate an index row
+with a module.
 
-The file kind is intentionally coarse in #338:
+The coarse file kind remains:
 
 ```rust
 pub(crate) enum WorkspaceFileKind {
@@ -143,69 +258,63 @@ pub(crate) enum WorkspaceFileKind {
 }
 ```
 
-Issue #340 adds an independent Gradle script subtype such as project,
-settings, convention plugin, or ordinary Kotlin script. It consumes the
-uncapped inventory and project-model evidence; #338 does not guess those
-subtypes from a filename and claim Gradle semantics prematurely.
-
-Coverage is explicit:
-
-```rust
-pub(crate) enum BackendWorkspaceCoverage {
-    Complete,
-    Truncated { module_names: Vec<BackendModuleName> },
-    Unavailable { code: WorkspaceInventoryLimitationCode },
-}
-
-pub(crate) enum IndexWorkspaceCoverage {
-    Available,
-    Unavailable { code: WorkspaceInventoryLimitationCode },
-}
-
-pub(crate) enum DirtyWorkspaceCoverage {
-    Available,
-    Unavailable { code: WorkspaceInventoryLimitationCode },
-}
-```
-
-The source-index query is uncapped. `WorkspaceInventorySnapshot::files` keeps
-all candidates supplied by the available sources. Backend truncation remains
-visible in `backend_coverage`; "uncapped internal" never means pretending an
-upstream capped response was exhaustive.
+Issue #340 adds a separate Gradle DSL classification and index for project,
+settings, convention-plugin, and ordinary scripts. It consumes
+`KotlinScript` candidates and their backend ownership/coverage; it does not
+write `.kts` rows into the Kotlin source index.
 
 ## Candidate and drift composition
 
-Backend paths and index paths are keyed by `WorkspaceRelativePath`. The
-collector does not add paths from filesystem or Git enumeration. It calls
-`symlink_metadata` only for an existing candidate, and the Git porcelain v2
-snapshot only annotates candidate paths.
+Backend and index paths are keyed by `WorkspaceFilePath`. Filesystem and Git
+never add candidates. `.kt` index state and drift follow this table:
 
-Index state is independent of drift:
+- backend and index present: `INDEXED`, `NONE`;
+- backend present and readable index absent: `NOT_INDEXED`,
+  `FILESYSTEM_ONLY`;
+- index present and every possible backend owner complete: `INDEXED`,
+  `INDEX_ONLY`;
+- index present with any possible owner partial/unavailable: `INDEXED`,
+  `UNKNOWN`;
+- missing candidate: `MISSING_ON_DISK` with independent index state; and
+- index unavailable for a backend source: `UNKNOWN`, `UNKNOWN`.
 
-- `INDEXED` means the exact path is in the readable manifest snapshot.
-- `NOT_INDEXED` means a backend-owned path is absent from a readable manifest.
-- `UNKNOWN` means index evidence is unavailable.
+`.kts` is always `NOT_APPLICABLE` to the Kotlin source index. A present script
+has `NOT_APPLICABLE` drift; a missing script is `MISSING_ON_DISK`. #340 later
+adds independent Gradle-index state rather than changing these meanings.
 
-Drift follows the ADR 0021 truth table. A backend-owned path with no manifest
-row is `FILESYSTEM_ONLY` when it exists. A manifest path absent from backend is
-`INDEX_ONLY` only when backend coverage proves exhaustive absence. A missing
-candidate is `MISSING_ON_DISK`. Any unprovable absence is `UNKNOWN`.
+Potential ownership is conservative. Exact backend owners are used first.
+For an index-only `.kt`, canonical source/content-root containment may
+associate multiple modules. `INDEX_ONLY` requires every associated module to
+be complete. If association is empty or ambiguous while any module is partial,
+drift is `UNKNOWN` and the result carries
+`PROJECT_MODEL_OWNERSHIP_UNKNOWN`.
 
-Backend completeness is evaluated per module before a global result is
-claimed. If any module is truncated and an index row cannot be associated with
-a distinct complete backend module, the row remains `UNKNOWN`. This
-conservative rule is more important than maximizing `INDEX_ONLY` counts.
+## Exact-root Git dirty state
+
+The adapter runs:
+
+```console
+git -C <workspace-root> rev-parse --show-toplevel
+git -c status.relativePaths=false -C <workspace-root> status --porcelain=v2 -z --untracked-files=all -- .
+```
+
+It canonicalizes the Git top level and proves the admitted workspace root is
+contained. The explicit config override makes porcelain current and original
+rename paths repository-root-relative regardless of repository configuration.
+Those paths are normalized, restricted to the exact workspace prefix, and then
+relativized to the workspace. A rename annotates each contained candidate
+endpoint independently; crossing the workspace boundary never imports the
+outside endpoint. Invalid UTF-8, containment failure, or Git failure makes all
+candidate dirty states `UNKNOWN` with `DIRTY_STATE_UNAVAILABLE`. Only a
+successfully mapped snapshot makes an absent candidate `CLEAN`.
 
 Detailed dirty states are `CLEAN`, `MODIFIED`, `ADDED`, `DELETED`, `RENAMED`,
-`UNTRACKED`, `CONFLICTED`, and `UNKNOWN`. The CLI filter collapses them into
-clean, dirty, or unknown; structured output preserves the detailed state. If
-the root is not a Git worktree or porcelain parsing fails, every candidate is
-`UNKNOWN` and the snapshot contains `DIRTY_STATE_UNAVAILABLE`.
+`UNTRACKED`, `CONFLICTED`, and `UNKNOWN`. The public filter collapses them into
+clean, dirty, or unknown.
 
-## Public arguments and filtering
+## Public arguments and output
 
-The new `AgentWorkspaceFilesArgs` contains `AgentRuntimeArgs`, ADR 0020's
-`AgentResultViewArgs`, and typed filters. The stable syntax is:
+The stable syntax is:
 
 ```console
 kast agent workspace-files \
@@ -216,7 +325,7 @@ kast agent workspace-files \
   [--kind source|script] \
   [--package <exact-package>] \
   [--dirty clean|dirty|unknown] \
-  [--drift none|filesystem-only|index-only|missing-on-disk|unknown] \
+  [--drift none|filesystem-only|index-only|missing-on-disk|not-applicable|unknown] \
   [--path-prefix <workspace-relative-prefix>] \
   [--glob <workspace-relative-glob>] \
   [--limit <1..=200>] \
@@ -224,15 +333,12 @@ kast agent workspace-files \
   [--verbose | --explain]
 ```
 
-The default limit is 20. All filters use AND semantics and run before the
-limit. `--glob` matches only normalized relative paths and rejects the
-`regex:` prefix. `--path-prefix` matches a path exactly or at a segment
-boundary, never as a raw string prefix. Missing source-set/package evidence
-does not match a requested source-set/package filter.
+All filters use AND semantics before the default limit of 20. Module matches
+any backend or indexed module owner. Path prefix matches at a segment boundary;
+glob matches only normalized relative paths. Missing source-set/package
+evidence does not match those filters.
 
-## Output and limitations
-
-The compact result shape is:
+The compact result uses one physical-file record:
 
 ```json
 {
@@ -243,10 +349,11 @@ The compact result shape is:
     {
       "filePath": "/repo/app/src/main/kotlin/app/App.kt",
       "relativePath": "app/src/main/kotlin/app/App.kt",
-      "module": {"backendName": "app.main", "gradlePath": ":app"},
-      "sourceSet": "main",
+      "backendModules": ["app.main"],
+      "gradleModules": [":app"],
+      "sourceSets": ["main"],
       "kind": "KOTLIN_SOURCE",
-      "packageName": "app",
+      "package": {"state": "NAMED", "name": "app"},
       "indexState": "INDEXED",
       "drift": "NONE",
       "dirtyState": "MODIFIED"
@@ -265,93 +372,50 @@ The compact result shape is:
 ```
 
 `knownMatchCount` never poses as a complete total when source coverage is
-partial. `inventoryComplete=false` and typed limitations carry that fact.
-`--count` returns known counts grouped by kind, index state, drift, and dirty
-class without file records. `--verbose` adds module/source coverage and
-evidence sources. `--explain` additionally echoes the normalized typed query
-and explains which source established each classification.
-
-Limitations have stable codes and structured affected-module/path counts:
-
-- `BACKEND_WORKSPACE_FILES_UNAVAILABLE`;
-- `BACKEND_ENUMERATION_TRUNCATED`;
-- `SOURCE_INDEX_UNAVAILABLE`;
-- `SOURCE_INDEX_SCHEMA_UNSUPPORTED`;
-- `DIRTY_STATE_UNAVAILABLE`;
-- `PACKAGE_METADATA_UNAVAILABLE`;
-- `WORKSPACE_PATH_EXCLUDED`; and
-- `PROJECT_MODEL_OWNERSHIP_UNKNOWN`.
-
-Malformed backend JSON is a fatal `WORKSPACE_FILES_BACKEND_INVALID` error.
-Exact-root admission failure remains the ADR 0019 error. Backend capability
-absence or source-index absence may degrade if the other candidate source is
-usable. If neither candidate source is usable, the command fails with
-`WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` rather than returning an empty list.
+partial. `--count` groups known counts by kind, index state, drift, and dirty
+class without file records. `--verbose` adds module/page/source coverage.
+`--explain` adds normalized filters and per-record classification evidence.
+The compact high-cardinality fixture remains under 120 lines and 1,500
+estimated tokens.
 
 ## Capability verification
 
-`AgentPublicCapabilityRoute` is a typed registry entry with backend capability
-and public command path. Verification intersects raw backend capabilities with
-this registry and emits:
+`AgentPublicCapabilityRoute` maps backend `WORKSPACE_FILES` to
+`kast agent workspace-files`. Verification intersects backend read
+capabilities with this registry. A Clap contract test resolves every registry
+path against `Cli::command()`, so removing or hiding the command breaks the
+same proof that authorizes public capability projection. Issue #342 extends
+the registry; #338 does not create a parallel catalog.
 
-```json
-{
-  "capability": "WORKSPACE_FILES",
-  "command": "kast agent workspace-files"
-}
-```
+## Exact-root and testing strategy
 
-only when both sides exist. A Clap contract test resolves each registry path
-against `Cli::command()`. Removing or renaming the command therefore breaks
-the same test that authorizes the public capability projection. Issue #342
-extends this small registry instead of introducing a second hand-maintained
-catalog.
+The TDD sequence proves:
 
-## #340 reuse boundary
+1. Kotlin query parsing rejects invalid page tokens and token-without-module;
+2. fake and IDEA backends return stable non-overlapping pages and include root,
+   settings, included-build, convention-plugin, and ordinary scripts;
+3. `.kts` remains rejected by `SourceIndexFilePolicy`;
+4. the index query distinguishes absent metadata, root package, named package,
+   and dangling package ids;
+5. shared physical files retain multiple module owners;
+6. partial paging never produces `INDEX_ONLY`;
+7. nested Git roots and in/out rename endpoints map correctly;
+8. root A with only root B's descriptor is rejected before any
+   `raw/workspace-files` request or root B index read;
+9. filters, output views, limitations, deterministic order, and budgets hold;
+10. returned `filePath` composes directly with diagnostics and symbol hinting;
+    and
+11. capability projection requires the real Clap route.
 
-Issue #340 calls the internal collector before public filtering and limiting.
-It may inspect `KotlinScript` candidates, module/source-root facts, and source
-coverage to classify Gradle Kotlin DSL files. It must not treat
-`WorkspaceFileDrift::IndexOnly` or `Unknown` as compiler project-model
-ownership. Dynamic Gradle constructs retain typed degraded evidence instead
-of becoming not-found.
-
-The inventory API does not expose CLI output types to #340. Gradle script
-classification is an additive domain layer over `WorkspaceInventorySnapshot`,
-so #340 can evolve its own semantic types without destabilizing the public
-file projection.
-
-## Testing strategy
-
-The TDD sequence is:
-
-1. Add CLI/help regressions proving `workspace-files` is public and retired
-   raw aliases remain unavailable.
-2. Add source-index reader tests for package/module/source-set joins, `.kt`
-   and `.kts` kinds, exact-root containment, absolute prefix decoding, schema
-   failure, and an uncapped high-cardinality snapshot.
-3. Add composition tests for every drift truth-table row, especially
-   truncated/unavailable backend evidence never producing `INDEX_ONLY`.
-4. Add Git porcelain tests for clean, modified, added, deleted, renamed,
-   untracked, conflicted, and unavailable states.
-5. Add command tests for every filter, deterministic ordering, default and
-   maximum bounds, typed limitations, all ADR 0020 views, and a default output
-   below 120 lines/1,500 estimated tokens.
-6. Add a semantic ownership regression with an unowned `.kt` file on disk;
-   assert it is omitted because no recursive filesystem search supplies
-   candidates.
-7. Pipe a returned `filePath` into diagnostics and use it as a symbol
-   `--file-hint`, proving direct composition.
-8. Add capability tests proving `WORKSPACE_FILES` is projected only through a
-   registry entry whose Clap path exists.
-9. Run full Rust, contract, docs, and rendering gates. Kotlin modules are not
-   changed; the existing backend workspace-files tests remain the wire proof.
+The exact-root regression lives in both
+`agent_workspace_files_smoke.rs` and `semantic_workspace_admission_smoke.rs`.
+Full gates cover Kotlin, generated contracts, Rust, docs, and rendering.
 
 ## Non-goals
 
-This issue does not paginate or redesign `raw/workspace-files`, change the
-source-index schema, recursively search the filesystem, use Git as candidate
-authority, classify Gradle task declarations, infer dynamic Gradle semantics,
-or expose arbitrary RPC dispatch. It does not solve the full capability and
-installed-guidance lockstep requested by #342; it establishes the
-`WORKSPACE_FILES` registry invariant that #342 will generalize.
+This issue does not change the Kotlin source-index schema or admit `.kts` to
+`SourceIndexFilePolicy`. It does not recursively search the filesystem, use Git
+as candidate authority, classify Gradle task declarations, infer dynamic
+Gradle semantics, or expose arbitrary RPC dispatch. Issue #340 owns the Gradle
+DSL index and semantic subtype/declaration model; issue #342 owns registry
+generalization.

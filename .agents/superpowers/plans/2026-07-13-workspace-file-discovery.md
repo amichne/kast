@@ -6,46 +6,265 @@
 > checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship `kast agent workspace-files` as a bounded, typed, exact-root
-discovery command backed by compiler project-model and source-index evidence,
-with an uncapped internal inventory reusable by issue #340.
+discovery command backed by exhaustively paged compiler/project-model evidence
+and the `.kt`-only source index, with `.kts` candidates reusable by issue #340's
+separate Gradle DSL index.
 
-**Architecture:** A new Rust `workspace_inventory` unit reads all available
-backend and exact-root index candidates without applying the public limit,
-then classifies cross-source drift and annotations conservatively. The public
-agent layer validates filters, applies deterministic bounds, projects ADR
-0020 result views, and uses a typed route registry to make capability
-advertisement depend on a callable Clap path.
+**Architecture:** Kotlin adds canonical per-module workspace-file paging and an
+IDEA project-model inventory for `.kt` and `.kts`. Rust exhausts every module
+page, unions physical paths while retaining all module owners, joins `.kt`
+index evidence, maps Git porcelain from repository root to the admitted root,
+then applies public filters, projections, and bounds.
 
-**Tech Stack:** Rust 2024, Clap, serde/serde_json, rusqlite, glob, Git porcelain
-v2, existing JSON/TOON output, tempfile-based integration fixtures, Markdown,
-and Zensical.
+**Tech Stack:** Kotlin/JVM, kotlinx.serialization, IntelliJ Platform and Gradle
+project model, Rust 2024, Clap, serde/serde_json, rusqlite, glob, Git porcelain
+v2, tempfile integration fixtures, Markdown, and Zensical.
 
 ## Global Constraints
 
-- Rebase this branch onto the merged issue #337 result before writing
-  production code; use its projection/view types instead of recreating them.
-- Do not change Kotlin request/response models, backend implementations,
-  analysis-server dispatch, source-index schema, generated RPC catalogs, or
-  generated protocol artifacts.
+- Rebase onto merged issue #337 before production work and reuse its result
+  views instead of recreating them.
+- Preserve the `.kt`-only `SourceIndexFilePolicy`; #340 owns the separate
+  Gradle DSL index and consumes `.kts` candidates from backend inventory.
 - Keep `raw/workspace-files` internal; the public path is exactly
   `kast agent workspace-files`.
 - Admit and report the exact normalized workspace root under ADR 0019.
-- Never use recursive filesystem discovery or a Git file list as candidate
-  authority.
-- Never emit `INDEX_ONLY` unless backend evidence proves exhaustive absence
-  for the relevant module/path.
-- Keep the internal inventory uncapped by public filters and `--limit`; retain
-  upstream backend truncation as typed partial evidence.
-- Default `--limit` to 20, reject values outside 1 through 200, and keep the
-  default compact result below 120 lines and 1,500 estimated tokens.
+- Never use recursive filesystem discovery or Git as candidate authority.
+  Targeted root build/settings lookups are allowed only for roots proved by the
+  linked Gradle project model.
+- Exhaust every valid backend module page before claiming that module complete.
+  Incomplete possible owners can never prove `INDEX_ONLY`.
+- Model physical-file backend and indexed module ownership as sorted sets.
+- Keep the internal inventory uncapped by public filters and `--limit`.
+- Default `--limit` to 20, reject values outside 1 through 200, and keep compact
+  output below 120 lines and 1,500 estimated tokens.
+- Change Kotlin wire/backend/generated contracts when required by paging;
+  regenerate them from their source owners.
+- Add or update scoped `AGENTS.md` whenever source ownership or validation gates
+  change. Do not publish ADR/spec/plan files in Zensical navigation.
+- Execute tasks sequentially when they edit shared agent/projection files. The
+  primary agent reviews every delegated result and runs final verification.
 - Preserve unrelated worktree changes and commit each red-green slice
   independently with a conventional commit.
-- Add a scoped `AGENTS.md` for the new production ownership boundary and do
-  not add ADR/spec/plan files to published Zensical navigation.
 
 ---
 
-### Task 1: Establish the typed public CLI boundary
+### Task 1: Add typed deterministic raw workspace-file paging
+
+**Files:**
+
+- Modify: `analysis-api/AGENTS.md`
+- Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/WorkspaceFilesQuery.kt`
+- Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceFilesResult.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceModule.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFilePageOffset.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedWorkspaceFilesQuery.kt`
+- Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedModels.kt`
+- Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/SkillContracts.kt`
+- Modify: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/ParsedModelsTest.kt`
+- Modify: `analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt`
+- Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/RpcAnalysisDispatcher.kt`
+- Modify: `analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt`
+
+**Interfaces:**
+
+- Produces: `WorkspaceFilePageOffset`,
+  `ParsedWorkspaceFilesQuery.pageOffset`, `WorkspaceModule.returnedFileCount`,
+  `WorkspaceModule.nextPageToken`, and explicit `WorkspaceModule.contentRoots`.
+- Invariant: a page token is canonical positive decimal text and is legal only
+  with `includeFiles=true` and one exact module.
+
+- [ ] **Step 1: Write failing query and server tests**
+
+Add parsing cases for token `"2"` and rejection of `"0"`, `"02"`, `"-1"`,
+non-numeric text, token without module, token with `includeFiles=false`, and a
+page size above server `maxResults`. Add fake-backend tests for two pages over
+five sorted files:
+
+```kotlin
+val first = backend.workspaceFiles(
+    WorkspaceFilesQuery(
+        moduleName = "main",
+        includeFiles = true,
+        maxFilesPerModule = 2,
+    ),
+)
+val second = backend.workspaceFiles(
+    WorkspaceFilesQuery(
+        moduleName = "main",
+        includeFiles = true,
+        maxFilesPerModule = 2,
+        pageToken = first.modules.single().nextPageToken,
+    ),
+)
+assertEquals(5, first.modules.single().fileCount)
+assertEquals("2", first.modules.single().nextPageToken)
+assertEquals("4", second.modules.single().nextPageToken)
+assertTrue(first.modules.single().files.intersect(second.modules.single().files.toSet()).isEmpty())
+```
+
+- [ ] **Step 2: Run the focused red tests**
+
+```console
+./gradlew :analysis-api:test --tests '*ParsedModelsTest*workspace*' :analysis-server:test --tests '*AnalysisDispatcherTest*workspace*' --no-daemon
+```
+
+Expected: compilation fails because paging fields/types do not exist.
+
+- [ ] **Step 3: Extract and implement the typed query boundary**
+
+Move `ParsedWorkspaceFilesQuery` out of `ParsedModels.kt` to satisfy top-level
+type isolation. Add:
+
+```kotlin
+@JvmInline
+value class WorkspaceFilePageOffset private constructor(val value: Int) {
+    companion object {
+        fun parse(raw: String): WorkspaceFilePageOffset {
+            val parsed = raw.toIntOrNull()
+            require(parsed != null && parsed > 0 && raw == parsed.toString()) {
+                "Workspace file page tokens must be canonical positive offsets"
+            }
+            return WorkspaceFilePageOffset(parsed)
+        }
+    }
+}
+```
+
+Add `pageToken: String?` to `WorkspaceFilesQuery`. Parse once into
+`WorkspaceFilePageOffset?`; reject token-without-module and
+token-without-files at the validation boundary. Keep the server's positive
+page-size and maximum checks.
+
+- [ ] **Step 4: Isolate and extend the result type**
+
+Move `WorkspaceModule` to its matching file and add:
+
+```kotlin
+val contentRoots: List<String> = emptyList()
+val returnedFileCount: Int = files.size
+val nextPageToken: String? = null
+```
+
+Validate in tests that returned count equals `files.size`, `fileCount` is never
+smaller, and next tokens advance by returned count without exceeding total.
+Validate source/content roots are sorted and deduplicated. Update skill response
+types and fake backend with the same sort-before-slice contract.
+
+- [ ] **Step 5: Run Kotlin paging tests green**
+
+Run the Step 2 command. Expected: all paging, validation, and non-overlap tests
+pass.
+
+- [ ] **Step 6: Update source ownership and commit**
+
+Record query/result/generated ownership and paging gates in
+`analysis-api/AGENTS.md`.
+
+```console
+git add analysis-api analysis-server
+git diff --cached --check
+git commit -m "feat: page raw workspace file results"
+```
+
+### Task 2: Enumerate project-model Kotlin sources and scripts
+
+**Files:**
+
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventory.kt`
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileModuleSnapshot.kt`
+- Create: `backend-idea/src/main/java/io/github/amichne/kast/idea/IdeaGradleWorkspaceFileBridge.java`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
+- Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventoryTest.kt`
+- Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
+- Verify unchanged: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/SourceIndexFilePolicy.kt`
+- Verify unchanged: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SourceIndexFilePolicyTest.kt`
+
+**Interfaces:**
+
+- Produces:
+  `IdeaWorkspaceFileInventory.snapshots(): List<IdeaWorkspaceFileModuleSnapshot>`.
+- Each snapshot has one backend module, sorted contained source/content roots,
+  sorted dependency names, and a complete sorted set of project-model `.kt`
+  and `.kts` paths.
+
+- [ ] **Step 1: Write failing project-model inventory tests**
+
+Create one IDEA fixture containing:
+
+- root `settings.gradle.kts` and `build.gradle.kts`;
+- `build-logic/src/main/kotlin/convention.gradle.kts`;
+- `scripts/release.main.kts`;
+- an included build with its own settings/build scripts;
+- one `.kt` shared by two module content roots; and
+- an outside-root `.kts` exposed by a test project scope.
+
+Assert the first five categories are candidates, the shared file appears in
+both module snapshots, and the outside path is absent.
+
+- [ ] **Step 2: Run the focused red backend test**
+
+```console
+./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --no-daemon
+```
+
+Expected: compilation fails because the inventory does not exist.
+
+- [ ] **Step 3: Implement model-backed candidate collection**
+
+Use `FileTypeIndex` with project and module content scopes for compiler-visible
+Kotlin files. Use `ModuleRootManager` content/source roots to retain every
+owner. The Java bridge reads `GradleSettings.linkedProjectsSettings` and
+returns normalized external project roots and root-module associations. For
+each model-proven root, look up only `settings.gradle.kts` and
+`build.gradle.kts`; do not walk directories.
+
+Project-scope `.kts` files under a contained module root acquire all containing
+module owners. A contained linked-root script without a content-root owner
+acquires every root module associated with that linked root. If the bridge
+cannot associate the linked root with any backend root module, fail the request
+as incomplete project-model evidence. Canonical containment is mandatory before
+ownership is recorded.
+
+- [ ] **Step 4: Page sorted inventory in the backend**
+
+Replace cap-before-sort logic with:
+
+```kotlin
+val allFiles = snapshot.filePaths.sorted()
+val offset = query.pageOffset?.value ?: 0
+require(offset <= allFiles.size)
+val files = if (query.includeFiles) allFiles.drop(offset).take(fileLimit) else emptyList()
+val nextOffset = offset + files.size
+val nextToken = nextOffset.takeIf { query.includeFiles && it < allFiles.size }?.toString()
+```
+
+Exact module requests page one snapshot. Metadata requests return every sorted
+module. Populate stable counts/tokens on every page.
+
+- [ ] **Step 5: Prove scripts, multiple owners, and pages**
+
+Run:
+
+```console
+./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*KastPluginBackendContractTest*workspace files*' --no-daemon
+./gradlew :index-store:test --tests '*SourceIndexFilePolicyTest*' --no-daemon
+```
+
+Expected: project scripts and shared ownership pass; the index-store test still
+proves `.kts` rejection.
+
+- [ ] **Step 6: Commit backend authority**
+
+```console
+git add backend-idea
+git diff --cached --check
+git commit -m "feat: enumerate project model Kotlin scripts"
+```
+
+Do not stage either source-index policy file; both are verification-only.
+
+### Task 3: Establish the typed public CLI boundary
 
 **Files:**
 
@@ -59,183 +278,61 @@ and Zensical.
 
 **Interfaces:**
 
-- Consumes: ADR 0020 `AgentResultView`, typed `AgentRuntimeArgs`, and the
-  existing agent envelope/output path.
-- Produces: `AgentCommand::WorkspaceFiles(AgentWorkspaceFilesArgs)`, typed
-  filter arguments, `AgentWorkspaceFilesField`, and a temporary structured
-  unavailable result that later tasks replace with inventory execution.
+- Produces: `AgentCommand::WorkspaceFiles`, typed filters,
+  `AgentWorkspaceFilesField`, and a temporary typed unavailable result.
+- Consumes: ADR 0020 `AgentResultView` and existing `AgentRuntimeArgs`.
 
-- [ ] **Step 1: Write the failing public-command and usage tests**
+- [ ] **Step 1: Write failing command/help/argument tests**
 
-Add `workspace-files` to the visible agent-help assertion and remove it from
-the retired-alias list in `cli_core_smoke.rs`. In
-`agent_workspace_files_smoke.rs`, assert the command parses all documented
-filters and rejects invalid limits, parent traversal, absolute path prefixes,
-regex globs, blank selectors, and incompatible result-view flags:
+Move `workspace-files` from retired aliases to visible agent commands. Assert
+all documented flags parse and reject limit `0`/`201`, absolute or parent path
+prefixes, `regex:` globs, blank selectors, and incompatible result views.
+Include `--drift not-applicable`.
 
-```rust
-#[test]
-fn workspace_files_is_public_and_rejects_untyped_bounds() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-
-    let help = kast(&home, &config_home)
-        .args(["agent", "workspace-files", "--help"])
-        .output()
-        .expect("workspace-files help");
-    assert!(help.status.success(), "{}", String::from_utf8_lossy(&help.stderr));
-
-    for invalid in [
-        vec!["--limit", "0"],
-        vec!["--limit", "201"],
-        vec!["--path-prefix", "../other"],
-        vec!["--path-prefix", "/absolute"],
-        vec!["--glob", "regex:.*\\.kt"],
-        vec!["--fields", "path", "--count"],
-    ] {
-        let output = kast(&home, &config_home)
-            .args(["agent", "workspace-files"])
-            .args(invalid)
-            .output()
-            .expect("invalid workspace-files command");
-        assert_eq!(output.status.code(), Some(2));
-    }
-}
-```
-
-- [ ] **Step 2: Run the focused tests and observe the red state**
-
-Run:
+- [ ] **Step 2: Run the red command tests**
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test cli_core_smoke smoke_core_cli_commands
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke workspace_files_is_public_and_rejects_untyped_bounds
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke workspace_files_is_public
 ```
 
-Expected: the first test reports that `workspace-files` is still absent or
-retired, and the second fails because Clap does not recognize the command.
+Expected: Clap does not recognize `workspace-files`.
 
-- [ ] **Step 3: Add typed argument and field definitions**
+- [ ] **Step 3: Add typed args and filters**
 
-Add the command variant and these typed boundaries in `cli/agent.rs`. Keep
-validation in `FromStr` constructors, not in dispatch branches:
+Add `AgentWorkspaceFilesArgs` with `AgentRuntimeArgs`, the family-specific
+ADR 0020 view args, optional module/source-set/kind/package/dirty/drift/path
+prefix/glob filters, and `WorkspaceFileLimit`. Use private-field newtypes and
+`FromStr` validation. The drift enum is:
 
 ```rust
-#[derive(Debug, Args, Clone)]
-pub struct AgentWorkspaceFilesArgs {
-    #[command(flatten)]
-    pub runtime: AgentRuntimeArgs,
-    #[arg(long)]
-    pub module: Option<WorkspaceModuleFilter>,
-    #[arg(long = "source-set")]
-    pub source_set: Option<WorkspaceSourceSetFilter>,
-    #[arg(long, value_enum)]
-    pub kind: Option<WorkspaceFileKindFilter>,
-    #[arg(long)]
-    pub package: Option<WorkspacePackageFilter>,
-    #[arg(long, value_enum)]
-    pub dirty: Option<WorkspaceDirtyFilter>,
-    #[arg(long, value_enum)]
-    pub drift: Option<WorkspaceDriftFilter>,
-    #[arg(long = "path-prefix")]
-    pub path_prefix: Option<WorkspacePathPrefix>,
-    #[arg(long)]
-    pub glob: Option<WorkspaceGlobFilter>,
-    #[arg(long, default_value_t = WorkspaceFileLimit::default())]
-    pub limit: WorkspaceFileLimit,
-    #[command(flatten)]
-    pub view: AgentWorkspaceFilesViewArgs,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub enum AgentWorkspaceFilesField {
-    Path,
-    Module,
-    SourceSet,
-    Kind,
-    Package,
-    Index,
-    Drift,
-    Dirty,
-    Evidence,
-}
-
-#[derive(Debug, Args, Clone, Default)]
-#[command(group(
-    clap::ArgGroup::new("workspace_files_result_view")
-        .multiple(false)
-        .args(["verbose", "explain", "fields", "count"])
-))]
-pub struct AgentWorkspaceFilesViewArgs {
-    #[arg(long)]
-    pub verbose: bool,
-    #[arg(long)]
-    pub explain: bool,
-    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
-    pub fields: Vec<AgentWorkspaceFilesField>,
-    #[arg(long)]
-    pub count: bool,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub enum WorkspaceDirtyFilter {
-    Clean,
-    Dirty,
-    Unknown,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum WorkspaceDriftFilter {
     None,
     FilesystemOnly,
     IndexOnly,
     MissingOnDisk,
+    NotApplicable,
     Unknown,
 }
 ```
 
-Use newtypes with private fields for module, source set, package, path prefix,
-glob, and limit. `WorkspaceFileLimit::from_str` must accept only 1 through 200.
-`WorkspacePathPrefix::from_str` must normalize slashes and reject root,
-absolute, `.`-only, and parent components. `WorkspaceGlobFilter::from_str`
-must reject `regex:` and compile `glob::Pattern` once.
+- [ ] **Step 4: Wire a typed temporary failure**
 
-- [ ] **Step 4: Wire the command to a typed temporary failure**
+Add exhaustive dispatch and projection request branches, but return
+`WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` until inventory exists. Do not claim
+discovery works.
 
-Add `execute_agent_workspace_files` to `agent/workspace_files.rs`, include it
-from `agent.rs`, add the exhaustive dispatch branch, and add a
-`WorkspaceFiles` projection request variant in `projection/view.rs`. Until the
-inventory exists, return:
+- [ ] **Step 5: Run command parsing green and commit**
 
-```rust
-error_envelope(
-    "agent/workspace-files".to_string(),
-    None,
-    agent_error(
-        "WORKSPACE_FILE_DISCOVERY_UNAVAILABLE",
-        "Workspace inventory collection is not available.",
-    ),
-)
-```
-
-This step exists only to make Clap and exhaustive Rust matches compile; do not
-claim discovery works yet.
-
-- [ ] **Step 5: Run the focused tests and verify green parsing behavior**
-
-Run the two commands from Step 2. Expected: both pass, and the command's valid
-invocation reaches the typed temporary execution error rather than a Clap
-unknown-command error.
-
-- [ ] **Step 6: Commit the CLI boundary**
+Run Step 2, then:
 
 ```console
 git add cli-rs/src/cli/agent.rs cli-rs/src/agent.rs cli-rs/src/agent/dispatch.rs cli-rs/src/agent/projection/view.rs cli-rs/src/agent/workspace_files.rs cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/tests/cli_core_smoke.rs
+git diff --cached --check
 git commit -m "feat: add typed workspace file command boundary"
 ```
 
-### Task 2: Build the uncapped exact-root source-index inventory
+### Task 4: Build the uncapped `.kt` source-index inventory
 
 **Files:**
 
@@ -250,193 +347,78 @@ git commit -m "feat: add typed workspace file command boundary"
 
 **Interfaces:**
 
-- Consumes: `config::workspace_database_path`,
-  `source_index_db::configure_read_connection`,
-  `SOURCE_INDEX_SCHEMA_VERSION`, and the current index path-prefix encoding.
 - Produces: `WorkspaceRoot`, `WorkspaceFilePath`,
-  `WorkspaceIndexSnapshot`, `IndexedWorkspaceFile`, `WorkspaceIndexRead`, and
-  `read_workspace_index(&WorkspaceRoot) -> Result<WorkspaceIndexRead>`.
+  `WorkspaceIndexSnapshot`, `WorkspacePackageEvidence`,
+  `WorkspaceIndexRead`, and `read_workspace_index(&WorkspaceRoot)`.
+- The index reader has no public limit and returns `.kt` rows only.
 
-- [ ] **Step 1: Add failing index-reader and type-invariant tests**
+- [ ] **Step 1: Write failing schema, path, and package-state tests**
 
-Seed an exact-root database with indexed `.kt`, `.kts`, non-Kotlin, missing
-metadata, `__kast_rel__/`, `__kast_abs__/`, outside-root, and 500 Kotlin rows.
-Assert:
+Seed 500 `.kt` rows plus non-Kotlin, `.kts`, relative-escape, absolute,
+outside-root, and symlink-escape rows. Add four package cases:
 
-```rust
-#[test]
-fn index_snapshot_is_uncapped_typed_and_exact_root() {
-    let fixture = WorkspaceInventoryFixture::new();
-    fixture.seed_index_rows(500);
-    fixture.seed_outside_root_row();
-    fixture.seed_non_kotlin_row();
+1. no `file_metadata` row;
+2. metadata with null `package_fq_id`;
+3. metadata with a joined package name; and
+4. metadata with dangling `package_fq_id`.
 
-    let root = WorkspaceRoot::new(fixture.workspace()).expect("workspace root");
-    let WorkspaceIndexRead::Available(snapshot) =
-        read_workspace_index(&root).expect("index read")
-    else {
-        panic!("expected available index snapshot");
-    };
+Assert 500 valid `.kt` candidates, zero `.kts`, exact package variants, and
+typed excluded/invalid counts.
 
-    assert_eq!(snapshot.files.len(), 500);
-    assert!(snapshot.files.iter().all(|file| file.path.is_within(&root)));
-    assert!(snapshot.files.iter().any(|file| {
-        file.kind == WorkspaceFileKind::KotlinScript
-            && file.module.gradle_path() == Some(":build-logic")
-            && file.source_set.as_ref().is_some_and(|value| value.as_str() == "main")
-    }));
-    assert_eq!(snapshot.excluded_out_of_root_count, 1);
-}
-```
-
-Add separate tests for invalid schema, missing database, malformed package
-metadata, and `WorkspaceFilePath` rejecting traversal and symlink escape.
-
-- [ ] **Step 2: Run the unit filter and observe missing inventory types**
-
-Run:
+- [ ] **Step 2: Run the red inventory tests**
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_inventory
 ```
 
-Expected: compilation fails because `workspace_inventory` and its domain types
-do not exist.
+Expected: compilation fails because inventory types do not exist.
 
-- [ ] **Step 3: Define the inventory domain model**
+- [ ] **Step 3: Define the invariant-carrying model**
 
-Create a facade-only `workspace_inventory.rs` with explicit includes, and put
-the types in `model.rs`:
+Use sorted sets for owners and source sets:
 
 ```rust
-#[derive(Debug, Clone)]
-pub(crate) struct WorkspaceIndexSnapshot {
-    pub(crate) files: Vec<IndexedWorkspaceFile>,
-    pub(crate) excluded_out_of_root_count: usize,
-}
-
-#[derive(Debug)]
-pub(crate) enum WorkspaceIndexRead {
-    Available(WorkspaceIndexSnapshot),
-    Unavailable {
-        limitation: WorkspaceInventoryLimitation,
-    },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum WorkspaceInventoryLimitationCode {
-    BackendWorkspaceFilesUnavailable,
-    BackendEnumerationTruncated,
-    SourceIndexUnavailable,
-    SourceIndexSchemaUnsupported,
-    DirtyStateUnavailable,
-    PackageMetadataUnavailable,
-    WorkspacePathExcluded,
-    ProjectModelOwnershipUnknown,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WorkspaceInventoryLimitation {
-    pub(crate) code: WorkspaceInventoryLimitationCode,
-    pub(crate) message: String,
-    pub(crate) affected_count: usize,
-    pub(crate) module_names: Vec<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum WorkspaceFileKind {
-    KotlinSource,
-    KotlinScript,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum WorkspaceFileIndexState {
-    Indexed,
-    NotIndexed,
-    Unknown,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum WorkspaceFileDrift {
-    None,
-    FilesystemOnly,
-    IndexOnly,
-    MissingOnDisk,
-    Unknown,
+pub(crate) struct WorkspaceInventoryFile {
+    path: WorkspaceFilePath,
+    backend_modules: BTreeSet<BackendModuleName>,
+    indexed_gradle_modules: BTreeSet<GradleModulePath>,
+    source_sets: BTreeSet<WorkspaceSourceSet>,
+    kind: WorkspaceFileKind,
+    package: WorkspacePackageEvidence,
+    index_state: WorkspaceFileIndexState,
+    drift: WorkspaceFileDrift,
+    dirty_state: WorkspaceFileDirtyState,
+    evidence: BTreeSet<WorkspaceEvidenceSource>,
 }
 ```
 
-Add validated newtypes for the exact root, relative/absolute path pair,
-backend module name, Gradle module path, source set, and package. Expose only
-constructors that prove their invariants. Keep all fields private unless a
-consumer requires a read-only accessor.
+Include `NotApplicable` in source-index state and drift. Keep fields private
+with read-only accessors required by agent/#340 consumers.
 
-- [ ] **Step 4: Implement the read-only all-row index query**
+- [ ] **Step 4: Implement the read-only query exactly from the design**
 
-Open the configured database with
-`SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI`, configure the connection, verify the
-schema version and required tables, and run the exact SQL from the design.
-Decode paths through one function:
+Select `metadata_present`, `package_fq_id`, and joined `fq_name` separately.
+Use `SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI`, configure query-only access,
+verify schema/tables, decode existing path prefixes, reject non-`.kt`, and map
+the four package states without collapsing nulls.
 
-```rust
-fn indexed_path(
-    root: &WorkspaceRoot,
-    dir_path: String,
-    filename: String,
-) -> Result<WorkspaceFilePath> {
-    let candidate = match dir_path.strip_prefix("__kast_abs__/") {
-        Some(absolute) => PathBuf::from(absolute).join(filename),
-        None => {
-            let relative = dir_path
-                .strip_prefix("__kast_rel__/")
-                .unwrap_or(&dir_path);
-            relative
-                .split('/')
-                .filter(|segment| !segment.is_empty())
-                .fold(root.as_path().to_path_buf(), PathBuf::join)
-                .join(filename)
-        }
-    };
-    WorkspaceFilePath::new(root, candidate)
-}
-```
+- [ ] **Step 5: Add the scoped ownership guide and verify**
 
-Read every row before returning. Do not accept a `limit` parameter. Map a
-missing or incompatible database to typed `IndexWorkspaceCoverage::Unavailable`
-evidence instead of an empty available snapshot.
+State that this unit owns uncapped exact-root composition, `.kt` index reads,
+set-valued owners, backend page coverage, and Git annotation. Prohibit `.kts`
+source-index reads and filesystem/Git candidate enumeration.
 
-- [ ] **Step 5: Add the scoped source-ownership guide**
+Run Step 2. Expected: all 500 rows and package/path invariants pass.
 
-Create `workspace_inventory/AGENTS.md` stating that this unit owns reusable,
-uncapped, exact-root candidate composition; source limits must remain explicit;
-public filtering/projection belongs in `agent`; and recursive filesystem/Git
-candidate discovery is prohibited. List the focused Rust test command.
-
-- [ ] **Step 6: Run focused tests and verify the uncapped snapshot**
-
-Run:
-
-```console
-cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_inventory
-```
-
-Expected: the high-cardinality test observes all 500 Kotlin rows, non-Kotlin
-and outside-root rows are excluded with evidence, and schema/path invariant
-tests pass.
-
-- [ ] **Step 7: Commit the internal index boundary**
+- [ ] **Step 6: Commit the index boundary**
 
 ```console
 git add cli-rs/src/main.rs cli-rs/src/workspace_inventory.rs cli-rs/src/workspace_inventory cli-rs/tests/support/mod.rs cli-rs/tests/support/workspace_files.rs
-git commit -m "feat: add uncapped workspace index inventory"
+git diff --cached --check
+git commit -m "feat: add uncapped Kotlin source inventory"
 ```
 
-### Task 3: Compose backend, filesystem, index, and dirty evidence
+### Task 5: Exhaust backend pages and compose ownership, drift, and Git evidence
 
 **Files:**
 
@@ -447,132 +429,104 @@ git commit -m "feat: add uncapped workspace index inventory"
 - Modify: `cli-rs/src/workspace_inventory/tests.rs`
 - Modify: `cli-rs/src/workspace_inventory.rs`
 - Modify: `cli-rs/tests/support/workspace_files.rs`
+- Modify: `cli-rs/tests/agent_workspace_files_smoke.rs`
+- Modify: `cli-rs/tests/semantic_workspace_admission_smoke.rs`
 
 **Interfaces:**
 
-- Consumes: decoded `raw/workspace-files` result, `WorkspaceIndexSnapshot`,
-  exact-root candidate paths, targeted `symlink_metadata`, and Git porcelain
-  v2 output.
 - Produces:
-  `collect_workspace_inventory(WorkspaceInventoryInputs) -> Result<WorkspaceInventorySnapshot>`
-  with no public filters or result cap.
+  `collect_workspace_inventory(WorkspaceInventoryInputs) -> Result<WorkspaceInventorySnapshot>`.
+- Backend collection uses one admitted `RawRpcSession`, exact-module paging,
+  and typed `BackendModuleCoverage`.
 
-- [ ] **Step 1: Write the failing drift truth-table tests**
+- [ ] **Step 1: Write failing page-exhaustion and multi-owner tests**
 
-Construct typed inputs directly and assert every ADR row. The critical
-regressions are:
+Script three pages for one module and two pages for a second. Repeat one
+physical path in both modules. Assert every page is requested in order, the
+physical record has both owners, pages do not overlap, and all modules are
+complete. Add failures for repeated/non-advancing tokens, changed totals,
+overlap, missing module, and a page failure after earlier successes; only the
+affected module becomes partial.
 
-```rust
-#[test]
-fn incomplete_backend_never_proves_index_only() {
-    for coverage in [
-        BackendWorkspaceCoverage::Truncated {
-            module_names: vec![BackendModuleName::new("app").expect("module")],
-        },
-        BackendWorkspaceCoverage::Unavailable {
-            code: WorkspaceInventoryLimitationCode::BackendWorkspaceFilesUnavailable,
-        },
-    ] {
-        let file = classify_candidate(candidate_inputs(|inputs| {
-            inputs.backend_present = false;
-            inputs.index_present = true;
-            inputs.filesystem_present = true;
-            inputs.backend_coverage = coverage;
-        }));
-        assert_eq!(file.index_state, WorkspaceFileIndexState::Indexed);
-        assert_eq!(file.drift, WorkspaceFileDrift::Unknown);
-    }
-}
+- [ ] **Step 2: Write failing drift tests**
+
+Prove:
+
+- `.kts` backend candidates are `NOT_APPLICABLE` to source index/drift;
+- backend-only `.kt` is `FILESYSTEM_ONLY`;
+- complete-owner index-only `.kt` is `INDEX_ONLY`;
+- any partial overlapping owner makes it `UNKNOWN`; and
+- missing files are `MISSING_ON_DISK` with independent index state.
+
+- [ ] **Step 3: Write nested Git mapping tests**
+
+Create a repository with an admitted Gradle workspace below the Git top level
+and set `status.relativePaths=true` in its config. Cover modified, added,
+deleted, untracked, conflicted, inside-to-inside rename, outside-to-inside
+rename, and inside-to-outside rename. Assert the adapter's explicit
+`status.relativePaths=false` override makes porcelain paths repository-root
+relative, the exact workspace prefix is stripped, and only contained endpoints
+annotate candidates. A successful mapped snapshot alone may assign `CLEAN`.
+
+- [ ] **Step 4: Add the root-A/root-B exact-root regression**
+
+In both smoke files, configure root A with only root B's ready descriptor and
+source-index database. Invoke:
+
+```console
+kast agent workspace-files --workspace-root <root-a> --backend idea
 ```
 
-Also prove backend-only present files are `FILESYSTEM_ONLY`, complete-backend
-index-only rows are `INDEX_ONLY`, agreed present rows are `NONE`, and missing
-paths are `MISSING_ON_DISK`.
+Assert the typed exact-root rejection, zero `raw/workspace-files` requests,
+and no read/open observation for root B's database. This is a rejected-no-request
+test, not merely an output-path assertion.
 
-- [ ] **Step 2: Write failing Git and candidate-authority tests**
-
-Create a real temporary Git worktree containing clean, modified, added,
-deleted, renamed, untracked, and conflicted candidate paths. Assert porcelain
-v2 maps them to distinct `WorkspaceFileDirtyState` variants. Add an unowned
-`.kt` file that exists on disk and appears in Git status but in neither
-backend nor index inputs; assert it is absent from the inventory.
-
-- [ ] **Step 3: Run focused tests and observe missing composition**
-
-Run:
+- [ ] **Step 5: Run the focused red tests**
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_inventory
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test semantic_workspace_admission_smoke workspace_files
 ```
 
-Expected: the new composition and dirty tests fail because the collector does
-not exist.
+Expected: paging, composition, Git, and exact-root cases fail because the
+collector is absent.
 
-- [ ] **Step 4: Decode and validate backend coverage**
+- [ ] **Step 6: Implement strict backend paging**
 
-Deserialize the existing raw result into strict Rust input types carrying
-module name, source roots, dependency names, files, `filesTruncated`, and
-`fileCount`. Reject blank module names, invalid absolute paths, duplicate paths
-with conflicting module identities, a returned count greater than
-`fileCount`, and `filesTruncated=false` when the response contradicts its own
-count.
+Fetch module metadata, sort exact module names, and request pages until each
+returns no next token. Validate total/returned counts, canonical advancement,
+module identity, non-overlap, and containment before merging. Preserve
+duplicate physical paths as one record with a `BTreeSet` of owners. A failed
+page records `BackendModuleCoverage::Partial`; it never silently truncates.
 
-Represent coverage as `Complete`, `Truncated { module_names }`, or
-`Unavailable { code }`. Preserve module records in the snapshot for #340; do
-not flatten source roots or dependency names into strings without their module
-owner.
+- [ ] **Step 7: Implement conservative composition**
 
-- [ ] **Step 5: Implement candidate union and conservative classification**
+Candidate keys come only from backend pages and `.kt` index rows. For index-only
+`.kt`, associate all canonical containing module roots; `INDEX_ONLY` requires
+every possible owner complete. Unknown or overlapping partial ownership emits
+`PROJECT_MODEL_OWNERSHIP_UNKNOWN`. `.kts` never queries the source index and
+uses `NotApplicable` states.
 
-Build the candidate key set exclusively from backend and index paths. Use this
-classification function after targeted filesystem evidence is known:
+- [ ] **Step 8: Implement exact-root Git mapping**
 
-```rust
-fn classify_drift(input: &CandidateClassificationInput) -> WorkspaceFileDrift {
-    if input.filesystem_state == WorkspaceFilesystemState::Missing {
-        return WorkspaceFileDrift::MissingOnDisk;
-    }
-    match (input.backend_present, input.index_present) {
-        (true, true) => WorkspaceFileDrift::None,
-        (true, false) if input.index_available => WorkspaceFileDrift::FilesystemOnly,
-        (false, true) if input.backend_proves_absence => WorkspaceFileDrift::IndexOnly,
-        (true, false) | (false, true) | (false, false) => WorkspaceFileDrift::Unknown,
-    }
-}
-```
+Resolve Git top level, prove containment, run porcelain v2 with
+`-c status.relativePaths=false` and `-- .`, and map both current and original
+paths from repository root through the exact workspace prefix. Parse records
+`1`, `2`, `u`, and `?`. Invalid bytes or mapping failure produces
+`DirtyWorkspaceCoverage::Unavailable`.
 
-Set `backend_proves_absence` only for complete coverage of the associated
-module. If module association is missing while any backend module is
-truncated, set it false. Record `PROJECT_MODEL_OWNERSHIP_UNKNOWN` for those
-rows.
+- [ ] **Step 9: Run focused tests green and commit**
 
-- [ ] **Step 6: Implement targeted filesystem and Git annotation**
-
-Call `symlink_metadata` only for candidate paths. Canonicalize existing paths
-and exclude canonical targets outside the exact root. Run:
+Run Step 5, then:
 
 ```console
-git -C <workspace-root> status --porcelain=v2 -z --untracked-files=all
+git add cli-rs/src/workspace_inventory.rs cli-rs/src/workspace_inventory cli-rs/tests/support/workspace_files.rs cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/tests/semantic_workspace_admission_smoke.rs
+git diff --cached --check
+git commit -m "feat: compose exhaustive workspace file evidence"
 ```
 
-Parse record types `1`, `2`, `u`, and `?`, including the extra original path
-for rename records. Annotate only existing candidate keys. A successful Git
-snapshot makes absent candidate records `CLEAN`; command failure makes all
-states `UNKNOWN` and adds `DIRTY_STATE_UNAVAILABLE`.
-
-- [ ] **Step 7: Verify the full internal collector**
-
-Run the focused unit filter again. Expected: all drift, dirty-state, exact-root
-containment, no-filesystem-discovery, and uncapped snapshot tests pass.
-
-- [ ] **Step 8: Commit evidence composition**
-
-```console
-git add cli-rs/src/workspace_inventory.rs cli-rs/src/workspace_inventory cli-rs/tests/support/workspace_files.rs
-git commit -m "feat: compose typed workspace file evidence"
-```
-
-### Task 4: Execute and project bounded public discovery
+### Task 6: Project bounded public discovery and callable capability evidence
 
 **Files:**
 
@@ -582,122 +536,7 @@ git commit -m "feat: compose typed workspace file evidence"
 - Modify: `cli-rs/src/agent/projection.rs`
 - Modify: `cli-rs/src/agent/projection/view.rs`
 - Create: `cli-rs/src/agent/projection/workspace_files.rs`
-- Modify: `cli-rs/tests/agent_workspace_files_smoke.rs`
-- Modify: `cli-rs/tests/agent_result_projection_smoke.rs`
-
-**Interfaces:**
-
-- Consumes: admitted exact-root runtime session,
-  `collect_workspace_inventory`, typed `AgentWorkspaceFilesArgs`, and ADR 0020
-  result-view machinery.
-- Produces: `KAST_AGENT_WORKSPACE_FILES_RESULT`, selection, count, verbose, and
-  explain projections with deterministic filters and limits.
-
-- [ ] **Step 1: Add failing end-to-end discovery and filter tests**
-
-Use `spawn_sequenced_idea_backend` with `runtime/status`, `capabilities`, and
-`raw/workspace-files`, plus the index fixture. Assert the default record
-contains path, both module identities, source set, kind, package, index state,
-drift, and dirty state. Add one test per filter and one conjunction test. Assert
-the raw request is:
-
-```json
-{
-  "method": "raw/workspace-files",
-  "params": {"includeFiles": true}
-}
-```
-
-and does not pass the public `--limit` as `maxFilesPerModule`.
-
-- [ ] **Step 2: Add failing limitation and output-budget tests**
-
-Cover a truncated backend module, missing index, missing Git, backend
-capability absence, malformed backend payload, and both candidate sources
-unavailable. Seed 500 records and assert the default output has at most 20
-file records, no more than 120 lines, and no more than 1,500 estimated tokens.
-
-- [ ] **Step 3: Run focused public tests and observe the temporary error**
-
-Run:
-
-```console
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projection_smoke workspace_files
-```
-
-Expected: tests reach `WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` from Task 1 or
-fail because the projection is absent.
-
-- [ ] **Step 4: Implement exact-root collection and typed degradation**
-
-In `execute_agent_workspace_files`:
-
-1. call `runtime::semantic_workspace_route` and preserve its exact rejection;
-2. open one admitted raw RPC session;
-3. request and strictly decode `raw/workspace-files`;
-4. read the uncapped index snapshot;
-5. collect targeted filesystem and dirty evidence;
-6. return a detailed typed inventory result to the projection layer.
-
-Treat malformed backend JSON as `WORKSPACE_FILES_BACKEND_INVALID`. Treat
-capability absence as partial only when the index supplies candidates. Treat
-index absence as partial when the backend supplies candidates. Return
-`WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` when neither source is usable.
-
-- [ ] **Step 5: Apply typed filters, deterministic order, then public limit**
-
-Convert CLI arguments into `WorkspaceInventoryFilter` once. Match module
-against exact backend name or exact Gradle path, package and source set exactly,
-path prefix at segment boundaries, and glob against normalized relative path.
-Sort by relative path, Gradle module path, and backend module name before
-calling `take(limit.get())`.
-
-Populate page evidence as:
-
-```rust
-WorkspaceFilesPage {
-    known_match_count: filtered.len(),
-    returned_count: files.len(),
-    truncated: filtered.len() > files.len(),
-    inventory_complete: snapshot.is_complete(),
-    limit: args.limit.get(),
-}
-```
-
-Do not label `known_match_count` a total when `inventory_complete` is false.
-
-- [ ] **Step 6: Add all ADR 0020 projections**
-
-Add `AgentProjectionRequest::WorkspaceFiles` and project:
-
-- compact: required file fields, page, limitations;
-- fields: selected file fields plus type/ok/page/schema;
-- count: known counts grouped by kind/index/drift/dirty with no file payloads;
-- verbose: complete typed inventory and evidence sources; and
-- explain: verbose evidence plus normalized filters and classification source.
-
-Never put raw request/response envelopes into compact, fields, or count
-results. Preserve detailed typed backend/index errors in failed envelopes.
-
-- [ ] **Step 7: Run public and projection tests and verify green output**
-
-Run the commands from Step 3. Expected: all filters, limitation cases, view
-shapes, deterministic ordering, and budget assertions pass.
-
-- [ ] **Step 8: Commit public discovery and projections**
-
-```console
-git add cli-rs/src/agent.rs cli-rs/src/agent/dispatch.rs cli-rs/src/agent/workspace_files.rs cli-rs/src/agent/projection.rs cli-rs/src/agent/projection cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/tests/agent_result_projection_smoke.rs
-git commit -m "feat: expose bounded workspace file discovery"
-```
-
-### Task 5: Couple capability advertisement to the callable route
-
-**Files:**
-
 - Create: `cli-rs/src/agent/public_capabilities.rs`
-- Modify: `cli-rs/src/agent.rs`
 - Modify: `cli-rs/src/agent/projection/verify.rs`
 - Modify: `cli-rs/src/agent/projection/tests.rs`
 - Modify: `cli-rs/tests/agent_workspace_files_smoke.rs`
@@ -705,14 +544,20 @@ git commit -m "feat: expose bounded workspace file discovery"
 
 **Interfaces:**
 
-- Consumes: backend `readCapabilities`, `Cli::command()`, and the public
-  workspace-files command.
-- Produces: `AgentPublicCapabilityRoute`,
-  `callable_public_capabilities`, and verification `publicRead` route evidence.
+- Produces: `KAST_AGENT_WORKSPACE_FILES_RESULT` views and
+  `AgentPublicCapabilityRoute` for `WORKSPACE_FILES`.
 
-- [ ] **Step 1: Add failing registry and verification tests**
+- [ ] **Step 1: Write failing output, filter, limitation, and budget tests**
 
-Assert the registry contains exactly this initial route:
+Assert compact records contain sorted owner sets, source sets, kind, structured
+package evidence, source-index state, drift, dirty state, and paths. Cover each
+filter and conjunction; partial pages, unavailable index/Git, invalid package
+reference, and both candidate sources unavailable. Seed 500 records and assert
+20 default records, at most 120 lines, and at most 1,500 estimated tokens.
+
+- [ ] **Step 2: Write failing capability route tests**
+
+Define the expected initial route:
 
 ```rust
 AgentPublicCapabilityRoute {
@@ -722,50 +567,58 @@ AgentPublicCapabilityRoute {
 }
 ```
 
-Walk `Cli::command()` through every segment and fail if any segment is absent
-or hidden. In verification projection tests, assert `WORKSPACE_FILES` produces
-one `publicRead` entry only when present in backend capabilities; omit it when
-the backend does not advertise it.
+Assert the registry path resolves through `Cli::command()`. Verification emits
+public-read evidence only when backend `WORKSPACE_FILES` and the route both
+exist.
 
-- [ ] **Step 2: Run the focused projection tests and observe the missing route**
-
-Run:
+- [ ] **Step 3: Run focused red tests**
 
 ```console
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projection_smoke workspace_files
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projection_smoke verify
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke capability
 ```
 
-Expected: failures show no public capability registry or `publicRead`
-projection.
+- [ ] **Step 4: Execute admitted collection and apply typed filters**
 
-- [ ] **Step 3: Implement the typed route registry**
+Call `semantic_workspace_route`, copy the admitted root/backend into runtime
+args, open one raw session, collect the uncapped snapshot, then filter. Match
+module against any owner, sort by relative path and sorted owner sets, and only
+then take `limit`.
 
-Define `AgentPublicCapability` as an enum and make its canonical backend string
-a total match. `callable_public_capabilities` intersects parsed backend read
-capabilities with the static registry and returns typed route projections.
-Verification keeps raw capability counts for runtime diagnosis but uses the
-intersection for public command evidence.
+- [ ] **Step 5: Add compact, fields, count, verbose, and explain projections**
 
-- [ ] **Step 4: Verify callability and absence behavior**
+Compact and selected views never contain raw envelopes. Count groups known
+records by kind/index/drift/dirty. Verbose adds per-module page coverage;
+explain adds normalized query and classification evidence. Preserve typed
+backend/index failures in failed envelopes.
 
-Run the two focused commands from Step 2. Expected: the route test resolves
-the real Clap command, advertised backend capability emits the public route,
-and absent backend capability emits no workspace discovery claim.
+- [ ] **Step 6: Implement the route registry and verification intersection**
 
-- [ ] **Step 5: Commit the capability invariant**
+Use one typed enum-to-backend-capability match. Keep raw capability counts for
+diagnosis, but expose public command evidence only through the registry
+intersection. #342 extends this owner rather than creating another list.
+
+- [ ] **Step 7: Run focused tests green and commit**
+
+Run Step 3, then:
 
 ```console
-git add cli-rs/src/agent.rs cli-rs/src/agent/public_capabilities.rs cli-rs/src/agent/projection/verify.rs cli-rs/src/agent/projection/tests.rs cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/tests/agent_result_projection_smoke.rs
-git commit -m "feat: couple workspace capability to public command"
+git add cli-rs/src/agent.rs cli-rs/src/agent cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/tests/agent_result_projection_smoke.rs
+git diff --cached --check
+git commit -m "feat: expose bounded workspace file discovery"
 ```
 
-### Task 6: Prove composition and teach the public path
+### Task 7: Regenerate contracts, prove composition, and teach the public path
 
 **Files:**
 
+- Regenerate: `cli-rs/protocol/`
+- Regenerate: `cli-rs/resources/kast-skill/references/commands.json`
+- Regenerate: `cli-rs/resources/kast-skill/references/commands.yaml`
+- Regenerate: `cli-rs/resources/kast-skill/references/requests/raw/workspace-files/`
+- Modify: `cli-rs/tests/rpc_catalog_smoke.rs`
 - Modify: `cli-rs/tests/agent_workspace_files_smoke.rs`
-- Modify: `cli-rs/tests/support/workspace_files.rs`
 - Modify: `cli-rs/src/agent/AGENTS.md`
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
 - Modify: `cli-rs/resources/kast-skill/references/quickstart.md`
@@ -774,109 +627,80 @@ git commit -m "feat: couple workspace capability to public command"
 
 **Interfaces:**
 
-- Consumes: stable `filePath`, workspace-files filters and limitations, typed
-  diagnostics, and exact symbol `--file-hint`.
-- Produces: executable no-search and composition regressions plus public and
-  packaged guidance aligned to the real command.
+- Produces generated paging contracts, public/package guidance, and direct
+  diagnostics/symbol composition proof.
 
-- [ ] **Step 1: Add failing direct-composition regression**
+- [ ] **Step 1: Regenerate Kotlin-owned protocol artifacts**
 
-Run workspace discovery against the scripted backend, extract one returned
-`filePath`, then invoke:
+Run the repository generators, then prove raw request schemas include
+`pageToken` and module results include returned count/next token:
 
 ```console
-kast agent diagnostics --file-path <returned-file-path> --workspace-root <repo>
-kast agent symbol --query app.App --file-hint <returned-file-path> --workspace-root <repo>
+./gradlew :analysis-server:generateDocPages --no-daemon
+cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke
 ```
 
-Assert both backend requests receive the exact returned path. Keep an unowned
-on-disk `.kt` file in the fixture and assert it is never returned, proving the
-flow does not begin with generic filesystem discovery.
+- [ ] **Step 2: Add direct composition regression**
 
-- [ ] **Step 2: Run the composition test before documentation edits**
+Run workspace discovery, extract one `filePath`, then invoke diagnostics and
+symbol `--file-hint`. Assert both backend requests receive exactly that path.
+Keep an unowned on-disk `.kt` file and assert it is absent.
 
-Run:
+- [ ] **Step 3: Update ownership and packaged guidance**
 
-```console
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke composition
-```
+Add the command to `cli-rs/src/agent/AGENTS.md`. Teach source/script filters,
+partial limitations, owner sets, and direct path composition. State explicitly
+that `.kts` is not in the Kotlin source index and Gradle semantic declarations
+arrive with #340.
 
-Expected: pass after Task 4. If it fails, repair the typed path composition
-before documenting the command.
+- [ ] **Step 4: Update reference and how-to docs**
 
-- [ ] **Step 3: Update source-ownership and packaged guidance**
+Document every flag, limit, result view, owner set, package state, drift/index
+truth table, limitations, exact-root behavior, and paging-backed completeness.
+Replace generic-search-first guidance with `workspace-files`, then diagnostics
+or exact symbol lookup.
 
-Add `workspace-files` to the public agent command list in
-`cli-rs/src/agent/AGENTS.md`. Teach this route in the packaged skill and
-quickstart:
-
-```console
-kast agent workspace-files --kind source --module :app --workspace-root "$PWD"
-kast agent workspace-files --kind script --drift unknown --workspace-root "$PWD" --explain
-```
-
-State that results are compiler/index evidence, that limitations make partial
-coverage explicit, and that agents should pass `filePath` directly to
-diagnostics or symbol `--file-hint`.
-
-- [ ] **Step 4: Update public reference and how-to docs**
-
-Document every flag, default/max limit, default result fields, result views,
-drift truth, limitation codes, and exact-root behavior in
-`docs/reference/agent-commands.md`. In `docs/use/inspect-kotlin.md`, replace the
-generic-search starting point with workspace-files discovery, then exact
-symbol lookup and diagnostics. Do not imply that #340 Gradle task symbol
-support exists yet.
-
-- [ ] **Step 5: Validate docs and packaged routing**
-
-Run:
+- [ ] **Step 5: Validate guidance and commit**
 
 ```console
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke --test agent_workspace_files_smoke --test rpc_catalog_smoke
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke composition
 zensical build --clean
-```
-
-Expected: every command example parses or is covered by existing command
-contracts, docs/navigation contracts pass, the packaged skill names the typed
-path, and Zensical renders without broken links.
-
-- [ ] **Step 6: Commit guidance and composition proof**
-
-```console
-git add cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/tests/support/workspace_files.rs cli-rs/src/agent/AGENTS.md cli-rs/resources/kast-skill/SKILL.md cli-rs/resources/kast-skill/references/quickstart.md docs/reference/agent-commands.md docs/use/inspect-kotlin.md
+git diff --check
+git add cli-rs/protocol cli-rs/resources cli-rs/tests/rpc_catalog_smoke.rs cli-rs/tests/agent_workspace_files_smoke.rs cli-rs/src/agent/AGENTS.md docs
+git diff --cached --check
 git commit -m "docs: teach semantic workspace file discovery"
 ```
 
-### Task 7: Run full gates and prepare issue handoff
+### Task 8: Run full gates and prepare issue handoff
 
 **Files:**
 
-- Review: all files changed by Tasks 1 through 6
-- Update only when a gate proves drift: authored Rust, tests, or docs already
-  listed in this plan
+- Review: all issue #338 changes
+- Update only when a gate proves drift in files already owned by this plan
 
-**Interfaces:**
-
-- Consumes: the complete issue #338 implementation.
-- Produces: fresh full-suite evidence, a clean focused diff, and a branch ready
-  for independent review and PR publication.
-
-- [ ] **Step 1: Run the focused issue gates from ADR 0021**
+- [ ] **Step 1: Run focused Rust gates**
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_files_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_inventory
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projection_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test cli_core_smoke
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test semantic_workspace_admission_smoke
 ```
 
-Expected: all focused tests pass with zero ignored failures.
+- [ ] **Step 2: Run Kotlin and source-index authority gates**
 
-- [ ] **Step 2: Run the full Rust quality gates**
+```console
+./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
+```
+
+Expected: paging/project-model tests pass and `.kts` remains rejected by
+`SourceIndexFilePolicyTest`.
+
+- [ ] **Step 3: Run full Rust quality gates**
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked
@@ -884,28 +708,14 @@ cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 ```
 
-Expected: the full locked suite passes, formatting reports no changes, and
-clippy emits no warnings.
-
-- [ ] **Step 3: Prove generated raw contracts did not drift**
+- [ ] **Step 4: Prove generated contracts and docs are current**
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
-git diff --exit-code -- cli-rs/protocol cli-rs/resources/kast-skill/references/commands.json cli-rs/resources/kast-skill/references/commands.yaml
-```
-
-Expected: the contract checker passes and generated raw protocol/catalog files
-remain unchanged.
-
-- [ ] **Step 4: Run final documentation gates**
-
-```console
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean
 ```
-
-Expected: both contracts and rendering pass.
 
 - [ ] **Step 5: Review scope and whitespace**
 
@@ -916,14 +726,14 @@ git diff --check origin/main...HEAD
 git diff --name-only origin/main...HEAD
 ```
 
-Expected: only issue #338 source, tests, guidance, ADR/spec/plan, and docs are
-present; there are no Kotlin wire/schema or generated protocol/catalog changes;
-the worktree is clean after commits.
+Expected: issue source/tests/guidance/ADR/spec/plan and required generated
+contracts only; no source-index schema or `SourceIndexFilePolicy` change.
 
 - [ ] **Step 6: Request independent review**
 
-Ask a fresh reviewer to check type invariants, exact-root containment, no
-recursive/Git candidate authority, the false-`INDEX_ONLY` rule under partial
-backend coverage, capability callability, #340 reuse, output budgets, and all
-acceptance criteria. Repair every blocking finding with a focused red-green
-commit and rerun the affected gate plus the full Rust suite.
+Ask a fresh reviewer to check paging determinism, project-model script
+authority, `.kt`-only source-index preservation, multi-owner physical files,
+nested Git mapping, exact-root rejected-no-request proof, package-state SQL,
+false `INDEX_ONLY`, capability callability, #340 reuse, budgets, and every issue
+acceptance criterion. Repair each blocking finding with a focused red-green
+commit and rerun the affected gate plus full Rust and Kotlin suites.
