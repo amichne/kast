@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
@@ -246,12 +247,13 @@ class FakeAnalysisBackend private constructor(
     }
 
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
-        val filePaths = query.filePaths.value.map { it.value }
-        filePaths.forEach(::requireKnownFile)
-        return DiagnosticsResult(
+        val filePaths = query.filePaths.value
+        filePaths.forEach { requireKnownFile(it.value) }
+        return DiagnosticsResult.of(
             diagnostics = filePaths
-                .flatMap { filePath -> diagnosticsByFile[filePath].orEmpty() }
+                .flatMap { filePath -> diagnosticsByFile[filePath.value].orEmpty() }
                 .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset })),
+            fileStatuses = filePaths.map(FileAnalysisStatus::analyzed),
         )
     }
 
