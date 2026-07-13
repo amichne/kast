@@ -66,6 +66,11 @@ import kotlinx.serialization.json.JsonNull
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
+import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
+import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
+import io.github.amichne.kast.server.mutation.MutationOperationService
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -83,6 +88,7 @@ class RpcAnalysisDispatcher(
     },
 ) {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
+    private val mutationRpc = MutationOperationService(skillRpc, json)
     private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
 
     suspend fun dispatch(request: JsonRpcRequest): String {
@@ -386,6 +392,21 @@ class RpcAnalysisDispatcher(
             "symbol/replace-declaration" -> encode(
                 KastScopeMutationResponse.serializer(),
                 skillRpc.replaceDeclaration(decodeParams(KastReplaceDeclarationRequest.serializer(), params)),
+            )
+
+            "mutation/submit" -> encode(
+                KastMutationSubmissionReceipt.serializer(),
+                mutationRpc.submit(decodeParams(KastSemanticMutation.serializer(), params)),
+            )
+
+            "mutation/status" -> encode(
+                KastMutationOperationSnapshot.serializer(),
+                mutationRpc.status(decodeParams(KastMutationOperationSelector.serializer(), params)),
+            )
+
+            "mutation/cancel" -> encode(
+                KastMutationOperationSnapshot.serializer(),
+                mutationRpc.cancel(decodeParams(KastMutationOperationSelector.serializer(), params)),
             )
 
             "raw/implementations" -> encode(

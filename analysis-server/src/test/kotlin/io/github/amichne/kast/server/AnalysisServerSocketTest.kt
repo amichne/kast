@@ -5,6 +5,12 @@ import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
+import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
+import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -22,6 +28,7 @@ import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
 import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.io.path.exists
@@ -192,6 +199,47 @@ class AnalysisServerSocketTest {
     }
 
     @Test
+    fun `mutation status remains retrievable by idempotency key after client disconnect`() {
+        val socketPath = tempDir.resolve("run").resolve("m.sock")
+        val target = tempDir.resolve("src/Reconnected.kt")
+        val contentFile = tempDir.resolve("reconnected-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Reconnected\n")
+        val idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect")
+        val mutation = KastSemanticMutation.AddFile(
+            idempotencyKey = idempotencyKey,
+            request = KastAddFileRequest(
+                workspaceRoot = tempDir.toString(),
+                filePath = target.toString(),
+                contentFile = contentFile.toString(),
+            ),
+        )
+
+        AnalysisServer(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = tempDir.resolve("instances"),
+            ),
+        ).start().use {
+            sendWithoutReadingResponse(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "mutation/submit",
+                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
+                ),
+            )
+            Thread.sleep(25)
+
+            val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
+            val terminal = awaitMutationTerminal(socketPath, selector)
+
+            assertTrue(terminal.state is KastMutationOperationState.Completed)
+            assertEquals("package sample\n\nclass Reconnected\n", Files.readString(target))
+        }
+    }
+
+    @Test
     fun `expected client disconnects include macOS disconnected socket errors`() {
         assertTrue(isExpectedClientDisconnect(IOException("Socket is not connected")))
     }
@@ -222,6 +270,33 @@ class AnalysisServerSocketTest {
             writer.newLine()
             writer.flush()
         }
+    }
+
+    private fun awaitMutationTerminal(
+        socketPath: Path,
+        selector: KastMutationOperationSelector,
+    ): KastMutationOperationSnapshot {
+        repeat(200) {
+            val response = callSocket(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(2),
+                    method = "mutation/status",
+                    params = json.encodeToJsonElement(KastMutationOperationSelector.serializer(), selector),
+                ),
+            )
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
+            val snapshot = json.decodeFromJsonElement(KastMutationOperationSnapshot.serializer(), success.result)
+            if (
+                snapshot.state is KastMutationOperationState.Completed ||
+                snapshot.state is KastMutationOperationState.Failed ||
+                snapshot.state is KastMutationOperationState.Cancelled
+            ) {
+                return snapshot
+            }
+            Thread.sleep(5)
+        }
+        error("Mutation operation did not become terminal after reconnect")
     }
 
     private fun awaitClientHandlerCompletion() {
