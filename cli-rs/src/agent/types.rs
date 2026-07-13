@@ -35,17 +35,42 @@ struct AgentSemanticAnalysisSummary {
 }
 
 impl AgentSemanticAnalysisSummary {
-    fn from_result(result: &Value) -> Option<Self> {
-        let summary = serde_json::from_value::<Self>(result.clone()).ok()?;
-        (summary.requested_file_count
-            == summary
-                .analyzed_file_count
-                .checked_add(summary.skipped_file_count)?)
-        .then_some(summary)
-    }
-
     fn is_incomplete(&self) -> bool {
         self.semantic_outcome == AgentSemanticAnalysisOutcome::Incomplete
+    }
+}
+
+enum AgentSemanticAnalysisEvidence {
+    Absent,
+    Valid(AgentSemanticAnalysisSummary),
+    Invalid,
+}
+
+impl AgentSemanticAnalysisEvidence {
+    fn from_result(result: &Value) -> Self {
+        const FIELDS: [&str; 4] = [
+            "semanticOutcome",
+            "requestedFileCount",
+            "analyzedFileCount",
+            "skippedFileCount",
+        ];
+        if FIELDS.iter().all(|field| result.get(field).is_none()) {
+            return Self::Absent;
+        }
+        let Ok(summary) = serde_json::from_value::<AgentSemanticAnalysisSummary>(result.clone())
+        else {
+            return Self::Invalid;
+        };
+        let Some(classified_file_count) = summary
+            .analyzed_file_count
+            .checked_add(summary.skipped_file_count)
+        else {
+            return Self::Invalid;
+        };
+        if summary.requested_file_count != classified_file_count {
+            return Self::Invalid;
+        }
+        Self::Valid(summary)
     }
 }
 

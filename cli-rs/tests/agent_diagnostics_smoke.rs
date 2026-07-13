@@ -153,6 +153,32 @@ fn analysis_failure_diagnostic_fails_closed_without_completeness_fields() {
     );
 }
 
+#[test]
+fn malformed_completeness_evidence_fails_closed() {
+    let (output, methods) = run_single_json_scenario(
+        "Malformed.kt",
+        "fun malformed(): Int = 42\n",
+        malformed_completeness_evidence,
+    );
+    let document = decode_json(&output);
+
+    assert_eq!(
+        methods,
+        [
+            "runtime/status",
+            "capabilities",
+            "raw/workspace-refresh",
+            "raw/diagnostics"
+        ],
+    );
+    assert!(!output.status.success(), "{document:#}");
+    assert_eq!(document["ok"], false, "{document:#}");
+    assert_eq!(
+        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INVALID",
+        "{document:#}",
+    );
+}
+
 fn run_single_json_scenario(
     file_name: &str,
     source: &str,
@@ -431,6 +457,21 @@ fn legacy_analysis_failure(file: &Path) -> Value {
             "message": "Backend failed before completeness fields were produced",
             "code": "ANALYSIS_FAILURE"
         }],
+        "schemaVersion": 3
+    })
+}
+
+fn malformed_completeness_evidence(file: &Path) -> Value {
+    json!({
+        "diagnostics": [],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "ANALYZED"
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 0,
+        "skippedFileCount": 0,
         "schemaVersion": 3
     })
 }

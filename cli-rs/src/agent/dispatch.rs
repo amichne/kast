@@ -470,10 +470,13 @@ fn execute_agent_steps(
             step_session,
         );
         if step.method == "raw/diagnostics" {
-            semantic_analysis = envelope
-                .result
-                .as_ref()
-                .and_then(AgentSemanticAnalysisSummary::from_result);
+            semantic_analysis = envelope.result.as_ref().and_then(|result| {
+                match AgentSemanticAnalysisEvidence::from_result(result) {
+                    AgentSemanticAnalysisEvidence::Valid(summary) => Some(summary),
+                    AgentSemanticAnalysisEvidence::Absent
+                    | AgentSemanticAnalysisEvidence::Invalid => None,
+                }
+            });
         }
         if !envelope.ok {
             issues.push(json!({
