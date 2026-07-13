@@ -61,7 +61,9 @@ import io.github.amichne.kast.api.contract.skill.KastRenameQuery
 import io.github.amichne.kast.api.contract.skill.KastRenameRequest
 import io.github.amichne.kast.api.contract.skill.KastRenameResponse
 import io.github.amichne.kast.api.contract.skill.KastRenameSuccessResponse
+import io.github.amichne.kast.api.contract.skill.KastResolveAmbiguousResponse
 import io.github.amichne.kast.api.contract.skill.KastResolveFailureResponse
+import io.github.amichne.kast.api.contract.skill.KastResolveNotFoundResponse
 import io.github.amichne.kast.api.contract.skill.KastResolveContext
 import io.github.amichne.kast.api.contract.skill.KastResolveParams
 import io.github.amichne.kast.api.contract.skill.KastResolveQuery
@@ -128,29 +130,33 @@ internal class SkillRpcOrchestrator(
             includeSurroundingMembers = request.includeSurroundingMembers,
         )
         validateResolveQuery(query)
-        val candidates = rankedNamedSymbolCandidates(
+        val candidates = exactNamedSymbolCandidates(
             symbolName = request.symbol,
             fileHint = request.fileHint,
             kind = request.kind,
             containingType = request.containingType,
-            line = null,
-            codeSnippet = null,
             includeDeclarationScope = false,
             searchLimit = minOf(config.maxResults, DEFAULT_DISCOVERY_SEARCH_LIMIT),
         )
-        val candidate = candidates.firstOrNull() ?: return KastResolveFailureResponse(
-            stage = "resolve",
-            message = "No symbol matching '${request.symbol}' found in workspace",
-            query = query,
-            logFile = placeholderLogFile(),
-        )
+        if (candidates.isEmpty()) {
+            return KastResolveNotFoundResponse(
+                query = query,
+                logFile = placeholderLogFile(),
+            )
+        }
+        if (candidates.size > 1) {
+            return KastResolveAmbiguousResponse(
+                query = query,
+                candidates = candidates.map(RankedNamedSymbolCandidate::symbol),
+                logFile = placeholderLogFile(),
+            )
+        }
+        val candidate = candidates.single()
         val resolved = resolveNamedSymbol(
             candidate = candidate,
             includeDeclarationScope = request.includeDeclarationScope,
             includeDocumentation = request.includeDocumentation,
-        ) ?: return KastResolveFailureResponse(
-            stage = "resolve",
-            message = "No symbol matching '${request.symbol}' found in workspace",
+        ) ?: return KastResolveNotFoundResponse(
             query = query,
             logFile = placeholderLogFile(),
         )
@@ -165,15 +171,8 @@ internal class SkillRpcOrchestrator(
                 column = resolved.symbol.location.startColumn,
                 context = resolved.symbol.location.preview,
             ),
-            candidateCount = candidates.size.takeIf { it > 1 },
-            alternatives = candidates
-                .asSequence()
-                .map { it.symbol.fqName }
-                .filter { it != candidate.symbol.fqName }
-                .distinct()
-                .take(3)
-                .toList()
-                .takeIf { it.isNotEmpty() },
+            candidateCount = 1,
+            alternatives = emptyList(),
             context = context,
             logFile = placeholderLogFile(),
         )
@@ -1100,8 +1099,91 @@ internal class SkillRpcOrchestrator(
             .toList()
     }
 
+    private suspend fun exactNamedSymbolCandidates(
+        symbolName: String,
+        fileHint: String?,
+        kind: WrapperNamedSymbolKind?,
+        containingType: String?,
+        includeDeclarationScope: Boolean,
+        searchLimit: Int,
+    ): List<RankedNamedSymbolCandidate> {
+        requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
+        return symbolSearchPatterns(symbolName)
+            .flatMap { pattern ->
+                backend.workspaceSymbolSearch(
+                    WorkspaceSymbolQuery(
+                        pattern = pattern,
+                        kind = kind?.toSymbolKind(),
+                        maxResults = searchLimit,
+                        includeDeclarationScope = includeDeclarationScope,
+                    ).parsed(),
+                ).withLimit(searchLimit) { workspaceSymbolPageToken(searchLimit) }.symbols
+            }
+            .distinctBy { symbol -> Triple(symbol.fqName, symbol.location.filePath, symbol.location.startOffset) }
+            .asSequence()
+            .filter { symbol -> exactIdentityMatches(symbolName, symbol.fqName) }
+            .filter { symbol -> kind == null || symbol.kind == kind.toSymbolKind() }
+            .filter { symbol -> fileHint == null || exactFileHintMatches(fileHint, symbol.location.filePath) }
+            .filter { symbol -> containingType == null || exactContainingTypeMatches(containingType, symbol) }
+            .sortedWith(
+                compareBy<Symbol> { it.location.filePath }
+                    .thenBy { it.location.startOffset }
+                    .thenBy { it.fqName },
+            )
+            .map { symbol ->
+                RankedNamedSymbolCandidate(
+                    symbol = symbol,
+                    score = 100,
+                    reasons = listOf("exact identity and constraints match"),
+                )
+            }
+            .toList()
+    }
+
+    private fun exactIdentityMatches(requested: String, candidateFqName: String): Boolean {
+        val normalizedRequested = normalizedKotlinIdentity(requested)
+        val normalizedCandidate = normalizedKotlinIdentity(candidateFqName)
+        return if (normalizedRequested.contains('.')) {
+            normalizedCandidate == normalizedRequested
+        } else {
+            normalizedCandidate.substringAfterLast('.') == normalizedRequested
+        }
+    }
+
+    private fun normalizedKotlinIdentity(value: String): String = value
+        .split('.')
+        .joinToString(".") { segment ->
+            segment.removeSurrounding("`")
+        }
+
+    private fun exactFileHintMatches(fileHint: String, candidateFile: String): Boolean {
+        val normalizedHint = Path.of(fileHint).normalize()
+        val normalizedCandidate = Path.of(candidateFile).normalize()
+        return if (normalizedHint.isAbsolute) {
+            normalizedCandidate == normalizedHint
+        } else {
+            normalizedCandidate.endsWith(normalizedHint)
+        }
+    }
+
+    private fun exactContainingTypeMatches(containingType: String, candidate: Symbol): Boolean {
+        val candidateContainer = candidate.containingDeclaration ?: return false
+        val normalizedRequested = normalizedKotlinIdentity(containingType)
+        val normalizedCandidate = normalizedKotlinIdentity(candidateContainer)
+        return if (normalizedRequested.contains('.')) {
+            normalizedCandidate == normalizedRequested
+        } else {
+            normalizedCandidate.substringAfterLast('.') == normalizedRequested
+        }
+    }
+
     private fun symbolSearchPatterns(symbolName: String): List<String> =
-        listOf(symbolName, symbolName.substringAfterLast('.'))
+        listOf(
+            symbolName,
+            symbolName.substringAfterLast('.'),
+            normalizedKotlinIdentity(symbolName),
+            normalizedKotlinIdentity(symbolName).substringAfterLast('.'),
+        )
             .map(String::trim)
             .filter(String::isNotEmpty)
             .distinct()
