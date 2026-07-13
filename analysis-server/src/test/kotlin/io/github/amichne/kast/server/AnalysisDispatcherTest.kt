@@ -12,6 +12,11 @@ import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.Diagnostic
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisState
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.FileOperation
@@ -20,6 +25,7 @@ import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -41,6 +47,7 @@ import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
+import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -55,6 +62,7 @@ import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
+import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -373,6 +381,67 @@ class AnalysisDispatcherTest {
             backend.appliedFileHashes,
         )
         assertTrue(file.readText().endsWith(content))
+    }
+
+    @Test
+    fun `raw diagnostics preserves incomplete semantic evidence`() {
+        val file = sampleFile()
+        val backend = IncompleteDiagnosticsBackend(FakeAnalysisBackend.sample(tempDir))
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "raw/diagnostics",
+                    params = json.encodeToJsonElement(
+                        DiagnosticsQuery.serializer(),
+                        DiagnosticsQuery(filePaths = listOf(file.toString())),
+                    ),
+                ),
+            )
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(DiagnosticsResult.serializer(), response.result)
+
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
+        assertEquals(FileAnalysisState.BACKEND_FAILURE, result.fileStatuses.single().state)
+        assertEquals(1, result.requestedFileCount)
+        assertEquals(0, result.analyzedFileCount)
+        assertEquals(1, result.skippedFileCount)
+    }
+
+    @Test
+    fun `mutation summary fails closed when post edit analysis is incomplete`() {
+        val file = sampleFile()
+        val backend = IncompleteDiagnosticsBackend(FakeAnalysisBackend.sample(tempDir))
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/write-and-validate",
+                    params = json.encodeToJsonElement(
+                        KastWriteAndValidateRequest.serializer(),
+                        KastWriteAndValidateInsertAtOffsetRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = file.toString(),
+                            offset = file.readText().length,
+                            content = "\nfun added() = Unit\n",
+                        ),
+                    ),
+                ),
+            )
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(KastWriteAndValidateResponse.serializer(), response.result)
+
+        val success = result as KastWriteAndValidateSuccessResponse
+        assertFalse(success.ok)
+        assertFalse(success.diagnostics.clean)
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, success.diagnostics.semanticOutcome)
+        assertEquals(1, success.diagnostics.requestedFileCount)
+        assertEquals(0, success.diagnostics.analyzedFileCount)
+        assertEquals(1, success.diagnostics.skippedFileCount)
     }
 
     @Test
@@ -1166,5 +1235,35 @@ private class CapturingApplyEditsBackend(
             fileHash.filePath.value to fileHash.hash
         }
         return delegate.applyEdits(query)
+    }
+}
+
+private class IncompleteDiagnosticsBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
+        val fileStatuses = query.filePaths.value.map { filePath ->
+            FileAnalysisStatus.skipped(
+                filePath = filePath,
+                state = FileAnalysisState.BACKEND_FAILURE,
+                message = "Semantic analysis was unavailable after the operation",
+            )
+        }
+        val diagnostics = query.filePaths.value.map { filePath ->
+            Diagnostic(
+                location = Location(
+                    filePath = filePath.value,
+                    startOffset = 0,
+                    endOffset = 0,
+                    startLine = 0,
+                    startColumn = 0,
+                    preview = "",
+                ),
+                severity = DiagnosticSeverity.ERROR,
+                message = "Semantic analysis was unavailable after the operation",
+                code = "ANALYSIS_FAILURE",
+            )
+        }
+        return DiagnosticsResult.of(diagnostics = diagnostics, fileStatuses = fileStatuses)
     }
 }

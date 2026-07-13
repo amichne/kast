@@ -3,7 +3,6 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.Diagnostic
-import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FilePosition
@@ -576,10 +575,13 @@ internal class SkillRpcOrchestrator(
             ).parsed(),
         )
         val diagnosticsSummary = if (renameResult.affectedFiles.isEmpty()) {
-            KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0)
+            KastDiagnosticsSummary.completeWithoutFiles()
         } else {
             requireReadCapability(ReadCapability.DIAGNOSTICS)
-            diagnosticsSummary(backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed()).withLimit(config.maxResults, ::diagnosticPageToken))
+            KastDiagnosticsSummary.from(
+                backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed())
+                    .withLimit(config.maxResults, ::diagnosticPageToken),
+            )
         }
         return KastRenameSuccessResponse(
             ok = diagnosticsSummary.clean,
@@ -877,7 +879,7 @@ internal class SkillRpcOrchestrator(
 
     private suspend fun validateFiles(filePaths: List<String>): KastDiagnosticsSummary {
         requireReadCapability(ReadCapability.DIAGNOSTICS)
-        return diagnosticsSummary(
+        return KastDiagnosticsSummary.from(
             backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed()).withLimit(config.maxResults, ::diagnosticPageToken),
         )
     }
@@ -1237,14 +1239,6 @@ internal class SkillRpcOrchestrator(
             )
         }
     }
-
-    private fun diagnosticsSummary(result: io.github.amichne.kast.api.contract.result.DiagnosticsResult): KastDiagnosticsSummary =
-        KastDiagnosticsSummary(
-            clean = result.diagnostics.none { it.severity == DiagnosticSeverity.ERROR },
-            errorCount = result.diagnostics.count { it.severity == DiagnosticSeverity.ERROR },
-            warningCount = result.diagnostics.count { it.severity == DiagnosticSeverity.WARNING },
-            errors = result.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR },
-        )
 
     private fun resolveContent(content: String?, contentFile: String?): String {
         if (content != null) {
