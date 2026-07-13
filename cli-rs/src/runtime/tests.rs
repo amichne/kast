@@ -39,13 +39,21 @@ mod tests {
     }
 
     #[test]
-    fn servable_selection_prefers_idea() {
+    fn automatic_servable_selection_rejects_backend_ambiguity() {
         let candidates = vec![
             candidate("headless", RuntimeState::Ready, false),
             candidate("idea", RuntimeState::Ready, false),
         ];
-        let selected = select_servable(&candidates, None, false).unwrap();
-        assert_eq!(selected.descriptor.backend_name, "idea");
+
+        let error = reject_ambiguous_servable_backends(
+            &candidates,
+            RuntimeBackendPreference::Automatic,
+            false,
+        )
+        .expect_err("automatic selection must reject two ready backends");
+
+        assert_eq!(error.code, "SEMANTIC_BACKEND_AMBIGUOUS");
+        assert_eq!(error.details["candidateCount"], "2");
     }
 
     #[test]

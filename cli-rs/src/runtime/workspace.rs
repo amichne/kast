@@ -30,6 +30,11 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let preference = runtime_backend_preference(&config, args.backend_name);
     validate_macos_workspace_for_preference(&workspace_root, preference)?;
     let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, true)?;
+    reject_ambiguous_servable_backends(
+        &inspection.candidates,
+        preference,
+        args.accept_indexing.unwrap_or(false),
+    )?;
     if let Some(selected) = select_servable(
         &inspection.candidates,
         preference.backend_filter(),
@@ -45,6 +50,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
             note: None,
             schema_version: SCHEMA_VERSION,
         });
+    }
+
+    if args.no_auto_start.unwrap_or(false) {
+        return Err(no_backend_error(
+            &workspace_root,
+            preference.backend_filter(),
+        ));
     }
 
     let idea_launch_ops = SystemIdeaBackendLaunchOps;
@@ -76,13 +88,6 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
             ),
         ));
     };
-
-    if args.no_auto_start.unwrap_or(false) {
-        return Err(no_backend_error(
-            &workspace_root,
-            preference.backend_filter(),
-        ));
-    }
 
     if launch_backend == BackendName::Headless {
         if select_servable(&inspection.candidates, Some(launch_backend), true).is_some()

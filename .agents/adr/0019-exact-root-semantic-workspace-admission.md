@@ -17,7 +17,15 @@ for supported headless installations.
 Every typed semantic command is admitted against the exact normalized
 workspace root requested by the caller. Admission classifies that root as a
 primary checkout, linked worktree, disposable checkout, standalone Gradle
-workspace, or unsupported project before selecting semantic state.
+workspace, or unsupported project before selecting semantic state. A Gradle
+build marker is required before any descriptor can participate in admission;
+plugin metadata or an injected exact-root descriptor cannot turn a non-Gradle
+directory into a supported project.
+
+A temporary clone with its own `.git` directory remains disposable when it is
+under the operating system temporary root and has no admitted semantic state.
+The presence of `.git` alone is not durable evidence that the checkout is the
+primary workspace.
 
 IDEA state is usable only when plugin metadata names that exact root and the
 selected runtime descriptor names that exact root. Sharing a Git common
@@ -39,8 +47,24 @@ On macOS, an unprepared Gradle root does not become a terminal setup error.
 
 These next actions are guidance, not side effects. Verification does not copy
 metadata, run `kast setup`, start an IDE, repair an install, alter global
-configuration, or mutate a Homebrew receipt. Unsupported non-Gradle projects
-fail separately and do not receive misleading workspace-preparation guidance.
+configuration, mutate a Homebrew receipt, or start a headless runtime.
+Verification reuses an already ready exact-root runtime only. Unsupported
+non-Gradle projects fail separately and do not receive misleading
+workspace-preparation guidance.
+
+The unprepared/headless route admits read-only verification, symbol, and
+diagnostics workflows. It is not mutation authority. On macOS every applied
+public mutation family still requires valid exact-root plugin preparation,
+including when `--backend=headless` is selected. Mutation plans remain
+read-only; applied rename, add-file, add-declaration, add-implementation,
+add-statement, and replace-declaration commands fail with
+`SEMANTIC_MUTATION_AUTHORITY_REQUIRED` before any backend request when that
+authority is absent.
+
+Automatic backend selection is allowed only when at most one backend kind is
+ready for the exact root. If IDEA and headless are both ready, admission fails
+with `SEMANTIC_BACKEND_AMBIGUOUS` and structured candidate evidence. An
+explicit `--backend` or configured default remains authoritative.
 
 After admission succeeds, `kast agent verify` projects a compact semantic
 workspace evidence object from runtime status and capabilities. The object
@@ -54,16 +78,16 @@ checkouts.
 
 | Host and workspace state | Supported action | Authority and mutation rule |
 | --- | --- | --- |
-| macOS, exact root prepared | Use `--backend=idea` or automatic selection | Plugin metadata and exact-root IDEA descriptor are authoritative |
+| macOS, exact root prepared | Use `--backend=idea` or an explicit backend | Plugin metadata and the exact-root descriptor are authoritative; applied mutation is permitted through the existing apply gates |
 | macOS, exact root unprepared | Open that exact root with the installed Kast plugin, then rerun verification | The CLI reports the action but performs no setup or launch |
-| Supported headless distribution | Use `--backend=headless` with the exact root | Existing manifest-backed headless runtime is used; verification does not install or repair it |
+| Supported headless distribution | Use `--backend=headless` with the exact root | An already ready exact-root runtime is reused for verification; symbol and diagnostics may use the installed distribution; verification does not start, install, or repair it |
+| More than one ready exact-root backend | Select `--backend=idea` or `--backend=headless` | Automatic routing fails with candidate evidence instead of preferring an OS/backend |
 | Unsupported non-Gradle root | Choose a Kotlin Gradle workspace | No backend is started and no preparation is suggested |
 
 Read-only `symbol` and `diagnostics` workflows are supported after either the
-prepared IDEA path or the headless path admits the exact root. This decision
-does not widen mutation authority: IDEA-only or plugin-prepared operations
-still require valid plugin metadata on macOS, and existing apply gates remain
-in force.
+prepared IDEA path or the headless path admits the exact root. Existing apply
+gates remain in force, and macOS applied mutations additionally require valid
+exact-root plugin metadata regardless of the selected backend.
 
 ## Source owners
 
@@ -73,6 +97,8 @@ in force.
   `cli-rs/src/runtime/inspect.rs`
 - Typed agent verification evidence and unavailable-route output:
   `cli-rs/src/agent/`
+- Applied-mutation authority classification: `cli-rs/src/agent/request.rs` and
+  `cli-rs/src/runtime/workspace_admission.rs`
 - macOS plugin metadata validation: `cli-rs/src/self_mgmt.rs`
 - Public command and troubleshooting guidance: `docs/reference/agent-commands.md`
   and `docs/troubleshoot.md`

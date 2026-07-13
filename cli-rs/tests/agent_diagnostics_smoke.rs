@@ -13,6 +13,7 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
     let workspace = temp.path().join("workspace");
     let file = workspace.join("src/Missing.kt");
     std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
+    write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
 
@@ -291,6 +292,7 @@ fn run_single_json_scenario(
     let file = workspace.join("src").join(file_name);
     std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
     std::fs::write(&file, source).expect("scenario source");
+    write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
 
@@ -329,6 +331,14 @@ fn run_diagnostics(
         ])
         .output()
         .expect("agent diagnostics")
+}
+
+fn write_gradle_marker(workspace: &Path) {
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"diagnostics-fixture\"\n",
+    )
+    .expect("settings");
 }
 
 fn decode_json(output: &Output) -> Value {
@@ -439,6 +449,9 @@ fn spawn_fake_backend(
                 }
                 Err(error) => panic!("accept fake diagnostics client: {error}"),
             };
+            stream
+                .set_nonblocking(false)
+                .expect("blocking diagnostics stream");
             let mut reader = BufReader::new(stream.try_clone().expect("clone diagnostics stream"));
             let mut request_line = String::new();
             reader

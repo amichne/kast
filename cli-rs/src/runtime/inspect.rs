@@ -185,6 +185,61 @@ fn select_servable(
     matches.into_iter().next()
 }
 
+fn reject_ambiguous_servable_backends(
+    candidates: &[RuntimeCandidateStatus],
+    preference: RuntimeBackendPreference,
+    accept_indexing: bool,
+) -> Result<()> {
+    if preference != RuntimeBackendPreference::Automatic {
+        return Ok(());
+    }
+    let mut matches = candidates
+        .iter()
+        .filter(|candidate| {
+            if accept_indexing {
+                candidate.runtime_status.as_ref().is_some_and(is_servable)
+            } else {
+                candidate.ready
+            }
+        })
+        .collect::<Vec<_>>();
+    matches.sort_by(|left, right| {
+        left.descriptor
+            .backend_name
+            .cmp(&right.descriptor.backend_name)
+    });
+    matches.dedup_by(|left, right| {
+        left.descriptor.backend_name == right.descriptor.backend_name
+    });
+    if matches.len() <= 1 {
+        return Ok(());
+    }
+    let mut error = CliError::new(
+        "SEMANTIC_BACKEND_AMBIGUOUS",
+        "More than one ready semantic backend matches the exact workspace root. Select --backend=idea or --backend=headless.",
+    );
+    error
+        .details
+        .insert("candidateCount".to_string(), matches.len().to_string());
+    for (index, candidate) in matches.into_iter().enumerate() {
+        error.details.insert(
+            format!("candidate{index}BackendName"),
+            candidate.descriptor.backend_name.clone(),
+        );
+        error.details.insert(
+            format!("candidate{index}BackendVersion"),
+            candidate.descriptor.backend_version.clone(),
+        );
+        error.details.insert(
+            format!("candidate{index}WorkspaceRoot"),
+            config::normalize(PathBuf::from(&candidate.descriptor.workspace_root))
+                .display()
+                .to_string(),
+        );
+    }
+    Err(error)
+}
+
 fn select_status_candidate(
     candidates: &[RuntimeCandidateStatus],
     backend_name: Option<BackendName>,

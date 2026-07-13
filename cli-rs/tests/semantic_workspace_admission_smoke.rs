@@ -1,5 +1,8 @@
 mod support;
 
+use std::os::unix::fs::PermissionsExt;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use support::*;
 
@@ -9,7 +12,7 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     let workspace = std::fs::canonicalize(fixture.primary()).expect("canonical primary");
     let home = fixture.primary().join("test-home");
     let config_home = fixture.primary().join("test-config");
-    let socket_path = fixture.primary().join("semantic-backend.sock");
+    let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
     write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
@@ -205,7 +208,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
     let linked = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
     let home = fixture.linked().join("test-home");
     let config_home = fixture.linked().join("test-config");
-    let socket_path = fixture.primary().join("primary-backend.sock");
+    let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&linked);
     write_runtime_descriptor(&home, &primary, &socket_path, "idea");
@@ -229,8 +232,323 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
         "other checkout must not serve verify"
     );
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "IDEA_NOT_RUNNING");
+    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
     assert!(backend.join().expect("backend thread").is_empty());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn unprepared_headless_route_rejects_every_public_applied_mutation() {
+    let fixture = tempfile::tempdir().expect("mutation fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let socket_path = fixture.path().join("headless.sock");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&socket_path),
+        workspace.clone(),
+        "headless",
+    );
+    let content_file = fixture.path().join("content.kt");
+    let target_file = workspace.join("src/main/kotlin/Added.kt");
+    std::fs::write(&content_file, "fun added() = Unit\n").expect("content");
+
+    let cases = [
+        vec![
+            "agent".to_string(),
+            "rename".to_string(),
+            "--symbol".to_string(),
+            "sample.Foo".to_string(),
+            "--new-name".to_string(),
+            "Bar".to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-file".to_string(),
+            "--file-path".to_string(),
+            target_file.display().to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-declaration".to_string(),
+            "--inside-file".to_string(),
+            target_file.display().to_string(),
+            "--at".to_string(),
+            "file-bottom".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-implementation".to_string(),
+            "--inside-scope".to_string(),
+            "sample.Foo".to_string(),
+            "--at".to_string(),
+            "body-end".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-statement".to_string(),
+            "--inside-scope".to_string(),
+            "sample.foo".to_string(),
+            "--at".to_string(),
+            "body-end".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "replace-declaration".to_string(),
+            "--symbol".to_string(),
+            "sample.Foo".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+    ];
+
+    for mut args in cases {
+        args.extend([
+            "--apply".to_string(),
+            "--workspace-root".to_string(),
+            workspace.display().to_string(),
+            "--backend=headless".to_string(),
+        ]);
+        let mutation = kast(&home, &config_home)
+            .args(["--output", "json"])
+            .args(args)
+            .output()
+            .expect("applied mutation");
+        assert!(!mutation.status.success(), "unprepared mutation must fail");
+        let output: serde_json::Value =
+            serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
+        assert_eq!(
+            output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+            "{output:#}"
+        );
+        assert_eq!(
+            output["error"]["details"]["semanticWorkspace"]["workspaceRoot"],
+            workspace.display().to_string()
+        );
+    }
+    assert!(
+        backend.finish().is_empty(),
+        "authority must fail before RPC"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn prepared_workspace_authority_allows_explicit_headless_mutation() {
+    let fixture = tempfile::tempdir().expect("prepared mutation fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let socket_path = fixture.path().join("headless.sock");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&socket_path),
+        workspace.clone(),
+        "headless",
+    );
+
+    let mutation = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "sample.Foo",
+            "--new-name",
+            "Bar",
+            "--apply",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--backend=headless",
+        ])
+        .output()
+        .expect("prepared mutation");
+
+    assert!(
+        mutation.status.success(),
+        "prepared authority should admit mutation: stdout={}, stderr={}",
+        String::from_utf8_lossy(&mutation.stdout),
+        String::from_utf8_lossy(&mutation.stderr)
+    );
+    assert_eq!(
+        backend.finish(),
+        vec!["runtime/status", "capabilities", "symbol/rename"]
+    );
+}
+
+#[test]
+fn agent_verify_never_runs_configured_idea_launch_command() {
+    let fixture = tempfile::tempdir().expect("launch fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let launch_marker = fixture.path().join("idea-launched");
+    let launch_command = fixture.path().join("launch-idea");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    std::fs::write(
+        &launch_command,
+        format!("#!/bin/sh\ntouch '{}'\n", launch_marker.display()),
+    )
+    .expect("launch command");
+    let mut permissions = std::fs::metadata(&launch_command)
+        .expect("launch metadata")
+        .permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&launch_command, permissions).expect("launch executable");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\nrequireInstalledPlugin = false\n",
+            launch_command.display()
+        ),
+    )
+    .expect("config");
+
+    let verify = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--backend=idea",
+        ])
+        .output()
+        .expect("agent verify");
+
+    assert!(
+        !verify.status.success(),
+        "verify without a runtime must fail"
+    );
+    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
+    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert!(
+        !launch_marker.exists(),
+        "verification must not execute runtime.ideaLaunch"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn temporary_git_clone_is_classified_as_disposable() {
+    let fixture = GitWorkspaceFixture::new();
+    let disposable = tempfile::tempdir().expect("disposable parent");
+    let clone = disposable.path().join("clone");
+    run_git_clone(fixture.primary(), &clone);
+
+    assert_unprepared_route(&clone, "DISPOSABLE_CHECKOUT");
+}
+
+#[test]
+fn descriptor_cannot_make_non_gradle_root_supported() {
+    let fixture = tempfile::tempdir().expect("unsupported fixture");
+    let workspace = fixture.path().join("unsupported");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let socket_path = fixture.path().join("stale.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    write_stale_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+
+    let verify = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--backend=headless",
+        ])
+        .output()
+        .expect("agent verify");
+
+    assert!(!verify.status.success(), "non-Gradle root must fail");
+    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
+    assert_eq!(output["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
+}
+
+#[test]
+fn automatic_selection_rejects_two_ready_exact_root_backends() {
+    let fixture = tempfile::tempdir().expect("ambiguity fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let idea_socket = fixture.path().join("idea.sock");
+    let headless_socket = fixture.path().join("headless.sock");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    write_runtime_descriptors(
+        &home,
+        &[
+            (&workspace, &idea_socket, "idea"),
+            (&workspace, &headless_socket, "headless"),
+        ],
+    );
+    let idea = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&idea_socket),
+        workspace.clone(),
+        "idea",
+    );
+    let headless = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&headless_socket),
+        workspace.clone(),
+        "headless",
+    );
+
+    let verify = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("agent verify");
+
+    assert!(!verify.status.success(), "automatic ambiguity must fail");
+    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
+    assert_eq!(output["error"]["code"], "SEMANTIC_BACKEND_AMBIGUOUS");
+    let mut candidate_names = output["error"]["details"]["semanticWorkspace"]["backendCandidates"]
+        .as_array()
+        .expect("candidate evidence")
+        .iter()
+        .map(|candidate| candidate["backendName"].as_str().expect("backend name"))
+        .collect::<Vec<_>>();
+    candidate_names.sort_unstable();
+    assert_eq!(candidate_names, vec!["headless", "idea"]);
+    assert_eq!(
+        output["error"]["details"]["semanticWorkspace"]["workspaceRoot"],
+        workspace.display().to_string()
+    );
+    assert!(!idea.finish().is_empty());
+    assert!(!headless.finish().is_empty());
 }
 
 #[test]
@@ -239,7 +557,7 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     let workspace = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
     let home = fixture.linked().join("test-home");
     let config_home = fixture.linked().join("test-config");
-    let socket_path = fixture.linked().join("semantic-backend.sock");
+    let socket_path = fixture.socket_path("linked-symbol.sock");
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
     write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
@@ -293,7 +611,7 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     let workspace = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
     let home = fixture.linked().join("test-home");
     let config_home = fixture.linked().join("test-config");
-    let socket_path = fixture.linked().join("semantic-backend.sock");
+    let socket_path = fixture.socket_path("linked-diagnostics.sock");
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
     let file = workspace.join("lib/Foo.kt");
@@ -493,15 +811,20 @@ fn write_gradle_workspace(workspace: &Path) {
 
 struct GitWorkspaceFixture {
     _temp: tempfile::TempDir,
+    sockets: tempfile::TempDir,
     primary: PathBuf,
     linked: PathBuf,
 }
 
 impl GitWorkspaceFixture {
     fn new() -> Self {
-        let temp = tempfile::tempdir().expect("git fixture");
+        let temp = tempfile::Builder::new()
+            .prefix("semantic-workspace-git-")
+            .tempdir_in(std::env::current_dir().expect("current directory"))
+            .expect("git fixture");
         let primary = temp.path().join("primary");
         let linked = temp.path().join("linked");
+        let sockets = tempfile::tempdir().expect("socket fixture");
         write_gradle_workspace(&primary);
         run_git(&primary, &["init"]);
         run_git(&primary, &["config", "user.name", "Kast Test"]);
@@ -519,6 +842,7 @@ impl GitWorkspaceFixture {
         );
         Self {
             _temp: temp,
+            sockets,
             primary,
             linked,
         }
@@ -530,6 +854,10 @@ impl GitWorkspaceFixture {
 
     fn linked(&self) -> &Path {
         &self.linked
+    }
+
+    fn socket_path(&self, name: &str) -> PathBuf {
+        self.sockets.path().join(name)
     }
 }
 
@@ -547,7 +875,31 @@ fn run_git(workspace: &Path, args: &[&str]) {
     );
 }
 
+fn run_git_clone(source: &Path, destination: &Path) {
+    let output = Command::new("git")
+        .args(["clone", "--quiet"])
+        .arg(source)
+        .arg(destination)
+        .output()
+        .expect("git clone");
+    assert!(
+        output.status.success(),
+        "git clone: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 fn write_runtime_descriptor(home: &Path, workspace: &Path, socket_path: &Path, backend: &str) {
+    write_runtime_descriptors(home, &[(workspace, socket_path, backend)]);
+}
+
+fn write_stale_runtime_descriptor(
+    home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    backend: &str,
+) {
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     std::fs::write(
@@ -555,15 +907,126 @@ fn write_runtime_descriptor(home: &Path, workspace: &Path, socket_path: &Path, b
         serde_json::to_vec_pretty(&serde_json::json!([{
             "workspaceRoot": workspace.display().to_string(),
             "backendName": backend,
-            "backendVersion": "admission-test",
+            "backendVersion": "stale-test",
             "transport": "uds",
             "socketPath": socket_path.display().to_string(),
-            "pid": std::process::id(),
+            "pid": 0,
             "schemaVersion": 3
         }]))
         .expect("descriptor JSON"),
     )
     .expect("descriptor");
+}
+
+fn write_runtime_descriptors(home: &Path, descriptors: &[(&Path, &Path, &str)]) {
+    let descriptor_dir = default_descriptor_dir(home);
+    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    std::fs::write(
+        descriptor_dir.join("daemons.json"),
+        serde_json::to_vec_pretty(
+            &descriptors
+                .iter()
+                .map(|(workspace, socket_path, backend)| {
+                    serde_json::json!({
+                        "workspaceRoot": workspace.display().to_string(),
+                        "backendName": backend,
+                        "backendVersion": "admission-test",
+                        "transport": "uds",
+                        "socketPath": socket_path.display().to_string(),
+                        "pid": std::process::id(),
+                        "schemaVersion": 3
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .expect("descriptor JSON"),
+    )
+    .expect("descriptor");
+}
+
+struct ObservedSemanticBackend {
+    stop: Arc<AtomicBool>,
+    thread: std::thread::JoinHandle<Vec<String>>,
+}
+
+impl ObservedSemanticBackend {
+    fn spawn(listener: UnixListener, workspace: PathBuf, backend_name: &'static str) -> Self {
+        listener
+            .set_nonblocking(true)
+            .expect("nonblocking listener");
+        let stop = Arc::new(AtomicBool::new(false));
+        let thread_stop = Arc::clone(&stop);
+        let thread = thread::spawn(move || {
+            let mut methods = vec![];
+            while !thread_stop.load(Ordering::Acquire) {
+                let (mut stream, _) = match listener.accept() {
+                    Ok(connection) => connection,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(5));
+                        continue;
+                    }
+                    Err(error) => panic!("accept observed semantic client: {error}"),
+                };
+                stream
+                    .set_nonblocking(false)
+                    .expect("blocking observed stream");
+                let mut request_line = String::new();
+                BufReader::new(stream.try_clone().expect("clone observed stream"))
+                    .read_line(&mut request_line)
+                    .expect("read observed request");
+                let request: serde_json::Value =
+                    serde_json::from_str(&request_line).expect("observed request JSON");
+                let method = request["method"].as_str().expect("method").to_string();
+                methods.push(method.clone());
+                let result = match method.as_str() {
+                    "runtime/status" => serde_json::json!({
+                        "state": "READY",
+                        "healthy": true,
+                        "active": true,
+                        "indexing": false,
+                        "backendName": backend_name,
+                        "backendVersion": "admission-test",
+                        "workspaceRoot": workspace.display().to_string(),
+                        "sourceModuleNames": [":fixture"],
+                        "referenceIndexReady": true,
+                        "schemaVersion": 3
+                    }),
+                    "capabilities" => serde_json::json!({
+                        "backendName": backend_name,
+                        "backendVersion": "admission-test",
+                        "workspaceRoot": workspace.display().to_string(),
+                        "readCapabilities": ["RESOLVE_SYMBOL", "DIAGNOSTICS"],
+                        "mutationCapabilities": ["RENAME", "APPLY_EDITS"],
+                        "limits": {
+                            "requestTimeoutMillis": 60000,
+                            "maxResults": 1000,
+                            "maxConcurrentRequests": 4
+                        },
+                        "schemaVersion": 3
+                    }),
+                    method if method.starts_with("symbol/") => serde_json::json!({
+                        "type": "MUTATION_SUCCESS",
+                        "workspaceRoot": workspace.display().to_string(),
+                        "schemaVersion": 3
+                    }),
+                    other => panic!("unexpected observed method: {other}"),
+                };
+                writeln!(
+                    stream,
+                    "{}",
+                    serde_json::json!({"jsonrpc": "2.0", "id": request["id"], "result": result}),
+                )
+                .expect("write observed response");
+            }
+            methods
+        });
+        Self { stop, thread }
+    }
+
+    fn finish(self) -> Vec<String> {
+        self.stop.store(true, Ordering::Release);
+        self.thread.join().expect("observed backend thread")
+    }
 }
 
 fn bind_semantic_listener(socket_path: &Path) -> UnixListener {

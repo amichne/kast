@@ -21,6 +21,8 @@ pub enum SemanticWorkspaceLimitation {
     WorkspaceUnprepared,
     SourceModulesUnavailable,
     UnsupportedProject,
+    MutationAuthorityRequired,
+    BackendSelectionAmbiguous,
     RuntimeIndexing,
     ReferenceIndexUnavailable,
 }
@@ -43,13 +45,26 @@ pub struct SemanticWorkspaceNextAction {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticWorkspaceEvidence {
-    pub backend_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backend_name: Option<String>,
     pub workspace_root: String,
     pub workspace_kind: SemanticWorkspaceKind,
     pub source_module_names: Vec<String>,
     pub limitations: Vec<SemanticWorkspaceLimitation>,
     pub evidence_quality: SemanticEvidenceQuality,
     pub next_actions: Vec<SemanticWorkspaceNextAction>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backend_candidates: Vec<SemanticBackendCandidateEvidence>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticBackendCandidateEvidence {
+    pub backend_name: String,
+    pub backend_version: String,
+    pub workspace_root: String,
+    pub ready: bool,
+    pub evidence_quality: SemanticEvidenceQuality,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,19 +92,31 @@ pub fn semantic_workspace_route(
 ) -> Result<SemanticWorkspaceRoute> {
     let workspace_root = workspace_root(requested_workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
-    let preference = runtime_backend_preference(&config, requested_backend);
-    let backend_name = preference
-        .fixed_backend()
-        .unwrap_or_else(default_semantic_backend);
-    let workspace_kind = classify_semantic_workspace(
-        &workspace_root,
-        has_registered_semantic_state(&config, &workspace_root),
-    );
-    if workspace_kind == SemanticWorkspaceKind::UnsupportedProject {
+    if !is_gradle_workspace(&workspace_root) {
+        let backend_name = requested_backend.unwrap_or_else(default_semantic_backend);
         return Ok(SemanticWorkspaceRoute::Rejected(
             unsupported_workspace_rejection(&workspace_root, backend_name),
         ));
     }
+    let preference = runtime_backend_preference(&config, requested_backend);
+    let registered_backends = registered_semantic_backends(&config, &workspace_root);
+    let workspace_kind = classify_semantic_workspace(&workspace_root);
+    let backend_name = match preference.fixed_backend() {
+        Some(backend_name) => backend_name,
+        None if registered_backends.len() > 1 => {
+            let candidates = ready_semantic_backend_candidates(&workspace_root, &config)?;
+            if candidates.len() > 1 {
+                return Ok(SemanticWorkspaceRoute::Rejected(
+                    ambiguous_backend_rejection(&workspace_root, workspace_kind, candidates),
+                ));
+            }
+            candidates
+                .first()
+                .and_then(|candidate| backend_name_from_runtime(&candidate.backend_name))
+                .unwrap_or_else(default_semantic_backend)
+        }
+        None => default_semantic_backend(),
+    };
 
     if backend_name == BackendName::Idea
         && let Err(error) = self_mgmt::validate_macos_plugin_workspace(&workspace_root)
@@ -113,6 +140,22 @@ pub fn semantic_workspace_route(
     ))
 }
 
+pub fn semantic_mutation_workspace_route(
+    requested_workspace_root: Option<PathBuf>,
+    requested_backend: Option<BackendName>,
+) -> Result<SemanticWorkspaceRoute> {
+    let route = semantic_workspace_route(requested_workspace_root, requested_backend)?;
+    let SemanticWorkspaceRoute::Admitted(admission) = route else {
+        return Ok(route);
+    };
+    if let Err(error) = self_mgmt::validate_macos_plugin_workspace(&admission.workspace_root) {
+        return Ok(SemanticWorkspaceRoute::Rejected(
+            mutation_authority_rejection(&admission, error.message),
+        ));
+    }
+    Ok(SemanticWorkspaceRoute::Admitted(admission))
+}
+
 pub fn compiler_backed_workspace_evidence(
     admission: &SemanticWorkspaceAdmission,
     runtime_status: &RuntimeStatusResponse,
@@ -134,14 +177,57 @@ pub fn compiler_backed_workspace_evidence(
         limitations.push(SemanticWorkspaceLimitation::ReferenceIndexUnavailable);
     }
     Some(SemanticWorkspaceEvidence {
-        backend_name: runtime_status.backend_name.clone(),
+        backend_name: Some(runtime_status.backend_name.clone()),
         workspace_root: runtime_root.display().to_string(),
         workspace_kind: admission.workspace_kind,
         source_module_names: runtime_status.source_module_names.clone(),
         limitations,
         evidence_quality: SemanticEvidenceQuality::CompilerBacked,
         next_actions: vec![],
+        backend_candidates: vec![],
     })
+}
+
+fn ready_semantic_backend_candidates(
+    workspace_root: &Path,
+    config: &KastConfig,
+) -> Result<Vec<SemanticBackendCandidateEvidence>> {
+    let inspection = inspect_workspace_with_config(
+        workspace_root,
+        config,
+        RuntimeBackendPreference::Automatic,
+        false,
+    )?;
+    let mut candidates = inspection
+        .candidates
+        .iter()
+        .filter(|candidate| candidate.ready)
+        .filter_map(|candidate| {
+            backend_name_from_runtime(&candidate.descriptor.backend_name)?;
+            Some(SemanticBackendCandidateEvidence {
+                backend_name: candidate.descriptor.backend_name.clone(),
+                backend_version: candidate.descriptor.backend_version.clone(),
+                workspace_root: config::normalize(PathBuf::from(
+                    &candidate.descriptor.workspace_root,
+                ))
+                .display()
+                .to_string(),
+                ready: candidate.ready,
+                evidence_quality: SemanticEvidenceQuality::CompilerBacked,
+            })
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| left.backend_name.cmp(&right.backend_name));
+    candidates.dedup_by(|left, right| left.backend_name == right.backend_name);
+    Ok(candidates)
+}
+
+fn backend_name_from_runtime(backend_name: &str) -> Option<BackendName> {
+    match backend_name {
+        "idea" => Some(BackendName::Idea),
+        "headless" => Some(BackendName::Headless),
+        _ => None,
+    }
 }
 
 fn default_semantic_backend() -> BackendName {
@@ -152,35 +238,33 @@ fn default_semantic_backend() -> BackendName {
     }
 }
 
-fn classify_semantic_workspace(
-    workspace_root: &Path,
-    has_registered_semantic_state: bool,
-) -> SemanticWorkspaceKind {
-    if !is_gradle_workspace(workspace_root)
-        && !workspace_root.join(".kast/setup/workspace.json").is_file()
-        && !has_registered_semantic_state
-    {
-        return SemanticWorkspaceKind::UnsupportedProject;
-    }
+fn classify_semantic_workspace(workspace_root: &Path) -> SemanticWorkspaceKind {
     if workspace_root.join(".git").is_file() {
         return SemanticWorkspaceKind::LinkedWorktree;
+    }
+    let temporary_root = fs::canonicalize(std::env::temp_dir())
+        .unwrap_or_else(|_| config::normalize(std::env::temp_dir()));
+    let classified_root = fs::canonicalize(workspace_root)
+        .unwrap_or_else(|_| config::normalize(workspace_root.to_path_buf()));
+    if classified_root.starts_with(&temporary_root) {
+        return SemanticWorkspaceKind::DisposableCheckout;
     }
     if workspace_root.join(".git").is_dir() {
         return SemanticWorkspaceKind::PrimaryCheckout;
     }
-    let temporary_root = fs::canonicalize(std::env::temp_dir())
-        .unwrap_or_else(|_| config::normalize(std::env::temp_dir()));
-    if workspace_root.starts_with(temporary_root) {
-        return SemanticWorkspaceKind::DisposableCheckout;
-    }
     SemanticWorkspaceKind::StandaloneGradleWorkspace
 }
 
-fn has_registered_semantic_state(config: &KastConfig, workspace_root: &Path) -> bool {
-    read_descriptors(&config.paths.descriptor_dir)
+fn registered_semantic_backends(config: &KastConfig, workspace_root: &Path) -> Vec<BackendName> {
+    let mut backends = read_descriptors(&config.paths.descriptor_dir)
         .unwrap_or_default()
-        .iter()
-        .any(|descriptor| descriptor_matches_workspace(descriptor, workspace_root))
+        .into_iter()
+        .filter(|descriptor| descriptor_matches_workspace(descriptor, workspace_root))
+        .filter_map(|descriptor| backend_name_from_runtime(&descriptor.backend_name))
+        .collect::<Vec<_>>();
+    backends.sort_by_key(|backend| backend.canonical());
+    backends.dedup();
+    backends
 }
 
 fn is_gradle_workspace(workspace_root: &Path) -> bool {
@@ -205,13 +289,70 @@ fn unsupported_workspace_rejection(
             workspace_root.display()
         ),
         evidence: SemanticWorkspaceEvidence {
-            backend_name: backend_name.canonical().to_string(),
+            backend_name: Some(backend_name.canonical().to_string()),
             workspace_root: workspace_root.display().to_string(),
             workspace_kind: SemanticWorkspaceKind::UnsupportedProject,
             source_module_names: vec![],
             limitations: vec![SemanticWorkspaceLimitation::UnsupportedProject],
             evidence_quality: SemanticEvidenceQuality::Unavailable,
             next_actions: vec![],
+            backend_candidates: vec![],
+        },
+    }
+}
+
+fn ambiguous_backend_rejection(
+    workspace_root: &Path,
+    workspace_kind: SemanticWorkspaceKind,
+    backend_candidates: Vec<SemanticBackendCandidateEvidence>,
+) -> SemanticWorkspaceRejection {
+    SemanticWorkspaceRejection {
+        code: "SEMANTIC_BACKEND_AMBIGUOUS",
+        message: format!(
+            "More than one ready semantic backend is registered for {}. Select one explicitly with --backend=idea or --backend=headless.",
+            workspace_root.display()
+        ),
+        evidence: SemanticWorkspaceEvidence {
+            backend_name: None,
+            workspace_root: workspace_root.display().to_string(),
+            workspace_kind,
+            source_module_names: vec![],
+            limitations: vec![SemanticWorkspaceLimitation::BackendSelectionAmbiguous],
+            evidence_quality: SemanticEvidenceQuality::Unavailable,
+            next_actions: vec![],
+            backend_candidates,
+        },
+    }
+}
+
+fn mutation_authority_rejection(
+    admission: &SemanticWorkspaceAdmission,
+    authority_message: String,
+) -> SemanticWorkspaceRejection {
+    let exact_root = admission.workspace_root.display();
+    SemanticWorkspaceRejection {
+        code: "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+        message: format!(
+            "Applied semantic mutation is not authorized for the exact workspace root {exact_root}. {authority_message}"
+        ),
+        evidence: SemanticWorkspaceEvidence {
+            backend_name: Some(admission.backend_name.canonical().to_string()),
+            workspace_root: exact_root.to_string(),
+            workspace_kind: admission.workspace_kind,
+            source_module_names: vec![],
+            limitations: vec![
+                SemanticWorkspaceLimitation::MutationAuthorityRequired,
+                SemanticWorkspaceLimitation::SourceModulesUnavailable,
+            ],
+            evidence_quality: SemanticEvidenceQuality::Unavailable,
+            next_actions: vec![SemanticWorkspaceNextAction {
+                kind: SemanticWorkspaceNextActionKind::PrepareIdeaWorkspace,
+                command: format!(
+                    "Open `{exact_root}` in IntelliJ IDEA or Android Studio with the Homebrew-coupled Kast plugin enabled, then rerun the applied command against that exact root."
+                ),
+                mutates_global_install_authority: false,
+            }],
+            backend_candidates: vec![],
         },
     }
 }
@@ -229,7 +370,7 @@ fn unprepared_workspace_rejection(
             "No compiler-backed semantic state is prepared for the exact workspace root {exact_root}. {authority_message}"
         ),
         evidence: SemanticWorkspaceEvidence {
-            backend_name: backend_name.canonical().to_string(),
+            backend_name: Some(backend_name.canonical().to_string()),
             workspace_root: exact_root.to_string(),
             workspace_kind,
             source_module_names: vec![],
@@ -254,6 +395,7 @@ fn unprepared_workspace_rejection(
                     mutates_global_install_authority: false,
                 },
             ],
+            backend_candidates: vec![],
         },
     }
 }

@@ -193,6 +193,7 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
         request,
         runtime: args.runtime,
         full_response: true,
+        operation: AgentOperation::Mutation,
     })
 }
 
@@ -310,6 +311,7 @@ fn execute_agent_mutation(
         request,
         runtime,
         full_response: true,
+        operation: AgentOperation::Mutation,
     })
 }
 
@@ -497,7 +499,15 @@ fn execute_agent_steps(
         }
     }
     let session = if daemon_step_count > 1 {
-        match runtime::raw_rpc_session(runtime.workspace_root.clone(), runtime.backend_name) {
+        let session = if method == "agent/verify" {
+            runtime::raw_rpc_session_reuse_only(
+                runtime.workspace_root.clone(),
+                runtime.backend_name,
+            )
+        } else {
+            runtime::raw_rpc_session(runtime.workspace_root.clone(), runtime.backend_name)
+        };
+        match session {
             Ok(session) => Some(session),
             Err(error) => {
                 return error_envelope(method.to_string(), None, AgentError::from_cli_error(error));
@@ -519,6 +529,7 @@ fn execute_agent_steps(
                 request: json_rpc_request(step.method, step.params),
                 runtime: runtime.clone(),
                 full_response: false,
+                operation: AgentOperation::ReadOnly,
             },
             step_session,
         );
