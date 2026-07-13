@@ -81,6 +81,7 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
     let file = workspace.join("src/Pending.kt");
     std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
     std::fs::write(&file, "fun pending(): Int = 42\n").expect("scenario source");
+    write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
 

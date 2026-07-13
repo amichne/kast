@@ -364,6 +364,7 @@ fn execute_agent_operation_request(
         request: json_rpc_request(method, selector),
         runtime: args.runtime,
         full_response: true,
+        operation: AgentOperation::ReadOnly,
     })
 }
 

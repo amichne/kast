@@ -262,6 +262,8 @@ fn unprepared_headless_route_rejects_every_public_applied_mutation() {
     for mut args in cases {
         args.extend([
             "--apply".to_string(),
+            "--idempotency-key".to_string(),
+            "authority-test".to_string(),
             "--workspace-root".to_string(),
             workspace.display().to_string(),
             "--backend=headless".to_string(),
@@ -330,6 +332,8 @@ fn automatic_applied_mutation_checks_authority_before_backend_discovery() {
             "--new-name",
             "Bar",
             "--apply",
+            "--idempotency-key",
+            "authority-test",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
@@ -367,6 +371,8 @@ fn default_applied_mutation_maps_every_public_family_to_authority_required() {
     for mut args in applied_mutation_cases(&target_file, &content_file) {
         args.extend([
             "--apply".to_string(),
+            "--idempotency-key".to_string(),
+            "authority-test".to_string(),
             "--workspace-root".to_string(),
             workspace.display().to_string(),
         ]);
@@ -419,6 +425,8 @@ fn prepared_workspace_authority_allows_explicit_headless_mutation() {
             "--new-name",
             "Bar",
             "--apply",
+            "--idempotency-key",
+            "authority-test",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
             "--backend=headless",
@@ -434,7 +442,7 @@ fn prepared_workspace_authority_allows_explicit_headless_mutation() {
     );
     assert_eq!(
         backend.finish(),
-        vec!["runtime/status", "capabilities", "symbol/rename"]
+        vec!["runtime/status", "capabilities", "mutation/submit"]
     );
 }
 
@@ -742,13 +750,10 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
         String::from_utf8_lossy(&symbol.stderr)
     );
     let output: serde_json::Value = serde_json::from_slice(&symbol.stdout).expect("symbol JSON");
-    assert_eq!(output["result"]["steps"][1]["name"], "symbol-resolve");
+    assert_eq!(output["result"]["type"], "KAST_AGENT_SYMBOL_LOOKUP");
+    assert_eq!(output["result"]["outcome"]["type"], "RESOLVED");
     assert_eq!(
-        output["result"]["steps"][1]["result"]["type"],
-        "SYMBOL_RESOLVE_SUCCESS"
-    );
-    assert_eq!(
-        output["result"]["steps"][1]["result"]["workspaceRoot"],
+        output["result"]["outcome"]["symbol"]["workspaceRoot"],
         workspace.display().to_string()
     );
     assert_eq!(
@@ -1221,10 +1226,21 @@ impl ObservedSemanticBackend {
                         },
                         "schemaVersion": 3
                     }),
-                    method if method.starts_with("symbol/") => serde_json::json!({
-                        "type": "MUTATION_SUCCESS",
-                        "workspaceRoot": workspace.display().to_string(),
-                        "schemaVersion": 3
+                    "mutation/submit" => serde_json::json!({
+                        "operation": {
+                            "operationId": "00000000-0000-0000-0000-000000000001",
+                            "idempotencyKey": request["params"]["idempotencyKey"],
+                            "mutationKind": request["params"]["type"],
+                            "state": {
+                                "type": "QUEUED",
+                                "trace": {
+                                    "enteredStages": [],
+                                    "editApplicationState": "NOT_STARTED"
+                                },
+                                "cancellationRequested": false
+                            }
+                        },
+                        "deduplicated": false
                     }),
                     other => panic!("unexpected observed method: {other}"),
                 };
@@ -1322,17 +1338,46 @@ fn spawn_verify_backend(
                     "schemaVersion": 3
                 }),
                 "symbol/resolve" => serde_json::json!({
-                    "type": "SYMBOL_RESOLVE_SUCCESS",
-                    "symbol": request["params"]["symbol"],
-                    "workspaceRoot": workspace.display().to_string(),
+                    "type": "RESOLVE_SUCCESS",
+                    "ok": true,
+                    "source": "compiler",
+                    "symbol": {
+                        "fqName": request["params"]["symbol"],
+                        "kind": "CLASS",
+                        "workspaceRoot": workspace.display().to_string()
+                    },
                     "schemaVersion": 3
                 }),
-                "raw/workspace-refresh" => serde_json::json!({
-                    "refreshedFiles": request["params"]["filePaths"],
-                    "removedFiles": [],
-                    "fullRefresh": false,
-                    "schemaVersion": 3
-                }),
+                "raw/workspace-refresh" => {
+                    let file_paths = request["params"]["filePaths"]
+                        .as_array()
+                        .cloned()
+                        .expect("refresh file paths");
+                    serde_json::json!({
+                        "refreshedFiles": file_paths,
+                        "removedFiles": [],
+                        "fullRefresh": false,
+                        "fileStatuses": file_paths.iter().map(|file_path| serde_json::json!({
+                            "filePath": file_path,
+                            "fileSystemDiscovery": "DISCOVERED",
+                            "sourceModuleOwnership": "OWNED",
+                            "indexAdmission": "ADMITTED",
+                            "analysisAvailability": "AVAILABLE",
+                            "analysisStatus": {
+                                "filePath": file_path,
+                                "state": "ANALYZED"
+                            }
+                        })).collect::<Vec<_>>(),
+                        "semanticOutcome": "COMPLETE",
+                        "requestedFileCount": file_paths.len(),
+                        "analyzedFileCount": file_paths.len(),
+                        "skippedFileCount": 0,
+                        "removedFileCount": 0,
+                        "attemptCount": 1,
+                        "elapsedMillis": 0,
+                        "schemaVersion": 3
+                    })
+                }
                 "raw/diagnostics" => {
                     let file_paths = request["params"]["filePaths"]
                         .as_array()
