@@ -78,9 +78,9 @@ Agent results are compact by default. Symbol results retain identity, location,
 lookup mode, ambiguity, and only the relationships the command requested.
 Diagnostics retain semantic completeness counts and actionable diagnostics.
 Mutation results retain operation and edit-application state, changed files and
-edits when available, and diagnostic counts. Verification retains backend,
-runtime, and capability evidence. Raw request/response and multi-step envelopes
-are not part of the default result.
+edits when available, diagnostic counts, and failure or cancellation evidence.
+Verification retains backend, runtime, and capability evidence. Raw
+request/response and multi-step envelopes are not part of the default result.
 
 Use `--verbose` to preserve the complete validated command envelope. Use
 `--explain` when ranking, surrounding-member, or next-request evidence is needed;

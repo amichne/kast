@@ -29,8 +29,9 @@ explanations are requested only for a detailed view. Default diagnostics expose
 semantic completeness counts and actionable diagnostics without workspace
 refresh step envelopes. Mutation results expose operation state, edit
 application state, affected files and edits when available, and a diagnostic
-summary. Verification exposes backend/runtime health and capability evidence
-without its raw step envelopes.
+summary. Failed, cancelled, and applied-invalid states retain their typed
+failure, cancellation, and already-applied edit evidence. Verification exposes
+backend/runtime health and capability evidence without its raw step envelopes.
 
 ## Selection Contract
 

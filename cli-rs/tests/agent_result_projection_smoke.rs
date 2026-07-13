@@ -352,10 +352,8 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let file = workspace.join("src/Added.kt");
-    let content = temp.path().join("Added.kt");
     let socket_path = temp.path().join("idea.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(&content, "class Added\n").expect("content");
     let backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
@@ -366,8 +364,8 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
             json!({
                 "operation": {
                     "operationId": "00000000-0000-0000-0000-000000000337",
-                    "idempotencyKey": "issue-337-add-file",
-                    "mutationKind": "ADD_FILE",
+                    "idempotencyKey": "issue-337-rename",
+                    "mutationKind": "RENAME",
                     "state": {
                         "type": "COMPLETED",
                         "trace": {
@@ -377,13 +375,33 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
                         },
                         "cancellationRequested": false,
                         "result": {
-                            "appliedEdits": [{
-                                "filePath": file.display().to_string(),
-                                "startOffset": 0,
-                                "endOffset": 0
-                            }],
-                            "changedFiles": [file.display().to_string()],
-                            "diagnostics": [{"severity": "WARNING", "message": "Unused"}]
+                            "type": "RENAME_RESULT",
+                            "response": {
+                                "ok": true,
+                                "editCount": 1,
+                                "affectedFiles": [file.display().to_string()],
+                                "applyResult": {
+                                    "applied": [{
+                                        "filePath": file.display().to_string(),
+                                        "startOffset": 0,
+                                        "endOffset": 5,
+                                        "newText": "Renamed"
+                                    }],
+                                    "affectedFiles": [file.display().to_string()],
+                                    "createdFiles": [],
+                                    "deletedFiles": []
+                                },
+                                "diagnostics": {
+                                    "clean": true,
+                                    "errorCount": 0,
+                                    "warningCount": 1,
+                                    "semanticOutcome": "COMPLETE",
+                                    "requestedFileCount": 1,
+                                    "analyzedFileCount": 1,
+                                    "skippedFileCount": 0,
+                                    "errors": []
+                                }
+                            }
                         }
                     }
                 },
@@ -396,16 +414,16 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
             "--output",
             "json",
             "agent",
-            "add-file",
+            "rename",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-            "--file-path",
-            file.to_str().expect("file"),
-            "--content-file",
-            content.to_str().expect("content"),
+            "--symbol",
+            "sample.Added",
+            "--new-name",
+            "Renamed",
             "--apply",
             "--idempotency-key",
-            "issue-337-add-file",
+            "issue-337-rename",
         ])
         .output()
         .expect("mutation");
