@@ -826,6 +826,11 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin diagnostics: List<Diagnostic>` | List of compilation diagnostics found in the requested files. |
+            | `#!kotlin fileStatuses: List<FileAnalysisStatus>` | Typed semantic terminal state for every requested file. |
+            | `#!kotlin semanticOutcome: SemanticAnalysisOutcome` | Whether semantic evidence is complete for every requested file. |
+            | `#!kotlin requestedFileCount: Int` | Number of files requested for semantic analysis. |
+            | `#!kotlin analyzedFileCount: Int` | Number of requested files successfully analyzed. |
+            | `#!kotlin skippedFileCount: Int` | Number of requested files not analyzed. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
@@ -854,6 +859,16 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "diagnostics": [],
+                    "fileStatuses": [
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "state": "ANALYZED"
+                        }
+                    ],
+                    "semanticOutcome": "COMPLETE",
+                    "requestedFileCount": 1,
+                    "analyzedFileCount": 1,
+                    "skippedFileCount": 0,
                     "schemaVersion": 3
                 },
                 "id": 1,
