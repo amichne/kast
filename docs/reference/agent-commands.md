@@ -32,6 +32,28 @@ Interactive use should stay readable. Automation that needs a parser contract
 should request JSON explicitly. The public docs only describe those two output
 shapes.
 
+## Verification Evidence
+
+`kast agent verify` reports the semantic workspace that supplied its evidence.
+The workspace identity is the exact normalized root passed with
+`--workspace-root`; a runtime registered for another clone or Git worktree is
+never eligible, even when both checkouts share a branch or commit.
+
+| Field | Meaning |
+| --- | --- |
+| Backend name | The selected `idea` or `headless` runtime |
+| Workspace root | The exact checkout whose semantic state was queried |
+| Workspace kind | Primary checkout, linked worktree, disposable checkout, or standalone Gradle workspace |
+| Source module names | The Gradle source modules reported by the runtime |
+| Limitations | Indexing, missing reference-index, unavailable source-module, or preparation constraints on the evidence |
+| Evidence quality | `COMPILER_BACKED` after a matching runtime response, or `UNAVAILABLE` when no semantic evidence was admitted |
+| Next actions | Non-mutating recovery choices when the requested root is unprepared |
+
+An unprepared supported Gradle workspace returns
+`SEMANTIC_WORKSPACE_UNPREPARED`. An unsupported non-Gradle directory returns
+`SEMANTIC_WORKSPACE_UNSUPPORTED`. Neither outcome borrows another checkout's
+state or prepares the directory on the caller's behalf.
+
 ## Mutation Boundary
 
 Agent edits are plan-first. Kast reports the selected target, planned write set,

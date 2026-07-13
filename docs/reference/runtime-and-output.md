@@ -10,6 +10,11 @@ Kast can answer semantic requests through an IDE-backed runtime or a headless
 runtime. The command surface is the same in both cases; the runtime only
 changes where the semantic evidence comes from.
 
+Runtime selection is exact-root. A descriptor or runtime-status response must
+name the normalized requested workspace root and selected backend. Git ancestry,
+branch names, and matching commits do not make another checkout's runtime
+eligible.
+
 ## Runtime Choices
 
 | Runtime | Typical host | User-facing model |
