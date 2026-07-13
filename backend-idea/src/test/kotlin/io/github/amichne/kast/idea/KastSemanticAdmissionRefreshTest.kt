@@ -2,6 +2,7 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.DumbModeTestUtils
@@ -24,8 +25,10 @@ import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -75,11 +78,13 @@ class KastSemanticAdmissionRefreshTest {
         admissionAwaiter: IdeaSemanticAdmissionAwaiter = IdeaSemanticAdmissionAwaiter.forRequestBudget(
             defaultLimits.requestTimeoutMillis,
         ),
+        admissionOperations: IdeaSemanticAdmissionOperations = IdeaSemanticAdmissionOperations.idea(),
     ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
         limits = defaultLimits,
         semanticAdmissionAwaiter = admissionAwaiter,
+        semanticAdmissionOperations = admissionOperations,
     )
 
     private fun ensureProjectReady() {
@@ -214,6 +219,50 @@ class KastSemanticAdmissionRefreshTest {
         assertEquals(FileAnalysisState.PENDING_INDEX, result.fileStatuses.single().analysisStatus?.state)
         assertEquals(1, result.attemptCount)
         assertTrue(result.elapsedMillis < 1_000, "zero-wait probe took ${result.elapsedMillis}ms")
+    }
+
+    @Test
+    fun `failure before index observation does not fabricate later admission stages`() {
+        ensureProjectReady()
+        val seedFile = Path.of(seedFileFixture.get().virtualFile.path)
+        val ideaOperations = IdeaSemanticAdmissionOperations.idea()
+        val failingDiscovery = object : IdeaSemanticAdmissionOperations by ideaOperations {
+            override fun refreshAndFind(filePath: Path): VirtualFile? =
+                throw IllegalStateException("VFS discovery failed")
+        }
+
+        val failure = assertThrows(IllegalStateException::class.java) {
+            runBlocking {
+                backend(admissionOperations = failingDiscovery).refresh(
+                    RefreshQuery(filePaths = listOf(seedFile.toString())),
+                )
+            }
+        }
+
+        assertEquals("VFS discovery failed", failure.message)
+    }
+
+    @Test
+    fun `analysis session failure preserves proven discovery ownership and index admission`() = runBlocking {
+        ensureProjectReady()
+        val seedFile = Path.of(seedFileFixture.get().virtualFile.path)
+        val ideaOperations = IdeaSemanticAdmissionOperations.idea()
+        val failingAnalysis = object : IdeaSemanticAdmissionOperations by ideaOperations {
+            override fun collectDiagnostics(file: KtFile) {
+                throw IllegalStateException("Analysis session failed")
+            }
+        }
+
+        val result = backend(admissionOperations = failingAnalysis).refresh(
+            RefreshQuery(filePaths = listOf(seedFile.toString())),
+        )
+        val status = result.fileStatuses.single()
+
+        assertEquals(FileSystemDiscoveryState.DISCOVERED, status.fileSystemDiscovery)
+        assertEquals(SourceModuleOwnershipState.OWNED, status.sourceModuleOwnership)
+        assertEquals(IndexAdmissionState.ADMITTED, status.indexAdmission)
+        assertEquals(AnalysisAvailabilityState.FAILED, status.analysisAvailability)
+        assertEquals(FileAnalysisState.BACKEND_FAILURE, status.analysisStatus?.state)
     }
 
     @Test

@@ -129,6 +129,8 @@ internal class KastPluginBackend(
     private val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
     private val semanticAdmissionAwaiter: IdeaSemanticAdmissionAwaiter =
         IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
+    private val semanticAdmissionOperations: IdeaSemanticAdmissionOperations =
+        IdeaSemanticAdmissionOperations.idea(),
 ) : AnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
@@ -1083,7 +1085,7 @@ internal class KastPluginBackend(
             return SemanticAdmissionStatus.removed(filePath)
         }
 
-        val virtualFile = fileSystem.refreshAndFindFileByNioFile(nioPath)
+        val virtualFile = semanticAdmissionOperations.refreshAndFind(nioPath)
             ?: return pendingSemanticAdmission(
                 filePath = filePath,
                 fileSystemDiscovery = FileSystemDiscoveryState.PENDING,
@@ -1092,75 +1094,73 @@ internal class KastPluginBackend(
                 message = "File exists on disk but IDEA has not discovered it in the virtual file system",
             )
 
-        return try {
-            timedReadAction(
-                telemetry,
-                IdeaTelemetryScope.REFRESH,
-                "kast.idea.refresh.semanticAdmission",
-            ) {
-                if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
-                    return@timedReadAction SemanticAdmissionStatus.incomplete(
-                        filePath = filePath,
-                        fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
-                        sourceModuleOwnership = SourceModuleOwnershipState.OUTSIDE_SOURCE_MODULES,
-                        indexAdmission = IndexAdmissionState.NOT_APPLICABLE,
-                        analysisAvailability = AnalysisAvailabilityState.NOT_APPLICABLE,
-                        analysisStatus = FileAnalysisStatus.skipped(
-                            filePath,
-                            FileAnalysisState.OUTSIDE_SOURCE_MODULES,
-                            "File is not contained in an IDEA source module",
-                        ),
-                    )
-                }
-                if (DumbService.isDumb(project)) {
-                    return@timedReadAction pendingSemanticAdmission(
-                        filePath = filePath,
-                        fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
-                        sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
-                        indexAdmission = IndexAdmissionState.PENDING,
-                        message = "IDEA indexing is still in progress",
-                    )
-                }
-                val kotlinFileType = kotlinFileType()
-                val indexScope = GlobalSearchScope.fileScope(project, virtualFile)
-                val admittedToKotlinIndex = kotlinFileType != null &&
-                    FileTypeIndex.getFiles(kotlinFileType, indexScope).any { indexedFile -> indexedFile == virtualFile }
-                if (!admittedToKotlinIndex) {
-                    return@timedReadAction pendingSemanticAdmission(
-                        filePath = filePath,
-                        fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
-                        sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
-                        indexAdmission = IndexAdmissionState.PENDING,
-                        message = "IDEA has not admitted the file to the Kotlin index",
-                    )
-                }
-                val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
-                    ?: return@timedReadAction pendingSemanticAdmission(
-                        filePath = filePath,
-                        fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
-                        sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
-                        indexAdmission = IndexAdmissionState.ADMITTED,
-                        message = "IDEA has not created PSI for the file yet",
-                    )
-                val ktFile = psiFile as? KtFile
-                    ?: return@timedReadAction failedSemanticAdmission(
+        return timedReadAction(
+            telemetry,
+            IdeaTelemetryScope.REFRESH,
+            "kast.idea.refresh.semanticAdmission",
+        ) {
+            if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
+                return@timedReadAction SemanticAdmissionStatus.incomplete(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OUTSIDE_SOURCE_MODULES,
+                    indexAdmission = IndexAdmissionState.NOT_APPLICABLE,
+                    analysisAvailability = AnalysisAvailabilityState.NOT_APPLICABLE,
+                    analysisStatus = FileAnalysisStatus.skipped(
                         filePath,
-                        "Semantic admission requires a Kotlin source file",
-                    )
-                analyze(ktFile) {
-                    ktFile.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                }
-                SemanticAdmissionStatus.admitted(filePath)
+                        FileAnalysisState.OUTSIDE_SOURCE_MODULES,
+                        "File is not contained in an IDEA source module",
+                    ),
+                )
             }
-        } catch (ex: ProcessCanceledException) {
-            throw ex
-        } catch (ex: CancellationException) {
-            throw ex
-        } catch (ex: Throwable) {
-            failedSemanticAdmission(
-                filePath,
-                ex.message?.takeIf(String::isNotBlank) ?: ex.toString(),
-            )
+            if (DumbService.isDumb(project)) {
+                return@timedReadAction pendingSemanticAdmission(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.PENDING,
+                    message = "IDEA indexing is still in progress",
+                )
+            }
+            val kotlinFileType = kotlinFileType()
+            val indexScope = GlobalSearchScope.fileScope(project, virtualFile)
+            val admittedToKotlinIndex = kotlinFileType != null &&
+                FileTypeIndex.getFiles(kotlinFileType, indexScope).any { indexedFile -> indexedFile == virtualFile }
+            if (!admittedToKotlinIndex) {
+                return@timedReadAction pendingSemanticAdmission(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.PENDING,
+                    message = "IDEA has not admitted the file to the Kotlin index",
+                )
+            }
+            val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+                ?: return@timedReadAction pendingSemanticAdmission(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.ADMITTED,
+                    message = "IDEA has not created PSI for the file yet",
+                )
+            val ktFile = psiFile as? KtFile
+                ?: return@timedReadAction failedSemanticAdmission(
+                    filePath,
+                    "Semantic admission requires a Kotlin source file",
+                )
+            try {
+                semanticAdmissionOperations.collectDiagnostics(ktFile)
+            } catch (ex: ProcessCanceledException) {
+                throw ex
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Throwable) {
+                return@timedReadAction failedSemanticAdmission(
+                    filePath,
+                    ex.message?.takeIf(String::isNotBlank) ?: ex.toString(),
+                )
+            }
+            SemanticAdmissionStatus.admitted(filePath)
         }
     }
 
@@ -1545,14 +1545,6 @@ private enum class ReferencePartialReason {
     TARGET_INVALIDATED,
     CANDIDATE_DISCOVERY_STOPPED,
     INDEX_LOCATION_UNRESOLVED,
-}
-
-internal fun interface ReferenceSearchClock {
-    fun nanoTime(): Long
-
-    companion object {
-        val System: ReferenceSearchClock = ReferenceSearchClock { java.lang.System.nanoTime() }
-    }
 }
 
 private class ReferenceSearchBudget(

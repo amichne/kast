@@ -28,6 +28,7 @@ import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
@@ -754,6 +755,37 @@ class AnalysisDispatcherTest {
         assertEquals(0, success.diagnostics.analyzedFileCount)
         assertEquals(1, success.diagnostics.skippedFileCount)
         assertEquals(listOf("apply", "refresh"), backend.operations)
+    }
+
+    @Test
+    fun `symbol add file preflights refresh capability before creating the file`() {
+        val backend = MissingRefreshCapabilityBackend(FakeAnalysisBackend.sample(tempDir))
+        val targetFile = tempDir.resolve("src").resolve("NoRefresh.kt")
+        val contentFile = tempDir.resolve("no-refresh-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass NoRefresh\n")
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/add-file",
+                    params = json.encodeToJsonElement(
+                        KastAddFileRequest.serializer(),
+                        KastAddFileRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = targetFile.toString(),
+                            contentFile = contentFile.toString(),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
+
+        assertEquals("CAPABILITY_NOT_SUPPORTED", error.error.data?.code)
+        assertEquals(0, backend.applyCalls)
+        assertFalse(Files.exists(targetFile))
     }
 
     @Test
@@ -1600,6 +1632,22 @@ private class RecordingMutationBackend(
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
         operations += "diagnostics"
         return delegate.diagnostics(query)
+    }
+}
+
+private class MissingRefreshCapabilityBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    var applyCalls: Int = 0
+        private set
+
+    override suspend fun capabilities(): BackendCapabilities = delegate.capabilities().copy(
+        mutationCapabilities = delegate.capabilities().mutationCapabilities - MutationCapability.REFRESH_WORKSPACE,
+    )
+
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        applyCalls += 1
+        return delegate.applyEdits(query)
     }
 }
 

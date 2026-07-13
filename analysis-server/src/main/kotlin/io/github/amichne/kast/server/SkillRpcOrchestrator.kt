@@ -612,7 +612,19 @@ internal class SkillRpcOrchestrator(
                 dryRun = true,
             ).parsed(),
         )
-        requireMutationCapability(MutationCapability.APPLY_EDITS)
+        requireCapabilities(
+            readCapabilities = if (renameResult.affectedFiles.isEmpty()) {
+                emptySet()
+            } else {
+                setOf(ReadCapability.DIAGNOSTICS)
+            },
+            mutationCapabilities = buildSet {
+                add(MutationCapability.APPLY_EDITS)
+                if (renameResult.affectedFiles.isNotEmpty()) {
+                    add(MutationCapability.REFRESH_WORKSPACE)
+                }
+            },
+        )
         progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
@@ -652,8 +664,15 @@ internal class SkillRpcOrchestrator(
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val filePath = request.filePath.normalizedAbsolutePath()
         val content = resolveContent(request.content, request.contentFile)
-        requireMutationCapability(MutationCapability.APPLY_EDITS)
-        requireMutationCapability(MutationCapability.FILE_OPERATIONS)
+        requireCapabilities(
+            readCapabilities = setOf(ReadCapability.DIAGNOSTICS),
+            mutationCapabilities = setOf(
+                MutationCapability.APPLY_EDITS,
+                MutationCapability.FILE_OPERATIONS,
+                MutationCapability.REFRESH_WORKSPACE,
+                MutationCapability.OPTIMIZE_IMPORTS,
+            ),
+        )
         progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
@@ -745,7 +764,14 @@ internal class SkillRpcOrchestrator(
         query: KastWriteAndValidateQuery,
         progress: MutationProgressReporter = MutationProgressReporter.NONE,
     ): KastWriteAndValidateResponse {
-        requireMutationCapability(MutationCapability.APPLY_EDITS)
+        requireCapabilities(
+            readCapabilities = setOf(ReadCapability.DIAGNOSTICS),
+            mutationCapabilities = setOf(
+                MutationCapability.APPLY_EDITS,
+                MutationCapability.REFRESH_WORKSPACE,
+                MutationCapability.OPTIMIZE_IMPORTS,
+            ),
+        )
         progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
@@ -1438,21 +1464,34 @@ internal class SkillRpcOrchestrator(
         explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath() ?: backend.runtimeStatus().workspaceRoot
 
     private suspend fun requireReadCapability(capability: ReadCapability) {
-        val capabilities = backend.capabilities()
-        if (!capabilities.readCapabilities.contains(capability)) {
-            throw CapabilityNotSupportedException(
-                capability = capability.name,
-                message = "The backend does not advertise $capability",
-            )
-        }
+        requireCapabilities(readCapabilities = setOf(capability))
     }
 
     private suspend fun requireMutationCapability(capability: MutationCapability) {
+        requireCapabilities(mutationCapabilities = setOf(capability))
+    }
+
+    private suspend fun requireCapabilities(
+        readCapabilities: Set<ReadCapability> = emptySet(),
+        mutationCapabilities: Set<MutationCapability> = emptySet(),
+    ) {
         val capabilities = backend.capabilities()
-        if (!capabilities.mutationCapabilities.contains(capability)) {
+        val missingReadCapability = readCapabilities.firstOrNull { capability ->
+            capability !in capabilities.readCapabilities
+        }
+        if (missingReadCapability != null) {
             throw CapabilityNotSupportedException(
-                capability = capability.name,
-                message = "The backend does not advertise $capability",
+                capability = missingReadCapability.name,
+                message = "The backend does not advertise $missingReadCapability",
+            )
+        }
+        val missingMutationCapability = mutationCapabilities.firstOrNull { capability ->
+            capability !in capabilities.mutationCapabilities
+        }
+        if (missingMutationCapability != null) {
+            throw CapabilityNotSupportedException(
+                capability = missingMutationCapability.name,
+                message = "The backend does not advertise $missingMutationCapability",
             )
         }
     }
