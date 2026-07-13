@@ -3,6 +3,9 @@ package io.github.amichne.kast.testing
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
+import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.result.FileAnalysisState
+import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
@@ -62,6 +65,10 @@ data class AnalysisBackendContractFixture(
         depth = 1,
         maxTotalCalls = 16,
         maxChildrenPerNode = 16,
+    )
+
+    val diagnosticsQuery: DiagnosticsQuery = DiagnosticsQuery(
+        filePaths = listOf(declarationFile.toString(), brokenFile.toString()),
     )
 
     val typeHierarchyQuery: TypeHierarchyQuery = TypeHierarchyQuery(
@@ -245,6 +252,7 @@ object AnalysisBackendContractAssertions {
         assertFileOutline(backend, fixture)
         assertWorkspaceSymbolSearch(backend, fixture)
         assertWorkspaceSearch(backend, fixture)
+        assertDiagnostics(backend, fixture)
         assertRename(backend, fixture)
     }
 
@@ -360,6 +368,29 @@ object AnalysisBackendContractAssertions {
             "workspace search expected a preview containing greet but had <${result.matches.map { it.preview }}>"
         }
         expectEquals(false, result.truncated, "workspace search truncated")
+    }
+
+    private suspend fun assertDiagnostics(
+        backend: AnalysisBackend,
+        fixture: AnalysisBackendContractFixture,
+    ) {
+        val result = backend.diagnostics(fixture.diagnosticsQuery.parsed())
+
+        expectEquals(SemanticAnalysisOutcome.COMPLETE, result.semanticOutcome, "diagnostics semantic outcome")
+        expectEquals(2, result.requestedFileCount, "diagnostics requested files")
+        expectEquals(2, result.analyzedFileCount, "diagnostics analyzed files")
+        expectEquals(0, result.skippedFileCount, "diagnostics skipped files")
+        expectEquals(
+            listOf(FileAnalysisState.ANALYZED, FileAnalysisState.ANALYZED),
+            result.fileStatuses.map { it.state },
+            "diagnostics file states",
+        )
+        check(result.diagnostics.any { it.code == "FAKE_PARSE_ERROR" }) {
+            "ordinary compiler diagnostics must remain analyzed evidence"
+        }
+        check(result.diagnostics.none { it.code == "ANALYSIS_FAILURE" }) {
+            "ordinary compiler diagnostics must not be reported as analysis failures"
+        }
     }
 
     private suspend fun assertRename(

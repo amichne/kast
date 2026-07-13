@@ -1,6 +1,16 @@
 {
     "result": {
         "diagnostics": [],
+        "fileStatuses": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "state": "ANALYZED"
+            }
+        ],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
         "schemaVersion": 3
     },
     "id": 1,

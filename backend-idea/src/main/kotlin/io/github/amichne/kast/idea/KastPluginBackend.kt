@@ -40,13 +40,16 @@ import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.HealthResponse
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.ReferencesResult
@@ -104,6 +107,7 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import java.nio.file.FileSystems
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 
@@ -827,41 +831,122 @@ internal class KastPluginBackend(
 
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.DIAGNOSTICS, "kast.idea.diagnostics") {
-            val diagnostics = coroutineScope {
-                query.filePaths.value.map { it.value }.sorted().map { filePath ->
+            val fileAnalyses = coroutineScope {
+                query.filePaths.value.map { filePath ->
                     async(readDispatcher) {
-                        runCatching {
-                            timedReadAction(telemetry, IdeaTelemetryScope.DIAGNOSTICS, "kast.idea.diagnostics.file") {
-                                val file = findKtFile(filePath)
-                                analyze(file) {
-                                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                                        .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
-                                }
-                            }
-                        }.getOrElse { ex ->
-                            listOf(
-                                Diagnostic(
-                                    location = Location(
-                                        filePath = filePath,
-                                        startOffset = 0,
-                                        endOffset = 0,
-                                        startLine = 0,
-                                        startColumn = 0,
-                                        preview = "",
-                                    ),
-                                    severity = DiagnosticSeverity.ERROR,
-                                    message = ex.message ?: ex.toString(),
-                                    code = "ANALYSIS_FAILURE",
-                                ),
-                            )
-                        }
+                        analyzeDiagnosticsFile(filePath)
                     }
-                }.awaitAll().flatten()
-            }.sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
+                }.awaitAll()
+            }
+            val diagnostics = fileAnalyses
+                .flatMap(DiagnosticsFileAnalysis::diagnostics)
+                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
 
-            DiagnosticsResult(diagnostics = diagnostics)
+            DiagnosticsResult.of(
+                diagnostics = diagnostics,
+                fileStatuses = fileAnalyses.map(DiagnosticsFileAnalysis::status),
+            )
         }
     }
+
+    private suspend fun analyzeDiagnosticsFile(filePath: NormalizedPath): DiagnosticsFileAnalysis {
+        if (Files.notExists(Path.of(filePath.value))) {
+            return skippedDiagnostics(
+                filePath = filePath,
+                state = FileAnalysisState.MISSING_ON_DISK,
+                message = "File not found: ${filePath.value}",
+            )
+        }
+        if (!isWorkspaceFile(filePath.value)) {
+            return skippedDiagnostics(
+                filePath = filePath,
+                state = FileAnalysisState.OUTSIDE_SOURCE_MODULES,
+                message = "File is outside the active workspace: ${filePath.value}",
+            )
+        }
+
+        return try {
+            timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.DIAGNOSTICS,
+                "kast.idea.diagnostics.file",
+            ) {
+                val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath.value)
+                    ?: return@timedReadAction skippedDiagnostics(
+                        filePath = filePath,
+                        state = FileAnalysisState.PENDING_INDEX,
+                        message = "File exists on disk but is not available in the IDEA virtual file system",
+                    )
+                if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
+                    return@timedReadAction skippedDiagnostics(
+                        filePath = filePath,
+                        state = FileAnalysisState.OUTSIDE_SOURCE_MODULES,
+                        message = "File is not contained in an IDEA source module",
+                    )
+                }
+                if (DumbService.isDumb(project)) {
+                    return@timedReadAction skippedDiagnostics(
+                        filePath = filePath,
+                        state = FileAnalysisState.PENDING_INDEX,
+                        message = "IDEA indexing is still in progress",
+                    )
+                }
+                val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+                    ?: return@timedReadAction skippedDiagnostics(
+                        filePath = filePath,
+                        state = FileAnalysisState.PENDING_INDEX,
+                        message = "IDEA has not created PSI for the file yet",
+                    )
+                val file = psiFile as? KtFile
+                    ?: return@timedReadAction skippedDiagnostics(
+                        filePath = filePath,
+                        state = FileAnalysisState.BACKEND_FAILURE,
+                        message = "Semantic diagnostics require a Kotlin source file",
+                    )
+                val fileDiagnostics = analyze(file) {
+                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
+                }
+                DiagnosticsFileAnalysis(
+                    status = FileAnalysisStatus.analyzed(filePath),
+                    diagnostics = fileDiagnostics,
+                )
+            }
+        } catch (ex: ProcessCanceledException) {
+            throw ex
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (ex: Throwable) {
+            skippedDiagnostics(
+                filePath = filePath,
+                state = FileAnalysisState.BACKEND_FAILURE,
+                message = ex.message?.takeIf(String::isNotBlank) ?: ex.toString(),
+            )
+        }
+    }
+
+    private fun skippedDiagnostics(
+        filePath: NormalizedPath,
+        state: FileAnalysisState,
+        message: String,
+    ): DiagnosticsFileAnalysis = DiagnosticsFileAnalysis(
+        status = FileAnalysisStatus.skipped(filePath, state, message),
+        diagnostics = listOf(
+            Diagnostic(
+                location = Location(
+                    filePath = filePath.value,
+                    startOffset = 0,
+                    endOffset = 0,
+                    startLine = 0,
+                    startColumn = 0,
+                    preview = "",
+                ),
+                severity = DiagnosticSeverity.ERROR,
+                message = message,
+                code = "ANALYSIS_FAILURE",
+            ),
+        ),
+    )
 
     // Note: Unlike the headless backend, IDEA's ReferencesSearch.search() resolves
     // import directives as reference sites, so explicit import FQN handling is not needed here.
@@ -1195,6 +1280,11 @@ internal class KastPluginBackend(
         val visibility: SymbolVisibility,
         val scopeKind: SearchScopeKind,
         val candidateFileCount: Int,
+    )
+
+    private data class DiagnosticsFileAnalysis(
+        val status: FileAnalysisStatus,
+        val diagnostics: List<Diagnostic>,
     )
 
     companion object {

@@ -47,6 +47,7 @@ import io.github.amichne.kast.api.contract.result.CompletionItem
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
@@ -215,6 +216,7 @@ object OpenApiDocument {
         registry.register("SemanticInsertionResult", SemanticInsertionResult.serializer())
         registry.register("DiagnosticsQuery", DiagnosticsQuery.serializer())
         registry.register("DiagnosticsResult", DiagnosticsResult.serializer())
+        registry.register("FileAnalysisStatus", FileAnalysisStatus.serializer())
         registry.register("Diagnostic", Diagnostic.serializer())
         registry.register("FileOutlineQuery", FileOutlineQuery.serializer())
         registry.register("FileOutlineResult", FileOutlineResult.serializer())

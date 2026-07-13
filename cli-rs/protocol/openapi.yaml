@@ -1431,6 +1431,21 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/Diagnostic"
+        fileStatuses:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileAnalysisStatus"
+        semanticOutcome:
+          "$ref": "#/components/schemas/SemanticAnalysisOutcome"
+        requestedFileCount:
+          type: integer
+          format: int32
+        analyzedFileCount:
+          type: integer
+          format: int32
+        skippedFileCount:
+          type: integer
+          format: int32
         page:
           anyOf:
             - "$ref": "#/components/schemas/PageInfo"
@@ -1441,6 +1456,11 @@ components:
       additionalProperties: false
       required:
         - diagnostics
+        - fileStatuses
+        - semanticOutcome
+        - requestedFileCount
+        - analyzedFileCount
+        - skippedFileCount
     Diagnostic:
       type: object
       properties:
@@ -1465,6 +1485,34 @@ components:
         - ERROR
         - WARNING
         - INFO
+    FileAnalysisStatus:
+      type: object
+      properties:
+        filePath:
+          type: string
+        state:
+          "$ref": "#/components/schemas/FileAnalysisState"
+        message:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - filePath
+        - state
+    FileAnalysisState:
+      type: string
+      enum:
+        - ANALYZED
+        - PENDING_INDEX
+        - OUTSIDE_SOURCE_MODULES
+        - MISSING_ON_DISK
+        - BACKEND_FAILURE
+    SemanticAnalysisOutcome:
+      type: string
+      enum:
+        - COMPLETE
+        - INCOMPLETE
     FileOutlineQuery:
       type: object
       properties:

@@ -2,14 +2,13 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.Diagnostic
-import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.MutationCapability
@@ -576,10 +575,13 @@ internal class SkillRpcOrchestrator(
             ).parsed(),
         )
         val diagnosticsSummary = if (renameResult.affectedFiles.isEmpty()) {
-            KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0)
+            KastDiagnosticsSummary.completeWithoutFiles()
         } else {
             requireReadCapability(ReadCapability.DIAGNOSTICS)
-            diagnosticsSummary(backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed()).withLimit(config.maxResults, ::diagnosticPageToken))
+            KastDiagnosticsSummary.from(
+                result = backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed()),
+                maxReturnedErrors = PositiveInt(config.maxResults),
+            )
         }
         return KastRenameSuccessResponse(
             ok = diagnosticsSummary.clean,
@@ -877,8 +879,9 @@ internal class SkillRpcOrchestrator(
 
     private suspend fun validateFiles(filePaths: List<String>): KastDiagnosticsSummary {
         requireReadCapability(ReadCapability.DIAGNOSTICS)
-        return diagnosticsSummary(
-            backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed()).withLimit(config.maxResults, ::diagnosticPageToken),
+        return KastDiagnosticsSummary.from(
+            result = backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed()),
+            maxReturnedErrors = PositiveInt(config.maxResults),
         )
     }
 
@@ -1238,14 +1241,6 @@ internal class SkillRpcOrchestrator(
         }
     }
 
-    private fun diagnosticsSummary(result: io.github.amichne.kast.api.contract.result.DiagnosticsResult): KastDiagnosticsSummary =
-        KastDiagnosticsSummary(
-            clean = result.diagnostics.none { it.severity == DiagnosticSeverity.ERROR },
-            errorCount = result.diagnostics.count { it.severity == DiagnosticSeverity.ERROR },
-            warningCount = result.diagnostics.count { it.severity == DiagnosticSeverity.WARNING },
-            errors = result.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR },
-        )
-
     private fun resolveContent(content: String?, contentFile: String?): String {
         if (content != null) {
             return content
@@ -1328,8 +1323,6 @@ private fun WrapperScaffoldMode.toInsertionTarget(): SemanticInsertionTarget = w
 private fun placeholderLogFile(): String = "/dev/null"
 
 private fun referencePageToken(location: Location): String = location.startOffset.toString()
-
-private fun diagnosticPageToken(diagnostic: Diagnostic): String = diagnostic.location.startOffset.toString()
 
 private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
 

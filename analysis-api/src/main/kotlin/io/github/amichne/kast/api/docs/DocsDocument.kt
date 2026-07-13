@@ -28,6 +28,7 @@ import io.github.amichne.kast.api.contract.result.CompletionItem
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
+import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
@@ -109,6 +110,7 @@ object DocsDocument {
         "SemanticInsertionResult" to SemanticInsertionResult.serializer(),
         "DiagnosticsQuery" to DiagnosticsQuery.serializer(),
         "DiagnosticsResult" to DiagnosticsResult.serializer(),
+        "FileAnalysisStatus" to FileAnalysisStatus.serializer(),
         "Diagnostic" to Diagnostic.serializer(),
         "FileOutlineQuery" to FileOutlineQuery.serializer(),
         "FileOutlineResult" to FileOutlineResult.serializer(),

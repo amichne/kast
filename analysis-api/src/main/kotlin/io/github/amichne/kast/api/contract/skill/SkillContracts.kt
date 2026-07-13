@@ -683,14 +683,6 @@ data class KastScaffoldTypeHierarchy(
 )
 
 @Serializable
-data class KastDiagnosticsSummary(
-    val clean: Boolean,
-    val errorCount: Int,
-    val warningCount: Int,
-    val errors: List<Diagnostic> = emptyList(),
-)
-
-@Serializable
 sealed interface KastResolveResponse
 
 @Serializable

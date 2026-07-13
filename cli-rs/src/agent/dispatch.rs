@@ -455,6 +455,7 @@ fn execute_agent_steps(
     };
     let mut step_results = Vec::with_capacity(steps.len());
     let mut issues = Vec::new();
+    let mut semantic_analysis = None;
     for step in steps {
         let step_session = session
             .as_ref()
@@ -468,6 +469,16 @@ fn execute_agent_steps(
             },
             step_session,
         );
+        if step.method == "raw/diagnostics" {
+            let evidence_is_invalid = envelope
+                .error
+                .as_ref()
+                .is_some_and(|error| error.code == "SEMANTIC_ANALYSIS_INVALID");
+            semantic_analysis = (!evidence_is_invalid)
+                .then_some(envelope.result.as_ref())
+                .flatten()
+                .and_then(AgentSemanticAnalysisSummary::from_result);
+        }
         if !envelope.ok {
             issues.push(json!({
                 "code": "AGENT_STEP_FAILED",
@@ -488,13 +499,16 @@ fn execute_agent_steps(
         }
     }
     let ok = issues.is_empty();
-    let result = json!({
+    let mut result = json!({
         "type": "KAST_AGENT_COMMAND",
         "ok": ok,
         "steps": step_results,
         "issues": issues,
         "schemaVersion": SCHEMA_VERSION,
     });
+    if let (Some(summary), Some(result)) = (semantic_analysis, result.as_object_mut()) {
+        result.insert("semanticAnalysis".to_string(), json!(summary));
+    }
     let error = (!ok).then(|| {
         let mut error = agent_error("AGENT_COMMAND_FAILED", "Agent command failed.");
         error

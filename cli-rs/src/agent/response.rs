@@ -25,11 +25,17 @@ fn response_envelope(
             };
         }
     };
+    let semantic_evidence = AgentSemanticAnalysisEvidence::from_result(
+        &method,
+        &request,
+        response.get("result"),
+    );
     if !full_response {
         preview_large_strings(&mut response, AXI_PREVIEW_LIMIT);
     }
     let result = response.get("result").cloned();
-    let error = response_error(&response).or_else(|| result_failure(&result));
+    let error = response_error(&response)
+        .or_else(|| result_failure(semantic_evidence, &result));
     AgentEnvelope {
         ok: error.is_none() && result.is_some(),
         method,
@@ -101,7 +107,47 @@ fn response_error(response: &Value) -> Option<AgentError> {
     Some(agent_error)
 }
 
-fn result_failure(result: &Option<Value>) -> Option<AgentError> {
+fn result_failure(
+    semantic_evidence: AgentSemanticAnalysisEvidence,
+    result: &Option<Value>,
+) -> Option<AgentError> {
+    match semantic_evidence {
+        AgentSemanticAnalysisEvidence::Valid(summary) if summary.is_incomplete() => {
+            let mut agent_error = AgentError {
+                code: "SEMANTIC_ANALYSIS_INCOMPLETE".to_string(),
+                message: format!(
+                    "Semantic analysis was incomplete: analyzed {} of {} requested files; skipped {}.",
+                    summary.analyzed_file_count,
+                    summary.requested_file_count,
+                    summary.skipped_file_count,
+                ),
+                details: BTreeMap::new(),
+            };
+            agent_error
+                .details
+                .insert("semanticAnalysis".to_string(), json!(summary));
+            if let Some(result) = result {
+                agent_error
+                    .details
+                    .insert("result".to_string(), result.clone());
+            }
+            return Some(agent_error);
+        }
+        AgentSemanticAnalysisEvidence::Invalid => {
+            let mut agent_error = agent_error(
+                "SEMANTIC_ANALYSIS_INVALID",
+                "The backend returned malformed semantic completeness evidence.",
+            );
+            if let Some(result) = result {
+                agent_error
+                    .details
+                    .insert("result".to_string(), result.clone());
+            }
+            return Some(agent_error);
+        }
+        AgentSemanticAnalysisEvidence::NotDiagnostics
+        | AgentSemanticAnalysisEvidence::Valid(_) => {}
+    }
     let result = result.as_ref()?;
     if result.get("ok").and_then(Value::as_bool) != Some(false) {
         return None;
