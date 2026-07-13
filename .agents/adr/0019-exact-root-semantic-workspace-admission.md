@@ -48,8 +48,10 @@ On macOS, an unprepared Gradle root does not become a terminal setup error.
 These next actions are guidance, not side effects. Verification does not copy
 metadata, run `kast setup`, start an IDE, repair an install, alter global
 configuration, mutate a Homebrew receipt, or start a headless runtime.
-Verification reuses an already ready exact-root runtime only. Unsupported
-non-Gradle projects fail separately and do not receive misleading
+Verification reuses an already ready exact-root runtime only. Its inspection
+policy preserves descriptor-registry bytes, including dead entries; pruning
+is reserved for lifecycle paths that are authorized to mutate runtime state.
+Unsupported non-Gradle projects fail separately and do not receive misleading
 workspace-preparation guidance.
 
 The unprepared/headless route admits read-only verification, symbol, and
@@ -58,13 +60,15 @@ public mutation family still requires valid exact-root plugin preparation,
 including when `--backend=headless` is selected. Mutation plans remain
 read-only; applied rename, add-file, add-declaration, add-implementation,
 add-statement, and replace-declaration commands fail with
-`SEMANTIC_MUTATION_AUTHORITY_REQUIRED` before any backend request when that
-authority is absent.
+`SEMANTIC_MUTATION_AUTHORITY_REQUIRED` before descriptor discovery, runtime
+status, capabilities, or any other backend request when that authority is
+absent. Automatic and default-backend mutation routes use the same preflight.
 
 Automatic backend selection is allowed only when at most one backend kind is
-ready for the exact root. If IDEA and headless are both ready, admission fails
-with `SEMANTIC_BACKEND_AMBIGUOUS` and structured candidate evidence. An
-explicit `--backend` or configured default remains authoritative.
+ready for the exact root. A sole ready backend is selected even when it differs
+from the host fallback. If IDEA and headless are both ready, admission fails
+with `SEMANTIC_BACKEND_AMBIGUOUS` and structured candidate evidence. An explicit
+`--backend` or configured default remains authoritative.
 
 After admission succeeds, `kast agent verify` projects a compact semantic
 workspace evidence object from runtime status and capabilities. The object
@@ -80,7 +84,7 @@ checkouts.
 | --- | --- | --- |
 | macOS, exact root prepared | Use `--backend=idea` or an explicit backend | Plugin metadata and the exact-root descriptor are authoritative; applied mutation is permitted through the existing apply gates |
 | macOS, exact root unprepared | Open that exact root with the installed Kast plugin, then rerun verification | The CLI reports the action but performs no setup or launch |
-| Supported headless distribution | Use `--backend=headless` with the exact root | An already ready exact-root runtime is reused for verification; symbol and diagnostics may use the installed distribution; verification does not start, install, or repair it |
+| Supported headless distribution | Use `--backend=headless` with the exact root | An already ready exact-root runtime is reused for verification; symbol and diagnostics may use the installed distribution; verification does not start, install, repair, or prune descriptor state |
 | More than one ready exact-root backend | Select `--backend=idea` or `--backend=headless` | Automatic routing fails with candidate evidence instead of preferring an OS/backend |
 | Unsupported non-Gradle root | Choose a Kotlin Gradle workspace | No backend is started and no preparation is suggested |
 

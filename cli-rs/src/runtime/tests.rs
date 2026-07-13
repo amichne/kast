@@ -57,6 +57,22 @@ mod tests {
     }
 
     #[test]
+    fn automatic_semantic_selection_uses_sole_ready_idea_over_non_macos_default() {
+        let candidates = vec![SemanticBackendCandidateEvidence {
+            backend_name: "idea".to_string(),
+            backend_version: "test".to_string(),
+            workspace_root: "/tmp/ws".to_string(),
+            ready: true,
+            evidence_quality: SemanticEvidenceQuality::CompilerBacked,
+        }];
+
+        let selected = automatic_semantic_backend_selection(candidates, BackendName::Headless)
+            .expect("sole ready backend");
+
+        assert_eq!(selected, BackendName::Idea);
+    }
+
+    #[test]
     fn indexing_requires_accept_indexing() {
         let candidates = vec![candidate("headless", RuntimeState::Indexing, true)];
         assert!(select_servable(&candidates, None, false).is_none());

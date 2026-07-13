@@ -5,7 +5,11 @@ fn stop_backend_candidates(
     reachable_idea_lifecycle_method: Option<&str>,
 ) -> Result<DaemonStopResult> {
     let backend_name = preference.fixed_backend().unwrap_or(BackendName::Headless);
-    let inspection = inspect_workspace(workspace_root, preference, true)?;
+    let inspection = inspect_workspace(
+        workspace_root,
+        preference,
+        StaleDescriptorPolicy::Prune,
+    )?;
     let mut actions = vec![];
     let mut warnings = vec![];
     for candidate in inspection.candidates {
@@ -139,7 +143,7 @@ fn restart_idea_backend_candidates(
         workspace_root,
         config,
         RuntimeBackendPreference::Fixed(BackendName::Idea),
-        true,
+        StaleDescriptorPolicy::Prune,
     )?;
     if inspection.candidates.is_empty()
         || !inspection

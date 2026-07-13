@@ -8,7 +8,12 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
     )?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     validate_macos_workspace_for_preference(&workspace_root, preference)?;
-    let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, false)?;
+    let inspection = inspect_workspace_with_config(
+        &workspace_root,
+        &config,
+        preference,
+        StaleDescriptorPolicy::Preserve,
+    )?;
     Ok(WorkspaceStatusResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
@@ -29,7 +34,17 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     )?;
     let preference = runtime_backend_preference(&config, args.backend_name);
     validate_macos_workspace_for_preference(&workspace_root, preference)?;
-    let inspection = inspect_workspace_with_config(&workspace_root, &config, preference, true)?;
+    let stale_descriptor_policy = if args.no_auto_start.unwrap_or(false) {
+        StaleDescriptorPolicy::Preserve
+    } else {
+        StaleDescriptorPolicy::Prune
+    };
+    let inspection = inspect_workspace_with_config(
+        &workspace_root,
+        &config,
+        preference,
+        stale_descriptor_policy,
+    )?;
     reject_ambiguous_servable_backends(
         &inspection.candidates,
         preference,

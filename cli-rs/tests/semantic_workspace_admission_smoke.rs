@@ -257,62 +257,7 @@ fn unprepared_headless_route_rejects_every_public_applied_mutation() {
     let target_file = workspace.join("src/main/kotlin/Added.kt");
     std::fs::write(&content_file, "fun added() = Unit\n").expect("content");
 
-    let cases = [
-        vec![
-            "agent".to_string(),
-            "rename".to_string(),
-            "--symbol".to_string(),
-            "sample.Foo".to_string(),
-            "--new-name".to_string(),
-            "Bar".to_string(),
-        ],
-        vec![
-            "agent".to_string(),
-            "add-file".to_string(),
-            "--file-path".to_string(),
-            target_file.display().to_string(),
-            "--content-file".to_string(),
-            content_file.display().to_string(),
-        ],
-        vec![
-            "agent".to_string(),
-            "add-declaration".to_string(),
-            "--inside-file".to_string(),
-            target_file.display().to_string(),
-            "--at".to_string(),
-            "file-bottom".to_string(),
-            "--content-file".to_string(),
-            content_file.display().to_string(),
-        ],
-        vec![
-            "agent".to_string(),
-            "add-implementation".to_string(),
-            "--inside-scope".to_string(),
-            "sample.Foo".to_string(),
-            "--at".to_string(),
-            "body-end".to_string(),
-            "--content-file".to_string(),
-            content_file.display().to_string(),
-        ],
-        vec![
-            "agent".to_string(),
-            "add-statement".to_string(),
-            "--inside-scope".to_string(),
-            "sample.foo".to_string(),
-            "--at".to_string(),
-            "body-end".to_string(),
-            "--content-file".to_string(),
-            content_file.display().to_string(),
-        ],
-        vec![
-            "agent".to_string(),
-            "replace-declaration".to_string(),
-            "--symbol".to_string(),
-            "sample.Foo".to_string(),
-            "--content-file".to_string(),
-            content_file.display().to_string(),
-        ],
-    ];
+    let cases = applied_mutation_cases(&target_file, &content_file);
 
     for mut args in cases {
         args.extend([
@@ -342,6 +287,106 @@ fn unprepared_headless_route_rejects_every_public_applied_mutation() {
         backend.finish().is_empty(),
         "authority must fail before RPC"
     );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn automatic_applied_mutation_checks_authority_before_backend_discovery() {
+    let fixture = tempfile::tempdir().expect("automatic mutation fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let idea_socket = fixture.path().join("idea.sock");
+    let headless_socket = fixture.path().join("headless.sock");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    write_runtime_descriptors(
+        &home,
+        &[
+            (&workspace, &idea_socket, "idea"),
+            (&workspace, &headless_socket, "headless"),
+        ],
+    );
+    let idea = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&idea_socket),
+        workspace.clone(),
+        "idea",
+    );
+    let headless = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&headless_socket),
+        workspace.clone(),
+        "headless",
+    );
+
+    let mutation = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "sample.Foo",
+            "--new-name",
+            "Bar",
+            "--apply",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("automatic mutation");
+
+    assert!(!mutation.status.success(), "unprepared mutation must fail");
+    let output: serde_json::Value =
+        serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
+    assert_eq!(
+        output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+        "{output:#}"
+    );
+    assert!(idea.finish().is_empty(), "IDEA must not be contacted");
+    assert!(
+        headless.finish().is_empty(),
+        "headless must not be contacted"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn default_applied_mutation_maps_every_public_family_to_authority_required() {
+    let fixture = tempfile::tempdir().expect("default mutation fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let content_file = fixture.path().join("content.kt");
+    let target_file = workspace.join("src/main/kotlin/Added.kt");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::write(&content_file, "fun added() = Unit\n").expect("content");
+
+    for mut args in applied_mutation_cases(&target_file, &content_file) {
+        args.extend([
+            "--apply".to_string(),
+            "--workspace-root".to_string(),
+            workspace.display().to_string(),
+        ]);
+        let mutation = kast(&home, &config_home)
+            .args(["--output", "json"])
+            .args(args)
+            .output()
+            .expect("default applied mutation");
+        assert!(!mutation.status.success(), "unprepared mutation must fail");
+        let output: serde_json::Value =
+            serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
+        assert_eq!(
+            output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+            "{output:#}"
+        );
+        assert_eq!(
+            output["error"]["details"]["semanticWorkspace"]["backendName"],
+            "idea"
+        );
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -450,6 +495,69 @@ fn agent_verify_never_runs_configured_idea_launch_command() {
     );
 }
 
+#[test]
+fn reuse_only_verify_preserves_dead_descriptor_bytes_without_launching() {
+    let fixture = tempfile::tempdir().expect("stale descriptor fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let socket_path = fixture.path().join("dead.sock");
+    let launch_marker = fixture.path().join("idea-launched");
+    let launch_command = fixture.path().join("launch-idea");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    write_stale_runtime_descriptor(&home, &workspace, &socket_path, "idea");
+    let descriptor_path = default_descriptor_dir(&home).join("daemons.json");
+    let descriptor_before = std::fs::read(&descriptor_path).expect("descriptor bytes");
+    std::fs::write(
+        &launch_command,
+        format!("#!/bin/sh\ntouch '{}'\n", launch_marker.display()),
+    )
+    .expect("launch command");
+    let mut permissions = std::fs::metadata(&launch_command)
+        .expect("launch metadata")
+        .permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&launch_command, permissions).expect("launch executable");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\nrequireInstalledPlugin = false\n",
+            launch_command.display()
+        ),
+    )
+    .expect("config");
+
+    let verify = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("agent verify");
+
+    assert!(!verify.status.success(), "dead backend must fail");
+    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
+    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(
+        std::fs::read(&descriptor_path).expect("preserved descriptor bytes"),
+        descriptor_before,
+        "reuse-only verification must not prune or rewrite descriptor state"
+    );
+    assert!(!launch_marker.exists(), "verification must not launch IDEA");
+    assert!(
+        !socket_path.exists(),
+        "verification must not start a backend"
+    );
+}
+
 #[cfg(target_os = "macos")]
 #[test]
 fn temporary_git_clone_is_classified_as_disposable() {
@@ -549,6 +657,50 @@ fn automatic_selection_rejects_two_ready_exact_root_backends() {
     );
     assert!(!idea.finish().is_empty());
     assert!(!headless.finish().is_empty());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn automatic_selection_uses_sole_ready_headless_backend_on_macos() {
+    let fixture = tempfile::tempdir().expect("sole headless fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let socket_path = fixture.path().join("headless.sock");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = ObservedSemanticBackend::spawn(
+        bind_semantic_listener(&socket_path),
+        workspace.clone(),
+        "headless",
+    );
+
+    let verify = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "verify",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("automatic verify");
+
+    assert!(
+        verify.status.success(),
+        "sole ready headless backend must override the macOS default: stdout={}, stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
+    assert_eq!(
+        output["result"]["semanticWorkspace"]["backendName"],
+        "headless"
+    );
+    assert!(!backend.finish().is_empty());
 }
 
 #[test]
@@ -809,6 +961,65 @@ fn write_gradle_workspace(workspace: &Path) {
     .expect("settings");
 }
 
+fn applied_mutation_cases(target_file: &Path, content_file: &Path) -> [Vec<String>; 6] {
+    [
+        vec![
+            "agent".to_string(),
+            "rename".to_string(),
+            "--symbol".to_string(),
+            "sample.Foo".to_string(),
+            "--new-name".to_string(),
+            "Bar".to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-file".to_string(),
+            "--file-path".to_string(),
+            target_file.display().to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-declaration".to_string(),
+            "--inside-file".to_string(),
+            target_file.display().to_string(),
+            "--at".to_string(),
+            "file-bottom".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-implementation".to_string(),
+            "--inside-scope".to_string(),
+            "sample.Foo".to_string(),
+            "--at".to_string(),
+            "body-end".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "add-statement".to_string(),
+            "--inside-scope".to_string(),
+            "sample.foo".to_string(),
+            "--at".to_string(),
+            "body-end".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+        vec![
+            "agent".to_string(),
+            "replace-declaration".to_string(),
+            "--symbol".to_string(),
+            "sample.Foo".to_string(),
+            "--content-file".to_string(),
+            content_file.display().to_string(),
+        ],
+    ]
+}
+
 struct GitWorkspaceFixture {
     _temp: tempfile::TempDir,
     sockets: tempfile::TempDir,
@@ -979,6 +1190,12 @@ impl ObservedSemanticBackend {
                 let method = request["method"].as_str().expect("method").to_string();
                 methods.push(method.clone());
                 let result = match method.as_str() {
+                    "health" => serde_json::json!({
+                        "ok": true,
+                        "backendName": backend_name,
+                        "backendVersion": "admission-test",
+                        "schemaVersion": 3
+                    }),
                     "runtime/status" => serde_json::json!({
                         "state": "READY",
                         "healthy": true,

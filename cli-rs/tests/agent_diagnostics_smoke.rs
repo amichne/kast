@@ -324,6 +324,7 @@ fn run_diagnostics(
             output_format,
             "agent",
             "diagnostics",
+            "--backend=idea",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--file-path",

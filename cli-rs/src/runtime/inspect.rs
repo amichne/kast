@@ -1,17 +1,22 @@
 fn inspect_workspace(
     workspace_root: &Path,
     preference: RuntimeBackendPreference,
-    prune_stale_descriptors: bool,
+    stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let config = KastConfig::load(workspace_root)?;
-    inspect_workspace_with_config(workspace_root, &config, preference, prune_stale_descriptors)
+    inspect_workspace_with_config(
+        workspace_root,
+        &config,
+        preference,
+        stale_descriptor_policy,
+    )
 }
 
 fn inspect_workspace_with_config(
     workspace_root: &Path,
     config: &KastConfig,
     preference: RuntimeBackendPreference,
-    prune_stale_descriptors: bool,
+    stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let descriptor_directory = config.paths.descriptor_dir.clone();
     let backend_name = preference.backend_filter();
@@ -22,7 +27,7 @@ fn inspect_workspace_with_config(
         candidates.push(inspect_descriptor(
             &descriptor_directory,
             descriptor,
-            prune_stale_descriptors,
+            stale_descriptor_policy,
         )?);
     }
     candidates.sort_by(|a, b| {
@@ -41,11 +46,11 @@ fn inspect_workspace_with_config(
 fn inspect_descriptor(
     descriptor_directory: &Path,
     registered: RegisteredDescriptor,
-    prune_stale_descriptors: bool,
+    stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<RuntimeCandidateStatus> {
     let pid_alive = is_process_alive(registered.descriptor.pid);
     if !pid_alive {
-        if prune_stale_descriptors {
+        if stale_descriptor_policy == StaleDescriptorPolicy::Prune {
             delete_descriptor(descriptor_directory, &registered.descriptor)?;
         }
         return Ok(RuntimeCandidateStatus {
@@ -134,7 +139,11 @@ fn wait_for_servable(
         .map(RuntimeBackendPreference::Fixed)
         .unwrap_or(RuntimeBackendPreference::Automatic);
     while Instant::now() < deadline {
-        let inspection = inspect_workspace(workspace_root, preference, true)?;
+        let inspection = inspect_workspace(
+            workspace_root,
+            preference,
+            StaleDescriptorPolicy::Prune,
+        )?;
         if let Some(selected) =
             select_servable(&inspection.candidates, backend_name, accept_indexing)
         {

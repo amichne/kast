@@ -13,14 +13,17 @@ runtime-status responses must match the exact normalized requested root;
 shared Git ancestry, branch, or commit is never sufficient authority. An
 unprepared root may report non-mutating preparation or headless next actions,
 but admission must not copy metadata, launch an IDE, or alter install state.
-Verification is reuse-only and must not start IDEA or headless runtimes.
+Verification is reuse-only and must not start IDEA or headless runtimes, prune
+dead descriptors, or rewrite descriptor registry state. Thread an explicit
+preserve/prune policy through inspection; lifecycle owners may prune, while
+read-only status, admission, and verification preserve.
 
 The unprepared headless route is read-only. Applied public mutations on macOS
 require valid exact-root plugin preparation regardless of backend selection;
-enforce this before opening a socket. A descriptor cannot make a non-Gradle
-root supported, and a temporary clone is not primary merely because it owns a
-`.git` directory.
+enforce this before descriptor discovery or opening a socket. A descriptor
+cannot make a non-Gradle root supported, and a temporary clone is not primary
+merely because it owns a `.git` directory.
 
 Automatic selection with more than one ready exact-root backend returns a
-typed error with candidate evidence. Explicit backend selection remains
-authoritative.
+typed error with candidate evidence. A sole ready backend wins over the host
+fallback. Explicit backend selection remains authoritative.
