@@ -274,7 +274,7 @@ internal class SecureWorkspaceMutation(
                         )
                     },
                 )
-                reservation.use {
+                val reservationRelease = reservation.use {
                     val commitOutcome = try {
                         beforeFinalCommit(normalizedTarget, IdeaWorkspaceMutation.DELETE_FILE)
                         renameNoReplace(
@@ -322,18 +322,18 @@ internal class SecureWorkspaceMutation(
                             platform = platform,
                         )
                     }
+
+                    afterDeleteReservationCommitted(normalizedTarget)
+
+                    releaseFinalReservation(
+                        parent = parent,
+                        fileName = fileName,
+                        reservation = reservation,
+                        target = normalizedTarget,
+                        api = api,
+                        platform = platform,
+                    )
                 }
-
-                afterDeleteReservationCommitted(normalizedTarget)
-
-                val reservationRelease = releaseFinalReservation(
-                    parent = parent,
-                    fileName = fileName,
-                    reservation = reservation,
-                    target = normalizedTarget,
-                    api = api,
-                    platform = platform,
-                )
                 val reservationCleanup = when (reservationRelease) {
                     is FinalReservationRelease.Released -> reservationRelease.cleanup
                     is FinalReservationRelease.Blocked -> {
