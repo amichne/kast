@@ -103,6 +103,45 @@ fn response_error(response: &Value) -> Option<AgentError> {
 
 fn result_failure(result: &Option<Value>) -> Option<AgentError> {
     let result = result.as_ref()?;
+    if let Some(summary) = AgentSemanticAnalysisSummary::from_result(result)
+        && summary.is_incomplete()
+    {
+        let mut agent_error = AgentError {
+            code: "SEMANTIC_ANALYSIS_INCOMPLETE".to_string(),
+            message: format!(
+                "Semantic analysis was incomplete: analyzed {} of {} requested files; skipped {}.",
+                summary.analyzed_file_count,
+                summary.requested_file_count,
+                summary.skipped_file_count,
+            ),
+            details: BTreeMap::new(),
+        };
+        agent_error
+            .details
+            .insert("semanticAnalysis".to_string(), json!(summary));
+        agent_error
+            .details
+            .insert("result".to_string(), result.clone());
+        return Some(agent_error);
+    }
+    if result
+        .get("diagnostics")
+        .and_then(Value::as_array)
+        .is_some_and(|diagnostics| {
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.get("code").and_then(Value::as_str) == Some("ANALYSIS_FAILURE"))
+        })
+    {
+        let mut agent_error = agent_error(
+            "SEMANTIC_ANALYSIS_FAILED",
+            "The backend reported an ANALYSIS_FAILURE diagnostic.",
+        );
+        agent_error
+            .details
+            .insert("result".to_string(), result.clone());
+        return Some(agent_error);
+    }
     if result.get("ok").and_then(Value::as_bool) != Some(false) {
         return None;
     }

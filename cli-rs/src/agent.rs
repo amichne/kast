@@ -9,7 +9,7 @@ use crate::cli::{
 };
 use crate::error::{CliError, Result};
 use crate::{output, runtime, validate};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 

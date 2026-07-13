@@ -25,6 +25,37 @@ pub struct AgentError {
     pub details: BTreeMap<String, Value>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSemanticAnalysisSummary {
+    semantic_outcome: AgentSemanticAnalysisOutcome,
+    requested_file_count: usize,
+    analyzed_file_count: usize,
+    skipped_file_count: usize,
+}
+
+impl AgentSemanticAnalysisSummary {
+    fn from_result(result: &Value) -> Option<Self> {
+        let summary = serde_json::from_value::<Self>(result.clone()).ok()?;
+        (summary.requested_file_count
+            == summary
+                .analyzed_file_count
+                .checked_add(summary.skipped_file_count)?)
+        .then_some(summary)
+    }
+
+    fn is_incomplete(&self) -> bool {
+        self.semantic_outcome == AgentSemanticAnalysisOutcome::Incomplete
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSemanticAnalysisOutcome {
+    Complete,
+    Incomplete,
+}
+
 struct AgentRequest {
     method: String,
     request: Value,
