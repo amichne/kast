@@ -23,14 +23,17 @@ kast repair --workspace-root "$PWD" --apply
 
 ## Typed agent commands
 
-`kast agent` defaults to compact TOON. Add `--output json` only for parsed
-scripts.
+`kast agent` results are compact by default. Add `--output json` for parsed
+scripts. JSON consumers can use family-specific `--fields` or `--count`;
+request `--verbose` or `--explain` only when detailed evidence is required.
 
 ```console
 kast agent verify --workspace-root "$PWD"
 kast agent symbol --query EventBean --workspace-root "$PWD" --references
 kast agent symbol --query process --workspace-root "$PWD" --callers incoming
-kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"
+kast --output json agent symbol --query EventBean --workspace-root "$PWD" --fields identity,location
+kast agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt
+kast --output json agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt --count
 kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply --idempotency-key rename-event-bean

@@ -21,7 +21,7 @@ the first iteration surface.
 3. Check changed files with `kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"`.
 4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`.
 5. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply --idempotency-key <stable-key>` after reviewing the plan and content file.
-6. Use `--output json` for JSON-only parsed scripts; otherwise `kast agent` defaults to compact TOON.
+6. Agent results are compact by default. Use `--output json` for JSON-only parsed scripts, `--fields <family-fields>` for a typed subset, `--count` for aggregates, and `--verbose` or `--explain` only when the task needs detailed evidence.
 
 Completion criterion: every Kotlin semantic claim, edit target, relationship set,
 and validation result is backed by a typed `kast agent` command, or the remaining

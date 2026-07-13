@@ -72,6 +72,44 @@ such as diagnostics `--file-path`, add-file `--file-path`, and mutation
 rejects workspace or symlink escapes, and reports the canonical absolute path
 sent to the backend. Absolute in-workspace targets remain supported.
 
+## Compact result views
+
+Agent results are compact by default. Symbol results retain identity, location,
+lookup mode, ambiguity, and only the relationships the command requested.
+Diagnostics retain semantic completeness counts and actionable diagnostics.
+Mutation results retain operation and edit-application state, changed files and
+edits when available, and diagnostic counts. Verification retains backend,
+runtime, and capability evidence. Raw request/response and multi-step envelopes
+are not part of the default result.
+
+Use `--verbose` to preserve the complete validated command envelope. Use
+`--explain` when ranking, surrounding-member, or next-request evidence is needed;
+the command requests that extra evidence only for the detailed view.
+
+JSON consumers can select a family-specific field set with `--fields` or request
+aggregates with `--count`:
+
+| Command family | `--fields` values | `--count` retains |
+| --- | --- | --- |
+| `verify` | `health,runtime,capabilities` | check and capability counts |
+| `symbol` | `identity,location,mode,outcome,source,ambiguity,relationships` | result, candidate, and relationship counts |
+| `diagnostics` | `analysis,diagnostics,severity-counts` | analyzed/skipped and severity counts |
+| mutations and `operation` | `operation,state,edits,files,diagnostics` | lifecycle state and edit/file/diagnostic counts |
+
+Unknown or cross-family fields fail during argument parsing. `--fields` and
+`--count` cannot be combined with each other or with a detailed view.
+
+```console
+kast --output json agent symbol \
+  --query OrderService \
+  --fields identity,location \
+  --workspace-root "$PWD"
+kast --output json agent diagnostics \
+  --file-path src/main/kotlin/App.kt \
+  --count \
+  --workspace-root "$PWD"
+```
+
 ## Mutation Boundary
 
 Agent edits are plan-first. Kast reports the selected target, planned write set,
@@ -139,6 +177,7 @@ canonical fully-qualified name.
     kast agent verify --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
+    kast agent symbol --query OrderService --explain --workspace-root "$PWD"
     kast agent diagnostics \
       --file-path src/main/kotlin/App.kt \
       --workspace-root "$PWD"
