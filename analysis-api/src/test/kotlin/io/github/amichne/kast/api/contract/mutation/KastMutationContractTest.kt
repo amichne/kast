@@ -1,0 +1,167 @@
+package io.github.amichne.kast.api.contract.mutation
+
+import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
+import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
+import io.github.amichne.kast.api.contract.skill.KastAddImplementationRequest
+import io.github.amichne.kast.api.contract.skill.KastAddStatementRequest
+import io.github.amichne.kast.api.contract.skill.KastAtPlacementAnchor
+import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
+import io.github.amichne.kast.api.contract.skill.KastFilePlacementScope
+import io.github.amichne.kast.api.contract.skill.KastPlacementAnchor
+import io.github.amichne.kast.api.contract.skill.KastPlacementSelector
+import io.github.amichne.kast.api.contract.skill.KastRenameBySymbolRequest
+import io.github.amichne.kast.api.contract.skill.KastReplaceDeclarationRequest
+import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
+import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
+import io.github.amichne.kast.api.contract.skill.KastStatementPlacementAnchor
+import io.github.amichne.kast.api.protocol.ApiErrorResponse
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import java.util.UUID
+
+class KastMutationContractTest {
+    private val json = Json {
+        encodeDefaults = true
+        explicitNulls = false
+    }
+
+    @Test
+    fun `operation identifiers reject malformed boundary values`() {
+        val operationId = KastMutationOperationId(UUID.randomUUID().toString())
+        val idempotencyKey = KastMutationIdempotencyKey("issue-333-add-file")
+
+        assertEquals(operationId.value, operationId.toString())
+        assertEquals(idempotencyKey.value, idempotencyKey.toString())
+        assertThrows<IllegalArgumentException> { KastMutationOperationId("not-a-uuid") }
+        assertThrows<IllegalArgumentException> { KastMutationIdempotencyKey(" ") }
+        assertThrows<IllegalArgumentException> { KastMutationIdempotencyKey("x".repeat(129)) }
+    }
+
+    @Test
+    fun `all public semantic mutation variants have stable wire identities`() {
+        val key = KastMutationIdempotencyKey("issue-333")
+        val placement = KastPlacementSelector(
+            scope = KastFilePlacementScope("/workspace/Sample.kt"),
+            anchor = KastAtPlacementAnchor(KastPlacementAnchor.FILE_BOTTOM),
+        )
+        val mutations = listOf(
+            "RENAME" to KastSemanticMutation.Rename(
+                idempotencyKey = key,
+                request = KastRenameBySymbolRequest(symbol = "sample.greet", newName = "welcome"),
+            ),
+            "ADD_FILE" to KastSemanticMutation.AddFile(
+                idempotencyKey = key,
+                request = KastAddFileRequest(
+                    filePath = "/workspace/Added.kt",
+                    contentFile = "/tmp/Added.kt",
+                ),
+            ),
+            "ADD_DECLARATION" to KastSemanticMutation.AddDeclaration(
+                idempotencyKey = key,
+                request = KastAddDeclarationRequest(placement = placement, contentFile = "/tmp/declaration.kt"),
+            ),
+            "ADD_IMPLEMENTATION" to KastSemanticMutation.AddImplementation(
+                idempotencyKey = key,
+                request = KastAddImplementationRequest(placement = placement, contentFile = "/tmp/implementation.kt"),
+            ),
+            "ADD_STATEMENT" to KastSemanticMutation.AddStatement(
+                idempotencyKey = key,
+                request = KastAddStatementRequest(
+                    insideScope = "sample.greet",
+                    anchor = KastStatementPlacementAnchor.BODY_END,
+                    contentFile = "/tmp/statement.kt",
+                ),
+            ),
+            "REPLACE_DECLARATION" to KastSemanticMutation.ReplaceDeclaration(
+                idempotencyKey = key,
+                request = KastReplaceDeclarationRequest(
+                    symbol = "sample.greet",
+                    contentFile = "/tmp/replacement.kt",
+                ),
+            ),
+        )
+
+        mutations.forEach { (expectedType, mutation) ->
+            val encoded = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation).jsonObject
+            assertEquals(JsonPrimitive(expectedType), encoded["type"])
+            assertEquals(JsonPrimitive(key.value), encoded["idempotencyKey"])
+            assertTrue(encoded["request"] != null)
+            assertEquals(mutation, json.decodeFromJsonElement(KastSemanticMutation.serializer(), encoded))
+        }
+    }
+
+    @Test
+    fun `operation selectors round trip without nullable selector fields`() {
+        val operationId = KastMutationOperationId(UUID.randomUUID().toString())
+        val key = KastMutationIdempotencyKey("issue-333-selector")
+        val selectors = listOf(
+            KastMutationOperationSelector.ByOperationId(operationId),
+            KastMutationOperationSelector.ByIdempotencyKey(key),
+        )
+
+        selectors.forEach { selector ->
+            val encoded = json.encodeToString(KastMutationOperationSelector.serializer(), selector)
+            assertEquals(selector, json.decodeFromString(KastMutationOperationSelector.serializer(), encoded))
+        }
+    }
+
+    @Test
+    fun `terminal operation states retain typed outcomes and edit facts`() {
+        val trace = KastMutationExecutionTrace(
+            enteredStages = listOf(
+                KastMutationProgressStage.EDIT_APPLICATION,
+                KastMutationProgressStage.WORKSPACE_REFRESH,
+                KastMutationProgressStage.IMPORT_OPTIMIZATION,
+                KastMutationProgressStage.DIAGNOSTICS,
+            ),
+            editApplicationState = KastMutationEditApplicationState.COMPLETED,
+        )
+        val success = KastSemanticMutationResult.Scope(
+            KastScopeMutationSuccessResponse(
+                ok = true,
+                operation = KastScopeMutationOperation.ADD_FILE,
+                applied = true,
+                affectedFiles = listOf("/workspace/Added.kt"),
+                createdFiles = listOf("/workspace/Added.kt"),
+                editCount = 1,
+                importChanges = 0,
+                diagnostics = KastDiagnosticsSummary(clean = true, errorCount = 0, warningCount = 0),
+                logFile = "",
+            ),
+        )
+        val completed = KastMutationOperationState.Completed(
+            result = success,
+            trace = trace,
+            cancellationRequested = false,
+        )
+        val failed = KastMutationOperationState.Failed(
+            failure = KastMutationFailure.Thrown(
+                ApiErrorResponse(
+                    requestId = "operation",
+                    code = "TEST_FAILURE",
+                    message = "failed",
+                    retryable = false,
+                ),
+            ),
+            trace = trace,
+            cancellationRequested = false,
+        )
+        val cancelled = KastMutationOperationState.Cancelled(
+            message = "Cancellation acknowledged after execution stopped.",
+            trace = trace,
+            cancellationRequested = true,
+        )
+
+        assertEquals(success, completed.result)
+        assertEquals(KastMutationEditApplicationState.COMPLETED, failed.trace.editApplicationState)
+        assertTrue(cancelled.cancellationRequested)
+        assertFalse(cancelled.trace.safeForFilesystemFallback)
+    }
+}
