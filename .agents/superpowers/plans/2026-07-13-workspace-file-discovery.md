@@ -39,6 +39,9 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Treat snapshot and page tokens as opaque server-owned values. Bind cursors to
   generation, exact module, and offset; never construct or advance them in
   Rust.
+- Reuse ADR 0020's discriminated `EXACT | KNOWN_MINIMUM` cardinality. Keep
+  candidate-inventory and selected-filter evidence coverage separate; neither
+  a bare count nor a completeness boolean may imply exact filtered matches.
 - On `STALE_WORKSPACE_INVENTORY`, discard the whole backend attempt and restart
   once. A second stale response is typed partial evidence with no backend
   candidates from either stale attempt.
@@ -48,6 +51,11 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   output below 120 lines and 1,500 estimated tokens.
 - Change Kotlin wire/backend/generated contracts when required by paging;
   regenerate them from their source owners.
+- Treat `commands.json` as the hand-authored internal catalog source; regenerate
+  only YAML, schemas, and samples from it.
+- Preserve Kotlin top-level type isolation for every materially edited
+  workspace-file contract; direct sealed response variants may remain with
+  their root.
 - Add or update scoped `AGENTS.md` whenever source ownership or validation gates
   change. Do not publish ADR/spec/plan files in Zensical navigation.
 - Execute tasks sequentially when they edit shared agent/projection files. The
@@ -70,7 +78,12 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedWorkspaceFilesQuery.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceInventoryStaleException.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/InvalidWorkspaceFileCursorException.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceProjectModelIncompleteException.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceProjectModelIncompleteReason.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedModels.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastWorkspaceFilesRequest.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastWorkspaceFilesQuery.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastWorkspaceFilesResponse.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/SkillContracts.kt`
 - Modify: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/ParsedModelsTest.kt`
 - Modify: `analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt`
@@ -84,6 +97,9 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   `ParsedWorkspaceFilesQuery.pageToken`, `WorkspaceFilesResult.snapshotToken`,
   `WorkspaceModule.returnedFileCount`, `WorkspaceModule.nextPageToken`, and
   explicit `WorkspaceModule.contentRoots`.
+- Produces: `WorkspaceProjectModelIncompleteException` with stable
+  `WORKSPACE_PROJECT_MODEL_INCOMPLETE` code and typed
+  `WorkspaceProjectModelIncompleteReason` details.
 - Invariant: snapshot and page tokens are opaque to clients. An input snapshot
   token is legal only with `includeFiles=true` and one exact module; a page
   token additionally requires that snapshot token.
@@ -126,6 +142,11 @@ Pass the first page cursor back with a different exact module and assert
 then add and remove a module after metadata; each subsequent page request must
 return `STALE_WORKSPACE_INVENTORY` rather than a mixed page.
 
+Make the fake backend throw each project-model-incomplete reason and assert the
+dispatcher preserves status 503, `retryable=true`, stable error code, and exact
+`details.reason`. These are typed error-envelope tests, not string matching on
+an internal exception message.
+
 - [ ] **Step 2: Run the focused red tests**
 
 ```console
@@ -158,7 +179,10 @@ token generation and decoding. Keep the server's positive page-size and
 maximum checks. Add matching `AnalysisException` subtypes: stale inventory is
 HTTP/JSON-RPC status 409, code `STALE_WORKSPACE_INVENTORY`, and retryable;
 invalid cursor is status 400, code `INVALID_WORKSPACE_FILE_CURSOR`, and not
-retryable. The existing dispatcher maps both through its typed error envelope.
+retryable. Add `WorkspaceProjectModelIncompleteException` with status 503,
+code `WORKSPACE_PROJECT_MODEL_INCOMPLETE`, `retryable=true`, and a typed reason
+serialized into `details.reason`. The existing dispatcher maps all three
+through its typed error envelope.
 
 - [ ] **Step 4: Isolate and extend the result type**
 
@@ -180,6 +204,13 @@ nonblank. Validate source/content roots are sorted and deduplicated. Update
 skill response types and the fake backend with the same generation/fingerprint,
 opaque-cursor, sort-before-slice, stale, and cross-module-error contract.
 
+Extract the materially edited `KastWorkspaceFilesRequest` and
+`KastWorkspaceFilesQuery` from `SkillContracts.kt` into matching files. Move
+`KastWorkspaceFilesResponse` and its direct success/failure variants together
+to `KastWorkspaceFilesResponse.kt`; direct sealed variants may remain with
+their owner. Add snapshot/page fields to the request/query and the echoed
+snapshot to the success response. Do not migrate unrelated legacy skill types.
+
 - [ ] **Step 5: Run Kotlin paging tests green**
 
 Run the Step 2 command. Expected: all paging, validation, stale-generation,
@@ -200,6 +231,7 @@ git commit -m "feat: page raw workspace file results"
 
 **Files:**
 
+- Create: `backend-idea/AGENTS.md`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventory.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventorySnapshot.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileModuleSnapshot.kt`
@@ -242,6 +274,14 @@ contract cases proving the old snapshot token returns
 `STALE_WORKSPACE_INVENTORY` and a cursor issued for one module returns
 `INVALID_WORKSPACE_FILE_CURSOR` when used with another.
 
+Add three failure fixtures: IDEA dumb/index-not-ready state, unavailable linked
+Gradle project-model data, and a linked root with no root-module association.
+Assert the backend returns `WORKSPACE_PROJECT_MODEL_INCOMPLETE` with respective
+typed reasons `RUNTIME_INDEXING`, `PROJECT_MODEL_UNAVAILABLE`, and
+`LINKED_ROOT_UNASSOCIATED`. Cover failure on metadata and after a prior page so
+Rust can distinguish whole-inventory failure from a generic page transport
+failure.
+
 - [ ] **Step 2: Run the focused red backend test**
 
 ```console
@@ -269,9 +309,12 @@ and root-module associations. For each model-proven root, look up only
 Project-scope `.kts` files under a contained module root acquire all containing
 module owners. A contained linked-root script without a content-root owner
 acquires every root module associated with that linked root. If the bridge
-cannot associate the linked root with any backend root module, fail the request
-as incomplete project-model evidence. Canonical containment is mandatory before
-ownership is recorded.
+cannot associate the linked root with any backend root module, throw
+`WorkspaceProjectModelIncompleteException(LINKED_ROOT_UNASSOCIATED)`. Map IDEA
+dumb/index-not-ready state to `RUNTIME_INDEXING` and missing linked settings or
+module data to `PROJECT_MODEL_UNAVAILABLE`; do not allow either to become an
+empty complete inventory. Canonical containment is mandatory before ownership
+is recorded.
 
 - [ ] **Step 4: Page sorted inventory in the backend**
 
@@ -314,7 +357,8 @@ Run:
 
 Expected: project scripts, shared ownership, included-build associations,
 generation changes, stale responses, and cross-module rejection pass; the
-index-store test still proves `.kts` rejection.
+typed indexing/project-model failures retain their reason; the index-store test
+still proves `.kts` rejection.
 
 - [ ] **Step 6: Commit backend authority**
 
@@ -323,6 +367,11 @@ git add backend-idea
 git diff --cached --check
 git commit -m "feat: enumerate project model Kotlin scripts"
 ```
+
+`backend-idea/AGENTS.md` records that the inventory and Java Gradle bridge own
+model-proven `.kt`/`.kts` candidates, generation-bound paging, typed
+project-model incompleteness, and the focused backend tests above. This is the
+nearest guide for the new source boundary.
 
 Do not stage either source-index policy file; both are verification-only.
 
@@ -411,7 +460,8 @@ git commit -m "feat: add typed workspace file command boundary"
 
 - Produces: `WorkspaceRoot`, `WorkspaceFilePath`,
   `WorkspaceIndexSnapshot`, `WorkspacePackageEvidence`,
-  `WorkspaceIndexRead`, and `read_workspace_index(&WorkspaceRoot)`.
+  `WorkspaceIndexRead`, `WorkspaceInventoryLimitationCode`,
+  `WorkspaceMatchCoverage`, and `read_workspace_index(&WorkspaceRoot)`.
 - The index reader has no public limit and returns `.kt` rows only.
 
 - [ ] **Step 1: Write failing schema, path, and package-state tests**
@@ -456,6 +506,15 @@ pub(crate) struct WorkspaceInventoryFile {
 
 Include `NotApplicable` in source-index state and drift. Keep fields private
 with read-only accessors required by agent/#340 consumers.
+
+Define closed limitation variants for backend capability, metadata, page,
+stale generation, runtime indexing, unavailable project model, unassociated
+linked root, source-index unavailable/incompatible, Git unavailable, package
+metadata invalid, unknown project-model ownership, and out-of-root exclusion.
+Keep `WorkspaceMatchCoverage` as two typed dimensions:
+`candidate_inventory` and `filter_evidence`, each `Complete` or `Partial`.
+This prevents a complete candidate set from asserting exact filtered matches
+when a requested predicate is unknown.
 
 - [ ] **Step 4: Implement the read-only query exactly from the design**
 
@@ -524,6 +583,14 @@ partial, every module from the last metadata response is partial,
 `BACKEND_WORKSPACE_INVENTORY_STALE` is emitted, and no stale backend candidate
 is composed. Cross-module cursor use is invalid and never becomes a page.
 
+Script typed `WORKSPACE_PROJECT_MODEL_INCOMPLETE` failures for metadata and for
+a later page after earlier modules succeeded. Assert metadata failure produces
+backend-unavailable coverage, page failure discards the whole backend attempt,
+neither consumes the stale retry, and neither composes a backend candidate.
+Map `RUNTIME_INDEXING`, `PROJECT_MODEL_UNAVAILABLE`, and
+`LINKED_ROOT_UNASSOCIATED` to distinct Rust limitations. Keep a generic page
+transport failure local to only its requested module.
+
 - [ ] **Step 2: Write failing drift tests**
 
 Prove:
@@ -533,6 +600,11 @@ Prove:
 - complete-owner index-only `.kt` is `INDEX_ONLY`;
 - any partial overlapping owner makes it `UNKNOWN`; and
 - missing files are `MISSING_ON_DISK` with independent index state.
+
+Also prove workspace-wide stale or project-model partial coverage can never
+produce `INDEX_ONLY`, including when the last metadata response contains zero
+modules. Unknown current module membership is not a vacuously complete owner
+set.
 
 - [ ] **Step 3: Write nested Git mapping tests**
 
@@ -585,6 +657,14 @@ No candidates from either stale attempt survive. Other page failures record
 only that module as `BackendModuleCoverage::Partial`; they never silently
 truncate.
 
+Decode the stable API error code and typed reason before classifying a failed
+metadata/page response. Metadata project-model failure is
+`BackendWorkspaceCoverage::Unavailable`. Project-model failure on any page is
+workspace-wide `Partial` and discards earlier pages from that attempt. Preserve
+the exact runtime-indexing, project-model-unavailable, or unassociated-root
+limitation. Only generic transport/invalid-response failure remains local to
+one module, and only `STALE_WORKSPACE_INVENTORY` consumes the single restart.
+
 - [ ] **Step 7: Implement conservative composition**
 
 Candidate keys come only from backend pages and `.kt` index rows. For index-only
@@ -631,6 +711,8 @@ git commit -m "feat: compose exhaustive workspace file evidence"
 
 - Produces: `KAST_AGENT_WORKSPACE_FILES_RESULT` views and
   `AgentPublicCapabilityRoute` for `WORKSPACE_FILES`.
+- Reuses: ADR 0020 `AgentResultCardinality::Exact | KnownMinimum` with
+  `returnedCount`, `truncated`, and separate typed candidate/filter coverage.
 
 - [ ] **Step 1: Write failing output, filter, limitation, and budget tests**
 
@@ -639,6 +721,23 @@ package evidence, source-index state, drift, dirty state, and paths. Cover each
 filter and conjunction; partial pages, unavailable index/Git, invalid package
 reference, and both candidate sources unavailable. Seed 500 records and assert
 20 default records, at most 120 lines, and at most 1,500 estimated tokens.
+
+Assert `EXACT.totalCount` only when candidate inventory and every selected
+predicate are complete. Cover these counterexamples explicitly:
+
+- complete candidate inventory plus unavailable Git and `--dirty clean` is
+  `KNOWN_MINIMUM` with partial filter evidence;
+- unavailable package/source-set metadata with a corresponding filter is
+  `KNOWN_MINIMUM` even if backend paging is complete;
+- partial backend pages or unavailable source-index candidate authority are
+  `KNOWN_MINIMUM`; and
+- a complete inventory without a predicate that depends on unavailable Git is
+  still `EXACT`.
+
+In every view, assert `returnedCount == files.len()`. `truncated` is true when
+an exact total exceeds returned count or cardinality is `KNOWN_MINIMUM`.
+Count-only group values also use `Exact` or `KnownMinimum`; no bare count may
+imply exactness.
 
 - [ ] **Step 2: Write failing capability route tests**
 
@@ -669,14 +768,19 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projec
 Call `semantic_workspace_route`, copy the admitted root/backend into runtime
 args, open one raw session, collect the uncapped snapshot, then filter. Match
 module against any owner, sort by relative path and sorted owner sets, and only
-then take `limit`.
+then take `limit`. Compute candidate-inventory and selected-filter evidence
+coverage before projection. Do not infer exact match cardinality merely from a
+fully consumed known-candidate vector.
 
 - [ ] **Step 5: Add compact, fields, count, verbose, and explain projections**
 
 Compact and selected views never contain raw envelopes. Count groups known
-records by kind/index/drift/dirty. Verbose adds per-module page coverage;
-explain adds normalized query and classification evidence. Preserve typed
-backend/index failures in failed envelopes.
+records by kind/index/drift/dirty, with the same discriminated exactness as the
+overall result. Compact and selected pages serialize `cardinality`,
+`returnedCount`, `truncated`, and `coverage.candidateInventory` plus
+`coverage.filterEvidence`. Verbose adds per-module page coverage; explain adds
+normalized query and classification evidence. Preserve typed backend/index
+failures in failed envelopes.
 
 - [ ] **Step 6: Implement the route registry and verification intersection**
 
@@ -699,7 +803,7 @@ git commit -m "feat: expose bounded workspace file discovery"
 **Files:**
 
 - Regenerate: `cli-rs/protocol/`
-- Regenerate: `cli-rs/resources/kast-skill/references/commands.json`
+- Modify: `cli-rs/resources/kast-skill/references/commands.json`
 - Regenerate: `cli-rs/resources/kast-skill/references/commands.yaml`
 - Regenerate: `cli-rs/resources/kast-skill/references/requests/raw/workspace-files/`
 - Modify: `cli-rs/tests/rpc_catalog_smoke.rs`
@@ -717,12 +821,23 @@ git commit -m "feat: expose bounded workspace file discovery"
 
 - [ ] **Step 1: Regenerate Kotlin-owned protocol artifacts**
 
-Run the repository generators, then prove raw request schemas include opaque
-`snapshotToken`/`pageToken`, results include the top-level snapshot token, and
-module results include returned count/next token:
+Generate protocol/OpenAPI artifacts from the Kotlin contract first:
 
 ```console
 ./gradlew :analysis-server:generateDocPages --no-daemon
+```
+
+Then hand-edit `commands.json`, the source catalog, to add opaque
+`snapshotToken`/`pageToken` request fields and replace the stale capped-secondary
+description with the current internal generation-bound paging contract. The
+release generator consumes that JSON; it does not produce it. Refresh the
+catalog-derived block in `cli-rs/protocol/api-specification.md`, regenerate the
+derived YAML, schemas, and samples, then prove requests include both tokens,
+results include the top-level snapshot token, and module results include
+returned count/next token:
+
+```console
+python3 .github/scripts/render-rpc-contract-summary.py --write
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke
 ```
@@ -798,6 +913,7 @@ cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-feat
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
+python3 .github/scripts/render-rpc-contract-summary.py --check
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean
@@ -822,6 +938,9 @@ equal-cardinality/module-set stale detection, single bounded restart,
 cross-module cursor rejection, included-build project-model script authority,
 `.kt`-only source-index preservation, multi-owner physical files, nested Git
 mapping, exact-root rejected-no-request proof, package-state SQL, false
-`INDEX_ONLY`, capability callability, #340 reuse, budgets, and every issue
-acceptance criterion. Repair each blocking finding with a focused red-green
-commit and rerun the affected gate plus full Rust and Kotlin suites.
+`INDEX_ONLY`, project-model error/reason mapping, metadata failure, zero-module
+global partiality, candidate versus filter coverage, `EXACT` versus
+`KNOWN_MINIMUM`, hand-authored catalog ownership, Kotlin type isolation,
+scoped ownership guidance, capability callability, #340 reuse, budgets, and
+every issue acceptance criterion. Repair each blocking finding with a focused
+red-green commit and rerun the affected gate plus full Rust and Kotlin suites.

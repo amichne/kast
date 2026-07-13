@@ -135,7 +135,11 @@ cursor exactly when more sorted paths remain.
 Both failures are typed `AnalysisException` subtypes carried by the existing
 JSON-RPC error envelope. `STALE_WORKSPACE_INVENTORY` uses conflict status 409
 and `retryable=true`; `INVALID_WORKSPACE_FILE_CURSOR` uses status 400 and is not
-retryable.
+retryable. A third subtype, `WorkspaceProjectModelIncompleteException`, uses
+status 503, stable code `WORKSPACE_PROJECT_MODEL_INCOMPLETE`, and
+`retryable=true`. Its typed `WorkspaceProjectModelIncompleteReason` is
+serialized in `details.reason` as `RUNTIME_INDEXING`,
+`PROJECT_MODEL_UNAVAILABLE`, or `LINKED_ROOT_UNASSOCIATED`.
 
 Rust still rejects repeated or non-advancing cursors, inconsistent counts,
 overlapping pages, or changed module identity. Equal-cardinality path
@@ -147,11 +151,27 @@ from the last metadata response partial, emits
 `BACKEND_WORKSPACE_INVENTORY_STALE`, and may compose index-only partial
 evidence. No page from a stale attempt contributes backend candidates.
 
+Project-model incompleteness does not consume the one stale-generation retry.
+If metadata fails with the typed code, backend coverage is unavailable. If a
+page fails with it after earlier pages succeeded, Rust discards the whole
+backend attempt and records workspace-wide partial coverage; no candidate from
+that attempt survives. The reason maps one-to-one to
+`BACKEND_RUNTIME_INDEXING`, `BACKEND_PROJECT_MODEL_UNAVAILABLE`, or
+`BACKEND_LINKED_ROOT_UNASSOCIATED`. Generic transport or invalid-response
+failures remain local to the requested module when coherent earlier pages are
+still valid.
+
 `includeFiles=false` returns sorted module metadata and the snapshot token.
 The compatibility form `includeFiles=true` without an input snapshot token
 returns each requested module's first page and a newly issued top-level token;
 any continuation must echo that token. The Rust collector always starts with
 metadata and uses exact-module requests bound to its token.
+
+The materially edited skill-facing workspace-file request, query, and response
+contracts move out of `SkillContracts.kt` into matching files. The sealed
+response root may retain its direct success and failure variants, while request
+and query each own one matching file. This follows the repository's production
+Kotlin type-isolation rule without migrating unrelated legacy contracts.
 
 ## Project-model `.kts` authority
 
@@ -180,9 +200,12 @@ Root project scripts use every root module associated with the linked Gradle
 project. Included builds retain their linked root and module owners. If a
 project-scope script has no content-root owner despite being contained by a
 linked Gradle root, the corresponding root-module association owns it. A
-linked root without any backend root-module association fails the request as
-incomplete project-model evidence. A path outside the canonical workspace or
-linked root is rejected before it reaches paging.
+linked root without any backend root-module association throws
+`WorkspaceProjectModelIncompleteException` with reason
+`LINKED_ROOT_UNASSOCIATED`. IDEA dumb/index-not-ready state maps to
+`RUNTIME_INDEXING`; unavailable linked Gradle settings or module data maps to
+`PROJECT_MODEL_UNAVAILABLE`. A path outside the canonical workspace or linked
+root is rejected before it reaches paging.
 
 The fake backend implements the same generation/fingerprint and opaque-cursor
 contract. Contract tests cover root build/settings scripts, a build-logic
@@ -284,6 +307,32 @@ pub(crate) enum BackendModuleCoverage {
         expected_count: usize,
     },
 }
+
+pub(crate) enum WorkspaceInventoryLimitationCode {
+    BackendCapabilityUnavailable,
+    BackendMetadataUnavailable,
+    BackendPageUnavailable,
+    BackendWorkspaceInventoryStale,
+    BackendRuntimeIndexing,
+    BackendProjectModelUnavailable,
+    BackendLinkedRootUnassociated,
+    SourceIndexUnavailable,
+    SourceIndexIncompatible,
+    DirtyStateUnavailable,
+    PackageMetadataInvalid,
+    ProjectModelOwnershipUnknown,
+    OutsideWorkspaceExcluded,
+}
+
+pub(crate) struct WorkspaceMatchCoverage {
+    candidate_inventory: WorkspaceCoverageState,
+    filter_evidence: WorkspaceCoverageState,
+}
+
+pub(crate) enum WorkspaceCoverageState {
+    Complete,
+    Partial,
+}
 ```
 
 One physical path produces one public record. Every backend owner and indexed
@@ -295,7 +344,11 @@ page remain invalid.
 including repeated `STALE_WORKSPACE_INVENTORY` after the single bounded retry.
 Every module in that final metadata response is partial and the stale attempt
 contributes no backend candidates. Per-module transport or cursor failures use
-`Available` with only the affected `BackendModuleCoverage` partial.
+`Available` with only the affected `BackendModuleCoverage` partial. A typed
+project-model failure during paging also uses workspace-wide `Partial`,
+discards all pages from that attempt, and carries its exact mapped limitation.
+A typed project-model failure before metadata uses `Unavailable` with the same
+reason.
 
 `WorkspaceFilePath` contains a proven workspace-relative path and canonical
 absolute counterpart. Its constructor rejects absolute relative input, parent
@@ -416,10 +469,13 @@ The compact result uses one physical-file record:
     }
   ],
   "page": {
-    "knownMatchCount": 1,
+    "cardinality": {"type": "EXACT", "totalCount": 1},
     "returnedCount": 1,
     "truncated": false,
-    "inventoryComplete": true,
+    "coverage": {
+      "candidateInventory": "COMPLETE",
+      "filterEvidence": "COMPLETE"
+    },
     "limit": 20
   },
   "limitations": [],
@@ -427,12 +483,24 @@ The compact result uses one physical-file record:
 }
 ```
 
-`knownMatchCount` never poses as a complete total when source coverage is
-partial. `--count` groups known counts by kind, index state, drift, and dirty
-class without file records. `--verbose` adds module/page/source coverage.
-`--explain` adds normalized filters and per-record classification evidence.
-The compact high-cardinality fixture remains under 120 lines and 1,500
-estimated tokens.
+The page reuses ADR 0020's `AgentResultCardinality`. `EXACT.totalCount` is legal
+only when candidate inventory is exhaustive and every predicate selected by the
+request is known for every candidate. Otherwise the page emits
+`KNOWN_MINIMUM.knownMinimumCount` for matches actually proved. Candidate and
+filter coverage remain separate because they answer different questions. For
+example, complete backend/index candidates plus unavailable Git status produce
+`candidateInventory=COMPLETE`, `filterEvidence=PARTIAL`, and `KNOWN_MINIMUM`
+for `--dirty clean`; without a dirty filter, that same Git limitation does not
+make match cardinality inexact.
+
+`returnedCount` equals the emitted file records. `truncated` is true when an
+exact total exceeds returned count or cardinality is `KNOWN_MINIMUM`, because
+unseen matches remain possible. `--count` groups known counts by kind, index
+state, drift, and dirty class without file records; each group uses the same
+discriminated cardinality rather than an unqualified integer. `--verbose` adds
+module/page/source coverage. `--explain` adds normalized filters and per-record
+classification evidence. The compact high-cardinality fixture remains under
+120 lines and 1,500 estimated tokens.
 
 ## Capability verification
 
@@ -442,6 +510,12 @@ capabilities with this registry. A Clap contract test resolves every registry
 path against `Cli::command()`, so removing or hiding the command breaks the
 same proof that authorizes public capability projection. Issue #342 extends
 the registry; #338 does not create a parallel catalog.
+
+The internal raw catalog has a separate, explicit source boundary:
+`cli-rs/resources/kast-skill/references/commands.json` is hand-authored and is
+updated with snapshot/page fields and current internal guidance. The release
+contract generator consumes that JSON to produce `commands.yaml`, request
+schemas, and request samples; it never generates the JSON source.
 
 ## Exact-root and testing strategy
 
@@ -465,12 +539,22 @@ The TDD sequence proves:
     `raw/workspace-files` request or root B index read;
 12. filters, output views, limitations, deterministic order, and budgets hold;
 13. returned `filePath` composes directly with diagnostics and symbol hinting;
-    and
-14. capability projection requires the real Clap route.
+14. `EXACT` versus `KNOWN_MINIMUM` follows both candidate and filter-evidence
+    coverage, including unavailable Git/package evidence;
+15. unassociated roots, runtime indexing, unavailable project models, and
+    metadata failures retain distinct typed limitations without stale backend
+    candidates; and
+16. capability projection requires the real Clap route.
 
 The exact-root regression lives in both
 `agent_workspace_files_smoke.rs` and `semantic_workspace_admission_smoke.rs`.
 Full gates cover Kotlin, generated contracts, Rust, docs, and rendering.
+
+`analysis-api/AGENTS.md` records the wire and generated-contract boundary.
+`backend-idea/AGENTS.md` records project-model inventory, Gradle bridge, typed
+incompleteness, and paging gates. The new Rust inventory directory owns its own
+scoped guide. These guides change with their new source boundaries rather than
+leaving ownership only in this design.
 
 ## Non-goals
 

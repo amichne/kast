@@ -47,14 +47,17 @@ retains every candidate returned by all successfully exhausted backend pages
 and the Kotlin source-index snapshot, plus per-module completeness and
 limitation evidence. Issue #340 consumes the `.kts` candidates but writes
 Gradle declarations and relationships to its separate Gradle DSL index. If a
-backend page fails or returns an invalid token, only that module is partial and
-backend absence remains unprovable for paths that may belong to it. A stale
-workspace generation invalidates the whole backend attempt: Rust discards it,
+generic backend page transport fails or returns an invalid token, only that
+module is partial and backend absence remains unprovable for paths that may
+belong to it. A stale workspace generation invalidates the whole backend
+attempt: Rust discards it,
 restarts once from fresh metadata, and returns typed partial evidence if that
 single retry also becomes stale. The partial result carries
 `BACKEND_WORKSPACE_INVENTORY_STALE`, marks every module from the last metadata
 response incomplete, and retains no backend candidates from either stale
-attempt.
+attempt. A typed project-model-incomplete response is also workspace-wide:
+Rust discards every backend candidate from that attempt without consuming the
+stale retry and preserves the server's typed reason as a public limitation.
 
 ## Raw paging and project-model authority
 
@@ -90,9 +93,21 @@ project root. The IDEA 2025.3 adapter reads
 `BuildParticipant.getRootPath()` for included-build roots, then associates
 modules through `GradleModuleDataIndex.findGradleModuleData(Module)`,
 `GradleModuleData.isIncludedBuild()`, `getGradleProjectDir()`, and
-`ModuleData.getLinkedExternalProjectPath()`. A linked root that cannot be
-associated with a backend module fails the request as incomplete project-model
-evidence. Included builds retain their own linked roots and module owners.
+`ModuleData.getLinkedExternalProjectPath()`. The backend converts IDEA indexing,
+unavailable Gradle project-model data, and a linked root that cannot be
+associated with a backend module into
+`WorkspaceProjectModelIncompleteException`. Its stable
+`WORKSPACE_PROJECT_MODEL_INCOMPLETE` code uses status 503, is retryable, and
+carries one typed reason in `details.reason`: `RUNTIME_INDEXING`,
+`PROJECT_MODEL_UNAVAILABLE`, or `LINKED_ROOT_UNASSOCIATED`. Included builds
+retain their own linked roots and module owners.
+
+Rust maps those reasons to distinct `BACKEND_RUNTIME_INDEXING`,
+`BACKEND_PROJECT_MODEL_UNAVAILABLE`, and
+`BACKEND_LINKED_ROOT_UNASSOCIATED` limitations. Failure of the metadata request
+makes backend coverage unavailable. The same typed failure while paging makes
+the backend attempt workspace-wide partial and discards its earlier pages;
+generic transport or cursor failure remains local to the requested module.
 
 ## Public command contract
 
@@ -121,8 +136,9 @@ ownership set sorts by its typed module identity. The same evidence snapshot
 therefore produces deterministic JSON and TOON.
 
 The compact default emits a typed result with the exact workspace root,
-bounded file records, known-match and returned counts, truncation and
-inventory-completeness facts, typed limitations, and schema version. Each file
+bounded file records, ADR 0020's discriminated `EXACT` or `KNOWN_MINIMUM`
+cardinality, returned count, truncation, separate candidate-inventory and
+filter-evidence coverage, typed limitations, and schema version. Each file
 record includes:
 
 - absolute `filePath` and workspace-relative `relativePath`;
@@ -139,11 +155,23 @@ record includes:
   dirty, or unknown; and
 - verbose/explain evidence identifying which sources established the record.
 
+The candidate inventory is `COMPLETE` only when every candidate authority that
+could contribute a matching path is exhaustive. Filter evidence is `COMPLETE`
+only when every predicate used by the request is known for every candidate. A
+complete candidate inventory can therefore coexist with partial filter evidence:
+for example, unavailable Git status makes a `--dirty clean` query inexact even
+when all backend and source-index candidates are known. Cardinality is `EXACT`
+only when both relevant coverage dimensions are complete; otherwise it is
+`KNOWN_MINIMUM` and counts only matches actually proved. `returnedCount` equals
+the emitted file count. `truncated` is true when an exact total exceeds that
+count or cardinality is `KNOWN_MINIMUM`, because unseen matches remain possible.
+
 The default compact representation must remain within 120 lines and 1,500
 estimated tokens for a high-cardinality fixture. `--fields` selects typed file
-fields, `--count` reports known cardinalities without file payloads, and
-`--verbose` or `--explain` exposes source coverage and evidence without making
-raw transport envelopes the default.
+fields, `--count` reports the same typed overall cardinality plus discriminated
+cardinalities for grouped counts without file payloads, and `--verbose` or
+`--explain` exposes source coverage and evidence without making raw transport
+envelopes the default.
 
 `filePath` is the direct composition key for
 `kast agent diagnostics --file-path <path>` and
@@ -201,13 +229,14 @@ overlapping roots preserve every backend owner; duplicate paths are not
 malformed merely because their module names differ. If an indexed row cannot
 be associated with completely paged possible owners, absence remains unknown.
 
-Backend capability absence, page failure, repeated snapshot staleness,
-unavailable or incompatible source index, unavailable Git status, unavailable
-or invalid package metadata, and excluded out-of-root rows are distinct typed
-limitations. A usable backend-only or index-only snapshot may return partial
-evidence. Exact-root admission failure and malformed backend payloads fail
-closed. When neither backend nor index is usable, the command returns
-`WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` instead of a false empty success.
+Backend capability absence, metadata or page failure, runtime indexing,
+unavailable Gradle project-model data, unassociated linked roots, repeated
+snapshot staleness, unavailable or incompatible source index, unavailable Git
+status, unavailable or invalid package metadata, and excluded out-of-root rows
+are distinct typed limitations. A usable backend-only or index-only snapshot
+may return partial evidence. Exact-root admission failure and malformed backend
+payloads fail closed. When neither backend nor index is usable, the command
+returns `WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` instead of a false empty success.
 
 ## Capability callability invariant
 
@@ -228,9 +257,10 @@ agent workflow.
 ## Ownership
 
 - `analysis-api`, `analysis-server`, and `backend-idea` own typed deterministic
-  per-module workspace-file paging, source/content-root evidence, and
-  compiler/project-model `.kt`/`.kts` enumeration. Generated protocol and raw
-  RPC catalogs come from those source owners.
+  per-module workspace-file paging, source/content-root evidence,
+  compiler/project-model `.kt`/`.kts` enumeration, and typed project-model
+  incompleteness. Generated protocol artifacts come from those Kotlin source
+  owners.
 - `cli-rs/src/workspace_inventory.rs` and
   `cli-rs/src/workspace_inventory/` own the reusable uncapped inventory,
   exact-root Kotlin source-index reader, targeted filesystem evidence,
@@ -246,10 +276,15 @@ agent workflow.
   limitation, budget, exact-root, and composition regressions.
 - `docs/reference/agent-commands.md` and the packaged Kast skill teach the
   typed public command.
+- `cli-rs/resources/kast-skill/references/commands.json` is the hand-authored
+  internal raw-command catalog. Generated YAML, request schemas, and request
+  samples derive from it.
 
 The new inventory directory receives a scoped `AGENTS.md` when implementation
-begins because it creates a new source-ownership boundary. `analysis-api` and
-generated-contract ownership guidance is updated with the wire change.
+begins because it creates a new source-ownership boundary. `backend-idea`
+receives its nearest ownership guide for the project-model inventory and Gradle
+bridge. `analysis-api` and generated-contract ownership guidance is updated
+with the wire change.
 
 ## Validation
 
