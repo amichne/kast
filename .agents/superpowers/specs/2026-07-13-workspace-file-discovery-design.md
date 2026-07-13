@@ -43,21 +43,23 @@ intentional Kotlin-source versus Gradle-DSL boundary. Gradle task, plugin, and
 relationship facts need a separate schema and completeness model in #340.
 `SourceIndexFilePolicy` therefore stays `.kt`-only.
 
-### Page project-model candidates and compose the `.kt` index
+### Page one generation of project-model candidates and compose the `.kt` index
 
 This is the chosen approach. The Kotlin backend gains deterministic per-module
-paging and a project-model inventory that includes `.kt` and `.kts`. Rust
-exhausts those pages, unions physical paths while preserving all module owners,
-and joins only `.kt` candidates to the existing Kotlin source index. Scripts
-remain `NOT_APPLICABLE` to that index and become the authoritative input set
-for #340's separate Gradle DSL index.
+paging, opaque generation-bound cursors, and a project-model inventory that
+includes `.kt` and `.kts`. Rust exhausts one coherent workspace generation,
+unions physical paths while preserving all module owners, and joins only `.kt`
+candidates to the existing Kotlin source index. Scripts remain
+`NOT_APPLICABLE` to that index and become the authoritative input set for
+#340's separate Gradle DSL index.
 
 ## Architecture
 
 The implementation has three boundaries:
 
-1. `raw/workspace-files` pages compiler/project-model `.kt` and `.kts`
-   candidates deterministically by backend module.
+1. `raw/workspace-files` snapshots compiler/project-model `.kt` and `.kts`
+   candidates, then pages that exact generation deterministically by backend
+   module.
 2. `workspace_inventory` exhausts backend pages and reads all exact-root `.kt`
    index rows without applying public filters or limits.
 3. `agent workspace-files` validates filters, applies them to one typed
@@ -65,14 +67,15 @@ The implementation has three boundaries:
    ADR 0020 result views.
 
 The command performs ADR 0019 admission first and passes the admitted exact
-root and selected backend to one raw RPC session. It fetches module metadata,
-then pages every module. Only after the backend snapshot is complete or has
-typed per-module failures does it read the exact-root SQLite snapshot and
-compose records.
+root and selected backend to one raw RPC session. It fetches module metadata
+and an opaque snapshot token, then echoes that token while paging every module.
+Only after the backend snapshot is complete or has typed failures does it read
+the exact-root SQLite snapshot and compose records.
 
 ## Typed raw paging
 
-`WorkspaceFilesQuery` gains `pageToken`. `WorkspaceModule` gains
+`WorkspaceFilesQuery` gains `snapshotToken` and `pageToken`.
+`WorkspaceFilesResult` returns the snapshot token, and `WorkspaceModule` gains
 `returnedFileCount` and `nextPageToken`. The wire contract is:
 
 ```kotlin
@@ -81,7 +84,15 @@ data class WorkspaceFilesQuery(
     val moduleName: String? = null,
     val includeFiles: Boolean = false,
     val maxFilesPerModule: Int? = null,
+    val snapshotToken: String? = null,
     val pageToken: String? = null,
+)
+
+@Serializable
+data class WorkspaceFilesResult(
+    val modules: List<WorkspaceModule>,
+    val snapshotToken: String,
+    val schemaVersion: Int = SCHEMA_VERSION,
 )
 
 @Serializable
@@ -98,23 +109,49 @@ data class WorkspaceModule(
 )
 ```
 
-`pageToken` is legal only when `includeFiles=true` and one nonblank
-`moduleName` is present. It is the canonical decimal encoding of a positive
-next offset; the absent token means offset zero. `WorkspaceFilePageOffset`
-validates canonical form and positivity at the Kotlin parse boundary. The
+`snapshotToken` and `pageToken` are opaque server-owned values. Clients may
+store and echo them but never decode, construct, or advance them. A page token
+is legal only when `includeFiles=true`, a nonblank `snapshotToken`, and one
+nonblank `moduleName` are present. The decoded cursor binds the snapshot
+generation, exact module identity, and positive next offset. The Kotlin parse
+boundary validates only nonblank wire tokens and their legal field
+combinations; the backend owns cursor decoding and semantic validation. The
 server continues to enforce a positive `maxFilesPerModule` no greater than
 `maxResults`.
 
-The backend gathers the complete candidate set for a requested module, maps
-every path through exact-root containment, deduplicates, sorts by normalized
-absolute path, and only then slices `[offset, offset + limit)`. It returns the
-same `fileCount` on every page and a next token exactly when more sorted paths
-remain. An offset beyond `fileCount`, a non-advancing token, inconsistent
-counts, an overlapping page, or a changed module identity invalidates that
-module snapshot in Rust. `includeFiles=false` returns sorted module metadata
-without pages. An unpaged `includeFiles=true` call remains compatible by
-returning each module's first page; Rust uses exact-module requests for all
-subsequent pages.
+The backend gathers the complete workspace candidate set in one IDEA read
+action, maps paths and roots through exact-root containment, deduplicates, and
+sorts a canonical representation containing module identities,
+source/content roots, dependencies, and candidate paths. It fingerprints that
+representation as the workspace generation returned by the opaque
+`snapshotToken`. Before serving an exact-module page, it recomputes the full
+inventory and rejects a generation mismatch as
+`STALE_WORKSPACE_INVENTORY`. It rejects malformed, out-of-range, or
+cross-module cursors as `INVALID_WORKSPACE_FILE_CURSOR`. Only a matching
+generation may be sliced at the cursor's offset. The result echoes the same
+snapshot token, returns the same `fileCount` on every page, and emits a next
+cursor exactly when more sorted paths remain.
+
+Both failures are typed `AnalysisException` subtypes carried by the existing
+JSON-RPC error envelope. `STALE_WORKSPACE_INVENTORY` uses conflict status 409
+and `retryable=true`; `INVALID_WORKSPACE_FILE_CURSOR` uses status 400 and is not
+retryable.
+
+Rust still rejects repeated or non-advancing cursors, inconsistent counts,
+overlapping pages, or changed module identity. Equal-cardinality path
+replacement and module addition/removal are caught by the generation before
+these structural checks. On the first typed stale response, Rust discards the
+entire backend attempt and restarts once from fresh metadata. A second stale
+response is not retried: Rust discards that backend attempt, marks every module
+from the last metadata response partial, emits
+`BACKEND_WORKSPACE_INVENTORY_STALE`, and may compose index-only partial
+evidence. No page from a stale attempt contributes backend candidates.
+
+`includeFiles=false` returns sorted module metadata and the snapshot token.
+The compatibility form `includeFiles=true` without an input snapshot token
+returns each requested module's first page and a newly issued top-level token;
+any continuation must echo that token. The Rust collector always starts with
+metadata and uses exact-module requests bound to its token.
 
 ## Project-model `.kts` authority
 
@@ -125,8 +162,15 @@ project roots rather than a filesystem walk:
 
 - module/project `FileTypeIndex` supplies compiler-visible `.kt` and `.kts`;
 - `ModuleRootManager` content and source roots establish every module owner;
-- `GradleSettings` linked project roots establish root build/settings scripts
-  and included-build roots;
+- `GradleSettings.getLinkedProjectsSettings()` establishes directly linked
+  roots;
+- `GradleProjectSettings.getCompositeBuild()`,
+  `GradleProjectSettings.CompositeBuild.getCompositeParticipants()`, and
+  `BuildParticipant.getRootPath()` establish included-build roots;
+- `GradleModuleDataIndex.findGradleModuleData(Module)`,
+  `GradleModuleData.isIncludedBuild()`, `getGradleProjectDir()`, and
+  `ModuleData.getLinkedExternalProjectPath()` associate those roots with IDEA
+  modules;
 - targeted `build.gradle.kts` and `settings.gradle.kts` lookups under those
   model-proven roots admit the root scripts without recursive discovery; and
 - project-scope `.kts` candidates cover convention plugins and ordinary
@@ -140,11 +184,13 @@ linked root without any backend root-module association fails the request as
 incomplete project-model evidence. A path outside the canonical workspace or
 linked root is rejected before it reaches paging.
 
-The fake backend implements the same sort/slice/token contract. Contract tests
-cover root build/settings scripts, a build-logic convention plugin, an
-ordinary `.kts`, included builds, multiple owners, two non-overlapping pages,
-and invalid tokens. `SourceIndexFilePolicyTest` continues to prove all `.kts`
-paths are rejected by the Kotlin source index.
+The fake backend implements the same generation/fingerprint and opaque-cursor
+contract. Contract tests cover root build/settings scripts, a build-logic
+convention plugin, an ordinary `.kts`, included builds, multiple owners, two
+non-overlapping pages, equal-cardinality path replacement, module addition and
+removal, cross-module cursors, and invalid tokens.
+`SourceIndexFilePolicyTest` continues to prove all `.kts` paths are rejected by
+the Kotlin source index.
 
 ## Source-index snapshot and package evidence
 
@@ -221,6 +267,10 @@ pub(crate) enum BackendWorkspaceCoverage {
     Available {
         modules: BTreeMap<BackendModuleName, BackendModuleCoverage>,
     },
+    Partial {
+        code: WorkspaceInventoryLimitationCode,
+        modules: BTreeMap<BackendModuleName, BackendModuleCoverage>,
+    },
     Unavailable {
         code: WorkspaceInventoryLimitationCode,
     },
@@ -240,6 +290,12 @@ One physical path produces one public record. Every backend owner and indexed
 Gradle identity is retained in a sorted set. Duplicate backend paths with
 different module names are valid. Conflicting facts within the same module
 page remain invalid.
+
+`BackendWorkspaceCoverage::Partial` represents a typed workspace-wide failure,
+including repeated `STALE_WORKSPACE_INVENTORY` after the single bounded retry.
+Every module in that final metadata response is partial and the stale attempt
+contributes no backend candidates. Per-module transport or cursor failures use
+`Available` with only the affected `BackendModuleCoverage` partial.
 
 `WorkspaceFilePath` contains a proven workspace-relative path and canonical
 absolute counterpart. Its constructor rejects absolute relative input, parent
@@ -391,21 +447,26 @@ the registry; #338 does not create a parallel catalog.
 
 The TDD sequence proves:
 
-1. Kotlin query parsing rejects invalid page tokens and token-without-module;
-2. fake and IDEA backends return stable non-overlapping pages and include root,
+1. Kotlin query parsing rejects illegal token combinations and blank tokens;
+2. opaque cursors reject malformed and cross-module use;
+3. equal-cardinality path replacement and module addition/removal return
+   `STALE_WORKSPACE_INVENTORY`;
+4. Rust discards a stale attempt, restarts exactly once, and returns typed
+   partial evidence without stale backend candidates after a second mismatch;
+5. fake and IDEA backends return stable non-overlapping pages and include root,
    settings, included-build, convention-plugin, and ordinary scripts;
-3. `.kts` remains rejected by `SourceIndexFilePolicy`;
-4. the index query distinguishes absent metadata, root package, named package,
+6. `.kts` remains rejected by `SourceIndexFilePolicy`;
+7. the index query distinguishes absent metadata, root package, named package,
    and dangling package ids;
-5. shared physical files retain multiple module owners;
-6. partial paging never produces `INDEX_ONLY`;
-7. nested Git roots and in/out rename endpoints map correctly;
-8. root A with only root B's descriptor is rejected before any
-   `raw/workspace-files` request or root B index read;
-9. filters, output views, limitations, deterministic order, and budgets hold;
-10. returned `filePath` composes directly with diagnostics and symbol hinting;
+8. shared physical files retain multiple module owners;
+9. partial paging never produces `INDEX_ONLY`;
+10. nested Git roots and in/out rename endpoints map correctly;
+11. root A with only root B's descriptor is rejected before any
+    `raw/workspace-files` request or root B index read;
+12. filters, output views, limitations, deterministic order, and budgets hold;
+13. returned `filePath` composes directly with diagnostics and symbol hinting;
     and
-11. capability projection requires the real Clap route.
+14. capability projection requires the real Clap route.
 
 The exact-root regression lives in both
 `agent_workspace_files_smoke.rs` and `semantic_workspace_admission_smoke.rs`.

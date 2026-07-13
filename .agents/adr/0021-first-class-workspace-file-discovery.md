@@ -22,11 +22,12 @@ the exact-root SQLite source index, then annotates those candidates with
 targeted filesystem metadata and Git dirty state.
 
 The Kotlin API, server, and backend `WorkspaceFilesQuery` and
-`WorkspaceFilesResult` contract gains a canonical offset page token,
-per-module `nextPageToken`, and explicit module content roots alongside source
-roots. Rust first reads the sorted module inventory, then exhausts every module
-page before classifying backend absence. The backend gathers Kotlin sources and
-scripts from IntelliJ's compiler/project model, including Gradle-linked root
+`WorkspaceFilesResult` contract gains an opaque workspace snapshot token,
+opaque per-module page cursors, and explicit module content roots alongside
+source roots. Rust first reads the sorted module inventory and its snapshot
+token, then exhausts every module page against that exact generation before
+classifying backend absence. The backend gathers Kotlin sources and scripts
+from IntelliJ's compiler/project model, including Gradle-linked root
 `build.gradle.kts` and `settings.gradle.kts`, convention-plugin scripts, and
 ordinary project scripts. It does not recursively scan the filesystem for
 request candidates.
@@ -47,20 +48,35 @@ and the Kotlin source-index snapshot, plus per-module completeness and
 limitation evidence. Issue #340 consumes the `.kts` candidates but writes
 Gradle declarations and relationships to its separate Gradle DSL index. If a
 backend page fails or returns an invalid token, only that module is partial and
-backend absence remains unprovable for paths that may belong to it.
+backend absence remains unprovable for paths that may belong to it. A stale
+workspace generation invalidates the whole backend attempt: Rust discards it,
+restarts once from fresh metadata, and returns typed partial evidence if that
+single retry also becomes stale. The partial result carries
+`BACKEND_WORKSPACE_INVENTORY_STALE`, marks every module from the last metadata
+response incomplete, and retains no backend candidates from either stale
+attempt.
 
 ## Raw paging and project-model authority
 
-An unpaged `raw/workspace-files` request lists sorted module metadata and
-counts. Rust then requests each module by its exact backend name with
-`includeFiles=true`, a positive server-bounded `maxFilesPerModule`, and an
-optional canonical page token. The token encodes a positive next offset and is
-valid only with one exact module. The backend sorts and deduplicates a module's
-complete candidate set before slicing, returns `fileCount`,
-`returnedFileCount`, and `nextPageToken`, and rejects malformed or out-of-range
-tokens. Rust rejects repeated or non-advancing tokens, inconsistent totals,
-changed module identity, and overlapping pages before it marks the module
-complete.
+An unpaged `raw/workspace-files` metadata request lists sorted module metadata
+and counts plus an opaque top-level `snapshotToken`. Rust echoes that token on
+every exact-module request with `includeFiles=true` and a positive
+server-bounded `maxFilesPerModule`. Each opaque `nextPageToken` is server-owned
+and binds the workspace generation, exact module identity, and positive next
+offset. Clients never decode or construct either token.
+
+The backend builds a canonical full-workspace inventory in one read action and
+fingerprints its sorted module identities, source/content roots, dependencies,
+and candidate paths. Before serving any exact-module page it recomputes that
+inventory and compares its generation with the echoed snapshot and decoded
+cursor. Equal-cardinality path replacement, module addition/removal, or any
+other inventory change fails with `STALE_WORKSPACE_INVENTORY`; a malformed,
+out-of-range, or cross-module cursor fails as
+`INVALID_WORKSPACE_FILE_CURSOR`. Only a matching generation may be sliced.
+The backend returns stable `fileCount`, `returnedFileCount`, and
+`nextPageToken` values. Rust additionally rejects repeated or non-advancing
+cursors, inconsistent totals, changed module identity, and overlapping pages
+before it marks the module complete.
 
 The backend candidate provider uses IntelliJ project scope, module content and
 source roots, and linked Gradle project roots. Known Gradle project roots make
@@ -68,9 +84,15 @@ root build and settings scripts project-model candidates without a recursive
 walk. Project-scope Kotlin scripts supply convention-plugin and ordinary
 scripts. Each candidate carries every owning backend module; root-level
 project scripts use every root Gradle module associated with their linked
-project root. A linked root that cannot be associated with a backend module
-fails the request as incomplete project-model evidence. Included builds retain
-their own linked roots and module owners.
+project root. The IDEA 2025.3 adapter reads
+`GradleProjectSettings.getCompositeBuild()`,
+`GradleProjectSettings.CompositeBuild.getCompositeParticipants()`, and
+`BuildParticipant.getRootPath()` for included-build roots, then associates
+modules through `GradleModuleDataIndex.findGradleModuleData(Module)`,
+`GradleModuleData.isIncludedBuild()`, `getGradleProjectDir()`, and
+`ModuleData.getLinkedExternalProjectPath()`. A linked root that cannot be
+associated with a backend module fails the request as incomplete project-model
+evidence. Included builds retain their own linked roots and module owners.
 
 ## Public command contract
 
@@ -179,12 +201,12 @@ overlapping roots preserve every backend owner; duplicate paths are not
 malformed merely because their module names differ. If an indexed row cannot
 be associated with completely paged possible owners, absence remains unknown.
 
-Backend capability absence, page failure, unavailable or incompatible source
-index, unavailable Git status, unavailable or invalid package metadata, and
-excluded out-of-root rows are distinct typed limitations. A usable
-backend-only or index-only snapshot may return partial evidence. Exact-root
-admission failure and malformed backend payloads fail closed. When neither
-backend nor index is usable, the command returns
+Backend capability absence, page failure, repeated snapshot staleness,
+unavailable or incompatible source index, unavailable Git status, unavailable
+or invalid package metadata, and excluded out-of-root rows are distinct typed
+limitations. A usable backend-only or index-only snapshot may return partial
+evidence. Exact-root admission failure and malformed backend payloads fail
+closed. When neither backend nor index is usable, the command returns
 `WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` instead of a false empty success.
 
 ## Capability callability invariant
@@ -258,9 +280,9 @@ schema. The index-store test that rejects `.kts` remains an explicit gate.
 ## Change rule
 
 Future work may add file kinds or Gradle Kotlin DSL subtype evidence
-additively. It must preserve exact-root containment, exhaustive typed backend
-paging, the uncapped internal snapshot, set-valued module ownership,
-deterministic public bounds, `.kt`-only source-index authority, and the rule
-that incomplete backend evidence cannot prove `INDEX_ONLY`. Any change that
-uses filesystem or Git enumeration as candidate authority requires a
-superseding ADR.
+additively. It must preserve exact-root containment, generation-bound
+exhaustive backend paging, the uncapped internal snapshot, set-valued module
+ownership, deterministic public bounds, `.kt`-only source-index authority, and
+the rule that incomplete backend evidence cannot prove `INDEX_ONLY`. Any
+change that uses filesystem or Git enumeration as candidate authority requires
+a superseding ADR.

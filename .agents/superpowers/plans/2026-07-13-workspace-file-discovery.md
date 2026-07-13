@@ -10,11 +10,12 @@ discovery command backed by exhaustively paged compiler/project-model evidence
 and the `.kt`-only source index, with `.kts` candidates reusable by issue #340's
 separate Gradle DSL index.
 
-**Architecture:** Kotlin adds canonical per-module workspace-file paging and an
-IDEA project-model inventory for `.kt` and `.kts`. Rust exhausts every module
-page, unions physical paths while retaining all module owners, joins `.kt`
-index evidence, maps Git porcelain from repository root to the admitted root,
-then applies public filters, projections, and bounds.
+**Architecture:** Kotlin adds opaque generation-bound per-module workspace-file
+paging and an IDEA project-model inventory for `.kt` and `.kts`. Rust exhausts
+one coherent workspace generation, unions physical paths while retaining all
+module owners, joins `.kt` index evidence, maps Git porcelain from repository
+root to the admitted root, then applies public filters, projections, and
+bounds.
 
 **Tech Stack:** Kotlin/JVM, kotlinx.serialization, IntelliJ Platform and Gradle
 project model, Rust 2024, Clap, serde/serde_json, rusqlite, glob, Git porcelain
@@ -32,8 +33,15 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Never use recursive filesystem discovery or Git as candidate authority.
   Targeted root build/settings lookups are allowed only for roots proved by the
   linked Gradle project model.
-- Exhaust every valid backend module page before claiming that module complete.
-  Incomplete possible owners can never prove `INDEX_ONLY`.
+- Exhaust every valid backend module page from one workspace generation before
+  claiming that module complete. Incomplete possible owners can never prove
+  `INDEX_ONLY`.
+- Treat snapshot and page tokens as opaque server-owned values. Bind cursors to
+  generation, exact module, and offset; never construct or advance them in
+  Rust.
+- On `STALE_WORKSPACE_INVENTORY`, discard the whole backend attempt and restart
+  once. A second stale response is typed partial evidence with no backend
+  candidates from either stale attempt.
 - Model physical-file backend and indexed module ownership as sorted sets.
 - Keep the internal inventory uncapped by public filters and `--limit`.
 - Default `--limit` to 20, reject values outside 1 through 200, and keep compact
@@ -57,8 +65,11 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/WorkspaceFilesQuery.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceFilesResult.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceModule.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFilePageOffset.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFileSnapshotToken.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFilePageToken.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedWorkspaceFilesQuery.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceInventoryStaleException.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/InvalidWorkspaceFileCursorException.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedModels.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/SkillContracts.kt`
 - Modify: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/ParsedModelsTest.kt`
@@ -68,25 +79,30 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 
 **Interfaces:**
 
-- Produces: `WorkspaceFilePageOffset`,
-  `ParsedWorkspaceFilesQuery.pageOffset`, `WorkspaceModule.returnedFileCount`,
-  `WorkspaceModule.nextPageToken`, and explicit `WorkspaceModule.contentRoots`.
-- Invariant: a page token is canonical positive decimal text and is legal only
-  with `includeFiles=true` and one exact module.
+- Produces: `WorkspaceFileSnapshotToken`, `WorkspaceFilePageToken`,
+  `ParsedWorkspaceFilesQuery.snapshotToken`,
+  `ParsedWorkspaceFilesQuery.pageToken`, `WorkspaceFilesResult.snapshotToken`,
+  `WorkspaceModule.returnedFileCount`, `WorkspaceModule.nextPageToken`, and
+  explicit `WorkspaceModule.contentRoots`.
+- Invariant: snapshot and page tokens are opaque to clients. An input snapshot
+  token is legal only with `includeFiles=true` and one exact module; a page
+  token additionally requires that snapshot token.
 
 - [ ] **Step 1: Write failing query and server tests**
 
-Add parsing cases for token `"2"` and rejection of `"0"`, `"02"`, `"-1"`,
-non-numeric text, token without module, token with `includeFiles=false`, and a
-page size above server `maxResults`. Add fake-backend tests for two pages over
-five sorted files:
+Add parsing cases for nonblank opaque snapshot/page tokens and rejection of
+blank tokens, page token without snapshot token, either token without a module,
+either token with `includeFiles=false`, and a page size above server
+`maxResults`. Add fake-backend tests for two pages over five sorted files:
 
 ```kotlin
+val metadata = backend.workspaceFiles(WorkspaceFilesQuery())
 val first = backend.workspaceFiles(
     WorkspaceFilesQuery(
         moduleName = "main",
         includeFiles = true,
         maxFilesPerModule = 2,
+        snapshotToken = metadata.snapshotToken,
     ),
 )
 val second = backend.workspaceFiles(
@@ -94,14 +110,21 @@ val second = backend.workspaceFiles(
         moduleName = "main",
         includeFiles = true,
         maxFilesPerModule = 2,
+        snapshotToken = metadata.snapshotToken,
         pageToken = first.modules.single().nextPageToken,
     ),
 )
 assertEquals(5, first.modules.single().fileCount)
-assertEquals("2", first.modules.single().nextPageToken)
-assertEquals("4", second.modules.single().nextPageToken)
+assertEquals(metadata.snapshotToken, first.snapshotToken)
+assertNotNull(first.modules.single().nextPageToken)
+assertNotNull(second.modules.single().nextPageToken)
 assertTrue(first.modules.single().files.intersect(second.modules.single().files.toSet()).isEmpty())
 ```
+
+Pass the first page cursor back with a different exact module and assert
+`INVALID_WORKSPACE_FILE_CURSOR`. Mutate one path while preserving cardinality,
+then add and remove a module after metadata; each subsequent page request must
+return `STALE_WORKSPACE_INVENTORY` rather than a mixed page.
 
 - [ ] **Step 2: Run the focused red tests**
 
@@ -109,52 +132,58 @@ assertTrue(first.modules.single().files.intersect(second.modules.single().files.
 ./gradlew :analysis-api:test --tests '*ParsedModelsTest*workspace*' :analysis-server:test --tests '*AnalysisDispatcherTest*workspace*' --no-daemon
 ```
 
-Expected: compilation fails because paging fields/types do not exist.
+Expected: compilation fails because generation-bound paging fields/types do
+not exist.
 
 - [ ] **Step 3: Extract and implement the typed query boundary**
 
 Move `ParsedWorkspaceFilesQuery` out of `ParsedModels.kt` to satisfy top-level
-type isolation. Add:
+type isolation. Add one nonblank opaque wire-token type per matching file:
 
 ```kotlin
 @JvmInline
-value class WorkspaceFilePageOffset private constructor(val value: Int) {
+value class WorkspaceFileSnapshotToken private constructor(val value: String) {
     companion object {
-        fun parse(raw: String): WorkspaceFilePageOffset {
-            val parsed = raw.toIntOrNull()
-            require(parsed != null && parsed > 0 && raw == parsed.toString()) {
-                "Workspace file page tokens must be canonical positive offsets"
-            }
-            return WorkspaceFilePageOffset(parsed)
-        }
+        fun fromWire(raw: String): WorkspaceFileSnapshotToken =
+            WorkspaceFileSnapshotToken(raw.also { require(it.isNotBlank()) })
     }
 }
 ```
 
-Add `pageToken: String?` to `WorkspaceFilesQuery`. Parse once into
-`WorkspaceFilePageOffset?`; reject token-without-module and
-token-without-files at the validation boundary. Keep the server's positive
-page-size and maximum checks.
+`WorkspaceFilePageToken` has the same nonblank wire boundary but remains a
+distinct type. Add `snapshotToken: String?` and `pageToken: String?` to
+`WorkspaceFilesQuery`, parse each once, and reject illegal field combinations.
+Do not parse offsets or cursor payloads in `analysis-api`; backend providers own
+token generation and decoding. Keep the server's positive page-size and
+maximum checks. Add matching `AnalysisException` subtypes: stale inventory is
+HTTP/JSON-RPC status 409, code `STALE_WORKSPACE_INVENTORY`, and retryable;
+invalid cursor is status 400, code `INVALID_WORKSPACE_FILE_CURSOR`, and not
+retryable. The existing dispatcher maps both through its typed error envelope.
 
 - [ ] **Step 4: Isolate and extend the result type**
 
 Move `WorkspaceModule` to its matching file and add:
 
 ```kotlin
+// WorkspaceFilesResult
+val snapshotToken: String
+
+// WorkspaceModule
 val contentRoots: List<String> = emptyList()
 val returnedFileCount: Int = files.size
 val nextPageToken: String? = null
 ```
 
 Validate in tests that returned count equals `files.size`, `fileCount` is never
-smaller, and next tokens advance by returned count without exceeding total.
-Validate source/content roots are sorted and deduplicated. Update skill response
-types and fake backend with the same sort-before-slice contract.
+smaller, every page echoes one snapshot token, and continuation tokens are
+nonblank. Validate source/content roots are sorted and deduplicated. Update
+skill response types and the fake backend with the same generation/fingerprint,
+opaque-cursor, sort-before-slice, stale, and cross-module-error contract.
 
 - [ ] **Step 5: Run Kotlin paging tests green**
 
-Run the Step 2 command. Expected: all paging, validation, and non-overlap tests
-pass.
+Run the Step 2 command. Expected: all paging, validation, stale-generation,
+cross-module, and non-overlap tests pass.
 
 - [ ] **Step 6: Update source ownership and commit**
 
@@ -172,7 +201,10 @@ git commit -m "feat: page raw workspace file results"
 **Files:**
 
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventory.kt`
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventorySnapshot.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileModuleSnapshot.kt`
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileCursor.kt`
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceInventoryGeneration.kt`
 - Create: `backend-idea/src/main/java/io/github/amichne/kast/idea/IdeaGradleWorkspaceFileBridge.java`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
 - Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventoryTest.kt`
@@ -183,10 +215,13 @@ git commit -m "feat: page raw workspace file results"
 **Interfaces:**
 
 - Produces:
-  `IdeaWorkspaceFileInventory.snapshots(): List<IdeaWorkspaceFileModuleSnapshot>`.
-- Each snapshot has one backend module, sorted contained source/content roots,
+  `IdeaWorkspaceFileInventory.snapshot(): IdeaWorkspaceFileInventorySnapshot`.
+- The inventory snapshot has one `IdeaWorkspaceInventoryGeneration` over every
+  module. Each module snapshot has sorted contained source/content roots,
   sorted dependency names, and a complete sorted set of project-model `.kt`
   and `.kts` paths.
+- `IdeaWorkspaceFileCursor` is a server-owned opaque encoding of generation,
+  exact backend module name, and positive next offset.
 
 - [ ] **Step 1: Write failing project-model inventory tests**
 
@@ -200,7 +235,12 @@ Create one IDEA fixture containing:
 - an outside-root `.kts` exposed by a test project scope.
 
 Assert the first five categories are candidates, the shared file appears in
-both module snapshots, and the outside path is absent.
+both module snapshots, and the outside path is absent. Capture a generation,
+then replace one path with another while preserving total cardinality, add a
+module, and remove a module. Each change must alter the generation. Add backend
+contract cases proving the old snapshot token returns
+`STALE_WORKSPACE_INVENTORY` and a cursor issued for one module returns
+`INVALID_WORKSPACE_FILE_CURSOR` when used with another.
 
 - [ ] **Step 2: Run the focused red backend test**
 
@@ -214,10 +254,17 @@ Expected: compilation fails because the inventory does not exist.
 
 Use `FileTypeIndex` with project and module content scopes for compiler-visible
 Kotlin files. Use `ModuleRootManager` content/source roots to retain every
-owner. The Java bridge reads `GradleSettings.linkedProjectsSettings` and
-returns normalized external project roots and root-module associations. For
-each model-proven root, look up only `settings.gradle.kts` and
-`build.gradle.kts`; do not walk directories.
+owner. The Java bridge reads `GradleSettings.getLinkedProjectsSettings()` for
+direct roots; reads
+`GradleProjectSettings.getCompositeBuild()`,
+`GradleProjectSettings.CompositeBuild.getCompositeParticipants()`, and
+`BuildParticipant.getRootPath()` for included-build roots; and associates
+modules with those roots through
+`GradleModuleDataIndex.findGradleModuleData(Module)`,
+`GradleModuleData.isIncludedBuild()`, `getGradleProjectDir()`, and
+`ModuleData.getLinkedExternalProjectPath()`. Return normalized external roots
+and root-module associations. For each model-proven root, look up only
+`settings.gradle.kts` and `build.gradle.kts`; do not walk directories.
 
 Project-scope `.kts` files under a contained module root acquire all containing
 module owners. A contained linked-root script without a content-root owner
@@ -228,19 +275,33 @@ ownership is recorded.
 
 - [ ] **Step 4: Page sorted inventory in the backend**
 
-Replace cap-before-sort logic with:
+Replace cap-before-sort logic with generation validation followed by slicing:
 
 ```kotlin
-val allFiles = snapshot.filePaths.sorted()
-val offset = query.pageOffset?.value ?: 0
-require(offset <= allFiles.size)
+val current = inventory.snapshot()
+val requestedGeneration = decodeSnapshotToken(query.snapshotToken)
+if (requestedGeneration != current.generation) {
+    throw WorkspaceInventoryStale
+}
+val cursor = query.pageToken?.let(::decodePageCursor)
+cursor?.requireGenerationAndModule(current.generation, query.moduleName)
+val allFiles = current.module(query.moduleName).filePaths
+val offset = cursor?.nextOffset ?: 0
 val files = if (query.includeFiles) allFiles.drop(offset).take(fileLimit) else emptyList()
 val nextOffset = offset + files.size
-val nextToken = nextOffset.takeIf { query.includeFiles && it < allFiles.size }?.toString()
+val nextToken = nextOffset
+    .takeIf { query.includeFiles && it < allFiles.size }
+    ?.let { encodePageCursor(current.generation, query.moduleName, it) }
 ```
 
-Exact module requests page one snapshot. Metadata requests return every sorted
-module. Populate stable counts/tokens on every page.
+Build and fingerprint the canonical full inventory in one IDEA read action.
+The fingerprint includes sorted module identities, source/content roots,
+dependency names, and file paths, so equal-cardinality replacement and module
+add/remove cannot reuse a generation. Metadata requests return every sorted
+module plus the opaque snapshot token. Exact-module requests must match that
+generation before slicing; malformed, out-of-range, or cross-module cursors
+return `INVALID_WORKSPACE_FILE_CURSOR`. Populate stable counts and opaque
+tokens on every page.
 
 - [ ] **Step 5: Prove scripts, multiple owners, and pages**
 
@@ -251,8 +312,9 @@ Run:
 ./gradlew :index-store:test --tests '*SourceIndexFilePolicyTest*' --no-daemon
 ```
 
-Expected: project scripts and shared ownership pass; the index-store test still
-proves `.kts` rejection.
+Expected: project scripts, shared ownership, included-build associations,
+generation changes, stale responses, and cross-module rejection pass; the
+index-store test still proves `.kts` rejection.
 
 - [ ] **Step 6: Commit backend authority**
 
@@ -436,8 +498,9 @@ git commit -m "feat: add uncapped Kotlin source inventory"
 
 - Produces:
   `collect_workspace_inventory(WorkspaceInventoryInputs) -> Result<WorkspaceInventorySnapshot>`.
-- Backend collection uses one admitted `RawRpcSession`, exact-module paging,
-  and typed `BackendModuleCoverage`.
+- Backend collection uses one admitted `RawRpcSession`, a top-level opaque
+  snapshot token, exact-module opaque cursors, bounded restart, and typed
+  `BackendWorkspaceCoverage`/`BackendModuleCoverage`.
 
 - [ ] **Step 1: Write failing page-exhaustion and multi-owner tests**
 
@@ -447,6 +510,19 @@ physical record has both owners, pages do not overlap, and all modules are
 complete. Add failures for repeated/non-advancing tokens, changed totals,
 overlap, missing module, and a page failure after earlier successes; only the
 affected module becomes partial.
+
+Add three generation regressions:
+
+- replace one path with another while preserving `fileCount` between pages;
+- add or remove a module after metadata; and
+- return a cursor bound to a different module.
+
+Assert the first two produce `STALE_WORKSPACE_INVENTORY`, discard every backend
+page from that attempt, and restart from fresh metadata exactly once. Assert a
+second stale response does not restart again: backend coverage is typed
+partial, every module from the last metadata response is partial,
+`BACKEND_WORKSPACE_INVENTORY_STALE` is emitted, and no stale backend candidate
+is composed. Cross-module cursor use is invalid and never becomes a page.
 
 - [ ] **Step 2: Write failing drift tests**
 
@@ -489,16 +565,25 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_workspace_fil
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test semantic_workspace_admission_smoke workspace_files
 ```
 
-Expected: paging, composition, Git, and exact-root cases fail because the
-collector is absent.
+Expected: generation-bound paging, bounded restart, composition, Git, and
+exact-root cases fail because the collector is absent.
 
 - [ ] **Step 6: Implement strict backend paging**
 
-Fetch module metadata, sort exact module names, and request pages until each
-returns no next token. Validate total/returned counts, canonical advancement,
-module identity, non-overlap, and containment before merging. Preserve
-duplicate physical paths as one record with a `BTreeSet` of owners. A failed
-page records `BackendModuleCoverage::Partial`; it never silently truncates.
+Fetch module metadata and its opaque snapshot token, sort exact module names,
+and echo the snapshot while requesting opaque cursors until each module
+returns no next token. Never parse or construct a token in Rust. Validate
+total/returned counts, cursor advancement, echoed snapshot, module identity,
+non-overlap, and containment before merging. Preserve duplicate physical paths
+as one record with a `BTreeSet` of owners.
+
+On the first `STALE_WORKSPACE_INVENTORY`, discard the entire backend attempt
+and restart once from fresh metadata. If the retry is stale, discard it too,
+return `BackendWorkspaceCoverage::Partial` with
+`BACKEND_WORKSPACE_INVENTORY_STALE`, and mark every last-known module partial.
+No candidates from either stale attempt survive. Other page failures record
+only that module as `BackendModuleCoverage::Partial`; they never silently
+truncate.
 
 - [ ] **Step 7: Implement conservative composition**
 
@@ -632,8 +717,9 @@ git commit -m "feat: expose bounded workspace file discovery"
 
 - [ ] **Step 1: Regenerate Kotlin-owned protocol artifacts**
 
-Run the repository generators, then prove raw request schemas include
-`pageToken` and module results include returned count/next token:
+Run the repository generators, then prove raw request schemas include opaque
+`snapshotToken`/`pageToken`, results include the top-level snapshot token, and
+module results include returned count/next token:
 
 ```console
 ./gradlew :analysis-server:generateDocPages --no-daemon
@@ -650,16 +736,16 @@ Keep an unowned on-disk `.kt` file and assert it is absent.
 - [ ] **Step 3: Update ownership and packaged guidance**
 
 Add the command to `cli-rs/src/agent/AGENTS.md`. Teach source/script filters,
-partial limitations, owner sets, and direct path composition. State explicitly
-that `.kts` is not in the Kotlin source index and Gradle semantic declarations
-arrive with #340.
+partial limitations, one bounded stale-snapshot retry, owner sets, and direct
+path composition. State explicitly that `.kts` is not in the Kotlin source
+index and Gradle semantic declarations arrive with #340.
 
 - [ ] **Step 4: Update reference and how-to docs**
 
 Document every flag, limit, result view, owner set, package state, drift/index
-truth table, limitations, exact-root behavior, and paging-backed completeness.
-Replace generic-search-first guidance with `workspace-files`, then diagnostics
-or exact symbol lookup.
+truth table, limitations, exact-root behavior, generation-bound paging, and the
+typed partial result after repeated staleness. Replace generic-search-first
+guidance with `workspace-files`, then diagnostics or exact symbol lookup.
 
 - [ ] **Step 5: Validate guidance and commit**
 
@@ -697,8 +783,8 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test semantic_workspace_
 ./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
 ```
 
-Expected: paging/project-model tests pass and `.kts` remains rejected by
-`SourceIndexFilePolicyTest`.
+Expected: generation/fingerprint, stale, cursor-binding, paging/project-model
+tests pass and `.kts` remains rejected by `SourceIndexFilePolicyTest`.
 
 - [ ] **Step 3: Run full Rust quality gates**
 
@@ -731,9 +817,11 @@ contracts only; no source-index schema or `SourceIndexFilePolicy` change.
 
 - [ ] **Step 6: Request independent review**
 
-Ask a fresh reviewer to check paging determinism, project-model script
-authority, `.kt`-only source-index preservation, multi-owner physical files,
-nested Git mapping, exact-root rejected-no-request proof, package-state SQL,
-false `INDEX_ONLY`, capability callability, #340 reuse, budgets, and every issue
+Ask a fresh reviewer to check generation-bound paging determinism,
+equal-cardinality/module-set stale detection, single bounded restart,
+cross-module cursor rejection, included-build project-model script authority,
+`.kt`-only source-index preservation, multi-owner physical files, nested Git
+mapping, exact-root rejected-no-request proof, package-state SQL, false
+`INDEX_ONLY`, capability callability, #340 reuse, budgets, and every issue
 acceptance criterion. Repair each blocking finding with a focused red-green
 commit and rerun the affected gate plus full Rust and Kotlin suites.
