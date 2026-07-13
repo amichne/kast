@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "mutation/status"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "type": {
+              "const": "BY_IDEMPOTENCY_KEY",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operationId": {
+              "type": "string"
+            },
+            "type": {
+              "const": "BY_OPERATION_ID",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "operationId"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast mutation/status JSON-RPC request",
+  "type": "object"
+}

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `36`.
+Catalog version: `dev`. Methods: `39`.
 
 #### Method families
 
@@ -53,6 +53,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
+| `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit`<br>`mutation/status`<br>`mutation/cancel` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
@@ -85,6 +86,9 @@ uses a discriminated response envelope.
 | `runtime/shutdown` | `system` | backend | Ask the runtime host to shut down after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `runtime/restart` | `system` | backend | Ask the runtime host to restart after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
+| `mutation/submit` | `mutation` | backend | Submit an idempotent semantic mutation and return its stable operation identity | `type` | none | `KastMutationSubmissionReceipt` | single result |
+| `mutation/status` | `mutation` | backend | Retrieve retained semantic mutation state by operation identity or idempotency key | `type` | none | `KastMutationOperationSnapshot` | single result |
+| `mutation/cancel` | `mutation` | backend | Request cooperative cancellation and retrieve the latest semantic mutation state | `type` | none | `KastMutationOperationSnapshot` | single result |
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
@@ -163,6 +167,39 @@ Response type: `RuntimeLifecycleResponse`.
 No request parameters.
 
 Response type: `BackendCapabilities`.
+
+</details>
+
+<details markdown="1">
+<summary><code>mutation/submit</code> - Submit an idempotent semantic mutation and return its stable operation identity</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `type` | `string` | yes | no | `RENAME`<br>`ADD_FILE`<br>`ADD_DECLARATION`<br>`ADD_IMPLEMENTATION`<br>`ADD_STATEMENT`<br>`REPLACE_DECLARATION` |
+
+Response type: `KastMutationSubmissionReceipt`.
+
+</details>
+
+<details markdown="1">
+<summary><code>mutation/status</code> - Retrieve retained semantic mutation state by operation identity or idempotency key</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `type` | `string` | yes | no | `BY_OPERATION_ID`<br>`BY_IDEMPOTENCY_KEY` |
+
+Response type: `KastMutationOperationSnapshot`.
+
+</details>
+
+<details markdown="1">
+<summary><code>mutation/cancel</code> - Request cooperative cancellation and retrieve the latest semantic mutation state</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `type` | `string` | yes | no | `BY_OPERATION_ID`<br>`BY_IDEMPOTENCY_KEY` |
+
+Response type: `KastMutationOperationSnapshot`.
 
 </details>
 

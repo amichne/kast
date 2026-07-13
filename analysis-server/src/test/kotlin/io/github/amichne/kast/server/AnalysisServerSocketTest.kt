@@ -1,11 +1,24 @@
 package io.github.amichne.kast.server
 
+import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
-import io.github.amichne.kast.api.protocol.JsonRpcRequest
-import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
+import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
+import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
+import io.github.amichne.kast.api.protocol.JsonRpcRequest
+import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,8 +35,10 @@ import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
 import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.exists
 
 class AnalysisServerSocketTest {
@@ -192,6 +207,105 @@ class AnalysisServerSocketTest {
     }
 
     @Test
+    fun `mutation status remains retrievable by idempotency key after client disconnect`() {
+        val socketPath = tempDir.resolve("run").resolve("m.sock")
+        val target = tempDir.resolve("src/Reconnected.kt")
+        val contentFile = tempDir.resolve("reconnected-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Reconnected\n")
+        val idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect")
+        val mutation = KastSemanticMutation.AddFile(
+            idempotencyKey = idempotencyKey,
+            request = KastAddFileRequest(
+                workspaceRoot = tempDir.toString(),
+                filePath = target.toString(),
+                contentFile = contentFile.toString(),
+            ),
+        )
+
+        AnalysisServer(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = tempDir.resolve("instances"),
+            ),
+        ).start().use {
+            sendWithoutReadingResponse(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "mutation/submit",
+                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
+                ),
+            )
+            Thread.sleep(25)
+
+            val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
+            val terminal = awaitMutationTerminal(socketPath, selector)
+
+            assertTrue(terminal.state is KastMutationOperationState.Completed)
+            assertEquals("package sample\n\nclass Reconnected\n", Files.readString(target))
+        }
+    }
+
+    @Test
+    fun `server close cancels and joins mutation before removing descriptor authority`() {
+        val socketPath = tempDir.resolve("run").resolve("c.sock")
+        val descriptorDirectory = tempDir.resolve("close-instances")
+        val descriptorFile = descriptorDirectory.resolve("daemons.json")
+        val target = tempDir.resolve("src/AfterClose.kt")
+        val contentFile = tempDir.resolve("after-close-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass AfterClose\n")
+        val applyStarted = CompletableDeferred<Unit>()
+        val applyStopped = CompletableDeferred<Unit>()
+        val descriptorRetainedDuringStop = AtomicBoolean(false)
+        val backend = ClosingApplyBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            applyStarted = applyStarted,
+            applyStopped = applyStopped,
+            descriptorFile = descriptorFile,
+            descriptorIdentity = socketPath.toString(),
+            descriptorRetainedDuringStop = descriptorRetainedDuringStop,
+        )
+        val server = AnalysisServer(
+            backend = backend,
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = descriptorDirectory,
+            ),
+        ).start()
+        val mutation = KastSemanticMutation.AddFile(
+            idempotencyKey = KastMutationIdempotencyKey("issue-333-server-close"),
+            request = KastAddFileRequest(
+                workspaceRoot = tempDir.toString(),
+                filePath = target.toString(),
+                contentFile = contentFile.toString(),
+            ),
+        )
+        callSocket(
+            socketPath = socketPath,
+            request = JsonRpcRequest(
+                id = JsonPrimitive(1),
+                method = "mutation/submit",
+                params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
+            ),
+        )
+        runBlocking { withTimeout(1_000) { applyStarted.await() } }
+
+        server.close()
+        runBlocking { withTimeout(1_000) { applyStopped.await() } }
+        Thread.sleep(300)
+
+        assertFalse(Files.exists(target), "mutation wrote after server authority closed")
+        assertTrue(
+            descriptorRetainedDuringStop.get(),
+            "descriptor authority was removed before the mutation worker stopped",
+        )
+        assertFalse(
+            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(socketPath.toString()),
+        )
+    }
+
+    @Test
     fun `expected client disconnects include macOS disconnected socket errors`() {
         assertTrue(isExpectedClientDisconnect(IOException("Socket is not connected")))
     }
@@ -224,9 +338,58 @@ class AnalysisServerSocketTest {
         }
     }
 
+    private fun awaitMutationTerminal(
+        socketPath: Path,
+        selector: KastMutationOperationSelector,
+    ): KastMutationOperationSnapshot {
+        repeat(200) {
+            val response = callSocket(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(2),
+                    method = "mutation/status",
+                    params = json.encodeToJsonElement(KastMutationOperationSelector.serializer(), selector),
+                ),
+            )
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
+            val snapshot = json.decodeFromJsonElement(KastMutationOperationSnapshot.serializer(), success.result)
+            if (
+                snapshot.state is KastMutationOperationState.Completed ||
+                snapshot.state is KastMutationOperationState.Failed ||
+                snapshot.state is KastMutationOperationState.Cancelled
+            ) {
+                return snapshot
+            }
+            Thread.sleep(5)
+        }
+        error("Mutation operation did not become terminal after reconnect")
+    }
+
     private fun awaitClientHandlerCompletion() {
         repeat(50) {
             Thread.sleep(10)
+        }
+    }
+}
+
+private class ClosingApplyBackend(
+    private val delegate: AnalysisBackend,
+    private val applyStarted: CompletableDeferred<Unit>,
+    private val applyStopped: CompletableDeferred<Unit>,
+    private val descriptorFile: Path,
+    private val descriptorIdentity: String,
+    private val descriptorRetainedDuringStop: AtomicBoolean,
+) : AnalysisBackend by delegate {
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        applyStarted.complete(Unit)
+        return try {
+            delay(250)
+            delegate.applyEdits(query)
+        } finally {
+            descriptorRetainedDuringStop.set(
+                Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(descriptorIdentity),
+            )
+            applyStopped.complete(Unit)
         }
     }
 }

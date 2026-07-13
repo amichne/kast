@@ -3,7 +3,8 @@
 use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{
-    AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentImpactArgs, AgentRenameArgs,
+    AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentImpactArgs, AgentMutationApplyArgs,
+    AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
     AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
     AgentStatementMutationArgs, AgentSymbolArgs, AgentVerifyArgs,
 };

@@ -5,7 +5,6 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
 import kotlinx.coroutines.runBlocking
-import java.io.Closeable
 
 class AnalysisServer(
     private val backend: AnalysisBackend,
@@ -63,25 +62,9 @@ class AnalysisServer(
 
         return RunningAnalysisServer(
             server = transportServer,
+            dispatcher = dispatcher,
             descriptor = descriptor,
             descriptorStore = descriptorStore,
         )
-    }
-}
-
-class RunningAnalysisServer internal constructor(
-    private val server: LocalRpcServer,
-    val descriptor: ServerInstanceDescriptor?,
-    private val descriptorStore: DescriptorStore?,
-) : Closeable {
-    fun await() {
-        server.await()
-    }
-
-    override fun close() {
-        descriptorStore?.let { store ->
-            descriptor?.let(store::delete)
-        }
-        server.close()
     }
 }

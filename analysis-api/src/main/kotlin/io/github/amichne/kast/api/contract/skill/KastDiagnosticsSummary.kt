@@ -33,6 +33,35 @@ class KastDiagnosticsSummary private constructor(
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) {
+            return true
+        }
+        if (other !is KastDiagnosticsSummary) {
+            return false
+        }
+        return clean == other.clean &&
+            errorCount == other.errorCount &&
+            warningCount == other.warningCount &&
+            semanticOutcome == other.semanticOutcome &&
+            requestedFileCount == other.requestedFileCount &&
+            analyzedFileCount == other.analyzedFileCount &&
+            skippedFileCount == other.skippedFileCount &&
+            errors == other.errors
+    }
+
+    override fun hashCode(): Int {
+        var result = clean.hashCode()
+        result = 31 * result + errorCount
+        result = 31 * result + warningCount
+        result = 31 * result + semanticOutcome.hashCode()
+        result = 31 * result + requestedFileCount
+        result = 31 * result + analyzedFileCount
+        result = 31 * result + skippedFileCount
+        result = 31 * result + errors.hashCode()
+        return result
+    }
+
     companion object {
         fun from(result: DiagnosticsResult): KastDiagnosticsSummary =
             from(result, PositiveInt(Int.MAX_VALUE))

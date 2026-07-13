@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "mutation/submit",
+  "params": {
+    "idempotencyKey": "example-idempotencyKey",
+    "request": {
+      "example": true
+    },
+    "type": "ADD_DECLARATION"
+  }
+}

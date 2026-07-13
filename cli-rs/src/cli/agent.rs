@@ -29,6 +29,8 @@ pub enum AgentCommand {
     AddStatement(AgentStatementMutationArgs),
     /// Replace a named declaration by symbol identity.
     ReplaceDeclaration(AgentReplaceDeclarationArgs),
+    /// Query or cancel an observable semantic mutation operation.
+    Operation(AgentOperationArgs),
     /// List catalog-backed tools for CLI-capable agent hosts.
     #[command(hide = true)]
     Tools(RemovedAgentCommandArgs),
@@ -131,6 +133,16 @@ pub struct AgentDiagnosticsArgs {
     pub skip_refresh: bool,
 }
 
+#[derive(Debug, Args, Clone, Default)]
+pub struct AgentMutationApplyArgs {
+    /// Apply the mutation. Without this flag, Kast only reports the planned request.
+    #[arg(long)]
+    pub apply: bool,
+    /// Stable caller-owned key used to retry and recover this applied mutation.
+    #[arg(long)]
+    pub idempotency_key: Option<String>,
+}
+
 #[derive(Debug, Args, Clone)]
 pub struct AgentRenameArgs {
     #[command(flatten)]
@@ -146,9 +158,8 @@ pub struct AgentRenameArgs {
     pub file_hint: Option<String>,
     #[arg(long)]
     pub containing_type: Option<String>,
-    /// Apply the rename. Without this flag, Kast only reports the planned request.
-    #[arg(long)]
-    pub apply: bool,
+    #[command(flatten)]
+    pub mutation: AgentMutationApplyArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -161,9 +172,8 @@ pub struct AgentAddFileArgs {
     /// File containing the complete content to write.
     #[arg(long)]
     pub content_file: PathBuf,
-    /// Apply the file creation. Without this flag, Kast only reports the planned request.
-    #[arg(long)]
-    pub apply: bool,
+    #[command(flatten)]
+    pub mutation: AgentMutationApplyArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -188,9 +198,8 @@ pub struct AgentScopedMutationArgs {
     /// File containing the declaration or implementation content.
     #[arg(long)]
     pub content_file: PathBuf,
-    /// Apply the mutation. Without this flag, Kast only reports the planned request.
-    #[arg(long)]
-    pub apply: bool,
+    #[command(flatten)]
+    pub mutation: AgentMutationApplyArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -206,9 +215,8 @@ pub struct AgentStatementMutationArgs {
     /// File containing the statement content.
     #[arg(long)]
     pub content_file: PathBuf,
-    /// Apply the mutation. Without this flag, Kast only reports the planned request.
-    #[arg(long)]
-    pub apply: bool,
+    #[command(flatten)]
+    pub mutation: AgentMutationApplyArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -227,9 +235,40 @@ pub struct AgentReplaceDeclarationArgs {
     pub file_hint: Option<String>,
     #[arg(long)]
     pub containing_type: Option<String>,
-    /// Apply the replacement. Without this flag, Kast only reports the planned request.
+    #[command(flatten)]
+    pub mutation: AgentMutationApplyArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentOperationArgs {
+    #[command(subcommand)]
+    pub command: AgentOperationCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum AgentOperationCommand {
+    /// Retrieve the latest retained operation state.
+    Status(AgentOperationSelectorArgs),
+    /// Request cooperative cancellation and return the latest retained state.
+    Cancel(AgentOperationSelectorArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(group(
+    clap::ArgGroup::new("selector")
+        .required(true)
+        .multiple(false)
+        .args(["operation_id", "idempotency_key"])
+))]
+pub struct AgentOperationSelectorArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Server-issued semantic mutation operation UUID.
     #[arg(long)]
-    pub apply: bool,
+    pub operation_id: Option<String>,
+    /// Caller-owned mutation idempotency key.
+    #[arg(long)]
+    pub idempotency_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]

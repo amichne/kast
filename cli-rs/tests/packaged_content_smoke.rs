@@ -69,6 +69,15 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         skill.contains("`--output json` for JSON-only parsed scripts"),
         "{skill}"
     );
+    assert!(
+        skill.contains("--apply --idempotency-key <stable-key>"),
+        "{skill}"
+    );
+    assert!(
+        skill.contains("kast agent operation status --idempotency-key <stable-key>"),
+        "{skill}"
+    );
+    assert!(skill.contains("edit application never started"), "{skill}");
     assert!(skill.contains("read-only readiness"), "{skill}");
     assert!(
         skill.contains("Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`"),

@@ -2,6 +2,10 @@ $schema: ./commands.schema.json
 categories:
   database:
   - database/metrics
+  mutation:
+  - mutation/submit
+  - mutation/status
+  - mutation/cancel
   raw:
   - raw/resolve
   - raw/references
@@ -107,6 +111,186 @@ commands:
       fields: {}
     responseType: HealthResponse
     summary: Basic health check
+  mutation/cancel:
+    category: mutation
+    dataSource: backend
+    method: mutation/cancel
+    request:
+      fields:
+        type:
+          enum:
+          - BY_OPERATION_ID
+          - BY_IDEMPOTENCY_KEY
+          type: string
+      required:
+      - type
+    responseType: KastMutationOperationSnapshot
+    summary: Request cooperative cancellation and retrieve the latest semantic mutation state
+    variants:
+      BY_IDEMPOTENCY_KEY:
+        fields:
+          idempotencyKey:
+            type: string
+        required:
+        - idempotencyKey
+      BY_OPERATION_ID:
+        fields:
+          operationId:
+            type: string
+        required:
+        - operationId
+  mutation/status:
+    category: mutation
+    dataSource: backend
+    method: mutation/status
+    request:
+      fields:
+        type:
+          enum:
+          - BY_OPERATION_ID
+          - BY_IDEMPOTENCY_KEY
+          type: string
+      required:
+      - type
+    responseType: KastMutationOperationSnapshot
+    summary: Retrieve retained semantic mutation state by operation identity or idempotency key
+    variants:
+      BY_IDEMPOTENCY_KEY:
+        fields:
+          idempotencyKey:
+            type: string
+        required:
+        - idempotencyKey
+      BY_OPERATION_ID:
+        fields:
+          operationId:
+            type: string
+        required:
+        - operationId
+  mutation/submit:
+    category: mutation
+    dataSource: backend
+    method: mutation/submit
+    request:
+      fields:
+        type:
+          enum:
+          - RENAME
+          - ADD_FILE
+          - ADD_DECLARATION
+          - ADD_IMPLEMENTATION
+          - ADD_STATEMENT
+          - REPLACE_DECLARATION
+          type: string
+      required:
+      - type
+    responseType: KastMutationSubmissionReceipt
+    summary: Submit an idempotent semantic mutation and return its stable operation identity
+    variants:
+      ADD_DECLARATION:
+        fields:
+          idempotencyKey:
+            type: string
+          request:
+            type: object
+        required:
+        - idempotencyKey
+        - request
+        sample:
+          idempotencyKey: add-example-declaration
+          request:
+            contentFile: /tmp/declaration.kt
+            placement:
+              anchor:
+                anchor: file-bottom
+                type: AT_ANCHOR
+              scope:
+                insideFile: /workspace/src/main/kotlin/com/example/Example.kt
+                type: FILE_SCOPE
+          type: ADD_DECLARATION
+      ADD_FILE:
+        fields:
+          idempotencyKey:
+            type: string
+          request:
+            type: object
+        required:
+        - idempotencyKey
+        - request
+        sample:
+          idempotencyKey: add-example-file
+          request:
+            contentFile: /tmp/Added.kt
+            filePath: /workspace/src/main/kotlin/com/example/Added.kt
+          type: ADD_FILE
+      ADD_IMPLEMENTATION:
+        fields:
+          idempotencyKey:
+            type: string
+          request:
+            type: object
+        required:
+        - idempotencyKey
+        - request
+        sample:
+          idempotencyKey: add-example-implementation
+          request:
+            contentFile: /tmp/implementation.kt
+            placement:
+              anchor:
+                anchor: body-end
+                type: AT_ANCHOR
+              scope:
+                insideScope: com.example.Widget
+                type: NAMED_SCOPE
+          type: ADD_IMPLEMENTATION
+      ADD_STATEMENT:
+        fields:
+          idempotencyKey:
+            type: string
+          request:
+            type: object
+        required:
+        - idempotencyKey
+        - request
+        sample:
+          idempotencyKey: add-example-statement
+          request:
+            anchor: body-end
+            contentFile: /tmp/statement.kt
+            insideScope: com.example.Widget.render
+          type: ADD_STATEMENT
+      RENAME:
+        fields:
+          idempotencyKey:
+            type: string
+          request:
+            type: object
+        required:
+        - idempotencyKey
+        - request
+        sample:
+          idempotencyKey: rename-order-service-process
+          request:
+            newName: processSafely
+            symbol: com.example.OrderService.process
+            type: RENAME_BY_SYMBOL_REQUEST
+          type: RENAME
+      REPLACE_DECLARATION:
+        fields:
+          idempotencyKey:
+            type: string
+          request:
+            type: object
+        required:
+        - idempotencyKey
+        - request
+        sample:
+          idempotencyKey: replace-example-declaration
+          request:
+            contentFile: /tmp/replacement.kt
+            symbol: com.example.Widget.render
+          type: REPLACE_DECLARATION
   raw/apply-edits:
     category: raw
     dataSource: backend

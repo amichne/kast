@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "mutation/submit"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "ADD_DECLARATION",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey",
+            "request"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "ADD_FILE",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey",
+            "request"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "ADD_IMPLEMENTATION",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey",
+            "request"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "ADD_STATEMENT",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey",
+            "request"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "RENAME",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey",
+            "request"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "REPLACE_DECLARATION",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "idempotencyKey",
+            "request"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast mutation/submit JSON-RPC request",
+  "type": "object"
+}

@@ -66,9 +66,15 @@ import kotlinx.serialization.json.JsonNull
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
+import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
+import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
+import io.github.amichne.kast.server.mutation.MutationOperationService
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
+import java.io.Closeable
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CancellationException
 
@@ -81,8 +87,9 @@ class RpcAnalysisDispatcher(
         explicitNulls = false
         prettyPrint = false
     },
-) {
+) : Closeable {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
+    private val mutationRpc = MutationOperationService(skillRpc, json)
     private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
 
     suspend fun dispatch(request: JsonRpcRequest): String {
@@ -388,6 +395,21 @@ class RpcAnalysisDispatcher(
                 skillRpc.replaceDeclaration(decodeParams(KastReplaceDeclarationRequest.serializer(), params)),
             )
 
+            "mutation/submit" -> encode(
+                KastMutationSubmissionReceipt.serializer(),
+                mutationRpc.submit(decodeParams(KastSemanticMutation.serializer(), params)),
+            )
+
+            "mutation/status" -> encode(
+                KastMutationOperationSnapshot.serializer(),
+                mutationRpc.status(decodeParams(KastMutationOperationSelector.serializer(), params)),
+            )
+
+            "mutation/cancel" -> encode(
+                KastMutationOperationSnapshot.serializer(),
+                mutationRpc.cancel(decodeParams(KastMutationOperationSelector.serializer(), params)),
+            )
+
             "raw/implementations" -> encode(
                 ImplementationsResult.serializer(),
                 backend.implementations(
@@ -426,6 +448,10 @@ class RpcAnalysisDispatcher(
             ranAction = true
             runCatching(action)
         }
+    }
+
+    override fun close() {
+        mutationRpc.close()
     }
 
     private suspend fun requestLifecycle(action: RuntimeLifecycleAction): RuntimeLifecycleResponse {
@@ -476,14 +502,6 @@ class RpcAnalysisDispatcher(
         serializer: KSerializer<T>,
         value: T,
     ): JsonElement = json.encodeToJsonElement(serializer, value)
-}
-
-fun interface RuntimeLifecycleController {
-    fun afterResponseAction(action: RuntimeLifecycleAction): (() -> Unit)?
-
-    object Unavailable : RuntimeLifecycleController {
-        override fun afterResponseAction(action: RuntimeLifecycleAction): (() -> Unit)? = null
-    }
 }
 
 private class UnknownRpcMethodException(
