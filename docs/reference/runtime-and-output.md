@@ -16,10 +16,12 @@ branch names, and matching commits do not make another checkout's runtime
 eligible.
 
 Automatic selection succeeds only when at most one backend kind is ready for
-that root. If IDEA and headless are both ready, Kast returns
+that root. Exactly one ready kind is selected even when it differs from the
+host fallback. If IDEA and headless are both ready, Kast returns
 `SEMANTIC_BACKEND_AMBIGUOUS` with candidate evidence and requires an explicit
 backend. Verification never resolves ambiguity by preferring IDEA, the host
-default, or descriptor order.
+default, or descriptor order, and reuse-only verification never prunes or
+rewrites descriptor registry state.
 
 ## Runtime Choices
 

@@ -33,6 +33,8 @@ Use this path when an agent is running in a linked worktree, disposable clone,
 or release-conflict checkout. Verification is read-only: it reports supported
 next actions but does not run setup, copy metadata, launch an IDE, repair the
 installation, start a headless runtime, or change global install authority.
+It also preserves `daemons.json` exactly; use an explicit lifecycle command if
+stale runtime state should be pruned.
 
 On macOS, open the exact checkout root in IntelliJ IDEA or Android Studio with
 the Homebrew-coupled Kast plugin enabled. After the plugin has prepared that
@@ -69,8 +71,11 @@ Check the returned backend, workspace root, source modules, limitations, and
 evidence quality before consuming symbol or diagnostics results. If the root
 does not match the temporary checkout, stop; Kast must not reuse that state.
 If automatic verification reports two ready candidates, choose one explicitly.
+If only one backend kind is ready, automatic verification selects it regardless
+of the host fallback.
 Do not use the unprepared headless route for applied mutations on macOS; plugin
-preparation for the exact root remains mandatory.
+preparation for the exact root remains mandatory and is checked before runtime
+descriptor discovery.
 
 ## Keep Fixes Plan-First
 

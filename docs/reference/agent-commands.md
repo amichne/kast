@@ -53,13 +53,16 @@ An unprepared supported Gradle workspace returns
 `SEMANTIC_WORKSPACE_UNPREPARED`. An unsupported non-Gradle directory returns
 `SEMANTIC_WORKSPACE_UNSUPPORTED`. Neither outcome borrows another checkout's
 state or prepares the directory on the caller's behalf. Verification is
-reuse-only: it does not launch IDEA or start a headless runtime.
+reuse-only: it does not launch IDEA, start a headless runtime, prune dead
+descriptors, or rewrite the descriptor registry.
 
 Automatic selection returns `SEMANTIC_BACKEND_AMBIGUOUS` when more than one
 backend kind is ready for the exact root. The error includes each candidate's
 backend name, version, root, readiness, and evidence quality. Select
 `--backend=idea` or `--backend=headless` explicitly; Kast does not prefer one
-candidate by operating system or backend name.
+candidate by operating system or backend name. When exactly one backend kind
+is ready, automatic selection uses it even when it differs from the host
+fallback.
 
 ## Mutation Boundary
 
@@ -77,8 +80,10 @@ On macOS, every applied public mutation requires valid plugin preparation for
 the exact root. The read-only unprepared/headless route cannot authorize
 `rename --apply`, add-file, add-declaration, add-implementation, add-statement,
 or replace-declaration; those commands return
-`SEMANTIC_MUTATION_AUTHORITY_REQUIRED` before contacting a backend. An explicit
-headless backend is allowed only after the same prepared authority exists.
+`SEMANTIC_MUTATION_AUTHORITY_REQUIRED` before descriptor discovery or backend
+contact. Automatic and explicit routes use the same authority preflight. An
+explicit headless backend is allowed only after the same prepared authority
+exists.
 
 Use [mutation selectors](mutation-selectors.md) for the selector model and
 [plan safe edits](../use/plan-safe-edits.md) for the developer-facing story.
