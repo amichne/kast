@@ -92,7 +92,7 @@ uses a discriminated response envelope.
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
-| `symbol/resolve` | `symbol` | backend | Resolve a symbol by name to its declaration and optional context | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_FAILURE` |
+| `symbol/resolve` | `symbol` | backend | Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_NOT_FOUND`<br>`RESOLVE_AMBIGUOUS`<br>`RESOLVE_FAILURE` |
 | `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
 | `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
@@ -276,7 +276,7 @@ Notes:
 </details>
 
 <details markdown="1">
-<summary><code>symbol/resolve</code> - Resolve a symbol by name to its declaration and optional context</summary>
+<summary><code>symbol/resolve</code> - Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes</summary>
 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
@@ -291,12 +291,14 @@ Notes:
 | `includeSurroundingMembers` | `boolean` | no | no |  |
 
 Response type: `KastResolveResponse`.
-Result variants: `RESOLVE_SUCCESS`, `RESOLVE_FAILURE`.
+Result variants: `RESOLVE_SUCCESS`, `RESOLVE_NOT_FOUND`, `RESOLVE_AMBIGUOUS`, `RESOLVE_FAILURE`.
 
 Notes:
 
-- The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.
-- Use 'containingType' for scoping and 'fileHint' for disambiguation.
+- The 'symbol' field accepts exact simple names or fully-qualified names; backticks are normalized only for comparison.
+- kind, containingType, and fileHint are hard constraints rather than ranking hints.
+- RESOLVE_NOT_FOUND and RESOLVE_AMBIGUOUS are expected typed outcomes and never select a fuzzy candidate.
+- Existing internal consumers must match RESOLVE_NOT_FOUND and RESOLVE_AMBIGUOUS in addition to RESOLVE_SUCCESS and RESOLVE_FAILURE.
 - Set includeDeclarationScope, includeDocumentation, surroundingLines, or includeSurroundingMembers only when the extra context is needed.
 
 </details>
