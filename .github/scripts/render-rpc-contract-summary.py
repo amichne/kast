@@ -191,11 +191,26 @@ def enum_values(field: dict[str, Any]) -> str:
     return "<br>".join(f"`{value}`" for value in values)
 
 
-def response_variants(spec: dict[str, Any]) -> str:
+def response_variant_names(spec: dict[str, Any]) -> list[str]:
+    declared = spec.get("responseVariants")
+    if declared is not None:
+        if not isinstance(declared, list) or not declared or not all(
+            isinstance(variant, str) and variant for variant in declared
+        ):
+            raise ValueError("responseVariants must be a non-empty list of non-empty strings")
+        return declared
+
     success = spec.get("successType")
     failure = spec.get("failureType")
     if success and failure:
-        return f"`{success}`<br>`{failure}`"
+        return [str(success), str(failure)]
+    return []
+
+
+def response_variants(spec: dict[str, Any]) -> str:
+    variants = response_variant_names(spec)
+    if variants:
+        return "<br>".join(f"`{variant}`" for variant in variants)
     return "single result"
 
 
@@ -358,10 +373,10 @@ def render_summary(catalog: dict[str, Any]) -> str:
                 f"Response type: `{spec.get('responseType', 'none')}`.",
             ]
         )
-        success = spec.get("successType")
-        failure = spec.get("failureType")
-        if success and failure:
-            lines.append(f"Result variants: `{success}`, `{failure}`.")
+        variants = response_variant_names(spec)
+        if variants:
+            formatted_variants = ", ".join(f"`{variant}`" for variant in variants)
+            lines.append(f"Result variants: {formatted_variants}.")
         notes = spec.get("notes") or []
         if notes:
             lines.extend(["", "Notes:", ""])

@@ -47,6 +47,24 @@ does not survive a daemon restart.
 Use [mutation selectors](mutation-selectors.md) for the selector model and
 [plan safe edits](../use/plan-safe-edits.md) for the developer-facing story.
 
+## Symbol Lookup
+
+`kast agent symbol --query <name>` defaults to `--mode exact`. Exact mode accepts
+a simple or fully-qualified Kotlin name and applies `--kind`, `--file-hint`, and
+`--containing-type` as hard constraints. Backticks affect matching only; a
+resolved result reports the canonical identity returned by the compiler or
+source index.
+
+The lookup outcome is one of `RESOLVED`, `NOT_FOUND`, or `AMBIGUOUS`. Its
+`source` is `compiler` for compiler-backed identity or `indexed-exact` when the
+compiler is unavailable and the source index can prove the exact constraints.
+Not-found and ambiguous outcomes never trigger fuzzy search.
+
+`--mode discovery` is the explicit fuzzy surface. It reports `DISCOVERED` with
+`source: fuzzy`; `--references` and `--callers` are unavailable in that mode.
+Relation requests run only after compiler resolution and use the returned
+canonical fully-qualified name.
+
 ??? info "Command names for agent authors"
     The current typed agent commands are:
 
@@ -71,6 +89,7 @@ Use [mutation selectors](mutation-selectors.md) for the selector model and
     ```console
     kast agent verify --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
+    kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent diagnostics \
       --file-path "$PWD/src/main/kotlin/App.kt" \
       --workspace-root "$PWD"

@@ -759,7 +759,7 @@
     "symbol/resolve": {
       "method": "symbol/resolve",
       "category": "symbol",
-      "summary": "Resolve a symbol by name to its declaration and optional context",
+      "summary": "Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes",
       "dataSource": "backend",
       "request": {
         "fields": {
@@ -818,14 +818,22 @@
       "responseType": "KastResolveResponse",
       "successType": "RESOLVE_SUCCESS",
       "failureType": "RESOLVE_FAILURE",
+      "responseVariants": [
+        "RESOLVE_SUCCESS",
+        "RESOLVE_NOT_FOUND",
+        "RESOLVE_AMBIGUOUS",
+        "RESOLVE_FAILURE"
+      ],
       "notes": [
-        "The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.",
-        "Use 'containingType' for scoping and 'fileHint' for disambiguation.",
+        "The 'symbol' field accepts exact simple names or fully-qualified names; backticks are normalized only for comparison.",
+        "kind, containingType, and fileHint are hard constraints rather than ranking hints.",
+        "RESOLVE_NOT_FOUND and RESOLVE_AMBIGUOUS are expected typed outcomes and never select a fuzzy candidate.",
+        "Existing internal consumers must match RESOLVE_NOT_FOUND and RESOLVE_AMBIGUOUS in addition to RESOLVE_SUCCESS and RESOLVE_FAILURE.",
         "Set includeDeclarationScope, includeDocumentation, surroundingLines, or includeSurroundingMembers only when the extra context is needed."
       ],
       "tool": {
         "name": "kast_resolve",
-        "description": "Resolve a Kotlin symbol to its declaration. Use when a name might be overloaded, inherited, or shadowed; disambiguate with kind, containingType, and fileHint before tracing references or callers."
+        "description": "Resolve one exact Kotlin symbol identity. A unique match returns RESOLVE_SUCCESS; zero or multiple exact matches return typed not-found or ambiguous outcomes without fuzzy selection."
       }
     },
     "symbol/references": {

@@ -23,9 +23,9 @@ import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -48,6 +48,8 @@ import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
+import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -63,6 +65,8 @@ import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
+import io.github.amichne.kast.api.validation.ParsedSymbolQuery
+import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -74,6 +78,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -220,6 +225,174 @@ class AnalysisDispatcherTest {
         assertEquals("sample.greet", success.symbol.fqName)
         assertEquals(file.toString(), success.filePath)
         assertEquals(true, success.ok)
+    }
+
+    @Test
+    fun `symbol resolve returns not found instead of a fuzzy candidate`() {
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(lookupSymbol("sample.LegacyOrderService", SymbolKind.CLASS, "LegacyOrderService.kt")),
+        )
+
+        val result = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(workspaceRoot = tempDir.toString(), symbol = "MissingOrderService"),
+            ),
+        )
+
+        assertInstanceOf(KastResolveNotFoundResponse::class.java, result)
+    }
+
+    @Test
+    fun `symbol resolve returns ambiguous for overloaded exact members`() {
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(
+                lookupSymbol("sample.Parser.parse", SymbolKind.FUNCTION, "Parser.kt", startOffset = 10),
+                lookupSymbol("sample.Parser.parse", SymbolKind.FUNCTION, "Parser.kt", startOffset = 40),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(workspaceRoot = tempDir.toString(), symbol = "parse"),
+            ),
+        )
+
+        val ambiguous = assertInstanceOf(KastResolveAmbiguousResponse::class.java, result)
+        assertEquals(2, ambiguous.candidates.size)
+    }
+
+    @Test
+    fun `symbol resolve cardinality is independent of server presentation limit`() {
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(
+                lookupSymbol("sample.Parser.parse", SymbolKind.FUNCTION, "Parser.kt", startOffset = 10),
+                lookupSymbol("sample.Parser.parse", SymbolKind.FUNCTION, "Parser.kt", startOffset = 40),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            config = AnalysisServerConfig(maxResults = 1),
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(workspaceRoot = tempDir.toString(), symbol = "parse"),
+            ),
+        )
+
+        val ambiguous = assertInstanceOf(KastResolveAmbiguousResponse::class.java, result)
+        assertEquals(2, ambiguous.candidates.size)
+    }
+
+    @Test
+    fun `symbol resolve matches backticked simple and qualified names exactly`() {
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(lookupSymbol("sample.when", SymbolKind.FUNCTION, "Keywords.kt")),
+        )
+
+        val simple = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(workspaceRoot = tempDir.toString(), symbol = "`when`"),
+            ),
+        )
+        val qualified = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(workspaceRoot = tempDir.toString(), symbol = "sample.`when`"),
+            ),
+        )
+
+        assertEquals("sample.when", assertInstanceOf(KastResolveSuccessResponse::class.java, simple).symbol.fqName)
+        assertEquals("sample.when", assertInstanceOf(KastResolveSuccessResponse::class.java, qualified).symbol.fqName)
+    }
+
+    @Test
+    fun `symbol resolve applies kind file and containing type as hard constraints`() {
+        val fileName = "Parser.kt"
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(
+                lookupSymbol(
+                    fqName = "sample.Parser.parse",
+                    kind = SymbolKind.FUNCTION,
+                    fileName = fileName,
+                    containingDeclaration = "sample.Parser",
+                ),
+            ),
+        )
+        val mismatches = listOf(
+            KastResolveRequest(
+                workspaceRoot = tempDir.toString(),
+                symbol = "parse",
+                kind = WrapperNamedSymbolKind.CLASS,
+            ),
+            KastResolveRequest(
+                workspaceRoot = tempDir.toString(),
+                symbol = "parse",
+                fileHint = tempDir.resolve("Other.kt").toString(),
+            ),
+            KastResolveRequest(
+                workspaceRoot = tempDir.toString(),
+                symbol = "parse",
+                containingType = "sample.OtherParser",
+            ),
+        )
+
+        mismatches.forEach { request ->
+            val result = dispatchSuccessWithBackend<KastResolveResponse>(
+                backend = backend,
+                method = "symbol/resolve",
+                params = json.encodeToJsonElement(KastResolveRequest.serializer(), request),
+            )
+            assertInstanceOf(KastResolveNotFoundResponse::class.java, result)
+        }
+    }
+
+    @Test
+    fun `symbol resolve applies containing type using resolved compiler identity`() {
+        val workspaceSymbol = lookupSymbol(
+            fqName = "sample.Parser.parse",
+            kind = SymbolKind.FUNCTION,
+            fileName = "Parser.kt",
+            containingDeclaration = null,
+        )
+        val resolvedSymbol = workspaceSymbol.copy(containingDeclaration = "sample.Parser")
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(workspaceSymbol),
+            resolvedSymbols = listOf(resolvedSymbol),
+        )
+
+        val result = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "parse",
+                    containingType = "sample.Parser",
+                ),
+            ),
+        )
+
+        val success = assertInstanceOf(KastResolveSuccessResponse::class.java, result)
+        assertEquals("sample.Parser", success.symbol.containingDeclaration)
     }
 
     @Test
@@ -1220,6 +1393,41 @@ class AnalysisDispatcherTest {
         )
     }
 
+    private inline fun <reified T> dispatchSuccessWithBackend(
+        backend: AnalysisBackend,
+        config: AnalysisServerConfig = AnalysisServerConfig(),
+        method: String,
+        params: JsonElement? = null,
+    ): T {
+        val raw = runBlocking {
+            RpcAnalysisDispatcher(backend = backend, config = config).dispatch(
+                JsonRpcRequest(id = JsonPrimitive(1), method = method, params = params),
+            )
+        }
+        val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        return json.decodeFromJsonElement(serializer<T>(), success.result)
+    }
+
+    private fun lookupSymbol(
+        fqName: String,
+        kind: SymbolKind,
+        fileName: String,
+        startOffset: Int = 10,
+        containingDeclaration: String? = null,
+    ): Symbol = Symbol(
+        fqName = fqName,
+        kind = kind,
+        location = Location(
+            filePath = tempDir.resolve(fileName).toString(),
+            startOffset = startOffset,
+            endOffset = startOffset + fqName.substringAfterLast('.').length,
+            startLine = startOffset,
+            startColumn = 1,
+            preview = fqName,
+        ),
+        containingDeclaration = containingDeclaration,
+    )
+
     private fun dispatchRaw(
         method: String,
         params: JsonElement? = null,
@@ -1334,4 +1542,20 @@ private class CompilerDiagnosticsBeyondLimitBackend(
             fileStatuses = listOf(FileAnalysisStatus.analyzed(filePath)),
         )
     }
+}
+
+private class ExactLookupBackend(
+    private val delegate: AnalysisBackend,
+    private val symbols: List<Symbol>,
+    private val resolvedSymbols: List<Symbol> = symbols,
+) : AnalysisBackend by delegate {
+    override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult =
+        WorkspaceSymbolResult(symbols = symbols)
+
+    override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult = SymbolResult(
+        symbol = resolvedSymbols.single { symbol ->
+            symbol.location.filePath == query.position.filePath.value &&
+                symbol.location.startOffset == query.position.offset.value
+        },
+    )
 }

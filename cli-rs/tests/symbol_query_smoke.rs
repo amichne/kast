@@ -4,6 +4,73 @@ use serde_json::Value;
 use support::metrics::*;
 
 #[test]
+fn indexed_exact_lookup_normalizes_backticks_without_rewriting_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    seed_source_index(&workspace);
+    seed_exact_lookup_symbols(&workspace);
+
+    for query in ["`when`", "sample.`when`"] {
+        let response = run_symbol_query(
+            &home,
+            &config_home,
+            &workspace,
+            60,
+            serde_json::json!({"query":query,"modes":["exact"],"limit":10}),
+        );
+        assert_eq!(result_fq_names(&response), vec!["sample.when".to_string()]);
+    }
+}
+
+#[test]
+fn indexed_exact_lookup_returns_all_ambiguous_simple_name_matches() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    seed_source_index(&workspace);
+    seed_exact_lookup_symbols(&workspace);
+
+    let response = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        61,
+        serde_json::json!({"query":"Parser","modes":["exact"],"limit":10}),
+    );
+
+    assert_eq!(
+        result_fq_names(&response),
+        vec!["alpha.Parser".to_string(), "beta.Parser".to_string()]
+    );
+}
+
+#[test]
+fn indexed_exact_lookup_never_returns_lexical_only_candidates() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    seed_source_index(&workspace);
+    seed_exact_lookup_symbols(&workspace);
+
+    let response = run_symbol_query(
+        &home,
+        &config_home,
+        &workspace,
+        62,
+        serde_json::json!({"query":"MissingOrderService","modes":["exact"],"limit":10}),
+    );
+
+    assert_eq!(result_fq_names(&response), Vec::<String>::new());
+}
+
+#[test]
 fn symbol_query_reports_token_evidence_for_camel_case_declarations() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

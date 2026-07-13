@@ -45,6 +45,7 @@ Use compiler identity and typed selectors instead of offsets:
 | Need | Command |
 | --- | --- |
 | symbol lookup | `kast agent symbol --query EventBean --workspace-root "$PWD"` |
+| fuzzy symbol discovery | `kast agent symbol --query event --mode discovery --workspace-root "$PWD"` |
 | references | `kast agent symbol --query EventBean --references --workspace-root "$PWD"` |
 | callers | `kast agent symbol --query process --callers incoming --workspace-root "$PWD"` |
 | diagnostics | `kast agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-root "$PWD"` |
@@ -55,6 +56,13 @@ Use compiler identity and typed selectors instead of offsets:
 Use `agent symbol --query <name>` for lookup. Reserve
 `--symbol <fq-name>` for compiler identity on commands that require a resolved
 target.
+
+Exact lookup returns `RESOLVED`, `NOT_FOUND`, or `AMBIGUOUS` without fuzzy
+selection. Its source is `compiler` when the backend proves identity or
+`indexed-exact` only when the compiler is unavailable and the source index can
+prove every requested constraint. Fuzzy candidates are source `fuzzy` and
+require explicit `--mode discovery`; choose a candidate and rerun exact lookup
+before requesting references or callers.
 
 ## Removed surfaces
 

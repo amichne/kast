@@ -266,3 +266,93 @@ struct AgentRequest {
     runtime: AgentRuntimeArgs,
     full_response: bool,
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSymbolLookupResult {
+    #[serde(rename = "type")]
+    result_type: &'static str,
+    ok: bool,
+    mode: AgentSymbolMode,
+    request: Value,
+    outcome: AgentSymbolLookupOutcome,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentSymbolLookupOutcome {
+    Resolved {
+        source: AgentSymbolLookupSource,
+        symbol: Value,
+        resolution: Value,
+        relations: Vec<AgentSymbolRelation>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        compiler_fallback: Option<AgentCompilerFallback>,
+    },
+    NotFound {
+        source: AgentSymbolLookupSource,
+        query: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        compiler_fallback: Option<AgentCompilerFallback>,
+    },
+    Ambiguous {
+        source: AgentSymbolLookupSource,
+        query: String,
+        candidates: Vec<Value>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        compiler_fallback: Option<AgentCompilerFallback>,
+    },
+    Discovered {
+        source: AgentSymbolLookupSource,
+        query: String,
+        candidates: Vec<Value>,
+    },
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentSymbolLookupSource {
+    Compiler,
+    IndexedExact,
+    Fuzzy,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSymbolRelation {
+    relation: &'static str,
+    result: Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCompilerFallback {
+    code: String,
+    message: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+enum AgentCompilerResolveResponse {
+    #[serde(rename = "RESOLVE_SUCCESS")]
+    Resolved { symbol: AgentCompilerSymbolIdentity },
+    #[serde(rename = "RESOLVE_NOT_FOUND")]
+    NotFound,
+    #[serde(rename = "RESOLVE_AMBIGUOUS")]
+    Ambiguous { candidates: Vec<Value> },
+    #[serde(rename = "RESOLVE_FAILURE")]
+    OperationalFailure,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCompilerSymbolIdentity {
+    fq_name: String,
+    #[serde(flatten)]
+    fields: BTreeMap<String, Value>,
+}

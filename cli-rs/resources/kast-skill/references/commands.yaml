@@ -1477,8 +1477,10 @@ commands:
     failureType: RESOLVE_FAILURE
     method: symbol/resolve
     notes:
-    - The 'symbol' field takes simple names only (e.g. 'key'), never fully-qualified names.
-    - Use 'containingType' for scoping and 'fileHint' for disambiguation.
+    - The 'symbol' field accepts exact simple names or fully-qualified names; backticks are normalized only for comparison.
+    - kind, containingType, and fileHint are hard constraints rather than ranking hints.
+    - RESOLVE_NOT_FOUND and RESOLVE_AMBIGUOUS are expected typed outcomes and never select a fuzzy candidate.
+    - Existing internal consumers must match RESOLVE_NOT_FOUND and RESOLVE_AMBIGUOUS in addition to RESOLVE_SUCCESS and RESOLVE_FAILURE.
     - Set includeDeclarationScope, includeDocumentation, surroundingLines, or includeSurroundingMembers only when the extra context is needed.
     request:
       fields:
@@ -1522,10 +1524,15 @@ commands:
       required:
       - symbol
     responseType: KastResolveResponse
+    responseVariants:
+    - RESOLVE_SUCCESS
+    - RESOLVE_NOT_FOUND
+    - RESOLVE_AMBIGUOUS
+    - RESOLVE_FAILURE
     successType: RESOLVE_SUCCESS
-    summary: Resolve a symbol by name to its declaration and optional context
+    summary: Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes
     tool:
-      description: Resolve a Kotlin symbol to its declaration. Use when a name might be overloaded, inherited, or shadowed; disambiguate with kind, containingType, and fileHint before tracing references or callers.
+      description: Resolve one exact Kotlin symbol identity. A unique match returns RESOLVE_SUCCESS; zero or multiple exact matches return typed not-found or ambiguous outcomes without fuzzy selection.
       name: kast_resolve
   symbol/scaffold:
     category: symbol

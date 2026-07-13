@@ -98,6 +98,7 @@ operating_model_doc="${docs_root}/design/operating-model.md"
 journey_map="${repo_root}/.agents/docs/documentation-journeys.md"
 docs_adr="${repo_root}/.agents/adr/0011-journey-first-documentation-operating-model.md"
 protocol_dir="${repo_root}/cli-rs/protocol"
+api_specification="${protocol_dir}/api-specification.md"
 
 [[ ! -e "${repo_root}/docs/docs.json" ]] || die "docs/docs.json must not be used; zensical.toml owns published navigation"
 [[ ! -d "${docs_root}/adr" ]] || die "agent-focused ADRs must live under .agents/adr, not docs/adr"
@@ -126,6 +127,7 @@ require_absent_path "${docs_root}/cli-cheat-sheet.md" "Old CLI cheat sheet must 
 require_absent_path "${docs_root}/getting-started/backends.md" "Backend essay must not be published"
 [[ -f "${protocol_dir}/openapi.yaml" ]] || die "OpenAPI must remain generated outside the published docs tree"
 [[ -f "${protocol_dir}/api-reference.md" ]] || die "Generated protocol markdown must remain outside the published docs tree"
+require_contains "$api_specification" 'Result variants: `RESOLVE_SUCCESS`, `RESOLVE_NOT_FOUND`, `RESOLVE_AMBIGUOUS`, `RESOLVE_FAILURE`.' "Generated RPC summary must preserve every declared exact-resolve outcome"
 
 require_not_contains "$docs_root" "reference/api-reference" "Published docs must not link generated API reference"
 require_not_contains "$docs_root" "reference/api-specification" "Published docs must not link API specification"

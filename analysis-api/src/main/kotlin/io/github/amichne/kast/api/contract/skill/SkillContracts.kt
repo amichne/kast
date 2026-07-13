@@ -683,36 +683,6 @@ data class KastScaffoldTypeHierarchy(
 )
 
 @Serializable
-sealed interface KastResolveResponse
-
-@Serializable
-@SerialName("RESOLVE_SUCCESS")
-data class KastResolveSuccessResponse(
-    val ok: Boolean = true,
-    val query: KastResolveQuery,
-    val symbol: Symbol,
-    val filePath: String,
-    val offset: Int,
-    val candidate: KastCandidate,
-    val candidateCount: Int? = null,
-    val alternatives: List<String>? = null,
-    val context: KastResolveContext? = null,
-    val logFile: String,
-) : KastResolveResponse
-
-@Serializable
-@SerialName("RESOLVE_FAILURE")
-data class KastResolveFailureResponse(
-    val ok: Boolean = false,
-    val stage: String,
-    val message: String,
-    val query: KastResolveQuery,
-    val logFile: String,
-    val error: ApiErrorResponse? = null,
-    val errorText: String? = null,
-) : KastResolveResponse
-
-@Serializable
 sealed interface KastDiscoverResponse
 
 @Serializable

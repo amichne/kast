@@ -109,66 +109,10 @@ fn execute_agent_verify(args: AgentVerifyArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_symbol(args: AgentSymbolArgs) -> AgentEnvelope {
-    let mut steps = vec![
-        AgentPublicStep::new(
-            "symbol-query",
-            "symbol/query",
-            json!({
-                "query": args.query,
-                "modes": ["exact", "lexical"],
-                "filters": {},
-                "limit": args.limit,
-                "includeEvidence": true,
-                "includeNextRequests": true,
-            }),
-            false,
-        ),
-        AgentPublicStep::new(
-            "symbol-resolve",
-            "symbol/resolve",
-            drop_nulls(json!({
-                "symbol": args.query,
-                "kind": args.kind.map(|kind| kind.canonical()),
-                "fileHint": args.file_hint,
-                "containingType": args.containing_type,
-                "includeDeclarationScope": true,
-                "includeDocumentation": true,
-                "surroundingLines": 3,
-                "includeSurroundingMembers": true,
-            })),
-            false,
-        ),
-    ];
-    if args.references {
-        steps.push(AgentPublicStep::new(
-            "symbol-references",
-            "symbol/references",
-            drop_nulls(json!({
-                "symbol": args.query,
-                "kind": args.kind.map(|kind| kind.canonical()),
-                "fileHint": args.file_hint,
-                "containingType": args.containing_type,
-                "includeDeclaration": true,
-            })),
-            false,
-        ));
+    match args.mode {
+        AgentSymbolMode::Exact => execute_agent_symbol_exact(args),
+        AgentSymbolMode::Discovery => execute_agent_symbol_discovery(args),
     }
-    if let Some(direction) = args.callers {
-        steps.push(AgentPublicStep::new(
-            "symbol-callers",
-            "symbol/callers",
-            drop_nulls(json!({
-                "symbol": args.query,
-                "kind": args.kind.map(|kind| kind.canonical()),
-                "fileHint": args.file_hint,
-                "containingType": args.containing_type,
-                "direction": direction.canonical(),
-                "depth": args.caller_depth,
-            })),
-            false,
-        ));
-    }
-    execute_agent_steps("agent/symbol", args.runtime, steps)
 }
 
 fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {

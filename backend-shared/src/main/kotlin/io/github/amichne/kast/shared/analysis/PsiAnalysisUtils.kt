@@ -22,6 +22,8 @@ import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.protocol.NotFoundException
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
@@ -87,6 +89,19 @@ fun PsiElement.toSymbolModel(
     visibility = visibility(),
     declarationScope = if (includeDeclarationScope) toDeclarationScope() else null,
 )
+
+fun KaSession.compilerContainingDeclarationName(target: PsiElement): String? = when (target) {
+    is KtDeclaration -> when (val symbol = target.symbol) {
+        is KaCallableSymbol -> symbol.callableId?.classId?.asSingleFqName()?.asString()
+        is KaClassSymbol -> symbol.classId?.outerClassId?.asSingleFqName()?.asString()
+        else -> null
+    }
+
+    is PsiMethod -> target.containingClass?.qualifiedName
+    is PsiField -> target.containingClass?.qualifiedName
+    is PsiClass -> target.containingClass?.qualifiedName
+    else -> null
+}
 
 /**
  * Builds a [DeclarationScope] from this element's full text range (not name range).
