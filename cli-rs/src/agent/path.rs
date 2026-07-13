@@ -295,6 +295,15 @@ impl CanonicalKotlinFilePath {
     }
 }
 
+fn normalize_agent_file_target(
+    runtime: &AgentRuntimeArgs,
+    input: &str,
+) -> std::result::Result<String, AgentError> {
+    AgentFilePathNormalizer::from_runtime(runtime)?
+        .normalize(input)
+        .map(CanonicalKotlinFilePath::into_rpc_path)
+}
+
 fn lexically_normalize_absolute(path: &Path) -> Option<PathBuf> {
     if !path.is_absolute() {
         return None;

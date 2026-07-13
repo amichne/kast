@@ -605,7 +605,9 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
     let config_home = temp.path().join("config");
     let content_file = temp.path().join("snippet.kt");
     std::fs::write(&content_file, "fun added() = Unit\n").expect("snippet");
-    let target_file = temp.path().join("Added.kt");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    let target_file = workspace.join("Added.kt");
 
     let cases = [
         (
@@ -688,6 +690,7 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             .arg("--output")
             .arg("json")
             .args(args)
+            .args(["--workspace-root", workspace.to_str().expect("workspace")])
             .output()
             .unwrap_or_else(|error| panic!("{name} plan failed to launch: {error}"));
 
@@ -725,6 +728,127 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             "{stdout}"
         );
     }
+}
+
+#[test]
+fn relative_file_targets_are_canonical_in_mutation_plans() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let target_parent = workspace.join("src/generated");
+    std::fs::create_dir_all(&target_parent).expect("target parent");
+    let content_file = temp.path().join("snippet.kt");
+    std::fs::write(&content_file, "fun added() = Unit\n").expect("snippet");
+    let expected_target = target_parent
+        .canonicalize()
+        .expect("canonical target parent")
+        .join("New File.kt")
+        .display()
+        .to_string();
+
+    let cases = [
+        (
+            "add-file",
+            vec![
+                "agent",
+                "add-file",
+                "--file-path",
+                "src/generated/New File.kt",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            &["filePath"][..],
+        ),
+        (
+            "add-declaration",
+            vec![
+                "agent",
+                "add-declaration",
+                "--inside-file",
+                "src/generated/New File.kt",
+                "--at",
+                "file-bottom",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            &["placement", "scope", "insideFile"][..],
+        ),
+        (
+            "add-implementation",
+            vec![
+                "agent",
+                "add-implementation",
+                "--inside-file",
+                "src/generated/New File.kt",
+                "--at",
+                "body-end",
+                "--content-file",
+                content_file.to_str().expect("snippet"),
+            ],
+            &["placement", "scope", "insideFile"][..],
+        ),
+    ];
+
+    for (name, args, target_path) in cases {
+        let plan = kast(&home, &config_home)
+            .args(["--output", "json"])
+            .args(args)
+            .args(["--workspace-root", workspace.to_str().expect("workspace")])
+            .output()
+            .unwrap_or_else(|error| panic!("{name} plan: {error}"));
+        let document: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("plan JSON");
+        let params = &document["result"]["request"]["params"];
+        let target = target_path
+            .iter()
+            .fold(params, |value, segment| &value[*segment]);
+
+        assert!(
+            plan.status.success(),
+            "{name}: stdout={}, stderr={}",
+            String::from_utf8_lossy(&plan.stdout),
+            String::from_utf8_lossy(&plan.stderr),
+        );
+        assert_eq!(target, &expected_target, "{name}: {document:#}");
+        assert_eq!(
+            params["contentFile"],
+            content_file.to_str().expect("snippet"),
+            "{name}: {document:#}",
+        );
+    }
+}
+
+#[test]
+fn relative_file_target_requires_explicit_workspace_root() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    let content_file = temp.path().join("snippet.kt");
+    std::fs::write(&content_file, "class Added\n").expect("snippet");
+
+    let plan = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "add-file",
+            "--file-path",
+            "Added.kt",
+            "--content-file",
+            content_file.to_str().expect("snippet"),
+        ])
+        .output()
+        .expect("relative add-file plan");
+    let document: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("plan JSON");
+
+    assert!(!plan.status.success(), "{document:#}");
+    assert_eq!(
+        document["error"]["code"], "AGENT_RELATIVE_FILE_REQUIRES_WORKSPACE",
+        "{document:#}",
+    );
 }
 
 #[test]

@@ -210,8 +210,12 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
+    let file_path = match normalize_agent_file_target(&args.runtime, &args.file_path) {
+        Ok(file_path) => file_path,
+        Err(error) => return error_envelope("agent/add-file".to_string(), None, error),
+    };
     let params = json!({
-        "filePath": args.file_path,
+        "filePath": file_path,
         "contentFile": args.content_file.display().to_string(),
     });
     execute_agent_mutation(
@@ -232,9 +236,16 @@ fn execute_agent_scoped_mutation(
     command_name: &'static str,
     args: AgentScopedMutationArgs,
 ) -> AgentEnvelope {
+    let inside_file = match args.inside_file {
+        Some(inside_file) => match normalize_agent_file_target(&args.runtime, &inside_file) {
+            Ok(inside_file) => Some(inside_file),
+            Err(error) => return error_envelope(agent_method.to_string(), None, error),
+        },
+        None => None,
+    };
     let placement = match scoped_placement_params(
         args.inside_scope,
-        args.inside_file,
+        inside_file,
         args.at.map(|anchor| anchor.canonical().to_string()),
         args.after_symbol,
         args.before_symbol,

@@ -138,6 +138,7 @@ pub struct AgentImpactArgs {
 pub struct AgentDiagnosticsArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
+    /// Absolute or workspace-root-relative Kotlin file to analyze. Repeat for multiple files.
     #[arg(long = "file-path", required = true)]
     pub file_paths: Vec<String>,
     #[arg(long)]
@@ -177,7 +178,7 @@ pub struct AgentRenameArgs {
 pub struct AgentAddFileArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
-    /// Absolute path of the Kotlin file to create.
+    /// Absolute or workspace-root-relative path of the Kotlin file to create.
     #[arg(long)]
     pub file_path: String,
     /// File containing the complete content to write.
@@ -194,7 +195,7 @@ pub struct AgentScopedMutationArgs {
     /// Named declaration scope that receives the content.
     #[arg(long)]
     pub inside_scope: Option<String>,
-    /// File scope that receives the content.
+    /// Absolute or workspace-root-relative file scope that receives the content.
     #[arg(long)]
     pub inside_file: Option<String>,
     /// Placement anchor inside the selected scope.
