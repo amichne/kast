@@ -5,12 +5,13 @@
 **Goal:** Ship standalone, compact, identity-first Kotlin relationship
 commands with deterministic bounded paging and typed degraded outcomes.
 
-**Architecture:** Exact symbol lookup produces a canonical selector that five
-typed relationship commands consume. Kotlin skill endpoints translate that
-selector to compiler-owned positions, runtime backends collect deterministic
-bounded evidence, and the Rust CLI validates a query-bound page token before
-projecting closed per-family records. Source impact keeps its Rust/SQLite path
-and adopts the same public paging contract.
+**Architecture:** Exact symbol lookup produces an anchored canonical selector
+that five typed relationship commands consume without overload re-resolution.
+Kotlin skill endpoints verify its declaration file/start offset, runtime
+resolvers collect deterministic evidence under pre-materialization candidate
+budgets, and the Rust CLI wraps each lossless typed cursor in a query-bound page
+token before projecting closed records. Source impact keeps its Rust/SQLite
+path and degrades honestly when its FQ-keyed index cannot isolate an overload.
 
 **Tech Stack:** Kotlin/JVM, JUnit Jupiter, IDEA PSI/search APIs, Rust 2024,
 Clap, serde, SHA-256, SQLite/rusqlite, scripted Unix-socket integration tests,
@@ -19,20 +20,32 @@ generated JSON Schema/OpenAPI contracts, Markdown/Zensical.
 ## Global Constraints
 
 - Rebase the implementation branch after issue #337 lands; do not recreate or
-  bypass its compact projections, positive reference limit, internal reference
-  page offset, separate impact count query, or bounded `limit + 1` fetch.
+  bypass its compact projections, positive reference limit, separate impact
+  count query, bounded `limit + 1` fetch, `ResultCardinality.EXACT` /
+  `KNOWN_MINIMUM`, or source/evidence/returned reference cursor. The current
+  #337 names are provisional; adapt to the landed names without losing fields.
 - Use one non-private top-level Kotlin production type per matching file.
-- Public commands accept exact canonical identity only. They never invoke
-  lexical discovery and never accept raw file offsets or arbitrary JSON.
+- Public commands accept anchored canonical identity only: FQ name,
+  declaration file, and declaration start offset, with optional kind and
+  containing type assertions. Under explicit `--workspace-root`, accept #341
+  workspace-relative declaration paths and normalize/store the canonical path.
+  Never invoke lexical discovery or accept arbitrary JSON.
 - Default relationship limit is 4; valid limits are 1 through 200. Call and
   type hierarchy depth defaults to 1; valid depth is 1 through 8.
-- Public page offsets are capped at 10,000. Detailed output never removes the
-  explicit work limit or page offset.
+- Public tokens preserve each backend cursor losslessly; reference tokens keep
+  source, evidence offset, and returned-before. Cursor evidence offsets are
+  capped at 10,000. Detailed output never removes result or candidate-visit
+  bounds.
 - Compact relationship output must remain at or below 120 lines and 1,500
   `cl100k_base` tokens for high-cardinality fixtures.
 - Missing capabilities and source-index availability return typed degraded
-  outcomes whose codes are a closed enum; malformed payloads and operational
+  outcomes whose codes are a closed enum; reference-index absence with a usable
+  IDEA fallback is not degraded, and FQ-aggregated overload impact uses
+  `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE`. Malformed payloads and operational
   failures remain errors.
+- Resolver candidate work is bounded before list materialization. Every
+  compiler page reports visited-candidate count, consumed evidence, next cursor,
+  and exhaustiveness; tests instrument provider visits.
 - Do not edit issue #338's workspace-inventory implementation or use it as
   semantic relation evidence. Do not model issue #340's Gradle task, plugin,
   dependency, or build-logic relations as Kotlin relationships.
@@ -47,6 +60,8 @@ New and materially changed files have one responsibility:
 
 - `cli-rs/src/agent/relations.rs` owns exact selector orchestration, relation
   request construction, public token validation, and degraded mapping.
+- `cli-rs/src/agent/symbol_lookup.rs` owns removal of the old one-shot
+  references/callers execution path when its flags leave `AgentSymbolArgs`.
 - `cli-rs/src/agent/projection/relations.rs` owns closed compact, field, count,
   verbose, and explain relation projections.
 - `cli-rs/tests/agent_relationship_navigation_smoke.rs` owns CLI composition,
@@ -60,8 +75,12 @@ New and materially changed files have one responsibility:
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/SymbolIdentity.kt`
   owns lightweight compiler identity.
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationPageInfo.kt`
-  and `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/RelationPageOffset.kt`
-  own shared internal paging evidence and validation.
+  and `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/RelationTraversalCursor.kt`
+  own shared lossless cardinality/cursor evidence. The landed #337 reference
+  cursor remains its own source-bound variant.
+- `backend-shared` resolver interfaces own typed candidate-visit budgets and
+  result evidence; `IdeaCallEdgeResolver` and `IdeaTypeEdgeResolver` own
+  deterministic provider iteration before materialization.
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastImplementationsRequest.kt`
   and `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastImplementationsResponse.kt`
   own identity-first implementation lookup.
@@ -78,13 +97,13 @@ The implementation is incomplete until every row is executable:
 
 | Gate | Cases |
 | --- | --- |
-| Public parsing | Commands visible; retired symbol flags rejected; typed direction exhaustive; depth/limit/token ranges fail in Clap. |
-| Identity | FQ identity passes unchanged; optional kind/file/containing hard constraints preserved; not-found/ambiguous stop before relation work; no discovery method called. |
-| References | Containing symbol known/top-level/unavailable; include-declaration explicit; stable ordered pages; 500-record budget fixture. |
-| Calls | Incoming/outgoing fixed by command; BFS ordering; depth and total limit; cycle, timeout, truncation, page continuation, related/containing identity. |
-| Implementations | Interface implementation and class subclass records; exhaustion versus lower bound; deterministic pages; capability absent degrades. |
-| Hierarchy | Supertypes/subtypes/both; depth; cycle; deterministic pages; capability absent degrades. |
-| Impact | Exact count; ordered `limit + 1 offset`; 503 records across non-overlapping pages; missing/incompatible index degrades. |
+| Public parsing | Commands visible; declaration file/offset required together; #341-relative file accepted; retired symbol flags and old execution path rejected; typed direction exhaustive; depth/limit/token ranges fail in Clap. |
+| Identity | Anchored identity passes unchanged; overload fixtures resolve by file/start offset; optional kind/containing assertions are verified; not-found/mismatch stop before relation work; no discovery method called. |
+| References | #337 source/evidence/returned cursor and `EXACT|KNOWN_MINIMUM` round-trip losslessly; containing symbol and `usageSiteScope` do not conflict; include-declaration explicit; stable ordered pages; 500-record budget fixture. |
+| Calls | Incoming/outgoing fixed by command; BFS ordering; depth, result, cursor, and provider-visit bounds; cycle, timeout, truncation, page continuation, related/containing identity. |
+| Implementations | Interface implementation and class subclass records; exact versus known-minimum cardinality; deterministic bounded provider pages; capability absent degrades. |
+| Hierarchy | Supertypes/subtypes/both; depth; cycle; deterministic bounded provider pages; capability absent degrades. |
+| Impact | Unique subject exact count; overload granularity degradation; ordered `limit + 1 offset`; 503 records across non-overlapping pages; missing/incompatible index degrades. |
 | Projection | Wrong item family, invalid counts, false exactness, token/truncation disagreement, and malformed subject fail closed. |
 | Contracts | Catalog, schemas, samples, API docs, OpenAPI, packaged content, and public command docs regenerated and checked. |
 | End to end | Resolve identity, prove references/callers, continue a page, estimate impact; no text search, raw dispatch, or unbounded request. |
@@ -95,6 +114,7 @@ The implementation is incomplete until every row is executable:
 
 - Modify: `cli-rs/src/cli/agent.rs`
 - Modify: `cli-rs/src/agent.rs`
+- Modify: `cli-rs/src/agent/symbol_lookup.rs`
 - Create: `cli-rs/tests/agent_relationship_navigation_smoke.rs`
 - Modify: `cli-rs/tests/agent_command_surface_smoke.rs`
 - Modify: `cli-rs/tests/cli_core_smoke.rs`
@@ -105,7 +125,8 @@ The implementation is incomplete until every row is executable:
 - Produces: `AgentReferencesArgs`, `AgentCallersArgs`, `AgentCalleesArgs`,
   `AgentImplementationsArgs`, `AgentHierarchyArgs`, `AgentRelationLimit`,
   `AgentRelationDepth`, `AgentHierarchyDirection`, and
-  `AgentExactSymbolSelectorArgs` for later execution tasks.
+  anchored `AgentExactSymbolSelectorArgs` for later execution tasks; removes
+  the old `compiler_symbol_relations` execution path.
 
 - [ ] **Step 1: Write RED parsing and help tests**
 
@@ -133,15 +154,59 @@ fn relationship_commands_are_public_and_symbol_relation_flags_are_retired() {
     }
 
     for command in [
-        ["agent", "references", "--symbol", "sample.Service"].as_slice(),
-        ["agent", "callers", "--symbol", "sample.Service.run"].as_slice(),
-        ["agent", "callees", "--symbol", "sample.Service.run"].as_slice(),
-        ["agent", "implementations", "--symbol", "sample.Service"].as_slice(),
+        [
+            "agent",
+            "references",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "src/Service.kt",
+            "--declaration-start-offset",
+            "40",
+        ]
+        .as_slice(),
+        [
+            "agent",
+            "callers",
+            "--symbol",
+            "sample.Service.run",
+            "--declaration-file",
+            "src/Service.kt",
+            "--declaration-start-offset",
+            "80",
+        ]
+        .as_slice(),
+        [
+            "agent",
+            "callees",
+            "--symbol",
+            "sample.Service.run",
+            "--declaration-file",
+            "src/Service.kt",
+            "--declaration-start-offset",
+            "80",
+        ]
+        .as_slice(),
+        [
+            "agent",
+            "implementations",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "src/Service.kt",
+            "--declaration-start-offset",
+            "40",
+        ]
+        .as_slice(),
         [
             "agent",
             "hierarchy",
             "--symbol",
             "sample.Service",
+            "--declaration-file",
+            "src/Service.kt",
+            "--declaration-start-offset",
+            "40",
             "--direction",
             "both",
         ]
@@ -161,9 +226,16 @@ fn relationship_commands_are_public_and_symbol_relation_flags_are_retired() {
 }
 ```
 
-Add a table test for limits `0`, `201`, depths `0`, `9`, unknown hierarchy
-direction, empty symbol, and a malformed page token. Assert exit code 2 and
-that no runtime descriptor or source-index fixture is opened.
+Capture stderr for both retired forms and assert a stable tombstone names
+`kast agent references` or `kast agent callers` respectively. The tombstone
+must be produced before runtime discovery and must not preserve a hidden
+one-shot execution branch.
+
+Add a table test for missing file, missing offset, negative/malformed offset,
+limits `0`/`201`, depths `0`/`9`, unknown hierarchy direction, empty symbol,
+and malformed page token. Prove `src/Service.kt` under an explicit workspace
+root is accepted and normalized canonically. Assert exit code 2 and that no
+runtime descriptor or source-index fixture is opened for invalid input.
 
 - [ ] **Step 2: Run the focused test and confirm RED**
 
@@ -192,10 +264,12 @@ const MAX_RELATION_PAGE_OFFSET: u16 = 10_000;
 pub struct AgentExactSymbolSelectorArgs {
     #[arg(long, value_parser = parse_canonical_symbol_name)]
     pub symbol: CanonicalSymbolName,
+    #[arg(long = "declaration-file")]
+    pub declaration_file: WorkspaceDeclarationFile,
+    #[arg(long = "declaration-start-offset")]
+    pub declaration_start_offset: DeclarationStartOffset,
     #[arg(long, value_enum)]
     pub kind: Option<AgentSymbolKind>,
-    #[arg(long)]
-    pub file_hint: Option<String>,
     #[arg(long, value_parser = parse_canonical_symbol_name)]
     pub containing_type: Option<CanonicalSymbolName>,
 }
@@ -209,9 +283,16 @@ pub enum AgentHierarchyDirection {
 }
 ```
 
-Use Clap range parsers for `--limit 1..=200` and `--depth 1..=8`. Remove
-`references`, `callers`, and `caller_depth` from `AgentSymbolArgs`; leave its
-`--limit` responsible only for discovery candidate cardinality.
+Use Clap range parsers for `--limit 1..=200`, `--depth 1..=8`, and a
+non-negative declaration offset. Remove `references`, `callers`, and
+`caller_depth` from `AgentSymbolArgs`; leave its `--limit` responsible only for
+discovery candidate cardinality. In `symbol_lookup.rs`, delete
+`compiler_symbol_relations`, its exact-mode branches, and discovery-mode flag
+checks that can no longer parse. Add the pre-parse usage tombstone for only the
+retired flag spellings; it reports the replacement command and exits 2 without
+constructing `AgentSymbolArgs`. Add a source-level smoke assertion that the
+removed function and field reads are absent so the old one-shot path cannot
+survive behind hidden routing.
 
 - [ ] **Step 4: Run parsing tests GREEN**
 
@@ -228,7 +309,7 @@ ignored only if their test function is not added until the owning task.
 - [ ] **Step 5: Commit the command contract**
 
 ```console
-git add cli-rs/src/cli/agent.rs cli-rs/src/agent.rs cli-rs/tests/agent_relationship_navigation_smoke.rs cli-rs/tests/agent_command_surface_smoke.rs cli-rs/tests/cli_core_smoke.rs
+git add cli-rs/src/cli/agent.rs cli-rs/src/agent.rs cli-rs/src/agent/symbol_lookup.rs cli-rs/tests/agent_relationship_navigation_smoke.rs cli-rs/tests/agent_command_surface_smoke.rs cli-rs/tests/cli_core_smoke.rs
 git commit -m "feat: define typed relationship commands"
 ```
 
@@ -240,14 +321,13 @@ git commit -m "feat: define typed relationship commands"
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/ContainingSymbolEvidence.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/ContainingSymbolUnavailableReason.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/ReferenceOccurrence.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationCountKind.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationPageInfo.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationPageToken.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/RelationPageOffset.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/RelationTraversalCursor.kt`
+- Create if #337 does not land it: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ReferenceEvidenceSource.kt`
+- Modify after #337 lands: its reference cursor and cardinality owner files under `analysis-api/src/main/kotlin/`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/ReferencesQuery.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/ReferencesResult.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedReferencesQuery.kt`
-- Delete: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ReferencePageOffset.kt`
 - Modify: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/ParsedModelsTest.kt`
 - Create: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt`
 - Modify: `analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt`
@@ -255,11 +335,14 @@ git commit -m "feat: define typed relationship commands"
 
 **Interfaces:**
 
-- Consumes: #337's `PositiveInt`, `ReferencesQuery.maxResults`, canonical
-  reference offset, `ReferencesResult.totalCount`, and `PageInfo` behavior.
+- Consumes: #337's `PositiveInt`, `ReferencesQuery.maxResults`, provisional
+  `ReferencePageCursor(source, evidenceOffset, returnedBefore)`,
+  `ResultCardinality.EXACT|KNOWN_MINIMUM`, and `PageInfo` behavior. Rebase and
+  use the landed names if they change.
 - Produces: `SymbolIdentity`, closed `ContainingSymbolEvidence`,
-  `ReferenceOccurrence`, `RelationPageInfo`, and reusable
-  `RelationPageOffset` for all Kotlin relationship endpoints.
+  `ReferenceOccurrence`, `RelationPageInfo`, and a reusable traversal cursor
+  for non-reference Kotlin relationship endpoints. It does not replace or
+  flatten #337's reference cursor.
 
 - [ ] **Step 1: Write RED model tests for proof states and page invariants**
 
@@ -280,11 +363,14 @@ val unavailable = ContainingSymbolEvidence.Unavailable(
 )
 ```
 
-Test `RelationPageOffset.parse("0")`, `parse("10000")`, and rejection of
-`-1`, `10001`, whitespace, signs, and non-decimal input. Test that
-`RelationPageInfo` rejects returned count greater than known count, a next
-offset without truncation, truncation without a next offset, and an exact
-count smaller than `offset + returnedCount`.
+Round-trip `ReferencePageCursor(SOURCE_INDEX, 7, 4)` and
+`ReferencePageCursor(IDEA, 9, 4)` through the shared page model and JSON; source,
+evidence offset, and returned-before must survive unchanged. Test traversal
+cursor evidence offsets `0` and `10000` and reject `-1`, `10001`, whitespace,
+signs, and non-decimal input. Test that `RelationPageInfo` rejects returned
+count greater than exact cardinality, `KNOWN_MINIMUM` below returned-before plus
+page results, a next cursor without truncation, truncation without a next
+cursor, and visited count above the declared candidate budget.
 
 - [ ] **Step 2: Run the API tests and confirm RED**
 
@@ -306,6 +392,7 @@ data class SymbolIdentity(
     val fqName: String,
     val kind: SymbolKind,
     val location: Location,
+    val containingType: String? = null,
 )
 
 sealed interface ContainingSymbolEvidence {
@@ -322,48 +409,40 @@ data class ReferenceOccurrence(
 )
 
 data class RelationPageInfo private constructor(
-    val offset: RelationPageOffset,
-    val knownCount: Int,
-    val countKind: RelationCountKind,
+    val cursor: RelationTraversalCursor,
+    val cardinality: ResultCardinality,
     val returnedCount: Int,
+    val returnedBefore: Int,
+    val visitedCandidateCount: Int,
     val truncated: Boolean,
-    val nextPageToken: RelationPageToken?,
+    val nextCursor: RelationTraversalCursor?,
 ) {
     companion object {
         fun create(
-            offset: RelationPageOffset,
-            knownCount: Int,
-            countKind: RelationCountKind,
+            cursor: RelationTraversalCursor,
+            cardinality: ResultCardinality,
             returnedCount: Int,
+            returnedBefore: Int,
+            visitedCandidateCount: Int,
+            candidateVisitLimit: Int,
             hasMore: Boolean,
         ): RelationPageInfo
     }
 }
 
-@JvmInline
-value class RelationPageOffset private constructor(val value: Int) {
-    companion object {
-        const val MAX_VALUE: Int = 10_000
-        fun parse(raw: String): RelationPageOffset
-        fun from(value: Int): RelationPageOffset
-    }
-}
-
-@JvmInline
-value class RelationPageToken private constructor(val value: String) {
-    fun offset(): RelationPageOffset
-
-    companion object {
-        fun from(offset: RelationPageOffset): RelationPageToken
-        fun parse(raw: String): RelationPageToken
-    }
-}
+data class RelationTraversalCursor(
+    val evidenceOffset: NonNegativeInt,
+    val returnedBefore: NonNegativeInt,
+)
 ```
 
 Change `ReferencesResult.references` to `List<ReferenceOccurrence>`. Replace
-#337's reference-specific offset with `RelationPageOffset` without weakening
-its positive request limit or two-page no-overlap contract. Record this shared
-relationship contract in `analysis-api/AGENTS.md`.
+#337's bare locations but preserve `ReferencePageCursor` and
+`ResultCardinality` losslessly. Keep `Location.usageSiteScope` and
+`ReferencesQuery.includeUsageSiteScope` as the optional structural-scope
+contract; `ReferenceOccurrence.containingSymbol` is separate semantic identity
+evidence. Record the provisional #337 dependency and shared relationship
+contract in `analysis-api/AGENTS.md`.
 
 - [ ] **Step 4: Run API tests GREEN**
 
@@ -388,15 +467,18 @@ git commit -m "feat: model typed relationship evidence"
 **Files:**
 
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
+- Modify after #337 lands: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ReferenceIndexLookup.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
 - Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/SkillRpcOrchestrator.kt`
 - Modify: `analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt`
 
 **Interfaces:**
 
-- Consumes: `ReferenceOccurrence`, `ContainingSymbolEvidence`,
-  `RelationPageOffset`, and #337's positive reference limit.
-- Produces: exact `totalCount`, deterministic `limit + 1` pages, and semantic
+- Consumes: `ReferenceOccurrence`, `ContainingSymbolEvidence`, #337's positive
+  reference limit, source-bound `ReferencePageCursor`, `ResultCardinality`, and
+  optional `includeUsageSiteScope`.
+- Produces: deterministic bounded reference pages, truthful exact or
+  known-minimum cardinality, source-pinned continuation, and semantic
   containing-symbol proof for the existing `symbol/references` endpoint.
 
 - [ ] **Step 1: Add RED backend and server scenarios**
@@ -410,13 +492,20 @@ assertEquals(first.references.map { it.location }.toSet().size, first.references
 assertTrue(first.references.none { it in second.references })
 assertEquals((0 until 4).toList(), first.references.map { it.location.startLine })
 assertEquals((4 until 8).toList(), second.references.map { it.location.startLine })
-assertEquals(205, first.totalCount)
-assertEquals("4", first.page?.nextPageToken)
+assertEquals(ResultCardinality.KnownMinimum(5), first.cardinality)
+val firstCursor = ReferencePageCursor.parse(first.page?.nextPageToken)
+assertEquals(ReferenceEvidenceSource.IDEA, firstCursor.source)
+assertEquals(5, firstCursor.evidenceOffset.value)
+assertEquals(4, firstCursor.returnedBefore.value)
 ```
 
-At the dispatcher boundary, assert `maxResults=4` and `pageToken="4"` become
-typed query values and that malformed tokens return the relationship usage
-error without calling the fake backend.
+Add an exhaustive four-reference fixture that reports
+`ResultCardinality.Exact(4)` and an indexed fixture whose authoritative count
+also reports exact. At the dispatcher boundary, assert `maxResults=4` and a
+source/evidence/returned cursor become typed query values. Malformed cursors
+return the relationship usage error without calling the fake backend. If page
+one binds IDEA and page two finds only the index source, assert
+`REFERENCE_CURSOR_SOURCE_UNAVAILABLE`; it must not restart at index offset.
 
 - [ ] **Step 2: Run the focused tests and confirm RED**
 
@@ -432,13 +521,18 @@ containing-symbol evidence.
 
 - [ ] **Step 3: Collect proof while PSI is owned and preserve bounded work**
 
-Map each `ReferencesSearch` usage to a `ReferenceOccurrence` in the IDEA
-read-action. Convert the nearest supported containing declaration to
-`SymbolIdentity`; emit `TopLevel` only after proving no containing declaration,
-and `Unavailable` when a declaration exists but semantic conversion fails.
-Sort occurrences by normalized file path, start offset, end offset, and known
-containing FQ name. Count cardinality separately, then slice only
-`offset..offset + limit + 1` and drop the proof record.
+Use #337's selected reference source and cursor as authority. Ask that source
+for at most the evidence needed to return `limit + 1` usable occurrences; stop
+at its candidate-visit budget before materializing an unbounded collection.
+Map those bounded usages to `ReferenceOccurrence` in the IDEA read-action.
+Convert the nearest supported containing declaration to `SymbolIdentity`; emit
+`TopLevel` only after proving no containing declaration, and `Unavailable` when
+a declaration exists but semantic conversion fails. Preserve separately
+requested `Location.usageSiteScope` on the same bounded PSI pass. Sort by
+normalized file path, start offset, end offset, and known containing FQ name.
+Return `EXACT` only after source exhaustion or from an authoritative exact
+count for the same query; otherwise preserve `KNOWN_MINIMUM`. Drop only the
+extra continuation occurrence.
 
 - [ ] **Step 4: Run reference tests GREEN and inspect diagnostics**
 
@@ -482,10 +576,17 @@ git commit -m "feat: report bounded reference ownership"
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/CallHierarchyQuery.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/ImplementationsQuery.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/TypeHierarchyQuery.kt`
+- Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/CallEdgeResolver.kt`
+- Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/TypeEdgeResolver.kt`
+- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/RelationCandidateVisitBudget.kt`
+- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/RelationCandidateBatch.kt`
 - Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/CallHierarchyEngine.kt`
 - Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/TypeHierarchyEngine.kt`
 - Create: `backend-shared/src/test/kotlin/io/github/amichne/kast/shared/hierarchy/RelationshipPagingTest.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaCallEdgeResolver.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaTypeEdgeResolver.kt`
+- Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaRelationCandidateBudgetTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
 - Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/RpcAnalysisDispatcher.kt`
 - Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/SkillRpcOrchestrator.kt`
@@ -493,9 +594,9 @@ git commit -m "feat: report bounded reference ownership"
 
 **Interfaces:**
 
-- Consumes: exact resolver outcomes, `RelationPageOffset`, positive limits,
-  `SymbolIdentity`, backend capability enums, and full-fidelity raw hierarchy
-  results.
+- Consumes: anchored selector outcomes, `RelationTraversalCursor`, positive
+  limits, `SymbolIdentity`, backend capability enums, and full-fidelity raw
+  hierarchy results.
 - Produces: internal `symbol/implementations` and `symbol/hierarchy` methods;
   paged flat call/implementation/hierarchy records; typed available,
   subject-not-found, subject-ambiguous, degraded, and failure variants.
@@ -507,19 +608,37 @@ canonical order. Assert breadth-first call pages and identity-sorted
 implementation/type pages. The page window assertion is:
 
 ```kotlin
-val first = engine.query(offset = RelationPageOffset.from(0), limit = PositiveInt.from(4))
-val second = engine.query(offset = RelationPageOffset.from(4), limit = PositiveInt.from(4))
+val visitBudget = RelationCandidateVisitBudget.from(65)
+val first = engine.query(
+    cursor = RelationTraversalCursor.FIRST,
+    limit = PositiveInt.from(4),
+    candidateVisitBudget = visitBudget,
+)
+val second = engine.query(
+    cursor = requireNotNull(first.page.nextCursor),
+    limit = PositiveInt.from(4),
+    candidateVisitBudget = visitBudget,
+)
 assertEquals(4, first.records.size)
 assertEquals(4, second.records.size)
 assertTrue(first.records.toSet().intersect(second.records.toSet()).isEmpty())
-assertEquals(RelationCountKind.LOWER_BOUND, first.page.countKind)
-assertEquals(RelationCountKind.EXACT, second.page.countKind)
+assertEquals(ResultCardinality.KnownMinimum(5), first.page.cardinality)
+assertEquals(ResultCardinality.Exact(8), second.page.cardinality)
+assertTrue(first.page.visitedCandidateCount <= visitBudget.value)
 ```
 
-Add dispatcher scenarios for each endpoint covering resolved, not found,
-ambiguous, missing capability, and malformed backend payload. Assert that a
-missing capability returns the exact ADR 0022 degraded code and no raw backend
-query is issued.
+Add overloaded functions with the same FQ name, kind, file, and containing type
+but different start offsets; prove the anchor selects only the requested
+declaration. Add dispatcher scenarios for each endpoint covering
+resolved, not found, identity mismatch, compatibility ambiguity, missing
+capability, and malformed backend payload. Assert that a missing capability
+returns the exact ADR 0022 degraded code and no raw backend query is issued.
+
+Instrument fake call/type candidate providers with an atomic visit counter.
+Seed 20,000 incoming references, a declaration with 20,000 outgoing PSI
+candidates, and 20,000 direct inheritor keys. For a four-result page, assert the
+provider stops at the declared visit budget before returning a batch. Add a
+tripwire provider whose `findAll`/unbounded-list method throws if called.
 
 - [ ] **Step 2: Run focused Kotlin tests and confirm RED**
 
@@ -536,7 +655,11 @@ contracts do not exist.
 
 Move materially edited public caller request/query/response roots out of
 `SkillContracts.kt`. Direct response variants stay in the response root file.
-Use the same closed outcome vocabulary for all three families:
+Every request carries `KastExactSymbolSelector(fqName, declarationFile,
+declarationStartOffset, kind, containingType)`. Parse the file through the #341
+workspace path boundary and the offset through `NonNegativeInt`; the parsed
+selector stores the canonical file path. Use the same closed outcome vocabulary
+for all three families:
 
 ```kotlin
 sealed interface KastHierarchyResponse {
@@ -547,6 +670,10 @@ sealed interface KastHierarchyResponse {
     ) : KastHierarchyResponse
 
     data class SubjectNotFound(val selector: KastExactSymbolSelector) : KastHierarchyResponse
+    data class SubjectIdentityMismatch(
+        val selector: KastExactSymbolSelector,
+        val actual: SymbolIdentity?,
+    ) : KastHierarchyResponse
     data class SubjectAmbiguous(val candidates: List<SymbolIdentity>) : KastHierarchyResponse
     data class Degraded(
         val code: RelationDegradedCode,
@@ -561,12 +688,26 @@ and hierarchy depth are required by construction rather than nullable fields.
 
 - [ ] **Step 4: Implement deterministic bounded traversal and dispatch**
 
-Sort every child/candidate collection before traversal. Calls flatten
+Resolve the selector's file/start offset directly, then verify FQ name, kind,
+and containing type. Do not invoke workspace symbol search. Add
+`RelationCandidateVisitBudget` with a per-page maximum derived from the result
+limit and capped at 4,096 visits. The call/type resolver interfaces accept the
+current evidence cursor and remaining visit budget and return
+`RelationCandidateBatch(records, consumedEvidence, visitedCandidateCount,
+nextCursor, exhaustive)` before the engines build public records.
+
+`IdeaCallEdgeResolver` must stop `ReferencesSearch` processing at the budget;
+incoming evidence uses canonical file/offset order and outgoing evidence uses
+lexical declaration offsets without first walking the complete declaration.
+`IdeaTypeEdgeResolver` iterates canonical `(fqName, kind, file, offset)` class
+index keys with a stoppable processor and never calls `findAll()`. Calls flatten
 breadth-first using `(depth, parent identity, related identity, call-site)`;
-implementations and hierarchy sort by `(fqName, kind, file, offset)`. Request
-no more than `offset + limit + 1`, retain cycle/timeout/max-depth evidence, and
-return exact counts only when exhausted. Map `CALL_HIERARCHY`,
-`IMPLEMENTATIONS`, and `TYPE_HIERARCHY` absence to their typed degraded codes.
+implementations and hierarchy use the same canonical identity order. Preserve
+consumed evidence and returned-before in the next cursor, retain
+cycle/timeout/max-depth/candidate-budget evidence, and return
+`ResultCardinality.Exact` only when exhausted; otherwise return
+`KnownMinimum`. Map missing `CALL_HIERARCHY`, `IMPLEMENTATIONS`, and
+`TYPE_HIERARCHY` capabilities to their typed degraded codes.
 
 - [ ] **Step 5: Run Kotlin tests GREEN**
 
@@ -612,14 +753,18 @@ git commit -m "feat: add identity-first relationship endpoints"
 - [ ] **Step 1: Add RED end-to-end scripted-backend tests**
 
 Script exact identities and each internal method. Resolve `sample.Service`
-once through `agent symbol`, copy `result.identity.fqName`, and invoke all five
-commands. Assert the backend receives canonical `symbol`, hard selector fields,
-limit `4`, offset `0`, fixed call direction, and depth. Assert no request uses
-`symbol/query`, lexical mode, or a public raw method.
+once through `agent symbol`, copy FQ name, declaration file, and declaration
+start offset, and invoke all five commands. Use workspace-relative
+`--declaration-file src/Service.kt` with explicit `--workspace-root`, then
+assert the backend receives the normalized canonical path, offset, optional
+hard assertions, limit `4`, first typed cursor, fixed call direction, and depth.
+Assert no request uses `symbol/query`, lexical mode, or a public raw method.
 
-Add a first references page with internal next offset 4, capture the public
-token, invoke page two, and assert no overlapping records. Reuse that token
-with a different symbol, workspace, relation, and depth; each must return
+Add a first references page with
+`ReferencePageCursor(IDEA, evidenceOffset=7, returnedBefore=4)`, capture the
+public token, invoke page two, and assert the identical source/evidence/returned
+fields reach Kotlin with no overlap. Reuse that token with a different anchor,
+workspace, relation, and depth; each must return
 `RELATION_PAGE_TOKEN_MISMATCH` before the scripted backend receives a request.
 
 - [ ] **Step 2: Run the Rust relation test and confirm RED**
@@ -634,23 +779,33 @@ Expected: FAIL because execution and relation projection are not wired.
 
 - [ ] **Step 3: Implement the exact public token format**
 
-Serialize tokens as four dot-separated fields:
+Serialize tokens as five dot-separated fields:
 
 ```text
-krp1.<relation-kind>.<24-lowercase-hex-sha256-prefix>.<decimal-offset>
+krp1.<relation-kind>.<24-lowercase-hex-sha256-prefix>.<cursor-tag>.<base64url-cursor>
 ```
 
 The SHA-256 input is newline-delimited canonical workspace root, relation
-kind, FQ symbol, optional canonical kind/file/containing type,
+kind, FQ symbol, canonical declaration file/start offset, optional kind and
+containing type,
 include-declaration choice, fixed direction, depth, and page limit. Parsing
-must reject unknown versions/kinds, non-lowercase hex, offsets above 10,000,
-and a fingerprint mismatch. Keep both decoded offset and query proof private:
+must reject unknown versions/kinds/cursor tags, non-lowercase hex, malformed
+base64url, evidence offsets above 10,000, and a fingerprint mismatch. Reference
+cursor serialization includes `source`, `evidenceOffset`, and `returnedBefore`
+with canonical field order. Keep the decoded typed cursor and query proof
+private:
 
 ```rust
 struct AgentRelationPageToken {
     relation: AgentRelationKind,
     query_fingerprint: [u8; 12],
-    offset: AgentRelationPageOffset,
+    cursor: AgentRelationCursor,
+}
+
+enum AgentRelationCursor {
+    Reference(AgentReferencePageCursor),
+    Traversal(AgentTraversalCursor),
+    Impact(AgentImpactPageOffset),
 }
 ```
 
@@ -671,11 +826,15 @@ enum AgentRelationRecord {
 ```
 
 Project `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_AMBIGUOUS`, and `DEGRADED`
-as expected typed results. Reject wrong-family records, returned-count
-mismatches, false exact counts, truncation without a next offset, or a next
-offset without truncation as `INVALID_RELATION_RESPONSE`. Move reusable #337
-location/identity helpers out of symbol-only code without duplicating their
-wire validation.
+as expected typed results, adding `SUBJECT_IDENTITY_MISMATCH`. Reject
+wrong-family records, returned-count mismatches, false exact cardinality,
+lossy `KNOWN_MINIMUM`, visited-candidate counts over budget, truncation without
+a next cursor, or a next cursor without truncation as
+`INVALID_RELATION_RESPONSE`. Map absent `FIND_REFERENCES` to
+`REFERENCES_UNAVAILABLE`; an unavailable reference index with IDEA evidence is
+an available result, not degradation. Move reusable #337 cardinality,
+location, and identity helpers out of symbol-only code without duplicating
+their wire validation.
 
 - [ ] **Step 5: Run focused Rust tests GREEN**
 
@@ -686,8 +845,8 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_relationship_
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projection_smoke --test agent_command_surface_smoke
 ```
 
-Expected: all tests PASS, and detailed view requests retain the same limit and
-offset as compact requests.
+Expected: all tests PASS, and detailed view requests retain the same limit,
+cursor, and candidate-visit budget as compact requests.
 
 - [ ] **Step 6: Commit public relationship execution**
 
@@ -715,16 +874,20 @@ git commit -m "feat: navigate relationships by exact identity"
 
 - Consumes: #337's exact count query, bounded impact fetch, typed impact
   projection, and Task 5 public token codec.
-- Produces: impact `--page-token`, internal typed offset, stable ordering, and
-  exact page evidence.
+- Produces: anchored impact `--page-token`, internal typed offset, stable
+  ordering, exact page evidence for unique FQ identities, and typed overload
+  granularity degradation.
 
 - [ ] **Step 1: Add RED 503-node database and CLI paging tests**
 
-Seed 503 impact nodes in reverse insertion order. Query offsets 0 and 4 with
-limit 4. Assert both report total 503, return four unique nodes, and sort by
-`(depth, sourcePath, viaTargetFqName, edgeKind)`. At the CLI boundary, capture
-page one's token and assert page two has no overlap. Assert a references token
-and a token for another symbol fail before SQLite opens.
+Seed one anchored declaration with 503 impact nodes in reverse insertion order.
+Query offsets 0 and 4 with limit 4. Assert both report total 503, return four
+unique nodes, and sort by `(depth, sourcePath, viaTargetFqName, edgeKind)`. Add
+two anchored overloads sharing one FQ name and seed aggregate edges; selecting
+either must return `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE`, name the aggregate
+FQ identity, and issue no impact-row query. At the CLI boundary, capture page
+one's token and assert page two has no overlap. Assert a references token and a
+token for another declaration anchor fail before exact resolution or SQLite.
 
 - [ ] **Step 2: Run impact tests and confirm RED**
 
@@ -739,8 +902,12 @@ Expected: FAIL because impact has no page-token argument or offset query.
 
 - [ ] **Step 3: Add typed offset to the direct metrics request**
 
-Extend only impact requests with `RelationPageOffset`; other metrics remain
-unchanged. Preserve the independent count query. The row query must end with:
+Extend only impact requests with `AgentImpactPageOffset`; other metrics remain
+unchanged. Before metrics execution, verify the declaration anchor and use the
+bounded exact resolver (cardinality limit two, never fuzzy discovery) to prove
+whether the FQ name is unique. A second exact declaration returns the overload
+granularity degraded result. Preserve the independent count query for unique
+subjects. The row query must end with:
 
 ```sql
 ORDER BY depth ASC,
@@ -752,7 +919,8 @@ LIMIT ?1 OFFSET ?2
 
 Bind `limit + 1` and the validated offset. Drop only the extra continuation
 row. Return exact total count, returned count, truncation, and internal next
-offset; the projection wraps that offset in the query-bound public token.
+offset; the projection wraps that offset in the query-bound public token. Never
+label FQ-aggregated rows as evidence for one overload.
 
 - [ ] **Step 4: Run impact and projection tests GREEN**
 
@@ -798,10 +966,13 @@ git commit -m "feat: page source impact by identity"
 - [ ] **Step 1: Add RED package, catalog, and workflow assertions**
 
 Assert packaged guidance names all five public commands, teaches exact symbol
-identity first, demonstrates one page continuation, and forbids `rg`, `grep`,
-`find`, `agent call`, and raw position methods in the positive workflow. Add a
-catalog test requiring `symbol/implementations` and `symbol/hierarchy` request
-schemas and every typed response variant.
+anchored identity first, demonstrates one page continuation, and forbids `rg`,
+`grep`, `find`, `agent call`, and unchecked raw position methods in the
+positive workflow. Require workspace-relative declaration-file examples under
+explicit `--workspace-root`. Add a catalog test requiring
+`symbol/implementations` and `symbol/hierarchy` request schemas and every typed
+response variant, including identity mismatch, references unavailable,
+cursor-source unavailable, and impact overload granularity unavailable.
 
 Build high-cardinality public fixtures with 500 references, 250
 implementations, a cyclic branching call graph, a deep type hierarchy, and 503
@@ -814,6 +985,11 @@ assert_eq!(result["returnedCount"], 4);
 assert_eq!(result["truncated"], true);
 assert!(result["nextPageToken"].is_string());
 ```
+
+For compiler families, also assert `visitedCandidateCount` does not exceed the
+scripted request budget. Reference fixtures must include one `KNOWN_MINIMUM`
+page and one exhaustive `EXACT` page; token decoding in the scripted backend
+must observe the original source/evidence/returned cursor fields.
 
 - [ ] **Step 2: Run contract tests and confirm RED**
 
@@ -834,14 +1010,36 @@ Update references/callers fields and response variants. Teach this exact
 public sequence in docs and the installed skill:
 
 ```console
-kast agent symbol --query OrderService --fields identity,location --workspace-root "$PWD"
-kast agent references --symbol com.example.OrderService --workspace-root "$PWD"
-kast agent callers --symbol com.example.OrderService.submit --depth 2 --workspace-root "$PWD"
-kast agent impact --symbol com.example.OrderService --depth 2 --workspace-root "$PWD"
+kast agent symbol \
+  --query OrderService \
+  --fields identity,location \
+  --workspace-root "$PWD"
+
+kast agent references \
+  --symbol com.example.OrderService \
+  --declaration-file src/main/kotlin/OrderService.kt \
+  --declaration-start-offset 128 \
+  --workspace-root "$PWD"
+
+kast agent callers \
+  --symbol com.example.OrderService.submit \
+  --declaration-file src/main/kotlin/OrderService.kt \
+  --declaration-start-offset 244 \
+  --depth 2 \
+  --workspace-root "$PWD"
+
+kast agent impact \
+  --symbol com.example.OrderService \
+  --declaration-file src/main/kotlin/OrderService.kt \
+  --declaration-start-offset 128 \
+  --depth 2 \
+  --workspace-root "$PWD"
 ```
 
-Explain typed degraded outcomes and page-token reuse without exposing token
-encoding, raw RPC method names, or backend implementation classes.
+Explain typed degraded outcomes, `EXACT` versus `KNOWN_MINIMUM`, reference
+source pinning, overload-wide impact limitations, and page-token reuse without
+exposing token encoding, raw RPC method names, or backend implementation
+classes.
 
 - [ ] **Step 4: Regenerate every derived contract**
 
@@ -903,10 +1101,12 @@ git status --short --branch
 ```
 
 Inspect every materially edited Kotlin file for one matching non-private
-top-level production type. Confirm the diff does not touch #338
-`workspace_inventory` files or introduce Gradle task/plugin relation claims.
-Confirm all SQL row queries are bounded and all detailed relation requests
-carry the explicit limit and offset.
+top-level production type. Confirm the diff removes the old
+`compiler_symbol_relations` path and its flag reads, updates the IDEA resolvers
+that own candidate enumeration, does not touch #338 `workspace_inventory`
+files, and introduces no Gradle task/plugin relation claims. Confirm SQL row
+queries carry impact limit/offset and compiler requests carry the typed cursor
+plus candidate-visit budget.
 
 - [ ] **Step 2: Run complete Kotlin verification**
 
@@ -942,11 +1142,13 @@ Expected: all commands exit 0.
 - [ ] **Step 5: Record proof and request independent review**
 
 Write `.agent-turn/issue-339-report.md` with commit SHAs, exact commands,
-terminal results, output-budget maxima, and the known unprepared-worktree Kast
-limitation. Ask a fresh reviewer to check exact identity, token binding,
-count/truncation truthfulness, capability degradation, SQL/backend bounds, and
-#338/#340 isolation. Repair findings with new focused RED/GREEN commits and
-rerun affected plus full gates.
+terminal results, output-budget maxima, the landed #337 cursor/cardinality type
+names, and the known unprepared-worktree Kast limitation. Ask a fresh reviewer
+to check anchored overload identity, lossless token binding,
+cardinality/truncation truthfulness, capability versus fallback degradation,
+pre-materialization candidate bounds, SQL bounds, and #338/#340 isolation.
+Repair findings with new focused RED/GREEN commits and rerun affected plus full
+gates.
 
 - [ ] **Step 6: Leave the branch clean**
 
