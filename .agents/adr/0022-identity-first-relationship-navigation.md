@@ -9,27 +9,56 @@ surface and supersedes ADR 0016 only for the one-shot relationship flags on
 `kast agent symbol`. It extends ADR 0020's compact projection and bounded-work
 rules. Issue #337 must land before this decision is implemented because its
 reference paging, relationship budgets, impact counts, and projection types
-are the starting contract.
+are the starting contract. The names `ReferencePageCursor` and
+`ResultCardinality` in this ADR refer to the current #337 branch and remain
+provisional until that issue freezes; #339 rebases and adapts to the landed
+types instead of duplicating them.
 
 ## Decision
 
 Kast exposes five standalone typed relationship commands:
 
 ```console
-kast agent references --symbol <fq-name>
-kast agent callers --symbol <fq-name>
-kast agent callees --symbol <fq-name>
-kast agent implementations --symbol <fq-name>
-kast agent hierarchy --symbol <fq-name> --direction supertypes|subtypes|both
+kast agent references \
+  --symbol <fq-name> \
+  --declaration-file <workspace-relative-path> \
+  --declaration-start-offset <offset> \
+  --workspace-root <root>
+
+kast agent callers \
+  --symbol <fq-name> \
+  --declaration-file <workspace-relative-path> \
+  --declaration-start-offset <offset> \
+  --workspace-root <root>
+
+kast agent callees \
+  --symbol <fq-name> \
+  --declaration-file <workspace-relative-path> \
+  --declaration-start-offset <offset> \
+  --workspace-root <root>
+
+kast agent implementations \
+  --symbol <fq-name> \
+  --declaration-file <workspace-relative-path> \
+  --declaration-start-offset <offset> \
+  --workspace-root <root>
+
+kast agent hierarchy \
+  --symbol <fq-name> \
+  --declaration-file <workspace-relative-path> \
+  --declaration-start-offset <offset> \
+  --direction supertypes|subtypes|both \
+  --workspace-root <root>
 ```
 
-`kast agent impact --symbol <fq-name>` remains the source-index relationship
-command. The compact `identity.fqName`, `identity.kind`, and declaration
-location returned by exact `kast agent symbol` lookup feed these commands
-directly. The commands accept a canonical fully-qualified `--symbol` and the
-same optional hard `--kind`, `--file-hint`, and `--containing-type` selectors
-as exact lookup. They never accept discovery mode and never run lexical or
-fuzzy discovery implicitly.
+`kast agent impact` accepts the same anchored selector and remains the
+source-index relationship command. The compact `identity.fqName`,
+`identity.kind`, `identity.declarationFile`, and
+`identity.declarationStartOffset` returned by exact `kast agent symbol` lookup
+feed these commands directly. `--kind` and `--containing-type` remain optional
+hard assertions; `--declaration-file` and `--declaration-start-offset` are a
+required pair. The commands never accept discovery mode and never run lexical
+or fuzzy discovery implicitly.
 
 The relationship commands replace `kast agent symbol --references`,
 `--callers`, and `--caller-depth`. Symbol lookup returns identity; a relation
@@ -55,18 +84,31 @@ relation or query fail at the typed command boundary.
 
 ## Identity contract
 
-The public reusable identity remains the exact compiler identity defined by
-ADR 0016, not an opaque session handle. `fqName` is required. `kind`,
-declaration file, and containing type are hard disambiguators when the name is
-not unique. A relation request with zero exact matches returns
-`SUBJECT_NOT_FOUND`; multiple exact matches return `SUBJECT_AMBIGUOUS` with
-bounded candidate identities. Neither outcome selects a candidate.
+The public reusable identity remains a compiler identity defined from ADR
+0016, not a session handle, but FQ name alone is not exact for overloads. The
+selector therefore carries canonical FQ name, normalized canonical declaration
+file, and non-negative declaration start offset. The CLI accepts #341
+workspace-relative declaration paths under explicit `--workspace-root` and
+stores/reports their canonical spelling. Optional kind and containing type are
+assertions copied from exact lookup. File and offset identify the resolved
+declaration; the backend resolves that anchor and verifies every supplied
+identity field before relationship work. It never searches by FQ name and then
+chooses an overload.
 
-An implementation must model the selector as a validated type. It must not
-pass an unchecked string from Clap directly into a raw position request.
-After exact resolution, the backend's canonical identity and declaration
-location own any position-based internal call. Public callers do not supply
-byte offsets or raw JSON.
+An absent anchor is a typed command-usage failure. A missing declaration is
+`SUBJECT_NOT_FOUND`; an anchor that now resolves to another declaration is
+`SUBJECT_IDENTITY_MISMATCH`. `SUBJECT_AMBIGUOUS` remains an exact-lookup
+outcome and may be preserved on internal compatibility requests, but a valid
+anchored public selector cannot select ambiguously. Public callers copy the
+typed declaration anchor returned by Kast; they do not invent unchecked raw
+backend positions or arbitrary JSON.
+
+The source index currently keys impact edges by FQ name, not declaration
+anchor or callable signature. Impact first verifies the anchored subject. If
+more than one declaration shares that FQ name, it returns `DEGRADED` with
+`IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE` and the aggregate FQ name; it does
+not present FQ-wide edges as impact for the selected overload. A unique
+declaration may use the FQ-wide index result normally.
 
 ## Result contract
 
@@ -94,29 +136,37 @@ conflate those states. Reference collection resolves the
 containing declaration while it already owns compiler PSI. The Rust CLI must
 not issue one follow-up request per reference.
 
-Counts explicitly state whether they are `EXACT` or `LOWER_BOUND`. An
-exhausted deterministic traversal can report an exact count. A bounded
-traversal that has proved only another record reports a lower bound and a
-continuation token. No partial count may pose as the total relation count.
+Counts reuse #337's `ResultCardinality` wire contract exactly: `EXACT` or
+`KNOWN_MINIMUM`. An exhausted deterministic traversal or an authoritative
+exact index count can report `EXACT`. A bounded traversal that has proved only
+another record reports `KNOWN_MINIMUM` and a continuation token. No partial
+count may pose as the total relation count, and #339 does not rename this
+contract to `LOWER_BOUND`.
 
 ## Paging and deterministic work
 
 Every relationship family uses the same public page evidence:
 
 - `returnedCount` is the number of records on this page;
-- `knownCount` is an exact total or a proven lower bound;
-- `countKind` is `EXACT` or `LOWER_BOUND`;
+- `cardinality` is lossless #337 `ResultCardinality.EXACT` or
+  `ResultCardinality.KNOWN_MINIMUM`;
 - `truncated` agrees with the existence of more known work; and
 - `nextPageToken` is present exactly when another page is known.
 
 Public page tokens are opaque, versioned, and query-bound. The typed Rust
 token includes the relation family, a fingerprint of the normalized workspace
-root and semantic selector, declaration-inclusion choice, traversal
-direction/depth where applicable, page limit, and the next backend offset.
+root and complete anchored selector, declaration-inclusion choice, traversal
+direction/depth where applicable, page limit, and a lossless typed backend
+cursor payload. Reference tokens wrap #337's provisional
+`ReferencePageCursor(source, evidenceOffset, returnedBefore)`; they never
+collapse it to one offset. The source discriminator prevents a later page from
+silently switching between source-index and IDEA evidence. Windowed impact
+tokens carry an offset, while call/type cursors also preserve consumed evidence
+and returned-before proof needed by their deterministic traversal.
 Passing a token to another relation, subject, workspace, or traversal budget
 returns `RELATION_PAGE_TOKEN_MISMATCH` before backend work. Internal Kotlin and
-SQLite boundaries use validated non-negative offset types rather than parsing
-the public token.
+SQLite boundaries consume their typed cursor variants rather than parsing the
+public token.
 
 For an unchanged admitted workspace, relation ordering is deterministic:
 
@@ -128,12 +178,24 @@ For an unchanged admitted workspace, relation ordering is deterministic:
   file path, and declaration offset; and
 - impact nodes sort by depth, source path, target identity, and edge kind.
 
-Backends request or traverse only `offset + limit + 1` records, subject to a
-hard maximum offset of 10,000. SQLite impact keeps its separate exact count
-query and applies `LIMIT limit + 1 OFFSET offset` to the ordered row query.
-The extra record proves continuation and is never emitted. Source changes
-between pages may change the evidence set; tokens guarantee deterministic
-format and query binding, not a transaction across IDE edits.
+`offset + limit + 1` is an emitted-record window, not by itself a backend-work
+bound. Compiler resolvers accept the typed cursor and a candidate-visit budget
+before they materialize edges. Incoming calls iterate deterministic
+file/offset evidence, outgoing calls iterate lexical PSI offsets, and subtype
+relations iterate canonical class-index keys; each adapter stops its provider
+at the budget and returns `visitedCandidateCount`, consumed evidence, and
+exhaustiveness. Full `ReferencesSearch` collection, unbounded declaration
+walks, and `findAll()` inheritor materialization are prohibited. Tests count
+provider visits, not only returned records.
+
+The hard cursor evidence-offset ceiling is 10,000. SQLite impact keeps its
+separate exact count query and applies `LIMIT limit + 1 OFFSET offset` to the
+ordered row query. The extra record proves continuation and is never emitted.
+IDEA references are exact only after exhaustive traversal or when an
+authoritative exact source-index count covers the same query; otherwise they
+remain `KNOWN_MINIMUM`. Source changes between pages may change the evidence
+set; tokens guarantee deterministic format and query binding, not a
+transaction across IDE edits.
 
 ## Degraded outcomes
 
@@ -142,11 +204,19 @@ relationship list and not a generic transport failure. The mappings are:
 
 | Command | Required evidence | Degraded code |
 | --- | --- | --- |
-| `references` | `FIND_REFERENCES` | `REFERENCE_INDEX_UNAVAILABLE` |
+| `references` | `FIND_REFERENCES` | `REFERENCES_UNAVAILABLE` |
 | `callers`, `callees` | `CALL_HIERARCHY` | `CALL_HIERARCHY_UNAVAILABLE` |
 | `implementations` | `IMPLEMENTATIONS` | `IMPLEMENTATIONS_UNAVAILABLE` |
 | `hierarchy` | `TYPE_HIERARCHY` | `TYPE_HIERARCHY_UNAVAILABLE` |
 | `impact` | compatible exact-root source index | `SOURCE_INDEX_UNAVAILABLE` |
+
+An unavailable SQLite reference index is not degradation when IDEA reference
+search remains available: #337's selected reference source and completion
+evidence are preserved. `REFERENCES_UNAVAILABLE` means the backend cannot
+provide reference semantics at all. A continuation whose bound reference
+source disappears returns `REFERENCE_CURSOR_SOURCE_UNAVAILABLE` rather than
+switching sources. Overload-aggregated impact uses the separate
+`IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE` code described above.
 
 A degraded result has outcome `DEGRADED`, carries a closed degraded-code enum,
 names the missing capability or index evidence, omits records and page claims,
@@ -156,18 +226,23 @@ admission failures remain structured command errors rather than degradation.
 
 ## Source and issue boundaries
 
-The Rust CLI owns public command parsing, identity-selector validation, public
-page tokens, compact family projections, and source-index impact paging. The
-Kotlin API and server own host-agnostic relationship queries, typed expected
-outcomes, capability mapping, internal offsets, and full-fidelity responses.
-Runtime backends own compiler relationship collection, containing-symbol
-evidence, deterministic ordering, and bounded traversal.
+The Rust CLI owns public command parsing, anchored identity-selector
+validation, public page tokens, compact family projections, source-index impact
+paging, and removal of the one-shot symbol relationship path in
+`symbol_lookup.rs`. The Kotlin API and server own host-agnostic relationship
+queries, typed expected outcomes, capability mapping, internal cursors, and
+full-fidelity responses. Runtime backends own compiler relationship collection,
+containing-symbol evidence, deterministic ordering, candidate-visit cursors,
+and bounded traversal. `Location.usageSiteScope` remains #337's optional
+structural scope; `ReferenceOccurrence.containingSymbol` is the semantic
+identity proof. Neither is derived from the other, and both are collected in
+the same bounded PSI pass without Rust follow-up calls.
 
 Issue #338 owns workspace-file inventory, file filters, index/filesystem
 drift, and the initial public-capability route registry. Relationship
 navigation must not use that inventory as semantic relationship evidence or
 edit its issue-owned inventory files. A workspace-file `filePath` may compose
-as a relationship `--file-hint` without creating a dependency.
+as a relationship `--declaration-file` without creating a dependency.
 
 Issue #340 owns Gradle Kotlin DSL script classification, task/plugin/dependency
 relationships, and Gradle-specific completeness. Kotlin `callers`,
@@ -180,10 +255,10 @@ the Clap tree and does not create a second prose capability catalog.
 
 | Contract | Owner |
 | --- | --- |
-| Public commands, selectors, limits, directions, and page tokens | `cli-rs/src/cli/agent.rs`, `cli-rs/src/agent/relations.rs` |
+| Public commands, selectors, limits, directions, page tokens, and old-flag removal | `cli-rs/src/cli/agent.rs`, `cli-rs/src/agent/relations.rs`, `cli-rs/src/agent/symbol_lookup.rs` |
 | Compact typed relation projections | `cli-rs/src/agent/projection/relations.rs` |
 | Exact subject orchestration and typed relationship responses | `analysis-api`, `analysis-server` |
-| Compiler relationship evidence and deterministic traversal | `backend-idea`, `backend-shared` |
+| Compiler relationship evidence and deterministic bounded candidate traversal | `backend-idea` resolvers, `backend-shared` hierarchy engines |
 | Source-index impact count and page reads | `cli-rs/src/metrics_database/` |
 | Public examples and installed routing | `docs/reference/agent-commands.md`, `cli-rs/resources/kast-skill/` |
 | Budget, composition, and paging gates | `cli-rs/tests/agent_relationship_navigation_smoke.rs` |
@@ -211,7 +286,8 @@ git diff --check
 
 New relationship families, selector fields, count semantics, token versions,
 default budgets, or capability fallbacks require a superseding ADR. Future
-work must preserve exact identity, typed degraded outcomes, deterministic
-bounded backend work, and closed per-family records. A generic relation string,
-raw position, arbitrary JSON filter, or unbounded detailed view is not an
+work must preserve anchored overload identity, lossless #337 cardinality and
+cursor evidence, typed degraded outcomes, deterministic bounded provider work,
+and closed per-family records. A generic relation string, unchecked raw
+position, arbitrary JSON filter, or unbounded detailed view is not an
 acceptable public extension point.
