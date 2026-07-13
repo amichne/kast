@@ -966,6 +966,7 @@ fn write_gradle_workspace(workspace: &Path) {
     .expect("settings");
 }
 
+#[cfg(target_os = "macos")]
 fn applied_mutation_cases(target_file: &Path, content_file: &Path) -> [Vec<String>; 6] {
     [
         vec![
@@ -1091,6 +1092,7 @@ fn run_git(workspace: &Path, args: &[&str]) {
     );
 }
 
+#[cfg(target_os = "macos")]
 fn run_git_clone(source: &Path, destination: &Path) {
     let output = Command::new("git")
         .args(["clone", "--quiet"])
