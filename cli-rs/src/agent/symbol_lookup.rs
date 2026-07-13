@@ -13,6 +13,26 @@ const INDEXED_EXACT_FALLBACK_CODES: [&str; 13] = [
     "CAPABILITY_NOT_SUPPORTED",
     "CAPABILITIES_UNAVAILABLE",
 ];
+const INDEXED_EXACT_CARDINALITY_LIMIT: u32 = 2;
+const INDEXED_EXACT_LITERAL_FILE_SCAN_LIMIT: u32 = u32::MAX;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IndexedExactCandidateProof {
+    declaration: IndexedExactDeclarationProof,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IndexedExactDeclarationProof {
+    file: IndexedExactFileProof,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IndexedExactFileProof {
+    path: String,
+}
 
 fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
     let compiler_params = drop_nulls(json!({
@@ -178,7 +198,11 @@ fn indexed_exact_or_compiler_error(
     compiler_request: Value,
     error: AgentError,
 ) -> AgentEnvelope {
-    if !compiler_availability_allows_indexed_exact(&error) || args.containing_type.is_some() {
+    if !compiler_availability_allows_indexed_exact(&error)
+        || args.containing_type.is_some()
+        || args.references
+        || args.callers.is_some()
+    {
         return error_envelope("agent/symbol".to_string(), Some(compiler_request), error);
     }
     let fallback = AgentCompilerFallback {
@@ -190,8 +214,8 @@ fn indexed_exact_or_compiler_error(
         json!({
             "query": args.query,
             "modes": ["exact"],
-            "filters": symbol_query_filters(args),
-            "limit": args.limit,
+            "filters": indexed_exact_query_filters(args),
+            "limit": indexed_exact_search_limit(args),
             "includeNextRequests": false,
         }),
     );
@@ -205,13 +229,12 @@ fn indexed_exact_or_compiler_error(
         Ok(result) => result,
         Err(envelope) => return *envelope,
     };
-    let candidates = result
-        .get("results")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|candidate| candidate.get("declaration").cloned())
-        .collect::<Vec<_>>();
+    let candidates = match indexed_exact_candidates(&result, args.file_hint.as_deref()) {
+        Ok(candidates) => candidates,
+        Err(error) => {
+            return error_envelope("agent/symbol".to_string(), Some(request), error);
+        }
+    };
     let outcome = match candidates.as_slice() {
         [] => AgentSymbolLookupOutcome::NotFound {
             source: AgentSymbolLookupSource::IndexedExact,
@@ -365,6 +388,89 @@ fn symbol_query_filters(args: &AgentSymbolArgs) -> Value {
     }))
 }
 
+fn indexed_exact_query_filters(args: &AgentSymbolArgs) -> Value {
+    drop_nulls(json!({
+        "kinds": args.kind.map(|kind| vec![kind.canonical().to_ascii_uppercase()]),
+    }))
+}
+
+fn indexed_exact_search_limit(args: &AgentSymbolArgs) -> u32 {
+    if args.file_hint.is_some() {
+        INDEXED_EXACT_LITERAL_FILE_SCAN_LIMIT
+    } else {
+        INDEXED_EXACT_CARDINALITY_LIMIT
+    }
+}
+
+fn indexed_exact_candidates(
+    result: &Value,
+    file_hint: Option<&str>,
+) -> std::result::Result<Vec<Value>, AgentError> {
+    let results = result
+        .get("results")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            agent_error(
+                "INVALID_SYMBOL_QUERY_RESPONSE",
+                "Indexed exact lookup returned no results array.",
+            )
+        })?;
+    results
+        .iter()
+        .map(|candidate| {
+            let proof = serde_json::from_value::<IndexedExactCandidateProof>(candidate.clone())
+                .map_err(|error| {
+                    agent_error(
+                        "INVALID_SYMBOL_QUERY_RESPONSE",
+                        format!("Indexed exact candidate lacked trustworthy file identity: {error}"),
+                    )
+                })?;
+            let declaration = candidate.get("declaration").cloned().ok_or_else(|| {
+                agent_error(
+                    "INVALID_SYMBOL_QUERY_RESPONSE",
+                    "Indexed exact candidate returned no declaration.",
+                )
+            })?;
+            Ok((proof, declaration))
+        })
+        .filter_map(|candidate| match candidate {
+            Ok((proof, declaration))
+                if file_hint.is_none_or(|hint| {
+                    literal_file_hint_matches(hint, &proof.declaration.file.path)
+                }) => Some(Ok(declaration)),
+            Ok(_) => None,
+            Err(error) => Some(Err(error)),
+        })
+        .collect()
+}
+
+fn literal_file_hint_matches(file_hint: &str, candidate_file: &str) -> bool {
+    let normalized_hint = lexically_normalized_path(std::path::Path::new(file_hint));
+    let normalized_candidate = lexically_normalized_path(std::path::Path::new(candidate_file));
+    if normalized_hint.is_absolute() {
+        normalized_candidate == normalized_hint
+    } else {
+        normalized_candidate.ends_with(normalized_hint)
+    }
+}
+
+fn lexically_normalized_path(path: &std::path::Path) -> std::path::PathBuf {
+    let mut normalized = std::path::PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir
+                if normalized.file_name().is_some_and(|name| name != "..") =>
+            {
+                normalized.pop();
+            }
+            std::path::Component::ParentDir if normalized.has_root() => {}
+            component => normalized.push(component.as_os_str()),
+        }
+    }
+    normalized
+}
+
 fn compiler_availability_allows_indexed_exact(error: &AgentError) -> bool {
     INDEXED_EXACT_FALLBACK_CODES.contains(&error.code.as_str())
 }
@@ -413,5 +519,25 @@ mod symbol_lookup_tests {
         ] {
             assert!(!compiler_availability_allows_indexed_exact(&agent_error(code, "not availability")));
         }
+    }
+
+    #[test]
+    fn indexed_exact_file_hints_are_literal_paths() {
+        assert!(literal_file_hint_matches(
+            "lib/Parser.kt",
+            "/workspace/lib/Parser.kt"
+        ));
+        assert!(literal_file_hint_matches(
+            "lib/../lib/Parser.kt",
+            "/workspace/lib/Parser.kt"
+        ));
+        assert!(!literal_file_hint_matches(
+            "lib/*Parser.kt",
+            "/workspace/lib/AlphaParser.kt"
+        ));
+        assert!(!literal_file_hint_matches(
+            "lib/[AB]Parser.kt",
+            "/workspace/lib/AParser.kt"
+        ));
     }
 }

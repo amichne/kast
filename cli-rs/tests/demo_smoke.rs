@@ -278,8 +278,12 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
         String::from_utf8_lossy(&demo.stderr)
     );
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
+    let requests = handle.join().expect("fake backend");
     assert_eq!(
-        handle.join().expect("fake backend"),
+        requests
+            .iter()
+            .map(|request| request["method"].as_str().expect("method"))
+            .collect::<Vec<_>>(),
         vec![
             "runtime/status",
             "capabilities",
@@ -405,7 +409,11 @@ fn backend_only_demo_fails_when_the_compiler_cannot_resolve_the_requested_symbol
         &workspace,
         &socket_path,
         3,
-        Some("No Kotlin symbol matched NoSuchSymbol"),
+        Some(serde_json::json!({
+            "type": "RESOLVE_FAILURE",
+            "ok": false,
+            "message": "No Kotlin symbol matched NoSuchSymbol"
+        })),
     );
 
     let demo = kast(&home, &config_home)
@@ -435,14 +443,124 @@ fn backend_only_demo_fails_when_the_compiler_cannot_resolve_the_requested_symbol
     );
 }
 
+#[test]
+fn backend_only_demo_handles_typed_not_found_and_ambiguous_resolve_outcomes() {
+    for (resolve_result, expected_code) in [
+        (
+            serde_json::json!({"type":"RESOLVE_NOT_FOUND","ok":true,"source":"compiler"}),
+            "DEMO_RESOLVE_NOT_FOUND",
+        ),
+        (
+            serde_json::json!({
+                "type":"RESOLVE_AMBIGUOUS",
+                "ok":true,
+                "source":"compiler",
+                "candidates":[{"fqName":"alpha.Foo"},{"fqName":"beta.Foo"}]
+            }),
+            "DEMO_RESOLVE_AMBIGUOUS",
+        ),
+    ] {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join("home");
+        let config_home = temp.path().join("config");
+        let workspace = temp.path().join("workspace");
+        let socket_path = temp.path().join("idea.sock");
+        write_macos_plugin_workspace_metadata(&workspace);
+        let handle = spawn_ready_demo_backend(
+            &home,
+            &config_home,
+            &workspace,
+            &socket_path,
+            3,
+            Some(resolve_result),
+        );
+
+        let demo = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "demo",
+                "--workspace-root",
+                workspace.to_str().expect("workspace path"),
+                "--backend",
+                "idea",
+                "--symbol",
+                "Foo",
+            ])
+            .output()
+            .expect("typed resolve outcome demo");
+
+        assert!(!demo.status.success());
+        let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
+        assert_eq!(response["code"], expected_code);
+        assert_eq!(handle.join().expect("fake backend").len(), 3);
+    }
+}
+
+#[test]
+fn demo_relations_use_canonical_resolved_symbol_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("idea.sock");
+    seed_source_index(&workspace);
+    let canonical_fq_name = "canonical.lib.Foo";
+    let handle = spawn_ready_demo_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        5,
+        Some(serde_json::json!({
+            "type": "RESOLVE_SUCCESS",
+            "ok": true,
+            "symbol": {
+                "fqName": canonical_fq_name,
+                "kind": "CLASS",
+                "location": {
+                    "filePath": workspace.join("lib/Foo.kt").display().to_string(),
+                    "startOffset": 13,
+                    "endOffset": 22,
+                    "startLine": 3,
+                    "startColumn": 1,
+                    "preview": "class Foo"
+                }
+            }
+        })),
+    );
+
+    let demo = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "demo",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
+        ])
+        .output()
+        .expect("canonical relation demo");
+
+    assert!(
+        demo.status.success(),
+        "{}",
+        String::from_utf8_lossy(&demo.stdout)
+    );
+    let requests = handle.join().expect("fake backend");
+    assert_eq!(requests[3]["method"], "symbol/references");
+    assert_eq!(requests[3]["params"]["symbol"], canonical_fq_name);
+}
+
 fn spawn_ready_demo_backend(
     home: &std::path::Path,
     config_home: &std::path::Path,
     workspace: &std::path::Path,
     socket_path: &std::path::Path,
     expected_requests: usize,
-    resolve_error: Option<&str>,
-) -> std::thread::JoinHandle<Vec<String>> {
+    resolve_result: Option<Value>,
+) -> std::thread::JoinHandle<Vec<Value>> {
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(home).expect("home");
     std::fs::create_dir_all(workspace).expect("workspace");
@@ -475,11 +593,10 @@ fn spawn_ready_demo_backend(
     let listener = UnixListener::bind(socket_path).expect("bind fake backend");
     listener.set_nonblocking(true).expect("nonblocking backend");
     let server_workspace = workspace.to_path_buf();
-    let resolve_error = resolve_error.map(str::to_string);
     thread::spawn(move || {
-        let mut methods = Vec::new();
+        let mut requests = Vec::new();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while methods.len() < expected_requests && std::time::Instant::now() < deadline {
+        while requests.len() < expected_requests && std::time::Instant::now() < deadline {
             let (mut stream, _) = match listener.accept() {
                 Ok(connection) => connection,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
@@ -493,7 +610,7 @@ fn spawn_ready_demo_backend(
             reader.read_line(&mut request_line).expect("read request");
             let request: Value = serde_json::from_str(&request_line).expect("request json");
             let method = request["method"].as_str().expect("method").to_string();
-            methods.push(method.clone());
+            requests.push(request.clone());
             let result = match method.as_str() {
                 "runtime/status" => serde_json::json!({
                     "state": "READY",
@@ -519,8 +636,7 @@ fn spawn_ready_demo_backend(
                     },
                     "schemaVersion": 3
                 }),
-                "symbol/resolve" => resolve_error.as_ref().map_or_else(
-                    || serde_json::json!({
+                "symbol/resolve" => resolve_result.clone().unwrap_or_else(|| serde_json::json!({
                         "type": "RESOLVE_SUCCESS",
                         "ok": true,
                         "symbol": {
@@ -535,13 +651,7 @@ fn spawn_ready_demo_backend(
                                 "preview": "class Foo"
                             }
                         }
-                    }),
-                    |message| serde_json::json!({
-                        "type": "RESOLVE_FAILURE",
-                        "ok": false,
-                        "message": message
-                    }),
-                ),
+                    })),
                 "symbol/references" => serde_json::json!({
                     "type": "REFERENCES_SUCCESS",
                     "ok": true,
@@ -577,7 +687,7 @@ fn spawn_ready_demo_backend(
             )
             .expect("write response");
         }
-        methods
+        requests
     })
 }
 

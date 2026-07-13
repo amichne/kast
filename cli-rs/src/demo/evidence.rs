@@ -35,8 +35,18 @@ struct DemoDiagnosticsSummary {
 enum DemoResolveResponse {
     #[serde(rename = "RESOLVE_SUCCESS")]
     Success { symbol: DemoProtocolSymbol },
+    #[serde(rename = "RESOLVE_NOT_FOUND")]
+    NotFound,
+    #[serde(rename = "RESOLVE_AMBIGUOUS")]
+    Ambiguous { candidates: Vec<DemoResolveCandidate> },
     #[serde(rename = "RESOLVE_FAILURE")]
     Failure { message: String },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DemoResolveCandidate {
+    fq_name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -194,6 +204,28 @@ fn compiler_story_evidence(
     )?;
     let symbol = match resolve {
         DemoResolveResponse::Success { symbol } => symbol,
+        DemoResolveResponse::NotFound => {
+            return Err(CliError::new(
+                "DEMO_RESOLVE_NOT_FOUND",
+                format!("No compiler symbol matched {}.", candidate.fq_name),
+            ));
+        }
+        DemoResolveResponse::Ambiguous { candidates } => {
+            let identities = candidates
+                .iter()
+                .map(|candidate| candidate.fq_name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(CliError::new(
+                "DEMO_RESOLVE_AMBIGUOUS",
+                format!(
+                    "Compiler symbol lookup for {} matched {} candidates: {}.",
+                    candidate.fq_name,
+                    candidates.len(),
+                    identities
+                ),
+            ));
+        }
         DemoResolveResponse::Failure { message } => {
             return Err(CliError::new("DEMO_RESOLVE_FAILED", message));
         }
@@ -203,7 +235,7 @@ fn compiler_story_evidence(
         &connection.socket_path,
         "symbol/references",
         serde_json::json!({
-            "symbol": simple_symbol_name(&candidate.fq_name),
+            "symbol": &symbol.fq_name,
             "fileHint": candidate.file,
             "includeDeclaration": true,
         }),

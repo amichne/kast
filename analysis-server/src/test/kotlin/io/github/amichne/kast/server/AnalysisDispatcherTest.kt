@@ -270,6 +270,30 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `symbol resolve cardinality is independent of server presentation limit`() {
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(
+                lookupSymbol("sample.Parser.parse", SymbolKind.FUNCTION, "Parser.kt", startOffset = 10),
+                lookupSymbol("sample.Parser.parse", SymbolKind.FUNCTION, "Parser.kt", startOffset = 40),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            config = AnalysisServerConfig(maxResults = 1),
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(workspaceRoot = tempDir.toString(), symbol = "parse"),
+            ),
+        )
+
+        val ambiguous = assertInstanceOf(KastResolveAmbiguousResponse::class.java, result)
+        assertEquals(2, ambiguous.candidates.size)
+    }
+
+    @Test
     fun `symbol resolve matches backticked simple and qualified names exactly`() {
         val backend = ExactLookupBackend(
             delegate = FakeAnalysisBackend.sample(tempDir),
@@ -337,6 +361,38 @@ class AnalysisDispatcherTest {
             )
             assertInstanceOf(KastResolveNotFoundResponse::class.java, result)
         }
+    }
+
+    @Test
+    fun `symbol resolve applies containing type using resolved compiler identity`() {
+        val workspaceSymbol = lookupSymbol(
+            fqName = "sample.Parser.parse",
+            kind = SymbolKind.FUNCTION,
+            fileName = "Parser.kt",
+            containingDeclaration = null,
+        )
+        val resolvedSymbol = workspaceSymbol.copy(containingDeclaration = "sample.Parser")
+        val backend = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(workspaceSymbol),
+            resolvedSymbols = listOf(resolvedSymbol),
+        )
+
+        val result = dispatchSuccessWithBackend<KastResolveResponse>(
+            backend = backend,
+            method = "symbol/resolve",
+            params = json.encodeToJsonElement(
+                KastResolveRequest.serializer(),
+                KastResolveRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = "parse",
+                    containingType = "sample.Parser",
+                ),
+            ),
+        )
+
+        val success = assertInstanceOf(KastResolveSuccessResponse::class.java, result)
+        assertEquals("sample.Parser", success.symbol.containingDeclaration)
     }
 
     @Test
@@ -1339,11 +1395,12 @@ class AnalysisDispatcherTest {
 
     private inline fun <reified T> dispatchSuccessWithBackend(
         backend: AnalysisBackend,
+        config: AnalysisServerConfig = AnalysisServerConfig(),
         method: String,
         params: JsonElement? = null,
     ): T {
         val raw = runBlocking {
-            RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig()).dispatch(
+            RpcAnalysisDispatcher(backend = backend, config = config).dispatch(
                 JsonRpcRequest(id = JsonPrimitive(1), method = method, params = params),
             )
         }
@@ -1490,12 +1547,13 @@ private class CompilerDiagnosticsBeyondLimitBackend(
 private class ExactLookupBackend(
     private val delegate: AnalysisBackend,
     private val symbols: List<Symbol>,
+    private val resolvedSymbols: List<Symbol> = symbols,
 ) : AnalysisBackend by delegate {
     override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult =
         WorkspaceSymbolResult(symbols = symbols)
 
     override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult = SymbolResult(
-        symbol = symbols.single { symbol ->
+        symbol = resolvedSymbols.single { symbol ->
             symbol.location.filePath == query.position.filePath.value &&
                 symbol.location.startOffset == query.position.offset.value
         },

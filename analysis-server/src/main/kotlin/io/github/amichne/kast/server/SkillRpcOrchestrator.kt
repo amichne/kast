@@ -113,8 +113,15 @@ internal class SkillRpcOrchestrator(
 ) {
     private companion object {
         const val DEFAULT_DISCOVERY_SEARCH_LIMIT = 100
+        const val EXACT_CARDINALITY_LIMIT = 2
+        const val EXACT_CONSTRAINED_SEARCH_LIMIT = Int.MAX_VALUE
         const val MAX_SURROUNDING_LINES = 50
     }
+
+    private data class ExactNamedSymbolCandidate(
+        val ranked: RankedNamedSymbolCandidate,
+        val resolvedConstraintSymbol: Symbol?,
+    )
 
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
@@ -136,7 +143,6 @@ internal class SkillRpcOrchestrator(
             kind = request.kind,
             containingType = request.containingType,
             includeDeclarationScope = false,
-            searchLimit = minOf(config.maxResults, DEFAULT_DISCOVERY_SEARCH_LIMIT),
         )
         if (candidates.isEmpty()) {
             return KastResolveNotFoundResponse(
@@ -147,13 +153,15 @@ internal class SkillRpcOrchestrator(
         if (candidates.size > 1) {
             return KastResolveAmbiguousResponse(
                 query = query,
-                candidates = candidates.map(RankedNamedSymbolCandidate::symbol),
+                candidates = candidates.map { candidate ->
+                    candidate.resolvedConstraintSymbol ?: candidate.ranked.symbol
+                },
                 logFile = placeholderLogFile(),
             )
         }
         val candidate = candidates.single()
         val resolved = resolveNamedSymbol(
-            candidate = candidate,
+            candidate = candidate.ranked,
             includeDeclarationScope = request.includeDeclarationScope,
             includeDocumentation = request.includeDocumentation,
         ) ?: return KastResolveNotFoundResponse(
@@ -1105,16 +1113,21 @@ internal class SkillRpcOrchestrator(
         kind: WrapperNamedSymbolKind?,
         containingType: String?,
         includeDeclarationScope: Boolean,
-        searchLimit: Int,
-    ): List<RankedNamedSymbolCandidate> {
+    ): List<ExactNamedSymbolCandidate> {
         requireReadCapability(ReadCapability.WORKSPACE_SYMBOL_SEARCH)
-        return symbolSearchPatterns(symbolName)
+        val searchLimit = if (fileHint == null && containingType == null) {
+            EXACT_CARDINALITY_LIMIT
+        } else {
+            EXACT_CONSTRAINED_SEARCH_LIMIT
+        }
+        val rankedCandidates = symbolSearchPatterns(symbolName)
             .flatMap { pattern ->
                 backend.workspaceSymbolSearch(
                     WorkspaceSymbolQuery(
-                        pattern = pattern,
+                        pattern = exactWorkspaceSymbolPattern(pattern),
                         kind = kind?.toSymbolKind(),
                         maxResults = searchLimit,
+                        regex = true,
                         includeDeclarationScope = includeDeclarationScope,
                     ).parsed(),
                 ).withLimit(searchLimit) { workspaceSymbolPageToken(searchLimit) }.symbols
@@ -1124,7 +1137,6 @@ internal class SkillRpcOrchestrator(
             .filter { symbol -> exactIdentityMatches(symbolName, symbol.fqName) }
             .filter { symbol -> kind == null || symbol.kind == kind.toSymbolKind() }
             .filter { symbol -> fileHint == null || exactFileHintMatches(fileHint, symbol.location.filePath) }
-            .filter { symbol -> containingType == null || exactContainingTypeMatches(containingType, symbol) }
             .sortedWith(
                 compareBy<Symbol> { it.location.filePath }
                     .thenBy { it.location.startOffset }
@@ -1138,6 +1150,26 @@ internal class SkillRpcOrchestrator(
                 )
             }
             .toList()
+        return if (containingType == null) {
+            rankedCandidates
+                .take(EXACT_CARDINALITY_LIMIT)
+                .map { candidate -> ExactNamedSymbolCandidate(candidate, resolvedConstraintSymbol = null) }
+        } else {
+            rankedCandidates
+                .mapNotNull { candidate ->
+                    val resolved = resolveNamedSymbol(
+                        candidate = candidate,
+                        includeDeclarationScope = false,
+                        includeDocumentation = false,
+                    ) ?: return@mapNotNull null
+                    if (exactContainingTypeMatches(containingType, resolved.symbol)) {
+                        ExactNamedSymbolCandidate(candidate, resolved.symbol)
+                    } else {
+                        null
+                    }
+                }
+                .take(EXACT_CARDINALITY_LIMIT)
+        }
     }
 
     private fun exactIdentityMatches(requested: String, candidateFqName: String): Boolean {
@@ -1155,6 +1187,9 @@ internal class SkillRpcOrchestrator(
         .joinToString(".") { segment ->
             segment.removeSurrounding("`")
         }
+
+    private fun exactWorkspaceSymbolPattern(value: String): String =
+        "^${Regex.escape(normalizedKotlinIdentity(value).substringAfterLast('.'))}$"
 
     private fun exactFileHintMatches(fileHint: String, candidateFile: String): Boolean {
         val normalizedHint = Path.of(fileHint).normalize()

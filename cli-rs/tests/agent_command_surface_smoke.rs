@@ -281,6 +281,122 @@ fn agent_symbol_uses_indexed_exact_only_when_compiler_is_unavailable() {
 }
 
 #[test]
+fn agent_symbol_indexed_exact_cardinality_ignores_presentation_limit() {
+    for limit in ["0", "1"] {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join("home");
+        let config_home = temp.path().join("config");
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&home).expect("home");
+        seed_source_index(&workspace);
+        support::metrics::seed_exact_lookup_symbols(&workspace);
+
+        let output = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "symbol",
+                "--query",
+                "Parser",
+                "--limit",
+                limit,
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("indexed exact fallback");
+
+        assert!(
+            output.status.success(),
+            "limit={limit} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout: Value = serde_json::from_slice(&output.stdout).expect("fallback json");
+        assert_eq!(stdout["result"]["outcome"]["type"], "AMBIGUOUS");
+        assert_eq!(
+            stdout["result"]["outcome"]["candidates"]
+                .as_array()
+                .expect("candidates")
+                .len(),
+            2
+        );
+    }
+}
+
+#[test]
+fn agent_symbol_indexed_file_hint_is_literal_and_suffix_equivalent() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    seed_source_index(&workspace);
+    support::metrics::seed_exact_lookup_symbols(&workspace);
+
+    for (file_hint, expected_outcome) in [
+        ("lib/AlphaParser.kt", "RESOLVED"),
+        ("lib/*Parser.kt", "NOT_FOUND"),
+    ] {
+        let output = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "symbol",
+                "--query",
+                "Parser",
+                "--file-hint",
+                file_hint,
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("indexed exact file hint");
+
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let stdout: Value = serde_json::from_slice(&output.stdout).expect("fallback json");
+        assert_eq!(stdout["result"]["outcome"]["type"], expected_outcome);
+    }
+}
+
+#[test]
+fn agent_symbol_relations_preserve_compiler_unavailability() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    seed_source_index(&workspace);
+    support::metrics::seed_exact_lookup_symbols(&workspace);
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "symbol",
+            "--query",
+            "`when`",
+            "--references",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("compiler unavailable relations");
+
+    assert!(!output.status.success());
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("failure json");
+    assert!(stdout["error"]["code"].as_str().is_some());
+    assert!(stdout["result"].is_null(), "{stdout}");
+}
+
+#[test]
 fn agent_symbol_containing_type_never_weakens_to_indexed_exact() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
