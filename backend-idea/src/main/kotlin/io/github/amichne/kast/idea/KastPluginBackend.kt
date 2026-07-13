@@ -1012,10 +1012,9 @@ internal class KastPluginBackend(
         val affectedFiles = edits.map(TextEdit::filePath).distinct()
         val fileHashes = IdeaFileHashComputer.currentHashes(affectedFiles)
 
-        RenameResult(
+        RenameResult.of(
             edits = edits,
             fileHashes = fileHashes,
-            affectedFiles = affectedFiles,
             searchScope = SearchScope(
                 visibility = snapshot.visibility,
                 scope = snapshot.scopeKind,

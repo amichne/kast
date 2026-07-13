@@ -12,7 +12,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class RenameResult(
+class RenameResult private constructor(
     @DocField(description = "Text edits needed to perform the rename across the workspace.")
     val edits: List<TextEdit>,
     @DocField(description = "File hashes at edit-plan time for conflict detection.")
@@ -23,4 +23,23 @@ data class RenameResult(
     val searchScope: SearchScope? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-)
+) {
+    init {
+        require(affectedFiles == edits.map(TextEdit::filePath).distinct()) {
+            "affectedFiles must match distinct edit file paths in edit order"
+        }
+    }
+
+    companion object {
+        fun of(
+            edits: List<TextEdit>,
+            fileHashes: List<FileHash>,
+            searchScope: SearchScope? = null,
+        ): RenameResult = RenameResult(
+            edits = edits,
+            fileHashes = fileHashes,
+            affectedFiles = edits.map(TextEdit::filePath).distinct(),
+            searchScope = searchScope,
+        )
+    }
+}

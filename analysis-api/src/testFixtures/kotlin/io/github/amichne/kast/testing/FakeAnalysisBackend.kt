@@ -273,7 +273,7 @@ class FakeAnalysisBackend private constructor(
             .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
         val affectedFiles = edits.map(TextEdit::filePath).distinct()
 
-        return RenameResult(
+        return RenameResult.of(
             edits = edits,
             fileHashes = affectedFiles.map { filePath ->
                 FileHash(
@@ -281,7 +281,6 @@ class FakeAnalysisBackend private constructor(
                     hash = FileHashing.sha256(Files.readString(Path.of(filePath))),
                 )
             },
-            affectedFiles = affectedFiles,
         )
     }
 

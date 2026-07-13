@@ -75,6 +75,7 @@ import io.github.amichne.kast.api.validation.ParsedSymbolQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
 import io.github.amichne.kast.api.validation.ParsedImportOptimizeQuery
 import io.github.amichne.kast.api.validation.ParsedRefreshQuery
+import io.github.amichne.kast.api.validation.ParsedRenameQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -522,6 +523,35 @@ class AnalysisDispatcherTest {
         assertEquals(true, success.ok)
         assertEquals(1, success.affectedFiles.size)
         assertTrue(file.readText().contains("fun hello()"))
+    }
+
+    @Test
+    fun `rename backend cannot omit affected files to bypass refresh preflight`() {
+        val backend = MissingRefreshRenameBackend(FakeAnalysisBackend.sample(tempDir))
+        val file = sampleFile()
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/rename",
+                    params = json.encodeToJsonElement(
+                        KastRenameRequest.serializer(),
+                        KastRenameBySymbolRequest(
+                            workspaceRoot = tempDir.toString(),
+                            symbol = "greet",
+                            fileHint = file.toString(),
+                            newName = "hello",
+                        ),
+                    ),
+                ),
+            )
+        }
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
+
+        assertEquals("CAPABILITY_NOT_SUPPORTED", error.error.data?.code)
+        assertEquals(0, backend.applyCalls)
+        assertTrue(file.readText().contains("fun greet()"))
     }
 
     @Test
@@ -1644,6 +1674,34 @@ private class MissingRefreshCapabilityBackend(
     override suspend fun capabilities(): BackendCapabilities = delegate.capabilities().copy(
         mutationCapabilities = delegate.capabilities().mutationCapabilities - MutationCapability.REFRESH_WORKSPACE,
     )
+
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        applyCalls += 1
+        return delegate.applyEdits(query)
+    }
+}
+
+private class MissingRefreshRenameBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    var applyCalls: Int = 0
+        private set
+
+    override suspend fun capabilities(): BackendCapabilities {
+        val capabilities = delegate.capabilities()
+        return capabilities.copy(
+            mutationCapabilities = capabilities.mutationCapabilities - MutationCapability.REFRESH_WORKSPACE,
+        )
+    }
+
+    override suspend fun rename(query: ParsedRenameQuery): RenameResult {
+        val result = delegate.rename(query)
+        return RenameResult.of(
+            edits = result.edits,
+            fileHashes = result.fileHashes,
+            searchScope = result.searchScope,
+        )
+    }
 
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
         applyCalls += 1
