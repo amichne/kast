@@ -128,6 +128,54 @@ fn clean_file_remains_a_successful_complete_analysis() {
 }
 
 #[test]
+fn truncated_page_can_hide_analysis_failure_without_invalidating_evidence() {
+    let (output, methods) = run_single_json_scenario(
+        "Truncated.kt",
+        "fun truncated(): Int = 42\n",
+        incomplete_diagnostics_with_truncated_page,
+    );
+    let document = decode_json(&output);
+
+    assert_eq!(
+        methods,
+        [
+            "runtime/status",
+            "capabilities",
+            "raw/workspace-refresh",
+            "raw/diagnostics"
+        ],
+    );
+    assert!(!output.status.success(), "{document:#}");
+    assert_eq!(document["ok"], false, "{document:#}");
+    assert_eq!(
+        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+        "{document:#}",
+    );
+    assert_semantic_counts(&document, "INCOMPLETE", 1, 1, 0, "json");
+}
+
+#[test]
+fn untruncated_page_cannot_explain_incomplete_outcome() {
+    assert_invalid_semantic_evidence(
+        "Untruncated.kt",
+        incomplete_diagnostics_with_untruncated_page,
+    );
+}
+
+#[test]
+fn absent_page_cannot_explain_incomplete_outcome() {
+    assert_invalid_semantic_evidence("NoPage.kt", incomplete_diagnostics_without_page);
+}
+
+#[test]
+fn malformed_page_cannot_explain_incomplete_outcome() {
+    assert_invalid_semantic_evidence(
+        "MalformedPage.kt",
+        incomplete_diagnostics_with_malformed_page,
+    );
+}
+
+#[test]
 fn omitted_completeness_proof_fails_closed() {
     assert_invalid_semantic_evidence("Omitted.kt", omitted_completeness_proof);
 }
@@ -457,6 +505,63 @@ fn complete_clean_diagnostics(file: &Path) -> Value {
         "skippedFileCount": 0,
         "schemaVersion": 3
     })
+}
+
+fn incomplete_diagnostics_with_truncated_page(file: &Path) -> Value {
+    incomplete_diagnostics_with_page(
+        file,
+        Some(json!({
+            "truncated": true,
+            "nextPageToken": "0"
+        })),
+    )
+}
+
+fn incomplete_diagnostics_with_untruncated_page(file: &Path) -> Value {
+    incomplete_diagnostics_with_page(
+        file,
+        Some(json!({
+            "truncated": false
+        })),
+    )
+}
+
+fn incomplete_diagnostics_without_page(file: &Path) -> Value {
+    incomplete_diagnostics_with_page(file, None)
+}
+
+fn incomplete_diagnostics_with_malformed_page(file: &Path) -> Value {
+    incomplete_diagnostics_with_page(
+        file,
+        Some(json!({
+            "truncated": true,
+            "nextPageToken": 0
+        })),
+    )
+}
+
+fn incomplete_diagnostics_with_page(file: &Path, page: Option<Value>) -> Value {
+    let mut result = json!({
+        "diagnostics": [{
+            "location": diagnostic_location(file),
+            "severity": "WARNING",
+            "message": "Visible warning before hidden analysis failure",
+            "code": "VISIBLE_WARNING"
+        }],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "ANALYZED"
+        }],
+        "semanticOutcome": "INCOMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "schemaVersion": 3
+    });
+    if let Some(page) = page {
+        result["page"] = page;
+    }
+    result
 }
 
 fn omitted_completeness_proof(_file: &Path) -> Value {

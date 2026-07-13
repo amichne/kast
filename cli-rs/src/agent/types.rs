@@ -86,8 +86,16 @@ struct AgentDiagnosticsRequestParams {
 struct AgentDiagnosticsResult {
     diagnostics: Vec<AgentDiagnostic>,
     file_statuses: Vec<AgentFileAnalysisStatus>,
+    page: Option<AgentDiagnosticsPage>,
     #[serde(flatten)]
     summary: AgentSemanticAnalysisSummary,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentDiagnosticsPage {
+    truncated: bool,
+    next_page_token: Option<String>,
 }
 
 impl AgentDiagnosticsResult {
@@ -128,17 +136,20 @@ impl AgentDiagnosticsResult {
             .diagnostics
             .iter()
             .any(|diagnostic| diagnostic.code.as_deref() == Some("ANALYSIS_FAILURE"));
-        let expected_outcome = if skipped_file_count == 0 && !has_analysis_failure {
-            AgentSemanticAnalysisOutcome::Complete
-        } else {
-            AgentSemanticAnalysisOutcome::Incomplete
+        let visible_evidence_is_incomplete = skipped_file_count > 0 || has_analysis_failure;
+        let semantic_outcome_is_valid = match self.summary.semantic_outcome {
+            AgentSemanticAnalysisOutcome::Complete => !visible_evidence_is_incomplete,
+            AgentSemanticAnalysisOutcome::Incomplete => {
+                visible_evidence_is_incomplete
+                    || self.page.as_ref().is_some_and(|page| page.truncated)
+            }
         };
 
         if self.summary.requested_file_count != requested_file_paths.len()
             || self.summary.requested_file_count != self.file_statuses.len()
             || self.summary.analyzed_file_count != analyzed_file_count
             || self.summary.skipped_file_count != skipped_file_count
-            || self.summary.semantic_outcome != expected_outcome
+            || !semantic_outcome_is_valid
         {
             return None;
         }
