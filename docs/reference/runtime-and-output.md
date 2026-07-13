@@ -15,6 +15,12 @@ name the normalized requested workspace root and selected backend. Git ancestry,
 branch names, and matching commits do not make another checkout's runtime
 eligible.
 
+Automatic selection succeeds only when at most one backend kind is ready for
+that root. If IDEA and headless are both ready, Kast returns
+`SEMANTIC_BACKEND_AMBIGUOUS` with candidate evidence and requires an explicit
+backend. Verification never resolves ambiguity by preferring IDEA, the host
+default, or descriptor order.
+
 ## Runtime Choices
 
 | Runtime | Typical host | User-facing model |

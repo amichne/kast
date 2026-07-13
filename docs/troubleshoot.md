@@ -20,6 +20,8 @@ sequence when needed.
 | The agent cannot use Kast in a macOS project | The project has not been opened with the Kast plugin active | Open the project in the IDE and let the plugin prepare it |
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNPREPARED` in a worktree or temporary checkout | That exact root has no admitted IDEA or headless semantic state | Prepare that exact root with the JetBrains plugin, or use an already installed supported headless distribution |
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNSUPPORTED` | The selected root is not a Kotlin Gradle workspace | Select the root containing `settings.gradle(.kts)` or `build.gradle(.kts)` |
+| `agent verify` reports `SEMANTIC_BACKEND_AMBIGUOUS` | IDEA and headless are both ready for the exact root | Rerun with `--backend=idea` or `--backend=headless` after checking the candidate evidence |
+| An applied command reports `SEMANTIC_MUTATION_AUTHORITY_REQUIRED` | The read-only headless route was selected without exact-root plugin preparation on macOS | Open that exact root with the Homebrew-coupled plugin, verify it, then rerun the applied command |
 | Hosted Linux agent cannot answer semantic questions | Headless bundle or backend is not active | Check the image/bootstrap flow and runtime state |
 | Symbol lookup returns an unexpected target | The query is too broad | Narrow by kind, file, or containing type before editing |
 | Diagnostics disagree with the file on disk | Backend source state may be stale | Refresh or restart the runtime before retrying |
@@ -30,7 +32,7 @@ sequence when needed.
 Use this path when an agent is running in a linked worktree, disposable clone,
 or release-conflict checkout. Verification is read-only: it reports supported
 next actions but does not run setup, copy metadata, launch an IDE, repair the
-installation, or change global install authority.
+installation, start a headless runtime, or change global install authority.
 
 On macOS, open the exact checkout root in IntelliJ IDEA or Android Studio with
 the Homebrew-coupled Kast plugin enabled. After the plugin has prepared that
@@ -45,9 +47,11 @@ kast --output json agent diagnostics \
   --workspace-root "$PWD"
 ```
 
-On a host with the supported headless distribution already installed, select
-the headless backend explicitly. This uses the existing runtime for the exact
-root; verification never installs or repairs a headless backend.
+On a host with the supported headless distribution already installed and an
+exact-root runtime already ready, select the headless backend explicitly.
+Verification reuses that runtime and never starts, installs, or repairs a
+headless backend. Subsequent read-only symbol and diagnostics commands may use
+the installed distribution's normal lifecycle path.
 
 ```console
 kast --output json agent verify --backend=headless --workspace-root "$PWD"
@@ -64,6 +68,9 @@ kast --output json agent diagnostics \
 Check the returned backend, workspace root, source modules, limitations, and
 evidence quality before consuming symbol or diagnostics results. If the root
 does not match the temporary checkout, stop; Kast must not reuse that state.
+If automatic verification reports two ready candidates, choose one explicitly.
+Do not use the unprepared headless route for applied mutations on macOS; plugin
+preparation for the exact root remains mandatory.
 
 ## Keep Fixes Plan-First
 
