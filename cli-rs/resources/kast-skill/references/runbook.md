@@ -15,7 +15,7 @@ kast --output json agent symbol --query EventBean --references \
 kast --output json agent symbol --query process --callers incoming \
   --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 
-kast --output json agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" \
+kast --output json agent diagnostics --file-path src/main/kotlin/App.kt \
   --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 kast --output json agent impact --symbol com.example.EventBean \

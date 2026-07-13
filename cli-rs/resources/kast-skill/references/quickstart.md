@@ -30,7 +30,7 @@ scripts.
 kast agent verify --workspace-root "$PWD"
 kast agent symbol --query EventBean --workspace-root "$PWD" --references
 kast agent symbol --query process --workspace-root "$PWD" --callers incoming
-kast agent diagnostics --workspace-root "$PWD" --file-path "$PWD/src/main/kotlin/App.kt"
+kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"
 kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply --idempotency-key rename-event-bean
@@ -50,6 +50,10 @@ kast agent operation cancel --workspace-root "$PWD" --idempotency-key rename-eve
 Use a direct filesystem fallback only when retrieved terminal state proves
 `editApplicationState` is `NOT_STARTED`. Missing state after daemon restart is
 ambiguous and requires workspace inspection.
+
+When `--workspace-root` is explicit, diagnostics and mutation target files may
+be repository-relative. Kast validates containment and reports the canonical
+absolute path used by the backend.
 
 ## Boundaries
 
