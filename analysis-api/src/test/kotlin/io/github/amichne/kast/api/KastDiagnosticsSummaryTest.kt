@@ -5,9 +5,15 @@ import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
+import io.github.amichne.kast.api.contract.result.FileSystemDiscoveryState
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
+import io.github.amichne.kast.api.contract.result.IndexAdmissionState
+import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
+import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
+import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -69,6 +75,37 @@ class KastDiagnosticsSummaryTest {
 
         assertEquals(first, second)
         assertEquals(first.hashCode(), second.hashCode())
+    }
+
+    @Test
+    fun `incomplete semantic admission becomes a fail closed mutation summary`() {
+        val result = RefreshResult.focused(
+            fileStatuses = listOf(
+                SemanticAdmissionStatus.incomplete(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.PENDING,
+                    analysisAvailability = AnalysisAvailabilityState.PENDING,
+                    analysisStatus = FileAnalysisStatus.skipped(
+                        filePath,
+                        FileAnalysisState.PENDING_INDEX,
+                        "IDEA is indexing",
+                    ),
+                ),
+            ),
+            attemptCount = 3,
+            elapsedMillis = 50,
+        )
+
+        val summary = KastDiagnosticsSummary.from(result)
+
+        assertFalse(summary.clean)
+        assertEquals(0, summary.errorCount)
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, summary.semanticOutcome)
+        assertEquals(1, summary.requestedFileCount)
+        assertEquals(0, summary.analyzedFileCount)
+        assertEquals(1, summary.skippedFileCount)
     }
 
     private fun compilerError(): Diagnostic = Diagnostic(

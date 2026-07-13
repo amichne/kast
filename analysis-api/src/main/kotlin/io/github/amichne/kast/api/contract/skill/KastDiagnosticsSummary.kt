@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
+import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import kotlinx.serialization.Serializable
 
@@ -65,6 +66,16 @@ class KastDiagnosticsSummary private constructor(
     companion object {
         fun from(result: DiagnosticsResult): KastDiagnosticsSummary =
             from(result, PositiveInt(Int.MAX_VALUE))
+
+        fun from(result: RefreshResult): KastDiagnosticsSummary = KastDiagnosticsSummary(
+            clean = result.semanticOutcome == SemanticAnalysisOutcome.COMPLETE,
+            errorCount = 0,
+            warningCount = 0,
+            semanticOutcome = result.semanticOutcome,
+            requestedFileCount = result.requestedFileCount,
+            analyzedFileCount = result.analyzedFileCount,
+            skippedFileCount = result.skippedFileCount,
+        )
 
         fun from(
             result: DiagnosticsResult,
