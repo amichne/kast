@@ -232,9 +232,9 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
         });
         return result_envelope("agent/rename".to_string(), result);
     }
-    let idempotency_key = match applied_idempotency_key("agent/rename", args.mutation) {
+    let idempotency_key = match applied_idempotency_key(args.mutation) {
         Ok(key) => key,
-        Err(envelope) => return envelope,
+        Err(error) => return error_envelope("agent/rename".to_string(), None, error),
     };
     let request = json_rpc_request(
         "mutation/submit",
@@ -349,9 +349,9 @@ fn execute_agent_mutation(
     if !mutation.apply {
         return mutation_plan_envelope(agent_method, command_name, request);
     }
-    let idempotency_key = match applied_idempotency_key(agent_method, mutation) {
+    let idempotency_key = match applied_idempotency_key(mutation) {
         Ok(key) => key,
-        Err(envelope) => return envelope,
+        Err(error) => return error_envelope(agent_method.to_string(), None, error),
     };
     let request = json_rpc_request(
         "mutation/submit",
@@ -370,27 +370,18 @@ fn execute_agent_mutation(
 }
 
 fn applied_idempotency_key(
-    agent_method: &'static str,
     mutation: AgentMutationApplyArgs,
-) -> std::result::Result<String, AgentEnvelope> {
+) -> std::result::Result<String, AgentError> {
     let Some(key) = mutation.idempotency_key else {
-        return Err(error_envelope(
-            agent_method.to_string(),
-            None,
-            agent_error(
-                "AGENT_USAGE",
-                "--idempotency-key is required whenever --apply is used",
-            ),
+        return Err(agent_error(
+            "AGENT_USAGE",
+            "--idempotency-key is required whenever --apply is used",
         ));
     };
     if key.is_empty() || key.len() > 128 || key.trim() != key {
-        return Err(error_envelope(
-            agent_method.to_string(),
-            None,
-            agent_error(
-                "AGENT_USAGE",
-                "--idempotency-key must contain 1 to 128 characters without surrounding whitespace",
-            ),
+        return Err(agent_error(
+            "AGENT_USAGE",
+            "--idempotency-key must contain 1 to 128 characters without surrounding whitespace",
         ));
     }
     Ok(key)
