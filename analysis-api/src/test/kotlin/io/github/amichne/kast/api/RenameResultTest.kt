@@ -1,5 +1,6 @@
 package io.github.amichne.kast.api
 
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.result.RenameResult
 import kotlinx.serialization.json.Json
@@ -8,6 +9,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -29,6 +32,50 @@ class RenameResultTest {
         assertEquals(
             listOf("/workspace/src/First.kt", "/workspace/src/Second.kt"),
             result.affectedFiles,
+        )
+    }
+
+    @Test
+    fun `factory snapshots mutable plan collections`() {
+        val originalEdit = edit("/workspace/src/Original.kt", startOffset = 1)
+        val originalHash = FileHash(originalEdit.filePath, "original-hash")
+        val edits = mutableListOf(originalEdit)
+        val fileHashes = mutableListOf(originalHash)
+        val result = RenameResult.of(edits = edits, fileHashes = fileHashes)
+
+        edits += edit("/workspace/src/AddedLater.kt", startOffset = 2)
+        fileHashes.clear()
+
+        assertNotSame(edits, result.edits)
+        assertNotSame(fileHashes, result.fileHashes)
+        assertEquals(listOf(originalEdit), result.edits)
+        assertEquals(listOf(originalHash), result.fileHashes)
+        assertEquals(listOf(originalEdit.filePath), result.affectedFiles)
+    }
+
+    @Test
+    fun `equivalent rename results retain structural value semantics`() {
+        val edits = listOf(edit("/workspace/src/Value.kt", startOffset = 1))
+        val fileHashes = listOf(FileHash(edits.single().filePath, "value-hash"))
+        val first = RenameResult.of(edits = edits, fileHashes = fileHashes)
+        val equivalent = RenameResult.of(edits = edits.toList(), fileHashes = fileHashes.toList())
+        val different = RenameResult.of(
+            edits = listOf(edit("/workspace/src/Different.kt", startOffset = 1)),
+            fileHashes = fileHashes,
+        )
+
+        assertEquals(first, equivalent)
+        assertEquals(first.hashCode(), equivalent.hashCode())
+        assertNotEquals(first, different)
+        assertEquals(
+            "RenameResult(" +
+                "edits=${first.edits}, " +
+                "fileHashes=${first.fileHashes}, " +
+                "affectedFiles=${first.affectedFiles}, " +
+                "searchScope=${first.searchScope}, " +
+                "schemaVersion=${first.schemaVersion}" +
+                ")",
+            first.toString(),
         )
     }
 
