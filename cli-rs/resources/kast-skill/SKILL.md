@@ -20,7 +20,7 @@ the first iteration surface.
 2. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`. Add `--kind`, `--file-hint`, `--containing-type`, `--references`, or `--callers incoming|outgoing` only when needed.
 3. Check changed files with `kast agent diagnostics --file-path <path> --workspace-root "$PWD"`.
 4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`.
-5. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply` after reviewing the plan and content file.
+5. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply --idempotency-key <stable-key>` after reviewing the plan and content file.
 6. Use `--output json` for JSON-only parsed scripts; otherwise `kast agent` defaults to compact TOON.
 
 Completion criterion: every Kotlin semantic claim, edit target, relationship set,
@@ -38,7 +38,11 @@ work is explicitly outside Kotlin semantics.
 
 Use `--inside-file` or `--inside-scope` for scope selectors, and use `--at`,
 `--after-symbol`, or `--before-symbol` for declaration and implementation
-placement. Add `--apply` only after the plan is correct.
+placement. Add `--apply --idempotency-key <stable-key>` only after the plan is correct.
+
+## Mutation Recovery
+
+After a yield or disconnect, run `kast agent operation status --idempotency-key <stable-key> --workspace-root "$PWD"`; retrying the original request with the same key is also idempotent. Use `kast agent operation cancel` with the same selector to request cooperative cancellation. A filesystem fallback is safe only when retrieved terminal state proves edit application never started. Missing state after daemon restart is ambiguous; inspect the workspace instead of applying a fallback or using a new key.
 
 ## Health
 

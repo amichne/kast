@@ -33,11 +33,23 @@ kast agent symbol --query process --workspace-root "$PWD" --callers incoming
 kast agent diagnostics --workspace-root "$PWD" --file-path "$PWD/src/main/kotlin/App.kt"
 kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent
-kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply
+kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply --idempotency-key rename-event-bean
 ```
 
 `--symbol` means a compiler-resolved fully-qualified identity. Use
 `agent symbol --query <name>` for lookup before mutation.
+
+If the apply command disconnects, retrieve its retained state with the same
+key. Cancellation is a request; poll status until the operation is terminal.
+
+```console
+kast agent operation status --workspace-root "$PWD" --idempotency-key rename-event-bean
+kast agent operation cancel --workspace-root "$PWD" --idempotency-key rename-event-bean
+```
+
+Use a direct filesystem fallback only when retrieved terminal state proves
+`editApplicationState` is `NOT_STARTED`. Missing state after daemon restart is
+ambiguous and requires workspace inspection.
 
 ## Boundaries
 
