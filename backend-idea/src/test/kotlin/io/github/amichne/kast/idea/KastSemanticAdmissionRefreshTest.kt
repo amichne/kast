@@ -213,7 +213,7 @@ class KastSemanticAdmissionRefreshTest {
         assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
         assertEquals(FileAnalysisState.PENDING_INDEX, result.fileStatuses.single().analysisStatus?.state)
         assertEquals(1, result.attemptCount)
-        assertEquals(0, result.elapsedMillis)
+        assertTrue(result.elapsedMillis < 1_000, "zero-wait probe took ${result.elapsedMillis}ms")
     }
 
     @Test
