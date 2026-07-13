@@ -64,17 +64,20 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::AddDeclaration(args) => execute_agent_scoped_mutation(
             "agent/add-declaration",
             "symbol/add-declaration",
+            "ADD_DECLARATION",
             "add-declaration",
             args,
         ),
         AgentCommand::AddImplementation(args) => execute_agent_scoped_mutation(
             "agent/add-implementation",
             "symbol/add-implementation",
+            "ADD_IMPLEMENTATION",
             "add-implementation",
             args,
         ),
         AgentCommand::AddStatement(args) => execute_agent_add_statement(args),
         AgentCommand::ReplaceDeclaration(args) => execute_agent_replace_declaration(args),
+        AgentCommand::Operation(args) => execute_agent_operation(args),
     }
 }
 
@@ -214,8 +217,8 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
         "fileHint": args.file_hint,
         "containingType": args.containing_type,
     }));
-    let request = json_rpc_request("symbol/rename", params);
-    if !args.apply {
+    let request = json_rpc_request("symbol/rename", params.clone());
+    if !args.mutation.apply {
         let result = json!({
             "type": "KAST_AGENT_RENAME_PLAN",
             "ok": true,
@@ -229,8 +232,20 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
         });
         return result_envelope("agent/rename".to_string(), result);
     }
+    let idempotency_key = match applied_idempotency_key("agent/rename", args.mutation) {
+        Ok(key) => key,
+        Err(envelope) => return envelope,
+    };
+    let request = json_rpc_request(
+        "mutation/submit",
+        json!({
+            "type": "RENAME",
+            "idempotencyKey": idempotency_key,
+            "request": params,
+        }),
+    );
     execute_request(AgentRequest {
-        method: "symbol/rename".to_string(),
+        method: "mutation/submit".to_string(),
         request,
         runtime: args.runtime,
         full_response: true,
@@ -245,9 +260,10 @@ fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
     execute_agent_mutation(
         "agent/add-file",
         "symbol/add-file",
+        "ADD_FILE",
         "add-file",
         params,
-        args.apply,
+        args.mutation,
         args.runtime,
     )
 }
@@ -255,6 +271,7 @@ fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
 fn execute_agent_scoped_mutation(
     agent_method: &'static str,
     request_method: &'static str,
+    mutation_kind: &'static str,
     command_name: &'static str,
     args: AgentScopedMutationArgs,
 ) -> AgentEnvelope {
@@ -275,9 +292,10 @@ fn execute_agent_scoped_mutation(
     execute_agent_mutation(
         agent_method,
         request_method,
+        mutation_kind,
         command_name,
         params,
-        args.apply,
+        args.mutation,
         args.runtime,
     )
 }
@@ -291,9 +309,10 @@ fn execute_agent_add_statement(args: AgentStatementMutationArgs) -> AgentEnvelop
     execute_agent_mutation(
         "agent/add-statement",
         "symbol/add-statement",
+        "ADD_STATEMENT",
         "add-statement",
         params,
-        args.apply,
+        args.mutation,
         args.runtime,
     )
 }
@@ -309,9 +328,10 @@ fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> Agent
     execute_agent_mutation(
         "agent/replace-declaration",
         "symbol/replace-declaration",
+        "REPLACE_DECLARATION",
         "replace-declaration",
         params,
-        args.apply,
+        args.mutation,
         args.runtime,
     )
 }
@@ -319,19 +339,93 @@ fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> Agent
 fn execute_agent_mutation(
     agent_method: &'static str,
     request_method: &'static str,
+    mutation_kind: &'static str,
     command_name: &'static str,
     params: Value,
-    apply: bool,
+    mutation: AgentMutationApplyArgs,
     runtime: AgentRuntimeArgs,
 ) -> AgentEnvelope {
-    let request = json_rpc_request(request_method, params);
-    if !apply {
+    let request = json_rpc_request(request_method, params.clone());
+    if !mutation.apply {
         return mutation_plan_envelope(agent_method, command_name, request);
     }
+    let idempotency_key = match applied_idempotency_key(agent_method, mutation) {
+        Ok(key) => key,
+        Err(envelope) => return envelope,
+    };
+    let request = json_rpc_request(
+        "mutation/submit",
+        json!({
+            "type": mutation_kind,
+            "idempotencyKey": idempotency_key,
+            "request": params,
+        }),
+    );
     execute_request(AgentRequest {
-        method: request_method.to_string(),
+        method: "mutation/submit".to_string(),
         request,
         runtime,
+        full_response: true,
+    })
+}
+
+fn applied_idempotency_key(
+    agent_method: &'static str,
+    mutation: AgentMutationApplyArgs,
+) -> std::result::Result<String, AgentEnvelope> {
+    let Some(key) = mutation.idempotency_key else {
+        return Err(error_envelope(
+            agent_method.to_string(),
+            None,
+            agent_error(
+                "AGENT_USAGE",
+                "--idempotency-key is required whenever --apply is used",
+            ),
+        ));
+    };
+    if key.is_empty() || key.len() > 128 || key.trim() != key {
+        return Err(error_envelope(
+            agent_method.to_string(),
+            None,
+            agent_error(
+                "AGENT_USAGE",
+                "--idempotency-key must contain 1 to 128 characters without surrounding whitespace",
+            ),
+        ));
+    }
+    Ok(key)
+}
+
+fn execute_agent_operation(args: AgentOperationArgs) -> AgentEnvelope {
+    match args.command {
+        AgentOperationCommand::Status(selector) => {
+            execute_agent_operation_request("mutation/status", selector)
+        }
+        AgentOperationCommand::Cancel(selector) => {
+            execute_agent_operation_request("mutation/cancel", selector)
+        }
+    }
+}
+
+fn execute_agent_operation_request(
+    method: &'static str,
+    args: AgentOperationSelectorArgs,
+) -> AgentEnvelope {
+    let selector = match (args.operation_id, args.idempotency_key) {
+        (Some(operation_id), None) => json!({
+            "type": "BY_OPERATION_ID",
+            "operationId": operation_id,
+        }),
+        (None, Some(idempotency_key)) => json!({
+            "type": "BY_IDEMPOTENCY_KEY",
+            "idempotencyKey": idempotency_key,
+        }),
+        _ => unreachable!("clap requires exactly one operation selector"),
+    };
+    execute_request(AgentRequest {
+        method: method.to_string(),
+        request: json_rpc_request(method, selector),
+        runtime: args.runtime,
         full_response: true,
     })
 }

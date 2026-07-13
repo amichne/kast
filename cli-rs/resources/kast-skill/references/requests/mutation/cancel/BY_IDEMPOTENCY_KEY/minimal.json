@@ -1,0 +1,9 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "mutation/cancel",
+  "params": {
+    "idempotencyKey": "example-idempotencyKey",
+    "type": "BY_IDEMPOTENCY_KEY"
+  }
+}

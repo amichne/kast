@@ -9,6 +9,11 @@
       "runtime/restart",
       "capabilities"
     ],
+    "mutation": [
+      "mutation/submit",
+      "mutation/status",
+      "mutation/cancel"
+    ],
     "symbol": [
       "symbol/scaffold",
       "symbol/discover",
@@ -97,6 +102,271 @@
         "fields": {}
       },
       "responseType": "BackendCapabilities"
+    },
+    "mutation/submit": {
+      "method": "mutation/submit",
+      "category": "mutation",
+      "summary": "Submit an idempotent semantic mutation and return its stable operation identity",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "RENAME",
+              "ADD_FILE",
+              "ADD_DECLARATION",
+              "ADD_IMPLEMENTATION",
+              "ADD_STATEMENT",
+              "REPLACE_DECLARATION"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "responseType": "KastMutationSubmissionReceipt",
+      "variants": {
+        "RENAME": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "idempotencyKey",
+            "request"
+          ],
+          "sample": {
+            "type": "RENAME",
+            "idempotencyKey": "rename-order-service-process",
+            "request": {
+              "type": "RENAME_BY_SYMBOL_REQUEST",
+              "symbol": "com.example.OrderService.process",
+              "newName": "processSafely"
+            }
+          }
+        },
+        "ADD_FILE": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "idempotencyKey",
+            "request"
+          ],
+          "sample": {
+            "type": "ADD_FILE",
+            "idempotencyKey": "add-example-file",
+            "request": {
+              "filePath": "/workspace/src/main/kotlin/com/example/Added.kt",
+              "contentFile": "/tmp/Added.kt"
+            }
+          }
+        },
+        "ADD_DECLARATION": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "idempotencyKey",
+            "request"
+          ],
+          "sample": {
+            "type": "ADD_DECLARATION",
+            "idempotencyKey": "add-example-declaration",
+            "request": {
+              "placement": {
+                "scope": {
+                  "type": "FILE_SCOPE",
+                  "insideFile": "/workspace/src/main/kotlin/com/example/Example.kt"
+                },
+                "anchor": {
+                  "type": "AT_ANCHOR",
+                  "anchor": "file-bottom"
+                }
+              },
+              "contentFile": "/tmp/declaration.kt"
+            }
+          }
+        },
+        "ADD_IMPLEMENTATION": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "idempotencyKey",
+            "request"
+          ],
+          "sample": {
+            "type": "ADD_IMPLEMENTATION",
+            "idempotencyKey": "add-example-implementation",
+            "request": {
+              "placement": {
+                "scope": {
+                  "type": "NAMED_SCOPE",
+                  "insideScope": "com.example.Widget"
+                },
+                "anchor": {
+                  "type": "AT_ANCHOR",
+                  "anchor": "body-end"
+                }
+              },
+              "contentFile": "/tmp/implementation.kt"
+            }
+          }
+        },
+        "ADD_STATEMENT": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "idempotencyKey",
+            "request"
+          ],
+          "sample": {
+            "type": "ADD_STATEMENT",
+            "idempotencyKey": "add-example-statement",
+            "request": {
+              "insideScope": "com.example.Widget.render",
+              "anchor": "body-end",
+              "contentFile": "/tmp/statement.kt"
+            }
+          }
+        },
+        "REPLACE_DECLARATION": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            },
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "idempotencyKey",
+            "request"
+          ],
+          "sample": {
+            "type": "REPLACE_DECLARATION",
+            "idempotencyKey": "replace-example-declaration",
+            "request": {
+              "symbol": "com.example.Widget.render",
+              "contentFile": "/tmp/replacement.kt"
+            }
+          }
+        }
+      }
+    },
+    "mutation/status": {
+      "method": "mutation/status",
+      "category": "mutation",
+      "summary": "Retrieve retained semantic mutation state by operation identity or idempotency key",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BY_OPERATION_ID",
+              "BY_IDEMPOTENCY_KEY"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "responseType": "KastMutationOperationSnapshot",
+      "variants": {
+        "BY_OPERATION_ID": {
+          "fields": {
+            "operationId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operationId"
+          ]
+        },
+        "BY_IDEMPOTENCY_KEY": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "idempotencyKey"
+          ]
+        }
+      }
+    },
+    "mutation/cancel": {
+      "method": "mutation/cancel",
+      "category": "mutation",
+      "summary": "Request cooperative cancellation and retrieve the latest semantic mutation state",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BY_OPERATION_ID",
+              "BY_IDEMPOTENCY_KEY"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "responseType": "KastMutationOperationSnapshot",
+      "variants": {
+        "BY_OPERATION_ID": {
+          "fields": {
+            "operationId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operationId"
+          ]
+        },
+        "BY_IDEMPOTENCY_KEY": {
+          "fields": {
+            "idempotencyKey": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "idempotencyKey"
+          ]
+        }
+      }
     },
     "symbol/scaffold": {
       "method": "symbol/scaffold",
