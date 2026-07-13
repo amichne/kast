@@ -247,10 +247,10 @@ fn operation_status_and_cancel_preserve_typed_backend_snapshots() {
         );
         let stdout: Value = serde_json::from_slice(&output.stdout).expect("operation output");
         assert_eq!(
-            stdout["result"]["operationId"],
+            stdout["result"]["operation"]["operationId"],
             "00000000-0000-0000-0000-000000000001"
         );
-        assert_eq!(stdout["result"]["state"]["type"], "QUEUED");
+        assert_eq!(stdout["result"]["operation"]["state"], "QUEUED");
         let requests = backend.join().expect("backend");
         let terminal = requests
             .iter()

@@ -1,4 +1,4 @@
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentEnvelope {
     pub ok: bool,
@@ -16,12 +16,12 @@ pub struct AgentEnvelope {
     pub schema_version: u32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentError {
     pub code: String,
     pub message: String,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub details: BTreeMap<String, Value>,
 }
 
@@ -93,7 +93,7 @@ struct AgentDiagnosticsRequestParams {
     file_paths: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentDiagnosticsResult {
     diagnostics: Vec<AgentDiagnostic>,
@@ -103,7 +103,7 @@ struct AgentDiagnosticsResult {
     summary: AgentSemanticAnalysisSummary,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentDiagnosticsPage {
     truncated: bool,
@@ -414,7 +414,7 @@ fn normalized_absolute_path(raw: &str) -> Option<PathBuf> {
     Some(normalized)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentFileAnalysisStatus {
     file_path: String,
@@ -440,7 +440,7 @@ impl AgentFileAnalysisStatus {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum AgentFileAnalysisState {
     Analyzed,
@@ -450,7 +450,7 @@ enum AgentFileAnalysisState {
     BackendFailure,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentDiagnostic {
     location: AgentDiagnosticLocation,
@@ -465,7 +465,7 @@ impl AgentDiagnostic {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentDiagnosticLocation {
     file_path: String,
@@ -482,7 +482,7 @@ impl AgentDiagnosticLocation {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum AgentDiagnosticSeverity {
     Error,

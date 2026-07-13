@@ -1,5 +1,6 @@
 pub fn run(command: AgentCommand, output_format: OutputFormat) -> Result<i32> {
-    let envelope = execute(command);
+    let projection = AgentProjectionRequest::for_command(&command);
+    let envelope = projection.project(execute(command));
     let exit_code = if envelope.ok { 0 } else { 1 };
     output::print_structured(&envelope, output_format)?;
     Ok(exit_code)

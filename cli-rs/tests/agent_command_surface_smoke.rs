@@ -68,14 +68,11 @@ fn agent_symbol_defaults_to_exact_and_returns_compiler_identity() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout: Value = serde_json::from_slice(&output.stdout).expect("symbol json");
-    assert_eq!(stdout["result"]["type"], "KAST_AGENT_SYMBOL_LOOKUP");
+    assert_eq!(stdout["result"]["type"], "KAST_AGENT_SYMBOL_RESULT");
     assert_eq!(stdout["result"]["mode"], "exact");
-    assert_eq!(stdout["result"]["outcome"]["type"], "RESOLVED");
-    assert_eq!(stdout["result"]["outcome"]["source"], "compiler");
-    assert_eq!(
-        stdout["result"]["outcome"]["symbol"]["fqName"],
-        "sample.when"
-    );
+    assert_eq!(stdout["result"]["outcome"], "RESOLVED");
+    assert_eq!(stdout["result"]["source"], "compiler");
+    assert_eq!(stdout["result"]["identity"]["fqName"], "sample.when");
     let requests = handle.join().expect("scripted backend");
     assert_eq!(requests[2]["method"], "symbol/resolve");
     assert_eq!(requests[2]["params"]["symbol"], "`when`");
@@ -114,7 +111,7 @@ fn agent_symbol_not_found_and_ambiguous_do_not_discover() {
         );
         let stdout: Value = serde_json::from_slice(&output.stdout).expect("symbol json");
         assert!(matches!(
-            stdout["result"]["outcome"]["type"].as_str(),
+            stdout["result"]["outcome"].as_str(),
             Some("NOT_FOUND" | "AMBIGUOUS")
         ));
         let requests = handle.join().expect("scripted backend");
@@ -146,6 +143,7 @@ fn agent_symbol_discovery_requests_lexical_mode_explicitly() {
             "Foo",
             "--mode",
             "discovery",
+            "--explain",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
@@ -247,6 +245,7 @@ fn agent_symbol_uses_indexed_exact_only_when_compiler_is_unavailable() {
             "symbol",
             "--query",
             "Parser",
+            "--explain",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
@@ -314,9 +313,9 @@ fn agent_symbol_indexed_exact_cardinality_ignores_presentation_limit() {
             String::from_utf8_lossy(&output.stderr)
         );
         let stdout: Value = serde_json::from_slice(&output.stdout).expect("fallback json");
-        assert_eq!(stdout["result"]["outcome"]["type"], "AMBIGUOUS");
+        assert_eq!(stdout["result"]["outcome"], "AMBIGUOUS");
         assert_eq!(
-            stdout["result"]["outcome"]["candidates"]
+            stdout["result"]["candidates"]
                 .as_array()
                 .expect("candidates")
                 .len(),
@@ -361,7 +360,7 @@ fn agent_symbol_indexed_file_hint_is_literal_and_suffix_equivalent() {
             String::from_utf8_lossy(&output.stdout)
         );
         let stdout: Value = serde_json::from_slice(&output.stdout).expect("fallback json");
-        assert_eq!(stdout["result"]["outcome"]["type"], expected_outcome);
+        assert_eq!(stdout["result"]["outcome"], expected_outcome);
     }
 }
 
@@ -575,25 +574,28 @@ fn agent_rename_without_apply_returns_identity_first_plan() {
         String::from_utf8_lossy(&plan.stderr)
     );
     let stdout: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("plan json");
-    let request = &stdout["result"]["request"];
     assert_eq!(stdout["method"], "agent/rename", "{stdout}");
     assert_eq!(
-        stdout["result"]["type"], "KAST_AGENT_RENAME_PLAN",
-        "{stdout}"
-    );
-    assert_eq!(stdout["result"]["applyRequired"], true, "{stdout}");
-    assert_eq!(request["method"], "symbol/rename", "{stdout}");
-    assert_eq!(
-        request["params"]["type"], "RENAME_BY_SYMBOL_REQUEST",
+        stdout["result"]["type"], "KAST_AGENT_MUTATION_RESULT",
         "{stdout}"
     );
     assert_eq!(
-        request["params"]["symbol"], "io.example.OrderService.process",
+        stdout["result"]["operation"]["state"], "PLANNED",
         "{stdout}"
     );
-    assert_eq!(request["params"]["kind"], "function", "{stdout}");
+    let plan = &stdout["result"]["plan"];
+    assert_eq!(plan["method"], "symbol/rename", "{stdout}");
+    assert_eq!(
+        stdout["result"]["operation"]["mutationKind"], "RENAME_BY_SYMBOL_REQUEST",
+        "{stdout}"
+    );
+    assert_eq!(
+        plan["symbol"], "io.example.OrderService.process",
+        "{stdout}"
+    );
+    assert_eq!(plan["kind"], "function", "{stdout}");
     assert!(
-        !request.to_string().contains("offset"),
+        !plan.to_string().contains("offset"),
         "public rename plan must not expose offsets: {stdout}"
     );
 }
@@ -709,21 +711,19 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             });
         assert_eq!(stdout["method"], agent_method, "{stdout}");
         assert_eq!(
-            stdout["result"]["type"], "KAST_AGENT_MUTATION_PLAN",
-            "{stdout}"
-        );
-        assert_eq!(stdout["result"]["applyRequired"], true, "{stdout}");
-        assert_eq!(
-            stdout["result"]["request"]["method"], request_method,
+            stdout["result"]["type"], "KAST_AGENT_MUTATION_RESULT",
             "{stdout}"
         );
         assert_eq!(
-            stdout["result"]["request"]["params"].get("type"),
-            None,
+            stdout["result"]["operation"]["state"], "PLANNED",
             "{stdout}"
         );
         assert_eq!(
-            stdout["result"]["request"]["params"]["contentFile"],
+            stdout["result"]["plan"]["method"], request_method,
+            "{stdout}"
+        );
+        assert_eq!(
+            stdout["result"]["plan"]["contentFile"],
             content_file.to_str().expect("snippet"),
             "{stdout}"
         );

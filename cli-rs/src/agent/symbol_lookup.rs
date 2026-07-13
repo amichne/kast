@@ -35,15 +35,16 @@ struct IndexedExactFileProof {
 }
 
 fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
+    let detailed = args.view.detailed();
     let compiler_params = drop_nulls(json!({
         "symbol": args.query,
         "kind": args.kind.map(|kind| kind.canonical()),
         "fileHint": args.file_hint,
         "containingType": args.containing_type,
-        "includeDeclarationScope": true,
-        "includeDocumentation": true,
-        "surroundingLines": 3,
-        "includeSurroundingMembers": true,
+        "includeDeclarationScope": detailed,
+        "includeDocumentation": detailed,
+        "surroundingLines": detailed.then_some(3),
+        "includeSurroundingMembers": detailed,
     }));
     let compiler_request = json_rpc_request("symbol/resolve", compiler_params);
     let session = match runtime::raw_rpc_session(
@@ -159,6 +160,7 @@ fn execute_agent_symbol_discovery(args: AgentSymbolArgs) -> AgentEnvelope {
             ),
         );
     }
+    let detailed = args.view.detailed();
     let request = json_rpc_request(
         "symbol/query",
         json!({
@@ -166,7 +168,8 @@ fn execute_agent_symbol_discovery(args: AgentSymbolArgs) -> AgentEnvelope {
             "modes": ["lexical"],
             "filters": symbol_query_filters(&args),
             "limit": args.limit,
-            "includeNextRequests": true,
+            "includeEvidence": detailed,
+            "includeNextRequests": detailed,
         }),
     );
     let envelope = execute_request(AgentRequest {

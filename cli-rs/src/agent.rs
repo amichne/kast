@@ -3,10 +3,12 @@
 use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{
-    AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentImpactArgs, AgentMutationApplyArgs,
-    AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
-    AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
-    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolMode, AgentVerifyArgs,
+    AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiagnosticsField,
+    AgentDiagnosticsViewArgs, AgentImpactArgs, AgentMutationApplyArgs, AgentMutationField,
+    AgentMutationViewArgs, AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs,
+    AgentRenameArgs, AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
+    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField, AgentSymbolMode,
+    AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
 };
 use crate::error::{CliError, Result};
 use crate::{output, runtime, validate};
@@ -20,6 +22,7 @@ include!("agent/path.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");
 include!("agent/envelope.rs");
+include!("agent/projection.rs");
 include!("agent/input.rs");
 include!("agent/response.rs");
 include!("agent/symbol_lookup.rs");

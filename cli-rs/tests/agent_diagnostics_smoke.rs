@@ -234,15 +234,7 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
         assert_eq!(document["ok"], false, "{format}: {document:#}");
         assert_eq!(document["result"]["ok"], false, "{format}: {document:#}");
         assert_eq!(
-            document["result"]["steps"][0]["name"], "workspace-refresh",
-            "{format}: {document:#}",
-        );
-        assert_eq!(
-            document["result"]["steps"][0]["ok"], true,
-            "{format}: {document:#}",
-        );
-        assert_eq!(
-            document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+            document["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
             "{format}: {document:#}",
         );
         assert_semantic_counts(&document, "INCOMPLETE", 1, 0, 1, format);
@@ -316,7 +308,11 @@ fn ordinary_compiler_diagnostic_remains_a_successful_complete_analysis() {
         String::from_utf8_lossy(&output.stderr),
     );
     assert_eq!(document["ok"], true, "{document:#}");
-    assert_eq!(document["result"]["steps"][1]["ok"], true, "{document:#}");
+    assert_eq!(document["result"]["ok"], true, "{document:#}");
+    assert_eq!(
+        document["result"]["severityCounts"]["error"], 1,
+        "{document:#}"
+    );
     assert_semantic_counts(&document, "COMPLETE", 1, 1, 0, "json");
 }
 
@@ -369,7 +365,7 @@ fn truncated_page_can_hide_analysis_failure_without_invalidating_evidence() {
     assert!(!output.status.success(), "{document:#}");
     assert_eq!(document["ok"], false, "{document:#}");
     assert_eq!(
-        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+        document["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
         "{document:#}",
     );
     assert_semantic_counts(&document, "INCOMPLETE", 1, 1, 0, "json");
@@ -453,7 +449,7 @@ fn assert_invalid_semantic_evidence(file_name: &str, diagnostics: fn(&Path) -> V
     assert!(!output.status.success(), "{document:#}");
     assert_eq!(document["ok"], false, "{document:#}");
     assert_eq!(
-        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INVALID",
+        document["error"]["code"], "SEMANTIC_ANALYSIS_INVALID",
         "{document:#}",
     );
 }
@@ -605,7 +601,7 @@ fn assert_semantic_counts(
     skipped: u64,
     format: &str,
 ) {
-    let summary = &document["result"]["semanticAnalysis"];
+    let summary = &document["result"]["analysis"];
     assert_eq!(
         summary["semanticOutcome"], outcome,
         "{format}: {document:#}"

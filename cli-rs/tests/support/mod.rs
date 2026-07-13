@@ -200,6 +200,9 @@ pub(crate) fn spawn_scripted_idea_backend(
                 }
                 Err(error) => panic!("accept scripted backend client: {error}"),
             };
+            stream
+                .set_nonblocking(false)
+                .expect("blocking scripted backend stream");
             let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
             let mut request_line = String::new();
             reader.read_line(&mut request_line).expect("read request");
@@ -245,6 +248,62 @@ pub(crate) fn spawn_scripted_idea_backend(
                 serde_json::json!({"jsonrpc":"2.0","id":1,"result":result})
             )
             .expect("write scripted response");
+        }
+        requests
+    })
+}
+
+pub(crate) fn spawn_sequenced_idea_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    responses: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    let descriptor_dir = default_descriptor_dir(home);
+    std::fs::create_dir_all(home).expect("home");
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::create_dir_all(config_home).expect("config home");
+    std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    write_macos_plugin_workspace_metadata(workspace);
+    std::fs::write(
+        config_home.join("config.toml"),
+        "[runtime]\ndefaultBackend = \"idea\"\n",
+    )
+    .expect("config");
+    std::fs::write(
+        descriptor_dir.join("daemons.json"),
+        serde_json::to_vec_pretty(&serde_json::json!([{
+            "workspaceRoot": workspace.display().to_string(),
+            "backendName": "idea",
+            "backendVersion": "scripted-test",
+            "transport": "uds",
+            "socketPath": socket_path.display().to_string(),
+            "pid": std::process::id(),
+            "schemaVersion": 3
+        }]))
+        .expect("descriptor json"),
+    )
+    .expect("descriptor");
+
+    let listener = UnixListener::bind(socket_path).expect("bind sequenced backend");
+    thread::spawn(move || {
+        let mut requests = Vec::with_capacity(responses.len());
+        for (expected_method, result) in responses {
+            let (mut stream, _) = listener.accept().expect("accept sequenced client");
+            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
+            let mut request_line = String::new();
+            reader.read_line(&mut request_line).expect("read request");
+            let request: serde_json::Value =
+                serde_json::from_str(&request_line).expect("request json");
+            assert_eq!(request["method"], expected_method, "scripted method order");
+            writeln!(
+                stream,
+                "{}",
+                serde_json::json!({"jsonrpc":"2.0","id":1,"result":result})
+            )
+            .expect("write sequenced response");
+            requests.push(request);
         }
         requests
     })
