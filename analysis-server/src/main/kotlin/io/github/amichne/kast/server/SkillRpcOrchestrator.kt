@@ -2,13 +2,13 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.CallDirection
-import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.MutationCapability
@@ -579,8 +579,8 @@ internal class SkillRpcOrchestrator(
         } else {
             requireReadCapability(ReadCapability.DIAGNOSTICS)
             KastDiagnosticsSummary.from(
-                backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed())
-                    .withLimit(config.maxResults, ::diagnosticPageToken),
+                result = backend.diagnostics(DiagnosticsQuery(filePaths = renameResult.affectedFiles).parsed()),
+                maxReturnedErrors = PositiveInt(config.maxResults),
             )
         }
         return KastRenameSuccessResponse(
@@ -880,7 +880,8 @@ internal class SkillRpcOrchestrator(
     private suspend fun validateFiles(filePaths: List<String>): KastDiagnosticsSummary {
         requireReadCapability(ReadCapability.DIAGNOSTICS)
         return KastDiagnosticsSummary.from(
-            backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed()).withLimit(config.maxResults, ::diagnosticPageToken),
+            result = backend.diagnostics(DiagnosticsQuery(filePaths = filePaths).parsed()),
+            maxReturnedErrors = PositiveInt(config.maxResults),
         )
     }
 
@@ -1322,8 +1323,6 @@ private fun WrapperScaffoldMode.toInsertionTarget(): SemanticInsertionTarget = w
 private fun placeholderLogFile(): String = "/dev/null"
 
 private fun referencePageToken(location: Location): String = location.startOffset.toString()
-
-private fun diagnosticPageToken(diagnostic: Diagnostic): String = diagnostic.location.startOffset.toString()
 
 private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
 

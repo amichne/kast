@@ -850,18 +850,18 @@ internal class KastPluginBackend(
     }
 
     private suspend fun analyzeDiagnosticsFile(filePath: NormalizedPath): DiagnosticsFileAnalysis {
-        if (!isWorkspaceFile(filePath.value)) {
-            return skippedDiagnostics(
-                filePath = filePath,
-                state = FileAnalysisState.OUTSIDE_SOURCE_MODULES,
-                message = "File is outside the active workspace: ${filePath.value}",
-            )
-        }
         if (Files.notExists(Path.of(filePath.value))) {
             return skippedDiagnostics(
                 filePath = filePath,
                 state = FileAnalysisState.MISSING_ON_DISK,
                 message = "File not found: ${filePath.value}",
+            )
+        }
+        if (!isWorkspaceFile(filePath.value)) {
+            return skippedDiagnostics(
+                filePath = filePath,
+                state = FileAnalysisState.OUTSIDE_SOURCE_MODULES,
+                message = "File is outside the active workspace: ${filePath.value}",
             )
         }
 
@@ -877,18 +877,18 @@ internal class KastPluginBackend(
                         state = FileAnalysisState.PENDING_INDEX,
                         message = "File exists on disk but is not available in the IDEA virtual file system",
                     )
-                if (DumbService.isDumb(project)) {
-                    return@timedReadAction skippedDiagnostics(
-                        filePath = filePath,
-                        state = FileAnalysisState.PENDING_INDEX,
-                        message = "IDEA indexing is still in progress",
-                    )
-                }
                 if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
                     return@timedReadAction skippedDiagnostics(
                         filePath = filePath,
                         state = FileAnalysisState.OUTSIDE_SOURCE_MODULES,
                         message = "File is not contained in an IDEA source module",
+                    )
+                }
+                if (DumbService.isDumb(project)) {
+                    return@timedReadAction skippedDiagnostics(
+                        filePath = filePath,
+                        state = FileAnalysisState.PENDING_INDEX,
+                        message = "IDEA indexing is still in progress",
                     )
                 }
                 val psiFile = PsiManager.getInstance(project).findFile(virtualFile)

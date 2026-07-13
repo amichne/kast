@@ -445,6 +445,42 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `mutation summary remains dirty when an error is beyond the returned diagnostic limit`() {
+        val file = sampleFile()
+        val backend = CompilerDiagnosticsBeyondLimitBackend(FakeAnalysisBackend.sample(tempDir))
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = backend,
+            config = AnalysisServerConfig(maxResults = 1),
+        )
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/write-and-validate",
+                    params = json.encodeToJsonElement(
+                        KastWriteAndValidateRequest.serializer(),
+                        KastWriteAndValidateInsertAtOffsetRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = file.toString(),
+                            offset = file.readText().length,
+                            content = "\nfun added() = Unit\n",
+                        ),
+                    ),
+                ),
+            )
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(KastWriteAndValidateResponse.serializer(), response.result)
+
+        val success = result as KastWriteAndValidateSuccessResponse
+        assertFalse(success.ok)
+        assertFalse(success.diagnostics.clean)
+        assertEquals(1, success.diagnostics.errorCount)
+        assertEquals(1, success.diagnostics.warningCount)
+        assertEquals(listOf("LATE_COMPILER_ERROR"), success.diagnostics.errors.map(Diagnostic::code))
+    }
+
+    @Test
     fun `symbol add file dispatches file creation and diagnostics`() {
         FakeAnalysisBackend.sample(tempDir)
         val targetFile = tempDir.resolve("src").resolve("Added.kt")
@@ -1265,5 +1301,37 @@ private class IncompleteDiagnosticsBackend(
             )
         }
         return DiagnosticsResult.of(diagnostics = diagnostics, fileStatuses = fileStatuses)
+    }
+}
+
+private class CompilerDiagnosticsBeyondLimitBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
+        val filePath = query.filePaths.value.single()
+        fun diagnostic(
+            severity: DiagnosticSeverity,
+            offset: Int,
+            code: String,
+        ): Diagnostic = Diagnostic(
+            location = Location(
+                filePath = filePath.value,
+                startOffset = offset,
+                endOffset = offset,
+                startLine = 0,
+                startColumn = 0,
+                preview = "",
+            ),
+            severity = severity,
+            message = code,
+            code = code,
+        )
+        return DiagnosticsResult.of(
+            diagnostics = listOf(
+                diagnostic(DiagnosticSeverity.WARNING, 0, "EARLY_WARNING"),
+                diagnostic(DiagnosticSeverity.ERROR, 1, "LATE_COMPILER_ERROR"),
+            ),
+            fileStatuses = listOf(FileAnalysisStatus.analyzed(filePath)),
+        )
     }
 }

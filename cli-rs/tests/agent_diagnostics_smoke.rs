@@ -128,38 +128,48 @@ fn clean_file_remains_a_successful_complete_analysis() {
 }
 
 #[test]
-fn analysis_failure_diagnostic_fails_closed_without_completeness_fields() {
-    let (output, methods) = run_single_json_scenario(
-        "Legacy.kt",
-        "fun legacy(): Int = 42\n",
-        legacy_analysis_failure,
-    );
-    let document = decode_json(&output);
+fn omitted_completeness_proof_fails_closed() {
+    assert_invalid_semantic_evidence("Omitted.kt", omitted_completeness_proof);
+}
 
-    assert_eq!(
-        methods,
-        [
-            "runtime/status",
-            "capabilities",
-            "raw/workspace-refresh",
-            "raw/diagnostics"
-        ],
-    );
-    assert!(!output.status.success(), "{document:#}");
-    assert_eq!(document["ok"], false, "{document:#}");
-    assert_eq!(
-        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_FAILED",
-        "{document:#}",
-    );
+#[test]
+fn complete_outcome_with_a_skipped_file_fails_closed() {
+    assert_invalid_semantic_evidence("Skipped.kt", complete_outcome_with_skipped_file);
+}
+
+#[test]
+fn missing_file_status_ledger_fails_closed() {
+    assert_invalid_semantic_evidence("MissingLedger.kt", missing_file_status_ledger);
+}
+
+#[test]
+fn mismatched_file_status_ledger_fails_closed() {
+    assert_invalid_semantic_evidence("MismatchedLedger.kt", mismatched_file_status_ledger);
+}
+
+#[test]
+fn unknown_file_analysis_state_fails_closed() {
+    assert_invalid_semantic_evidence("UnknownState.kt", unknown_file_analysis_state);
+}
+
+#[test]
+fn malformed_diagnostic_code_fails_closed() {
+    assert_invalid_semantic_evidence("MalformedCode.kt", malformed_diagnostic_code);
+}
+
+#[test]
+fn malformed_diagnostic_structure_fails_closed() {
+    assert_invalid_semantic_evidence("MalformedDiagnostic.kt", malformed_diagnostic_structure);
 }
 
 #[test]
 fn malformed_completeness_evidence_fails_closed() {
-    let (output, methods) = run_single_json_scenario(
-        "Malformed.kt",
-        "fun malformed(): Int = 42\n",
-        malformed_completeness_evidence,
-    );
+    assert_invalid_semantic_evidence("Malformed.kt", malformed_completeness_evidence);
+}
+
+fn assert_invalid_semantic_evidence(file_name: &str, diagnostics: fn(&Path) -> Value) {
+    let (output, methods) =
+        run_single_json_scenario(file_name, "fun valid(): Int = 42\n", diagnostics);
     let document = decode_json(&output);
 
     assert_eq!(
@@ -449,14 +459,105 @@ fn complete_clean_diagnostics(file: &Path) -> Value {
     })
 }
 
-fn legacy_analysis_failure(file: &Path) -> Value {
+fn omitted_completeness_proof(_file: &Path) -> Value {
+    json!({
+        "diagnostics": [],
+        "schemaVersion": 3
+    })
+}
+
+fn complete_outcome_with_skipped_file(file: &Path) -> Value {
+    json!({
+        "diagnostics": [],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "MISSING_ON_DISK",
+            "message": "File not found"
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 0,
+        "skippedFileCount": 1,
+        "schemaVersion": 3
+    })
+}
+
+fn missing_file_status_ledger(_file: &Path) -> Value {
+    json!({
+        "diagnostics": [],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "schemaVersion": 3
+    })
+}
+
+fn mismatched_file_status_ledger(file: &Path) -> Value {
+    json!({
+        "diagnostics": [],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "ANALYZED"
+        }],
+        "semanticOutcome": "INCOMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 0,
+        "skippedFileCount": 1,
+        "schemaVersion": 3
+    })
+}
+
+fn unknown_file_analysis_state(file: &Path) -> Value {
+    json!({
+        "diagnostics": [],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "NOT_A_STATE"
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "schemaVersion": 3
+    })
+}
+
+fn malformed_diagnostic_code(file: &Path) -> Value {
     json!({
         "diagnostics": [{
             "location": diagnostic_location(file),
             "severity": "ERROR",
-            "message": "Backend failed before completeness fields were produced",
-            "code": "ANALYSIS_FAILURE"
+            "message": "Malformed code",
+            "code": 42
         }],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "ANALYZED"
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "schemaVersion": 3
+    })
+}
+
+fn malformed_diagnostic_structure(file: &Path) -> Value {
+    json!({
+        "diagnostics": [{
+            "severity": "ERROR",
+            "message": "Missing location",
+            "code": "TYPE_MISMATCH"
+        }],
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "state": "ANALYZED"
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
         "schemaVersion": 3
     })
 }

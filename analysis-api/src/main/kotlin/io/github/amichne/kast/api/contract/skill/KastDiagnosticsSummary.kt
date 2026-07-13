@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.contract.skill
 
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import kotlinx.serialization.Serializable
@@ -23,7 +24,7 @@ class KastDiagnosticsSummary private constructor(
         require(requestedFileCount == analyzedFileCount + skippedFileCount) {
             "requestedFileCount must equal analyzedFileCount plus skippedFileCount"
         }
-        require(errorCount == errors.size) { "errorCount must match errors" }
+        require(errorCount >= errors.size) { "errorCount must include every returned error" }
         require(errors.all { it.severity == DiagnosticSeverity.ERROR }) {
             "errors must contain only error diagnostics"
         }
@@ -33,7 +34,13 @@ class KastDiagnosticsSummary private constructor(
     }
 
     companion object {
-        fun from(result: DiagnosticsResult): KastDiagnosticsSummary {
+        fun from(result: DiagnosticsResult): KastDiagnosticsSummary =
+            from(result, PositiveInt(Int.MAX_VALUE))
+
+        fun from(
+            result: DiagnosticsResult,
+            maxReturnedErrors: PositiveInt,
+        ): KastDiagnosticsSummary {
             val errors = result.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR }
             return KastDiagnosticsSummary(
                 clean = result.semanticOutcome == SemanticAnalysisOutcome.COMPLETE && errors.isEmpty(),
@@ -43,7 +50,7 @@ class KastDiagnosticsSummary private constructor(
                 requestedFileCount = result.requestedFileCount,
                 analyzedFileCount = result.analyzedFileCount,
                 skippedFileCount = result.skippedFileCount,
-                errors = errors,
+                errors = errors.take(maxReturnedErrors.value),
             )
         }
 

@@ -25,11 +25,17 @@ fn response_envelope(
             };
         }
     };
+    let semantic_evidence = AgentSemanticAnalysisEvidence::from_result(
+        &method,
+        &request,
+        response.get("result"),
+    );
     if !full_response {
         preview_large_strings(&mut response, AXI_PREVIEW_LIMIT);
     }
     let result = response.get("result").cloned();
-    let error = response_error(&response).or_else(|| result_failure(&result));
+    let error = response_error(&response)
+        .or_else(|| result_failure(semantic_evidence, &result));
     AgentEnvelope {
         ok: error.is_none() && result.is_some(),
         method,
@@ -101,9 +107,11 @@ fn response_error(response: &Value) -> Option<AgentError> {
     Some(agent_error)
 }
 
-fn result_failure(result: &Option<Value>) -> Option<AgentError> {
-    let result = result.as_ref()?;
-    match AgentSemanticAnalysisEvidence::from_result(result) {
+fn result_failure(
+    semantic_evidence: AgentSemanticAnalysisEvidence,
+    result: &Option<Value>,
+) -> Option<AgentError> {
+    match semantic_evidence {
         AgentSemanticAnalysisEvidence::Valid(summary) if summary.is_incomplete() => {
             let mut agent_error = AgentError {
                 code: "SEMANTIC_ANALYSIS_INCOMPLETE".to_string(),
@@ -118,9 +126,11 @@ fn result_failure(result: &Option<Value>) -> Option<AgentError> {
             agent_error
                 .details
                 .insert("semanticAnalysis".to_string(), json!(summary));
-            agent_error
-                .details
-                .insert("result".to_string(), result.clone());
+            if let Some(result) = result {
+                agent_error
+                    .details
+                    .insert("result".to_string(), result.clone());
+            }
             return Some(agent_error);
         }
         AgentSemanticAnalysisEvidence::Invalid => {
@@ -128,32 +138,17 @@ fn result_failure(result: &Option<Value>) -> Option<AgentError> {
                 "SEMANTIC_ANALYSIS_INVALID",
                 "The backend returned malformed semantic completeness evidence.",
             );
-            agent_error
-                .details
-                .insert("result".to_string(), result.clone());
+            if let Some(result) = result {
+                agent_error
+                    .details
+                    .insert("result".to_string(), result.clone());
+            }
             return Some(agent_error);
         }
-        AgentSemanticAnalysisEvidence::Absent
+        AgentSemanticAnalysisEvidence::NotDiagnostics
         | AgentSemanticAnalysisEvidence::Valid(_) => {}
     }
-    if result
-        .get("diagnostics")
-        .and_then(Value::as_array)
-        .is_some_and(|diagnostics| {
-            diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.get("code").and_then(Value::as_str) == Some("ANALYSIS_FAILURE"))
-        })
-    {
-        let mut agent_error = agent_error(
-            "SEMANTIC_ANALYSIS_FAILED",
-            "The backend reported an ANALYSIS_FAILURE diagnostic.",
-        );
-        agent_error
-            .details
-            .insert("result".to_string(), result.clone());
-        return Some(agent_error);
-    }
+    let result = result.as_ref()?;
     if result.get("ok").and_then(Value::as_bool) != Some(false) {
         return None;
     }

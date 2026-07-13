@@ -96,6 +96,21 @@ class KastDiagnosticsCompletenessTest {
     }
 
     @Test
+    fun `missing file takes precedence over workspace classification`() = runBlocking {
+        ensureProjectReady()
+        val missingOutsideWorkspace = workspaceRoot.parent.resolve("MissingOutsideWorkspace.kt")
+        Files.deleteIfExists(missingOutsideWorkspace)
+
+        val result = backend().diagnostics(
+            DiagnosticsQuery(filePaths = listOf(missingOutsideWorkspace.toString())),
+        )
+
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
+        assertEquals(FileAnalysisState.MISSING_ON_DISK, result.fileStatuses.single().state)
+        assertEquals("ANALYSIS_FAILURE", result.diagnostics.single().code)
+    }
+
+    @Test
     fun `ordinary compiler diagnostics retain complete semantic evidence`() = runBlocking {
         ensureProjectReady()
         val brokenFile = Path.of(brokenFileFixture.get().virtualFile.path)
@@ -150,6 +165,30 @@ class KastDiagnosticsCompletenessTest {
             assertEquals(FileAnalysisState.OUTSIDE_SOURCE_MODULES, result.fileStatuses.single().state)
             assertEquals(0, result.analyzedFileCount)
             assertEquals(1, result.skippedFileCount)
+            assertEquals("ANALYSIS_FAILURE", result.diagnostics.single().code)
+        } finally {
+            Files.deleteIfExists(outsideSourceFile)
+        }
+    }
+
+    @Test
+    fun `outside source modules takes precedence over indexing`() {
+        ensureProjectReady()
+        val outsideSourceFile = workspaceRoot.resolve("OutsideSourceDuringIndexing.kt")
+        Files.writeString(outsideSourceFile, validSource)
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(outsideSourceFile)
+
+        try {
+            val result = DumbModeTestUtils.computeInDumbModeSynchronously(project) {
+                runBlocking {
+                    backend().diagnostics(
+                        DiagnosticsQuery(filePaths = listOf(outsideSourceFile.toString())),
+                    )
+                }
+            }
+
+            assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
+            assertEquals(FileAnalysisState.OUTSIDE_SOURCE_MODULES, result.fileStatuses.single().state)
             assertEquals("ANALYSIS_FAILURE", result.diagnostics.single().code)
         } finally {
             Files.deleteIfExists(outsideSourceFile)
