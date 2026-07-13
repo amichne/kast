@@ -58,6 +58,14 @@ class KastPluginBackendContractTest {
             fun useGreeting(): String = greet("idea")
         """
 
+        private const val memberSource = """
+            package demo
+
+            class Parser {
+                fun parse(input: String): String = input
+            }
+        """
+
         private const val hierarchySource = """
             package demo.hierarchy
 
@@ -89,6 +97,8 @@ class KastPluginBackendContractTest {
     private val sampleFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Sample.kt", sampleSource)
     private val sampleUsageFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("SampleUsage.kt", sampleUsageSource)
+    private val memberFileFixture: TestFixture<PsiFile> =
+        mainSourceRootFixture.psiFileFixture("Parser.kt", memberSource)
     private val hierarchyFileFixture: TestFixture<PsiFile> = mainSourceRootFixture.psiFileFixture("Hierarchy.kt", hierarchySource)
     private val internalDeclarationFileFixture: TestFixture<PsiFile> =
         mainSourceRootFixture.psiFileFixture("InternalDeclaration.kt", internalDeclarationSource)
@@ -236,6 +246,26 @@ class KastPluginBackendContractTest {
         val declarationScope = result.symbol.declarationScope
         assertNotNull(declarationScope)
         assertTrue(declarationScope?.sourceText.orEmpty().contains("fun greet"))
+    }
+
+    @Test
+    fun `resolve symbol includes compiler enclosing declaration identity`() = runBlocking {
+        ensureProjectReady()
+
+        val memberFile = memberFileFixture.get()
+        val (filePath, offset) = readAction {
+            memberFile.virtualFile.path to memberFile.text.indexOf("parse")
+        }
+        val result = backend(Path.of(filePath).parent).resolveSymbol(
+            SymbolQuery(
+                position = FilePosition(
+                    filePath = filePath,
+                    offset = offset,
+                ),
+            ),
+        )
+
+        assertEquals("demo.Parser", result.symbol.containingDeclaration)
     }
 
     @Test

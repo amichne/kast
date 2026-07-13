@@ -75,6 +75,7 @@ import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import io.github.amichne.kast.shared.analysis.SemanticInsertionPointResolver
 import io.github.amichne.kast.shared.analysis.SymbolSearchMatcher
+import io.github.amichne.kast.shared.analysis.compilerContainingDeclarationName
 import io.github.amichne.kast.shared.analysis.declarationEdit
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
@@ -216,7 +217,7 @@ internal class KastPluginBackend(
                 SymbolResult(
                     analyze(file) {
                         target.toSymbolModel(
-                            containingDeclaration = null,
+                            containingDeclaration = compilerContainingDeclarationName(target),
                             supertypes = supertypeNames(target),
                             includeDeclarationScope = query.includeDeclarationScope,
                             includeDocumentation = query.includeDocumentation,
