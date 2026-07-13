@@ -173,6 +173,16 @@ impl AgentFilePathNormalizer {
         })
     }
 
+    fn normalize_all(
+        &self,
+        inputs: &[String],
+    ) -> std::result::Result<Vec<String>, AgentError> {
+        inputs
+            .iter()
+            .map(|input| self.normalize(input).map(CanonicalKotlinFilePath::into_rpc_path))
+            .collect()
+    }
+
     fn resolve_candidate(
         &self,
         input: &str,
@@ -278,6 +288,10 @@ struct CanonicalKotlinFilePath {
 impl CanonicalKotlinFilePath {
     fn rpc_path(&self) -> &str {
         &self.rpc_path
+    }
+
+    fn into_rpc_path(self) -> String {
+        self.rpc_path
     }
 }
 

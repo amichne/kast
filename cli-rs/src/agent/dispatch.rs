@@ -134,22 +134,34 @@ fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {
+    let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
+        Ok(normalizer) => normalizer,
+        Err(error) => return error_envelope("agent/diagnostics".to_string(), None, error),
+    };
+    let file_paths = match normalizer.normalize_all(&args.file_paths) {
+        Ok(file_paths) => file_paths,
+        Err(error) => return error_envelope("agent/diagnostics".to_string(), None, error),
+    };
     let mut steps = Vec::new();
     if !args.skip_refresh {
         steps.push(AgentPublicStep::new(
             "workspace-refresh",
             "raw/workspace-refresh",
-            json!({ "filePaths": args.file_paths }),
+            json!({ "filePaths": &file_paths }),
             false,
         ));
     }
     steps.push(AgentPublicStep::new(
         "diagnostics",
         "raw/diagnostics",
-        json!({ "filePaths": args.file_paths }),
+        json!({ "filePaths": &file_paths }),
         false,
     ));
-    execute_agent_steps("agent/diagnostics", args.runtime, steps)
+    let mut envelope = execute_agent_steps("agent/diagnostics", args.runtime, steps);
+    if let Some(result) = envelope.result.as_mut().and_then(Value::as_object_mut) {
+        result.insert("filePaths".to_string(), json!(file_paths));
+    }
+    envelope
 }
 
 fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
