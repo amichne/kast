@@ -22,6 +22,7 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
+        complete_refresh(&file),
         incomplete_diagnostics(&file),
         12,
     );
@@ -68,6 +69,47 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
         );
         assert_semantic_counts(&document, "INCOMPLETE", 1, 0, 1, format);
     }
+}
+
+#[test]
+fn incomplete_semantic_admission_stops_before_diagnostics() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let file = workspace.join("src/Pending.kt");
+    std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
+    std::fs::write(&file, "fun pending(): Int = 42\n").expect("scenario source");
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+
+    let socket_path = workspace_socket_path(&workspace, temp.path());
+    write_descriptor(&home, &workspace, &socket_path);
+    let listener = bind_listener(&socket_path);
+    let backend = spawn_fake_backend(
+        listener,
+        workspace.clone(),
+        incomplete_refresh(&file),
+        complete_clean_diagnostics(&file),
+        3,
+    );
+
+    let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
+    let methods = backend.join().expect("fake diagnostics backend");
+    let document = decode_json(&output);
+
+    assert_eq!(
+        methods,
+        ["runtime/status", "capabilities", "raw/workspace-refresh"],
+    );
+    assert!(!output.status.success(), "{document:#}");
+    assert_eq!(document["ok"], false, "{document:#}");
+    assert_eq!(document["result"]["steps"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        document["result"]["steps"][0]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+        "{document:#}",
+    );
+    assert_semantic_counts(&document, "INCOMPLETE", 1, 0, 1, "json");
 }
 
 #[test]
@@ -255,7 +297,13 @@ fn run_single_json_scenario(
     let socket_path = workspace_socket_path(&workspace, temp.path());
     write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
-    let backend = spawn_fake_backend(listener, workspace.clone(), diagnostics(&file), 4);
+    let backend = spawn_fake_backend(
+        listener,
+        workspace.clone(),
+        complete_refresh(&file),
+        diagnostics(&file),
+        4,
+    );
     let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
     let methods = backend.join().expect("fake diagnostics backend");
     (output, methods)
@@ -372,6 +420,7 @@ fn bind_listener(socket_path: &Path) -> UnixListener {
 fn spawn_fake_backend(
     listener: UnixListener,
     workspace: PathBuf,
+    refresh: Value,
     diagnostics: Value,
     expected_requests: usize,
 ) -> std::thread::JoinHandle<Vec<String>> {
@@ -426,12 +475,7 @@ fn spawn_fake_backend(
                     },
                     "schemaVersion": 3
                 }),
-                "raw/workspace-refresh" => json!({
-                    "refreshedFiles": request["params"]["filePaths"],
-                    "removedFiles": [],
-                    "fullRefresh": false,
-                    "schemaVersion": 3
-                }),
+                "raw/workspace-refresh" => refresh.clone(),
                 "raw/diagnostics" => diagnostics.clone(),
                 other => panic!("unexpected fake diagnostics method: {other}"),
             };
@@ -448,6 +492,61 @@ fn spawn_fake_backend(
             "fake backend request timeout"
         );
         methods
+    })
+}
+
+fn complete_refresh(file: &Path) -> Value {
+    json!({
+        "refreshedFiles": [file.display().to_string()],
+        "removedFiles": [],
+        "fullRefresh": false,
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "fileSystemDiscovery": "DISCOVERED",
+            "sourceModuleOwnership": "OWNED",
+            "indexAdmission": "ADMITTED",
+            "analysisAvailability": "AVAILABLE",
+            "analysisStatus": {
+                "filePath": file.display().to_string(),
+                "state": "ANALYZED"
+            }
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "removedFileCount": 0,
+        "attemptCount": 1,
+        "elapsedMillis": 0,
+        "schemaVersion": 3
+    })
+}
+
+fn incomplete_refresh(file: &Path) -> Value {
+    json!({
+        "refreshedFiles": [],
+        "removedFiles": [],
+        "fullRefresh": false,
+        "fileStatuses": [{
+            "filePath": file.display().to_string(),
+            "fileSystemDiscovery": "DISCOVERED",
+            "sourceModuleOwnership": "OWNED",
+            "indexAdmission": "PENDING",
+            "analysisAvailability": "PENDING",
+            "analysisStatus": {
+                "filePath": file.display().to_string(),
+                "state": "PENDING_INDEX",
+                "message": "IDEA is indexing"
+            }
+        }],
+        "semanticOutcome": "INCOMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 0,
+        "skippedFileCount": 1,
+        "removedFileCount": 0,
+        "attemptCount": 3,
+        "elapsedMillis": 50,
+        "schemaVersion": 3
     })
 }
 

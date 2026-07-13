@@ -3,6 +3,7 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
@@ -17,6 +18,7 @@ import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
+import io.github.amichne.kast.api.contract.result.FileSystemDiscoveryState
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.FileOperation
@@ -26,8 +28,10 @@ import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
@@ -36,6 +40,7 @@ import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.query.RenameQuery
@@ -50,6 +55,7 @@ import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.TextEdit
@@ -67,6 +73,9 @@ import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
 import io.github.amichne.kast.api.validation.ParsedSymbolQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
+import io.github.amichne.kast.api.validation.ParsedImportOptimizeQuery
+import io.github.amichne.kast.api.validation.ParsedRefreshQuery
+import io.github.amichne.kast.api.validation.ParsedRenameQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -517,6 +526,35 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `rename backend cannot omit affected files to bypass refresh preflight`() {
+        val backend = MissingRefreshRenameBackend(FakeAnalysisBackend.sample(tempDir))
+        val file = sampleFile()
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/rename",
+                    params = json.encodeToJsonElement(
+                        KastRenameRequest.serializer(),
+                        KastRenameBySymbolRequest(
+                            workspaceRoot = tempDir.toString(),
+                            symbol = "greet",
+                            fileHint = file.toString(),
+                            newName = "hello",
+                        ),
+                    ),
+                ),
+            )
+        }
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
+
+        assertEquals("CAPABILITY_NOT_SUPPORTED", error.error.data?.code)
+        assertEquals(0, backend.applyCalls)
+        assertTrue(file.readText().contains("fun greet()"))
+    }
+
+    @Test
     fun `symbol write and validate insert computes file hashes before apply`() {
         val backend = CapturingApplyEditsBackend(FakeAnalysisBackend.sample(tempDir))
         val file = sampleFile()
@@ -678,6 +716,106 @@ class AnalysisDispatcherTest {
         assertEquals(1, success.editCount)
         assertEquals(listOf(targetFile.toString()), success.createdFiles)
         assertEquals("package sample\n\nclass Added\n", targetFile.readText())
+    }
+
+    @Test
+    fun `symbol add file refreshes semantic admission before optimization and diagnostics`() {
+        val backend = RecordingMutationBackend(FakeAnalysisBackend.sample(tempDir))
+        val targetFile = tempDir.resolve("src").resolve("Added.kt")
+        val contentFile = tempDir.resolve("added-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Added\n")
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+
+        runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/add-file",
+                    params = json.encodeToJsonElement(
+                        KastAddFileRequest.serializer(),
+                        KastAddFileRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = targetFile.toString(),
+                            contentFile = contentFile.toString(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            listOf("apply", "refresh", "optimize", "diagnostics"),
+            backend.operations,
+        )
+    }
+
+    @Test
+    fun `symbol add file fails closed when semantic admission remains incomplete`() {
+        val backend = RecordingMutationBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            incompleteRefresh = true,
+        )
+        val targetFile = tempDir.resolve("src").resolve("Pending.kt")
+        val contentFile = tempDir.resolve("pending-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Pending\n")
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/add-file",
+                    params = json.encodeToJsonElement(
+                        KastAddFileRequest.serializer(),
+                        KastAddFileRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = targetFile.toString(),
+                            contentFile = contentFile.toString(),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(KastScopeMutationResponse.serializer(), response.result)
+
+        val success = result as KastScopeMutationSuccessResponse
+        assertFalse(success.ok)
+        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, success.diagnostics.semanticOutcome)
+        assertEquals(1, success.diagnostics.requestedFileCount)
+        assertEquals(0, success.diagnostics.analyzedFileCount)
+        assertEquals(1, success.diagnostics.skippedFileCount)
+        assertEquals(listOf("apply", "refresh"), backend.operations)
+    }
+
+    @Test
+    fun `symbol add file preflights refresh capability before creating the file`() {
+        val backend = MissingRefreshCapabilityBackend(FakeAnalysisBackend.sample(tempDir))
+        val targetFile = tempDir.resolve("src").resolve("NoRefresh.kt")
+        val contentFile = tempDir.resolve("no-refresh-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass NoRefresh\n")
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/add-file",
+                    params = json.encodeToJsonElement(
+                        KastAddFileRequest.serializer(),
+                        KastAddFileRequest(
+                            workspaceRoot = tempDir.toString(),
+                            filePath = targetFile.toString(),
+                            contentFile = contentFile.toString(),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
+
+        assertEquals("CAPABILITY_NOT_SUPPORTED", error.error.data?.code)
+        assertEquals(0, backend.applyCalls)
+        assertFalse(Files.exists(targetFile))
     }
 
     @Test
@@ -1478,6 +1616,95 @@ private class CapturingApplyEditsBackend(
         appliedFileHashes = query.fileHashes.map { fileHash ->
             fileHash.filePath.value to fileHash.hash
         }
+        return delegate.applyEdits(query)
+    }
+}
+
+private class RecordingMutationBackend(
+    private val delegate: AnalysisBackend,
+    private val incompleteRefresh: Boolean = false,
+) : AnalysisBackend by delegate {
+    val operations = mutableListOf<String>()
+
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        operations += "apply"
+        return delegate.applyEdits(query)
+    }
+
+    override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
+        operations += "refresh"
+        if (!incompleteRefresh) return delegate.refresh(query)
+        return RefreshResult.focused(
+            fileStatuses = query.filePaths.map { filePath ->
+                SemanticAdmissionStatus.incomplete(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.PENDING,
+                    analysisAvailability = AnalysisAvailabilityState.PENDING,
+                    analysisStatus = FileAnalysisStatus.skipped(
+                        filePath,
+                        FileAnalysisState.PENDING_INDEX,
+                        "IDEA is indexing",
+                    ),
+                )
+            },
+            attemptCount = 3,
+            elapsedMillis = 50,
+        )
+    }
+
+    override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult {
+        operations += "optimize"
+        return delegate.optimizeImports(query)
+    }
+
+    override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
+        operations += "diagnostics"
+        return delegate.diagnostics(query)
+    }
+}
+
+private class MissingRefreshCapabilityBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    var applyCalls: Int = 0
+        private set
+
+    override suspend fun capabilities(): BackendCapabilities = delegate.capabilities().copy(
+        mutationCapabilities = delegate.capabilities().mutationCapabilities - MutationCapability.REFRESH_WORKSPACE,
+    )
+
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        applyCalls += 1
+        return delegate.applyEdits(query)
+    }
+}
+
+private class MissingRefreshRenameBackend(
+    private val delegate: AnalysisBackend,
+) : AnalysisBackend by delegate {
+    var applyCalls: Int = 0
+        private set
+
+    override suspend fun capabilities(): BackendCapabilities {
+        val capabilities = delegate.capabilities()
+        return capabilities.copy(
+            mutationCapabilities = capabilities.mutationCapabilities - MutationCapability.REFRESH_WORKSPACE,
+        )
+    }
+
+    override suspend fun rename(query: ParsedRenameQuery): RenameResult {
+        val result = delegate.rename(query)
+        return RenameResult.of(
+            edits = result.edits,
+            fileHashes = result.fileHashes,
+            searchScope = result.searchScope,
+        )
+    }
+
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        applyCalls += 1
         return delegate.applyEdits(query)
     }
 }

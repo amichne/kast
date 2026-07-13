@@ -32,6 +32,7 @@ import com.intellij.util.Processor
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
+import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
@@ -43,8 +44,10 @@ import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
+import io.github.amichne.kast.api.contract.result.FileSystemDiscoveryState
 import io.github.amichne.kast.api.contract.HealthResponse
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 
 import io.github.amichne.kast.api.contract.Location
@@ -54,6 +57,7 @@ import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
@@ -70,6 +74,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
@@ -122,6 +127,10 @@ internal class KastPluginBackend(
     private val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
     private val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     private val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
+    private val semanticAdmissionAwaiter: IdeaSemanticAdmissionAwaiter =
+        IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
+    private val semanticAdmissionOperations: IdeaSemanticAdmissionOperations =
+        IdeaSemanticAdmissionOperations.idea(),
 ) : AnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
@@ -1003,10 +1012,9 @@ internal class KastPluginBackend(
         val affectedFiles = edits.map(TextEdit::filePath).distinct()
         val fileHashes = IdeaFileHashComputer.currentHashes(affectedFiles)
 
-        RenameResult(
+        RenameResult.of(
             edits = edits,
             fileHashes = fileHashes,
-            affectedFiles = affectedFiles,
             searchScope = SearchScope(
                 visibility = snapshot.visibility,
                 scope = snapshot.scopeKind,
@@ -1049,17 +1057,146 @@ internal class KastPluginBackend(
 
     override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
         return telemetry.inSpan(IdeaTelemetryScope.REFRESH, "kast.idea.refresh") {
-            ApplicationManager.getApplication().invokeLater {
-                VirtualFileManager.getInstance().asyncRefresh(null)
+            if (query.filePaths.isEmpty()) {
+                ApplicationManager.getApplication().invokeLater {
+                    VirtualFileManager.getInstance().asyncRefresh(null)
+                }
+                return@inSpan RefreshResult.full()
             }
-            val filePaths = query.filePaths.map { it.value }
-            if (filePaths.isEmpty()) {
-                RefreshResult(refreshedFiles = emptyList(), fullRefresh = true)
-            } else {
-                RefreshResult(refreshedFiles = filePaths, fullRefresh = false)
-            }
+
+            val admission = semanticAdmissionAwaiter.await(query.filePaths, ::probeSemanticAdmission)
+            RefreshResult.focused(
+                fileStatuses = admission.fileStatuses,
+                attemptCount = admission.attemptCount,
+                elapsedMillis = admission.elapsedMillis,
+            )
         }
     }
+
+    private suspend fun probeSemanticAdmission(filePath: NormalizedPath): SemanticAdmissionStatus {
+        val nioPath = filePath.toJavaPath()
+        val fileSystem = LocalFileSystem.getInstance()
+        if (Files.notExists(nioPath)) {
+            fileSystem.findFileByNioFile(nioPath)?.refresh(false, false)
+            nioPath.parent
+                ?.let(fileSystem::refreshAndFindFileByNioFile)
+                ?.refresh(false, false)
+            return SemanticAdmissionStatus.removed(filePath)
+        }
+
+        val virtualFile = semanticAdmissionOperations.refreshAndFind(nioPath)
+            ?: return pendingSemanticAdmission(
+                filePath = filePath,
+                fileSystemDiscovery = FileSystemDiscoveryState.PENDING,
+                sourceModuleOwnership = SourceModuleOwnershipState.NOT_APPLICABLE,
+                indexAdmission = IndexAdmissionState.NOT_APPLICABLE,
+                message = "File exists on disk but IDEA has not discovered it in the virtual file system",
+            )
+
+        return timedReadAction(
+            telemetry,
+            IdeaTelemetryScope.REFRESH,
+            "kast.idea.refresh.semanticAdmission",
+        ) {
+            if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
+                return@timedReadAction SemanticAdmissionStatus.incomplete(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OUTSIDE_SOURCE_MODULES,
+                    indexAdmission = IndexAdmissionState.NOT_APPLICABLE,
+                    analysisAvailability = AnalysisAvailabilityState.NOT_APPLICABLE,
+                    analysisStatus = FileAnalysisStatus.skipped(
+                        filePath,
+                        FileAnalysisState.OUTSIDE_SOURCE_MODULES,
+                        "File is not contained in an IDEA source module",
+                    ),
+                )
+            }
+            if (DumbService.isDumb(project)) {
+                return@timedReadAction pendingSemanticAdmission(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.PENDING,
+                    message = "IDEA indexing is still in progress",
+                )
+            }
+            val kotlinFileType = kotlinFileType()
+            val indexScope = GlobalSearchScope.fileScope(project, virtualFile)
+            val admittedToKotlinIndex = kotlinFileType != null &&
+                FileTypeIndex.getFiles(kotlinFileType, indexScope).any { indexedFile -> indexedFile == virtualFile }
+            if (!admittedToKotlinIndex) {
+                return@timedReadAction pendingSemanticAdmission(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.PENDING,
+                    message = "IDEA has not admitted the file to the Kotlin index",
+                )
+            }
+            val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+                ?: return@timedReadAction pendingSemanticAdmission(
+                    filePath = filePath,
+                    fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+                    sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+                    indexAdmission = IndexAdmissionState.ADMITTED,
+                    message = "IDEA has not created PSI for the file yet",
+                )
+            val ktFile = psiFile as? KtFile
+                ?: return@timedReadAction failedSemanticAdmission(
+                    filePath,
+                    "Semantic admission requires a Kotlin source file",
+                )
+            try {
+                semanticAdmissionOperations.collectDiagnostics(ktFile)
+            } catch (ex: ProcessCanceledException) {
+                throw ex
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Throwable) {
+                return@timedReadAction failedSemanticAdmission(
+                    filePath,
+                    ex.message?.takeIf(String::isNotBlank) ?: ex.toString(),
+                )
+            }
+            SemanticAdmissionStatus.admitted(filePath)
+        }
+    }
+
+    private fun pendingSemanticAdmission(
+        filePath: NormalizedPath,
+        fileSystemDiscovery: FileSystemDiscoveryState,
+        sourceModuleOwnership: SourceModuleOwnershipState,
+        indexAdmission: IndexAdmissionState,
+        message: String,
+    ): SemanticAdmissionStatus = SemanticAdmissionStatus.incomplete(
+        filePath = filePath,
+        fileSystemDiscovery = fileSystemDiscovery,
+        sourceModuleOwnership = sourceModuleOwnership,
+        indexAdmission = indexAdmission,
+        analysisAvailability = AnalysisAvailabilityState.PENDING,
+        analysisStatus = FileAnalysisStatus.skipped(
+            filePath,
+            FileAnalysisState.PENDING_INDEX,
+            message,
+        ),
+    )
+
+    private fun failedSemanticAdmission(
+        filePath: NormalizedPath,
+        message: String,
+    ): SemanticAdmissionStatus = SemanticAdmissionStatus.incomplete(
+        filePath = filePath,
+        fileSystemDiscovery = FileSystemDiscoveryState.DISCOVERED,
+        sourceModuleOwnership = SourceModuleOwnershipState.OWNED,
+        indexAdmission = IndexAdmissionState.ADMITTED,
+        analysisAvailability = AnalysisAvailabilityState.FAILED,
+        analysisStatus = FileAnalysisStatus.skipped(
+            filePath,
+            FileAnalysisState.BACKEND_FAILURE,
+            message,
+        ),
+    )
 
     override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.FILE_OUTLINE, "kast.idea.fileOutline") {
@@ -1407,14 +1544,6 @@ private enum class ReferencePartialReason {
     TARGET_INVALIDATED,
     CANDIDATE_DISCOVERY_STOPPED,
     INDEX_LOCATION_UNRESOLVED,
-}
-
-internal fun interface ReferenceSearchClock {
-    fun nanoTime(): Long
-
-    companion object {
-        val System: ReferenceSearchClock = ReferenceSearchClock { java.lang.System.nanoTime() }
-    }
 }
 
 private class ReferenceSearchBudget(

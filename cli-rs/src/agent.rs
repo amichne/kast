@@ -70,4 +70,42 @@ mod semantic_analysis_evidence_tests {
             AgentSemanticAnalysisEvidence::NotDiagnostics,
         ));
     }
+
+    #[test]
+    fn full_workspace_refresh_requires_the_complete_admission_contract() {
+        let request = json!({"params": {"filePaths": []}});
+        let mut result = json!({
+            "refreshedFiles": [],
+            "removedFiles": [],
+            "fullRefresh": true,
+            "fileStatuses": [],
+            "semanticOutcome": "COMPLETE",
+            "requestedFileCount": 0,
+            "analyzedFileCount": 0,
+            "skippedFileCount": 0,
+            "removedFileCount": 0,
+            "attemptCount": 1,
+            "elapsedMillis": 0,
+            "schemaVersion": 3
+        });
+
+        assert!(matches!(
+            AgentSemanticAnalysisEvidence::from_result(
+                "raw/workspace-refresh",
+                &request,
+                Some(&result),
+            ),
+            AgentSemanticAnalysisEvidence::Valid(_),
+        ));
+
+        result.as_object_mut().unwrap().remove("attemptCount");
+        assert!(matches!(
+            AgentSemanticAnalysisEvidence::from_result(
+                "raw/workspace-refresh",
+                &request,
+                Some(&result),
+            ),
+            AgentSemanticAnalysisEvidence::Invalid,
+        ));
+    }
 }

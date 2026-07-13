@@ -498,7 +498,7 @@ fn execute_agent_steps(
             },
             step_session,
         );
-        if step.method == "raw/diagnostics" {
+        if matches!(step.method, "raw/workspace-refresh" | "raw/diagnostics") {
             let evidence_is_invalid = envelope
                 .error
                 .as_ref()

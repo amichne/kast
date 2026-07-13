@@ -52,6 +52,7 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.SymbolResult
@@ -245,6 +246,7 @@ object OpenApiDocument {
         registry.register("ApplyEditsResult", ApplyEditsResult.serializer())
         registry.register("RefreshQuery", RefreshQuery.serializer())
         registry.register("RefreshResult", RefreshResult.serializer())
+        registry.register("SemanticAdmissionStatus", SemanticAdmissionStatus.serializer())
 
         // FileOperation sealed hierarchy
         registry.register("FileOperation", FileOperation.serializer())

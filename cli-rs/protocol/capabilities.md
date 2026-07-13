@@ -442,7 +442,15 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin refreshedFiles: List<String>` | Absolute paths of files whose state was refreshed. |
-            | `#!kotlin removedFiles: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files that were removed from the workspace. |
-            | `#!kotlin fullRefresh: Boolean` | True when a full workspace refresh was performed. |
+            | `#!kotlin refreshedFiles: List<String>` | Absolute paths whose semantic admission completed. |
+            | `#!kotlin removedFiles: List<String>` | Absolute paths confirmed removed from the workspace. |
+            | `#!kotlin fullRefresh: Boolean` | True when an unbounded full workspace refresh was performed. |
+            | `#!kotlin fileStatuses: List<SemanticAdmissionStatus>` | Ordered semantic-admission state for every focused refresh path. |
+            | `#!kotlin semanticOutcome: SemanticAnalysisOutcome` | Whether every existing focused path reached semantic admission. |
+            | `#!kotlin requestedFileCount: Int` | Number of existing paths that required semantic admission. |
+            | `#!kotlin analyzedFileCount: Int` | Number of existing paths that reached semantic admission. |
+            | `#!kotlin skippedFileCount: Int` | Number of existing paths that did not reach semantic admission. |
+            | `#!kotlin removedFileCount: Int` | Number of focused paths confirmed removed. |
+            | `#!kotlin attemptCount: Int` | Number of admission probes performed before returning. |
+            | `#!kotlin elapsedMillis: Long` | Elapsed bounded-wait time in milliseconds. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |

@@ -32,6 +32,7 @@ import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
@@ -272,7 +273,7 @@ class FakeAnalysisBackend private constructor(
             .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
         val affectedFiles = edits.map(TextEdit::filePath).distinct()
 
-        return RenameResult(
+        return RenameResult.of(
             edits = edits,
             fileHashes = affectedFiles.map { filePath ->
                 FileHash(
@@ -280,7 +281,6 @@ class FakeAnalysisBackend private constructor(
                     hash = FileHashing.sha256(Files.readString(Path.of(filePath))),
                 )
             },
-            affectedFiles = affectedFiles,
         )
     }
 
@@ -452,13 +452,18 @@ class FakeAnalysisBackend private constructor(
     )
 
     override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult {
-        val refreshedFiles = query.filePaths.map { it.value }
-            .ifEmpty { availableFiles.toList() }
-            .sorted()
-        return RefreshResult(
-            refreshedFiles = refreshedFiles,
-            removedFiles = emptyList(),
-            fullRefresh = query.filePaths.isEmpty(),
+        if (query.filePaths.isEmpty()) return RefreshResult.full()
+        val fileStatuses = query.filePaths.map { filePath ->
+            if (filePath.value in availableFiles && Files.exists(filePath.toJavaPath())) {
+                SemanticAdmissionStatus.admitted(filePath)
+            } else {
+                SemanticAdmissionStatus.removed(filePath)
+            }
+        }
+        return RefreshResult.focused(
+            fileStatuses = fileStatuses,
+            attemptCount = 1,
+            elapsedMillis = 0,
         )
     }
 

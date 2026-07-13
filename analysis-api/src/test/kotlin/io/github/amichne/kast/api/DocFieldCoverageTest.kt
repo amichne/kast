@@ -33,6 +33,7 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
@@ -137,6 +138,7 @@ class DocFieldCoverageTest {
         "ApplyEditsResult" to ApplyEditsResult.serializer(),
         "RefreshQuery" to RefreshQuery.serializer(),
         "RefreshResult" to RefreshResult.serializer(),
+        "SemanticAdmissionStatus" to SemanticAdmissionStatus.serializer(),
 
         // FileOperation sealed hierarchy subtypes
         "FileOperation.CreateFile" to FileOperation.CreateFile.serializer(),
