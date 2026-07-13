@@ -123,7 +123,7 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
 }
 
 #[test]
-fn agent_verify_uses_configured_default_backend_when_auto_starting() {
+fn agent_verify_uses_configured_default_backend_without_starting() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -131,6 +131,11 @@ fn agent_verify_uses_configured_default_backend_when_auto_starting() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("settings");
     write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
@@ -168,6 +173,11 @@ fn agent_verify_backend_flag_overrides_configured_default_backend() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("settings");
     write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),

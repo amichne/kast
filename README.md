@@ -93,6 +93,15 @@ On developer machines, the JetBrains plugin starts the Kast backend when the
 project opens and can request a Gradle refresh by default. Agents use that backend behind the scenes
 when they need compiler-backed evidence.
 
+Temporary clones and Git worktrees have independent semantic state. Open the
+exact checkout in the JetBrains IDE on macOS, or select an already installed
+headless runtime on a supported host. `kast agent verify --workspace-root
+"$PWD"` reports the selected backend, exact root, source modules, limitations,
+and evidence quality; it never borrows another checkout's runtime.
+Verification only reuses an already ready runtime: it never launches an IDE or
+starts a headless backend. On macOS, applied mutations still require exact-root
+plugin preparation even when `--backend=headless` is selected.
+
 ## Documentation
 
 - Read the [documentation site](https://kast.michne.com/).

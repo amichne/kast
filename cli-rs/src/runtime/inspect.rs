@@ -1,17 +1,22 @@
 fn inspect_workspace(
     workspace_root: &Path,
     preference: RuntimeBackendPreference,
-    prune_stale_descriptors: bool,
+    stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let config = KastConfig::load(workspace_root)?;
-    inspect_workspace_with_config(workspace_root, &config, preference, prune_stale_descriptors)
+    inspect_workspace_with_config(
+        workspace_root,
+        &config,
+        preference,
+        stale_descriptor_policy,
+    )
 }
 
 fn inspect_workspace_with_config(
     workspace_root: &Path,
     config: &KastConfig,
     preference: RuntimeBackendPreference,
-    prune_stale_descriptors: bool,
+    stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let descriptor_directory = config.paths.descriptor_dir.clone();
     let backend_name = preference.backend_filter();
@@ -22,7 +27,7 @@ fn inspect_workspace_with_config(
         candidates.push(inspect_descriptor(
             &descriptor_directory,
             descriptor,
-            prune_stale_descriptors,
+            stale_descriptor_policy,
         )?);
     }
     candidates.sort_by(|a, b| {
@@ -41,11 +46,11 @@ fn inspect_workspace_with_config(
 fn inspect_descriptor(
     descriptor_directory: &Path,
     registered: RegisteredDescriptor,
-    prune_stale_descriptors: bool,
+    stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<RuntimeCandidateStatus> {
     let pid_alive = is_process_alive(registered.descriptor.pid);
     if !pid_alive {
-        if prune_stale_descriptors {
+        if stale_descriptor_policy == StaleDescriptorPolicy::Prune {
             delete_descriptor(descriptor_directory, &registered.descriptor)?;
         }
         return Ok(RuntimeCandidateStatus {
@@ -69,7 +74,11 @@ fn inspect_descriptor(
         socket_path,
         "runtime/status",
         Value::Object(Default::default()),
-    );
+    )
+    .and_then(|status| {
+        validate_runtime_status_identity(&registered.descriptor, &status)?;
+        Ok(status)
+    });
     let (runtime_status, error_message) = match status_result {
         Ok(status) => (Some(status), None),
         Err(error) => (None, Some(error.message)),
@@ -98,6 +107,27 @@ fn inspect_descriptor(
     })
 }
 
+fn validate_runtime_status_identity(
+    descriptor: &ServerInstanceDescriptor,
+    status: &RuntimeStatusResponse,
+) -> Result<()> {
+    let descriptor_root = config::normalize(PathBuf::from(&descriptor.workspace_root));
+    let status_root = config::normalize(PathBuf::from(&status.workspace_root));
+    if descriptor_root != status_root || descriptor.backend_name != status.backend_name {
+        return Err(CliError::new(
+            "RUNTIME_IDENTITY_MISMATCH",
+            format!(
+                "Runtime status identity {}:{} does not match descriptor identity {}:{}",
+                status_root.display(),
+                status.backend_name,
+                descriptor_root.display(),
+                descriptor.backend_name,
+            ),
+        ));
+    }
+    Ok(())
+}
+
 fn wait_for_servable(
     workspace_root: &Path,
     backend_name: Option<BackendName>,
@@ -109,7 +139,11 @@ fn wait_for_servable(
         .map(RuntimeBackendPreference::Fixed)
         .unwrap_or(RuntimeBackendPreference::Automatic);
     while Instant::now() < deadline {
-        let inspection = inspect_workspace(workspace_root, preference, true)?;
+        let inspection = inspect_workspace(
+            workspace_root,
+            preference,
+            StaleDescriptorPolicy::Prune,
+        )?;
         if let Some(selected) =
             select_servable(&inspection.candidates, backend_name, accept_indexing)
         {
@@ -160,6 +194,61 @@ fn select_servable(
     matches.into_iter().next()
 }
 
+fn reject_ambiguous_servable_backends(
+    candidates: &[RuntimeCandidateStatus],
+    preference: RuntimeBackendPreference,
+    accept_indexing: bool,
+) -> Result<()> {
+    if preference != RuntimeBackendPreference::Automatic {
+        return Ok(());
+    }
+    let mut matches = candidates
+        .iter()
+        .filter(|candidate| {
+            if accept_indexing {
+                candidate.runtime_status.as_ref().is_some_and(is_servable)
+            } else {
+                candidate.ready
+            }
+        })
+        .collect::<Vec<_>>();
+    matches.sort_by(|left, right| {
+        left.descriptor
+            .backend_name
+            .cmp(&right.descriptor.backend_name)
+    });
+    matches.dedup_by(|left, right| {
+        left.descriptor.backend_name == right.descriptor.backend_name
+    });
+    if matches.len() <= 1 {
+        return Ok(());
+    }
+    let mut error = CliError::new(
+        "SEMANTIC_BACKEND_AMBIGUOUS",
+        "More than one ready semantic backend matches the exact workspace root. Select --backend=idea or --backend=headless.",
+    );
+    error
+        .details
+        .insert("candidateCount".to_string(), matches.len().to_string());
+    for (index, candidate) in matches.into_iter().enumerate() {
+        error.details.insert(
+            format!("candidate{index}BackendName"),
+            candidate.descriptor.backend_name.clone(),
+        );
+        error.details.insert(
+            format!("candidate{index}BackendVersion"),
+            candidate.descriptor.backend_version.clone(),
+        );
+        error.details.insert(
+            format!("candidate{index}WorkspaceRoot"),
+            config::normalize(PathBuf::from(&candidate.descriptor.workspace_root))
+                .display()
+                .to_string(),
+        );
+    }
+    Err(error)
+}
+
 fn select_status_candidate(
     candidates: &[RuntimeCandidateStatus],
     backend_name: Option<BackendName>,
@@ -207,15 +296,12 @@ fn find_compatible_descriptors(
 ) -> Result<Vec<RegisteredDescriptor>> {
     let descriptors = read_descriptors(descriptor_directory)?;
     let normalized = config::normalize(workspace_root.to_path_buf());
-    let workspace_identity = workspace_git_identity(&normalized);
     Ok(descriptors
         .into_iter()
         .filter(|descriptor| {
             backend_name.is_none_or(|backend| descriptor.backend_name == backend.canonical())
         })
-        .filter(|descriptor| {
-            descriptor_matches_workspace(descriptor, &normalized, workspace_identity.as_ref())
-        })
+        .filter(|descriptor| descriptor_matches_workspace(descriptor, &normalized))
         .map(|descriptor| RegisteredDescriptor {
             id: descriptor_id(&descriptor),
             descriptor,
@@ -226,20 +312,7 @@ fn find_compatible_descriptors(
 fn descriptor_matches_workspace(
     descriptor: &ServerInstanceDescriptor,
     workspace_root: &Path,
-    workspace_identity: Option<&WorkspaceGitIdentity>,
 ) -> bool {
     let descriptor_root = config::normalize(PathBuf::from(&descriptor.workspace_root));
-    if descriptor_root == workspace_root {
-        return true;
-    }
-    if descriptor.backend_name != BackendName::Idea.canonical() {
-        return false;
-    }
-    let Some(workspace_identity) = workspace_identity else {
-        return false;
-    };
-    let Some(descriptor_identity) = workspace_git_identity(&descriptor_root) else {
-        return false;
-    };
-    workspace_git_identities_are_compatible_for_idea(workspace_identity, &descriptor_identity)
+    descriptor_root == workspace_root
 }

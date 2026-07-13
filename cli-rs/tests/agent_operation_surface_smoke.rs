@@ -129,6 +129,11 @@ fn applied_add_file_submits_typed_mutation_request() {
     let content_file = temp.path().join("Added.kt");
     let target = workspace.join("src/Added.kt");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"operation-fixture\"\n",
+    )
+    .expect("settings");
     std::fs::write(&content_file, "class Added\n").expect("content");
     let backend = spawn_operation_backend(
         &home,

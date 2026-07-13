@@ -21,8 +21,22 @@ pub fn raw_rpc_session(
     requested_workspace_root: Option<PathBuf>,
     backend_name: Option<BackendName>,
 ) -> Result<RawRpcSession> {
+    raw_rpc_session_with_auto_start(requested_workspace_root, backend_name, true)
+}
+
+pub fn raw_rpc_session_reuse_only(
+    requested_workspace_root: Option<PathBuf>,
+    backend_name: Option<BackendName>,
+) -> Result<RawRpcSession> {
+    raw_rpc_session_with_auto_start(requested_workspace_root, backend_name, false)
+}
+
+fn raw_rpc_session_with_auto_start(
+    requested_workspace_root: Option<PathBuf>,
+    backend_name: Option<BackendName>,
+    auto_start: bool,
+) -> Result<RawRpcSession> {
     let workspace_root = workspace_root(requested_workspace_root)?;
-    self_mgmt::validate_macos_plugin_workspace(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let response_timeout = Duration::from_millis(
         config
@@ -37,7 +51,7 @@ pub fn raw_rpc_session(
         idea_home: None,
         wait_timeout_ms: 60_000,
         accept_indexing: Some(true),
-        no_auto_start: None,
+        no_auto_start: Some(!auto_start),
         socket_path: None,
         module_name: None,
         source_roots: None,

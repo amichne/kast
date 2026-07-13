@@ -65,6 +65,7 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
             request: compiler_request.clone(),
             runtime: args.runtime.clone(),
             full_response: true,
+            operation: AgentOperation::ReadOnly,
         },
         Some(&session),
     );
@@ -173,6 +174,7 @@ fn execute_agent_symbol_discovery(args: AgentSymbolArgs) -> AgentEnvelope {
         request: request.clone(),
         runtime: args.runtime,
         full_response: true,
+        operation: AgentOperation::ReadOnly,
     });
     let result = match successful_symbol_query_result(envelope, request.clone()) {
         Ok(result) => result,
@@ -224,6 +226,7 @@ fn indexed_exact_or_compiler_error(
         request: request.clone(),
         runtime: args.runtime.clone(),
         full_response: true,
+        operation: AgentOperation::ReadOnly,
     });
     let result = match successful_symbol_query_result(envelope, request.clone()) {
         Ok(result) => result,
@@ -351,6 +354,7 @@ fn compiler_symbol_relations(
                 request: request.clone(),
                 runtime: args.runtime.clone(),
                 full_response: true,
+                operation: AgentOperation::ReadOnly,
             },
             Some(session),
         );

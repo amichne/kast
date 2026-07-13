@@ -502,6 +502,13 @@ struct AgentRequest {
     request: Value,
     runtime: AgentRuntimeArgs,
     full_response: bool,
+    operation: AgentOperation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AgentOperation {
+    ReadOnly,
+    Mutation,
 }
 
 #[derive(Debug, Serialize)]
