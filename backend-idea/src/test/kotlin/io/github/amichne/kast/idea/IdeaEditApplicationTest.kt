@@ -5,6 +5,7 @@ import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.junit5.TestApplication
@@ -22,13 +23,16 @@ import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.protocol.ValidationException
+import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 
 @TestApplication
 class IdeaEditApplicationTest {
@@ -127,7 +131,7 @@ class IdeaEditApplicationTest {
     }
 
     @Test
-    fun `applyEdits updates IDEA Document immediately without disk write`() = runBlocking {
+    fun `applyEdits updates IDEA Document and secure disk state`() = runBlocking {
         ensureProjectReady()
 
         val filePath = readAction { testFile.virtualFile.path }
@@ -203,6 +207,128 @@ class IdeaEditApplicationTest {
         assertEquals(listOf(newFile.toString()), result.createdFiles)
         assertTrue(Files.isDirectory(newFile.parent), "Create file should materialize missing parent directories")
         assertEquals(content, Files.readString(newFile))
+    }
+
+    @Test
+    fun `add file create fails closed when validated ancestor becomes escaping symlink at write boundary`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val guardedParent = Files.createDirectory(workspaceRoot.resolve("guarded-create"))
+        val displacedParent = workspaceRoot.resolve("guarded-create-displaced")
+        val outsideParent = Files.createTempDirectory("kast-escaping-create")
+        val target = guardedParent.resolve("Created.kt")
+
+        val failure = runCatching {
+            IdeaEditApplier(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                beforeSecureMutation = { filePath, mutation ->
+                    if (filePath == target && mutation == IdeaWorkspaceMutation.CREATE_FILE) {
+                        Files.move(guardedParent, displacedParent)
+                        Files.createSymbolicLink(guardedParent, outsideParent)
+                    }
+                },
+            ).apply(
+                ApplyEditsQuery(
+                    edits = emptyList(),
+                    fileHashes = emptyList(),
+                    fileOperations = listOf(FileOperation.CreateFile(target.toString(), "class Created\n")),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(
+            failure is UnsafeWorkspaceMutationException,
+            "Expected UnsafeWorkspaceMutationException, got ${failure?.let { it::class.qualifiedName } ?: "success"}",
+        )
+        val unsafeFailure = failure as UnsafeWorkspaceMutationException
+        assertEquals("UNSAFE_WORKSPACE_MUTATION", unsafeFailure.errorCode)
+        assertEquals("openat-directory", unsafeFailure.details["nativeOperation"])
+        assertFalse(Files.exists(outsideParent.resolve(target.fileName)), "Escaping target must remain untouched")
+        assertFalse(Files.exists(displacedParent.resolve(target.fileName)), "Displaced in-workspace directory must remain untouched")
+    }
+
+    @Test
+    fun `file scoped mutation fails closed when validated ancestor becomes escaping symlink at write boundary`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val guardedParent = Files.createDirectory(workspaceRoot.resolve("guarded-edit"))
+        val displacedParent = workspaceRoot.resolve("guarded-edit-displaced")
+        val outsideParent = Files.createTempDirectory("kast-escaping-edit")
+        val target = guardedParent.resolve("Scoped.kt")
+        val original = "package demo\n\nfun value(): Int = 1\n"
+        val outsideOriginal = "package outside\n\nfun value(): Int = 9\n"
+        Files.writeString(target, original)
+        Files.writeString(outsideParent.resolve(target.fileName), outsideOriginal)
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target)
+
+        val failure = runCatching {
+            IdeaEditApplier(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                beforeSecureMutation = { filePath, mutation ->
+                    if (filePath == target && mutation == IdeaWorkspaceMutation.TEXT_EDIT) {
+                        Files.move(guardedParent, displacedParent)
+                        Files.createSymbolicLink(guardedParent, outsideParent)
+                    }
+                },
+            ).apply(
+                ApplyEditsQuery(
+                    edits = listOf(
+                        TextEdit(
+                            filePath = target.toString(),
+                            startOffset = original.indexOf('1'),
+                            endOffset = original.indexOf('1') + 1,
+                            newText = "2",
+                        ),
+                    ),
+                    fileHashes = listOf(FileHash(target.toString(), io.github.amichne.kast.api.validation.FileHashing.sha256(original))),
+                    fileOperations = emptyList(),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(
+            failure is UnsafeWorkspaceMutationException,
+            "Expected UnsafeWorkspaceMutationException, got ${failure?.let { it::class.qualifiedName } ?: "success"}",
+        )
+        val unsafeFailure = failure as UnsafeWorkspaceMutationException
+        assertEquals("UNSAFE_WORKSPACE_MUTATION", unsafeFailure.errorCode)
+        assertEquals("openat-directory", unsafeFailure.details["nativeOperation"])
+        assertEquals(outsideOriginal, Files.readString(outsideParent.resolve(target.fileName)))
+        assertEquals(original, Files.readString(displacedParent.resolve(target.fileName)))
+    }
+
+    @Test
+    fun `secure text edit preserves existing source permissions`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val target = workspaceRoot.resolve("PermissionPreserved.kt")
+        val original = "package demo\n\nfun permissionPreserved(): Int = 1\n"
+        val permissions = PosixFilePermissions.fromString("rw-------")
+        Files.writeString(target, original)
+        Files.setPosixFilePermissions(target, permissions)
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target)
+
+        IdeaEditApplier(project, workspaceRoot).apply(
+            ApplyEditsQuery(
+                edits = listOf(
+                    TextEdit(
+                        filePath = target.toString(),
+                        startOffset = original.indexOf('1'),
+                        endOffset = original.indexOf('1') + 1,
+                        newText = "2",
+                    ),
+                ),
+                fileHashes = listOf(FileHash(target.toString(), io.github.amichne.kast.api.validation.FileHashing.sha256(original))),
+                fileOperations = emptyList(),
+            ),
+        )
+
+        assertEquals(permissions, Files.getPosixFilePermissions(target))
     }
 
     @Test

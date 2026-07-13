@@ -63,6 +63,17 @@ and only then converts the trusted path to the RPC string used by every step.
 This centralizes the invariant, supports deleted targets, and makes request and
 output identity agree.
 
+### Revalidate pathname containment at the backend write seam
+
+Canonical CLI paths still cross a process boundary before the backend mutates
+the filesystem. An accepted ancestor can therefore be replaced by an escaping
+symlink after CLI parsing or server validation. The selected implementation
+repeats traversal at the final IDEA/headless mutation seam with POSIX directory
+descriptors: every path component is opened without following symlinks, and
+create, replace, and delete commit relative to the held parent descriptor.
+This is a separate write-boundary guarantee; it does not change request or
+rendered path identity.
+
 ## Path Contract
 
 The parser receives the declared `AgentRuntimeArgs` and one semantic target.
@@ -141,6 +152,13 @@ Fake-daemon integration tests prove that:
 - invalid targets fail before any backend request;
 - existing absolute paths keep their prior request identity;
 - add-file and file-scoped mutation plans contain canonical target paths.
+
+IDEA backend tests deterministically replace a validated ancestor with an
+escaping symlink immediately before add-file creation and file-scoped text
+replacement. Both operations must return `UNSAFE_WORKSPACE_MUTATION` without
+touching either the outside target or the displaced in-workspace directory.
+The same suite proves normal creates, missing parent creation, VFS document
+synchronization, deletes, and existing source permissions remain intact.
 
 Packaged-content tests pin the concise relative guidance. Final validation runs
 the locked Rust suite, formatting, Clippy with warnings denied, release

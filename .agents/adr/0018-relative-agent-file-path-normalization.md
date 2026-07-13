@@ -25,6 +25,26 @@ leaf is permitted after its deepest existing ancestor is canonicalized and
 proved to be an in-workspace directory; this preserves deleted-file refresh
 and new-file planning.
 
+CLI normalization is not the mutation boundary. Immediately before a shipped
+IDEA or headless backend changes the filesystem, it opens the filesystem root
+and traverses every canonical workspace and target directory component with
+POSIX `openat` using `O_NOFOLLOW` and `O_DIRECTORY`. Missing create-file
+directories are materialized with `mkdirat` relative to the held parent
+descriptor. New files are created with `openat`; existing-file edits are
+written to a descriptor-relative temporary file and committed with `renameat`.
+Delete operations use `unlinkat`. The backend refreshes IDEA VFS state after
+the descriptor-relative mutation rather than asking VFS to resolve the target
+pathname for the write.
+
+This write-boundary check is repeated after server containment validation, so
+replacing an accepted ancestor with an escaping symlink cannot redirect an
+add-file or file-scoped mutation. Any symlink, non-directory component, missing
+primitive, or unsupported non-POSIX runtime fails with the typed
+`UNSAFE_WORKSPACE_MUTATION` error before an outside write. macOS and Linux are
+the shipped runtimes governed by this decision. Existing source permissions
+are carried onto atomic text replacements; newly created Kotlin files and
+directories use deterministic IDEA-compatible permissions.
+
 Relative targets are rejected when `--workspace-root` was omitted, even if
 Kast could infer a workspace from the current directory. Absolute targets
 remain accepted without an explicit root when they are contained by the
@@ -49,6 +69,11 @@ unchecked input. Resolving the deepest existing ancestor supports meaningful
 missing-file operations without weakening workspace containment or symlink
 safety.
 
+Canonicalizing a missing path alone is a check-then-use operation. Repeating
+the walk at the actual mutation seam with held directory descriptors closes
+the ancestor-replacement gap without changing canonical CLI output or the
+absolute backend request contract.
+
 ## Public surface and source owners
 
 | Contract | Source of truth |
@@ -56,9 +81,11 @@ safety.
 | Typed command arguments | `cli-rs/src/cli/agent.rs` |
 | Canonical workspace-contained path parser | `cli-rs/src/agent/path.rs` |
 | Agent request and plan construction | `cli-rs/src/agent/dispatch.rs` |
+| Typed unsafe-mutation failure | `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/UnsafeWorkspaceMutationException.kt` |
+| Descriptor-relative write boundary | `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/SecureWorkspaceMutation.kt`, `IdeaEditApplier.kt` |
 | Installed agent routing | `cli-rs/resources/kast-skill/` |
 | Published command examples | `docs/reference/agent-commands.md` |
-| Behavior and regression proof | `cli-rs/tests/agent_diagnostics_smoke.rs`, `cli-rs/tests/agent_command_surface_smoke.rs` |
+| Behavior and regression proof | `cli-rs/tests/agent_diagnostics_smoke.rs`, `cli-rs/tests/agent_command_surface_smoke.rs`, `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaEditApplicationTest.kt` |
 
 ## Out of scope
 
@@ -82,6 +109,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
+./gradlew :analysis-api:test :backend-idea:test
 .github/scripts/test-docs-content-contract.sh
 git diff --check
 ```

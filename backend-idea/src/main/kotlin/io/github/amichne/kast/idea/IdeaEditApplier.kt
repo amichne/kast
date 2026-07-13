@@ -9,7 +9,6 @@ import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsConfiguration
 import com.intellij.openapi.vcs.VcsShowConfirmationOption
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
@@ -19,6 +18,7 @@ import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.PartialApplyException
+import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.EditPlanValidator
 import io.github.amichne.kast.api.validation.FileHashing
@@ -29,24 +29,28 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Applies edits using IDEA's VFS, Document, and WriteCommandAction APIs.
+ * Applies edits using descriptor-relative filesystem writes plus IDEA's
+ * Document and WriteCommandAction APIs.
  *
- * Preserves IDEA's undo/redo, PSI synchronization, and VFS notification semantics.
- * All mutations happen through proper IDEA APIs with write actions.
+ * Preserves IDEA's undo/redo, PSI synchronization, and VFS notification
+ * semantics while preventing pathname replacement from escaping the workspace.
  */
 internal class IdeaEditApplier(
     private val project: Project,
     private val workspaceRoot: Path,
     private val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
+    private val secureWorkspaceMutation: SecureWorkspaceMutation =
+        SecureWorkspaceMutation(workspaceIdentity.canonicalWorkspaceRootPath),
+    private val beforeSecureMutation: (Path, IdeaWorkspaceMutation) -> Unit = { _, _ -> },
 ) {
     /**
      * Applies text edits and file operations through IDEA APIs.
      *
      * Workflow:
      * 1. Validate operations against current VFS state
-     * 2. Apply file operations (create/delete) through VFS
-     * 3. Apply text edits through Document API with WriteCommandAction
-     * 4. Commit and save documents
+     * 2. Apply file operations relative to held workspace directory descriptors
+     * 3. Apply text edits through the same secure boundary and an IDEA command
+     * 4. Refresh VFS state and commit documents
      *
      * @param query The edit query with edits, hashes, and file operations
      * @return Result with applied edits and affected files
@@ -161,6 +165,9 @@ internal class IdeaEditApplier(
                 editAffectedFiles += plan.filePath
                 appliedEdits += plan.edits.sortedBy { it.startOffset }
             } catch (exception: Exception) {
+                if (exception is UnsafeWorkspaceMutationException && affectedFiles.isEmpty() && editAffectedFiles.isEmpty()) {
+                    throw exception
+                }
                 KastStructuredTrace.event(
                     eventName = "idea.apply_edits.text_edit_failed",
                     project = project,
@@ -239,24 +246,14 @@ internal class IdeaEditApplier(
                         )
                         writeAction {
                             val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
-                            val parentPath = checkNotNull(filePath.parent) {
-                                "Create file target has no parent directory: ${operation.filePath}"
-                            }
-                            val fileName = checkNotNull(filePath.fileName) {
-                                "Create file target has no file name: ${operation.filePath}"
-                            }.toString()
-                            val parentFile = VfsUtil.createDirectories(parentPath.toString())
-
-                            if (parentFile.findChild(fileName) != null) {
-                                throw ConflictException(
-                                    message = "The requested file already exists",
-                                    details = mapOf("filePath" to operation.filePath),
-                                )
-                            }
-
-                            val newFile = parentFile.createChildData(this, fileName)
-                            newFile.setBinaryContent(operation.content.toByteArray(StandardCharsets.UTF_8))
+                            beforeSecureMutation(filePath, IdeaWorkspaceMutation.CREATE_FILE)
+                            secureWorkspaceMutation.createFile(filePath, operation.content)
                         }
+                        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
+                            ?: throw ValidationException(
+                                message = "Kast IDEA could not refresh the securely created file",
+                                details = mapOf("filePath" to operation.filePath),
+                            )
                         verifyPostWrite(
                             filePath = operation.filePath,
                             mutation = IdeaWorkspaceMutation.CREATE_FILE,
@@ -290,46 +287,12 @@ internal class IdeaEditApplier(
                                 targetFilePath = operation.filePath,
                             ),
                         )
-                        val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
-                            ?: throw NotFoundException(
-                                message = "The requested file does not exist",
-                                details = mapOf("filePath" to operation.filePath),
-                            )
-
-                        val currentContent = readAction {
-                            String(virtualFile.contentsToByteArray(), StandardCharsets.UTF_8)
-                        }
-                        val currentHash = FileHashing.sha256(currentContent)
-
-                        if (currentHash != operation.expectedHash) {
-                            KastStructuredTrace.event(
-                                eventName = "idea.apply_edits.file_delete_hash_conflict",
-                                project = project,
-                                workspaceRoot = workspaceRoot,
-                                fields = KastStructuredTraceFields(
-                                    invocationId = invocationId,
-                                    agentRole = "idea-edit-applier",
-                                    targetFilePath = operation.filePath,
-                                ),
-                                outcome = "failed",
-                                detail = mapOf(
-                                    "expectedHash" to operation.expectedHash,
-                                    "actualHash" to currentHash,
-                                ),
-                            )
-                            throw ConflictException(
-                                message = "The file changed after the delete plan was created",
-                                details = mapOf(
-                                    "filePath" to operation.filePath,
-                                    "expectedHash" to operation.expectedHash,
-                                    "actualHash" to currentHash,
-                                ),
-                            )
-                        }
-
                         writeAction {
-                            virtualFile.delete(this)
+                            val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
+                            beforeSecureMutation(filePath, IdeaWorkspaceMutation.DELETE_FILE)
+                            secureWorkspaceMutation.deleteFile(filePath, operation.expectedHash)
                         }
+                        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
                         verifyPostWrite(
                             filePath = operation.filePath,
                             mutation = IdeaWorkspaceMutation.DELETE_FILE,
@@ -354,6 +317,9 @@ internal class IdeaEditApplier(
                 }
                 affectedFiles += operation.filePath
             } catch (exception: Exception) {
+                if (exception is UnsafeWorkspaceMutationException && affectedFiles.isEmpty()) {
+                    throw exception
+                }
                 KastStructuredTrace.event(
                     eventName = "idea.apply_edits.file_operation_failed",
                     project = project,
@@ -502,17 +468,29 @@ internal class IdeaEditApplier(
             fileDocumentManager.getDocument(virtualFile)
         } ?: throw IllegalStateException("Cannot get Document for file: ${plan.filePath}")
 
-        // Apply edits in WriteCommandAction (required for Document modifications)
+        val diskHash = readAction {
+            FileHashing.sha256(String(virtualFile.contentsToByteArray(), StandardCharsets.UTF_8))
+        }
+        val updatedContent = readAction {
+            StringBuilder(document.text).apply {
+                plan.edits.forEach { edit ->
+                    replace(edit.startOffset, edit.endOffset, edit.newText)
+                }
+            }.toString()
+        }
+
+        // Keep the IDEA command boundary, but make the disk write relative to a
+        // held directory descriptor so a replaced ancestor cannot redirect it.
         WriteCommandAction.runWriteCommandAction(project) {
-            // Validated edits are already sorted descending by start offset, so offsets remain stable as replacements are applied.
+            val filePath = Path.of(plan.filePath).toAbsolutePath().normalize()
+            beforeSecureMutation(filePath, IdeaWorkspaceMutation.TEXT_EDIT)
+            secureWorkspaceMutation.replaceFile(filePath, diskHash, updatedContent)
             plan.edits.forEach { edit ->
                 document.replaceString(edit.startOffset, edit.endOffset, edit.newText)
             }
-
             psiDocumentManager.commitDocument(document)
-
-            // Save to VFS
-            fileDocumentManager.saveDocument(document)
+            virtualFile.refresh(false, false)
+            fileDocumentManager.reloadFromDisk(document)
         }
         verifyPostWrite(
             filePath = plan.filePath,

@@ -8,6 +8,9 @@
 
 **Tech Stack:** Rust 2024, Clap, serde/serde_json, `std::fs`, Cargo integration tests, Markdown contract checks.
 
+**Review hardening:** Kotlin/JVM 21, IDEA VFS/Document APIs, JNA-backed POSIX
+`openat`/`mkdirat`/`renameat`/`unlinkat`, JUnit Jupiter.
+
 ## Global Constraints
 
 - Relative semantic targets require explicit `--workspace-root`.
@@ -20,6 +23,30 @@
 - Preserve target order and existing absolute in-workspace behavior.
 - Do not run `kast setup` on macOS.
 - Work only on `feature/issue-341-relative-file-paths`; do not push.
+
+---
+
+### Task 5: Close the Write-Boundary Ancestor-Replacement Race
+
+**Files:**
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/UnsafeWorkspaceMutationException.kt`
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/SecureWorkspaceMutation.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaEditApplier.kt`
+- Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaEditApplicationTest.kt`
+- Modify: ADR 0018 and the approved design
+
+- [x] Reproduce the check-then-use gap by replacing a validated add-file
+  ancestor with an escaping symlink immediately before the write.
+- [x] Reproduce the same gap for an existing-file scoped mutation.
+- [x] Add a typed `UNSAFE_WORKSPACE_MUTATION` protocol failure.
+- [x] Traverse from the filesystem root with held directory descriptors and
+  no-follow semantics, then commit create/replace/delete relative to the held
+  parent descriptor.
+- [x] Refresh IDEA VFS/Documents without returning to pathname-based writes.
+- [x] Preserve existing source permissions and deterministic permissions for
+  newly created files/directories.
+- [x] Run the complete Kotlin, Rust, generated-contract, and docs gates and
+  record final evidence in `.agent-turn/issue-341-report.md`.
 
 ---
 
