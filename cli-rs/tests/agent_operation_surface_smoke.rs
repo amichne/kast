@@ -8,6 +8,7 @@ fn applied_mutation_requires_idempotency_key_before_runtime_discovery() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
+    let workspace = temp.path();
     let content_file = temp.path().join("Added.kt");
     let target = temp.path().join("Target.kt");
     std::fs::write(&content_file, "class Added\n").expect("content");
@@ -68,6 +69,10 @@ fn applied_mutation_requires_idempotency_key_before_runtime_discovery() {
         let output = kast(&home, &config_home)
             .args(["--output", "json", "agent"])
             .args(args)
+            .args([
+                "--workspace-root",
+                workspace.to_str().expect("workspace root"),
+            ])
             .arg("--apply")
             .output()
             .expect("applied mutation");
@@ -135,6 +140,10 @@ fn applied_add_file_submits_typed_mutation_request() {
     )
     .expect("settings");
     std::fs::write(&content_file, "class Added\n").expect("content");
+    let canonical_target = workspace
+        .canonicalize()
+        .expect("canonical workspace")
+        .join("src/Added.kt");
     let backend = spawn_operation_backend(
         &home,
         &config_home,
@@ -180,7 +189,7 @@ fn applied_add_file_submits_typed_mutation_request() {
     );
     assert_eq!(
         submit["params"]["request"]["filePath"],
-        target.to_str().unwrap()
+        canonical_target.to_str().unwrap()
     );
     assert_eq!(
         submit["params"]["request"]["contentFile"],

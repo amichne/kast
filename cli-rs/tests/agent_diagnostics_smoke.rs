@@ -17,6 +17,7 @@ fn relative_file_paths_are_canonical_in_backend_requests_and_json_output() {
         std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
         std::fs::write(file, "class Example\n").expect("scenario source");
     }
+    write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
 
@@ -77,6 +78,7 @@ fn canonical_relative_path_is_reported_in_every_output_format() {
     let file = workspace.join("src/with spaces/Report.kt");
     std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
     std::fs::write(&file, "class Report\n").expect("scenario source");
+    write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
     let expected = file
@@ -133,6 +135,7 @@ fn deleted_relative_file_reaches_refresh_with_canonical_path() {
     let workspace = temp.path().join("workspace");
     let source_parent = workspace.join("src/deleted");
     std::fs::create_dir_all(&source_parent).expect("source parent");
+    write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
     write_macos_plugin_workspace_metadata(&workspace);
     let missing = source_parent
@@ -265,17 +268,17 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
-        incomplete_refresh(&file),
-        complete_clean_diagnostics(&file),
+        incomplete_refresh(&canonical_test_path(&file)),
+        complete_clean_diagnostics(&canonical_test_path(&file)),
         3,
     );
 
     let output = run_diagnostics(&home, &config_home, &workspace, &file, "json");
-    let methods = backend.join().expect("fake diagnostics backend");
+    let requests = backend.join().expect("fake diagnostics backend");
     let document = decode_json(&output);
 
     assert_eq!(
-        methods,
+        request_methods(&requests),
         ["runtime/status", "capabilities", "raw/workspace-refresh"],
     );
     assert!(!output.status.success(), "{document:#}");
@@ -795,7 +798,7 @@ fn complete_removed_refresh(file: &Path) -> Value {
             "analysisAvailability": "NOT_APPLICABLE"
         }],
         "semanticOutcome": "COMPLETE",
-        "requestedFileCount": 1,
+        "requestedFileCount": 0,
         "analyzedFileCount": 0,
         "skippedFileCount": 0,
         "removedFileCount": 1,
