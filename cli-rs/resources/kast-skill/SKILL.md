@@ -17,7 +17,7 @@ the first iteration surface.
 ## Loop
 
 1. Orient with `kast`, `kast help agent`, and read-only `kast ready --workspace-root "$PWD"` when install or backend state matters.
-2. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`. Add `--kind`, `--file-hint`, `--containing-type`, `--references`, or `--callers incoming|outgoing` only when needed.
+2. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`; exact lookup is the default. Use `--mode discovery` only for fuzzy candidates, then rerun exact lookup with the chosen identity. Add `--kind`, `--file-hint`, `--containing-type`, `--references`, or `--callers incoming|outgoing` only when needed.
 3. Check changed files with `kast agent diagnostics --file-path <path> --workspace-root "$PWD"`.
 4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`.
 5. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply --idempotency-key <stable-key>` after reviewing the plan and content file.

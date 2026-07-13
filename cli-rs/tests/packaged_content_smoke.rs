@@ -56,6 +56,10 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         "{skill}"
     );
     assert!(
+        skill.contains("exact lookup is the default") && skill.contains("--mode discovery"),
+        "packaged guidance must separate exact lookup from fuzzy discovery: {skill}"
+    );
+    assert!(
         skill.contains(
             "`kast agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"`"
         ),
@@ -123,6 +127,12 @@ fn packaged_workflow_reference_uses_current_runtime_surface() {
 
     assert!(
         workflows.contains("`kast developer runtime status --workspace-root \"$PWD\"`"),
+        "{workflows}"
+    );
+    assert!(
+        workflows.contains("--mode discovery")
+            && workflows.contains("indexed-exact")
+            && workflows.contains("compiler"),
         "{workflows}"
     );
     assert!(

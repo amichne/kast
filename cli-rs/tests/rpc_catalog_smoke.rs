@@ -10,6 +10,20 @@ fn catalog() -> Value {
     .expect("commands catalog")
 }
 
+#[test]
+fn symbol_resolve_catalog_declares_every_exact_outcome() {
+    let catalog = catalog();
+    assert_eq!(
+        catalog["commands"]["symbol/resolve"]["responseVariants"],
+        serde_json::json!([
+            "RESOLVE_SUCCESS",
+            "RESOLVE_NOT_FOUND",
+            "RESOLVE_AMBIGUOUS",
+            "RESOLVE_FAILURE"
+        ])
+    );
+}
+
 fn request_required(request: &Value) -> impl Iterator<Item = &str> {
     request
         .get("required")

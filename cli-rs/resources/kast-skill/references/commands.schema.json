@@ -74,6 +74,15 @@
           "type": "string",
           "pattern": "^[A-Z][A-Z0-9_]*$"
         },
+        "responseVariants": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          }
+        },
         "variants": {
           "type": "object",
           "additionalProperties": {

@@ -12,8 +12,23 @@ you after Kast is installed and the project is open.
 
 ## Resolve Identity First
 
-The agent starts broad, then narrows until the target declaration is clear.
-That avoids treating every matching string as the same Kotlin symbol.
+Start with exact lookup. A unique declaration resolves; zero or multiple exact
+matches return typed outcomes instead of silently choosing a similar name.
+
+```console
+kast agent symbol --query OrderService --workspace-root "$PWD"
+```
+
+If the name is unknown, opt into fuzzy discovery and inspect its candidates:
+
+```console
+kast agent symbol --query order --mode discovery --workspace-root "$PWD"
+```
+
+Then rerun exact lookup with the selected simple or fully-qualified identity.
+Use `--kind`, `--file-hint`, or `--containing-type` when the target requires a
+hard constraint. Request references or callers only from that exact lookup.
+This avoids treating every matching string as the same Kotlin symbol.
 
 ## Gather The Right Evidence
 
@@ -38,6 +53,7 @@ Continue with [plan safe edits](plan-safe-edits.md) for the mutation flow.
     ```console
     kast agent verify --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
+    kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent symbol --query OrderService --references --workspace-root "$PWD"
     kast agent diagnostics \
       --file-path "$PWD/src/main/kotlin/App.kt" \

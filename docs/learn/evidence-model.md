@@ -20,6 +20,17 @@ every matching string in the repository.
 The practical rule is: resolve broad names first, then act only after the
 selected identity matches the target declaration.
 
+Exact lookup distinguishes three expected states: one resolved declaration, no
+exact declaration, or multiple exact declarations. Keeping not-found and
+ambiguous explicit prevents a similarly spelled declaration from being treated
+as proof. Fuzzy candidates are useful for discovery, but they become actionable
+only after a separate exact lookup.
+
+Every public lookup names its evidence source. `compiler` is canonical backend
+identity, `indexed-exact` is equality proven by the source index while the
+compiler is unavailable, and `fuzzy` is discovery evidence. This makes the
+strength of the claim visible to the next agent step.
+
 ## Evidence Can Be Bounded
 
 Reference, caller, hierarchy, and impact evidence may be bounded by depth,
