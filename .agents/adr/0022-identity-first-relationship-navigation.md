@@ -281,8 +281,8 @@ For an unchanged admitted workspace, relation ordering is deterministic:
 
 - references sort by file path, start offset, end offset, and containing
   symbol identity;
-- call edges use breadth-first depth, parent identity, related identity, and
-  call-site location;
+- call edges use breadth-first depth, canonical parent identity, canonical
+  call-site file/start/end offsets, and then canonical related identity;
 - implementations and hierarchy nodes sort by fully-qualified name, kind,
   file path, and declaration offset; and
 - impact nodes sort by depth, source path, target identity, and edge kind.
@@ -299,10 +299,22 @@ Outgoing calls use a resumable lexical depth-first walk of the selected
 declaration body. The pure-data continuation is a bounded root-to-current stack
 of child indexes plus the next reference index; it rehydrates PSI only inside
 the same generation-checked read action. The walk descends through nested
-blocks and local property initializers, but skips nested function, class,
-object, property-accessor, and lambda bodies so calls owned by another
-declaration are not attributed to the selected function. Page boundaries may
-occur at any element/reference position without replay or omission.
+blocks, local property initializers, and lambda bodies. Lambdas remain owned by
+the enclosing named callable because this surface exposes no navigable lambda
+identity. The walk skips only nested named function, class, object, and
+property-accessor bodies so calls owned by another navigable declaration are
+not attributed to the selected function. Page boundaries may occur at any
+element/reference position without replay or omission. `EXACT` is legal only
+after the DFS exhausts every owned node, including lambda bodies.
+
+This lexical provider order is the public call-edge order; the engine does not
+collect unseen children and resort by related name. BFS frontier parents use
+canonical identity order, and each parent emits call sites by canonical
+file/start/end offset. References sharing the same call-site range form the
+only local tie group and sort by related identity before emission; that group
+is charged to the candidate/state budget and degrades without a partial group
+if it exceeds the bound. This makes mid-provider continuation globally ordered
+without an unbounded child snapshot.
 Implementations and direct subtypes use
 `ClassInheritorsSearch.search(..., checkDeep = false).forEach` with the same
 cap-plus-one admission rule, canonicalize anchors in the same read action, and
@@ -316,8 +328,12 @@ tripwire those APIs, count provider visits, exercise the exact cap and cap plus
 one, assert overflow returns no partial page, force a page boundary within one
 file/frontier/provider stream, and prove page two neither revisits nor skips
 evidence. Outgoing tests cover nested blocks, local property initializers,
-nested local functions/classes/lambdas, and page breaks on both sides of an
-excluded declaration boundary.
+included lambdas, excluded nested named functions/classes/objects/accessors,
+and page breaks on both sides of an excluded declaration boundary. A fixture
+whose related names are reverse lexical by call-site proves page order follows
+the canonical call site, not an unseen related-name sort, with no overlap. A
+named function whose only callee is inside a lambda proves that lambda evidence
+is retained; a page boundary inside a lambda resumes without omission.
 
 The hard SQLite impact offset ceiling is 10,000. Impact keeps its separate
 exact node count and applies `LIMIT limit + 1 OFFSET offset` to the ordered row

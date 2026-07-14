@@ -322,10 +322,12 @@ the bounded occurrence page. It does not create an N+1 Rust lookup loop or
 scan every relation item merely to populate compact output.
 
 Call hierarchy keeps its recursive full-fidelity result internally. The
-backend engine flattens edges breadth-first after sorting each bounded child
-set by canonical identity and location. The emitted window is at most
-`limit + 1`, but provider work is bounded before materialization. The concrete
-IDEA strategy is:
+backend engine flattens edges breadth-first using provider-stable canonical
+call-site order; it does not globally sort an unseen child set by related
+identity. Frontier parents sort by canonical identity, then each parent emits
+edges by canonical call-site file/start/end offsets and related identity only
+as the final tie-breaker. The emitted window is at most `limit + 1`, but
+provider work is bounded before materialization. The concrete IDEA strategy is:
 
 - `IdeaBoundedReferenceProvider` streams paths with
   `FileTypeIndex.processFiles`, admits at most the candidate/state cap plus one,
@@ -337,10 +339,16 @@ IDEA strategy is:
 - outgoing calls use `IdeaOutgoingLexicalDfsProvider`, a resumable lexical
   depth-first walk of the selected declaration body. Its pure-data state is a
   bounded root-to-current child-index stack plus next reference index. It
-  traverses nested blocks and local property initializers, but does not descend
-  into nested functions, classes, objects, accessors, or lambda bodies. Resume
-  rehydrates the stack only under the unchanged-generation read action and
-  continues at the exact next reference; and
+  traverses nested blocks, local property initializers, and lambda bodies.
+  Lambda calls belong to the enclosing named callable because no navigable
+  lambda identity exists. It skips nested named functions, classes, objects,
+  and accessors. Resume rehydrates the stack only under the
+  unchanged-generation read action and continues at the exact next reference;
+  exhaustive cardinality requires exhausting lambda bodies too. References at
+  one identical call-site range are the only locally sorted tie group; they
+  sort by related identity under the existing candidate/state bound, and an
+  overflowing group degrades without emitting or retaining a partial group;
+  and
 - `IdeaBoundedInheritorProvider` uses
   `ClassInheritorsSearch.search(..., checkDeep = false).forEach`, stops at the
   direct-inheritor cap plus one, and applies the same no-partial-page overflow
@@ -359,8 +367,12 @@ the forbidden APIs, instrument visits, exercise cap and cap-plus-one inputs,
 assert overflow has no records/page claim/state, and force page breaks inside
 one file, frontier parent, and provider stream. Outgoing fixtures additionally
 prove nested blocks and local property initializers are included, nested
-callable/type/lambda bodies are excluded, and resumption around those
-boundaries neither replays nor skips an owned call.
+named callable/type/accessor bodies are excluded, lambda bodies are included,
+and resumption around those boundaries neither replays nor skips an owned call.
+Related names deliberately appear in reverse lexical order across call sites;
+pages remain globally ordered by call-site offset and do not overlap. A named
+function whose only callee is inside a lambda is non-empty, and another page
+break inside a lambda resumes the exact next call.
 
 ## Rust result model
 
@@ -537,7 +549,7 @@ raw public dispatch, text search, or an unbounded backend request.
 | Subject-kind admission | Every command-kind pair follows the closed matrix; unsupported pairs return `UNSUPPORTED_SUBJECT_KIND` with selector/verified subject and zero provider/index work. |
 | References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt` and fixtures consume occurrences; #337's opaque cursor round-trips without serialized source/counters; target path/offset INDEX reads isolate a forced overload; unsafe first-page INDEX falls back to IDEA while an INDEX-bound continuation never switches; deterministic pages do not overlap; continuation proves the plus-one known minimum; containing symbol and `usageSiteScope` are non-conflicting. |
 | Atomic backend state | #337 `ServerHeldContinuationStore` is the only semantic owner; generation check, provider work, and state commit occur in one read action; queued-write races reject stale state; backend-A token after restart-to-B and random UUID are identically absent/invalid with zero work, while retained generation mismatch is stale; `ObservedAnalysisBackend` delegates each handle-bearing method once; `analysis-server` owns no duplicate store. |
-| Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; bounded incoming search preserves frontier/provider state; outgoing lexical DFS includes nested blocks/local initializers, excludes nested callable/type/lambda bodies, and resumes its pure child-index/reference stack without overlap; cap-plus-one and forbidden materializer tripwires prove bounded work. |
+| Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; bounded incoming search preserves frontier/provider state; outgoing lexical DFS includes nested blocks/local initializers/lambdas, excludes nested named callable/type/accessor bodies, and resumes its pure child-index/reference stack without overlap; reverse-lexical related names prove provider-stable call-site ordering across pages; lambda-only callees and lambda page breaks remain visible; cap-plus-one and forbidden materializer tripwires prove bounded work. |
 | Implementations | Interfaces, abstract classes, and subclasses return typed implementation records; bounded `ClassInheritorsSearch.forEach` provider visits stay bounded; backend state resumes without overlap; stale/invalid handles and unavailable capability are distinct from an empty exhaustive result. |
 | Hierarchy | Supertypes/subtypes/both are exhaustive in Clap; depth, ordering, cycles, emitted limits, stateful frontiers, candidate visits, generation staleness, and degraded capability are typed. |
 | Impact | Compiler position lookup verifies the anchor; production row path/offset/kind identity gates non-callable impact; a production-store same-file overload regression proves FQ row counts cannot authorize callable aggregate edges; exact subjects retain total count plus `LIMIT limit + 1 OFFSET offset`; unavailable/incompatible index degrades without false empty success. |
