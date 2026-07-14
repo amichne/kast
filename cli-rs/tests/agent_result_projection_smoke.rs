@@ -1002,7 +1002,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "backendName": "idea",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "readCapabilities": ["symbol/resolve", "symbol/references"],
+        "readCapabilities": ["WORKSPACE_FILES", "symbol/resolve", "symbol/references"],
         "mutationCapabilities": ["mutation/submit"],
         "limits": {
             "requestTimeoutMillis": 60000,
@@ -1049,8 +1049,16 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     assert_eq!(stdout["result"]["health"]["ok"], true);
     assert_eq!(stdout["result"]["runtime"]["state"], "READY");
     assert_eq!(stdout["result"]["runtime"]["backendName"], "idea");
-    assert_eq!(stdout["result"]["capabilities"]["readCount"], 2);
+    assert_eq!(stdout["result"]["capabilities"]["readCount"], 3);
     assert_eq!(stdout["result"]["capabilities"]["mutationCount"], 1);
+    assert_eq!(stdout["result"]["capabilities"]["publicReadCount"], 1);
+    assert_eq!(
+        stdout["result"]["capabilities"]["publicRead"],
+        json!([{
+            "capability": "WORKSPACE_FILES",
+            "command": "kast agent workspace-files"
+        }])
+    );
     assert!(stdout["result"].get("steps").is_none(), "{stdout}");
     assert_output_budget(&raw, VERIFY_LINE_BUDGET, VERIFY_TOKEN_BUDGET);
 }

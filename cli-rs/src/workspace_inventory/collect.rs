@@ -350,6 +350,7 @@ fn compose_snapshot(
     WorkspaceInventorySnapshot::new(
         files,
         backend.coverage(),
+        backend.modules().clone(),
         coverage,
         WorkspaceKindMatchCoverage::new(source_coverage, script_coverage),
         limitations,

@@ -1,4 +1,5 @@
 include!("projection/view.rs");
+include!("projection/workspace_files.rs");
 include!("projection/diagnostics.rs");
 include!("projection/impact.rs");
 include!("projection/verify.rs");

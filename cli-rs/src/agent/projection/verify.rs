@@ -34,19 +34,24 @@ struct AgentCapabilitiesProjectionInput {
 struct AgentCapabilitiesProjection {
     read_count: usize,
     mutation_count: usize,
+    public_read_count: usize,
     read: Vec<String>,
     mutation: Vec<String>,
+    public_read: Vec<AgentPublicCapabilityProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
     limits: Option<AgentServerLimitsProjection>,
 }
 
 impl From<AgentCapabilitiesProjectionInput> for AgentCapabilitiesProjection {
     fn from(value: AgentCapabilitiesProjectionInput) -> Self {
+        let public_read = public_read_capabilities(&value.read_capabilities);
         Self {
             read_count: value.read_capabilities.len(),
             mutation_count: value.mutation_capabilities.len(),
+            public_read_count: public_read.len(),
             read: value.read_capabilities,
             mutation: value.mutation_capabilities,
+            public_read,
             limits: value.limits,
         }
     }
@@ -107,6 +112,7 @@ struct AgentVerifyCountResult {
     failed_count: usize,
     read_capability_count: usize,
     mutation_capability_count: usize,
+    public_read_capability_count: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
     schema_version: u32,
@@ -230,6 +236,7 @@ fn project_verify_envelope(
                 failed_count,
                 read_capability_count: capabilities.read_count,
                 mutation_capability_count: capabilities.mutation_count,
+                public_read_capability_count: capabilities.public_read_count,
                 semantic_workspace,
                 schema_version: SCHEMA_VERSION,
             },
