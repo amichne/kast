@@ -58,8 +58,27 @@ require_block_contains() {
   grep -Fq -- "$expected" <<< "$block" || die "${description}: missing '${expected}' in '${block_start}' block"
 }
 
+require_block_not_contains() {
+  local file_path="$1"
+  local block_start="$2"
+  local block_end="$3"
+  local unexpected="$4"
+  local description="$5"
+  local block
+  block="$(
+    awk -v block_start="$block_start" -v block_end="$block_end" '
+      index($0, block_start) { in_block = 1 }
+      in_block && index($0, block_end) && !index($0, block_start) { exit }
+      in_block { print }
+    ' "$file_path"
+  )"
+  [[ -n "$block" ]] || die "${description}: missing block '${block_start}' in ${file_path}"
+  ! grep -Fq -- "$unexpected" <<< "$block" || die "${description}: found '${unexpected}' in '${block_start}' block"
+}
+
 repo_root="$(resolve_repo_root)"
 ci_workflow="${repo_root}/.github/workflows/ci.yml"
+ci_build_and_test_workflow="${repo_root}/.github/workflows/ci-build-and-test.yml"
 release_workflow="${repo_root}/.github/workflows/release.yml"
 snapshot_workflow="${repo_root}/.github/workflows/snapshot.yml"
 docs_workflow="${repo_root}/.github/workflows/docs.yml"
@@ -129,7 +148,7 @@ done
 [[ ! -e "${repo_root}/.github/workflows/claude.yml" ]] || die "Provider-specific assistant trigger workflows are outside the V1 GitHub surface"
 [[ ! -e "${repo_root}/docs/distribute/setup-kast-action.md" ]] || die "Detailed action docs must live in the kast-action repository"
 
-for workflow in "$ci_workflow" "$release_workflow" "$snapshot_workflow" "$docs_workflow" "$seed_gradle_ro_cache_workflow"; do
+for workflow in "$ci_workflow" "$ci_build_and_test_workflow" "$release_workflow" "$snapshot_workflow" "$docs_workflow" "$seed_gradle_ro_cache_workflow"; do
   require_not_contains "$workflow" "actions/cache@v4" "Workflow actions must not use the Node 20 cache action"
   require_not_contains "$workflow" "actions/upload-artifact@v4" "Workflow actions must not use the Node 20 upload-artifact action"
   require_not_contains "$workflow" "actions/download-artifact@v4" "Workflow actions must not use the Node 20 download-artifact action"
@@ -164,20 +183,20 @@ require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publicatio
 require_contains "$ci_workflow" "Test CI artifact ledger" "CI must test artifact ledger recording and verification"
 require_contains "$ci_workflow" "ci-artifact-ledger-maven-publication" "CI must upload the Maven publication validation ledger"
 require_contains "$ci_workflow" "ci-artifact-ledger-rust-cli-linux-x64" "CI must upload the Rust CLI build ledger"
-require_contains "$ci_workflow" 'ci-artifact-ledger-headless-${{ matrix.os }}' "CI must upload headless backend build ledgers"
+require_contains "$ci_build_and_test_workflow" 'ci-artifact-ledger-headless-${{ inputs.runner }}' "CI must upload headless backend build ledgers"
 require_contains "$ci_workflow" "ci-artifact-ledger-idea-plugin" "CI must upload the IDEA plugin build ledger"
 require_contains "$ci_workflow" "scripts/verify-ci-artifact-ledger.py verify" "CI consumers must verify producer ledgers before packaging downloaded artifacts"
 require_contains "$ci_workflow" "Rust CLI" "CI must validate the in-repo Rust CLI"
 require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must build on an Ubuntu 22.04 glibc baseline"
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
-require_contains "$ci_workflow" "cache-cleanup: always" "CI Gradle setup must keep persisted Gradle caches pruned"
-require_contains "$ci_workflow" "~/.gradle/kast/headless-idea-distributions" "CI must cache the actual headless IntelliJ extraction directory"
-require_contains "$ci_workflow" "~/.gradle/kast/shared-idea-distributions" "CI must cache the actual shared IntelliJ extraction directory"
-require_contains "$ci_workflow" "~/.gradle/kast/backend-idea-distributions" "CI must cache the actual IDEA backend extraction directory"
+require_contains "$ci_build_and_test_workflow" "cache-cleanup: always" "CI Gradle setup must keep persisted Gradle caches pruned"
+require_contains "$ci_build_and_test_workflow" "~/.gradle/kast/headless-idea-distributions" "CI must cache the actual headless IntelliJ extraction directory"
+require_contains "$ci_build_and_test_workflow" "~/.gradle/kast/shared-idea-distributions" "CI must cache the actual shared IntelliJ extraction directory"
+require_contains "$ci_build_and_test_workflow" "~/.gradle/kast/backend-idea-distributions" "CI must cache the actual IDEA backend extraction directory"
 require_contains "$ci_workflow" "~/.cache/pluginVerifier/ides" "CI must cache plugin verifier IDE downloads"
-require_contains "$ci_workflow" 'intellij-runtime-${{ runner.os }}-' "CI runtime cache keys must be OS-scoped"
+require_contains "$ci_build_and_test_workflow" 'intellij-runtime-${{ runner.os }}-' "CI runtime cache keys must be OS-scoped"
 require_contains "$ci_workflow" 'idea-plugin-inputs-${{ runner.os }}-' "CI IDEA plugin cache keys must be OS-scoped"
-require_not_contains "$ci_workflow" "~/.gradle/kast/idea-distributions" "CI must not cache stale unused IntelliJ extraction paths"
+require_not_contains "$ci_build_and_test_workflow" "~/.gradle/kast/idea-distributions" "CI must not cache stale unused IntelliJ extraction paths"
 require_contains "$ci_workflow" "packaging/homebrew/scripts/test-formulas.py" "CI must validate Homebrew package templates"
 require_contains "$ci_workflow" "Download Rust CLI CI asset" "CI bundle tests must consume a locally built CLI artifact"
 require_contains "$ci_workflow" 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "CI bundle tests must set an explicit ready-compatible bundle version"
@@ -202,12 +221,23 @@ require_contains "$ci_workflow" '--gradle-root "$GITHUB_WORKSPACE"' "CI kast-act
 require_contains "$ci_workflow" "Test CI Gradle retry helper" "CI must test the Gradle retry helper before using it"
 require_contains "$ci_workflow" "./scripts/ci-gradle-retry.sh" "CI Gradle steps must use retry helper for transient repository failures"
 require_contains "$ci_workflow" "Free disk for IDEA plugin verification" "CI IDEA plugin verification must free unused runner SDKs before downloading IDEs"
-require_contains "$ci_workflow" "Free disk for headless backend distribution" "CI headless backend builds must free unused runner SDKs before copying IntelliJ runtimes"
-require_order "$ci_workflow" "Free disk for headless backend distribution" "Cache IntelliJ runtime distributions" "CI headless backend builds must free disk before restoring IntelliJ runtime caches"
-require_contains "$ci_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
-require_contains "$ci_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
-require_not_contains "$ci_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
+require_contains "$ci_build_and_test_workflow" "Free disk for headless backend distribution" "CI headless backend builds must free unused runner SDKs before copying IntelliJ runtimes"
+require_order "$ci_build_and_test_workflow" "Free disk for headless backend distribution" "Cache IntelliJ runtime distributions" "CI headless backend builds must free disk before restoring IntelliJ runtime caches"
+require_contains "$ci_build_and_test_workflow" "-PkastHeadlessIdeaHomeProfile=agent" "CI must build the agent headless IDEA-home profile"
+require_contains "$ci_build_and_test_workflow" "Assert headless distribution excludes fat jar" "CI must guard the headless no-fat-jar layout"
+require_not_contains "$ci_build_and_test_workflow" "headless-dist-cache" "CI must not use a custom Actions cache for generated headless distributions"
 require_not_contains "$ci_workflow" "idea-plugin-dist-cache" "CI must not use a custom Actions cache for generated IDEA plugin distributions"
+
+require_contains "$ci_build_and_test_workflow" "workflow_call:" "CI build-and-test implementation must be reusable by independent platform jobs"
+require_contains "$ci_build_and_test_workflow" 'runs-on: ${{ inputs.runner }}' "CI build-and-test implementation must use its typed runner input"
+require_block_contains "$ci_workflow" "  build-and-test-linux:" "  build-and-test-macos:" "    uses: ./.github/workflows/ci-build-and-test.yml" "CI must call the reusable build-and-test workflow for Linux"
+require_block_contains "$ci_workflow" "  build-and-test-linux:" "  build-and-test-macos:" "      runner: ubuntu-latest" "CI Linux build-and-test must select the Ubuntu runner"
+require_block_contains "$ci_workflow" "  build-and-test-macos:" "  install-ubuntu-debian-container:" "    uses: ./.github/workflows/ci-build-and-test.yml" "CI must call the reusable build-and-test workflow for macOS"
+require_block_contains "$ci_workflow" "  build-and-test-macos:" "  install-ubuntu-debian-container:" "      runner: macos-latest" "CI macOS build-and-test must select the macOS runner"
+require_block_contains "$ci_workflow" "  install-ubuntu-debian-container:" "  kast-action-runtime-contract:" "      - build-and-test-linux" "Ubuntu/Debian install validation must wait only for the Linux artifact producer"
+require_block_not_contains "$ci_workflow" "  install-ubuntu-debian-container:" "  kast-action-runtime-contract:" "      - build-and-test-macos" "Ubuntu/Debian install validation must not wait for unrelated macOS validation"
+require_block_contains "$ci_workflow" "  kast-action-runtime-contract:" "  analysis-server-transport:" "      - build-and-test-linux" "kast-action validation must wait only for the Linux artifact producer"
+require_block_not_contains "$ci_workflow" "  kast-action-runtime-contract:" "  analysis-server-transport:" "      - build-and-test-macos" "kast-action validation must not wait for unrelated macOS validation"
 
 require_contains "$snapshot_workflow" "Publish Snapshot" "Snapshot workflow must exist"
 require_contains "$snapshot_workflow" "workflow_run:" "Snapshot publication must run after CI instead of racing main push builds"
