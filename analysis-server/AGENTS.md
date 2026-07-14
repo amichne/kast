@@ -33,6 +33,10 @@ Keep this unit focused on transport concerns around the backend interface.
   opaque `ReferencePageToken` and traversal handles, but must not own a second
   store, read semantic generation separately, reconstruct reference source or
   counters, or perform provider work outside the backend read-action boundary.
+- `RunningAnalysisServer` remains the single backend close owner after #338.
+  Relationship state drains through `KastPluginBackend.close()` and the shared
+  continuation disposer exactly once; this module must not add a parallel
+  relationship service or close path.
 - Anchored relationship dispatch forwards the complete selector and handle to
   `AnalysisBackend`. `symbol/scaffold` composition preserves
   `ReferenceOccurrence.containingSymbol`; it must not collapse results to

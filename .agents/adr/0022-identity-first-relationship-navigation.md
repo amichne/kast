@@ -15,6 +15,14 @@ relationship budgets, impact counts, and projection types are the starting
 contract. #339 consumes #337's opaque server-held `ReferencePageToken` and
 `ResultCardinality` unchanged; it does not serialize the cursor's source,
 position, count, query, or semantic generation into the public token.
+Implementation also follows the #338 stack because that work promotes the
+generic `ServerHeldContinuationStore` and its ownership-safe
+consume/reissue/disposal lifecycle into `analysis-api`, establishes
+`RunningAnalysisServer` as the single backend close owner, adds the Rust
+projection/capability layout that relationship commands compose with, and
+already locks `tiktoken-rs` 0.12 as a test-only dependency. Relationship
+navigation consumes those landed foundations without using workspace-file
+inventory as semantic relation evidence.
 
 ## Decision
 
@@ -239,17 +247,28 @@ payloads use canonical ASCII fields and existing SHA-256/hex support; they do
 not require a base64 dependency.
 
 All compiler-backed relationship continuation is stateful and has one owner:
-the runtime backend. `backend-idea` extends #337's bounded
-`ServerHeldContinuationStore`; `analysis-server` transports handles and
-does not own or reconstruct continuation state. The store contains a sealed
-reference state plus family-specific call/implementation/hierarchy state. The
-reference state holds #337's source and provider position; traversal state
-holds the breadth-first frontier, visited identities, and per-provider
-continuation. Every state also holds consumed evidence, returned-before proof,
-normalized query fingerprint, selected subject, and semantic generation.
-Handles have a 15-minute lifetime, at most 1,024 live entries per exact
-workspace runtime, and at most 16,384 candidate/frontier/visited/provider
-entries per state. #337's canonical UUID carries no issuer or runtime epoch,
+the runtime backend. `backend-idea` owns one relationship-specific adapter over
+#338's generic `analysis-api` `ServerHeldContinuationStore`;
+`analysis-server` transports handles and does not own or reconstruct semantic
+continuation state. The adapter's sealed owned state contains a reference state
+plus family-specific call/implementation/hierarchy state. The reference state
+holds #337's source and provider position; traversal state holds the
+breadth-first frontier, visited identities, and per-provider continuation.
+Every state also holds consumed evidence, returned-before proof, normalized
+query fingerprint, selected subject, and semantic generation. It extends
+`ContinuationOwnedState`, returns only domain-specific
+`ContinuationProjection` values, and uses the shared store's single-use
+`Complete`/`Reissue` transition instead of returning an owning state object.
+
+Relationship handles use the landed typed continuation TTL and capacity from
+`ServerLimits` (currently 60 seconds and 256 entries per typed store by
+default), while each relationship state admits at most 16,384
+candidate/frontier/visited/provider entries. Expiry, eviction, query mismatch,
+callback failure, terminal consumption, backend close, and server shutdown
+dispose the owned state exactly once. `RunningAnalysisServer` remains the
+single backend close owner; closing `KastPluginBackend` drains the relationship
+store before the runtime's separately owned resources close. #337's canonical
+UUID carries no issuer or runtime epoch,
 so an absent handle cannot honestly distinguish backend restart, eviction,
 consumed replay, or a never-issued random UUID. Every canonical handle absent
 from the current store therefore returns the family-typed invalid reason
@@ -258,19 +277,25 @@ and a random canonical UUID have exactly that outcome and perform zero provider
 work. Malformed syntax remains a request-validation error. Recognized
 wrong-family or query-mismatched state returns a family-typed invalid reason.
 A family-typed stale outcome requires positive retained-state evidence:
-`GENERATION_CHANGED`, or `EXPIRED` only when typed lookup observes the expired
-entry before removing it. Capacity eviction is absent/invalid unless a future
+`GENERATION_CHANGED`, or `EXPIRED` only when the shared store returns typed
+`ExpiredToken` for an expired retained entry. Capacity eviction is
+absent/invalid unless a future
 superseding ADR adds bounded verifiable tombstones. No family may restart from
 zero or silently select another subject. Continuation handles retain #337's
 one-shot consumption rule: replaying a consumed handle is `UNKNOWN_HANDLE` and
 cannot duplicate provider work.
 
-IDEA performs handle lookup, query/source validation, reads
-`PsiModificationTracker.modificationCount`, compares the stored generation,
-runs target resolution and provider work, and commits the next pure-data state
-inside one `timedReadAction`. The read lock makes generation validation and
-provider work atomic with respect to PSI writes. State never retains PSI,
-smart pointers, or analysis-session objects. `ObservedAnalysisBackend`
+IDEA invokes the shared store's consume/reissue transition inside one
+`timedReadAction`: typed query/family validation, reading
+`PsiModificationTracker.modificationCount`, comparing the stored generation,
+target resolution, provider work, state mutation, and next-handle publication
+all occur while the read lock is held. The read lock makes generation
+validation and provider work atomic with respect to PSI writes. State never
+retains PSI, smart pointers, or analysis-session objects. Shared-store
+`UnknownToken`, `ExpiredToken`, and `QueryMismatch` failures map to the
+relationship family's closed invalid/stale outcomes; a traversal handle's
+typed family prefix rejects `FAMILY_MISMATCH` before store/provider work.
+`ObservedAnalysisBackend`
 delegates every handle-bearing method without default-method fallback and
 records the operation once. Tests queue a write between pages and during a
 continuation read action to prove that old state is rejected before provider
@@ -418,14 +443,14 @@ the Clap tree and does not create a second prose capability catalog.
 | Public commands, selectors, limits, directions, page tokens, and old-flag removal | `cli-rs/src/cli/agent.rs`, `cli-rs/src/agent/relations.rs`, `cli-rs/src/agent/symbol_lookup.rs` |
 | Compact typed relation projections | `cli-rs/src/agent/projection/relations.rs` |
 | Anchored references/call/type requests and typed relationship responses | `analysis-api`, `analysis-server` |
-| Query/source/generation-bound reference and traversal state | `backend-idea` `ServerHeldContinuationStore` and family states |
+| Query/source/generation-bound reference and traversal state | `backend-idea` relationship adapter and family states over `analysis-api` `ServerHeldContinuationStore` |
 | Compiler relationship evidence and deterministic bounded candidate traversal | `backend-idea` bounded reference/call/inheritor providers, `backend-shared` pure traversal models |
 | Source-index impact identity/count/page reads | `cli-rs/src/metrics_database/`, production `declarations` schema |
 | Rust relationship ownership and required gates | `cli-rs/src/agent/AGENTS.md` |
 | Module ownership and atomicity/schema gates | `analysis-api/AGENTS.md`, `analysis-server/AGENTS.md`, `backend-idea/AGENTS.md`, `index-store/AGENTS.md`, `cli-rs/src/metrics_database/AGENTS.md` |
 | Public examples and installed routing | `docs/reference/agent-commands.md`, `cli-rs/resources/kast-skill/` |
 | Budget, composition, and paging gates | `cli-rs/tests/agent_relationship_navigation_smoke.rs` |
-| Exact compact token budget | `tiktoken-rs` test-only dependency in `cli-rs/Cargo.toml`, locked by `cli-rs/Cargo.lock` |
+| Exact compact token budget | the #338-landed `tiktoken-rs` 0.12 test-only dependency in `cli-rs/Cargo.toml`, locked by `cli-rs/Cargo.lock` |
 
 Generated catalogs and protocol files remain outputs. Edit their source
 owners and regenerate them.
@@ -433,8 +458,10 @@ owners and regenerate them.
 The 1,500-token compact-output ceiling is executable, not an estimated string
 length. `agent_relationship_navigation_smoke.rs` uses the `tiktoken-rs` 0.12
 dev dependency's `cl100k_base()` tokenizer against rendered public JSON.
-Adding that test-only dependency and its lockfile entries is an intentional
-part of #339; no runtime token-codec dependency is added.
+#339 reuses the #338-landed test-only dependency and does not add or update a
+runtime token-codec dependency. If the dependency is not present after the
+required #338 rebase, implementation stops and reconciles the landed graph
+rather than creating a second tokenizer choice.
 
 ## Validation
 

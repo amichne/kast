@@ -10,8 +10,10 @@ that five typed relationship commands plus impact consume without overload
 re-resolution. Kotlin skill endpoints verify its declaration file/start offset,
 runtime resolvers collect deterministic evidence under pre-materialization
 candidate budgets, and `backend-idea` preserves all semantic continuation state
-behind bounded query/source/generation-bound handles inside one read action.
-`analysis-server` transports those handles without owning state. The Rust CLI
+behind bounded query/source/generation-bound handles inside one read action by
+adapting #338's generic ownership-safe `analysis-api`
+`ServerHeldContinuationStore`. `analysis-server` transports those handles
+without owning semantic state. The Rust CLI
 wraps #337's opaque reference handle, traversal handles, or impact offsets in
 query-bound page tokens before projecting closed records. Source impact keeps
 its Rust/SQLite path and conservatively degrades callables because the
@@ -24,12 +26,18 @@ Markdown/Zensical.
 
 ## Global Constraints
 
-- Rebase the implementation branch after issue #337 lands; do not recreate or
-  bypass its compact projections, positive reference limit, separate impact
-  count query, bounded `limit + 1` fetch, `ResultCardinality.EXACT` /
-  `KNOWN_MINIMUM`, or opaque server-held query/source/generation-bound reference
-  cursor. Adapt to the landed names without decoding or serializing its private
-  provider position and returned-before proof.
+- Wait for the complete #338 stack (#355, #356, and #357) to land, then rebase
+  the implementation branch onto the resulting `main`. Preserve #337's compact
+  projections, positive reference limit, separate impact count query, bounded
+  `limit + 1` fetch, `ResultCardinality.EXACT` / `KNOWN_MINIMUM`, and opaque
+  server-held query/source/generation-bound reference cursor. Consume #338's
+  generic `analysis-api` continuation store, Rust projection layout, public
+  capability registry, generated catalog shape, and test-only tokenizer
+  dependency without recreating them. Reconcile the five scoped `AGENTS.md`
+  overlaps additively: `analysis-api`, `analysis-server`, `backend-idea`,
+  `cli-rs/src/agent`, and `index-store` keep both workspace-file and
+  relationship ownership. Do not decode or serialize #337's private provider
+  position and returned-before proof.
 - Use one non-private top-level Kotlin production type per matching file.
 - Public commands accept anchored canonical identity only: FQ name,
   declaration file, and declaration start offset, with optional kind and
@@ -67,14 +75,20 @@ Markdown/Zensical.
 - Resolver candidate work is bounded before list materialization. Every
   compiler page reports visited-candidate count, consumed evidence, next
   provider continuation, and exhaustiveness; tests instrument provider visits
-  and tripwire unbounded APIs. The one backend-owned semantic store has a
-  15-minute TTL, at most 1,024 handles per exact workspace runtime, and at most
-  16,384 candidate/frontier/visited/provider entries per state. Generation
-  check, provider work, and next-state commit happen atomically in one backend
-  read action. An absent canonical handle is always family-typed invalid
-  `UNKNOWN_HANDLE`, including restart-to-fresh-backend, random UUID, replay, and
-  eviction. Stale requires retained state that proves generation change, or
-  retained expiry observed before removal.
+  and tripwire unbounded APIs. One backend-owned relationship adapter composes
+  #338's generic `ServerHeldContinuationStore` using the landed typed
+  `ServerLimits` TTL/capacity (currently 60 seconds and 256 entries per typed
+  store by default) and admits at most 16,384
+  candidate/frontier/visited/provider entries per state. Its state extends
+  `ContinuationOwnedState`, exposes only a domain-specific
+  `ContinuationProjection`, and reissues through the shared store's single-use
+  transition. Generation check, provider work, state mutation, and next-token
+  reissue happen atomically inside one backend read action. Expiry, eviction,
+  mismatch, terminal consumption, failure, backend close, and server shutdown
+  dispose state exactly once. An absent canonical handle is always
+  family-typed invalid `UNKNOWN_HANDLE`, including restart-to-fresh-backend,
+  random UUID, replay, and eviction. Stale requires retained state that proves
+  generation change, or the shared store's typed `ExpiredToken` result.
 - Migrate `KastReferencesRequest`, `KastReferencesQuery`, and
   `KastReferencesResponse` to the anchored selector; remove named resolution
   from the endpoint, extract `KastScaffoldReferences.kt`, and migrate
@@ -92,10 +106,10 @@ Markdown/Zensical.
   checked-in source owners.
 - Update the nearest scoped `AGENTS.md` whenever this work changes public
   command ownership or validation gates. Runtime token formats use existing
-  SHA-256/hex plus canonical ASCII and opaque handles. The executable exact
-  output-budget gate intentionally adds `tiktoken-rs = "0.12"` as a dev
-  dependency and updates `Cargo.toml` plus `Cargo.lock`; no runtime dependency
-  is added.
+  SHA-256/hex plus canonical ASCII and opaque handles. Reuse the #338-landed
+  `tiktoken-rs = "0.12"` dev dependency for the executable exact output-budget
+  gate; #339 does not own a dependency or lockfile change unless the required
+  rebase proves that foundation absent. No runtime dependency is added.
 
 ---
 
@@ -124,16 +138,19 @@ New and materially changed files have one responsibility:
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/SymbolIdentity.kt`
   owns lightweight compiler identity with canonical declaration file and
   non-negative declaration start offset.
-- `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationPageInfo.kt`
-  owns shared cardinality and page evidence. The landed #337 reference cursor
-  remains an opaque backend-issued handle.
+- `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationTraversalPageInfo.kt`
+  owns traversal-specific cardinality, visited-candidate, and page evidence.
+  References retain #337's `ResultCardinality`, `PageInfo`, and opaque
+  backend-issued cursor unchanged; Rust normalizes the public projection.
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationTraversalHandle.kt`,
   `RelationCursorStaleReason.kt`, and `RelationCursorInvalidReason.kt` own the
   opaque handle and closed continuation outcomes.
-- `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ServerHeldContinuationStore.kt`
-  is the one semantic state owner; sealed reference/call/type states own TTL,
-  capacity, query/source/subject/generation binding, private returned-before,
-  frontier, visited identities, provider continuation, and accumulated proof.
+- `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/RelationshipContinuationStore.kt`
+  is the runtime relationship adapter over #338's generic `analysis-api`
+  `ServerHeldContinuationStore`; sealed reference/call/type owned states carry
+  query/source/subject/generation binding, private returned-before, frontier,
+  visited identities, provider continuation, and accumulated proof while the
+  shared store owns TTL, capacity, single-use reissue, disposal, and close.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedReferenceProvider.kt`
   owns bounded `FileTypeIndex.processFiles` plus `PsiReferenceScanner` paging.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaOutgoingLexicalDfsProvider.kt`
@@ -174,7 +191,7 @@ The implementation is incomplete until every row is executable:
 | Identity | ADR 0016 exact success/fallback is superseded; one anchored identity object passes unchanged; same-file overloads resolve by file/start offset; anchor-unavailable/not-found/non-null mismatch stop before relation work; no discovery method called. |
 | Subject kinds | The complete command-by-`SymbolKind` matrix returns closed `UNSUPPORTED_SUBJECT_KIND` for rejected pairs after identity verification and before provider/index work; every reject has a zero-work assertion. |
 | References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt`/fixtures consume occurrences; #337 opaque cursor round-trips without source/counter serialization; exact target path/offset isolates forced INDEX overloads; unsafe first INDEX falls back to IDEA while continuation never switches; plus-one cardinality, containment, stable pages, and 500-record budget are proved. |
-| Atomic state | Backend store is sole owner; generation check/provider work/state commit share one read action; queued-write races and `ObservedAnalysisBackend` delegation are covered; server owns no state; A-issued/restart-to-B, random UUID, replay, and eviction are identically absent/invalid while retained generation mismatch is stale. |
+| Atomic state | The backend relationship adapter is the sole semantic owner over #338's shared store; generation check/provider work/state mutation/shared-store reissue share one read action; disposal and backend-close lifecycle, queued-write races, and `ObservedAnalysisBackend` delegation are covered; server owns no semantic state; A-issued/restart-to-B, random UUID, replay, and eviction are identically absent/invalid while retained generation mismatch is stale. |
 | Calls | Incoming/outgoing fixed by command; provider-stable BFS ordering by depth, parent identity, canonical call-site file/start/end, then related identity; bounded `FileTypeIndex.processFiles`/`PsiReferenceScanner` incoming provider and resumable lexical-DFS outgoing provider; nested blocks/local initializers/lambdas are visited, nested named callable/type/accessor bodies are excluded, and page resume preserves the pure-data stack without revisit; reverse-lexical related names, lambda-only callees, lambda page breaks, depth, result, state, visit, cap-plus-one, and forbidden-materializer gates are tested. |
 | Implementations | Interface implementation and class subclass records; exact versus known-minimum cardinality; stateful deterministic bounded provider pages; stale/invalid handles; capability absent degrades. |
 | Hierarchy | Supertypes/subtypes/both; depth; cycle; stateful deterministic bounded provider pages; semantic-generation changes invalidate continuation; capability absent degrades. |
@@ -403,8 +420,9 @@ git commit -m "feat: define typed relationship commands"
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationCursorInvalidReason.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastExactSymbolSelector.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedExactSymbolSelector.kt`
-- Modify after #337 lands: its opaque `ReferencePageToken`, page/cardinality,
-  and reference query owner files under `analysis-api/src/main/kotlin/`
+- Modify after the #338 rebase: the files owning #337's opaque
+  `ReferencePageToken`, page/cardinality, and reference query under
+  `analysis-api/src/main/kotlin/`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/ReferencesQuery.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/ReferencesResult.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedReferencesQuery.kt`
@@ -457,8 +475,8 @@ truncation without a next handle, and visited count above the declared
 candidate budget. Reference tests prove the same plus-one invariant using the
 private #337 continuation state.
 Define stale reasons only for positively recognized retained state
-(`GENERATION_CHANGED`, plus `EXPIRED` when typed lookup observes the retained
-expired entry). Define invalid `UNKNOWN_HANDLE`, `FAMILY_MISMATCH`, and
+(`GENERATION_CHANGED`, plus `EXPIRED` when the shared store returns typed
+`ExpiredToken`). Define invalid `UNKNOWN_HANDLE`, `FAMILY_MISMATCH`, and
 `QUERY_MISMATCH`; absence after restart, eviction, replay, or a random canonical
 UUID all uses `UNKNOWN_HANDLE`.
 
@@ -569,8 +587,9 @@ git commit -m "feat: model typed relationship evidence"
 - Modify: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/contract/skill/SymbolQuerySchemaContractTest.kt`
 - Modify: `analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/AnalysisBackendContractFixture.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
-- Modify after #337 lands: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ReferenceIndexLookup.kt`
-- Extract/modify after #337 lands: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ServerHeldContinuationStore.kt`
+- Modify after the #338 rebase: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ReferenceIndexLookup.kt`
+- Create after the #338 rebase: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/RelationshipContinuationStore.kt`
+- Create after the #338 rebase: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/RelationshipContinuationStoreTest.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedReferenceProvider.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackend.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
@@ -653,13 +672,19 @@ containing-symbol evidence.
 
 Use #337's selected source and opaque token as authority, but refactor its
 backend-held state to pure anchors/provider positions rather than smart
-pointers or `IdeaReferenceTraversal`. Replace destructive untyped `take` with a
-typed atomic claim: retained, retained-expired, or absent. Absent always maps
-to invalid `UNKNOWN_HANDLE`; stale requires retained generation mismatch or
-retained expiry. In one `timedReadAction`, validate the
-stored generation and query, ask the bound source for at most the evidence
-needed to return `limit + 1` usable occurrences, and commit the next state
-before leaving the read action. Map those bounded usages to
+pointers or `IdeaReferenceTraversal`. Replace the #337 reference-only store
+with `RelationshipContinuationStore`, a relationship-domain adapter over
+#338's generic `analysis-api` store. Its sealed state extends
+`ContinuationOwnedState`, its outputs extend `ContinuationProjection`, its
+disposer is explicit, and callers receive only typed projections. Map shared
+store `UnknownToken`, `ExpiredToken`, and `QueryMismatch` failures to the
+family's `UNKNOWN_HANDLE`, `EXPIRED`, and `QUERY_MISMATCH` outcomes. Absent
+always maps to invalid `UNKNOWN_HANDLE`; stale generation is returned only
+from a retained exact-query state. Invoke the shared store's single-use
+consume/reissue transition inside one `timedReadAction`; validate the stored
+generation and query, ask the bound source for at most the evidence needed to
+return `limit + 1` usable occurrences, mutate the pure state, and publish the
+next handle before leaving the read action. Map those bounded usages to
 `ReferenceOccurrence` in that same action.
 Convert the nearest supported containing declaration to `SymbolIdentity`; emit
 `TopLevel` only after proving no containing declaration, and `Unavailable` when
@@ -698,7 +723,10 @@ to its own file and to `ReferenceOccurrence` so no adapter discards
 containing-symbol proof. `ObservedAnalysisBackend` delegates the opaque token
 unchanged and records exactly one `FIND_REFERENCES` operation; a queued-write
 race proves no write can occur between generation validation, provider work,
-and next-state commit.
+state mutation, and shared-store reissue. Backend-close tests prove
+`RunningAnalysisServer` remains the single close owner and the relationship
+state is disposed exactly once on terminal consumption, expiry, mismatch,
+failure, eviction, or shutdown.
 
 - [ ] **Step 4: Run reference tests GREEN and inspect diagnostics**
 
@@ -759,7 +787,7 @@ git commit -m "feat: report bounded reference ownership"
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaCallEdgeResolver.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaOutgoingLexicalDfsProvider.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaTypeEdgeResolver.kt`
-- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ServerHeldContinuationStore.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/RelationshipContinuationStore.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedInheritorProvider.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackend.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastDiagnosticsService.kt`
@@ -863,18 +891,25 @@ must sort and page the complete admitted snapshot. Add tripwires for
 `FileTypeIndex.getFiles(...).toList()`, `ReferencesSearch.findAll`, and
 inheritor `findAll()`.
 
-With a fake clock and semantic-generation provider, model store claim as
-retained, retained-expired, or absent. Assert backend A issues a token and fresh
-backend B classifies it exactly like a never-issued random canonical UUID:
-cursor-invalid `UNKNOWN_HANDLE`, zero provider work. Replay and capacity
-eviction have the same absent outcome. Assert a recognized state with changed
-generation is cursor-stale before provider work; retain `EXPIRED` only when the
-typed claim observes the expired entry before removal. Wrong family/query are
-invalid, malformed syntax fails request parsing, and the 16,384-entry ceiling
-is the exact family state-budget outcome. Queue a PSI write before a
+With the #338 shared store's fake clock and a semantic-generation provider,
+model consume as retained exact-query, retained-expired, query-mismatched, or
+absent. Assert backend A issues a token and fresh backend B classifies it
+exactly like a never-issued random canonical UUID: cursor-invalid
+`UNKNOWN_HANDLE`, zero provider work. Replay and capacity eviction have the
+same absent outcome. Assert a recognized state with changed generation is
+cursor-stale before provider work; retain `EXPIRED` only when the shared store
+returns `ExpiredToken` for retained state. A traversal handle's typed family
+prefix rejects wrong-family use before store/provider work; the shared store's
+terminal query mismatch maps to `QUERY_MISMATCH`. Malformed syntax fails
+request parsing, and the 16,384-entry ceiling is the exact family state-budget
+outcome. Prove shared-store reissue keeps the same owned state open, while
+terminal consume, mismatch, expiry, eviction, failure, or backend close
+disposes it exactly once; `RunningAnalysisServer` remains the single backend
+close owner. Queue a PSI write before a
 continuation and during its provider
-call: generation validation, provider work, and next-state commit share one
-read action, so the old page is rejected or the write waits until after commit.
+call: generation validation, provider work, state mutation, and shared-store
+reissue share one read action, so the old page is rejected or the write waits
+until after token publication.
 Assert `ObservedAnalysisBackend` delegates each handle exactly once, preserves
 the typed result, and records the matching `KastBackendOperation` once.
 
@@ -946,12 +981,16 @@ symbol search. Apply the closed family subject-kind matrix next and return
 `UNSUPPORTED_SUBJECT_KIND` before provider/index calls or state creation. Add
 `RelationCandidateVisitBudget` with a per-page maximum
 derived from the result limit and capped at 4,096 visits. Start a family state
-when no handle is supplied; otherwise claim it through the backend-owned
-`ServerHeldContinuationStore` as retained, retained-expired, or absent. Absent
-always maps to invalid `UNKNOWN_HANDLE`; only retained generation mismatch and
-retained expiry map stale. In one `timedReadAction`, validate family,
-normalized query fingerprint, `PsiModificationTracker.modificationCount`, TTL,
-and state budget, run the provider, and commit the next state. The call/type
+when no handle is supplied; otherwise consume it through the backend-owned
+`RelationshipContinuationStore`, which adapts #338's generic shared store.
+The adapter parses traversal family before store access, maps `UnknownToken` to
+invalid `UNKNOWN_HANDLE`, `ExpiredToken` to stale `EXPIRED`, and terminal
+`QueryMismatch` to invalid `QUERY_MISMATCH`. Only a retained exact-query state
+can produce stale `GENERATION_CHANGED`. In one `timedReadAction`, call the
+shared store's consume transition, validate family, normalized query
+fingerprint, `PsiModificationTracker.modificationCount`, TTL, and state budget,
+run the provider, mutate the pure owned state, and return `Complete` or
+`Reissue` so next-token publication remains inside the same read action. The call/type
 resolver interfaces accept the current pure-data provider continuation and
 remaining visit budget and return
 `RelationCandidateBatch(records, consumedEvidence, visitedCandidateCount,
@@ -997,9 +1036,12 @@ capabilities to the corresponding response family's reason enum.
 
 Do not expose a separately callable `semanticWorkspaceGeneration()` method:
 that would reintroduce a race between server validation and provider work. IDEA
-reads the modification count inside the relationship read action. The store
-never retains PSI, smart pointers, or analysis sessions—only canonical anchors,
-identities, frontier records, and provider continuation. Update
+reads the modification count inside the relationship read action. The
+relationship adapter never retains PSI, smart pointers, or analysis
+sessions—only canonical anchors, identities, frontier records, and provider
+continuation. Its sealed state extends `ContinuationOwnedState`; its output
+extends `ContinuationProjection`; and its explicit disposer participates in
+the landed backend/server close lifecycle. Update
 `backend-idea/AGENTS.md` with sole state ownership and atomicity gates;
 `analysis-server/AGENTS.md` explicitly remains transport-only.
 
@@ -1315,8 +1357,10 @@ git commit -m "feat: page source impact by identity"
 - Modify: `cli-rs/tests/rpc_catalog_smoke.rs`
 - Modify: `cli-rs/tests/repo_resource_smoke.rs`
 - Modify: `cli-rs/tests/agent_relationship_navigation_smoke.rs`
-- Modify: `cli-rs/Cargo.toml`
-- Modify generated dependency resolution: `cli-rs/Cargo.lock`
+- Review unchanged after #338: `cli-rs/Cargo.toml` already owns the
+  `tiktoken-rs = "0.12"` test-only dependency.
+- Review unchanged after #338: `cli-rs/Cargo.lock` already owns its locked
+  resolution.
 - Modify generated: `cli-rs/resources/kast-skill/references/commands.yaml`
 - Modify generated: `cli-rs/resources/kast-skill/references/requests/`
 - Modify generated: `cli-rs/protocol/`
@@ -1376,10 +1420,11 @@ Reference fixtures must include one `KNOWN_MINIMUM` page and one exhaustive
 `ReferencePageToken`; backend-store assertions observe `INDEX|IDEA`, provider
 position, returned-before, query, subject, and generation privately.
 
-Add `tiktoken-rs = "0.12"` under `[dev-dependencies]` in `cli-rs/Cargo.toml`
-and refresh `cli-rs/Cargo.lock` once with the manifest unlocked. This is the
-only new dependency and is test-only; the public token codec continues to use
-existing runtime dependencies.
+Assert `tiktoken-rs = "0.12"` remains under `[dev-dependencies]` after the
+required #338 rebase and use that landed dependency directly. Do not refresh
+`cli-rs/Cargo.lock` or claim a #339 dependency diff when the locked graph is
+already current. The public token codec continues to use existing runtime
+dependencies.
 
 - [ ] **Step 2: Run contract tests and confirm RED**
 
@@ -1467,7 +1512,7 @@ Expected: every contract and budget gate PASS.
 - [ ] **Step 6: Commit public contracts and generated outputs**
 
 ```console
-git add cli-rs/Cargo.toml cli-rs/Cargo.lock cli-rs/resources/kast-skill cli-rs/protocol cli-rs/tests docs
+git add cli-rs/resources/kast-skill cli-rs/protocol cli-rs/tests docs
 git commit -m "docs: teach identity-first relationship navigation"
 ```
 
@@ -1505,11 +1550,14 @@ compiler position resolution; references wrap only the landed opaque #337
 `ReferencePageToken`; exact INDEX reads include target path/offset; and
 call/type compiler requests carry bounded provider continuation plus
 candidate-visit/state budgets. Confirm backend generation validation, provider
-work, and state commit share one read action; `ObservedAnalysisBackend`
+work, state mutation, and shared-store reissue share one read action;
+relationship owned state/projection/disposal composes #338's generic store;
+`RunningAnalysisServer` remains the single backend close owner;
+`ObservedAnalysisBackend`
 delegates every new contract; `analysis-server` owns no state; scoped
 `AGENTS.md` files describe those owners; and `cli-rs/Cargo.toml`/`Cargo.lock`
-contain only the reviewed `tiktoken-rs` dev-dependency resolution needed by the
-executable compact-output test.
+retain #338's reviewed `tiktoken-rs` dev-dependency resolution without a #339
+dependency diff.
 
 - [ ] **Step 2: Run complete Kotlin verification**
 
@@ -1546,7 +1594,8 @@ Expected: all commands exit 0.
 
 Write `.agent-turn/issue-339-report.md` with commit SHAs, exact commands,
 terminal results, output-budget maxima, the landed #337 cursor/cardinality type
-names, backend store TTL/capacity/state maxima, and the known
+names, the landed typed continuation TTL/capacity plus relationship-state
+maximum, and the known
 unprepared-worktree Kast limitation. Ask a fresh reviewer to check anchored
 overload identity, exact-target INDEX references, extracted scaffold migration,
 opaque reference/traversal tokens, backend-owned query/source/generation

@@ -42,19 +42,28 @@ owned source-index store.
 `backend-idea` owns compiler/PSI execution and all semantic relationship
 continuation state for the IDEA runtime.
 
-- #337 `ServerHeldContinuationStore` is the only reference/call/type state
-  owner. Store pure canonical anchors, query/source/generation proof, bounded
-  candidate/frontier/visited/provider positions, and returned-before counts;
-  never retain PSI, smart pointers, or analysis-session objects.
-- Store claim is typed as retained, retained-expired, or absent. An absent
-  canonical handle is always invalid `UNKNOWN_HANDLE`, including
+- `RelationshipContinuationStore` is the only reference/call/type semantic
+  state owner. It adapts #338's generic `analysis-api`
+  `ServerHeldContinuationStore`; its sealed state extends
+  `ContinuationOwnedState`, its output extends `ContinuationProjection`, and
+  its explicit disposer participates in the landed backend/server close
+  lifecycle. Store pure canonical anchors, query/source/generation proof,
+  bounded candidate/frontier/visited/provider positions, and returned-before
+  counts; never retain PSI, smart pointers, or analysis-session objects.
+- Shared-store consume is typed as retained exact-query, expired,
+  query-mismatched, or absent. An absent canonical handle is always invalid
+  `UNKNOWN_HANDLE`, including
   restart-to-fresh-backend, random UUID, replay, and eviction. Stale requires
   retained generation mismatch or retained expiry. Test backend-A to backend-B
   and random UUID equivalence with zero provider work.
-- Handle lookup, query/source validation, `PsiModificationTracker` generation
-  comparison, target resolution, provider work, and next-state commit happen in
-  one `timedReadAction`. `analysis-server` must not preflight generation or own
-  another store.
+- Invoke the shared store's consume/reissue transition inside one
+  `timedReadAction`. Family/query validation, `PsiModificationTracker`
+  generation comparison, target resolution, provider work, state mutation,
+  and next-token publication happen under that read lock. `Complete` disposes;
+  `Reissue` atomically moves the same owned state behind a fresh handle.
+  `RunningAnalysisServer` is the single backend close owner, and
+  `analysis-server` must not preflight generation or own another semantic
+  store.
 - `ObservedAnalysisBackend` explicitly delegates every handle-bearing method
   and records exactly one matching operation. Add delegation and queued-write
   race tests whenever the backend contract changes.
