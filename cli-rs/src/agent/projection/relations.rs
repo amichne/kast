@@ -33,6 +33,21 @@ struct AgentRelationSelectorProjection {
     containing_type: Option<String>,
 }
 
+impl AgentRelationSelectorProjection {
+    fn is_valid(&self) -> bool {
+        !self.fq_name.trim().is_empty()
+            && !self.declaration_file.trim().is_empty()
+            && self
+                .kind
+                .as_ref()
+                .is_none_or(|value| !value.trim().is_empty())
+            && self
+                .containing_type
+                .as_ref()
+                .is_none_or(|value| !value.trim().is_empty())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all_fields = "camelCase")]
 enum AgentReferencesResponseInput {
@@ -301,6 +316,25 @@ fn project_expected_reference_outcome(
     method: String,
     outcome: AgentReferencesResponseInput,
 ) -> AgentEnvelope {
+    let evidence_is_valid = match &outcome {
+        AgentReferencesResponseInput::SubjectNotFound { selector }
+        | AgentReferencesResponseInput::CursorStale { selector, .. }
+        | AgentReferencesResponseInput::CursorInvalid { selector, .. } => selector.is_valid(),
+        AgentReferencesResponseInput::SubjectIdentityMismatch { selector, actual } => {
+            selector.is_valid() && actual.is_valid()
+        }
+        AgentReferencesResponseInput::UnsupportedSubjectKind { selector, subject }
+        | AgentReferencesResponseInput::Degraded {
+            selector, subject, ..
+        } => selector.is_valid() && subject.is_valid(),
+        AgentReferencesResponseInput::Available { .. } => false,
+    };
+    if !evidence_is_valid {
+        return invalid_projection_envelope(
+            method,
+            "References contained invalid expected-outcome evidence.",
+        );
+    }
     let value = match outcome {
         AgentReferencesResponseInput::SubjectNotFound { selector } => json!({
             "type": "KAST_AGENT_REFERENCES_RESULT",
