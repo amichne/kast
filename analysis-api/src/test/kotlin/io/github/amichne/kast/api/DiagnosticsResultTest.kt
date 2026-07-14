@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -60,6 +61,52 @@ class DiagnosticsResultTest {
         )
 
         assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
+    }
+
+    @Test
+    fun `high cardinality diagnostics pages retain exact counts and do not overlap`() {
+        val diagnostics = (0 until 500).map { offset ->
+            Diagnostic(
+                location = Location(
+                    filePath = first.value,
+                    startOffset = offset,
+                    endOffset = offset + 1,
+                    startLine = offset + 1,
+                    startColumn = 1,
+                    preview = "diagnostic $offset",
+                ),
+                severity = if (offset == 0) DiagnosticSeverity.ERROR else DiagnosticSeverity.WARNING,
+                message = "compiler diagnostic $offset",
+                code = if (offset == 0) "COMPILER_ERROR" else "COMPILER_WARNING",
+            )
+        }
+
+        val firstPage = DiagnosticsResult.paged(
+            diagnostics = diagnostics,
+            fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+            pageOffset = 0,
+            maxResults = 8,
+            nextPageToken = "00000000-0000-0000-0000-000000000338",
+        )
+        val secondPage = DiagnosticsResult.paged(
+            diagnostics = diagnostics,
+            fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+            pageOffset = 8,
+            maxResults = 8,
+            nextPageToken = "00000000-0000-0000-0000-000000000339",
+        )
+
+        assertEquals(ResultCardinality.Exact(500), firstPage.cardinality)
+        assertEquals(1, firstPage.severityCounts.error)
+        assertEquals(499, firstPage.severityCounts.warning)
+        assertEquals("00000000-0000-0000-0000-000000000338", firstPage.page?.nextPageToken)
+        assertEquals("00000000-0000-0000-0000-000000000339", secondPage.page?.nextPageToken)
+        assertEquals(8, firstPage.diagnostics.size)
+        assertEquals(8, secondPage.diagnostics.size)
+        assertEquals(
+            emptySet<Diagnostic>(),
+            firstPage.diagnostics.toSet().intersect(secondPage.diagnostics.toSet()),
+        )
     }
 
     private fun analysisFailure(filePath: String, message: String): Diagnostic = Diagnostic(

@@ -418,12 +418,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin position: FilePosition` | File position identifying the symbol whose references to find. |
             | `#!kotlin includeDeclaration: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
             | `#!kotlin includeUsageSiteScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the nearest enclosing declaration scope for each reference usage site. |
+            | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of reference locations to return. |
+            | `#!kotlin pageToken: String?` | Opaque continuation token from the preceding reference page. |
         === "Output: ReferencesResult"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
             | `#!kotlin references: List<Location>` | List of source locations where the symbol is referenced. |
+            | `#!kotlin cardinality: ResultCardinality` | Exact or known-minimum cardinality established by bounded reference work. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
@@ -444,7 +447,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "offset": 48
                     },
                     "includeDeclaration": true,
-                    "includeUsageSiteScope": false
+                    "includeUsageSiteScope": false,
+                    "maxResults": 100
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -487,6 +491,10 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "preview": "greet"
                         }
                     ],
+                    "cardinality": {
+                        "type": "EXACT",
+                        "totalCount": 1
+                    },
                     "schemaVersion": 3
                 },
                 "id": 1,
@@ -497,9 +505,10 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             - Results are workspace-scoped — references outside the current workspace are not returned.
             - Set `includeDeclaration` to true to include the symbol's declaration in the result alongside usage sites.
-            - Large result sets are paginated; check the `page` field for continuation.
+            - Large result sets are paginated; check the `page` field for continuation. Tokens are opaque, one-use handles for server-held state bound to the workspace, query options, evidence source, and source generation.
+            - Unknown, replayed, mismatched, evicted, or stale continuation tokens fail with a typed conflict instead of restarting or reinterpreting traversal.
 
-        **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
+        **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CONFLICT`
 
     ??? example "raw/call-hierarchy — Expand a bounded incoming or outgoing call tree"
 
@@ -821,6 +830,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` | Absolute paths of the files to analyze for diagnostics. |
+            | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 500" } | Maximum number of diagnostic records to return. |
+            | `#!kotlin pageToken: String?` | Opaque continuation token from the preceding diagnostics page. |
         === "Output: DiagnosticsResult"
 
             | Signature | Description |
@@ -831,6 +842,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin requestedFileCount: Int` | Number of files requested for semantic analysis. |
             | `#!kotlin analyzedFileCount: Int` | Number of requested files successfully analyzed. |
             | `#!kotlin skippedFileCount: Int` | Number of requested files not analyzed. |
+            | `#!kotlin severityCounts: DiagnosticSeverityCounts` | Exact severity counts across every diagnostic, including records outside this page. |
+            | `#!kotlin cardinality: EXACT` | Exact diagnostic cardinality across every page. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
@@ -847,7 +860,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "params": {
                     "filePaths": [
                         "/workspace/src/Sample.kt"
-                    ]
+                    ],
+                    "maxResults": 500
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -869,6 +883,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "requestedFileCount": 1,
                     "analyzedFileCount": 1,
                     "skippedFileCount": 0,
+                    "severityCounts": {
+                        "error": 0,
+                        "warning": 0,
+                        "info": 0,
+                        "total": 0
+                    },
+                    "cardinality": {
+                        "totalCount": 0
+                    },
                     "schemaVersion": 3
                 },
                 "id": 1,
@@ -877,10 +900,12 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
         !!! note "Behavioral notes"
 
-            - Pass one or more absolute file paths. The daemon analyzes each file and returns all diagnostics sorted by location.
-            - Diagnostics reflect the current daemon state. A successful focused `raw/workspace-refresh` is a semantic-admission barrier for externally modified files.
+            - Pass one or more absolute file paths. The daemon analyzes each file, returns an ordered bounded page, and reports exact full-set severity counts and cardinality.
+            - The first page captures a server-held diagnostic snapshot. Its opaque, one-use continuation token is bound to the ordered files, limit, and Kotlin PSI generation.
+            - Continuation pages reuse that snapshot without refreshing or recomputing. Unknown, replayed, mismatched, evicted, or stale tokens fail with a typed conflict.
+            - Diagnostics reflect the current daemon state. Before the first page, a successful focused `raw/workspace-refresh` is a semantic-admission barrier for externally modified files; a refresh that changes Kotlin PSI invalidates earlier continuations.
 
-        **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
+        **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `CONFLICT`
 
     ??? example "raw/file-outline — Get a hierarchical symbol outline for a file"
 

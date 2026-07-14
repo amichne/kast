@@ -16,6 +16,7 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
@@ -25,8 +26,15 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
+import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -34,6 +42,11 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicInteger
 
 @TestApplication
 class KastPluginBackendContractTest {
@@ -87,6 +100,14 @@ class KastPluginBackendContractTest {
 
             fun dependentUse(): String = internalName()
         """
+
+        private val highCardinalityUsageSource = buildString {
+            appendLine("package demo")
+            appendLine()
+            appendLine("fun highCardinalityUses(): List<String> = listOf(")
+            repeat(500) { index -> appendLine("    greet(\"$index\"),") }
+            appendLine(")")
+        }
     }
 
     private val mainModuleFixture: TestFixture<Module> = projectFixture.moduleFixture("main")
@@ -104,7 +125,6 @@ class KastPluginBackendContractTest {
         mainSourceRootFixture.psiFileFixture("InternalDeclaration.kt", internalDeclarationSource)
     private val internalDependentFileFixture: TestFixture<PsiFile> =
         secondarySourceRootFixture.psiFileFixture("InternalDependent.kt", internalDependentSource)
-
     private val project: Project
         get() = projectFixture.get()
 
@@ -120,6 +140,9 @@ class KastPluginBackendContractTest {
         telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
         referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
         referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
+        psiGeneration: () -> Long = { 1L },
+        readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
+        referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
     ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
@@ -127,6 +150,9 @@ class KastPluginBackendContractTest {
         telemetry = telemetry,
         referenceIndexLookup = referenceIndexLookup,
         referenceSearchClock = referenceSearchClock,
+        psiGeneration = psiGeneration,
+        readEpochObserver = readEpochObserver,
+        referenceTraversalObserver = referenceTraversalObserver,
     )
 
     private fun ensureProjectReady() {
@@ -296,9 +322,9 @@ class KastPluginBackendContractTest {
     }
 
     @Test
-    fun `fallback candidate discovery uses text index before reference resolution`() = runBlocking {
+    fun `fallback discovery resumes across many nonmatching files without heuristic filtering`() = runBlocking {
         ensureProjectReady()
-        createIrrelevantKotlinFiles(count = 25)
+        val irrelevantFiles = createIrrelevantKotlinFiles(count = 200)
 
         val (workspaceRoot, filePath, offset) = readAction {
             val usageFile = sampleUsageFileFixture.get()
@@ -309,19 +335,37 @@ class KastPluginBackendContractTest {
             )
         }
 
-        val result = backend(workspaceRoot).findReferences(
+        val backend = backend(workspaceRoot)
+        var result = backend.findReferences(
             ReferencesQuery(
                 position = FilePosition(filePath = filePath, offset = offset),
                 includeDeclaration = false,
+                maxResults = 4,
             ),
         )
+        assertTrue(result.references.isEmpty())
+        assertNotNull(result.page?.nextPageToken)
+
+        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+        references += result.references
+        repeat(10) {
+            val nextPageToken = result.page?.nextPageToken ?: return@repeat
+            result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(filePath = filePath, offset = offset),
+                    includeDeclaration = false,
+                    maxResults = 4,
+                    pageToken = nextPageToken,
+                ),
+            )
+            references += result.references
+        }
 
         val searchScope = checkNotNull(result.searchScope)
-        assertTrue(searchScope.candidateFileCount <= 2) {
-            "Expected text-index candidate discovery to skip irrelevant Kotlin files, got ${searchScope.candidateFileCount}"
-        }
+        assertTrue(searchScope.candidateFileCount > 64)
         assertTrue(searchScope.searchedFileCount <= searchScope.candidateFileCount)
-        assertTrue(result.references.any { reference -> reference.preview.contains("greet(\"idea\")") })
+        assertTrue(references.any { reference -> reference.preview.contains("greet(\"idea\")") })
+        deleteKotlinFiles(irrelevantFiles)
     }
 
     @Test
@@ -384,18 +428,24 @@ class KastPluginBackendContractTest {
             )
         }
         var lookedUpFqName: String? = null
-        val referenceIndexLookup = ReferenceIndexLookup { targetFqName ->
+        val referenceIndexLookup = ReferenceIndexLookup { targetFqName, offset, maxResults ->
             lookedUpFqName = targetFqName
+            assertEquals(0, offset.value)
+            assertEquals(100, maxResults.value)
             IndexedReferenceLookupResult.Ready(
-                listOf(
-                    SymbolReferenceRow(
-                        sourcePath = referenceData.usageFilePath,
-                        sourceOffset = referenceData.usageOffset,
-                        targetFqName = targetFqName,
-                        targetPath = referenceData.declarationFilePath,
-                        targetOffset = referenceData.declarationOffset,
+                SymbolReferencePage(
+                    references = listOf(
+                        SymbolReferenceRow(
+                            sourcePath = referenceData.usageFilePath,
+                            sourceOffset = referenceData.usageOffset,
+                            targetFqName = targetFqName,
+                            targetPath = referenceData.declarationFilePath,
+                            targetOffset = referenceData.declarationOffset,
+                        ),
                     ),
+                    nextOffset = null,
                 ),
+                generation = SourceIndexGeneration(1),
             )
         }
 
@@ -420,6 +470,721 @@ class KastPluginBackendContractTest {
         assertNotNull(reference.usageSiteScope)
         assertEquals(true, result.searchScope?.exhaustive)
         assertEquals(result.searchScope?.candidateFileCount, result.searchScope?.searchedFileCount)
+    }
+
+    @Test
+    fun `indexed reference cursor fails typed when index becomes unavailable`() = runBlocking {
+        ensureProjectReady()
+        val referenceData = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            IndexedReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFilePath = sampleFile.virtualFile.path,
+                declarationOffset = sampleFile.text.indexOf("greet"),
+                usageFilePath = usageFile.virtualFile.path,
+                usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
+            )
+        }
+        var indexReady = true
+        val lookup = ReferenceIndexLookup { targetFqName, _, _ ->
+            if (indexReady) {
+                IndexedReferenceLookupResult.Ready(
+                    SymbolReferencePage(
+                        references = listOf(
+                            SymbolReferenceRow(
+                                sourcePath = referenceData.usageFilePath,
+                                sourceOffset = referenceData.usageOffset,
+                                targetFqName = targetFqName,
+                                targetPath = referenceData.declarationFilePath,
+                                targetOffset = referenceData.declarationOffset,
+                            ),
+                        ),
+                        nextOffset = NonNegativeInt(1),
+                    ),
+                    generation = SourceIndexGeneration(1),
+                )
+            } else {
+                IndexedReferenceLookupResult.NotReady
+            }
+        }
+        val backend = backend(
+            workspaceRoot = referenceData.workspaceRoot,
+            referenceIndexLookup = lookup,
+        )
+        val position = FilePosition(
+            filePath = referenceData.declarationFilePath,
+            offset = referenceData.declarationOffset,
+        )
+        val first = backend.findReferences(
+            ReferencesQuery(position = position, includeDeclaration = false, maxResults = 1),
+        )
+        indexReady = false
+
+        val failure = runCatching {
+            backend.findReferences(
+                ReferencesQuery(
+                    position = position,
+                    includeDeclaration = false,
+                    maxResults = 1,
+                    pageToken = requireNotNull(first.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is ConflictException)
+        assertTrue(failure?.message.orEmpty().contains("source index became unavailable"))
+    }
+
+    @Test
+    fun `find references fallback stops at page evidence and continues without overlap`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val file = mainSourceRootFixture.get().virtualFile.createChildData(this, "HighCardinalityUsage.kt")
+                VfsUtil.saveText(file, highCardinalityUsageSource)
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("HighCardinalityUsage.kt"))
+        }
+        val traceFile = Files.createTempFile("kast-high-cardinality-references", ".jsonl")
+        val telemetry = IdeaBackendTelemetry.create(
+            IdeaTelemetryConfig(
+                enabled = true,
+                scopes = setOf(IdeaTelemetryScope.REFERENCES),
+                detail = IdeaTelemetryDetail.BASIC,
+                outputFile = traceFile,
+            ),
+        )
+        val (workspaceRoot, filePath, offset) = readAction {
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+        var indexReady = false
+        var indexLookupCount = 0
+        val changingIndexLookup = ReferenceIndexLookup { _, _, _ ->
+            indexLookupCount += 1
+            if (indexReady) {
+                IndexedReferenceLookupResult.Ready(
+                    SymbolReferencePage(references = emptyList(), nextOffset = null),
+                    generation = SourceIndexGeneration(1),
+                )
+            } else {
+                IndexedReferenceLookupResult.NotReady
+            }
+        }
+        val traversalCloseCount = AtomicInteger()
+        val backend = backend(
+            workspaceRoot = workspaceRoot,
+            limits = defaultLimits.copy(
+                requestTimeoutMillis = 60_000,
+                perFileScanBudgetMillis = 30_000,
+            ),
+            telemetry = telemetry,
+            referenceIndexLookup = changingIndexLookup,
+            referenceTraversalObserver = ReferenceTraversalObserver { traversalCloseCount.incrementAndGet() },
+        )
+
+        val first = backend.findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+                maxResults = 4,
+            ),
+        )
+        indexReady = true
+        val second = backend.findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+                maxResults = 4,
+                pageToken = requireNotNull(first.page?.nextPageToken),
+            ),
+        )
+
+        assertEquals(4, first.references.size)
+        assertEquals(4, second.references.size)
+        assertTrue(first.cardinality is ResultCardinality.KnownMinimum)
+        assertEquals(1, indexLookupCount)
+        assertTrue(first.references.toSet().intersect(second.references.toSet()).isEmpty())
+        val trace = Files.readString(traceFile)
+        assertEquals(2, trace.windowed("\"kast.references.observedEvidenceCount\":\"5\"".length)
+            .count { it == "\"kast.references.observedEvidenceCount\":\"5\"" }) {
+            "Expected every reference page to stop after four results plus one lookahead:\n$trace"
+        }
+        assertTrue(trace.lineSequence().filter { it.contains("kast.references.pathProbeCount") }.all { line ->
+            Regex(""""kast.references.pathProbeCount":"([0-9]+)"""")
+                .find(line)?.groupValues?.get(1)?.toInt()?.let { it <= 64 } == true
+        }) { "Candidate traversal exceeded page plus lookahead:\n$trace" }
+
+        val replayFailure = runCatching {
+            backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(filePath = filePath, offset = offset),
+                    includeDeclaration = false,
+                    maxResults = 4,
+                    pageToken = requireNotNull(first.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(replayFailure is ConflictException)
+
+        val mismatchFailure = runCatching {
+            backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(filePath = filePath, offset = offset),
+                    includeDeclaration = false,
+                    maxResults = 5,
+                    pageToken = requireNotNull(second.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(mismatchFailure is ConflictException)
+        assertEquals(1, traversalCloseCount.get())
+    }
+
+    @Test
+    fun `find references fallback preserves aliased compiler identity`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val file = mainSourceRootFixture.get().virtualFile.createChildData(this, "AliasedUsage.kt")
+                VfsUtil.saveText(
+                    file,
+                    """
+                    package demo.alias
+
+                    import demo.greet as welcome
+
+                    fun useAlias(): String = welcome("idea")
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val aliasFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("AliasedUsage.kt"))
+        }
+        val (workspaceRoot, filePath, offset) = readAction {
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, aliasFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+
+        val result = backend(
+            workspaceRoot = workspaceRoot,
+            referenceIndexLookup = ReferenceIndexLookup.Unavailable,
+        ).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+                maxResults = 50,
+            ),
+        )
+
+        assertTrue(result.references.any { reference ->
+            reference.filePath.endsWith("AliasedUsage.kt") &&
+                reference.startOffset == aliasFile.text.indexOf("welcome(\"idea\")")
+        }) { "Expected aliased compiler reference, got: ${result.references}" }
+    }
+
+    @Test
+    fun `find references fallback preserves operator convention identity`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val root = mainSourceRootFixture.get().virtualFile
+                VfsUtil.saveText(
+                    root.createChildData(this, "OperatorDeclaration.kt"),
+                    """
+                    package demo.operator
+
+                    data class Box(val value: Int)
+
+                    operator fun Box.plus(other: Box): Box = Box(value + other.value)
+                    """.trimIndent(),
+                )
+                VfsUtil.saveText(
+                    root.createChildData(this, "OperatorUsage.kt"),
+                    """
+                    package demo.operator
+
+                    fun combine(): Box = Box(1) + Box(2)
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val declarationFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("OperatorDeclaration.kt"))
+        }
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("OperatorUsage.kt"))
+        }
+        val (workspaceRoot, filePath, offset) = readAction {
+            Triple(
+                commonWorkspaceRoot(declarationFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFile.virtualFile.path,
+                declarationFile.text.indexOf("plus"),
+            )
+        }
+
+        val result = backend(
+            workspaceRoot = workspaceRoot,
+            referenceIndexLookup = ReferenceIndexLookup.Unavailable,
+        ).findReferences(
+            ReferencesQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                includeDeclaration = false,
+                maxResults = 50,
+            ),
+        )
+
+        assertTrue(result.references.any { reference ->
+            reference.filePath.endsWith("OperatorUsage.kt") &&
+                reference.startOffset == usageFile.text.indexOf("+")
+        }) { "Expected operator compiler reference, got: ${result.references}" }
+    }
+
+    @Test
+    fun `find references preserves every Kotlin convention identity without spelling heuristics`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val root = mainSourceRootFixture.get().virtualFile
+                VfsUtil.saveText(
+                    root.createChildData(this, "ConventionDeclaration.kt"),
+                    """
+                    package demo.convention
+
+                    import kotlin.reflect.KProperty
+
+                    class Box(var value: Int) {
+                        override fun equals(other: Any?): Boolean = other is Box && value == other.value
+                        override fun hashCode(): Int = value
+                        operator fun contains(candidate: Int): Boolean = candidate == value
+                        operator fun get(index: Int): Int = value + index
+                        operator fun set(index: Int, replacement: Int) { value = replacement + index }
+                        operator fun component1(): Int = value
+                        operator fun invoke(): Int = value
+                    }
+
+                    class Delegate {
+                        operator fun getValue(thisRef: Any?, property: KProperty<*>): Int = 7
+                    }
+                    """.trimIndent(),
+                )
+                VfsUtil.saveText(
+                    root.createChildData(this, "ConventionUsage.kt"),
+                    """
+                    package demo.convention
+
+                    fun useConventions(left: Box, right: Box) {
+                        val equal = left == right
+                        val unequal = left != right
+                        val included = 1 in left
+                        val excluded = 2 !in left
+                        val indexed = left[0]
+                        left[0] = 3
+                        val delegated by Delegate()
+                        val (component) = left
+                        val invoked = left()
+                    }
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val declarationFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("ConventionDeclaration.kt"))
+        }
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("ConventionUsage.kt"))
+        }
+        val (workspaceRoot, declarationFilePath, declarationOffsets) = readAction {
+            Triple(
+                commonWorkspaceRoot(declarationFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFile.virtualFile.path,
+                listOf("equals", "contains", "get", "set", "getValue", "component1", "invoke")
+                    .associateWith { declarationName -> declarationFile.text.indexOf("fun $declarationName") + 4 },
+            )
+        }
+        val backend = backend(workspaceRoot, referenceIndexLookup = ReferenceIndexLookup.Unavailable)
+
+        val expectedUsageByDeclaration = mapOf(
+            "equals" to listOf("left == right", "left != right"),
+            "contains" to listOf("1 in left", "2 !in left"),
+            "get" to listOf("left[0]"),
+            "set" to listOf("left[0] = 3"),
+            "getValue" to listOf("delegated by Delegate()"),
+            "component1" to listOf("val (component) = left"),
+            "invoke" to listOf("left()"),
+        )
+        expectedUsageByDeclaration.forEach { (declarationName, expectedPreviews) ->
+            val references = collectAllReferencePages(
+                backend = backend,
+                position = FilePosition(
+                    filePath = declarationFilePath,
+                    offset = declarationOffsets.getValue(declarationName),
+                ),
+            )
+            expectedPreviews.forEach { expectedPreview ->
+                assertTrue(references.any { reference -> reference.preview.contains(expectedPreview) }) {
+                    "Expected $declarationName reference at '$expectedPreview', got: $references"
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `reference continuation resumes at the exact reference inside a leaf after budget interruption`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val root = mainSourceRootFixture.get().virtualFile
+                VfsUtil.saveText(
+                    root.createChildData(this, "MidLeafContinuationDeclaration.kt"),
+                    """
+                    package demo.midleaf
+
+                    class Invokable {
+                        operator fun invoke(): Int = 1
+                    }
+                    """.trimIndent(),
+                )
+                VfsUtil.saveText(
+                    root.createChildData(this, "MidLeafContinuationUsage.kt"),
+                    """
+                    package demo.midleaf
+
+                    fun useInvocation(target: Invokable): Int = target()
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val declarationFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("MidLeafContinuationDeclaration.kt"))
+        }
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("MidLeafContinuationUsage.kt"))
+        }
+        val testData = readAction {
+            MidLeafReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(declarationFile.virtualFile.path, usageFile.virtualFile.path),
+                position = FilePosition(
+                    declarationFile.virtualFile.path,
+                    declarationFile.text.indexOf("invoke"),
+                ),
+                usageFilePath = usageFile.virtualFile.path,
+                usageLeafOffset = usageFile.text.indexOf("target()"),
+            )
+        }
+        val clockNanos = AtomicLong(0L)
+        val interrupted = AtomicBoolean(false)
+        val processedReferenceIndices = mutableListOf<Int>()
+        var referencesInLeaf = 0
+        val observer = object : ReferenceTraversalObserver {
+            override fun closed() = Unit
+
+            override fun referenceProcessed(
+                filePath: String,
+                leafOffset: Int,
+                referenceIndex: Int,
+                referenceCount: Int,
+            ) {
+                if (
+                    filePath == testData.usageFilePath &&
+                    leafOffset == testData.usageLeafOffset &&
+                    referenceCount > 1
+                ) {
+                    processedReferenceIndices += referenceIndex
+                    referencesInLeaf = referenceCount
+                    if (referenceIndex == 0 && interrupted.compareAndSet(false, true)) {
+                        clockNanos.set(2_000_000L)
+                    }
+                }
+            }
+        }
+        val backend = backend(
+            workspaceRoot = testData.workspaceRoot,
+            limits = defaultLimits.copy(
+                requestTimeoutMillis = 1L,
+                perFileScanBudgetMillis = 30_000L,
+            ),
+            referenceIndexLookup = ReferenceIndexLookup.Unavailable,
+            referenceSearchClock = ReferenceSearchClock(clockNanos::get),
+            referenceTraversalObserver = observer,
+        )
+        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+        val first = backend.findReferences(
+            ReferencesQuery(position = testData.position, includeDeclaration = false, maxResults = 50),
+        )
+        references += first.references
+        var pageToken: String? = requireNotNull(first.page?.nextPageToken)
+        do {
+            val page = backend.findReferences(
+                ReferencesQuery(
+                    position = testData.position,
+                    includeDeclaration = false,
+                    maxResults = 50,
+                    pageToken = pageToken,
+                ),
+            )
+            references += page.references
+            pageToken = page.page?.nextPageToken
+        } while (pageToken != null)
+
+        assertTrue(referencesInLeaf > 1, "test usage leaf did not expose multiple Kotlin references")
+        assertEquals((0 until referencesInLeaf).toList(), processedReferenceIndices)
+        assertEquals(references.distinct(), references)
+        assertEquals(1, references.count { reference -> reference.preview.contains("target()") })
+    }
+
+    @Test
+    fun `reference traversal disposes exactly once on exhaustion exception and shutdown`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                VfsUtil.saveText(
+                    mainSourceRootFixture.get().virtualFile.createChildData(this, "TraversalLifecycleUsage.kt"),
+                    """
+                    package demo
+
+                    fun traversalLifecycleUses(): List<String> = listOf(greet("one"), greet("two"), greet("three"))
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("TraversalLifecycleUsage.kt"))
+        }
+        val (workspaceRoot, position) = readAction {
+            commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path) to
+                FilePosition(sampleFile.virtualFile.path, sampleFile.text.indexOf("greet"))
+        }
+
+        val exhaustedCloseCount = AtomicInteger()
+        val exhaustedBackend = backend(
+            workspaceRoot = workspaceRoot,
+            referenceTraversalObserver = ReferenceTraversalObserver { exhaustedCloseCount.incrementAndGet() },
+        )
+        val exhausted = exhaustedBackend.findReferences(
+            ReferencesQuery(position = position, includeDeclaration = false, maxResults = 50),
+        )
+        assertEquals(null, exhausted.page)
+        assertEquals(1, exhaustedCloseCount.get())
+
+        val shutdownCloseCount = AtomicInteger()
+        val shutdownBackend = backend(
+            workspaceRoot = workspaceRoot,
+            referenceTraversalObserver = ReferenceTraversalObserver { shutdownCloseCount.incrementAndGet() },
+        )
+        val retained = shutdownBackend.findReferences(
+            ReferencesQuery(position = position, includeDeclaration = false, maxResults = 1),
+        )
+        assertNotNull(retained.page?.nextPageToken)
+        shutdownBackend.close()
+        shutdownBackend.close()
+        assertEquals(1, shutdownCloseCount.get())
+
+        var failClock = false
+        val exceptionCloseCount = AtomicInteger()
+        val exceptionBackend = backend(
+            workspaceRoot = workspaceRoot,
+            referenceSearchClock = ReferenceSearchClock {
+                if (failClock) error("clock failure") else System.nanoTime()
+            },
+            referenceTraversalObserver = ReferenceTraversalObserver { exceptionCloseCount.incrementAndGet() },
+        )
+        val first = exceptionBackend.findReferences(
+            ReferencesQuery(position = position, includeDeclaration = false, maxResults = 1),
+        )
+        failClock = true
+        val failure = runCatching {
+            exceptionBackend.findReferences(
+                ReferencesQuery(
+                    position = position,
+                    includeDeclaration = false,
+                    maxResults = 1,
+                    pageToken = requireNotNull(first.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException)
+        assertEquals(1, exceptionCloseCount.get())
+    }
+
+    @Test
+    fun `indexed reference continuation rejects a changed source generation`() = runBlocking {
+        ensureProjectReady()
+        val referenceData = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            IndexedReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFilePath = sampleFile.virtualFile.path,
+                declarationOffset = sampleFile.text.indexOf("greet"),
+                usageFilePath = usageFile.virtualFile.path,
+                usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
+            )
+        }
+        var generation = SourceIndexGeneration(1)
+        val lookup = ReferenceIndexLookup { targetFqName, _, _ ->
+            IndexedReferenceLookupResult.Ready(
+                page = SymbolReferencePage(
+                    references = listOf(
+                        SymbolReferenceRow(
+                            sourcePath = referenceData.usageFilePath,
+                            sourceOffset = referenceData.usageOffset,
+                            targetFqName = targetFqName,
+                            targetPath = referenceData.declarationFilePath,
+                            targetOffset = referenceData.declarationOffset,
+                        ),
+                    ),
+                    nextOffset = NonNegativeInt(1),
+                ),
+                generation = generation,
+            )
+        }
+        val backend = backend(referenceData.workspaceRoot, referenceIndexLookup = lookup)
+        val position = FilePosition(referenceData.declarationFilePath, referenceData.declarationOffset)
+        val first = backend.findReferences(ReferencesQuery(position, maxResults = 1))
+        generation = SourceIndexGeneration(2)
+
+        val failure = runCatching {
+            backend.findReferences(
+                ReferencesQuery(
+                    position = position,
+                    maxResults = 1,
+                    pageToken = requireNotNull(first.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is ConflictException)
+        assertTrue(failure?.message.orEmpty().contains("source index changed"))
+    }
+
+    @Test
+    fun `production source store mutation between indexed pages rejects continuation`() = runBlocking {
+        ensureProjectReady()
+        val referenceData = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            IndexedReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFilePath = sampleFile.virtualFile.path,
+                declarationOffset = sampleFile.text.indexOf("greet"),
+                usageFilePath = usageFile.virtualFile.path,
+                usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
+            )
+        }
+        val storeRoot = Files.createTempDirectory("kast-reference-generation")
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            store.upsertSymbolReference(
+                sourcePath = referenceData.declarationFilePath,
+                sourceOffset = referenceData.declarationOffset,
+                targetFqName = "demo.greet",
+                targetPath = referenceData.declarationFilePath,
+                targetOffset = referenceData.declarationOffset,
+            )
+            store.upsertSymbolReference(
+                sourcePath = referenceData.usageFilePath,
+                sourceOffset = referenceData.usageOffset,
+                targetFqName = "demo.greet",
+                targetPath = referenceData.declarationFilePath,
+                targetOffset = referenceData.declarationOffset,
+            )
+            val lookup = ReferenceIndexLookup { targetFqName, offset, maxResults ->
+                val generated = store.generatedReferencePageToSymbol(targetFqName, offset, maxResults)
+                IndexedReferenceLookupResult.Ready(generated.page, generated.generation)
+            }
+            val backend = backend(referenceData.workspaceRoot, referenceIndexLookup = lookup)
+            val position = FilePosition(referenceData.declarationFilePath, referenceData.declarationOffset)
+            val first = backend.findReferences(ReferencesQuery(position, maxResults = 1))
+
+            store.clearReferencesFromFile(referenceData.usageFilePath)
+
+            val failure = runCatching {
+                backend.findReferences(
+                    ReferencesQuery(
+                        position = position,
+                        maxResults = 1,
+                        pageToken = requireNotNull(first.page?.nextPageToken),
+                    ),
+                )
+            }.exceptionOrNull()
+            assertTrue(failure is ConflictException)
+            assertTrue(failure?.message.orEmpty().contains("source index changed"))
+        }
+    }
+
+    @Test
+    fun `indexed reference pages preserve cumulative search scope evidence`() = runBlocking {
+        ensureProjectReady()
+        val referenceData = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            IndexedReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFilePath = sampleFile.virtualFile.path,
+                declarationOffset = sampleFile.text.indexOf("greet"),
+                usageFilePath = usageFile.virtualFile.path,
+                usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
+            )
+        }
+        val lookup = ReferenceIndexLookup { targetFqName, offset, _ ->
+            val row = if (offset.value == 0) {
+                SymbolReferenceRow(
+                    sourcePath = referenceData.declarationFilePath,
+                    sourceOffset = referenceData.declarationOffset,
+                    targetFqName = targetFqName,
+                    targetPath = null,
+                    targetOffset = null,
+                )
+            } else {
+                SymbolReferenceRow(
+                    sourcePath = referenceData.usageFilePath,
+                    sourceOffset = referenceData.usageOffset,
+                    targetFqName = targetFqName,
+                    targetPath = null,
+                    targetOffset = null,
+                )
+            }
+            IndexedReferenceLookupResult.Ready(
+                page = SymbolReferencePage(
+                    references = listOf(row),
+                    nextOffset = if (offset.value == 0) NonNegativeInt(1) else null,
+                ),
+                generation = SourceIndexGeneration(1),
+            )
+        }
+        val backend = backend(referenceData.workspaceRoot, referenceIndexLookup = lookup)
+        val position = FilePosition(referenceData.declarationFilePath, referenceData.declarationOffset)
+        val first = backend.findReferences(ReferencesQuery(position, maxResults = 1))
+        val second = backend.findReferences(
+            ReferencesQuery(
+                position = position,
+                maxResults = 1,
+                pageToken = requireNotNull(first.page?.nextPageToken),
+            ),
+        )
+
+        assertEquals(1, first.searchScope?.candidateFileCount)
+        assertEquals(2, second.searchScope?.candidateFileCount)
+        assertEquals(2, second.searchScope?.searchedFileCount)
     }
 
     @Test
@@ -453,9 +1218,83 @@ class KastPluginBackendContractTest {
 
         assertFalse(result.searchScope?.exhaustive ?: true)
         assertTrue(
-            (result.searchScope?.searchedFileCount ?: Int.MAX_VALUE) <
+            (result.searchScope?.searchedFileCount ?: Int.MAX_VALUE) <=
                 (result.searchScope?.candidateFileCount ?: 0),
         )
+    }
+
+    @Test
+    fun `reference continuation generation is captured inside the traversal read epoch`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                VfsUtil.saveText(
+                    mainSourceRootFixture.get().virtualFile.createChildData(this, "ConcurrentReferenceUsage.kt"),
+                    """
+                    package demo
+
+                    fun concurrentUses(): List<String> = listOf(greet("one"), greet("two"))
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("ConcurrentReferenceUsage.kt"))
+        }
+        val (workspaceRoot, position) = readAction {
+            commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path) to
+                FilePosition(sampleFile.virtualFile.path, sampleFile.text.indexOf("greet"))
+        }
+        val generation = AtomicLong(1)
+        val enteredReadEpoch = CountDownLatch(1)
+        val releaseReadEpoch = CountDownLatch(1)
+        val blockedOnce = AtomicBoolean(false)
+        val observer = IdeaReadEpochObserver { kind ->
+            if (kind == IdeaReadEpochKind.REFERENCES && blockedOnce.compareAndSet(false, true)) {
+                enteredReadEpoch.countDown()
+                assertTrue(releaseReadEpoch.await(10, TimeUnit.SECONDS))
+            }
+        }
+        val backend = backend(
+            workspaceRoot = workspaceRoot,
+            referenceIndexLookup = ReferenceIndexLookup.Unavailable,
+            psiGeneration = generation::get,
+            readEpochObserver = observer,
+        )
+        val firstDeferred = async(Dispatchers.Default) {
+            backend.findReferences(
+                ReferencesQuery(position = position, includeDeclaration = false, maxResults = 1),
+            )
+        }
+        assertTrue(enteredReadEpoch.await(10, TimeUnit.SECONDS))
+
+        val writeStarted = CountDownLatch(1)
+        val writeCompleted = CountDownLatch(1)
+        application.invokeLater {
+            writeStarted.countDown()
+            application.runWriteAction { generation.set(2) }
+            writeCompleted.countDown()
+        }
+        assertTrue(writeStarted.await(10, TimeUnit.SECONDS))
+        assertTrue(!writeCompleted.await(100, TimeUnit.MILLISECONDS))
+
+        releaseReadEpoch.countDown()
+        val first = firstDeferred.await()
+        assertTrue(writeCompleted.await(10, TimeUnit.SECONDS))
+        val failure = runCatching {
+            backend.findReferences(
+                ReferencesQuery(
+                    position = position,
+                    includeDeclaration = false,
+                    maxResults = 1,
+                    pageToken = requireNotNull(first.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(failure is ConflictException)
+        assertTrue(failure?.message.orEmpty().contains("PSI changed"))
     }
 
     @Test
@@ -498,14 +1337,15 @@ class KastPluginBackendContractTest {
             .first { candidate -> secondPath.startsWith(candidate) }
     }
 
-    private fun createIrrelevantKotlinFiles(count: Int) {
+    private fun createIrrelevantKotlinFiles(count: Int): List<String> {
         val suffix = System.nanoTime().toString()
+        val fileNames = (0 until count).map { index -> "Irrelevant${suffix}_$index.kt" }
         val application = ApplicationManager.getApplication()
         application.invokeAndWait {
             application.runWriteAction {
                 val sourceRoot = mainSourceRootFixture.get().virtualFile
-                repeat(count) { index ->
-                    val file = sourceRoot.createChildData(this, "Irrelevant${suffix}_$index.kt")
+                fileNames.forEachIndexed { index, fileName ->
+                    val file = sourceRoot.createChildData(this, fileName)
                     VfsUtil.saveText(
                         file,
                         """
@@ -518,6 +1358,39 @@ class KastPluginBackendContractTest {
             }
         }
         waitUntilIndexesAreReady(project)
+        return fileNames
+    }
+
+    private fun deleteKotlinFiles(fileNames: List<String>) {
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val sourceRoot = mainSourceRootFixture.get().virtualFile
+                fileNames.forEach { fileName -> sourceRoot.findChild(fileName)?.delete(this) }
+            }
+        }
+        waitUntilIndexesAreReady(project)
+    }
+
+    private suspend fun collectAllReferencePages(
+        backend: KastPluginBackend,
+        position: FilePosition,
+    ): List<io.github.amichne.kast.api.contract.Location> {
+        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+        var pageToken: String? = null
+        do {
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = position,
+                    includeDeclaration = false,
+                    maxResults = 50,
+                    pageToken = pageToken,
+                ),
+            )
+            references += result.references
+            pageToken = result.page?.nextPageToken
+        } while (pageToken != null)
+        return references
     }
 
     @Test
@@ -587,4 +1460,11 @@ private data class IndexedReferenceTestData(
     val declarationOffset: Int,
     val usageFilePath: String,
     val usageOffset: Int,
+)
+
+private data class MidLeafReferenceTestData(
+    val workspaceRoot: Path,
+    val position: FilePosition,
+    val usageFilePath: String,
+    val usageLeafOffset: Int,
 )

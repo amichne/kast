@@ -93,7 +93,7 @@ uses a discriminated response envelope.
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
 | `symbol/resolve` | `symbol` | backend | Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_NOT_FOUND`<br>`RESOLVE_AMBIGUOUS`<br>`RESOLVE_FAILURE` |
-| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
+| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration`<br>`maxResults`<br>`pageToken` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
 | `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
 | `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
@@ -103,11 +103,11 @@ uses a discriminated response envelope.
 | `symbol/add-statement` | `symbol` | backend | Insert statement content into a named executable Kotlin scope and validate the result | `insideScope`<br>`anchor`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/replace-declaration` | `symbol` | backend | Replace a named Kotlin declaration using declaration-scope evidence and validate the result | `symbol`<br>`contentFile` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `raw/resolve` | `raw` | backend | Resolve the symbol at a file position | `position` | `includeDeclarationScope`<br>`includeDocumentation` | `SymbolResult` | single result |
-| `raw/references` | `raw` | backend | Find all references to the symbol at a file position | `position` | `includeDeclaration`<br>`includeUsageSiteScope` | `ReferencesResult` | single result |
+| `raw/references` | `raw` | backend | Find all references to the symbol at a file position | `position` | `includeDeclaration`<br>`includeUsageSiteScope`<br>`maxResults`<br>`pageToken` | `ReferencesResult` | single result |
 | `raw/call-hierarchy` | `raw` | backend | Expand a bounded incoming or outgoing call tree | `position`<br>`direction` | `depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `CallHierarchyResult` | single result |
 | `raw/type-hierarchy` | `raw` | backend | Expand supertypes and subtypes from a resolved symbol | `position` | `direction`<br>`depth`<br>`maxResults` | `TypeHierarchyResult` | single result |
 | `raw/semantic-insertion-point` | `raw` | backend | Find the best insertion point for a new declaration | `position`<br>`target` | none | `SemanticInsertionResult` | single result |
-| `raw/diagnostics` | `raw` | backend | Run Kotlin diagnostics on listed files | `filePaths` | none | `DiagnosticsResult` | single result |
+| `raw/diagnostics` | `raw` | backend | Run Kotlin diagnostics on listed files | `filePaths` | `maxResults`<br>`pageToken` | `DiagnosticsResult` | single result |
 | `raw/rename` | `raw` | backend | Plan a symbol rename by file position | `position`<br>`newName` | `dryRun` | `RenameResult` | single result |
 | `raw/optimize-imports` | `raw` | backend | Optimize imports for one or more files | `filePaths` | none | `ImportOptimizeResult` | single result |
 | `raw/apply-edits` | `raw` | backend | Apply a prepared edit plan with conflict detection | `edits`<br>`fileHashes` | `fileOperations` | `ApplyEditsResult` | single result |
@@ -314,6 +314,8 @@ Notes:
 | `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
 | `containingType` | `string` | no | yes |  |
 | `includeDeclaration` | `boolean` | no | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `pageToken` | `string` | no | yes |  |
 
 Response type: `KastReferencesResponse`.
 Result variants: `REFERENCES_SUCCESS`, `REFERENCES_FAILURE`.
@@ -322,6 +324,9 @@ Notes:
 
 - The 'symbol' field takes simple names only.
 - Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.
+- maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
+- Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.
+- Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
 
 </details>
 
@@ -469,8 +474,16 @@ Response type: `SymbolResult`.
 | `position` | `object` | yes | no |  |
 | `includeDeclaration` | `boolean` | no | no |  |
 | `includeUsageSiteScope` | `boolean` | no | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `pageToken` | `string` | no | yes |  |
 
 Response type: `ReferencesResult`.
+
+Notes:
+
+- maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
+- pageToken is an opaque, one-use handle bound to the workspace, query options, evidence source, and source generation.
+- Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
 
 </details>
 
@@ -522,8 +535,16 @@ Response type: `SemanticInsertionResult`.
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `filePaths` | `array of string` | yes | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `pageToken` | `string` | no | yes |  |
 
 Response type: `DiagnosticsResult`.
+
+Notes:
+
+- The first page computes exact severity counts and cardinality while capturing a server-held diagnostic snapshot.
+- pageToken is an opaque, one-use handle bound to the ordered files, maxResults, and Kotlin PSI generation; continuations reuse the snapshot without refresh or recomputation.
+- Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
 
 </details>
 

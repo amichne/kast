@@ -3,10 +3,13 @@
 use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{
-    AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentImpactArgs, AgentMutationApplyArgs,
-    AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
+    AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiagnosticsField,
+    AgentDiagnosticsViewArgs, AgentImpactArgs, AgentImpactField, AgentImpactViewArgs,
+    AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentOperationArgs,
+    AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
     AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
-    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolMode, AgentVerifyArgs,
+    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField, AgentSymbolMode,
+    AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
 };
 use crate::error::{CliError, Result};
 use crate::{output, runtime, validate};
@@ -20,6 +23,7 @@ include!("agent/path.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");
 include!("agent/envelope.rs");
+include!("agent/projection.rs");
 include!("agent/input.rs");
 include!("agent/response.rs");
 include!("agent/symbol_lookup.rs");
@@ -32,7 +36,8 @@ mod semantic_analysis_evidence_tests {
     fn normalized_requested_file_path_matches_normalized_status_path() {
         let request = json!({
             "params": {
-                "filePaths": ["/workspace/src/../src/Sample.kt"]
+                "filePaths": ["/workspace/src/../src/Sample.kt"],
+                "maxResults": 8
             }
         });
         let result = json!({
@@ -44,7 +49,9 @@ mod semantic_analysis_evidence_tests {
             "semanticOutcome": "COMPLETE",
             "requestedFileCount": 1,
             "analyzedFileCount": 1,
-            "skippedFileCount": 0
+            "skippedFileCount": 0,
+            "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+            "cardinality": {"type": "EXACT", "totalCount": 0}
         });
 
         assert!(matches!(

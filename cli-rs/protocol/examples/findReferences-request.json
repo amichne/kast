@@ -6,7 +6,8 @@
             "offset": 48
         },
         "includeDeclaration": true,
-        "includeUsageSiteScope": false
+        "includeUsageSiteScope": false,
+        "maxResults": 100
     },
     "id": 1,
     "jsonrpc": "2.0"

@@ -178,6 +178,7 @@ class IdeaBackendOperationPerformanceTest {
         private const val FIND_REFERENCES_BUDGET_MS = 5_000L
         private const val FIND_REFERENCES_P95_BUDGET_MS = 1_000L
         private const val FIND_REFERENCES_P95_ITERATIONS = 10
+        private const val PROJECT_SCOPE_KOTLIN_FILE_COUNT = 6
         private const val DIAGNOSTICS_BUDGET_MS = 10_000L
         private const val WORKSPACE_SYMBOL_SEARCH_BUDGET_MS = 5_000L
 
@@ -326,9 +327,11 @@ class IdeaBackendOperationPerformanceTest {
                 assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
                 candidateFileCount = result.searchScope?.candidateFileCount ?: Int.MAX_VALUE
             }
-            assertTrue(candidateFileCount <= 1) {
-                "Expected text-index candidate discovery to avoid broad public search, got $candidateFileCount candidates"
-            }
+            assertEquals(
+                PROJECT_SCOPE_KOTLIN_FILE_COUNT,
+                candidateFileCount,
+                "Exhaustive fallback must account for every in-scope Kotlin fixture",
+            )
             elapsed
         }.sorted()
         val p95Index = ((durations.size * 95 + 99) / 100 - 1).coerceIn(0, durations.lastIndex)

@@ -35,15 +35,30 @@ struct IndexedExactFileProof {
 }
 
 fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
+    let relation_budget = if args.references || args.callers.is_some() {
+        match AgentRelationResultBudget::try_from(args.limit) {
+            Ok(budget) => Some(budget),
+            Err(message) => {
+                return error_envelope(
+                    "agent/symbol".to_string(),
+                    None,
+                    agent_error("AGENT_USAGE", message),
+                );
+            }
+        }
+    } else {
+        None
+    };
+    let detailed = args.view.detailed();
     let compiler_params = drop_nulls(json!({
         "symbol": args.query,
         "kind": args.kind.map(|kind| kind.canonical()),
         "fileHint": args.file_hint,
         "containingType": args.containing_type,
-        "includeDeclarationScope": true,
-        "includeDocumentation": true,
-        "surroundingLines": 3,
-        "includeSurroundingMembers": true,
+        "includeDeclarationScope": detailed,
+        "includeDocumentation": detailed,
+        "surroundingLines": detailed.then_some(3),
+        "includeSurroundingMembers": detailed,
     }));
     let compiler_request = json_rpc_request("symbol/resolve", compiler_params);
     let session = match runtime::raw_rpc_session(
@@ -99,9 +114,14 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
     };
     match parsed {
         AgentCompilerResolveResponse::Resolved { symbol } => {
-            let relations = match compiler_symbol_relations(&args, &symbol.fq_name, &session) {
-                Ok(relations) => relations,
-                Err(envelope) => return *envelope,
+            let relations = match relation_budget {
+                Some(budget) => {
+                    match compiler_symbol_relations(&args, &symbol.fq_name, budget, &session) {
+                        Ok(relations) => relations,
+                        Err(envelope) => return *envelope,
+                    }
+                }
+                None => Vec::new(),
             };
             let symbol = serde_json::to_value(symbol).unwrap_or(Value::Null);
             symbol_lookup_envelope(
@@ -159,6 +179,7 @@ fn execute_agent_symbol_discovery(args: AgentSymbolArgs) -> AgentEnvelope {
             ),
         );
     }
+    let detailed = args.view.detailed();
     let request = json_rpc_request(
         "symbol/query",
         json!({
@@ -166,7 +187,8 @@ fn execute_agent_symbol_discovery(args: AgentSymbolArgs) -> AgentEnvelope {
             "modes": ["lexical"],
             "filters": symbol_query_filters(&args),
             "limit": args.limit,
-            "includeNextRequests": true,
+            "includeEvidence": detailed,
+            "includeNextRequests": detailed,
         }),
     );
     let envelope = execute_request(AgentRequest {
@@ -218,6 +240,7 @@ fn indexed_exact_or_compiler_error(
             "modes": ["exact"],
             "filters": indexed_exact_query_filters(args),
             "limit": indexed_exact_search_limit(args),
+            "includeEvidence": args.view.detailed(),
             "includeNextRequests": false,
         }),
     );
@@ -315,9 +338,11 @@ fn successful_symbol_query_result(
 fn compiler_symbol_relations(
     args: &AgentSymbolArgs,
     canonical_symbol: &str,
+    budget: AgentRelationResultBudget,
     session: &runtime::RawRpcSession,
 ) -> std::result::Result<Vec<AgentSymbolRelation>, Box<AgentEnvelope>> {
     let mut requests = Vec::new();
+    let request_limit = budget.request_limit(symbol_result_view(&args.view).detailed());
     if args.references {
         requests.push((
             "references",
@@ -328,6 +353,8 @@ fn compiler_symbol_relations(
                 "fileHint": args.file_hint,
                 "containingType": args.containing_type,
                 "includeDeclaration": true,
+                "maxResults": request_limit,
+                "pageToken": args.reference_page_token,
             })),
         ));
     }
@@ -342,6 +369,8 @@ fn compiler_symbol_relations(
                 "containingType": args.containing_type,
                 "direction": direction.canonical(),
                 "depth": args.caller_depth,
+                "maxTotalCalls": request_limit,
+                "maxChildrenPerNode": request_limit,
             })),
         ));
     }

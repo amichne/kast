@@ -11,4 +11,8 @@ import kotlinx.serialization.Serializable
 data class DiagnosticsQuery(
     @DocField(description = "Absolute paths of the files to analyze for diagnostics.")
     val filePaths: List<String>,
+    @DocField(description = "Maximum number of diagnostic records to return.", defaultValue = "500")
+    val maxResults: Int = 500,
+    @DocField(description = "Opaque continuation token from the preceding diagnostics page.")
+    val pageToken: String? = null,
 )

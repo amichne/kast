@@ -175,21 +175,25 @@ fn smoke_core_cli_commands() {
         serde_json::from_slice(&rename_plan.stdout).expect("rename plan json");
     assert_eq!(rename_plan_json["ok"], true, "{rename_plan_json:#}");
     assert_eq!(rename_plan_json["method"], "agent/rename");
-    assert_eq!(rename_plan_json["result"]["type"], "KAST_AGENT_RENAME_PLAN");
     assert_eq!(
-        rename_plan_json["result"]["request"]["method"],
+        rename_plan_json["result"]["type"],
+        "KAST_AGENT_MUTATION_RESULT"
+    );
+    assert_eq!(rename_plan_json["result"]["operation"]["state"], "PLANNED");
+    assert_eq!(
+        rename_plan_json["result"]["operation"]["editApplicationState"],
+        "NOT_STARTED"
+    );
+    assert_eq!(
+        rename_plan_json["result"]["plan"]["method"],
         "symbol/rename"
     );
     assert_eq!(
-        rename_plan_json["result"]["request"]["params"]["type"],
-        "RENAME_BY_SYMBOL_REQUEST"
+        rename_plan_json["result"]["plan"]["symbol"],
+        "com.example.Target"
     );
     assert!(
-        rename_plan_json["result"]["request"]["params"]
-            .as_object()
-            .expect("rename params")
-            .get("offset")
-            .is_none(),
+        rename_plan_json.get("request").is_none(),
         "{rename_plan_json:#}"
     );
 

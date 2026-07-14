@@ -17,17 +17,18 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
-import com.intellij.psi.search.PsiSearchHelper
-import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.PsiModificationTracker
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
 import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.validation.*
@@ -53,9 +54,13 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PageInfo
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
@@ -98,10 +103,8 @@ import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -131,11 +134,22 @@ internal class KastPluginBackend(
         IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
     private val semanticAdmissionOperations: IdeaSemanticAdmissionOperations =
         IdeaSemanticAdmissionOperations.idea(),
-) : AnalysisBackend {
+    private val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
+    private val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
+    private val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
+) : AnalysisBackend, AutoCloseable {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val sharedWorkspaceIdentity = workspaceIdentity.workspaceIdentity
+    private val continuationCapacity =
+        limits.maxConcurrentRequests.coerceIn(1, MAX_CONTINUATION_CONCURRENCY) * CONTINUATIONS_PER_REQUEST
+    private val referenceContinuations = ServerHeldContinuationStore<ReferencePageToken, ReferenceContinuationState>(
+        maxEntries = continuationCapacity,
+        onDiscard = ReferenceContinuationState::close,
+    )
+    private val diagnosticContinuations =
+        ServerHeldContinuationStore<DiagnosticPageToken, DiagnosticContinuationState>(continuationCapacity)
     private val ideaReadAccess = object : ReadAccessScope {
         override fun <T> run(action: () -> T): T =
             ApplicationManager.getApplication().runReadAction<T> { action() }
@@ -152,6 +166,26 @@ internal class KastPluginBackend(
                 .sortedBy { file -> file.path }
                 .toList()
         } ?: emptyList()
+
+    private fun referenceSearchRoots(plan: ReferenceSearchPlan): List<Path> {
+        val moduleRoots = ModuleManager.getInstance(project).modules
+            .asSequence()
+            .flatMap { module -> ModuleRootManager.getInstance(module).sourceRoots.asSequence() }
+            .filter { root -> root.isValid && root.isDirectory && isWorkspaceFile(root.path) }
+            .map { root -> Path.of(root.path).toAbsolutePath().normalize() }
+            .distinct()
+            .sortedBy(Path::toString)
+            .toList()
+        if (moduleRoots.isNotEmpty()) return moduleRoots
+
+        val targetDirectory = plan.target.element
+            ?.containingFile
+            ?.virtualFile
+            ?.parent
+            ?.path
+            ?.let(Path::of)
+        return listOfNotNull(targetDirectory)
+    }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = backendName ?: defaultBackendName(),
@@ -239,29 +273,73 @@ internal class KastPluginBackend(
 
     override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.REFERENCES, "kast.idea.findReferences") { span ->
-            val plan = referenceSearchPlan(query, span)
-            val outcome = indexedReferenceSearch(query, plan, span)
-                ?: ideaReferenceSearch(query, plan, span)
-            val sortedReferences = outcome.references
-                .distinctBy { reference -> ReferenceLocationKey(reference.filePath, reference.startOffset, reference.endOffset) }
-                .sortedWith(compareBy({ it.filePath }, { it.startOffset }, { it.endOffset }))
+            val identity = ReferenceQueryIdentity.from(query)
+            val continuation = query.pageToken?.let { token ->
+                when (val claim = referenceContinuations.claim(token)) {
+                    is ContinuationClaim.Claimed -> claim.value
+                    ContinuationClaim.Absent, ContinuationClaim.Expired -> throw ConflictException(
+                        message = "The reference page token is unknown, expired, or already consumed",
+                        details = mapOf("pageToken" to token.value),
+                    )
+                }
+            }
+            if (continuation != null && continuation.query != identity) {
+                continuation.close()
+                throw ConflictException(
+                    message = "The reference page token belongs to a different query",
+                    details = mapOf("pageToken" to requireNotNull(query.pageToken).value),
+                )
+            }
+            val plan = continuation?.plan ?: referenceSearchPlan(query, span)
+            val returnedBefore = continuation?.returnedBefore ?: 0
+            val outcome = when (val position = continuation?.position) {
+                null -> indexedReferenceSearch(query, plan, null, span)
+                    ?: ideaReferenceSearch(query, plan, null, span)
+                is ReferenceContinuationPosition.Index -> indexedReferenceSearch(query, plan, position, span)
+                    ?: error("Indexed continuation must return an indexed outcome or throw a typed conflict")
+                is ReferenceContinuationPosition.Idea -> ideaReferenceSearch(query, plan, position, span)
+            }
+            val knownCount = Math.addExact(returnedBefore, outcome.references.size)
+            val cardinality = if (outcome.hasMoreEvidence || !outcome.completion.exhaustive) {
+                ResultCardinality.KnownMinimum(knownCount)
+            } else {
+                ResultCardinality.Exact(knownCount)
+            }
+            val page = outcome.nextPosition?.let { nextPosition ->
+                val nextPageToken = ReferencePageToken.random()
+                referenceContinuations.put(nextPageToken, ReferenceContinuationState(
+                    query = identity,
+                    plan = plan,
+                    returnedBefore = knownCount,
+                    position = nextPosition,
+                ))
+                PageInfo(
+                    truncated = true,
+                    nextPageToken = nextPageToken.value,
+                )
+            }
 
             span.setAttribute("kast.references.source", outcome.source.name.lowercase())
             span.setAttribute("kast.references.visibility", plan.visibility.name)
             span.setAttribute("kast.references.scope", plan.scopeKind.name)
             span.setAttribute("kast.references.candidateFileCount", outcome.candidateFileCount)
             span.setAttribute("kast.references.searchedFileCount", outcome.searchedFileCount)
-            span.setAttribute("kast.references.resultCount", sortedReferences.size)
+            span.setAttribute("kast.references.evidenceCount", outcome.consumedEvidence)
+            span.setAttribute("kast.references.observedEvidenceCount", outcome.observedEvidence)
+            span.setAttribute("kast.references.knownMinimumCount", cardinality.knownMinimum())
+            span.setAttribute("kast.references.resultCount", outcome.references.size)
             span.setAttribute("kast.references.exhaustive", outcome.completion.exhaustive)
             span.setAttribute("kast.references.partialReason", outcome.completion.partialReason)
 
             ReferencesResult(
                 declaration = plan.declaration,
-                references = sortedReferences,
+                references = outcome.references,
+                cardinality = cardinality,
+                page = page,
                 searchScope = SearchScope(
                     visibility = plan.visibility,
                     scope = plan.scopeKind,
-                    exhaustive = outcome.completion.exhaustive,
+                    exhaustive = outcome.completion.exhaustive && !outcome.hasMoreEvidence,
                     candidateFileCount = outcome.candidateFileCount,
                     searchedFileCount = outcome.searchedFileCount,
                 ),
@@ -285,7 +363,6 @@ internal class KastPluginBackend(
                 ReferenceResolvedTarget(
                     pointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(element),
                     targetFqName = targetFqName,
-                    searchNeedle = ReferenceSearchNeedle.from(element, targetFqName),
                     declaration = if (query.includeDeclaration) {
                         analyze(file) { element.toSymbolModel(containingDeclaration = null) }
                     } else {
@@ -316,7 +393,6 @@ internal class KastPluginBackend(
         return ReferenceSearchPlan(
             target = target.pointer,
             targetFqName = target.targetFqName,
-            searchNeedle = target.searchNeedle,
             declaration = target.declaration,
             visibility = target.visibility,
             searchScope = scope.searchScope,
@@ -327,21 +403,40 @@ internal class KastPluginBackend(
     private fun indexedReferenceSearch(
         query: ParsedReferencesQuery,
         plan: ReferenceSearchPlan,
+        continuation: ReferenceContinuationPosition.Index?,
         span: IdeaTelemetrySpan,
     ): ReferenceSearchOutcome? = span.child("kast.idea.findReferences.indexLookup") { indexSpan ->
         val targetFqName = plan.targetFqName ?: return@child null
-        when (val lookup = referenceIndexLookup.referencesTo(targetFqName)) {
+        when (
+            val lookup = referenceIndexLookup.referencesTo(
+                targetFqName,
+                continuation?.offset ?: io.github.amichne.kast.api.contract.NonNegativeInt(0),
+                query.maxResults,
+            )
+        ) {
             IndexedReferenceLookupResult.NotReady -> {
                 indexSpan.setAttribute("kast.references.indexReady", false)
+                if (continuation != null) {
+                    throw ConflictException(
+                        message = "The source index became unavailable while continuing an indexed reference page",
+                        details = mapOf("pageTokenSource" to "INDEX"),
+                    )
+                }
                 null
             }
             is IndexedReferenceLookupResult.Ready -> {
-                val indexedRows = runIdeaReadAction {
-                    lookup.references
-                        .filter { row -> indexedReferenceRowInScope(row, plan.searchScope) }
-                        .sortedWith(compareBy({ it.sourcePath }, { it.sourceOffset }))
+                if (continuation != null && continuation.generation != lookup.generation) {
+                    throw ConflictException(
+                        message = "The source index changed after the preceding reference page",
+                        details = mapOf("pageTokenSource" to "INDEX"),
+                    )
                 }
-                val indexedSourcePathCount = indexedRows.mapTo(mutableSetOf()) { row -> row.sourcePath }.size
+                val indexedRows = runIdeaReadAction {
+                    lookup.page.references.filter { row -> indexedReferenceRowInScope(row, plan.searchScope) }
+                }
+                val indexedSourcePaths = indexedRows.mapTo(mutableSetOf()) { row -> row.sourcePath }
+                val cumulativeCandidateFilePaths = continuation?.candidateFilePaths.orEmpty() + indexedSourcePaths
+                val cumulativeSearchedFilePaths = continuation?.searchedFilePaths.orEmpty() + indexedSourcePaths
                 val locations = indexedReferenceLocations(
                     rows = indexedRows,
                     includeUsageSiteScope = query.includeUsageSiteScope,
@@ -352,8 +447,18 @@ internal class KastPluginBackend(
                 ReferenceSearchOutcome(
                     source = ReferenceSearchSource.INDEX,
                     references = locations,
-                    candidateFileCount = indexedSourcePathCount,
-                    searchedFileCount = indexedSourcePathCount,
+                    consumedEvidence = lookup.page.references.size,
+                    observedEvidence = lookup.page.references.size,
+                    nextPosition = lookup.page.nextOffset?.let { nextOffset ->
+                        ReferenceContinuationPosition.Index(
+                            offset = nextOffset,
+                            generation = lookup.generation,
+                            candidateFilePaths = cumulativeCandidateFilePaths,
+                            searchedFilePaths = cumulativeSearchedFilePaths,
+                        )
+                    },
+                    candidateFileCount = cumulativeCandidateFilePaths.size,
+                    searchedFileCount = cumulativeSearchedFilePaths.size,
                     completion = if (indexedRows.size == locations.size) {
                         ReferenceSearchCompletion.Exhaustive
                     } else {
@@ -433,173 +538,296 @@ internal class KastPluginBackend(
     private fun ideaReferenceSearch(
         query: ParsedReferencesQuery,
         plan: ReferenceSearchPlan,
+        continuation: ReferenceContinuationPosition.Idea?,
         span: IdeaTelemetrySpan,
     ): ReferenceSearchOutcome = span.child("kast.idea.findReferences.findUsagesFallback") { fallbackSpan ->
-        val budget = ReferenceSearchBudget.start(limits, referenceSearchClock)
-        fallbackSpan.setAttribute("kast.references.fallbackApi", "PsiSearchHelper.processCandidateFilesForText")
-        fallbackSpan.setAttribute("kast.references.resolutionApi", "ReferencesSearch.search(fileScope)")
-
-        val candidateDiscovery = referenceCandidateFiles(plan, budget, fallbackSpan)
-        val resolution = fallbackSpan.child("kast.idea.findReferences.referenceResolution") { resolutionSpan ->
-            val locations = mutableListOf<Location>()
-            var searchedFileCount = 0
-            var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
-
-            for (candidateFile in candidateDiscovery.files) {
-                ProgressManager.checkCanceled()
-                if (budget.requestExhausted()) {
-                    completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
-                    break
+        val budget = try {
+            ReferenceSearchBudget.start(limits, referenceSearchClock)
+        } catch (failure: Throwable) {
+            continuation?.traversal?.close()
+            throw failure
+        }
+        fallbackSpan.setAttribute("kast.references.fallbackApi", "server-held-psi-traversal")
+        val locations = mutableListOf<Location>()
+        var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
+        var pathProbes = 0
+        var psiFileProbes = 0
+        var elementProbes = 0
+        var referenceProbes = 0
+        var compilerProviderProbes = 0
+        val compilerProviderProbeLimit = Math.addExact(query.maxResults.value, 1)
+        var resolutionFailed = false
+        var position: ReferenceContinuationPosition.Idea? = continuation
+        try {
+            runIdeaReadAction {
+                val currentGeneration = psiGeneration()
+                readEpochObserver.entered(IdeaReadEpochKind.REFERENCES)
+                if (continuation != null && continuation.generation != currentGeneration) {
+                    continuation.traversal.close()
+                    throw ConflictException(
+                        message = "Kotlin PSI changed after the preceding reference page",
+                        details = mapOf("pageTokenSource" to "IDEA"),
+                    )
                 }
-                val fileStartedNanos = budget.fileStarted()
-                val fileOutcome = runIdeaReadAction {
-                    val target = plan.target.element
-                        ?: return@runIdeaReadAction ReferenceFileSearchOutcome(
-                            references = emptyList(),
-                            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.TARGET_INVALIDATED),
-                        )
-                    val fileLocations = mutableListOf<Location>()
-                    var fileCompletion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
-                    ReferencesSearch.search(target, GlobalSearchScope.fileScope(project, candidateFile)).forEach(
-                        object : Processor<PsiReference> {
-                            override fun process(ref: PsiReference): Boolean {
-                                ProgressManager.checkCanceled()
-                                fileCompletion = when {
-                                    budget.requestExhausted() ->
-                                        ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
-                                    budget.fileExhausted(fileStartedNanos) ->
-                                        ReferenceSearchCompletion.Partial(ReferencePartialReason.FILE_BUDGET_EXHAUSTED)
-                                    else -> ReferenceSearchCompletion.Exhaustive
-                                }
-                                if (!fileCompletion.exhaustive) {
-                                    return false
-                                }
-                                ref.toReferenceLocation(query.includeUsageSiteScope)?.let(fileLocations::add)
-                                return true
+                if (position == null) {
+                    val searchRoots = referenceSearchRoots(plan)
+                    if (searchRoots.isEmpty()) {
+                        throw NotFoundException("The reference target has no searchable source root")
+                    }
+                    position = ReferenceContinuationPosition.Idea(
+                        traversal = IdeaReferenceTraversal(searchRoots, referenceTraversalObserver),
+                        pending = null,
+                        generation = currentGeneration,
+                        candidateFilePaths = linkedSetOf(),
+                        searchedFilePaths = linkedSetOf(),
+                        seenLocations = linkedSetOf(),
+                    )
+                }
+                val activePosition = requireNotNull(position)
+                activePosition.pending?.let(locations::add)
+                val target = plan.target.element
+                    ?: run {
+                        completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.TARGET_INVALIDATED)
+                        activePosition.traversal.exhausted = true
+                        activePosition.traversal.close()
+                        return@runIdeaReadAction
+                    }
+                search@ while (
+                    locations.size <= query.maxResults.value &&
+                    (activePosition.traversal.currentFile != null || pathProbes < REFERENCE_DISCOVERY_PATH_LIMIT)
+                ) {
+                    ProgressManager.checkCanceled()
+                    if (budget.requestExhausted()) {
+                        completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                        break
+                    }
+                    var currentFile = activePosition.traversal.currentFile
+                    if (currentFile == null) {
+                        while (pathProbes < REFERENCE_DISCOVERY_PATH_LIMIT) {
+                            if (budget.requestExhausted()) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED,
+                                )
+                                break@search
                             }
+                            if (!activePosition.traversal.paths.hasNext()) {
+                                activePosition.traversal.exhausted = true
+                                activePosition.traversal.close()
+                                break
+                            }
+                            if (budget.requestExhausted()) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED,
+                                )
+                                break@search
+                            }
+                            val path = activePosition.traversal.paths.next()
+                            pathProbes += 1
+                            if (budget.requestExhausted()) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED,
+                                )
+                                break@search
+                            }
+                            val fileName = path.fileName.toString()
+                            if (
+                                !Files.isRegularFile(path) ||
+                                !(fileName.endsWith(".kt") || fileName.endsWith(".kts"))
+                            ) continue
+                            if (budget.requestExhausted()) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED,
+                                )
+                                break@search
+                            }
+                            val virtualFile = LocalFileSystem.getInstance().findFileByPath(path.toString()) ?: continue
+                            if (!plan.searchScope.contains(virtualFile)) continue
+                            currentFile = virtualFile
+                            activePosition.traversal.currentFile = virtualFile
+                            activePosition.traversal.nextOffset = 0
+                            activePosition.traversal.nextReferenceIndex = 0
+                            activePosition.candidateFilePaths += virtualFile.path
+                            break
                         }
+                        if (currentFile == null) {
+                            if (!activePosition.traversal.exhausted && pathProbes >= REFERENCE_DISCOVERY_PATH_LIMIT) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.PATH_BUDGET_EXHAUSTED,
+                                )
+                            }
+                            break
+                        }
+                    }
+                    if (budget.requestExhausted()) {
+                        completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                        break
+                    }
+                    psiFileProbes += 1
+                    val file = PsiManager.getInstance(project).findFile(currentFile)
+                    if (file == null) {
+                        activePosition.searchedFilePaths += currentFile.path
+                        activePosition.traversal.currentFile = null
+                        activePosition.traversal.nextOffset = 0
+                        activePosition.traversal.nextReferenceIndex = 0
+                        continue
+                    }
+                    val fileStartedNanos = budget.fileStarted()
+                    var leaf = file.findElementAt(activePosition.traversal.nextOffset)
+                    while (leaf != null) {
+                        if (locations.size > query.maxResults.value) break@search
+                        if (budget.requestExhausted()) {
+                            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
+                            break@search
+                        }
+                        if (budget.fileExhausted(fileStartedNanos)) {
+                            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.FILE_BUDGET_EXHAUSTED)
+                            break@search
+                        }
+                        val leafStart = leaf.textRange.startOffset
+                        val nextLeaf = PsiTreeUtil.nextLeaf(leaf, true)
+                        elementProbes += 1
+                        val references = referencesAtLeaf(file, leaf, leafStart)
+                        var referenceIndex = activePosition.traversal.nextReferenceIndex
+                        activePosition.traversal.nextOffset = leafStart
+                        while (referenceIndex < references.size) {
+                            if (budget.requestExhausted()) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED,
+                                )
+                                break@search
+                            }
+                            if (budget.fileExhausted(fileStartedNanos)) {
+                                completion = ReferenceSearchCompletion.Partial(
+                                    ReferencePartialReason.FILE_BUDGET_EXHAUSTED,
+                                )
+                                break@search
+                            }
+                            val reference = references[referenceIndex]
+                            referenceProbes += 1
+                            val resolved = try {
+                                reference.resolve()
+                            } catch (failure: ProcessCanceledException) {
+                                throw failure
+                            } catch (failure: CancellationException) {
+                                throw failure
+                            } catch (_: Exception) {
+                                resolutionFailed = true
+                                null
+                            }
+                            if (
+                                resolved != null &&
+                                (resolved == target || resolved.navigationElement == target.navigationElement)
+                            ) {
+                                reference.toReferenceLocation(query.includeUsageSiteScope)?.let { location ->
+                                    if (activePosition.seenLocations.add(location.key())) {
+                                        locations += location
+                                    }
+                                }
+                            }
+                            referenceTraversalObserver.referenceProcessed(
+                                filePath = currentFile.path,
+                                leafOffset = leafStart,
+                                referenceIndex = referenceIndex,
+                                referenceCount = references.size,
+                            )
+                            referenceIndex += 1
+                            activePosition.traversal.nextReferenceIndex = referenceIndex
+                            if (locations.size > query.maxResults.value) break@search
+                        }
+                        activePosition.traversal.nextOffset = nextLeaf?.textRange?.startOffset ?: file.textLength
+                        activePosition.traversal.nextReferenceIndex = 0
+                        leaf = nextLeaf
+                    }
+                    var providerStoppedForBudget = false
+                    var providerStoppedForPage = false
+                    var providerStoppedForLimit = false
+                    val providerCompleted = ReferencesSearch.search(target, LocalSearchScope(file)).forEach(
+                        Processor { reference ->
+                            if (budget.requestExhausted() || budget.fileExhausted(fileStartedNanos)) {
+                                providerStoppedForBudget = true
+                                return@Processor false
+                            }
+                            compilerProviderProbes += 1
+                            if (compilerProviderProbes > compilerProviderProbeLimit) {
+                                providerStoppedForLimit = true
+                                return@Processor false
+                            }
+                            reference.toReferenceLocation(query.includeUsageSiteScope)?.let { location ->
+                                if (activePosition.seenLocations.add(location.key())) {
+                                    locations += location
+                                }
+                            }
+                            if (locations.size > query.maxResults.value) {
+                                providerStoppedForPage = true
+                                false
+                            } else {
+                                true
+                            }
+                        },
                     )
-                    ReferenceFileSearchOutcome(
-                        references = fileLocations,
-                        completion = fileCompletion,
-                    )
-                }
-
-                searchedFileCount += 1
-                locations.addAll(fileOutcome.references)
-                if (!fileOutcome.completion.exhaustive) {
-                    completion = fileOutcome.completion
-                    break
+                    if (!providerCompleted) {
+                        completion = when {
+                            providerStoppedForBudget -> ReferenceSearchCompletion.Partial(
+                                ReferencePartialReason.FILE_BUDGET_EXHAUSTED,
+                            )
+                            providerStoppedForLimit -> ReferenceSearchCompletion.Partial(
+                                ReferencePartialReason.COMPILER_PROVIDER_LIMIT_EXHAUSTED,
+                            )
+                            providerStoppedForPage -> completion
+                            else -> ReferenceSearchCompletion.Partial(ReferencePartialReason.PSI_RESOLUTION_FAILED)
+                        }
+                        if (providerStoppedForLimit) {
+                            activePosition.traversal.exhausted = true
+                            activePosition.traversal.close()
+                        }
+                        break@search
+                    }
+                    activePosition.searchedFilePaths += currentFile.path
+                    activePosition.traversal.currentFile = null
+                    activePosition.traversal.nextOffset = 0
+                    activePosition.traversal.nextReferenceIndex = 0
                 }
             }
-
-            resolutionSpan.setAttribute("kast.references.resolvedFileCount", searchedFileCount)
-            ReferenceResolutionOutcome(
-                references = locations,
-                searchedFileCount = searchedFileCount,
-                completion = completion,
-            )
+        } catch (failure: Throwable) {
+            position?.traversal?.close()
+            throw failure
         }
-
-        val completion = candidateDiscovery.completion.combine(resolution.completion)
-        fallbackSpan.setAttribute("kast.references.candidateFileCount", candidateDiscovery.candidateFileCount)
-        fallbackSpan.setAttribute("kast.references.searchedFileCount", resolution.searchedFileCount)
+        val completedPosition = requireNotNull(position)
+        if (resolutionFailed && completion == ReferenceSearchCompletion.Exhaustive) {
+            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.PSI_RESOLUTION_FAILED)
+        }
+        val pageReferences = locations.take(query.maxResults.value)
+        val pending = locations.getOrNull(query.maxResults.value)
+        val nextPosition = if (completedPosition.traversal.exhausted) {
+            null
+        } else {
+            completedPosition.copy(pending = pending)
+        }
+        fallbackSpan.setAttribute("kast.references.pathProbeCount", pathProbes)
+        fallbackSpan.setAttribute("kast.references.psiFileProbeCount", psiFileProbes)
+        fallbackSpan.setAttribute("kast.references.elementProbeCount", elementProbes)
+        fallbackSpan.setAttribute("kast.references.referenceProbeCount", referenceProbes)
+        fallbackSpan.setAttribute("kast.references.compilerProviderProbeCount", compilerProviderProbes)
+        fallbackSpan.setAttribute("kast.references.candidateFileCount", completedPosition.candidateFilePaths.size)
+        fallbackSpan.setAttribute("kast.references.searchedFileCount", completedPosition.searchedFilePaths.size)
         fallbackSpan.setAttribute("kast.references.partialReason", completion.partialReason)
+        fallbackSpan.child("kast.idea.findReferences.candidateDiscovery") { candidateSpan ->
+            candidateSpan.setAttribute("kast.references.candidateFileCount", completedPosition.candidateFilePaths.size)
+            candidateSpan.setAttribute("kast.references.pathProbeCount", pathProbes)
+        }
+        fallbackSpan.child("kast.idea.findReferences.referenceResolution") { resolutionSpan ->
+            resolutionSpan.setAttribute("kast.references.elementProbeCount", elementProbes)
+            resolutionSpan.setAttribute("kast.references.resultCount", pageReferences.size)
+        }
 
         ReferenceSearchOutcome(
             source = ReferenceSearchSource.IDEA,
-            references = resolution.references,
-            candidateFileCount = candidateDiscovery.candidateFileCount,
-            searchedFileCount = resolution.searchedFileCount,
-            completion = completion,
-        )
-    }
-
-    private fun referenceCandidateFiles(
-        plan: ReferenceSearchPlan,
-        budget: ReferenceSearchBudget,
-        span: IdeaTelemetrySpan,
-    ): ReferenceCandidateDiscovery = span.child("kast.idea.findReferences.candidateDiscovery") { discoverySpan ->
-        val needle = plan.searchNeedle
-        discoverySpan.setAttribute("kast.references.candidateApi", if (needle == null) "FileTypeIndex.getFiles" else "PsiSearchHelper.processCandidateFilesForText")
-        discoverySpan.setAttribute("kast.references.searchNeedle", needle?.value)
-
-        val discovery = if (needle == null) {
-            fileTypeCandidateFiles(plan, budget)
-        } else {
-            textIndexedCandidateFiles(plan, budget, needle)
-        }
-
-        discoverySpan.setAttribute("kast.references.candidateFileCount", discovery.candidateFileCount)
-        discoverySpan.setAttribute("kast.references.candidateDiscoveryExhaustive", discovery.completion.exhaustive)
-        discoverySpan.setAttribute("kast.references.partialReason", discovery.completion.partialReason)
-        discovery
-    }
-
-    private fun textIndexedCandidateFiles(
-        plan: ReferenceSearchPlan,
-        budget: ReferenceSearchBudget,
-        needle: ReferenceSearchNeedle,
-    ): ReferenceCandidateDiscovery {
-        val files = mutableListOf<VirtualFile>()
-        var candidateFileCount = 0
-        var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
-        val helper = PsiSearchHelper.getInstance(project)
-        val processor = object : Processor<VirtualFile> {
-            override fun process(file: VirtualFile): Boolean {
-                ProgressManager.checkCanceled()
-                candidateFileCount += 1
-                if (budget.requestExhausted()) {
-                    completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
-                    return false
-                }
-                if (file.isValid && !file.isDirectory && isWorkspaceFile(file.path)) {
-                    files += file
-                }
-                return true
-            }
-        }
-        val continued = runIdeaReadAction {
-            helper.processCandidateFilesForText(
-                plan.searchScope,
-                UsageSearchContext.IN_CODE,
-                false,
-                needle.value,
-                processor,
-            )
-        }
-        if (!continued && completion.exhaustive) {
-            completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.CANDIDATE_DISCOVERY_STOPPED)
-        }
-        return ReferenceCandidateDiscovery(
-            files = files.sortedBy { file -> file.path },
-            candidateFileCount = candidateFileCount,
-            completion = completion,
-        )
-    }
-
-    private fun fileTypeCandidateFiles(
-        plan: ReferenceSearchPlan,
-        budget: ReferenceSearchBudget,
-    ): ReferenceCandidateDiscovery {
-        val files = mutableListOf<VirtualFile>()
-        var candidateFileCount = 0
-        var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
-        val allKotlinFiles = runIdeaReadAction {
-            kotlinCandidateFiles(plan.searchScope)
-        }
-        for (file in allKotlinFiles) {
-            ProgressManager.checkCanceled()
-            candidateFileCount += 1
-            if (budget.requestExhausted()) {
-                completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED)
-                break
-            }
-            files += file
-        }
-        return ReferenceCandidateDiscovery(
-            files = files,
-            candidateFileCount = candidateFileCount,
+            references = pageReferences,
+            consumedEvidence = pageReferences.size,
+            observedEvidence = locations.size,
+            nextPosition = nextPosition,
+            candidateFileCount = completedPosition.candidateFilePaths.size,
+            searchedFileCount = completedPosition.searchedFilePaths.size,
             completion = completion,
         )
     }
@@ -841,25 +1069,76 @@ internal class KastPluginBackend(
 
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.DIAGNOSTICS, "kast.idea.diagnostics") {
-            val fileAnalyses = coroutineScope {
-                query.filePaths.value.map { filePath ->
-                    async(readDispatcher) {
-                        analyzeDiagnosticsFile(filePath)
-                    }
-                }.awaitAll()
+            val identity = DiagnosticQueryIdentity.from(query)
+            val continuation = query.pageToken?.let { token ->
+                when (val claim = diagnosticContinuations.claim(token)) {
+                    is ContinuationClaim.Claimed -> claim.value
+                    ContinuationClaim.Absent, ContinuationClaim.Expired -> throw ConflictException(
+                        message = "The diagnostic page token is unknown, expired, or already consumed",
+                        details = mapOf("pageToken" to token.value),
+                    )
+                }
             }
-            val diagnostics = fileAnalyses
-                .flatMap(DiagnosticsFileAnalysis::diagnostics)
-                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" }))
+            if (continuation != null && continuation.query != identity) {
+                throw ConflictException(
+                    message = "The diagnostic page token belongs to a different query",
+                    details = mapOf("pageToken" to requireNotNull(query.pageToken).value),
+                )
+            }
+            val epoch = timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.DIAGNOSTICS,
+                "kast.idea.diagnostics.snapshot",
+            ) {
+                val currentGeneration = psiGeneration()
+                readEpochObserver.entered(IdeaReadEpochKind.DIAGNOSTICS)
+                if (continuation != null && continuation.generation != currentGeneration) {
+                    throw ConflictException(
+                        message = "Kotlin PSI changed after the preceding diagnostic page",
+                        details = mapOf("pageToken" to requireNotNull(query.pageToken).value),
+                    )
+                }
+                val snapshot = continuation?.snapshot ?: run {
+                    val fileAnalyses = query.filePaths.value.map(::analyzeDiagnosticsFileInReadEpoch)
+                    DiagnosticSnapshot(
+                        diagnostics = fileAnalyses
+                            .flatMap(DiagnosticsFileAnalysis::diagnostics)
+                            .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" })),
+                        fileStatuses = fileAnalyses.map(DiagnosticsFileAnalysis::status),
+                    )
+                }
+                DiagnosticReadEpoch(generation = currentGeneration, snapshot = snapshot)
+            }
+            val snapshot = epoch.snapshot
+            val pageOffset = continuation?.nextOffset ?: 0
+            require(pageOffset <= snapshot.diagnostics.size) {
+                "Server-held diagnostic continuation offset exceeded exact cardinality"
+            }
+            val nextOffset = Math.addExact(pageOffset, minOf(query.maxResults.value, snapshot.diagnostics.size - pageOffset))
+            val nextPageToken = if (nextOffset < snapshot.diagnostics.size) {
+                val token = DiagnosticPageToken.random()
+                diagnosticContinuations.put(token, DiagnosticContinuationState(
+                    query = identity,
+                    generation = epoch.generation,
+                    snapshot = snapshot,
+                    nextOffset = nextOffset,
+                ))
+                token.value
+            } else {
+                null
+            }
 
-            DiagnosticsResult.of(
-                diagnostics = diagnostics,
-                fileStatuses = fileAnalyses.map(DiagnosticsFileAnalysis::status),
+            DiagnosticsResult.paged(
+                diagnostics = snapshot.diagnostics,
+                fileStatuses = snapshot.fileStatuses,
+                pageOffset = pageOffset,
+                maxResults = query.maxResults.value,
+                nextPageToken = nextPageToken,
             )
         }
     }
 
-    private suspend fun analyzeDiagnosticsFile(filePath: NormalizedPath): DiagnosticsFileAnalysis {
+    private fun analyzeDiagnosticsFileInReadEpoch(filePath: NormalizedPath): DiagnosticsFileAnalysis {
         if (Files.notExists(Path.of(filePath.value))) {
             return skippedDiagnostics(
                 filePath = filePath,
@@ -876,52 +1155,46 @@ internal class KastPluginBackend(
         }
 
         return try {
-            timedReadAction(
-                telemetry,
-                IdeaTelemetryScope.DIAGNOSTICS,
-                "kast.idea.diagnostics.file",
-            ) {
-                val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath.value)
-                    ?: return@timedReadAction skippedDiagnostics(
+            val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath.value)
+                ?: return skippedDiagnostics(
                         filePath = filePath,
                         state = FileAnalysisState.PENDING_INDEX,
                         message = "File exists on disk but is not available in the IDEA virtual file system",
                     )
-                if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
-                    return@timedReadAction skippedDiagnostics(
+            if (!ProjectFileIndex.getInstance(project).isInSourceContent(virtualFile)) {
+                return skippedDiagnostics(
                         filePath = filePath,
                         state = FileAnalysisState.OUTSIDE_SOURCE_MODULES,
                         message = "File is not contained in an IDEA source module",
                     )
-                }
-                if (DumbService.isDumb(project)) {
-                    return@timedReadAction skippedDiagnostics(
+            }
+            if (DumbService.isDumb(project)) {
+                return skippedDiagnostics(
                         filePath = filePath,
                         state = FileAnalysisState.PENDING_INDEX,
                         message = "IDEA indexing is still in progress",
                     )
-                }
-                val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
-                    ?: return@timedReadAction skippedDiagnostics(
+            }
+            val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+                ?: return skippedDiagnostics(
                         filePath = filePath,
                         state = FileAnalysisState.PENDING_INDEX,
                         message = "IDEA has not created PSI for the file yet",
                     )
-                val file = psiFile as? KtFile
-                    ?: return@timedReadAction skippedDiagnostics(
+            val file = psiFile as? KtFile
+                ?: return skippedDiagnostics(
                         filePath = filePath,
                         state = FileAnalysisState.BACKEND_FAILURE,
                         message = "Semantic diagnostics require a Kotlin source file",
                     )
-                val fileDiagnostics = analyze(file) {
-                    file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
-                        .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
-                }
-                DiagnosticsFileAnalysis(
-                    status = FileAnalysisStatus.analyzed(filePath),
-                    diagnostics = fileDiagnostics,
-                )
+            val fileDiagnostics = analyze(file) {
+                file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                    .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
             }
+            DiagnosticsFileAnalysis(
+                status = FileAnalysisStatus.analyzed(filePath),
+                diagnostics = fileDiagnostics,
+            )
         } catch (ex: ProcessCanceledException) {
             throw ex
         } catch (ex: CancellationException) {
@@ -1425,8 +1698,44 @@ internal class KastPluginBackend(
         val diagnostics: List<Diagnostic>,
     )
 
+    private data class DiagnosticSnapshot(
+        val diagnostics: List<Diagnostic>,
+        val fileStatuses: List<FileAnalysisStatus>,
+    )
+
+    private data class DiagnosticReadEpoch(
+        val generation: Long,
+        val snapshot: DiagnosticSnapshot,
+    )
+
+    private data class DiagnosticQueryIdentity(
+        val filePaths: List<String>,
+        val maxResults: Int,
+    ) {
+        companion object {
+            fun from(query: ParsedDiagnosticsQuery): DiagnosticQueryIdentity = DiagnosticQueryIdentity(
+                filePaths = query.filePaths.value.map { path -> path.value },
+                maxResults = query.maxResults.value,
+            )
+        }
+    }
+
+    private data class DiagnosticContinuationState(
+        val query: DiagnosticQueryIdentity,
+        val generation: Long,
+        val snapshot: DiagnosticSnapshot,
+        val nextOffset: Int,
+    )
+
+    override fun close() {
+        referenceContinuations.closeAll()
+        diagnosticContinuations.closeAll()
+    }
+
     companion object {
         private val BACKEND_VERSION = readBackendVersion()
+        private const val CONTINUATIONS_PER_REQUEST = 64
+        private const val MAX_CONTINUATION_CONCURRENCY = 1_024
 
         private fun readBackendVersion(): String =
             KastPluginBackend::class.java
@@ -1440,7 +1749,6 @@ internal class KastPluginBackend(
 private data class ReferenceResolvedTarget(
     val pointer: SmartPsiElementPointer<PsiElement>,
     val targetFqName: String?,
-    val searchNeedle: ReferenceSearchNeedle?,
     val declaration: Symbol?,
     val visibility: SymbolVisibility,
 )
@@ -1453,7 +1761,6 @@ private data class ReferenceScopePlan(
 private data class ReferenceSearchPlan(
     val target: SmartPsiElementPointer<PsiElement>,
     val targetFqName: String?,
-    val searchNeedle: ReferenceSearchNeedle?,
     val declaration: Symbol?,
     val visibility: SymbolVisibility,
     val searchScope: GlobalSearchScope,
@@ -1463,27 +1770,112 @@ private data class ReferenceSearchPlan(
 private data class ReferenceSearchOutcome(
     val source: ReferenceSearchSource,
     val references: List<Location>,
+    val consumedEvidence: Int,
+    val observedEvidence: Int,
+    val nextPosition: ReferenceContinuationPosition?,
     val candidateFileCount: Int,
     val searchedFileCount: Int,
     val completion: ReferenceSearchCompletion,
-)
+) {
+    val hasMoreEvidence: Boolean
+        get() = nextPosition != null
+}
 
-private data class ReferenceCandidateDiscovery(
-    val files: List<VirtualFile>,
-    val candidateFileCount: Int,
-    val completion: ReferenceSearchCompletion,
-)
+private data class ReferenceQueryIdentity(
+    val filePath: String,
+    val offset: Int,
+    val includeDeclaration: Boolean,
+    val includeUsageSiteScope: Boolean,
+    val maxResults: Int,
+) {
+    companion object {
+        fun from(query: ParsedReferencesQuery): ReferenceQueryIdentity = ReferenceQueryIdentity(
+            filePath = query.position.filePath.value,
+            offset = query.position.offset.value,
+            includeDeclaration = query.includeDeclaration,
+            includeUsageSiteScope = query.includeUsageSiteScope,
+            maxResults = query.maxResults.value,
+        )
+    }
+}
 
-private data class ReferenceResolutionOutcome(
-    val references: List<Location>,
-    val searchedFileCount: Int,
-    val completion: ReferenceSearchCompletion,
-)
+private data class ReferenceContinuationState(
+    val query: ReferenceQueryIdentity,
+    val plan: ReferenceSearchPlan,
+    val returnedBefore: Int,
+    val position: ReferenceContinuationPosition,
+) {
+    fun close() {
+        (position as? ReferenceContinuationPosition.Idea)?.traversal?.close()
+    }
+}
 
-private data class ReferenceFileSearchOutcome(
-    val references: List<Location>,
-    val completion: ReferenceSearchCompletion,
-)
+private sealed interface ReferenceContinuationPosition {
+    data class Index(
+        val offset: io.github.amichne.kast.api.contract.NonNegativeInt,
+        val generation: SourceIndexGeneration,
+        val candidateFilePaths: Set<String>,
+        val searchedFilePaths: Set<String>,
+    ) : ReferenceContinuationPosition
+
+    data class Idea(
+        val traversal: IdeaReferenceTraversal,
+        val pending: Location?,
+        val generation: Long,
+        val candidateFilePaths: MutableSet<String>,
+        val searchedFilePaths: MutableSet<String>,
+        val seenLocations: MutableSet<ReferenceLocationKey>,
+    ) : ReferenceContinuationPosition
+}
+
+private class IdeaReferenceTraversal(
+    searchRoots: List<Path>,
+    private val observer: ReferenceTraversalObserver,
+) : AutoCloseable {
+    private var closed: Boolean = false
+    val paths = WorkspacePathTraversal(searchRoots)
+    var currentFile: VirtualFile? = null
+    var nextOffset: Int = 0
+    var nextReferenceIndex: Int = 0
+    var exhausted: Boolean = false
+
+    override fun close() {
+        if (!closed) {
+            closed = true
+            paths.close()
+            observer.closed()
+        }
+    }
+}
+
+private class WorkspacePathTraversal(searchRoots: List<Path>) : Iterator<Path>, AutoCloseable {
+    private val roots = searchRoots.iterator()
+    private var currentStream: java.util.stream.Stream<Path>? = null
+    private var currentPaths: Iterator<Path>? = null
+
+    override fun hasNext(): Boolean {
+        while (true) {
+            if (currentPaths?.hasNext() == true) return true
+            currentStream?.close()
+            currentStream = null
+            currentPaths = null
+            if (!roots.hasNext()) return false
+            currentStream = Files.walk(roots.next())
+            currentPaths = currentStream?.iterator()
+        }
+    }
+
+    override fun next(): Path {
+        if (!hasNext()) throw NoSuchElementException("No source path remains")
+        return requireNotNull(currentPaths).next()
+    }
+
+    override fun close() {
+        currentStream?.close()
+        currentStream = null
+        currentPaths = null
+    }
+}
 
 private data class ReferenceLocationKey(
     val filePath: String,
@@ -1491,29 +1883,15 @@ private data class ReferenceLocationKey(
     val endOffset: Int,
 )
 
+private fun Location.key(): ReferenceLocationKey = ReferenceLocationKey(
+    filePath = filePath,
+    startOffset = startOffset,
+    endOffset = endOffset,
+)
+
 private enum class ReferenceSearchSource {
     INDEX,
     IDEA,
-}
-
-@JvmInline
-private value class ReferenceSearchNeedle private constructor(val value: String) {
-    companion object {
-        fun from(
-            target: PsiElement,
-            targetFqName: String?,
-        ): ReferenceSearchNeedle? {
-            val candidate = (target as? PsiNamedElement)?.name
-                ?: targetFqName?.substringAfterLast('.')
-                ?: target.text?.takeIf { text -> text.length in 1..MAX_NEEDLE_LENGTH }
-            return candidate
-                ?.trim()
-                ?.takeIf(String::isNotEmpty)
-                ?.let(::ReferenceSearchNeedle)
-        }
-
-        private const val MAX_NEEDLE_LENGTH = 128
-    }
 }
 
 private sealed interface ReferenceSearchCompletion {
@@ -1533,16 +1911,13 @@ private sealed interface ReferenceSearchCompletion {
     }
 }
 
-private fun ReferenceSearchCompletion.combine(
-    other: ReferenceSearchCompletion,
-): ReferenceSearchCompletion =
-    if (this.exhaustive) other else this
-
 private enum class ReferencePartialReason {
     REQUEST_BUDGET_EXHAUSTED,
+    PATH_BUDGET_EXHAUSTED,
+    PSI_RESOLUTION_FAILED,
+    COMPILER_PROVIDER_LIMIT_EXHAUSTED,
     FILE_BUDGET_EXHAUSTED,
     TARGET_INVALIDATED,
-    CANDIDATE_DISCOVERY_STOPPED,
     INDEX_LOCATION_UNRESOLVED,
 }
 
@@ -1588,11 +1963,37 @@ private fun PsiElement.referenceAtOffset(offset: Int): PsiReference? =
         .filter { reference -> reference.absoluteTextRange().containsOffset(offset) }
         .minByOrNull { reference -> reference.absoluteTextRange().length }
 
+private fun referencesAtLeaf(
+    file: PsiFile,
+    leaf: PsiElement,
+    leafStart: Int,
+): List<PsiReference> = buildList {
+    file.findReferenceAt(leafStart)?.let(::add)
+    generateSequence(leaf as PsiElement?) { element -> element.parent }
+        .takeWhile { element -> element != file }
+        .forEach { element -> addAll(element.references) }
+}.distinctBy { reference ->
+    ReferenceProbeKey(
+        elementStartOffset = reference.element.textRange.startOffset,
+        rangeStartOffset = reference.rangeInElement.startOffset,
+        rangeEndOffset = reference.rangeInElement.endOffset,
+        implementationName = reference.javaClass.name,
+    )
+}
+
+private data class ReferenceProbeKey(
+    val elementStartOffset: Int,
+    val rangeStartOffset: Int,
+    val rangeEndOffset: Int,
+    val implementationName: String,
+)
+
 private fun PsiReference.absoluteTextRange(): TextRange =
     rangeInElement.shiftRight(element.textRange.startOffset)
 
 private const val NANOS_PER_MILLI = 1_000_000L
 private const val READ_ACTION_BATCH_SIZE = 50
+private const val REFERENCE_DISCOVERY_PATH_LIMIT = 64
 
 internal inline fun <S, T, R : Any> collectInShortReadActions(
     crossinline collectSnapshot: () -> Pair<S, Collection<T>>,

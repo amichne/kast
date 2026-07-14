@@ -6,7 +6,9 @@ use crate::cli::{
 };
 use crate::config;
 use crate::error::{CliError, Result};
-use crate::metrics_database::{DirectMetricsError, DirectResult, FileFilter, MetricsDatabase};
+use crate::metrics_database::{
+    BoundedMetricsResult, DirectMetricsError, DirectResult, FileFilter, MetricsDatabase,
+};
 use crate::output;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -44,6 +46,12 @@ struct MetricsResponse {
     ok: bool,
     query: MetricsQuery,
     results: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    returned_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    truncated: Option<bool>,
     log_file: String,
     schema_version: u32,
 }
@@ -68,6 +76,12 @@ struct MetricsRpcResponse {
     ok: bool,
     query: MetricsQuery,
     results: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    returned_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    truncated: Option<bool>,
     log_file: String,
     schema_version: u32,
 }
@@ -81,15 +95,54 @@ pub fn run(command: MetricsCommand, output_format: OutputFormat) -> Result<i32> 
     }
 }
 
-fn query_direct(request: &MetricsRequest) -> DirectResult<Value> {
+struct DirectMetricsQueryResult {
+    results: Value,
+    total_count: Option<usize>,
+    returned_count: Option<usize>,
+    truncated: Option<bool>,
+}
+
+impl DirectMetricsQueryResult {
+    fn unbounded(results: Value) -> Self {
+        Self {
+            results,
+            total_count: None,
+            returned_count: None,
+            truncated: None,
+        }
+    }
+
+    fn bounded(result: BoundedMetricsResult) -> Self {
+        Self {
+            results: result.results,
+            total_count: Some(result.total_count),
+            returned_count: Some(result.returned_count),
+            truncated: Some(result.truncated),
+        }
+    }
+}
+
+fn query_direct(request: &MetricsRequest) -> DirectResult<DirectMetricsQueryResult> {
     let db = MetricsDatabase::open(request)?;
     match request.metric {
-        "fanIn" => db.fan_in(request.limit),
-        "fanOut" => db.fan_out(request.limit),
-        "deadCode" => db.dead_code(),
-        "impact" => db.impact(request.symbol.as_deref().unwrap_or_default(), request.depth),
-        "coupling" => db.coupling(),
-        "search" => db.search(request.symbol.as_deref().unwrap_or_default(), request.limit),
+        "fanIn" => db
+            .fan_in(request.limit)
+            .map(DirectMetricsQueryResult::unbounded),
+        "fanOut" => db
+            .fan_out(request.limit)
+            .map(DirectMetricsQueryResult::unbounded),
+        "deadCode" => db.dead_code().map(DirectMetricsQueryResult::unbounded),
+        "impact" => db
+            .impact(
+                request.symbol.as_deref().unwrap_or_default(),
+                request.depth,
+                request.limit,
+            )
+            .map(DirectMetricsQueryResult::bounded),
+        "coupling" => db.coupling().map(DirectMetricsQueryResult::unbounded),
+        "search" => db
+            .search(request.symbol.as_deref().unwrap_or_default(), request.limit)
+            .map(DirectMetricsQueryResult::unbounded),
         other => Err(DirectMetricsError::Query(CliError::new(
             "METRICS_UNSUPPORTED",
             format!("Unsupported metrics command: {other}"),
@@ -141,11 +194,14 @@ pub(crate) fn try_handle_raw_rpc(
     };
     let result = query_direct(&request);
     let response = match result {
-        Ok(results) => serde_json::to_value(MetricsRpcResponse {
+        Ok(result) => serde_json::to_value(MetricsRpcResponse {
             response_type: "METRICS_SUCCESS",
             ok: true,
             query: request.query(),
-            results,
+            results: result.results,
+            total_count: result.total_count,
+            returned_count: result.returned_count,
+            truncated: result.truncated,
             log_file: String::new(),
             schema_version: SCHEMA_VERSION,
         })?,
@@ -177,13 +233,16 @@ fn json_rpc_success(id: Value, result: Value) -> Value {
 
 fn print_metrics_response(
     request: &MetricsRequest,
-    results: Value,
+    result: DirectMetricsQueryResult,
     output_format: OutputFormat,
 ) -> Result<i32> {
     let response = serde_json::to_value(MetricsResponse {
         ok: true,
         query: request.query(),
-        results,
+        results: result.results,
+        total_count: result.total_count,
+        returned_count: result.returned_count,
+        truncated: result.truncated,
         log_file: String::new(),
         schema_version: SCHEMA_VERSION,
     })?;

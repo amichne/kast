@@ -82,16 +82,6 @@ data class KastDiscoverRequest(
 )
 
 @Serializable
-data class KastReferencesRequest(
-    val workspaceRoot: String? = null,
-    val symbol: String,
-    val fileHint: String? = null,
-    val kind: WrapperNamedSymbolKind? = null,
-    val containingType: String? = null,
-    val includeDeclaration: Boolean = true,
-)
-
-@Serializable
 data class KastCallersRequest(
     val workspaceRoot: String? = null,
     val symbol: String,
@@ -517,16 +507,6 @@ data class KastResolveContext(
 )
 
 @Serializable
-data class KastReferencesQuery(
-    val workspaceRoot: String,
-    val symbol: String,
-    val fileHint: String? = null,
-    val kind: WrapperNamedSymbolKind? = null,
-    val containingType: String? = null,
-    val includeDeclaration: Boolean = true,
-)
-
-@Serializable
 data class KastCallersQuery(
     val workspaceRoot: String,
     val symbol: String,
@@ -706,37 +686,6 @@ data class KastDiscoverFailureResponse(
     val error: ApiErrorResponse? = null,
     val errorText: String? = null,
 ) : KastDiscoverResponse
-
-@Serializable
-sealed interface KastReferencesResponse
-
-@Serializable
-@SerialName("REFERENCES_SUCCESS")
-data class KastReferencesSuccessResponse(
-    val ok: Boolean = true,
-    val query: KastReferencesQuery,
-    val symbol: Symbol,
-    val filePath: String,
-    val offset: Int,
-    val references: List<Location>,
-    val searchScope: SearchScope? = null,
-    val declaration: Symbol? = null,
-    val candidateCount: Int? = null,
-    val alternatives: List<String>? = null,
-    val logFile: String,
-) : KastReferencesResponse
-
-@Serializable
-@SerialName("REFERENCES_FAILURE")
-data class KastReferencesFailureResponse(
-    val ok: Boolean = false,
-    val stage: String,
-    val message: String,
-    val query: KastReferencesQuery,
-    val logFile: String,
-    val error: ApiErrorResponse? = null,
-    val errorText: String? = null,
-) : KastReferencesResponse
 
 @Serializable
 sealed interface KastCallersResponse

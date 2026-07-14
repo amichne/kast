@@ -5,6 +5,8 @@
   "params": {
     "filePaths": [
       "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
-    ]
+    ],
+    "maxResults": 25,
+    "pageToken": "00000000-0000-4000-8000-000000000337"
   }
 }

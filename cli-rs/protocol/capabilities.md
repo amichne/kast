@@ -140,12 +140,15 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin position: FilePosition` | File position identifying the symbol whose references to find. |
             | `#!kotlin includeDeclaration: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the symbol's own declaration in the results. |
             | `#!kotlin includeUsageSiteScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the nearest enclosing declaration scope for each reference usage site. |
+            | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of reference locations to return. |
+            | `#!kotlin pageToken: String?` | Opaque continuation token from the preceding reference page. |
         === "Output: ReferencesResult"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
             | `#!kotlin references: List<Location>` | List of source locations where the symbol is referenced. |
+            | `#!kotlin cardinality: ResultCardinality` | Exact or known-minimum cardinality established by bounded reference work. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
@@ -219,6 +222,8 @@ category. Expand any operation to see its input and output schemas.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` | Absolute paths of the files to analyze for diagnostics. |
+            | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 500" } | Maximum number of diagnostic records to return. |
+            | `#!kotlin pageToken: String?` | Opaque continuation token from the preceding diagnostics page. |
         === "Output: DiagnosticsResult"
 
             | Signature | Description |
@@ -229,6 +234,8 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin requestedFileCount: Int` | Number of files requested for semantic analysis. |
             | `#!kotlin analyzedFileCount: Int` | Number of requested files successfully analyzed. |
             | `#!kotlin skippedFileCount: Int` | Number of requested files not analyzed. |
+            | `#!kotlin severityCounts: DiagnosticSeverityCounts` | Exact severity counts across every diagnostic, including records outside this page. |
+            | `#!kotlin cardinality: EXACT` | Exact diagnostic cardinality across every page. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 

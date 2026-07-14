@@ -124,7 +124,10 @@ class ParsedModelsTest {
     fun `ReferencesQuery parsed keeps usage site scope opt in`() {
         val position = FilePosition("/workspace/src/Main.kt", 3)
 
-        assertEquals(false, ReferencesQuery(position).parsed().includeUsageSiteScope)
+        val defaults = ReferencesQuery(position).parsed()
+        assertEquals(false, defaults.includeUsageSiteScope)
+        assertEquals(PositiveInt(100), defaults.maxResults)
+        assertEquals(null, defaults.pageToken)
         assertEquals(
             true,
             ReferencesQuery(
@@ -132,6 +135,19 @@ class ParsedModelsTest {
                 includeUsageSiteScope = true,
             ).parsed().includeUsageSiteScope,
         )
+    }
+
+    @Test
+    fun `ReferencesQuery parsed carries typed bounds and opaque continuation`() {
+        val token = "00000000-0000-0000-0000-000000000337"
+        val parsed = ReferencesQuery(
+            position = FilePosition("/workspace/src/Main.kt", 3),
+            maxResults = 7,
+            pageToken = token,
+        ).parsed()
+
+        assertEquals(PositiveInt(7), parsed.maxResults)
+        assertEquals(token, parsed.pageToken?.value)
     }
 
     @Test
@@ -149,11 +165,36 @@ class ParsedModelsTest {
         val position = FilePosition("/workspace/src/Main.kt", 0)
 
         assertThrows<ValidationException> { CompletionsQuery(position, maxResults = 0).parsed() }
+        assertThrows<ValidationException> { ReferencesQuery(position, maxResults = 0).parsed() }
         assertThrows<ValidationException> { TypeHierarchyQuery(position, maxResults = 0).parsed() }
         assertThrows<ValidationException> { ImplementationsQuery(position, maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceSymbolQuery("Main", maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceSearchQuery("Main", maxResults = 0).parsed() }
         assertThrows<ValidationException> { WorkspaceFilesQuery(maxFilesPerModule = 0).parsed() }
+    }
+
+    @Test
+    fun `ReferencesQuery parsed rejects non canonical continuation tokens`() {
+        val position = FilePosition("/workspace/src/Main.kt", 0)
+
+        for (pageToken in listOf("", "-1", "01", "not-a-page", "v1:INDEX:0:0")) {
+            assertThrows<ValidationException> {
+                ReferencesQuery(position = position, pageToken = pageToken).parsed()
+            }
+        }
+    }
+
+    @Test
+    fun `DiagnosticsQuery parsed accepts only opaque continuation tokens`() {
+        val token = "00000000-0000-0000-0000-000000000338"
+
+        assertEquals(
+            token,
+            DiagnosticsQuery(listOf("/workspace/src/Main.kt"), pageToken = token).parsed().pageToken?.value,
+        )
+        assertThrows<ValidationException> {
+            DiagnosticsQuery(listOf("/workspace/src/Main.kt"), pageToken = "8").parsed()
+        }
     }
 
     @Test

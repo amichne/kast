@@ -35,6 +35,15 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "maxResults": {
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [

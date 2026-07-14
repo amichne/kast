@@ -124,16 +124,19 @@ fn agent_rename_plan_is_read_only_until_apply() {
     assert_eq!(output["ok"], true, "{output:#}");
     assert_eq!(output["method"], "agent/rename", "{output:#}");
     assert_eq!(
-        output["result"]["type"], "KAST_AGENT_RENAME_PLAN",
+        output["result"]["type"], "KAST_AGENT_MUTATION_RESULT",
         "{output:#}"
     );
-    assert_eq!(output["result"]["applyRequired"], true, "{output:#}");
     assert_eq!(
-        output["result"]["request"]["method"], "symbol/rename",
+        output["result"]["operation"]["state"], "PLANNED",
+        "{output:#}"
+    );
+    assert_eq!(
+        output["result"]["plan"]["method"], "symbol/rename",
         "{output:#}"
     );
     assert!(
-        !output["result"]["request"].to_string().contains("offset"),
+        !output["result"]["plan"].to_string().contains("offset"),
         "{output:#}"
     );
 }

@@ -19,6 +19,8 @@ data class ReferencesResult(
     val declaration: Symbol? = null,
     @DocField(description = "List of source locations where the symbol is referenced.")
     val references: List<Location>,
+    @DocField(description = "Exact or known-minimum cardinality established by bounded reference work.")
+    val cardinality: ResultCardinality,
     @DocField(description = "Pagination metadata when results are truncated.")
     override val page: PageInfo? = null,
     @DocField(description = "Describes the scope and exhaustiveness of the search.")

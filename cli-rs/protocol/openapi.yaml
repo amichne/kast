@@ -1148,9 +1148,51 @@ components:
           type: boolean
         includeUsageSiteScope:
           type: boolean
+        maxResults:
+          type: integer
+          format: int32
+        pageToken:
+          anyOf:
+            - type: string
+            - type: "null"
       additionalProperties: false
       required:
         - position
+    ResultCardinality:
+      oneOf:
+        - "$ref": "#/components/schemas/EXACT"
+        - "$ref": "#/components/schemas/KNOWN_MINIMUM"
+      discriminator:
+        propertyName: type
+        mapping:
+          EXACT: "#/components/schemas/EXACT"
+          KNOWN_MINIMUM: "#/components/schemas/KNOWN_MINIMUM"
+    EXACT:
+      type: object
+      properties:
+        type:
+          type: string
+          const: EXACT
+        totalCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - type
+        - totalCount
+    KNOWN_MINIMUM:
+      type: object
+      properties:
+        type:
+          type: string
+          const: KNOWN_MINIMUM
+        knownMinimumCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - type
+        - knownMinimumCount
     ReferencesResult:
       type: object
       properties:
@@ -1162,6 +1204,8 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/Location"
+        cardinality:
+          "$ref": "#/components/schemas/ResultCardinality"
         page:
           anyOf:
             - "$ref": "#/components/schemas/PageInfo"
@@ -1176,6 +1220,7 @@ components:
       additionalProperties: false
       required:
         - references
+        - cardinality
     CallHierarchyQuery:
       type: object
       properties:
@@ -1421,6 +1466,13 @@ components:
           type: array
           items:
             type: string
+        maxResults:
+          type: integer
+          format: int32
+        pageToken:
+          anyOf:
+            - type: string
+            - type: "null"
       additionalProperties: false
       required:
         - filePaths
@@ -1446,6 +1498,10 @@ components:
         skippedFileCount:
           type: integer
           format: int32
+        severityCounts:
+          "$ref": "#/components/schemas/DiagnosticSeverityCounts"
+        cardinality:
+          "$ref": "#/components/schemas/EXACT"
         page:
           anyOf:
             - "$ref": "#/components/schemas/PageInfo"
@@ -1461,6 +1517,8 @@ components:
         - requestedFileCount
         - analyzedFileCount
         - skippedFileCount
+        - severityCounts
+        - cardinality
     Diagnostic:
       type: object
       properties:
@@ -1513,6 +1571,27 @@ components:
       enum:
         - COMPLETE
         - INCOMPLETE
+    DiagnosticSeverityCounts:
+      type: object
+      properties:
+        error:
+          type: integer
+          format: int32
+        warning:
+          type: integer
+          format: int32
+        info:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - error
+        - warning
+        - info
+        - total
     FileOutlineQuery:
       type: object
       properties:

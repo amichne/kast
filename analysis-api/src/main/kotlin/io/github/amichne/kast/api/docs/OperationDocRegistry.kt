@@ -114,9 +114,13 @@ object OperationDocRegistry {
                     "are not returned.",
                 "Set `includeDeclaration` to true to include the symbol's declaration " +
                     "in the result alongside usage sites.",
-                "Large result sets are paginated; check the `page` field for continuation.",
+                "Large result sets are paginated; check the `page` field for continuation. " +
+                    "Tokens are opaque, one-use handles for server-held state bound to the " +
+                    "workspace, query options, evidence source, and source generation.",
+                "Unknown, replayed, mismatched, evicted, or stale continuation tokens fail " +
+                    "with a typed conflict instead of restarting or reinterpreting traversal.",
             ),
-            errorCodes = listOf("NOT_FOUND"),
+            errorCodes = listOf("NOT_FOUND", "CONFLICT"),
         ),
         OperationDoc(
             operationId = "callHierarchy",
@@ -184,12 +188,17 @@ object OperationDocRegistry {
                 "returning errors, warnings, and informational messages with " +
                 "precise source locations.",
             behavioralNotes = listOf(
-                "Pass one or more absolute file paths. The daemon analyzes each " +
-                    "file and returns all diagnostics sorted by location.",
-                "Diagnostics reflect the current daemon state. A successful focused " +
-                    "`raw/workspace-refresh` is a semantic-admission barrier for externally modified files.",
+                "Pass one or more absolute file paths. The daemon analyzes each file, " +
+                    "returns an ordered bounded page, and reports exact full-set severity counts and cardinality.",
+                "The first page captures a server-held diagnostic snapshot. Its opaque, " +
+                    "one-use continuation token is bound to the ordered files, limit, and Kotlin PSI generation.",
+                "Continuation pages reuse that snapshot without refreshing or recomputing. " +
+                    "Unknown, replayed, mismatched, evicted, or stale tokens fail with a typed conflict.",
+                "Diagnostics reflect the current daemon state. Before the first page, a successful focused " +
+                    "`raw/workspace-refresh` is a semantic-admission barrier for externally modified files; " +
+                    "a refresh that changes Kotlin PSI invalidates earlier continuations.",
             ),
-            errorCodes = listOf("NOT_FOUND"),
+            errorCodes = listOf("NOT_FOUND", "CONFLICT"),
         ),
         OperationDoc(
             operationId = "fileOutline",

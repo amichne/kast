@@ -876,6 +876,16 @@
           "includeDeclaration": {
             "type": "boolean",
             "optional": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "pageToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "sample": "00000000-0000-4000-8000-000000000337"
           }
         },
         "required": [
@@ -887,7 +897,10 @@
       "failureType": "REFERENCES_FAILURE",
       "notes": [
         "The 'symbol' field takes simple names only.",
-        "Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'."
+        "Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.",
+        "maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.",
+        "Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.",
+        "Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict."
       ],
       "tool": {
         "name": "kast_references",
@@ -1648,13 +1661,28 @@
           "includeUsageSiteScope": {
             "type": "boolean",
             "optional": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "pageToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "sample": "00000000-0000-4000-8000-000000000337"
           }
         },
         "required": [
           "position"
         ]
       },
-      "responseType": "ReferencesResult"
+      "responseType": "ReferencesResult",
+      "notes": [
+        "maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.",
+        "pageToken is an opaque, one-use handle bound to the workspace, query options, evidence source, and source generation.",
+        "Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict."
+      ]
     },
     "raw/call-hierarchy": {
       "method": "raw/call-hierarchy",
@@ -1806,6 +1834,16 @@
           "filePaths": {
             "type": "array",
             "items": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "pageToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "sample": "00000000-0000-4000-8000-000000000337"
           }
         },
         "required": [
@@ -1813,6 +1851,11 @@
         ]
       },
       "responseType": "DiagnosticsResult",
+      "notes": [
+        "The first page computes exact severity counts and cardinality while capturing a server-held diagnostic snapshot.",
+        "pageToken is an opaque, one-use handle bound to the ordered files, maxResults, and Kotlin PSI generation; continuations reuse the snapshot without refresh or recomputation.",
+        "Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict."
+      ],
       "tool": {
         "name": "kast_diagnostics",
         "description": "Run Kotlin diagnostics on listed files. Run after any mutation that did not already validate; treat dirty results as a failed change."

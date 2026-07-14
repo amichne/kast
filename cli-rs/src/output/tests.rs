@@ -32,6 +32,27 @@ mod tests {
     }
 
     #[test]
+    fn readable_and_json_renderers_preserve_the_same_compact_agent_contract() {
+        let value = json!({
+            "type": "KAST_AGENT_DIAGNOSTICS_RESULT",
+            "severityCounts": {"error": 1, "warning": 499, "info": 0, "total": 500},
+            "cardinality": {
+                "type": "EXACT",
+                "totalCount": 500,
+                "returnedCount": 8,
+                "truncated": true,
+                "nextPageToken": "00000000-0000-4000-8000-000000000337"
+            }
+        });
+
+        let readable =
+            render_structured_output(&value, OutputFormat::Human).expect("readable output");
+        let json = render_structured_output(&value, OutputFormat::Json).expect("json output");
+
+        assert_eq!(readable, json);
+    }
+
+    #[test]
     fn structured_output_renderer_can_emit_round_trippable_toon() {
         let value = json!({
             "ok": true,

@@ -2,6 +2,18 @@ pub(crate) struct MetricsDatabase<'a> {
     request: &'a MetricsRequest,
     conn: Connection,
     controls: MetricsQueryControls,
+    #[cfg(test)]
+    impact_snapshot_barrier: Option<ImpactSnapshotBarrier>,
+}
+
+#[cfg(test)]
+struct ImpactSnapshotBarrier {
+    count_complete: Arc<std::sync::Barrier>,
+    mutation_complete: Arc<std::sync::Barrier>,
+}
+
+fn sql_row_bound(value: usize) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
 }
 
 impl<'a> MetricsDatabase<'a> {
@@ -29,6 +41,8 @@ impl<'a> MetricsDatabase<'a> {
             request,
             conn,
             controls,
+            #[cfg(test)]
+            impact_snapshot_barrier: None,
         };
         if !db.schema_is_current().map_err(sql_error)? {
             return Err(DirectMetricsError::Unavailable(format!(
@@ -278,8 +292,33 @@ impl<'a> MetricsDatabase<'a> {
         serde_json::to_value(values).map_err(json_direct_error)
     }
 
-    pub(crate) fn impact(&self, fq_name: &str, depth: usize) -> DirectResult<Value> {
-        serde_json::to_value(self.change_impact_nodes(fq_name, depth)?).map_err(json_direct_error)
+    pub(crate) fn impact(
+        &self,
+        fq_name: &str,
+        depth: usize,
+        limit: usize,
+    ) -> DirectResult<BoundedMetricsResult> {
+        // Impact owns the transaction boundary on this private read-only connection; the
+        // shared borrow lets every existing query helper participate in the same snapshot.
+        let snapshot = self.conn.unchecked_transaction().map_err(sql_error)?;
+        let total_count = self.change_impact_count(fq_name, depth)?;
+        #[cfg(test)]
+        if let Some(barrier) = &self.impact_snapshot_barrier {
+            barrier.count_complete.wait();
+            barrier.mutation_complete.wait();
+        }
+        let probe_limit = limit.saturating_add(1);
+        let mut nodes = self.change_impact_nodes(fq_name, depth, probe_limit)?;
+        nodes.truncate(limit);
+        let returned_count = nodes.len();
+        let result = BoundedMetricsResult {
+            results: serde_json::to_value(nodes).map_err(json_direct_error)?,
+            total_count,
+            returned_count,
+            truncated: total_count > returned_count,
+        };
+        snapshot.commit().map_err(sql_error)?;
+        Ok(result)
     }
 
     pub(crate) fn search(&self, query: &str, limit: usize) -> DirectResult<Value> {
@@ -314,20 +353,77 @@ impl<'a> MetricsDatabase<'a> {
         &self,
         fq_name: &str,
         depth: usize,
+        limit: usize,
     ) -> DirectResult<Vec<ChangeImpactNode>> {
-        if depth == 0 {
+        if depth == 0 || limit == 0 {
             return Ok(Vec::new());
         }
         let confidence = self.current_confidence()?;
-        let values = if self.has_source_symbol_edges()? {
-            self.symbol_level_impact(fq_name, depth, &confidence)?
-        } else {
-            self.file_level_impact(fq_name, depth, &confidence)?
-        };
-        Ok(values
-            .into_iter()
-            .filter(|node| self.request.filter().matches(Some(&node.source_path)))
-            .collect())
+        let symbol_level = self.has_source_symbol_edges()?;
+        if self.request.filter().is_empty() {
+            return if symbol_level {
+                self.symbol_level_impact(fq_name, depth, &confidence, limit, 0)
+            } else {
+                self.file_level_impact(fq_name, depth, &confidence, limit, 0)
+            };
+        }
+
+        let fetch_size = limit.max(128);
+        let mut offset = 0;
+        let mut values = Vec::with_capacity(limit);
+        while values.len() < limit {
+            let page = if symbol_level {
+                self.symbol_level_impact(fq_name, depth, &confidence, fetch_size, offset)?
+            } else {
+                self.file_level_impact(fq_name, depth, &confidence, fetch_size, offset)?
+            };
+            let page_size = page.len();
+            values.extend(
+                page.into_iter()
+                    .filter(|node| self.request.filter().matches(Some(&node.source_path)))
+                    .take(limit - values.len()),
+            );
+            if page_size < fetch_size {
+                break;
+            }
+            offset = offset.saturating_add(fetch_size);
+        }
+        Ok(values)
+    }
+
+    fn change_impact_count(&self, fq_name: &str, depth: usize) -> DirectResult<usize> {
+        if depth == 0 {
+            return Ok(0);
+        }
+        if self.request.filter().is_empty() {
+            return if self.has_source_symbol_edges()? {
+                self.symbol_level_impact_count(fq_name, depth)
+            } else {
+                self.file_level_impact_count(fq_name, depth)
+            };
+        }
+
+        let confidence = self.current_confidence()?;
+        let symbol_level = self.has_source_symbol_edges()?;
+        let mut offset = 0;
+        let mut count = 0;
+        loop {
+            let page = if symbol_level {
+                self.symbol_level_impact(fq_name, depth, &confidence, 256, offset)?
+            } else {
+                self.file_level_impact(fq_name, depth, &confidence, 256, offset)?
+            };
+            let page_size = page.len();
+            count += page
+                .iter()
+                .filter(|node| self.request.filter().matches(Some(&node.source_path)))
+                .count();
+            if page_size < 256 {
+                break;
+            }
+            offset = offset.saturating_add(256);
+        }
+        Ok(count)
     }
 
     fn current_confidence(&self) -> DirectResult<Confidence> {
@@ -481,6 +577,8 @@ impl<'a> MetricsDatabase<'a> {
         fq_name: &str,
         depth: usize,
         confidence: &Confidence,
+        limit: usize,
+        offset: usize,
     ) -> DirectResult<Vec<ChangeImpactNode>> {
         self.with_query_progress(|| {
             let mut stmt = self
@@ -510,12 +608,59 @@ impl<'a> MetricsDatabase<'a> {
                     JOIN fq_names via_target_name ON via_target_name.fq_id = impacted.via_target_fq_id
                     GROUP BY impacted.src_prefix_id, impacted.src_filename, impacted.depth, impacted.via_target_fq_id, impacted.edge_kind
                     ORDER BY impacted.depth ASC, reference_count DESC, source_prefix.dir_path ASC, impacted.src_filename ASC, via_target_name.fq_name ASC
+                    LIMIT ? OFFSET ?
                     "#,
                 )
                 .map_err(sql_error)?;
-            self.impact_rows(stmt.query_map(params![fq_name, depth as i64], |row| {
-                self.impact_row(row, confidence)
-            }))
+            self.impact_rows(stmt.query_map(
+                params![
+                    fq_name,
+                    depth as i64,
+                    sql_row_bound(limit),
+                    sql_row_bound(offset)
+                ],
+                |row| self.impact_row(row, confidence),
+            ))
+        })
+    }
+
+    fn symbol_level_impact_count(&self, fq_name: &str, depth: usize) -> DirectResult<usize> {
+        self.with_query_progress(|| {
+            self.conn
+                .query_row(
+                    r#"
+                    WITH RECURSIVE impacted(depth, source_fq_id, src_prefix_id, src_filename, via_target_fq_id, edge_kind) AS (
+                        SELECT 1, refs.source_fq_id, refs.src_prefix_id, refs.src_filename, refs.target_fq_id, refs.edge_kind
+                        FROM symbol_references refs
+                        WHERE refs.target_fq_id = (SELECT fq_id FROM fq_names WHERE fq_name = ?)
+                          AND refs.source_fq_id IS NOT NULL
+                        UNION ALL
+                        SELECT impacted.depth + 1, refs.source_fq_id, refs.src_prefix_id, refs.src_filename, refs.target_fq_id, refs.edge_kind
+                        FROM impacted
+                        JOIN symbol_references refs ON refs.target_fq_id = impacted.source_fq_id
+                        WHERE impacted.depth < ?
+                          AND refs.source_fq_id IS NOT NULL
+                    ),
+                    impact_groups AS (
+                        SELECT impacted.src_prefix_id,
+                               impacted.src_filename,
+                               impacted.depth,
+                               impacted.via_target_fq_id,
+                               impacted.edge_kind
+                        FROM impacted
+                        GROUP BY impacted.src_prefix_id,
+                                 impacted.src_filename,
+                                 impacted.depth,
+                                 impacted.via_target_fq_id,
+                                 impacted.edge_kind
+                    )
+                    SELECT COUNT(*) FROM impact_groups
+                    "#,
+                    params![fq_name, depth as i64],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map(|count| usize::try_from(count).expect("non-negative impact count"))
+                .map_err(sql_error)
         })
     }
 
@@ -524,6 +669,8 @@ impl<'a> MetricsDatabase<'a> {
         fq_name: &str,
         depth: usize,
         confidence: &Confidence,
+        limit: usize,
+        offset: usize,
     ) -> DirectResult<Vec<ChangeImpactNode>> {
         self.with_query_progress(|| {
             let mut stmt = self
@@ -580,12 +727,72 @@ impl<'a> MetricsDatabase<'a> {
                              source_prefix.dir_path ASC,
                              first_hits.src_filename ASC,
                              via_target_name.fq_name ASC
+                    LIMIT ? OFFSET ?
                     "#,
                 )
                 .map_err(sql_error)?;
-            self.impact_rows(stmt.query_map(params![fq_name, depth as i64], |row| {
-                self.impact_row(row, confidence)
-            }))
+            self.impact_rows(stmt.query_map(
+                params![
+                    fq_name,
+                    depth as i64,
+                    sql_row_bound(limit),
+                    sql_row_bound(offset)
+                ],
+                |row| self.impact_row(row, confidence),
+            ))
+        })
+    }
+
+    fn file_level_impact_count(&self, fq_name: &str, depth: usize) -> DirectResult<usize> {
+        self.with_query_progress(|| {
+            self.conn
+                .query_row(
+                    r#"
+                    WITH RECURSIVE impacted_files(depth, src_prefix_id, src_filename, via_target_fq_id, edge_kind) AS (
+                        SELECT 1, src_prefix_id, src_filename, target_fq_id, edge_kind
+                        FROM symbol_references
+                        WHERE target_fq_id = (SELECT fq_id FROM fq_names WHERE fq_name = ?)
+                        UNION ALL
+                        SELECT impacted_files.depth + 1,
+                               refs.src_prefix_id,
+                               refs.src_filename,
+                               refs.target_fq_id,
+                               refs.edge_kind
+                        FROM impacted_files
+                        JOIN symbol_references refs
+                          ON refs.tgt_prefix_id = impacted_files.src_prefix_id
+                         AND refs.tgt_filename = impacted_files.src_filename
+                        WHERE impacted_files.depth < ?
+                    ),
+                    first_hits AS (
+                        SELECT src_prefix_id, src_filename, MIN(depth) AS depth
+                        FROM impacted_files
+                        GROUP BY src_prefix_id, src_filename
+                    ),
+                    impact_groups AS (
+                        SELECT first_hits.src_prefix_id,
+                               first_hits.src_filename,
+                               first_hits.depth,
+                               impacted_files.via_target_fq_id,
+                               impacted_files.edge_kind
+                        FROM first_hits
+                        JOIN impacted_files
+                          ON impacted_files.src_prefix_id = first_hits.src_prefix_id
+                         AND impacted_files.src_filename = first_hits.src_filename
+                         AND impacted_files.depth = first_hits.depth
+                        GROUP BY first_hits.src_prefix_id,
+                                 first_hits.src_filename,
+                                 first_hits.depth,
+                                 impacted_files.via_target_fq_id,
+                                 impacted_files.edge_kind
+                    )
+                    SELECT COUNT(*) FROM impact_groups
+                    "#,
+                    params![fq_name, depth as i64],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map(|count| usize::try_from(count).expect("non-negative impact count"))
+                .map_err(sql_error)
         })
     }
 

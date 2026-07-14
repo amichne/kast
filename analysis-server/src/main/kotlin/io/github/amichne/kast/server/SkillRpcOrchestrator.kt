@@ -245,7 +245,10 @@ internal class SkillRpcOrchestrator(
             kind = request.kind,
             containingType = request.containingType,
             includeDeclaration = request.includeDeclaration,
+            maxResults = request.maxResults,
+            pageToken = request.pageToken,
         )
+        validateReferencesQuery(query)
         val resolved = resolveNamedSymbol(
             symbolName = request.symbol,
             fileHint = request.fileHint,
@@ -258,20 +261,24 @@ internal class SkillRpcOrchestrator(
             logFile = placeholderLogFile(),
         )
         requireReadCapability(ReadCapability.FIND_REFERENCES)
-        val result = backend.findReferences(
+        val completeResult = backend.findReferences(
             ReferencesQuery(
                 position = FilePosition(filePath = resolved.filePath, offset = resolved.offset),
                 includeDeclaration = request.includeDeclaration,
+                maxResults = request.maxResults,
+                pageToken = request.pageToken,
             ).parsed(),
-        ).withLimit(config.maxResults, ::referencePageToken)
+        )
         return KastReferencesSuccessResponse(
             query = query,
             symbol = resolved.symbol,
             filePath = resolved.filePath,
             offset = resolved.offset,
-            references = result.references,
-            searchScope = result.searchScope,
-            declaration = result.declaration,
+            references = completeResult.references,
+            cardinality = completeResult.cardinality,
+            page = completeResult.page,
+            searchScope = completeResult.searchScope,
+            declaration = completeResult.declaration,
             candidateCount = resolved.candidateCount.takeIf { it > 1 },
             alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
             logFile = placeholderLogFile(),
@@ -353,8 +360,9 @@ internal class SkillRpcOrchestrator(
                 ReferencesQuery(
                     position = FilePosition(filePath = resolved.filePath, offset = resolved.offset),
                     includeDeclaration = true,
+                    maxResults = config.maxResults,
                 ).parsed(),
-            ).withLimit(config.maxResults, ::referencePageToken)
+            )
             KastScaffoldReferences(
                 locations = result.references,
                 count = result.references.size,
@@ -1460,6 +1468,18 @@ internal class SkillRpcOrchestrator(
         }
     }
 
+    private fun validateReferencesQuery(query: KastReferencesQuery) {
+        if (query.symbol.isBlank()) {
+            throw ValidationException("symbol must not be blank")
+        }
+        if (query.maxResults <= 0) {
+            throw ValidationException("maxResults must be greater than 0")
+        }
+        if (query.maxResults > config.maxResults) {
+            throw ValidationException("maxResults must be less than or equal to server maxResults (${config.maxResults})")
+        }
+    }
+
     private suspend fun workspaceRootFor(explicit: String?): String =
         explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath() ?: backend.runtimeStatus().workspaceRoot
 
@@ -1584,8 +1604,6 @@ private fun WrapperScaffoldMode.toInsertionTarget(): SemanticInsertionTarget = w
 }
 
 private fun placeholderLogFile(): String = "/dev/null"
-
-private fun referencePageToken(location: Location): String = location.startOffset.toString()
 
 private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
 

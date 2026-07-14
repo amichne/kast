@@ -85,6 +85,8 @@ pub struct RemovedAgentCommandArgs {
 pub struct AgentVerifyArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
+    #[command(flatten)]
+    pub view: AgentVerifyViewArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -105,15 +107,21 @@ pub struct AgentSymbolArgs {
     pub containing_type: Option<String>,
     #[arg(long)]
     pub references: bool,
+    /// Opaque continuation token from a preceding reference relationship page.
+    #[arg(long, requires = "references")]
+    pub reference_page_token: Option<String>,
     #[arg(long, value_enum)]
     pub callers: Option<AgentSymbolCallDirection>,
     #[arg(long, default_value_t = 3)]
     pub caller_depth: u32,
+    /// Maximum discovery candidates or backend relationship results.
     #[arg(long, default_value_t = 10)]
     pub limit: u32,
+    #[command(flatten)]
+    pub view: AgentSymbolViewArgs,
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Default, Serialize)]
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AgentSymbolMode {
     #[default]
@@ -130,8 +138,11 @@ pub struct AgentImpactArgs {
     pub symbol: String,
     #[arg(long, default_value_t = 3)]
     pub depth: u32,
-    #[arg(long, default_value_t = 50)]
+    /// Maximum source-index impact nodes to return.
+    #[arg(long, default_value_t = 10, value_parser = clap::value_parser!(u32).range(1..=500))]
     pub limit: u32,
+    #[command(flatten)]
+    pub view: AgentImpactViewArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -143,6 +154,14 @@ pub struct AgentDiagnosticsArgs {
     pub file_paths: Vec<String>,
     #[arg(long)]
     pub skip_refresh: bool,
+    /// Maximum diagnostics for detailed views; compact output is capped at eight records.
+    #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(1..=500))]
+    pub limit: u32,
+    /// Opaque continuation token from a preceding diagnostics result.
+    #[arg(long)]
+    pub page_token: Option<String>,
+    #[command(flatten)]
+    pub view: AgentDiagnosticsViewArgs,
 }
 
 #[derive(Debug, Args, Clone, Default)]
@@ -153,6 +172,8 @@ pub struct AgentMutationApplyArgs {
     /// Stable caller-owned key used to retry and recover this applied mutation.
     #[arg(long)]
     pub idempotency_key: Option<String>,
+    #[command(flatten)]
+    pub view: AgentMutationViewArgs,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -281,6 +302,161 @@ pub struct AgentOperationSelectorArgs {
     /// Caller-owned mutation idempotency key.
     #[arg(long)]
     pub idempotency_key: Option<String>,
+    #[command(flatten)]
+    pub view: AgentMutationViewArgs,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("verify_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentVerifyViewArgs {
+    /// Preserve the complete validated command envelope.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Include detailed evidence used to explain the result.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected verification fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentVerifyField>,
+    /// Return verification counts without capability inventories.
+    #[arg(long)]
+    pub count: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentVerifyField {
+    Health,
+    Runtime,
+    Capabilities,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("symbol_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentSymbolViewArgs {
+    /// Preserve the complete validated command envelope.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Include ranking, member, and next-request evidence.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected symbol result fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentSymbolField>,
+    /// Return only result, candidate, and relationship counts.
+    #[arg(long)]
+    pub count: bool,
+}
+
+impl AgentSymbolViewArgs {
+    pub fn detailed(&self) -> bool {
+        self.verbose || self.explain
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentSymbolField {
+    Identity,
+    Location,
+    Mode,
+    Outcome,
+    Source,
+    Ambiguity,
+    Relationships,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("impact_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentImpactViewArgs {
+    /// Preserve the complete validated metrics command envelope.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Include detailed source-index impact evidence.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected impact result fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentImpactField>,
+    /// Return impact cardinality without impact nodes.
+    #[arg(long)]
+    pub count: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentImpactField {
+    Query,
+    Summary,
+    Nodes,
+    Confidence,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("diagnostics_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentDiagnosticsViewArgs {
+    /// Preserve the complete validated command envelope.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Include detailed diagnostic step evidence.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected diagnostics result fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentDiagnosticsField>,
+    /// Return semantic and diagnostic counts without diagnostic records.
+    #[arg(long)]
+    pub count: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentDiagnosticsField {
+    Analysis,
+    Diagnostics,
+    SeverityCounts,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("mutation_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentMutationViewArgs {
+    /// Preserve the complete validated command envelope.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Include detailed mutation lifecycle evidence.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected mutation result fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentMutationField>,
+    /// Return mutation state and aggregate counts only.
+    #[arg(long)]
+    pub count: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentMutationField {
+    Operation,
+    State,
+    Edits,
+    Files,
+    Diagnostics,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
