@@ -110,6 +110,26 @@ fn spawn_paged_workspace_files_backend(
     consumed_state: Option<serde_json::Value>,
     issued_token: Option<&'static str>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    let mut responses = workspace_files_session_responses(workspace);
+    if let Some(state) = consumed_state {
+        responses.push((
+            "raw/workspace-files-continuation",
+            serde_json::json!({"type": "CONSUMED", "state": state}),
+        ));
+    }
+    append_paged_workspace_files_collection(&mut responses, workspace, "snapshot-500");
+    if let Some(page_token) = issued_token {
+        responses.push((
+            "raw/workspace-files-continuation",
+            serde_json::json!({"type": "ISSUED", "pageToken": page_token}),
+        ));
+    }
+    spawn_sequenced_idea_backend(home, config_home, workspace, socket, responses)
+}
+
+fn workspace_files_session_responses(
+    workspace: &std::path::Path,
+) -> Vec<(&'static str, serde_json::Value)> {
     let runtime = serde_json::json!({
         "state": "READY",
         "healthy": true,
@@ -133,6 +153,14 @@ fn spawn_paged_workspace_files_backend(
         },
         "schemaVersion": 3
     });
+    vec![("runtime/status", runtime), ("capabilities", capabilities)]
+}
+
+fn append_paged_workspace_files_collection(
+    responses: &mut Vec<(&'static str, serde_json::Value)>,
+    workspace: &std::path::Path,
+    revalidation_snapshot_token: &str,
+) {
     let source_root = workspace.join("src/main/kotlin");
     let page = |range: std::ops::Range<usize>, next_page_token: Option<&str>| {
         let files = range
@@ -159,18 +187,16 @@ fn spawn_paged_workspace_files_backend(
             "schemaVersion": 3
         })
     };
-    let validation = serde_json::json!({
+    let collection_validation = serde_json::json!({
         "snapshotToken": "snapshot-500",
         "modules": [],
         "schemaVersion": 3
     });
-    let mut responses = vec![("runtime/status", runtime), ("capabilities", capabilities)];
-    if let Some(state) = consumed_state {
-        responses.push((
-            "raw/workspace-files-continuation",
-            serde_json::json!({"type": "CONSUMED", "state": state}),
-        ));
-    }
+    let barrier_validation = serde_json::json!({
+        "snapshotToken": revalidation_snapshot_token,
+        "modules": [],
+        "schemaVersion": 3
+    });
     responses.extend([
         (
             "raw/workspace-files",
@@ -193,16 +219,9 @@ fn spawn_paged_workspace_files_backend(
         ("raw/workspace-files", page(0..200, Some("raw-page-2"))),
         ("raw/workspace-files", page(200..400, Some("raw-page-3"))),
         ("raw/workspace-files", page(400..500, None)),
-        ("raw/workspace-files", validation.clone()),
-        ("raw/workspace-files", validation),
+        ("raw/workspace-files", collection_validation),
+        ("raw/workspace-files", barrier_validation),
     ]);
-    if let Some(page_token) = issued_token {
-        responses.push((
-            "raw/workspace-files-continuation",
-            serde_json::json!({"type": "ISSUED", "pageToken": page_token}),
-        ));
-    }
-    spawn_sequenced_idea_backend(home, config_home, workspace, socket, responses)
 }
 
 fn run_workspace_files_page(
@@ -773,6 +792,54 @@ fn public_continuations_return_five_hundred_files_as_200_200_100_without_gaps() 
 }
 
 #[test]
+fn malformed_issued_continuation_token_fails_closed() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = create_workspace_index(&home, &workspace, "malformed-token", 500);
+    let server = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("malformed-token.sock"),
+        None,
+        Some("not-a-canonical-uuid-v4"),
+    );
+
+    let output = run_workspace_files_page(&home, &config_home, &workspace, None);
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("workspace-files JSON error");
+    assert_eq!(
+        stdout["error"]["code"], "AGENT_RESULT_INVALID",
+        "{stdout:#}"
+    );
+
+    let requests = server.join().expect("malformed-token backend");
+    assert!(
+        requests.iter().any(|request| {
+            request["method"] == "raw/workspace-files-continuation"
+                && request["params"]["action"] == "ISSUE"
+        }),
+        "{requests:#?}"
+    );
+}
+
+#[test]
 fn high_cardinality_default_compact_page_stays_within_agent_budget() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -1055,6 +1122,145 @@ fn public_continuations_reject_query_mismatch_and_stale_evidence_without_restart
 }
 
 #[test]
+fn consumed_continuation_reports_stale_before_disappeared_authorities() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = create_workspace_index(&home, &workspace, "disappeared-authorities", 500);
+
+    let seed_backend = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("disappeared-authorities-seed.sock"),
+        None,
+        Some("550e8400-e29b-41d4-a716-446655440011"),
+    );
+    let seed_output = run_workspace_files_page(&home, &config_home, &workspace, None);
+    assert!(seed_output.status.success());
+    let seed_state = workspace_files_issue_state(
+        &seed_backend
+            .join()
+            .expect("disappeared-authorities seed backend"),
+    );
+
+    std::fs::remove_file(index.database_path()).expect("remove source-index authority");
+    let mut responses = workspace_files_session_responses(&workspace);
+    responses.push((
+        "raw/workspace-files-continuation",
+        serde_json::json!({"type": "CONSUMED", "state": seed_state}),
+    ));
+    responses.extend([
+        ("raw/workspace-files", serde_json::json!({})),
+        ("raw/workspace-files", serde_json::json!({})),
+    ]);
+    let backend = spawn_sequenced_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("disappeared-authorities.sock"),
+        responses,
+    );
+
+    let output = run_workspace_files_page(
+        &home,
+        &config_home,
+        &workspace,
+        Some("550e8400-e29b-41d4-a716-446655440011"),
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("stale continuation JSON");
+    assert_eq!(
+        stdout["error"]["code"], "STALE_WORKSPACE_FILES_PAGE",
+        "{stdout:#}"
+    );
+    backend.join().expect("disappeared-authorities backend");
+}
+
+#[test]
+fn consumed_continuation_rejects_cross_lane_instability() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = create_workspace_index(&home, &workspace, "unstable-continuation", 500);
+
+    let seed_backend = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("unstable-continuation-seed.sock"),
+        None,
+        Some("550e8400-e29b-41d4-a716-446655440012"),
+    );
+    let seed_output = run_workspace_files_page(&home, &config_home, &workspace, None);
+    assert!(seed_output.status.success());
+    let seed_state = workspace_files_issue_state(
+        &seed_backend
+            .join()
+            .expect("unstable-continuation seed backend"),
+    );
+
+    let mut responses = workspace_files_session_responses(&workspace);
+    responses.push((
+        "raw/workspace-files-continuation",
+        serde_json::json!({"type": "CONSUMED", "state": seed_state}),
+    ));
+    append_paged_workspace_files_collection(&mut responses, &workspace, "snapshot-moved");
+    append_paged_workspace_files_collection(&mut responses, &workspace, "snapshot-moved");
+    let backend = spawn_sequenced_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("unstable-continuation.sock"),
+        responses,
+    );
+
+    let output = run_workspace_files_page(
+        &home,
+        &config_home,
+        &workspace,
+        Some("550e8400-e29b-41d4-a716-446655440012"),
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("unstable continuation JSON");
+    assert_eq!(
+        stdout["error"]["code"], "STALE_WORKSPACE_FILES_PAGE",
+        "{stdout:#}"
+    );
+    backend.join().expect("unstable-continuation backend");
+}
+
+#[test]
 fn stable_partial_inventory_can_continue_known_matches() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -1174,6 +1380,228 @@ fn complete_index_evidence_publishes_backend_only_source_as_not_indexed() {
     assert_eq!(
         stdout["result"]["cardinality"],
         serde_json::json!({"type": "EXACT", "totalCount": 1})
+    );
+
+    let count_backend = spawn_single_owned_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("not-indexed-count.sock"),
+        &backend_only,
+    );
+    let count_output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--kind",
+            "source",
+            "--count",
+        ])
+        .output()
+        .expect("not-indexed count");
+    assert!(
+        count_output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&count_output.stdout),
+        String::from_utf8_lossy(&count_output.stderr),
+    );
+    count_backend.join().expect("not-indexed count backend");
+    let count_stdout: serde_json::Value =
+        serde_json::from_slice(&count_output.stdout).expect("not-indexed count JSON");
+    assert_eq!(
+        grouped_cardinality(&count_stdout, "index", "NOT_INDEXED")["cardinality"],
+        serde_json::json!({"type": "EXACT", "totalCount": 1}),
+        "count projection must agree with the detailed index state: {count_stdout:#}"
+    );
+}
+
+#[test]
+fn incomplete_index_evidence_counts_backend_only_source_as_unknown() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = create_workspace_index(&home, &workspace, "unknown-index", 0);
+    index.seed_progress("app", "INDEXING", 0, 1);
+    let backend_only = workspace.join("src/main/kotlin/sample/BackendOnly.kt");
+    std::fs::create_dir_all(backend_only.parent().expect("source parent")).expect("source parent");
+    std::fs::write(&backend_only, "package sample\nclass BackendOnly\n")
+        .expect("backend-only source");
+    let backend = spawn_single_owned_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("unknown-index-count.sock"),
+        &backend_only,
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--kind",
+            "source",
+            "--count",
+        ])
+        .output()
+        .expect("unknown index count");
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    backend.join().expect("unknown index count backend");
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("unknown index count JSON");
+    assert_eq!(
+        grouped_cardinality(&stdout, "index", "UNKNOWN")["cardinality"],
+        serde_json::json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 1}),
+        "incomplete source-index evidence must remain UNKNOWN: {stdout:#}"
+    );
+}
+
+#[test]
+fn gradle_module_filter_is_partial_when_candidate_ownership_is_unknown() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = create_workspace_index(&home, &workspace, "unknown-gradle-owner", 0);
+    index.seed_progress("app", "INDEXING", 0, 1);
+    let backend_only = workspace.join("src/main/kotlin/sample/BackendOnly.kt");
+    std::fs::create_dir_all(backend_only.parent().expect("source parent")).expect("source parent");
+    std::fs::write(&backend_only, "package sample\nclass BackendOnly\n")
+        .expect("backend-only source");
+    let backend = spawn_single_owned_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("unknown-gradle-owner.sock"),
+        &backend_only,
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--kind",
+            "source",
+            "--module",
+            "gradle:.#:app",
+        ])
+        .output()
+        .expect("unknown Gradle owner filter");
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    backend.join().expect("unknown Gradle owner backend");
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("unknown Gradle owner JSON");
+    assert_eq!(
+        stdout["result"]["coverage"]["filterEvidence"], "PARTIAL",
+        "unknown indexed Gradle ownership cannot prove a negative match: {stdout:#}"
+    );
+    assert_eq!(
+        stdout["result"]["cardinality"],
+        serde_json::json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 0}),
+        "unknown indexed Gradle ownership cannot produce exact zero: {stdout:#}"
+    );
+}
+
+#[test]
+fn gradle_module_filter_is_exact_when_complete_index_proves_candidates_have_no_owner() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(workspace.join("src/main/kotlin/sample")).expect("workspace sources");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let source = workspace.join("src/main/kotlin/sample/Source0000.kt");
+    std::fs::write(&source, "package sample\nclass Source0000\n").expect("Kotlin source");
+    let script = workspace.join("src/main/kotlin/sample/Script.kts");
+    std::fs::write(&script, "println(\"fixture\")\n").expect("Kotlin script");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = create_workspace_index(&home, &workspace, "proven-no-gradle-owner", 0);
+    index.seed_progress("app", "COMPLETE", 0, 0);
+    let backend = spawn_small_mixed_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("proven-no-gradle-owner.sock"),
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--module",
+            "gradle:.#:app",
+        ])
+        .output()
+        .expect("proven absent Gradle owner filter");
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    backend.join().expect("proven absent Gradle owner backend");
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("proven absent Gradle owner JSON");
+    assert_eq!(
+        stdout["result"]["coverage"]["filterEvidence"], "COMPLETE",
+        "complete index and script non-applicability prove both negative matches: {stdout:#}"
+    );
+    assert_eq!(
+        stdout["result"]["cardinality"],
+        serde_json::json!({"type": "EXACT", "totalCount": 0}),
+        "proven negative Gradle ownership must retain exact zero: {stdout:#}"
     );
 }
 

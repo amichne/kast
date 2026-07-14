@@ -95,7 +95,10 @@ impl SourceIndexGeneration {
     pub(super) fn try_from_database(value: i64) -> Option<Self> {
         u64::try_from(value).ok().map(Self)
     }
+}
 
+#[cfg(test)]
+impl SourceIndexGeneration {
     pub(crate) fn value(self) -> u64 {
         self.0
     }
@@ -126,7 +129,10 @@ impl SourceIndexModuleName {
         (!value.is_empty() && value.trim() == value && !value.chars().any(char::is_control))
             .then_some(Self(value))
     }
+}
 
+#[cfg(test)]
+impl SourceIndexModuleName {
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
@@ -175,10 +181,6 @@ impl SourceIndexModuleProgress {
         })
     }
 
-    pub(crate) fn module_name(&self) -> &SourceIndexModuleName {
-        &self.module_name
-    }
-
     pub(crate) fn status(&self) -> SourceIndexProgressStatus {
         self.status
     }
@@ -189,6 +191,13 @@ impl SourceIndexModuleProgress {
 
     pub(crate) fn total_file_count(&self) -> u64 {
         self.total_file_count
+    }
+}
+
+#[cfg(test)]
+impl SourceIndexModuleProgress {
+    pub(crate) fn module_name(&self) -> &SourceIndexModuleName {
+        &self.module_name
     }
 
     fn is_exact(&self) -> bool {
@@ -220,16 +229,19 @@ impl SourceIndexSnapshotStamp {
         }
     }
 
-    pub(crate) fn generation(&self) -> SourceIndexGeneration {
-        self.generation
-    }
-
     pub(crate) fn module_progress(&self) -> &BTreeSet<SourceIndexModuleProgress> {
         &self.module_progress
     }
 
     pub(crate) fn pending_count(&self) -> SourceIndexPendingCount {
         self.pending_count
+    }
+}
+
+#[cfg(test)]
+impl SourceIndexSnapshotStamp {
+    pub(crate) fn generation(&self) -> SourceIndexGeneration {
+        self.generation
     }
 
     pub(crate) fn is_exact(&self) -> bool {
@@ -532,7 +544,10 @@ impl DirtyWorkspaceStamp {
             dirty_paths,
         }
     }
+}
 
+#[cfg(test)]
+impl DirtyWorkspaceStamp {
     pub(crate) fn repository_root(&self) -> &Path {
         &self.repository_root
     }
@@ -608,15 +623,18 @@ impl WorkspaceFilesystemStamp {
         Self(states)
     }
 
-    pub(crate) fn states(&self) -> &BTreeMap<WorkspaceFilePath, WorkspaceFilesystemPathState> {
-        &self.0
-    }
-
     pub(crate) fn state_for(
         &self,
         path: &WorkspaceFilePath,
     ) -> Option<&WorkspaceFilesystemPathState> {
         self.0.get(path)
+    }
+}
+
+#[cfg(test)]
+impl WorkspaceFilesystemStamp {
+    pub(crate) fn states(&self) -> &BTreeMap<WorkspaceFilePath, WorkspaceFilesystemPathState> {
+        &self.0
     }
 }
 
@@ -740,16 +758,19 @@ impl BackendModuleInventory {
         &self.content_roots
     }
 
-    pub(crate) fn dependency_module_names(&self) -> &BTreeSet<BackendModuleName> {
-        &self.dependency_module_names
-    }
-
     pub(crate) fn declared_file_count(&self) -> usize {
         self.declared_file_count
     }
 
     pub(crate) fn coverage(&self) -> BackendModuleCoverage {
         self.coverage
+    }
+}
+
+#[cfg(test)]
+impl BackendModuleInventory {
+    pub(crate) fn dependency_module_names(&self) -> &BTreeSet<BackendModuleName> {
+        &self.dependency_module_names
     }
 }
 
@@ -1165,13 +1186,6 @@ pub(crate) struct WorkspaceMatchCoverage {
 }
 
 impl WorkspaceMatchCoverage {
-    pub(crate) fn complete() -> Self {
-        Self {
-            candidate_inventory: WorkspaceCoverageDimension::Complete,
-            filter_evidence: WorkspaceCoverageDimension::Complete,
-        }
-    }
-
     pub(super) fn from_dimensions(
         candidate_inventory: WorkspaceCoverageDimension,
         filter_evidence: WorkspaceCoverageDimension,
@@ -1184,6 +1198,16 @@ impl WorkspaceMatchCoverage {
 
     pub(crate) fn candidate_inventory(self) -> WorkspaceCoverageDimension {
         self.candidate_inventory
+    }
+}
+
+#[cfg(test)]
+impl WorkspaceMatchCoverage {
+    pub(crate) fn complete() -> Self {
+        Self {
+            candidate_inventory: WorkspaceCoverageDimension::Complete,
+            filter_evidence: WorkspaceCoverageDimension::Complete,
+        }
     }
 
     pub(crate) fn filter_evidence(self) -> WorkspaceCoverageDimension {
@@ -1227,12 +1251,15 @@ impl WorkspaceIndexSnapshot {
         &self.limitations
     }
 
-    pub(crate) fn limitation_count(&self, code: WorkspaceInventoryLimitationCode) -> usize {
-        self.limitations.get(&code).copied().unwrap_or_default()
-    }
-
     pub(crate) fn coverage(&self) -> WorkspaceMatchCoverage {
         self.coverage
+    }
+}
+
+#[cfg(test)]
+impl WorkspaceIndexSnapshot {
+    pub(crate) fn limitation_count(&self, code: WorkspaceInventoryLimitationCode) -> usize {
+        self.limitations.get(&code).copied().unwrap_or_default()
     }
 }
 

@@ -100,6 +100,10 @@ struct WorkspaceFilesContinuationState {
     cumulative_returned_count: usize,
 }
 
+struct ValidatedWorkspaceFilesContinuation<'a> {
+    state: &'a WorkspaceFilesContinuationState,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(
     tag = "type",
@@ -381,11 +385,26 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         Ok(snapshot) => snapshot,
         Err(error) => match error {},
     };
+    let resumed_continuation = match consumed_state.as_ref() {
+        Some(state) => match validate_workspace_files_resumed_snapshot(
+            state,
+            &continuation_identity,
+            &snapshot,
+        ) {
+            Ok(continuation) => Some(continuation),
+            Err(error) => {
+                return error_envelope("agent/workspace-files".to_string(), None, error);
+            }
+        },
+        None => None,
+    };
     if workspace_files_candidate_authorities_unavailable(&snapshot, args.kind_domain()) {
         return workspace_files_unavailable(admitted_query, None);
     }
     let coverage = snapshot.coverage();
-    let filter_coverage = workspace_files_filter_coverage(snapshot.files(), &args);
+    let index_evidence_complete = workspace_files_index_evidence_complete(&snapshot);
+    let filter_coverage =
+        workspace_files_filter_coverage(snapshot.files(), &args, index_evidence_complete);
     let exact = coverage.candidate_inventory() == WorkspaceCoverageDimension::Complete
         && filter_coverage == WorkspaceCoverageDimension::Complete;
     let matching = snapshot
@@ -402,14 +421,8 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             known_minimum_count: matching.len(),
         }
     };
-    let index_evidence_complete = workspace_files_index_evidence_complete(&snapshot);
-    let start = match consumed_state.as_ref() {
-        Some(state) => match workspace_files_resume_offset(
-            state,
-            &continuation_identity,
-            snapshot.composition_digest(),
-            &matching,
-        ) {
+    let start = match resumed_continuation.as_ref() {
+        Some(continuation) => match workspace_files_resume_offset(continuation, &matching) {
             Ok(offset) => offset,
             Err(error) => {
                 return error_envelope("agent/workspace-files".to_string(), None, error);
@@ -514,6 +527,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             cardinality,
             snapshot.kind_coverage(),
             filter_coverage,
+            index_evidence_complete,
         ),
     )
 }
@@ -703,7 +717,14 @@ fn workspace_file_matches(file: &WorkspaceInventoryFile, args: &AgentWorkspaceFi
 fn workspace_files_filter_coverage(
     candidates: &[WorkspaceInventoryFile],
     args: &AgentWorkspaceFilesArgs,
+    index_evidence_complete: bool,
 ) -> WorkspaceCoverageDimension {
+    let module_complete = args.module.as_ref().is_none_or(|selector| match selector {
+        WorkspaceModuleSelector::Backend(_) => true,
+        WorkspaceModuleSelector::Gradle { .. } => candidates
+            .iter()
+            .all(|file| workspace_file_gradle_ownership_evidence_complete(file, index_evidence_complete)),
+    });
     let package_complete = args.package_selector.is_none()
         || candidates.iter().all(|file| {
             matches!(
@@ -727,10 +748,27 @@ fn workspace_files_filter_coverage(
                 .iter()
                 .all(|file| file.drift() != WorkspaceFileDrift::Unknown)
     });
-    if package_complete && source_set_complete && dirty_complete && drift_complete {
+    if module_complete
+        && package_complete
+        && source_set_complete
+        && dirty_complete
+        && drift_complete
+    {
         WorkspaceCoverageDimension::Complete
     } else {
         WorkspaceCoverageDimension::Partial
+    }
+}
+
+fn workspace_file_gradle_ownership_evidence_complete(
+    file: &WorkspaceInventoryFile,
+    index_evidence_complete: bool,
+) -> bool {
+    match file.index_state() {
+        WorkspaceFileIndexState::Indexed => !file.indexed_gradle_projects().is_empty(),
+        WorkspaceFileIndexState::MetadataUnavailable => index_evidence_complete,
+        WorkspaceFileIndexState::NotApplicable => true,
+        WorkspaceFileIndexState::Incompatible(_) => false,
     }
 }
 
@@ -825,7 +863,10 @@ fn issue_workspace_files_continuation(
         ))
         .map_err(workspace_files_continuation_failure)?;
     match serde_json::from_value::<WorkspaceFilesContinuationResult>(result) {
-        Ok(WorkspaceFilesContinuationResult::Issued { page_token }) => Ok(page_token),
+        Ok(WorkspaceFilesContinuationResult::Issued { page_token }) => page_token
+            .parse::<WorkspaceFilesPublicPageToken>()
+            .map(|token| token.canonical())
+            .map_err(|error| agent_error("AGENT_RESULT_INVALID", error)),
         Ok(WorkspaceFilesContinuationResult::Consumed { .. }) => Err(agent_error(
             "AGENT_RESULT_INVALID",
             "Workspace-file continuation issue returned a consume result.",
@@ -852,19 +893,10 @@ fn workspace_files_continuation_failure(failure: BackendRpcFailure) -> AgentErro
 }
 
 fn workspace_files_resume_offset(
-    state: &WorkspaceFilesContinuationState,
-    identity: &WorkspaceFilesContinuationIdentity,
-    composition_digest: &str,
+    continuation: &ValidatedWorkspaceFilesContinuation<'_>,
     matching: &[&WorkspaceInventoryFile],
 ) -> std::result::Result<usize, AgentError> {
-    if &state.identity != identity {
-        return Err(invalid_workspace_files_page(
-            "Workspace-file continuation identity does not match this query.",
-        ));
-    }
-    if state.composition_stamp_digest != composition_digest {
-        return Err(stale_workspace_files_page());
-    }
+    let state = continuation.state;
     let Some(last_index) = matching
         .iter()
         .position(|file| file.path().to_string() == state.last_relative_path)
@@ -878,6 +910,24 @@ fn workspace_files_resume_offset(
         ));
     }
     Ok(offset)
+}
+
+fn validate_workspace_files_resumed_snapshot<'a>(
+    state: &'a WorkspaceFilesContinuationState,
+    identity: &WorkspaceFilesContinuationIdentity,
+    snapshot: &crate::workspace_inventory::model::WorkspaceInventorySnapshot,
+) -> std::result::Result<ValidatedWorkspaceFilesContinuation<'a>, AgentError> {
+    if &state.identity != identity {
+        return Err(invalid_workspace_files_page(
+            "Workspace-file continuation identity does not match this query.",
+        ));
+    }
+    if state.composition_stamp_digest != snapshot.composition_digest()
+        || !snapshot.continuation_allowed()
+    {
+        return Err(stale_workspace_files_page());
+    }
+    Ok(ValidatedWorkspaceFilesContinuation { state })
 }
 
 fn invalid_workspace_files_page(message: &str) -> AgentError {
@@ -1055,15 +1105,7 @@ fn project_workspace_file_evidence(
                 WorkspaceFilesPackageEvidence::InvalidReference
             }
         },
-        source_index: match file.index_state() {
-            WorkspaceFileIndexState::Indexed => WorkspaceFilesIndexState::Indexed,
-            WorkspaceFileIndexState::MetadataUnavailable if index_evidence_complete => {
-                WorkspaceFilesIndexState::NotIndexed
-            }
-            WorkspaceFileIndexState::MetadataUnavailable
-            | WorkspaceFileIndexState::Incompatible(_) => WorkspaceFilesIndexState::Unknown,
-            WorkspaceFileIndexState::NotApplicable => WorkspaceFilesIndexState::NotApplicable,
-        },
+        source_index: workspace_files_index_state(file, index_evidence_complete),
         drift: match file.drift() {
             WorkspaceFileDrift::InSync => WorkspaceFilesDrift::None,
             WorkspaceFileDrift::FilesystemOnly => WorkspaceFilesDrift::FilesystemOnly,
@@ -1078,6 +1120,21 @@ fn project_workspace_file_evidence(
             WorkspaceFileDirtyState::Unknown => WorkspaceFilesDirty::Unknown,
             WorkspaceFileDirtyState::NotApplicable => WorkspaceFilesDirty::NotApplicable,
         },
+    }
+}
+
+fn workspace_files_index_state(
+    file: &WorkspaceInventoryFile,
+    index_evidence_complete: bool,
+) -> WorkspaceFilesIndexState {
+    match file.index_state() {
+        WorkspaceFileIndexState::Indexed => WorkspaceFilesIndexState::Indexed,
+        WorkspaceFileIndexState::MetadataUnavailable if index_evidence_complete => {
+            WorkspaceFilesIndexState::NotIndexed
+        }
+        WorkspaceFileIndexState::MetadataUnavailable
+        | WorkspaceFileIndexState::Incompatible(_) => WorkspaceFilesIndexState::Unknown,
+        WorkspaceFileIndexState::NotApplicable => WorkspaceFilesIndexState::NotApplicable,
     }
 }
 

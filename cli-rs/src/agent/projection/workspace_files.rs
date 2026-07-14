@@ -5,6 +5,7 @@ fn project_workspace_files_result(
     cardinality: AgentResultCardinality,
     kind_coverage: WorkspaceKindMatchCoverage,
     filter_coverage: WorkspaceCoverageDimension,
+    index_evidence_complete: bool,
 ) -> Value {
     if view.count {
         return workspace_files_count_result(
@@ -12,6 +13,7 @@ fn project_workspace_files_result(
             cardinality,
             kind_coverage,
             filter_coverage,
+            index_evidence_complete,
         );
     }
     let mut value = serde_json::to_value(result).unwrap_or(Value::Null);
@@ -62,6 +64,7 @@ fn workspace_files_count_result(
     cardinality: AgentResultCardinality,
     kind_coverage: WorkspaceKindMatchCoverage,
     filter_coverage: WorkspaceCoverageDimension,
+    index_evidence_complete: bool,
 ) -> Value {
     let groups = |values: Vec<(&'static str, WorkspaceFileKind)>| {
         let mut counts = BTreeMap::<&'static str, (usize, bool)>::new();
@@ -98,11 +101,11 @@ fn workspace_files_count_result(
         matching
             .iter()
             .map(|file| {
-                let value = match file.index_state() {
-                    WorkspaceFileIndexState::Indexed => "INDEXED",
-                    WorkspaceFileIndexState::MetadataUnavailable
-                    | WorkspaceFileIndexState::Incompatible(_) => "UNKNOWN",
-                    WorkspaceFileIndexState::NotApplicable => "NOT_APPLICABLE",
+                let value = match workspace_files_index_state(file, index_evidence_complete) {
+                    WorkspaceFilesIndexState::Indexed => "INDEXED",
+                    WorkspaceFilesIndexState::NotIndexed => "NOT_INDEXED",
+                    WorkspaceFilesIndexState::Unknown => "UNKNOWN",
+                    WorkspaceFilesIndexState::NotApplicable => "NOT_APPLICABLE",
                 };
                 (value, file.kind())
             })
