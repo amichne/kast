@@ -849,32 +849,49 @@
             "optional": true,
             "nullable": true
           },
-          "symbol": {
-            "type": "string"
-          },
-          "fileHint": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "kind": {
-            "type": "string",
-            "optional": true,
-            "nullable": true,
-            "enum": [
-              "class",
-              "interface",
-              "object",
-              "function",
-              "property"
+          "selector": {
+            "type": "object",
+            "fields": {
+              "fqName": {
+                "type": "string"
+              },
+              "declarationFile": {
+                "type": "string"
+              },
+              "declarationStartOffset": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string",
+                "optional": true,
+                "nullable": true,
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "OBJECT",
+                  "FUNCTION",
+                  "PROPERTY",
+                  "PARAMETER",
+                  "UNKNOWN"
+                ]
+              },
+              "containingType": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              }
+            },
+            "required": [
+              "fqName",
+              "declarationFile",
+              "declarationStartOffset"
             ]
           },
-          "containingType": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
           "includeDeclaration": {
+            "type": "boolean",
+            "optional": true
+          },
+          "includeUsageSiteScope": {
             "type": "boolean",
             "optional": true
           },
@@ -890,15 +907,23 @@
           }
         },
         "required": [
-          "symbol"
+          "selector"
         ]
       },
       "responseType": "KastReferencesResponse",
-      "successType": "REFERENCES_SUCCESS",
-      "failureType": "REFERENCES_FAILURE",
+      "successType": "AVAILABLE",
+      "responseVariants": [
+        "AVAILABLE",
+        "SUBJECT_NOT_FOUND",
+        "SUBJECT_IDENTITY_MISMATCH",
+        "UNSUPPORTED_SUBJECT_KIND",
+        "DEGRADED",
+        "CURSOR_STALE",
+        "CURSOR_INVALID"
+      ],
       "notes": [
-        "The 'symbol' field takes simple names only.",
-        "Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.",
+        "The selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.",
+        "Optional kind and containingType values are hard identity assertions.",
         "maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.",
         "Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.",
         "Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict."

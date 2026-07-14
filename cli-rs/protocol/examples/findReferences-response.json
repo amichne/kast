@@ -24,12 +24,17 @@
         },
         "references": [
             {
-                "filePath": "/workspace/src/Sample.kt",
-                "startOffset": 48,
-                "endOffset": 53,
-                "startLine": 4,
-                "startColumn": 13,
-                "preview": "greet"
+                "location": {
+                    "filePath": "/workspace/src/Sample.kt",
+                    "startOffset": 48,
+                    "endOffset": 53,
+                    "startLine": 4,
+                    "startColumn": 13,
+                    "preview": "greet"
+                },
+                "containingSymbol": {
+                    "type": "TOP_LEVEL"
+                }
             }
         ],
         "cardinality": {

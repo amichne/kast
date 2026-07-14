@@ -3,13 +3,17 @@
   "jsonrpc": "2.0",
   "method": "symbol/references",
   "params": {
-    "containingType": "com.example.Widget",
-    "fileHint": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
     "includeDeclaration": true,
-    "kind": "property",
+    "includeUsageSiteScope": true,
     "maxResults": 25,
     "pageToken": "00000000-0000-4000-8000-000000000337",
-    "symbol": "Widget",
+    "selector": {
+      "containingType": "com.example.Widget",
+      "declarationFile": "example-declarationFile",
+      "declarationStartOffset": 128,
+      "fqName": "com.example.Widget",
+      "kind": "UNKNOWN"
+    },
     "workspaceRoot": "/absolute/path/to/workspace"
   }
 }

@@ -202,8 +202,7 @@ fn symbol_count_returns_cardinality_without_candidate_payloads() {
     assert!(stdout["result"].get("identity").is_none(), "{stdout}");
 }
 
-#[test]
-#[ignore = "replaced by standalone relationship command projection coverage"]
+#[cfg(any())]
 fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
     const RELATION_ITEMS: usize = 500;
     let temp = tempfile::tempdir().expect("tempdir");
