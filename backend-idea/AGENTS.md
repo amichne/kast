@@ -46,6 +46,11 @@ continuation state for the IDEA runtime.
   owner. Store pure canonical anchors, query/source/generation proof, bounded
   candidate/frontier/visited/provider positions, and returned-before counts;
   never retain PSI, smart pointers, or analysis-session objects.
+- Store claim is typed as retained, retained-expired, or absent. An absent
+  canonical handle is always invalid `UNKNOWN_HANDLE`, including
+  restart-to-fresh-backend, random UUID, replay, and eviction. Stale requires
+  retained generation mismatch or retained expiry. Test backend-A to backend-B
+  and random UUID equivalence with zero provider work.
 - Handle lookup, query/source validation, `PsiModificationTracker` generation
   comparison, target resolution, provider work, and next-state commit happen in
   one `timedReadAction`. `analysis-server` must not preflight generation or own
@@ -66,13 +71,24 @@ continuation state for the IDEA runtime.
   canonical-anchor snapshots. Do not materialize
   `FileTypeIndex.getFiles(...)`, call `ReferencesSearch.findAll`, or call
   inheritor `findAll()`.
+- Outgoing calls use resumable lexical DFS over the selected declaration body.
+  Persist only a bounded root-to-current child-index stack and next-reference
+  index. Traverse nested blocks and local property initializers; skip nested
+  function, class, object, accessor, and lambda bodies. Test local-declaration
+  exclusion and page resume without replay or PSI retention.
+- After exact anchor verification, apply ADR 0022's command-family subject-kind
+  matrix before provider/index work or state creation. Unsupported pairs return
+  the owning response's `UNSUPPORTED_SUBJECT_KIND`; test every pair with a
+  zero-work tripwire.
 
 ## Verification
 
 Run `./gradlew :backend-idea:test` and the affected `:analysis-server:test`
 contract tests. Relationship changes also require cap/cap-plus-one provider
 tests, generation/write-race tests, `ObservedAnalysisBackend` delegation tests,
-and opaque continuation resume tests.
+opaque continuation resume tests, absent-versus-stale classification tests,
+outgoing lexical-DFS nested-declaration/page-resume tests, and the complete
+subject-kind zero-work matrix.
 
 Workspace inventory changes also require:
 

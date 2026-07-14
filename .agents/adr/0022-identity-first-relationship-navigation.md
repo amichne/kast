@@ -117,6 +117,26 @@ anchored public selector cannot select ambiguously. Public callers copy the
 typed declaration anchor returned by Kast; they do not invent unchecked raw
 backend positions or arbitrary JSON.
 
+After resolving and verifying the anchor, each command admits only subject
+kinds for which its provider has defined semantics. Unsupported kinds return a
+closed `UNSUPPORTED_SUBJECT_KIND` outcome containing the verified subject and
+actual kind before candidate enumeration, index reads, or provider state is
+created:
+
+| Command family | Admitted `SymbolKind` values |
+| --- | --- |
+| `references` | `CLASS`, `INTERFACE`, `OBJECT`, `FUNCTION`, `PROPERTY`, `PARAMETER` |
+| `callers`, `callees` | `FUNCTION` |
+| `implementations` | `CLASS`, `INTERFACE` |
+| `hierarchy` | `CLASS`, `INTERFACE`, `OBJECT` |
+| `impact` | `CLASS`, `INTERFACE`, `OBJECT`, `FUNCTION`, `PROPERTY` |
+
+`UNKNOWN` is never admitted. An optional `--kind` that disagrees with the
+resolved declaration is still `SUBJECT_IDENTITY_MISMATCH`; the unsupported
+outcome applies only after the selector has been verified. Tests cover every
+command/kind pair and prove unsupported kinds perform zero provider or impact
+query work.
+
 `symbol/references`, `symbol/callers`, `symbol/implementations`, and
 `symbol/hierarchy` all consume the anchored selector. The references endpoint
 must not retain its former FQ-name-plus-hints request or call
@@ -229,12 +249,21 @@ continuation. Every state also holds consumed evidence, returned-before proof,
 normalized query fingerprint, selected subject, and semantic generation.
 Handles have a 15-minute lifetime, at most 1,024 live entries per exact
 workspace runtime, and at most 16,384 candidate/frontier/visited/provider
-entries per state. Runtime restart, eviction, expiry, or generation change
-returns a family-typed stale outcome; malformed, unknown, wrong-family, or
-query-mismatched handles return a family-typed invalid outcome. No family may
-restart from zero or silently select another subject. Continuation handles
-retain #337's one-shot consumption rule: replaying a consumed handle is typed
-invalid and cannot duplicate provider work.
+entries per state. #337's canonical UUID carries no issuer or runtime epoch,
+so an absent handle cannot honestly distinguish backend restart, eviction,
+consumed replay, or a never-issued random UUID. Every canonical handle absent
+from the current store therefore returns the family-typed invalid reason
+`UNKNOWN_HANDLE`; backend A's handle presented after restart to fresh backend B
+and a random canonical UUID have exactly that outcome and perform zero provider
+work. Malformed syntax remains a request-validation error. Recognized
+wrong-family or query-mismatched state returns a family-typed invalid reason.
+A family-typed stale outcome requires positive retained-state evidence:
+`GENERATION_CHANGED`, or `EXPIRED` only when typed lookup observes the expired
+entry before removing it. Capacity eviction is absent/invalid unless a future
+superseding ADR adds bounded verifiable tombstones. No family may restart from
+zero or silently select another subject. Continuation handles retain #337's
+one-shot consumption rule: replaying a consumed handle is `UNKNOWN_HANDLE` and
+cannot duplicate provider work.
 
 IDEA performs handle lookup, query/source validation, reads
 `PsiModificationTracker.modificationCount`, compares the stored generation,
@@ -266,8 +295,15 @@ Exactly cap-plus-one proves overflow: the provider stops immediately and
 returns a typed family budget outcome with no records, page claim, or retained
 partial snapshot. At or below the cap, it sorts the complete bounded snapshot,
 then scans each file in lexical offset order with `PsiReferenceScanner`.
-Outgoing calls walk the selected declaration's direct PSI children in lexical
-offset order. Implementations and direct subtypes use
+Outgoing calls use a resumable lexical depth-first walk of the selected
+declaration body. The pure-data continuation is a bounded root-to-current stack
+of child indexes plus the next reference index; it rehydrates PSI only inside
+the same generation-checked read action. The walk descends through nested
+blocks and local property initializers, but skips nested function, class,
+object, property-accessor, and lambda bodies so calls owned by another
+declaration are not attributed to the selected function. Page boundaries may
+occur at any element/reference position without replay or omission.
+Implementations and direct subtypes use
 `ClassInheritorsSearch.search(..., checkDeep = false).forEach` with the same
 cap-plus-one admission rule, canonicalize anchors in the same read action, and
 sort only a complete admitted snapshot. No provider emits a sorted prefix when
@@ -279,7 +315,9 @@ unbounded declaration walks, and inheritor `findAll()` are prohibited. Tests
 tripwire those APIs, count provider visits, exercise the exact cap and cap plus
 one, assert overflow returns no partial page, force a page boundary within one
 file/frontier/provider stream, and prove page two neither revisits nor skips
-evidence.
+evidence. Outgoing tests cover nested blocks, local property initializers,
+nested local functions/classes/lambdas, and page breaks on both sides of an
+excluded declaration boundary.
 
 The hard SQLite impact offset ceiling is 10,000. Impact keeps its separate
 exact node count and applies `LIMIT limit + 1 OFFSET offset` to the ordered row
@@ -317,6 +355,9 @@ reasons described above.
 A degraded result has outcome `DEGRADED`, carries its response family's closed
 reason enum, names the missing capability or index evidence, omits records and
 page claims, and preserves the verified subject plus exact selector.
+`UNSUPPORTED_SUBJECT_KIND` is a separate closed expected outcome, not
+degradation, and likewise preserves the selector and verified subject while
+proving zero provider work.
 Family-typed cursor-stale and cursor-invalid outcomes are separate closed
 expected variants and also preserve the selector. Operational backend failures,
 malformed payloads, and exact-root admission failures remain structured
@@ -368,9 +409,16 @@ the Clap tree and does not create a second prose capability catalog.
 | Module ownership and atomicity/schema gates | `analysis-api/AGENTS.md`, `analysis-server/AGENTS.md`, `backend-idea/AGENTS.md`, `index-store/AGENTS.md`, `cli-rs/src/metrics_database/AGENTS.md` |
 | Public examples and installed routing | `docs/reference/agent-commands.md`, `cli-rs/resources/kast-skill/` |
 | Budget, composition, and paging gates | `cli-rs/tests/agent_relationship_navigation_smoke.rs` |
+| Exact compact token budget | `tiktoken-rs` test-only dependency in `cli-rs/Cargo.toml`, locked by `cli-rs/Cargo.lock` |
 
 Generated catalogs and protocol files remain outputs. Edit their source
 owners and regenerate them.
+
+The 1,500-token compact-output ceiling is executable, not an estimated string
+length. `agent_relationship_navigation_smoke.rs` uses the `tiktoken-rs` 0.12
+dev dependency's `cl100k_base()` tokenizer against rendered public JSON.
+Adding that test-only dependency and its lockfile entries is an intentional
+part of #339; no runtime token-codec dependency is added.
 
 ## Validation
 

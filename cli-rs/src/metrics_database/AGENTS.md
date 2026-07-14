@@ -15,3 +15,7 @@ same-file overloads, so functions and properties must return typed overload
 granularity degradation rather than aggregate FQ edges. A declaration-row FQ
 count may reject additional stored non-callable rows; it is never callable
 overload proof.
+
+Impact admits only class, interface, object, function, and property subjects.
+Verified parameter or unknown kinds return `UNSUPPORTED_SUBJECT_KIND` before
+any declaration, count, or impact-row query; keep zero-SQL regression tests.

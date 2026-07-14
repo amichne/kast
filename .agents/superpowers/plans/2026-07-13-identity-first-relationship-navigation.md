@@ -18,8 +18,9 @@ its Rust/SQLite path and conservatively degrades callables because the
 production declaration key cannot prove same-file overload isolation.
 
 **Tech Stack:** Kotlin/JVM, JUnit Jupiter, IDEA PSI/search APIs, Rust 2024,
-Clap, serde, SHA-256, SQLite/rusqlite, scripted Unix-socket integration tests,
-generated JSON Schema/OpenAPI contracts, Markdown/Zensical.
+Clap, serde, SHA-256, SQLite/rusqlite, test-only `tiktoken-rs`, scripted
+Unix-socket integration tests, generated JSON Schema/OpenAPI contracts,
+Markdown/Zensical.
 
 ## Global Constraints
 
@@ -41,6 +42,13 @@ generated JSON Schema/OpenAPI contracts, Markdown/Zensical.
   discovery or accept arbitrary JSON.
 - Default relationship limit is 4; valid limits are 1 through 200. Call and
   type hierarchy depth defaults to 1; valid depth is 1 through 8.
+- After exact anchor verification, reject unsupported kinds with each response
+  root's closed `UNSUPPORTED_SUBJECT_KIND` variant before provider/index work.
+  References admit class/interface/object/function/property/parameter;
+  callers/callees admit function; implementations admit class/interface;
+  hierarchy admits class/interface/object; impact admits
+  class/interface/object/function/property. `UNKNOWN` is never admitted. Test
+  the full command-kind matrix with zero provider/index calls for every reject.
 - Reference tokens preserve only #337's opaque `ReferencePageToken`. Its `INDEX|IDEA`
   source, provider position, returned-before, query, subject, and generation
   stay in backend-owned state. Impact tokens preserve a typed SQLite offset
@@ -63,7 +71,10 @@ generated JSON Schema/OpenAPI contracts, Markdown/Zensical.
   15-minute TTL, at most 1,024 handles per exact workspace runtime, and at most
   16,384 candidate/frontier/visited/provider entries per state. Generation
   check, provider work, and next-state commit happen atomically in one backend
-  read action. Stale and invalid handles are family-typed outcomes.
+  read action. An absent canonical handle is always family-typed invalid
+  `UNKNOWN_HANDLE`, including restart-to-fresh-backend, random UUID, replay, and
+  eviction. Stale requires retained state that proves generation change, or
+  retained expiry observed before removal.
 - Migrate `KastReferencesRequest`, `KastReferencesQuery`, and
   `KastReferencesResponse` to the anchored selector; remove named resolution
   from the endpoint, extract `KastScaffoldReferences.kt`, and migrate
@@ -80,10 +91,11 @@ generated JSON Schema/OpenAPI contracts, Markdown/Zensical.
 - Generated catalog, schema, protocol, and docs artifacts must come from their
   checked-in source owners.
 - Update the nearest scoped `AGENTS.md` whenever this work changes public
-  command ownership or validation gates. The token formats use existing
-  SHA-256/hex plus canonical ASCII and opaque handles; `Cargo.toml` and
-  `Cargo.lock` must remain unchanged unless a reviewed implementation proves a
-  new dependency is necessary.
+  command ownership or validation gates. Runtime token formats use existing
+  SHA-256/hex plus canonical ASCII and opaque handles. The executable exact
+  output-budget gate intentionally adds `tiktoken-rs = "0.12"` as a dev
+  dependency and updates `Cargo.toml` plus `Cargo.lock`; no runtime dependency
+  is added.
 
 ---
 
@@ -124,6 +136,9 @@ New and materially changed files have one responsibility:
   frontier, visited identities, provider continuation, and accumulated proof.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedReferenceProvider.kt`
   owns bounded `FileTypeIndex.processFiles` plus `PsiReferenceScanner` paging.
+- `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaOutgoingLexicalDfsProvider.kt`
+  owns resumable lexical DFS for outgoing calls; its bounded child-index stack
+  and next-reference position are pure data under `backend-shared`.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedInheritorProvider.kt`
   owns bounded `ClassInheritorsSearch.forEach` direct-inheritor paging.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackend.kt`
@@ -156,14 +171,16 @@ The implementation is incomplete until every row is executable:
 | --- | --- |
 | Public parsing | Commands visible; declaration file/offset required together; #341-relative file accepted; retired symbol flags and old execution path rejected; typed direction exhaustive; depth/limit/token ranges fail in Clap. |
 | Identity | ADR 0016 exact success/fallback is superseded; one anchored identity object passes unchanged; same-file overloads resolve by file/start offset; anchor-unavailable/not-found/non-null mismatch stop before relation work; no discovery method called. |
+| Subject kinds | The complete command-by-`SymbolKind` matrix returns closed `UNSUPPORTED_SUBJECT_KIND` for rejected pairs after identity verification and before provider/index work; every reject has a zero-work assertion. |
 | References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt`/fixtures consume occurrences; #337 opaque cursor round-trips without source/counter serialization; exact target path/offset isolates forced INDEX overloads; unsafe first INDEX falls back to IDEA while continuation never switches; plus-one cardinality, containment, stable pages, and 500-record budget are proved. |
-| Atomic state | Backend store is sole owner; generation check/provider work/state commit share one read action; queued-write races and `ObservedAnalysisBackend` delegation are covered; server owns no state. |
-| Calls | Incoming/outgoing fixed by command; BFS ordering; bounded `FileTypeIndex.processFiles`/`PsiReferenceScanner` provider; depth, result, state, and visit bounds; page boundary resumes without revisit; cap-plus-one and forbidden materializers are tested. |
+| Atomic state | Backend store is sole owner; generation check/provider work/state commit share one read action; queued-write races and `ObservedAnalysisBackend` delegation are covered; server owns no state; A-issued/restart-to-B, random UUID, replay, and eviction are identically absent/invalid while retained generation mismatch is stale. |
+| Calls | Incoming/outgoing fixed by command; BFS ordering; bounded `FileTypeIndex.processFiles`/`PsiReferenceScanner` incoming provider and resumable lexical-DFS outgoing provider; nested blocks/local initializers are visited, nested callable/type/lambda bodies are excluded, and page resume preserves the pure-data stack without revisit; depth, result, state, visit, cap-plus-one, and forbidden-materializer gates are tested. |
 | Implementations | Interface implementation and class subclass records; exact versus known-minimum cardinality; stateful deterministic bounded provider pages; stale/invalid handles; capability absent degrades. |
 | Hierarchy | Supertypes/subtypes/both; depth; cycle; stateful deterministic bounded provider pages; semantic-generation changes invalidate continuation; capability absent degrades. |
 | Impact | Compiler position verifies the anchor; production row path/offset/kind gates non-callable impact; a production-store same-file overload regression proves FQ row counts cannot authorize callable impact; ordered `limit + 1 offset`, 503 records, and incompatible-index degradation are covered. |
-| Projection | Wrong item family or family reason, nullable mismatch actual, invalid/plus-one counts, false exactness, omitted subject/selector, primitive failure code, token/truncation disagreement, and malformed subject fail closed. |
+| Projection | Wrong item family or family reason, nullable mismatch actual, invalid/plus-one counts, false exactness, omitted subject/selector, unsupported-kind mismatch, primitive failure code, token/truncation disagreement, and malformed subject fail closed. |
 | Contracts | Catalog, schemas, samples, API docs, OpenAPI, packaged content, and public command docs regenerated and checked. |
+| Output budget | `tiktoken-rs::cl100k_base()` encodes rendered compact JSON under the locked dev-dependency graph; every high-cardinality fixture stays within 120 lines and 1,500 tokens. |
 | End to end | Resolve identity, prove references/callers, continue a page, estimate impact; no text search, raw dispatch, or unbounded request. |
 
 ### Task 1: Public command and bounded argument contract
@@ -418,7 +435,7 @@ val known = ContainingSymbolEvidence.Known(
         fqName = "sample.Controller.handle",
         kind = SymbolKind.FUNCTION,
         declarationFile = NormalizedPath.parse("/repo/Controller.kt"),
-        declarationStartOffset = NonNegativeInt.from(10),
+        declarationStartOffset = NonNegativeInt(10),
         containingType = "sample.Controller",
     ),
 )
@@ -438,6 +455,11 @@ than exact cardinality, a continuation whose `KNOWN_MINIMUM` is below
 truncation without a next handle, and visited count above the declared
 candidate budget. Reference tests prove the same plus-one invariant using the
 private #337 continuation state.
+Define stale reasons only for positively recognized retained state
+(`GENERATION_CHANGED`, plus `EXPIRED` when typed lookup observes the retained
+expired entry). Define invalid `UNKNOWN_HANDLE`, `FAMILY_MISMATCH`, and
+`QUERY_MISMATCH`; absence after restart, eviction, replay, or a random canonical
+UUID all uses `UNKNOWN_HANDLE`.
 
 - [ ] **Step 2: Run the API tests and confirm RED**
 
@@ -595,6 +617,11 @@ unsafe identity returns references-family `BOUND_SOURCE_UNAVAILABLE` or
 `INDEX_IDENTITY_UNAVAILABLE` and an IDEA tripwire remains untouched. Inspect
 the backend test store to prove the opaque token binds source, provider
 position, returned-before, query, subject, and generation; none appear in JSON.
+Have backend A issue a reference token, then present it to fresh backend B and
+compare the result with a never-issued random canonical UUID. Both are
+references cursor-invalid `UNKNOWN_HANDLE` with zero INDEX/IDEA provider work.
+A retained token whose stored generation differs is cursor-stale
+`GENERATION_CHANGED`; replay after consumption is absent/invalid.
 
 Pass the second exact anchor and prove the raw backend receives only that
 file/offset while a `resolveNamedSymbol` tripwire remains untouched. At the
@@ -605,6 +632,9 @@ or verified subject and mismatch actual is non-null. Extract
 `KastScaffoldReferences.kt`; add a `symbol/scaffold` dispatcher scenario that
 proves `ReferenceOccurrence.containingSymbol` survives the orchestrator adapter
 rather than becoming `List<Location>`.
+Exercise every `SymbolKind`: references admit all known kinds except `UNKNOWN`;
+the rejected case returns `UNSUPPORTED_SUBJECT_KIND` after anchor verification
+and before INDEX or IDEA work.
 
 - [ ] **Step 2: Run the focused tests and confirm RED**
 
@@ -622,7 +652,10 @@ containing-symbol evidence.
 
 Use #337's selected source and opaque token as authority, but refactor its
 backend-held state to pure anchors/provider positions rather than smart
-pointers or `IdeaReferenceTraversal`. In one `timedReadAction`, validate the
+pointers or `IdeaReferenceTraversal`. Replace destructive untyped `take` with a
+typed atomic claim: retained, retained-expired, or absent. Absent always maps
+to invalid `UNKNOWN_HANDLE`; stale requires retained generation mismatch or
+retained expiry. In one `timedReadAction`, validate the
 stored generation and query, ask the bound source for at most the evidence
 needed to return `limit + 1` usable occurrences, and commit the next state
 before leaving the read action. Map those bounded usages to
@@ -651,8 +684,10 @@ overflow.
 
 Change `KastReferencesRequest` and `KastReferencesQuery` to carry
 `KastExactSymbolSelector`. Replace success/failure with references-owned closed
-available, subject-not-found, identity-mismatch, degraded, cursor-stale, and
-cursor-invalid variants. `KastReferencesDegradedReason` alone owns
+available, subject-not-found, identity-mismatch, unsupported-subject-kind,
+degraded, cursor-stale, and cursor-invalid variants. Apply the reference
+subject-kind boundary before source selection.
+`KastReferencesDegradedReason` alone owns
 `REFERENCES_UNAVAILABLE`, `INDEX_IDENTITY_UNAVAILABLE`,
 `BOUND_SOURCE_UNAVAILABLE`, and `CANDIDATE_BUDGET_REACHED`. Resolve the
 canonical declaration file/start offset directly, verify every identity field,
@@ -713,6 +748,7 @@ git commit -m "feat: report bounded reference ownership"
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/RelationCandidateVisitBudget.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/RelationCandidateBatch.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/CallTraversalState.kt`
+- Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/OutgoingLexicalDfsState.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/TypeTraversalState.kt`
 - Create: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/RelationTraversalStateBudget.kt`
 - Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/hierarchy/CallHierarchyEngine.kt`
@@ -720,12 +756,14 @@ git commit -m "feat: report bounded reference ownership"
 - Create: `backend-shared/src/test/kotlin/io/github/amichne/kast/shared/hierarchy/RelationshipPagingTest.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaCallEdgeResolver.kt`
+- Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaOutgoingLexicalDfsProvider.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaTypeEdgeResolver.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ServerHeldContinuationStore.kt`
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedInheritorProvider.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackend.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastDiagnosticsService.kt`
 - Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaRelationCandidateBudgetTest.kt`
+- Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaOutgoingLexicalDfsProviderTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackendTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
 - Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/RpcAnalysisDispatcher.kt`
@@ -741,9 +779,10 @@ git commit -m "feat: report bounded reference ownership"
   capability enums, and full-fidelity raw hierarchy results.
 - Produces: internal `symbol/implementations` and `symbol/hierarchy` methods;
   statefully paged flat call/implementation/hierarchy records; typed available,
-  subject-not-found, identity-mismatch, degraded, cursor-stale, and
-  cursor-invalid variants; operational faults remain RPC errors. Exact-lookup
-  ambiguity does not leak into anchored relationship responses.
+  subject-not-found, identity-mismatch, unsupported-subject-kind, degraded,
+  cursor-stale, and cursor-invalid variants; operational faults remain RPC
+  errors. Exact-lookup ambiguity does not leak into anchored relationship
+  responses.
 
 - [ ] **Step 1: Add RED model and traversal tests**
 
@@ -752,15 +791,15 @@ canonical order. Assert breadth-first call pages and identity-sorted
 implementation/type pages. The page window assertion is:
 
 ```kotlin
-val visitBudget = RelationCandidateVisitBudget.from(65)
+val visitBudget = RelationCandidateVisitBudget(65)
 val first = engine.start(
-    limit = PositiveInt.from(4),
+    limit = PositiveInt(4),
     candidateVisitBudget = visitBudget,
     stateBudget = RelationTraversalStateBudget.default(),
 )
 val second = engine.resume(
     state = requireNotNull(first.nextState),
-    limit = PositiveInt.from(4),
+    limit = PositiveInt(4),
     candidateVisitBudget = visitBudget,
 )
 assertEquals(4, first.records.size)
@@ -779,7 +818,10 @@ does not serialize returned-before.
 Add overloaded functions with the same FQ name, kind, file, and containing type
 but different start offsets; prove the anchor selects only the requested
 declaration. Add dispatcher scenarios for each endpoint covering resolved, not
-found, identity mismatch, missing capability, and malformed backend payload.
+found, identity mismatch, unsupported subject kind, missing capability, and
+malformed backend payload. Exercise the callers/callees, implementations, and
+hierarchy rows of ADR 0022's command-kind matrix; each unsupported pair
+preserves the verified subject and invokes no candidate provider.
 Add a schema tripwire proving the compatibility-only ambiguity variant is
 absent from anchored relationship responses. Assert that a missing capability
 returns the exact ADR 0022 degraded code and no raw backend query is issued.
@@ -789,6 +831,15 @@ reference stream, inside one outgoing lexical walk, and inside one subtype
 class-index stream. Resume from the returned family state and prove page two
 uses the preserved frontier, visited identities, and exact provider
 continuation without replay or overlap.
+
+Build an outgoing function containing calls in nested `if`/`when`/`try`
+blocks, a local property initializer, a local function, a local class method,
+and a lambda. Assert lexical DFS includes the nested-block and initializer
+calls, excludes the nested function/class/lambda bodies, and stores only a
+root-to-current child-index stack plus next-reference index. Break a page
+immediately before and after an excluded local declaration; resume under the
+same generation and prove page two starts at the exact next owned call without
+duplicate, omission, or PSI/smart-pointer state.
 
 Instrument fake call/type candidate providers with an atomic visit counter.
 Seed 20,000 incoming references, a declaration with 20,000 outgoing PSI
@@ -800,13 +851,16 @@ must sort and page the complete admitted snapshot. Add tripwires for
 `FileTypeIndex.getFiles(...).toList()`, `ReferencesSearch.findAll`, and
 inheritor `findAll()`.
 
-With a fake clock and semantic-generation provider, assert 15-minute expiry,
-1,024-handle eviction, runtime-generation replacement, PSI-generation change,
-wrong family, wrong query, malformed handle, and the 16,384-entry state ceiling
-map to the exact family stale, invalid, or state-budget outcomes before
-provider work. Replay a consumed #337 token/handle and prove one-shot `take`
-returns typed invalid without repeating provider work. Queue a PSI write before
-a continuation and during its provider
+With a fake clock and semantic-generation provider, model store claim as
+retained, retained-expired, or absent. Assert backend A issues a token and fresh
+backend B classifies it exactly like a never-issued random canonical UUID:
+cursor-invalid `UNKNOWN_HANDLE`, zero provider work. Replay and capacity
+eviction have the same absent outcome. Assert a recognized state with changed
+generation is cursor-stale before provider work; retain `EXPIRED` only when the
+typed claim observes the expired entry before removal. Wrong family/query are
+invalid, malformed syntax fails request parsing, and the 16,384-entry ceiling
+is the exact family state-budget outcome. Queue a PSI write before a
+continuation and during its provider
 call: generation validation, provider work, and next-state commit share one
 read action, so the old page is rejected or the write waits until after commit.
 Assert `ObservedAnalysisBackend` delegates each handle exactly once, preserves
@@ -846,6 +900,10 @@ sealed interface KastHierarchyResponse {
         val selector: KastExactSymbolSelector,
         val actual: SymbolIdentity,
     ) : KastHierarchyResponse
+    data class UnsupportedSubjectKind(
+        val selector: KastExactSymbolSelector,
+        val subject: SymbolIdentity,
+    ) : KastHierarchyResponse
     data class Degraded(
         val selector: KastExactSymbolSelector,
         val subject: SymbolIdentity,
@@ -872,10 +930,14 @@ closed at the protocol boundary; do not add a stringly failure result variant.
 Resolve the selector's file/start offset directly, then verify FQ name, kind,
 and containing type. A different resolved declaration supplies the non-null
 mismatch actual; no declaration is subject-not-found. Do not invoke workspace
-symbol search. Add `RelationCandidateVisitBudget` with a per-page maximum
+symbol search. Apply the closed family subject-kind matrix next and return
+`UNSUPPORTED_SUBJECT_KIND` before provider/index calls or state creation. Add
+`RelationCandidateVisitBudget` with a per-page maximum
 derived from the result limit and capped at 4,096 visits. Start a family state
-when no handle is supplied; otherwise load it through the backend-owned
-`ServerHeldContinuationStore`. In one `timedReadAction`, validate family,
+when no handle is supplied; otherwise claim it through the backend-owned
+`ServerHeldContinuationStore` as retained, retained-expired, or absent. Absent
+always maps to invalid `UNKNOWN_HANDLE`; only retained generation mismatch and
+retained expiry map stale. In one `timedReadAction`, validate family,
 normalized query fingerprint, `PsiModificationTracker.modificationCount`, TTL,
 and state budget, run the provider, and commit the next state. The call/type
 resolver interfaces accept the current pure-data provider continuation and
@@ -888,8 +950,13 @@ Incoming calls reuse `IdeaBoundedReferenceProvider`: stream
 stops enumeration and returns the family budget outcome without records, page
 claims, or retained partial state. At or below the cap, sort the complete
 bounded path snapshot and use `PsiReferenceScanner` in lexical offset order.
-Outgoing evidence uses direct lexical PSI offsets without first walking the
-complete declaration.
+Outgoing evidence uses `IdeaOutgoingLexicalDfsProvider`. Starting at the
+selected declaration body, it walks PSI children depth-first in lexical order
+and persists a bounded pure-data root-to-current child-index stack plus the
+next reference index. It descends into nested blocks and local property
+initializers, skips nested functions/classes/objects/accessors/lambdas, and
+rehydrates the stack only after the same read action has validated the stored
+generation. It never stores PSI or restarts the declaration walk on page two.
 `IdeaBoundedInheritorProvider` uses
 `ClassInheritorsSearch.search(..., checkDeep = false).forEach` through the
 direct-inheritor cap plus one and applies the same no-partial-state overflow
@@ -945,8 +1012,10 @@ git commit -m "feat: add identity-first relationship endpoints"
 - Modify: `cli-rs/src/agent/projection/view.rs`
 - Modify: `cli-rs/src/agent/projection/symbol.rs`
 - Modify: `cli-rs/src/agent/AGENTS.md`
-- Review unchanged: `cli-rs/Cargo.toml`
-- Review unchanged: `cli-rs/Cargo.lock`
+- Review unchanged in this task: `cli-rs/Cargo.toml` (Task 7 owns the
+  test-only tokenizer dependency)
+- Review unchanged in this task: `cli-rs/Cargo.lock` (Task 7 owns its locked
+  resolution)
 - Modify: `cli-rs/tests/agent_relationship_navigation_smoke.rs`
 - Modify: `cli-rs/tests/agent_result_projection_smoke.rs`
 - Modify: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SqliteSourceIndexStoreTest.kt`
@@ -958,7 +1027,8 @@ git commit -m "feat: add identity-first relationship endpoints"
   modes, and #337 relationship projection helpers.
 - Produces: `AgentRelationPageToken`, family request runners, closed result
   records, one reusable anchored exact identity projection, typed
-  degraded/stale/invalid projections, and query-composition proof.
+  unsupported-kind/degraded/stale/invalid projections, and query-composition
+  proof.
 
 - [ ] **Step 1: Add RED end-to-end scripted-backend tests**
 
@@ -987,8 +1057,10 @@ For calls and hierarchy, return a canonical opaque `rth1` handle, capture the
 public token, and assert page two sends the identical handle without exposing
 frontier state. Script stale and invalid response variants and assert they
 preserve selector/reason. Script a degraded response and assert selector plus
-verified subject survive projection. A response containing a primitive failure
-code or omitting required identity proof must fail closed.
+verified subject survive projection. Script each family's
+`UNSUPPORTED_SUBJECT_KIND` and assert selector/subject survive while a
+wrong-family unsupported-kind shape fails closed. A response containing a
+primitive failure code or omitting required identity proof must fail closed.
 
 - [ ] **Step 2: Run the Rust relation test and confirm RED**
 
@@ -1051,8 +1123,9 @@ enum AgentRelationRecord {
 ```
 
 Project `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`,
-`DEGRADED`, `RELATION_CURSOR_STALE`, and `RELATION_CURSOR_INVALID` as expected
-typed results. Reject `SUBJECT_AMBIGUOUS` if received on an anchored
+`UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `RELATION_CURSOR_STALE`, and
+`RELATION_CURSOR_INVALID` as expected typed results. Reject
+`SUBJECT_AMBIGUOUS` if received on an anchored
 relationship endpoint. Preserve the selector in every non-available outcome
 and the verified subject in degraded output. Reject
 wrong-family records, returned-count mismatches, false exact cardinality,
@@ -1074,8 +1147,9 @@ candidate without either anchor component to typed
 
 Update `cli-rs/src/agent/AGENTS.md` with `relations.rs`, anchored exact identity,
 state-handle wrapping, projection ownership, and the relationship smoke gate.
-Confirm `Cargo.toml` and `Cargo.lock` are absent from the implementation diff;
-adding a token dependency requires a new reviewed plan amendment.
+Confirm this task does not change runtime dependencies. Task 7 intentionally
+owns the reviewed `tiktoken-rs` dev-dependency and lockfile update for the
+executable compact-output gate.
 
 - [ ] **Step 5: Run focused Rust tests GREEN**
 
@@ -1139,6 +1213,8 @@ runs. Add missing/null/mismatched declaration-offset cases that return
 `symbol/query` runs. At the CLI boundary, capture page one's token and assert
 page two has no overlap. Assert a references token and a token for another
 declaration anchor fail before position resolution or SQLite.
+Add verified `PARAMETER` and `UNKNOWN` identities and assert
+`UNSUPPORTED_SUBJECT_KIND` before declaration, count, or impact-row SQL.
 
 - [ ] **Step 2: Run impact tests and confirm RED**
 
@@ -1160,7 +1236,9 @@ returned FQ name, kind, containing type, file, and offset with the selector;
 not-found and mismatch stop before SQLite. Do not call the FQ-name resolver or
 `symbol/query`.
 
-After anchor verification, query the production declaration identity by FQ
+After anchor verification, admit only `CLASS`, `INTERFACE`, `OBJECT`,
+`FUNCTION`, or `PROPERTY`; return `UNSUPPORTED_SUBJECT_KIND` for `PARAMETER` or
+`UNKNOWN` before SQLite. Then query the production declaration identity by FQ
 name, canonical path, non-null declaration offset, and kind. No or mismatched
 row returns `IMPACT_INDEX_IDENTITY_UNAVAILABLE`. `FUNCTION` and `PROPERTY`
 return `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE` even when the row matches,
@@ -1215,6 +1293,8 @@ git commit -m "feat: page source impact by identity"
 - Modify: `cli-rs/tests/rpc_catalog_smoke.rs`
 - Modify: `cli-rs/tests/repo_resource_smoke.rs`
 - Modify: `cli-rs/tests/agent_relationship_navigation_smoke.rs`
+- Modify: `cli-rs/Cargo.toml`
+- Modify generated dependency resolution: `cli-rs/Cargo.lock`
 - Modify generated: `cli-rs/resources/kast-skill/references/commands.yaml`
 - Modify generated: `cli-rs/resources/kast-skill/references/requests/`
 - Modify generated: `cli-rs/protocol/`
@@ -1235,8 +1315,9 @@ explicit `--workspace-root`. Add a catalog test requiring
 `symbol/implementations` and `symbol/hierarchy` request schemas and every typed
 response variant, including non-null identity mismatch, each family's
 capability/budget reason, references index-identity/bound-source unavailable,
-family cursor stale/invalid, state-budget reached, identity-anchor unavailable,
-impact index-identity unavailable, and impact overload granularity unavailable.
+family unsupported-subject-kind/cursor stale/cursor invalid, state-budget
+reached, identity-anchor unavailable, impact index-identity unavailable, and
+impact overload granularity unavailable.
 Require the
 exact symbol schema to place canonical declaration file/start offset in the
 single reusable identity object. Reject any references schema that still
@@ -1248,8 +1329,11 @@ implementations, a cyclic branching call graph, a deep type hierarchy, and 503
 impact nodes. For each compact default assert:
 
 ```rust
+use tiktoken_rs::cl100k_base;
+
+let tokenizer = cl100k_base().expect("cl100k_base tokenizer must initialize");
 assert!(pretty_json.lines().count() <= 120);
-assert!(cl100k_base().encode_with_special_tokens(&pretty_json).len() <= 1_500);
+assert!(tokenizer.encode_with_special_tokens(&pretty_json).len() <= 1_500);
 assert_eq!(result["returnedCount"], 4);
 assert_eq!(result["truncated"], true);
 assert!(result["nextPageToken"].is_string());
@@ -1261,18 +1345,26 @@ scripted request budget. Traversal fixtures force a page boundary inside one
 provider stream and assert the opaque handle resumes frontier/visited/provider
 state without exposing it in public JSON. The scripted backend harness inspects
 private state and separately asserts cumulative
-`returnedBefore + returnedCount + 1`. Fake-clock/generation cases cover
-expiry, eviction, source changes, malformed handles, and state budget.
+`returnedBefore + returnedCount + 1`. Fake-clock/generation cases distinguish
+retained expiry/generation staleness from absent
+restart/eviction/replay/random-UUID invalidity and also cover source changes,
+malformed syntax, and state budget.
 Reference fixtures must include one `KNOWN_MINIMUM` page and one exhaustive
 `EXACT` page. Rust token decoding must recover only the original opaque
 `ReferencePageToken`; backend-store assertions observe `INDEX|IDEA`, provider
 position, returned-before, query, subject, and generation privately.
+
+Add `tiktoken-rs = "0.12"` under `[dev-dependencies]` in `cli-rs/Cargo.toml`
+and refresh `cli-rs/Cargo.lock` once with the manifest unlocked. This is the
+only new dependency and is test-only; the public token codec continues to use
+existing runtime dependencies.
 
 - [ ] **Step 2: Run contract tests and confirm RED**
 
 Run:
 
 ```console
+cargo check --manifest-path cli-rs/Cargo.toml --tests
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke --test rpc_catalog_smoke --test repo_resource_smoke --test agent_relationship_navigation_smoke
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 ```
@@ -1284,8 +1376,8 @@ yet describe the new methods and commands.
 
 Add typed `symbol/implementations` and `symbol/hierarchy` catalog entries.
 Update anchored references/callers fields, reusable exact identity, and closed
-degraded/stale/invalid response variants. Teach this exact public sequence in
-docs and the installed skill:
+unsupported-kind/degraded/stale/invalid response variants. Teach this exact
+public sequence in docs and the installed skill:
 
 ```console
 kast agent symbol \
@@ -1314,11 +1406,12 @@ kast agent impact \
   --workspace-root "$PWD"
 ```
 
-Explain typed degraded/stale/invalid outcomes, `EXACT` versus `KNOWN_MINIMUM`,
-opaque reference source pinning, backend generation-bound continuation,
-overload-wide impact limitations, and page-token reuse without exposing token
-encoding, backend state, raw RPC method names, or backend implementation
-classes.
+Explain typed unsupported-kind/degraded/stale/invalid outcomes, including that
+absent UUID handles are invalid while stale requires recognized state;
+`EXACT` versus `KNOWN_MINIMUM`, opaque reference source pinning, backend
+generation-bound continuation, overload-wide impact limitations, and
+page-token reuse without exposing token encoding, backend state, raw RPC method
+names, or backend implementation classes.
 
 - [ ] **Step 4: Regenerate every derived contract**
 
@@ -1352,7 +1445,7 @@ Expected: every contract and budget gate PASS.
 - [ ] **Step 6: Commit public contracts and generated outputs**
 
 ```console
-git add cli-rs/resources/kast-skill cli-rs/protocol cli-rs/tests docs
+git add cli-rs/Cargo.toml cli-rs/Cargo.lock cli-rs/resources/kast-skill cli-rs/protocol cli-rs/tests docs
 git commit -m "docs: teach identity-first relationship navigation"
 ```
 
@@ -1393,7 +1486,8 @@ candidate-visit/state budgets. Confirm backend generation validation, provider
 work, and state commit share one read action; `ObservedAnalysisBackend`
 delegates every new contract; `analysis-server` owns no state; scoped
 `AGENTS.md` files describe those owners; and `cli-rs/Cargo.toml`/`Cargo.lock`
-remain unchanged.
+contain only the reviewed `tiktoken-rs` dev-dependency resolution needed by the
+executable compact-output test.
 
 - [ ] **Step 2: Run complete Kotlin verification**
 
@@ -1436,9 +1530,11 @@ overload identity, exact-target INDEX references, extracted scaffold migration,
 opaque reference/traversal tokens, backend-owned query/source/generation
 binding, atomic read-action generation/provider/state behavior,
 `ObservedAnalysisBackend` delegation, frontier/visited resume behavior,
-family-specific typed stale/invalid/degraded outcomes, plus-one cardinality,
-bounded named IDEA providers, production-schema impact identity and overload
-regression, SQL bounds, and #338/#340 isolation.
+family-specific typed stale/invalid/degraded outcomes, consistent absent-handle
+invalidity, subject-kind admission, plus-one cardinality, resumable outgoing
+lexical DFS with nested-declaration exclusion, bounded named IDEA providers,
+executable locked token-budget proof, production-schema impact identity and
+overload regression, SQL bounds, and #338/#340 isolation.
 Repair findings with new focused RED/GREEN commits and rerun affected plus full
 gates.
 

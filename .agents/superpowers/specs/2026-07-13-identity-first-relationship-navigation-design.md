@@ -194,6 +194,17 @@ All relationship view families support ADR 0020 compact, fields, count,
 verbose, and explain modes. Detailed modes expose full validated backend
 evidence for the requested page only; they do not expand the result budget.
 
+The verified subject kind is a second typed admission boundary. Each response
+root has a closed `UNSUPPORTED_SUBJECT_KIND` variant carrying the selector and
+verified subject. The backend checks it after anchor verification and before
+provider or index work. References admit class, interface, object, function,
+property, and parameter; callers/callees admit function; implementations admit
+class and interface; hierarchy admits class, interface, and object; impact
+admits class, interface, object, function, and property. `UNKNOWN` is never
+admitted. A mismatched optional kind assertion remains identity mismatch, not
+unsupported-kind. A full command-by-`SymbolKind` matrix proves every rejected
+pair performs zero provider/index work.
+
 ## Kotlin contract and backend flow
 
 The internal typed symbol methods remain the bridge from canonical identity to
@@ -245,14 +256,21 @@ expires after 15 minutes, and one state contains at most 16,384 candidate,
 frontier, visited, and provider-continuation entries. The store binds handle,
 relation family, normalized query fingerprint, selected subject, reference
 source where applicable, private returned-before count, and semantic
-generation. Expiry, eviction, restart, or generation change returns a
-family-typed cursor-stale outcome; malformed handles and family/query
-mismatches return a family-typed cursor-invalid outcome. Reaching the
-state-entry ceiling returns the owning family's typed state-budget reason.
+generation. Lookup is typed as claimed retained state, retained-but-expired
+state, or absent. Because #337's UUID has no verifiable issuer epoch, absent is
+always cursor-invalid `UNKNOWN_HANDLE`: backend-A token after restart in fresh
+backend B, a never-issued random canonical UUID, consumed replay, and capacity
+eviction are intentionally indistinguishable and all perform zero provider
+work. Cursor-stale requires positive evidence from claimed state whose
+generation changed, or retained expiry observed before removal. Recognized
+family/query mismatches are cursor-invalid; malformed handle syntax fails
+request validation. Reaching the state-entry ceiling returns the owning
+family's typed state-budget reason.
 `AnalysisBackend` carries handles in its queries/results;
 `ObservedAnalysisBackend` overrides and delegates every changed method.
 `analysis-server` remains transport-only. The store retains #337's one-shot
-`take`: a consumed token cannot be replayed to repeat or fork provider work.
+consumption rule: a successful typed claim removes the entry, so a consumed
+token cannot be replayed to repeat or fork provider work.
 
 INDEX references query production `symbol_references` by FQ name, canonical
 target path, and the selected non-null `target_offset`. Every emitted row must
@@ -316,8 +334,13 @@ IDEA strategy is:
   the complete bounded path buffer and scans each file with the existing
   `PsiReferenceScanner` in lexical offset order. References and incoming calls
   share this provider plan.
-- outgoing calls walk direct PSI children of the selected declaration in
-  lexical offset order and stop at the visit budget; and
+- outgoing calls use `IdeaOutgoingLexicalDfsProvider`, a resumable lexical
+  depth-first walk of the selected declaration body. Its pure-data state is a
+  bounded root-to-current child-index stack plus next reference index. It
+  traverses nested blocks and local property initializers, but does not descend
+  into nested functions, classes, objects, accessors, or lambda bodies. Resume
+  rehydrates the stack only under the unchanged-generation read action and
+  continues at the exact next reference; and
 - `IdeaBoundedInheritorProvider` uses
   `ClassInheritorsSearch.search(..., checkDeep = false).forEach`, stops at the
   direct-inheritor cap plus one, and applies the same no-partial-page overflow
@@ -327,13 +350,17 @@ IDEA strategy is:
 No provider calls `FileTypeIndex.getFiles(...).toList()`,
 `ReferencesSearch.findAll`, or inheritor `findAll()`. Crossing the cap returns a
 family-specific candidate-budget outcome instead of a partial deterministic
-page; no sorted prefix is observable. Both provider adapters return
+page; no sorted prefix is observable. The bounded snapshot providers return
 `visitedCandidateCount`, consumed evidence, next provider state, and
-exhaustiveness only for an admitted complete snapshot. The backend-owned engine
-updates the frontier and visited identities atomically. Tests tripwire the
-forbidden APIs, instrument visits, exercise cap and cap-plus-one inputs, assert
-overflow has no records/page claim/state, and force page breaks inside one
-file, frontier parent, and provider stream.
+exhaustiveness only for an admitted complete snapshot. The outgoing provider
+returns the same evidence with its bounded lexical DFS stack. The backend-owned
+engine updates the frontier and visited identities atomically. Tests tripwire
+the forbidden APIs, instrument visits, exercise cap and cap-plus-one inputs,
+assert overflow has no records/page claim/state, and force page breaks inside
+one file, frontier parent, and provider stream. Outgoing fixtures additionally
+prove nested blocks and local property initializers are included, nested
+callable/type/lambda bodies are excluded, and resumption around those
+boundaries neither replays nor skips an owned call.
 
 ## Rust result model
 
@@ -405,7 +432,8 @@ paging, so two pages in an unchanged index have no overlap.
 ## Error and degradation model
 
 Expected anchored relationship outcomes are `AVAILABLE`, `SUBJECT_NOT_FOUND`,
-and `SUBJECT_IDENTITY_MISMATCH`. `SUBJECT_AMBIGUOUS` remains confined to exact
+`SUBJECT_IDENTITY_MISMATCH`, and `UNSUPPORTED_SUBJECT_KIND`.
+`SUBJECT_AMBIGUOUS` remains confined to exact
 lookup and internal compatibility requests; it is not a public anchored
 relationship response. Mismatch carries a non-null actual `SymbolIdentity`;
 absence at the anchor is not encoded as `actual = null`. Capability, provider,
@@ -413,6 +441,13 @@ or index absence is `DEGRADED`, with a closed reason enum owned by that response
 family. A degraded result preserves the exact selector and verified subject;
 it never returns an empty page that looks exhaustive. Each response family
 also owns its typed cursor-stale and cursor-invalid variants.
+
+The closed stale reasons are `GENERATION_CHANGED` and `EXPIRED`; `EXPIRED` is
+legal only from a typed retained-expired claim. The closed invalid reasons are
+`UNKNOWN_HANDLE`, `FAMILY_MISMATCH`, and `QUERY_MISMATCH`. A syntactically
+malformed handle does not enter these outcomes. This taxonomy deliberately
+makes restart-to-fresh-backend and random canonical UUID identical instead of
+guessing issuer history that #337's token does not encode.
 
 There is no cross-family `RelationDegradedCode`. References own
 `REFERENCES_UNAVAILABLE`, `INDEX_IDENTITY_UNAVAILABLE`,
@@ -457,16 +492,20 @@ Scoped `AGENTS.md` files record the host-agnostic handle model,
 transport-only server boundary, backend-owned atomic continuation state,
 production index identity limitations, and Rust command/projection gates.
 Opaque server handles and the impact ASCII offset use existing `sha2`/`hex`
-support; this design adds no Rust token codec dependency and leaves
-`Cargo.toml`/`Cargo.lock` unchanged.
+support, so no runtime token codec is added. The exact compact-output gate does
+add `tiktoken-rs = "0.12"` under Rust dev-dependencies and the corresponding
+`Cargo.lock` entries; both files are intentional #339 changes.
 
 ## Output budget
 
-Compact relationship defaults use four records and must stay below 120 lines
-and 1,500 `cl100k_base` tokens. Fixtures include at least 500 references, a
+Compact relationship defaults use four records and must stay at or below 120
+lines and 1,500 `cl100k_base` tokens. Fixtures include at least 500 references, a
 branching cyclic call graph, 250 implementations, a deep bidirectional type
 hierarchy, and 503 source-impact nodes. Tests measure the public JSON result,
-not a conveniently small backend fixture.
+not a conveniently small backend fixture. The integration test imports
+`tiktoken_rs::cl100k_base`, constructs the tokenizer with a test failure on
+initialization error, and asserts the encoded rendered JSON length directly;
+the gate therefore compiles and runs under the locked Cargo graph.
 
 Verbose and explain fixtures remain bounded by the explicit limit. They are
 not subject to the compact token ceiling, but a test proves that requesting
@@ -495,14 +534,16 @@ raw public dispatch, text search, or an unbounded backend request.
 | --- | --- |
 | Clap surface | Five relation commands are public; required declaration file/offset pairs parse; old symbol relation flags and their `symbol_lookup.rs` execution path are removed; raw aliases fail; invalid depths, limits, directions, anchors, and tokens fail before execution. |
 | Identity composition | ADR 0016 exact success/fallback is superseded explicitly; one exact symbol `identity` object feeds every anchored command unchanged; same-file overload fixtures select by file/start offset; anchor-unavailable/not-found/non-null mismatch outcomes do not navigate or discover. |
+| Subject-kind admission | Every command-kind pair follows the closed matrix; unsupported pairs return `UNSUPPORTED_SUBJECT_KIND` with selector/verified subject and zero provider/index work. |
 | References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt` and fixtures consume occurrences; #337's opaque cursor round-trips without serialized source/counters; target path/offset INDEX reads isolate a forced overload; unsafe first-page INDEX falls back to IDEA while an INDEX-bound continuation never switches; deterministic pages do not overlap; continuation proves the plus-one known minimum; containing symbol and `usageSiteScope` are non-conflicting. |
-| Atomic backend state | #337 `ServerHeldContinuationStore` is the only semantic owner; generation check, provider work, and state commit occur in one read action; queued-write races reject stale state; `ObservedAnalysisBackend` delegates each handle-bearing method once; `analysis-server` owns no duplicate store. |
-| Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; bounded `FileTypeIndex.processFiles` plus `PsiReferenceScanner` pages preserve frontier/provider state; cap-plus-one and forbidden materializer tripwires prove bounded work. |
+| Atomic backend state | #337 `ServerHeldContinuationStore` is the only semantic owner; generation check, provider work, and state commit occur in one read action; queued-write races reject stale state; backend-A token after restart-to-B and random UUID are identically absent/invalid with zero work, while retained generation mismatch is stale; `ObservedAnalysisBackend` delegates each handle-bearing method once; `analysis-server` owns no duplicate store. |
+| Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; bounded incoming search preserves frontier/provider state; outgoing lexical DFS includes nested blocks/local initializers, excludes nested callable/type/lambda bodies, and resumes its pure child-index/reference stack without overlap; cap-plus-one and forbidden materializer tripwires prove bounded work. |
 | Implementations | Interfaces, abstract classes, and subclasses return typed implementation records; bounded `ClassInheritorsSearch.forEach` provider visits stay bounded; backend state resumes without overlap; stale/invalid handles and unavailable capability are distinct from an empty exhaustive result. |
 | Hierarchy | Supertypes/subtypes/both are exhaustive in Clap; depth, ordering, cycles, emitted limits, stateful frontiers, candidate visits, generation staleness, and degraded capability are typed. |
 | Impact | Compiler position lookup verifies the anchor; production row path/offset/kind identity gates non-callable impact; a production-store same-file overload regression proves FQ row counts cannot authorize callable aggregate edges; exact subjects retain total count plus `LIMIT limit + 1 OFFSET offset`; unavailable/incompatible index degrades without false empty success. |
-| Projection | Wrong-family records or degraded reasons, nullable mismatch actual, exposed count inconsistency, omitted subjects/selectors, primitive failure codes, and invalid page claims fail closed; backend state tests separately enforce cumulative plus-one proof; compact/fields/count/verbose/explain retain their closed contracts. |
+| Projection | Wrong-family records, degraded reasons, or unsupported-kind variants, nullable mismatch actual, exposed count inconsistency, omitted subjects/selectors, primitive failure codes, and invalid page claims fail closed; backend state tests separately enforce cumulative plus-one proof; compact/fields/count/verbose/explain retain their closed contracts. |
 | Contracts | Catalog, generated request schemas, OpenAPI, API docs, examples, and capability expectations regenerate from source owners. |
+| Output budget | Locked `tiktoken-rs::cl100k_base()` encoding proves every compact high-cardinality public fixture stays within 120 lines and 1,500 tokens. |
 | Guidance | Docs and packaged skill show identity reuse and semantic evidence consumption without text-search or raw-RPC fallback. |
 
 ## Non-goals
