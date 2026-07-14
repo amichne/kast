@@ -6,9 +6,76 @@ icon: lucide/search
 
 # Inspect Kotlin
 
-Use semantic inspection when a name, caller, diagnostic, or impact question
-needs compiler-backed evidence. In normal use, the agent runs these checks for
-you after Kast is installed and the project is open.
+Use semantic inspection when a file, name, caller, diagnostic, or impact
+question needs compiler-backed evidence. In normal use, the agent runs these
+checks for you after Kast is installed and the project is open.
+
+## Discover An Owned Kotlin File
+
+Start with the exact admitted workspace rather than a recursive file or Git
+search:
+
+```console
+kast agent workspace-files --workspace-root "$PWD"
+```
+
+The default compact page contains at most 20 compiler/project-model or Kotlin
+source-index candidates. Narrow the inventory before paging. Filters combine
+with AND semantics:
+
+```console
+kast agent workspace-files \
+  --workspace-root "$PWD" \
+  --kind source \
+  --module 'gradle:included/tools#:app' \
+  --source-set integrationTest \
+  --package named:com.example.orders \
+  --path-prefix src/integrationTest/kotlin \
+  --glob '**/*Service.kt'
+```
+
+Package and source-set filters match structured proof only. `root` means a
+compiler/PSI-proven root package; `named:<fq-name>` means an exact proven
+canonical package. A directory name, legacy source-set label, or text parser
+guess does not match. Gradle module selectors include the workspace-relative
+linked-build root and absolute project path, so root and included builds may
+both own `:app` without being conflated.
+
+If `nextPageToken` is present, repeat every result-affecting option and consume
+the returned token once:
+
+```console
+kast agent workspace-files \
+  --workspace-root "$PWD" \
+  --kind source \
+  --limit 20 \
+  --page-token '<nextPageToken>'
+```
+
+Do not remove filters to make a continuation fit. A mismatched, malformed,
+unknown, or replayed token fails as `INVALID_WORKSPACE_FILES_PAGE_TOKEN`. If
+the bound backend, index, filesystem, or requested Git evidence changed, it
+fails as `STALE_WORKSPACE_FILES_PAGE`; run a fresh unpaged query explicitly.
+
+Check `cardinality`, `coverage`, and `limitations` before treating absence as
+proof. `EXACT` means both candidate inventory and requested filter evidence are
+complete. `KNOWN_MINIMUM` contains only proved matches. A stable partial result
+may still continue its known matches. For scripts, the Kotlin source index is
+not applicable: unrelated `.kt` indexing progress does not reduce a
+script-only result, while mixed results keep source and script coverage
+separate.
+
+Use the selected record without translating its path dialect:
+
+```console
+kast agent diagnostics \
+  --workspace-root "$PWD" \
+  --file-path '<filePath>'
+kast agent symbol \
+  --workspace-root "$PWD" \
+  --query OrderService \
+  --file-hint '<filePath>'
+```
 
 ## Resolve Identity First
 
@@ -52,6 +119,7 @@ Continue with [plan safe edits](plan-safe-edits.md) for the mutation flow.
 
     ```console
     kast agent verify --workspace-root "$PWD"
+    kast agent workspace-files --kind source --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent symbol --query OrderService --references --workspace-root "$PWD"
