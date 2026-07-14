@@ -430,12 +430,24 @@ fn workspace_files_catalog_declares_generation_bound_server_paging() {
     assert!(maximal["params"]["snapshotToken"].is_string());
     assert!(maximal["params"]["pageToken"].is_string());
 
-    let response: Value = serde_json::from_str(include_str!(
+    let metadata_response: Value = serde_json::from_str(include_str!(
         "../protocol/examples/workspaceFiles-response.json"
     ))
-    .expect("workspace-files response example");
-    let module = &response["result"]["modules"][0];
-    assert!(response["result"]["snapshotToken"].is_string());
+    .expect("workspace-files metadata response example");
+    let metadata_module = &metadata_response["result"]["modules"][0];
+    assert!(metadata_response["result"]["snapshotToken"].is_string());
+    assert_eq!(metadata_module["returnedFileCount"], 0);
+    assert!(metadata_module.get("nextPageToken").is_none());
+
+    let page_response: Value = serde_json::from_str(include_str!(
+        "../protocol/examples/workspaceFilesPage-response.json"
+    ))
+    .expect("workspace-files page response example");
+    let module = &page_response["result"]["modules"][0];
+    assert_eq!(
+        page_response["result"]["snapshotToken"],
+        metadata_response["result"]["snapshotToken"]
+    );
     assert_eq!(module["returnedFileCount"], 1);
     assert!(module["nextPageToken"].is_string());
 }
