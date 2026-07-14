@@ -36,13 +36,17 @@ AXI command dialect, and validation gates is
 - Skill guidance routes workspace discovery through public
   `kast agent workspace-files`, including typed source/script filters,
   generation/query-bound public continuation, kind-relevant partial coverage,
-  build-qualified Gradle ownership, and direct `filePath` composition with
+  build-qualified Gradle ownership, proven/unproven package and source-set
+  evidence, and direct `filePath` composition with
   diagnostics and exact symbol lookup. It must not teach
   `raw/workspace-files` as a public workflow.
 - Keep `.kts` source-index limitations and cross-source coherence limitations
   explicit. `.kt` index progress is irrelevant to a script-only request and
   #340, but relevant source/mixed partitions must remain partial. Never describe
   a partial or pending relevant candidate lane as exhaustive.
+- Teach package/source-set filters as proof-only: structured Kotlin
+  PSI/compiler package evidence and Gradle model source sets may match; legacy
+  or unavailable labels remain explicit partial evidence.
 - The packaged script is an internal verification helper. Keep it
   JSON-emitting, eager about input validation, and read-only by default.
 

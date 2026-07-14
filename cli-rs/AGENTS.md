@@ -23,6 +23,7 @@ resources.
   exact-root `.kt` index reads, compiler/project-model candidate composition,
   deepest-existing-ancestor path containment, source generation/progress/
   pending evidence, build-qualified indexed Gradle project identities, the
+  structured Gradle source-set and Kotlin package provenance states, the
   kind-relevant backend/index/filesystem/Git coherence barrier, and typed
   limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
@@ -61,6 +62,12 @@ and validation gates live in
   Indexed Gradle owners require validated rows from the dedicated
   `file_gradle_projects` association table and render/filter as a
   build-qualified identity.
+- Never match package/source-set filters against legacy strings. Only
+  compiler/PSI-proven package states and model-proven build-qualified Gradle
+  source sets match; unproven values remain explicit partial filter evidence.
+- `packaging/homebrew/release-state.json` is the schema-version source consumed
+  by `build.rs`. Keep its generated Rust value aligned with build-logic's Kotlin
+  value and fail closed on an older/malformed source-index schema.
 - Captured or agent-run commands default to compact structured output. Public
   mutations are plan-first and gated: repair and rename require `--apply`;
   setup supports `--dry-run`; forceful replacement requires `--force`.
@@ -101,6 +108,8 @@ all package, LSP, routing, generated-contract, and docs gates below:
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
+python3 packaging/homebrew/scripts/test-formulas.py
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-kast-routing-evals.sh

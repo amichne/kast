@@ -34,16 +34,22 @@ request candidates.
 
 The backend is authoritative for current compiler/project-model ownership and
 may report one physical path as owned by multiple modules. The source index is
-authoritative only for Kotlin-source facts it actually stores: manifest
-membership, a build-qualified Gradle project identity when the producer proved
-one from the linked Gradle model, source set, and package fully qualified name.
+authoritative only for Kotlin-source facts carried by typed producer evidence:
+manifest membership, build-qualified Gradle project and source-set identities
+proved by the linked Gradle model, and package identity proved by Kotlin PSI or
+compiler structure. The existing path-derived `source_set` and text-parser
+package guesses are legacy unproven labels, not workspace discovery facts.
 The legacy `file_metadata.module_path` value is an unqualified module label and
 is never parsed or exposed as a `GradleProjectPath`. The IDEA producer persists
 a set of separate association rows containing `(workspace-relative linked build
 root, absolute Gradle project path)` from `GradleModuleData`; an IDEA
 module-name fallback remains an unproven label and cannot enter those rows.
 Root and included builds may therefore both own `:app` without becoming the
-same indexed owner.
+same indexed owner. A custom `integrationTest` source root is a source-set fact
+only when the Gradle project model associates it; directory names do not prove
+it. Package evidence is a discriminated `PROVEN_ROOT`, `PROVEN_NAMED`,
+`UNPROVEN`, `UNAVAILABLE`, or `INVALID_REFERENCE` state. A nullable parser
+result can only produce `UNPROVEN`, never `PROVEN_ROOT`.
 `SourceIndexFilePolicy` remains `.kt`-only. A `.kts` record is therefore
 `NOT_APPLICABLE` to this Kotlin source index rather than `NOT_INDEXED`; issue
 #340 owns a separate Gradle DSL index. An index row alone does not prove current
@@ -106,15 +112,28 @@ workspace-wide and discards the backend attempt; an invalid page handle is
 local to its module only while the snapshot lease still validates.
 
 The generic store owns every issued state and never returns an owning reference
-to callers. A typed disposer is invoked exactly once when an entry leaves the
-store through expiry, capacity eviction, replacement, query mismatch, explicit
-invalidation or completion, terminal single-use consumption, or server
-shutdown. Consuming and leased APIs run caller work under store-owned lifetime
-control and dispose in `finally` when ownership terminates, including callback
-failure. Shutdown drains every typed store; one disposer failure cannot skip
-the remaining entries. Stateless continuation families use a no-op disposer,
-while ADR 0020 reference/diagnostic state adapts its closeable IDEA traversal
-to this owner instead of keeping a parallel lifecycle.
+to callers. Single-use consumption atomically claims the old handle and asks a
+borrowed-state callback for one typed `Complete(output)` or
+`Reissue(output, nextQuery)` transition. `Complete` ends ownership and disposes
+once. `Reissue` atomically moves the same owned state behind a fresh random
+handle, invalidates the old handle, returns the fresh handle with the output,
+and does not dispose. The callback cannot return `State`, so a #337 lazy IDEA
+traversal has exactly one owner while remaining open across pages.
+
+A typed disposer is invoked exactly once when ownership ends through expiry,
+capacity eviction, replacement, query mismatch, explicit invalidation,
+`Complete`, callback failure, or shutdown. Claimed entries remain store-owned:
+shutdown closes admissions and marks an in-flight claim for disposal after its
+callback, while a racing `Reissue` becomes terminal instead of republishing
+into a closed store. Store close does not return until every in-flight callback
+has exited and its state has reached that terminal disposal path. One disposer
+failure cannot skip remaining entries.
+Stateless continuation families use a no-op disposer. `KastPluginBackend` owns
+the backend stores, `ObservedAnalysisBackend` forwards an explicit closeable
+backend contract, and `RunningAnalysisServer.close()` is the single lifecycle
+owner that drains the dispatcher and backend stores after request admission
+stops. `RunningKastIdeaBackend` closes only that server owner and never closes
+the backend a second time.
 
 The backend builds a canonical requested-kind inventory in one read action and
 fingerprints its sorted module identities, source/content roots, dependencies,
@@ -167,9 +186,10 @@ are typed and conjunctive:
 - `--module` parses a closed selector: `backend:<exact-name>` or
   `gradle:<workspace-relative-build-root>#<absolute-project-path>`, and matches
   the corresponding backend owner or build-qualified indexed Gradle project;
-- `--source-set` matches an exact indexed source set;
+- `--source-set` matches an exact model-proven Gradle source-set name;
 - `--kind source|script` distinguishes `.kt` from `.kts`;
-- `--package` matches an exact indexed package fully qualified name;
+- `--package` matches an exact compiler/PSI-proven canonical Kotlin package
+  fully qualified name;
 - `--dirty clean|dirty|unknown` filters the typed Git state class;
 - `--drift none|filesystem-only|index-only|missing-on-disk|not-applicable|unknown`
   filters cross-source drift;
@@ -232,14 +252,16 @@ version. Each file record includes:
 - absolute `filePath` and workspace-relative `relativePath`;
 - sorted backend-module and build-qualified indexed-Gradle-project ownership
   sets;
-- source set when known;
+- discriminated proven/unproven source-set evidence, with build-qualified
+  Gradle source-set identities only for model-proven owners;
 - `KOTLIN_SOURCE` or `KOTLIN_SCRIPT` kind;
 - `INDEXED`, `NOT_INDEXED`, `NOT_APPLICABLE`, or `UNKNOWN` Kotlin source-index
   state;
 - `NONE`, `FILESYSTEM_ONLY`, `INDEX_ONLY`, `MISSING_ON_DISK`,
   `NOT_APPLICABLE`, or `UNKNOWN` drift;
-- `NAMED`, `ROOT`, `UNAVAILABLE`, or `INVALID_REFERENCE` package evidence,
-  with a package name only for `NAMED`;
+- `PROVEN_NAMED`, `PROVEN_ROOT`, `UNPROVEN`, `UNAVAILABLE`, or
+  `INVALID_REFERENCE` package evidence, with a canonical Kotlin package name
+  only for `PROVEN_NAMED`;
 - detailed dirty state collapsed by the public dirty filter into clean,
   dirty, or unknown; and
 - verbose/explain evidence identifying which sources established the record.
@@ -279,10 +301,20 @@ not invent a second path dialect.
 
 ## Candidate, path, package, and Git evidence
 
+`packaging/homebrew/release-state.json` is the single checked-in source-index
+schema authority. This change advances `source_index_schema_version` from 7 to
+8. The existing build-logic generator emits the Kotlin constant and
+`cli-rs/build.rs` emits the Rust constant from that file; neither language owns
+a second literal. Alignment tests compare both generated values with release
+state. `SqliteSourceIndexStore` rejects or resets a version-7 database before
+workspace reads, so an old database cannot silently lack the new association
+tables or provenance structures.
+
 The collector opens the configured exact-root source-index database read-only
 and reads one SQLite transaction joining `file_manifest`, `path_prefixes`,
-`file_metadata`, the dedicated `file_gradle_projects` association table, and
-`fq_names` together with `schema_version.generation`, all
+`file_metadata`, the dedicated `file_gradle_projects` and
+`file_gradle_source_sets` association tables, and `fq_names` together with
+`schema_version.generation`, all
 `module_index_progress`, and the count of unapplied `pending_updates`. It never
 promotes legacy `file_metadata.module_path` into Gradle identity. It keeps only
 `.kt` candidates because that is the source index's declared policy.
@@ -337,11 +369,19 @@ outside the workspace annotates only its contained endpoint. Failure to prove
 this mapping produces `DIRTY_STATE_UNAVAILABLE`; unmatched nested-workspace
 paths never become false `CLEAN` evidence.
 
-The index query selects a metadata-row marker, `package_fq_id`, and the joined
-package name separately. No metadata row is `UNAVAILABLE`; a present row with
-null `package_fq_id` proves `ROOT`; a non-null id with one joined name is
-`NAMED`; and a non-null id without a joined row is `INVALID_REFERENCE` plus
-`PACKAGE_METADATA_INVALID`. These states are never collapsed into one null.
+The index query selects a metadata-row marker, required `package_state`, typed
+`package_unproven_reason`, `package_fq_id`, the joined package name, and
+structured source-set association rows separately. `PROVEN_ROOT` requires a
+null id/reason; `PROVEN_NAMED` requires one valid joined canonical name and null
+reason; `UNPROVEN` carries no package id and one typed reason; and any
+constraint violation or dangling id is `INVALID_REFERENCE` plus
+`PACKAGE_METADATA_INVALID`. Kotlin PSI/compiler parsing canonicalizes escaped,
+backticked, and general Unicode package names before persistence. A missing or
+failed parser result is `UNPROVEN`, not root. Legacy `file_metadata.source_set`
+may be exposed only as an unproven label; `--source-set` matches only
+model-proven `file_gradle_source_sets` identities. Indexed metadata without a
+structured source-set owner remains `UNPROVEN`; absent metadata/index evidence
+is `UNAVAILABLE`. These states are never collapsed into one null or string.
 
 ## Drift and completeness rules
 
@@ -396,19 +436,25 @@ agent workflow.
   server-held opaque continuation leases, per-module workspace-file paging,
   public continuation state, source/content-root evidence,
   compiler/project-model `.kt`/`.kts` enumeration, and typed project-model
-  incompleteness. The shared store owns exact-once disposal, including #337
-  closeable IDEA traversal and server shutdown. Generated protocol artifacts
-  come from those Kotlin source owners.
+  incompleteness. The shared store owns atomic `Complete`/`Reissue` transfer
+  and exact-once disposal, including #337 closeable IDEA traversal.
+  `ObservedAnalysisBackend` and the running server lifecycle expose one backend
+  close owner so shutdown cannot leak or double-close those stores. Generated
+  protocol artifacts come from those Kotlin source owners.
 - `cli-rs/src/workspace_inventory.rs` and
   `cli-rs/src/workspace_inventory/` own the reusable uncapped inventory,
   generation/progress-aware exact-root Kotlin source-index reader, deepest-
   existing-ancestor containment, targeted filesystem evidence, dirty-state
   annotation, kind-relevant discriminated cross-source composition barrier, and
   internal types.
+- `packaging/homebrew/release-state.json` owns source-index schema version 8.
+  `build-logic` and `cli-rs/build.rs` generate aligned Kotlin and Rust constants
+  from it and test that alignment.
 - `index-store` owns transactional maintenance of the source-index generation,
-  module progress, pending-update state, and new `file_gradle_projects`
-  build-qualified ownership table. The IDEA producer supplies host-neutral
-  identity values; neither owner widens `SourceIndexFilePolicy`.
+  module progress, pending-update state, `package_state`, and new
+  `file_gradle_projects` and `file_gradle_source_sets` association tables. The
+  IDEA producer supplies host-neutral structured identity values; neither
+  owner widens `SourceIndexFilePolicy` or promotes legacy guesses into proof.
 - `cli-rs/src/agent/workspace_files.rs` owns public command execution and typed
   filter validation.
 - `cli-rs/src/agent/projection/workspace_files.rs` owns compact, selected,
@@ -430,7 +476,9 @@ The new inventory directory receives a scoped `AGENTS.md` when implementation
 begins because it creates a new source-ownership boundary. `backend-idea`
 receives its nearest ownership guide for the project-model inventory and Gradle
 bridge. `analysis-api` and generated-contract ownership guidance is updated
-with the wire change.
+with the wire change. `analysis-server`, `build-logic`, and `index-store`
+guidance records the single close owner, release-state generation chain, and
+version-8 provenance structures respectively.
 
 ## Validation
 
@@ -446,7 +494,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
+./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
 ./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
+python3 packaging/homebrew/scripts/test-formulas.py
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 ./gradlew test --no-daemon
 ./gradlew buildIdeaPlugin --no-daemon
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
@@ -462,9 +513,10 @@ git diff --check
 The implementation changes the Kotlin workspace-files query/result and shared
 continuation contracts, server validation, IDEA backend enumeration, source-
 index generation maintenance, fake backend, generated protocol, and raw
-catalogs. It adds and versions the `file_gradle_projects` source-index
-association table but does not change `SourceIndexFilePolicy`. The index-store
-test that rejects `.kts` remains an explicit gate.
+catalogs. It advances the release-state-owned source-index schema from 7 to 8,
+adds build-qualified project/source-set association tables and explicit package
+provenance, but does not change `SourceIndexFilePolicy`. The index-store test
+that rejects `.kts` remains an explicit gate.
 
 ## Change rule
 

@@ -32,8 +32,16 @@ Keep this unit small, stable, and reusable across every runtime host.
   token/query namespaces typed, require an explicit state disposer, and dispose
   exactly once on expiry, eviction, replacement, query mismatch, explicit
   completion/invalidation, terminal consume, callback failure, and server
-  shutdown. Lease/consume APIs must not return owning closeable state; #337 IDEA
-  traversal resources use the same lifecycle owner.
+  shutdown. Lease/consume APIs must not return owning closeable state. A
+  single-use callback returns only typed `Complete(output)` or
+  `Reissue(output, nextQuery)`: complete disposes, while reissue atomically
+  moves the same owned state behind a fresh handle without closing it. Claimed
+  state remains store-owned through callback/shutdown races, and store close
+  waits for claimed callbacks to exit and dispose; #337 IDEA
+  traversal resources use this same lifecycle owner across pages.
+- Use the explicit `CloseableAnalysisBackend` contract for server-owned backend
+  lifetime. Do not discover closeability with a runtime cast or give runtime
+  and server two independent owners.
 
 ## Verification
 

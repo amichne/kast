@@ -47,6 +47,15 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   replacement, query mismatch, explicit completion/invalidation, terminal
   consume, and server shutdown must all remove through the same disposer path;
   #337 closeable IDEA traversal state is adapted to that owner.
+- Make single-use consumption an atomic typed ownership transition. A borrowed
+  callback returns `Complete(output)` or `Reissue(output, nextQuery)`; reissue
+  moves the same owned state behind a fresh handle without closing it, and the
+  callback can never return `State`. Shutdown makes racing reissue terminal.
+  Store close waits for every claimed callback to exit and dispose before it
+  returns.
+- Give the running server one explicit closeable-backend owner. Thread it from
+  `KastIdeaBackendRuntime` through `ObservedAnalysisBackend`; stop admissions,
+  close dispatcher state, and close backend stores exactly once on shutdown.
 - Rust page validation is limited to non-repeated handles, non-overlapping
   physical paths, and cumulative returned evidence; generation/module/offset
   integrity belongs to the server-held state.
@@ -60,6 +69,13 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Never parse `file_metadata.module_path` as `GradleProjectPath`. Persist and
   read a separate build-qualified project-model tuple from the IDEA producer;
   keep an IDEA module-name fallback only as a legacy unproven label.
+- Never treat path-derived `file_metadata.source_set` or nullable text-parser
+  package output as proof. Persist model-proven build-qualified Gradle source
+  sets and Kotlin PSI/compiler package provenance as discriminated types. A
+  missing parser result is `UNPROVEN`, never root.
+- Advance `packaging/homebrew/release-state.json` from source-index schema 7 to
+  8 in Task 2. It remains the only checked-in schema source; generated Kotlin
+  and Rust constants and their tests must agree before a version-8 DB is read.
 - Keep the internal inventory uncapped by public filters and `--limit`.
 - Default `--limit` to 20, reject values outside 1 through 200, and keep compact
   output below 120 lines and 1,500 estimated tokens.
@@ -116,7 +132,9 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationCapacity.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationClock.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationStateDisposer.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationTransition.kt`
 - Create: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStoreTest.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/CloseableAnalysisBackend.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedWorkspaceFilesQuery.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceInventoryStaleException.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/InvalidWorkspaceFileCursorException.kt`
@@ -132,7 +150,11 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Create: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/ServerLimitsTest.kt`
 - Modify: `analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/FakeAnalysisBackend.kt`
 - Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/RpcAnalysisDispatcher.kt`
+- Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/AnalysisServer.kt`
+- Modify: `analysis-server/src/main/kotlin/io/github/amichne/kast/server/RunningAnalysisServer.kt`
+- Modify: `analysis-server/AGENTS.md`
 - Modify: `analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt`
+- Modify: `analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisServerSocketTest.kt`
 
 **Interfaces:**
 
@@ -147,7 +169,10 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   `WorkspaceProjectModelIncompleteReason` details.
 - Produces: reusable `ServerHeldContinuationStore<Token, Query, State>` with
   typed positive TTL/capacity, injected clock, deterministic eviction,
-  reusable leases, single-use consumption, and exact-once state disposal.
+  reusable leases, atomic single-use `Complete`/`Reissue` transitions, and
+  exact-once state disposal.
+- Produces: `CloseableAnalysisBackend`, an explicit server-owned lifecycle
+  contract. `RunningAnalysisServer` is the sole close owner after start.
 - Invariant: snapshot and page tokens are canonical random UUID handles, not
   encoded state. An input snapshot token is legal with `includeFiles=true` and
   one exact module, or with `includeFiles=false` and no module for final barrier
@@ -203,15 +228,22 @@ and migrate `FakeAnalysisBackend` reference/diagnostic continuation maps to this
 store before adding fake workspace-file state; do not maintain three ad hoc map
 policies.
 
-Use a close-counting fake state and prove exactly one disposal for expiry,
-eviction, same-handle replacement, query mismatch, explicit invalidation or
-successful completion, terminal consume, callback failure, and server
-shutdown. Trigger a second removal path after each case and assert the count
-stays one. A throwing disposer must not prevent shutdown from draining and
-disposing later entries. Adapt #337's closeable IDEA traversal to the same
-test surface so its resource lifetime is not merely theoretical. Race terminal
-consume against shutdown and expiry cleanup against replacement; atomic
-ownership transfer/removal must still close each fake state once.
+Use a close-counting fake state and consume at least three pages through
+`Reissue`, asserting the old token is invalid, each fresh token owns the same
+still-open state, and no close occurs before `Complete`. Then prove exactly one
+disposal for completion, callback failure, expiry, eviction, same-handle
+replacement, query mismatch, explicit invalidation, and server shutdown.
+Trigger a second removal path after each case and assert the count stays one.
+A throwing disposer must not prevent shutdown from draining later entries.
+Adapt #337's closeable IDEA traversal to the same test surface. Race
+`Complete` and `Reissue` against shutdown, expiry cleanup against replacement,
+and capacity eviction against reissue; a reissue that loses to shutdown is
+terminal and every fake closes once.
+
+Add socket/stdio lifecycle tests around a close-counting
+`CloseableAnalysisBackend`. Prove transport admission stops before backend
+close, dispatcher stores drain, backend close runs once on repeated server and
+runtime close, and a backend close failure does not skip descriptor cleanup.
 
 Assert invalid raw errors expose only typed `details.scope` of
 `SNAPSHOT_HANDLE` or `PAGE_HANDLE`. Snapshot failure discards the workspace-wide
@@ -252,12 +284,20 @@ distinct type. Add `snapshotToken: String?` and `pageToken: String?` to
 `WorkspaceFilesQuery`, add the closed kind domain, parse each once, and reject
 illegal field combinations.
 The shared continuation store owns random issue, TTL cleanup, capacity
-eviction, query comparison, reusable lookup, single-use consumption, and
-exact-once disposal. Its lease/consume APIs accept callbacks rather than
-returning owning state; every terminating path removes through one
-idempotence-guarded disposer and `close()` drains the store at server shutdown.
-Make the dispatcher/server lifecycle the single owner that closes every typed
-store instance exactly once.
+eviction, query comparison, reusable lookup, atomic single-use consumption,
+and exact-once disposal. Its callback receives borrowed state and returns only
+`ContinuationTransition.Complete(output)` or
+`ContinuationTransition.Reissue(output, nextQuery)`. Claim the old handle
+before callback execution. Complete/failure disposes; reissue atomically moves
+the same owned state behind a fresh handle and never returns `State`. Track
+in-flight claims so shutdown closes admissions and makes any racing reissue
+terminal after callback completion rather than closing a resource in use.
+`close()` waits for all claimed callbacks to finish and reach disposal.
+
+Introduce `CloseableAnalysisBackend` instead of a runtime cast. `AnalysisServer`
+accepts that type, and `RunningAnalysisServer.close()` owns ordered transport,
+dispatcher, backend, and descriptor cleanup exactly once. Fake/headless
+backends implement explicit no-resource close behavior.
 Do not encode or decode offsets, generations, modules, or queries in a token. Keep
 the server's positive page-size and
 maximum checks. Add matching `AnalysisException` subtypes: stale inventory is
@@ -299,12 +339,14 @@ snapshot to the success response. Do not migrate unrelated legacy skill types.
 - [ ] **Step 5: Run Kotlin paging tests green**
 
 Run the Step 2 command. Expected: all paging, validation, stale-generation,
-cross-module, and non-overlap tests pass.
+cross-module, non-overlap, atomic reissue, exact-close, and server close-owner
+tests pass.
 
 - [ ] **Step 6: Update source ownership and commit**
 
-Record query/result/generated ownership, exact-once continuation disposal, and
-paging/shutdown gates in `analysis-api/AGENTS.md`.
+Record query/result/generated ownership and atomic continuation transfer in
+`analysis-api/AGENTS.md`. Record ordered dispatcher/backend close ownership and
+shutdown gates in `analysis-server/AGENTS.md`.
 
 ```console
 git add analysis-api analysis-server
@@ -325,6 +367,8 @@ git commit -m "feat: page raw workspace file results"
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceInventoryGeneration.kt`
 - Create: `backend-idea/src/main/java/io/github/amichne/kast/idea/IdeaGradleWorkspaceFileBridge.java`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastIdeaBackendRuntime.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackend.kt`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaProjectIndexer.kt`
 - Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventoryTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
@@ -332,12 +376,24 @@ git commit -m "feat: page raw workspace file results"
 - Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/BuildQualifiedGradleProjectIdentity.kt`
 - Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/GradleProjectPath.kt`
 - Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/WorkspaceRelativeGradleBuildRoot.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/BuildQualifiedGradleSourceSetIdentity.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/GradleSourceSetName.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/IndexedPackageEvidence.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/IndexedPackageUnprovenReason.kt`
 - Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/FileIndexUpdate.kt`
 - Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/SourceFileIndexParser.kt`
 - Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt`
 - Modify: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SqliteSourceIndexStoreTest.kt`
 - Modify: `index-store/AGENTS.md`
 - Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScanner.kt`
+- Create: `backend-shared/src/test/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScannerTest.kt`
+- Modify: `build-logic/AGENTS.md`
+- Create: `build-logic/src/test/kotlin/WriteSourceIndexSchemaVersionTaskTest.kt`
+- Modify: `packaging/homebrew/release-state.json`
+- Verify unchanged: `packaging/homebrew/scripts/test-formulas.py`
+- Verify unchanged: `build-logic/src/main/kotlin/WriteSourceIndexSchemaVersionTask.kt`
+- Verify unchanged: `cli-rs/build.rs`
+- Create: `cli-rs/tests/source_index_schema_version_smoke.rs`
 - Verify unchanged: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/SourceIndexFilePolicy.kt`
 - Verify unchanged: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SourceIndexFilePolicyTest.kt`
 
@@ -357,6 +413,11 @@ git commit -m "feat: page raw workspace file results"
   source index persists a set of those owners in the dedicated
   `file_gradle_projects` association table, distinct from legacy
   `file_metadata.module_path`.
+- Produces: `BuildQualifiedGradleSourceSetIdentity` from model-owned Gradle
+  source roots and `IndexedPackageEvidence` from Kotlin PSI/compiler structure.
+  Legacy path/module labels remain explicit unproven evidence.
+- Produces: release-state source-index schema version 8, with Kotlin and Rust
+  constants generated from that one file and tested for alignment.
 
 - [ ] **Step 1: Write failing project-model inventory tests**
 
@@ -404,20 +465,52 @@ whose build root or project path fails typed parsing. Prove multiple owners per
 file, schema migration/reset, and generation change when an association is
 added, replaced, or removed.
 
+Add a Gradle fixture whose `integrationTest` source set owns a nonconventional
+root such as `quality/kotlin`; prove the structured Gradle source-set model
+produces `BuildQualifiedGradleSourceSetIdentity` while `/src/main/`, source-root
+basename, and IDEA module-name heuristics cannot. Add Kotlin PSI/compiler
+package fixtures for root, escaped keyword (`com.example.\`when\``), backticked
+non-identifier, and general Unicode names. A missing/failed semantic package
+producer must persist `UNPROVEN`, never `PROVEN_ROOT`. Prove legacy
+`file_metadata.source_set` is unproven and cannot satisfy `--source-set`.
+
+Set `packaging/homebrew/release-state.json.source_index_schema_version` to 8.
+Add a build-logic test that generates Kotlin
+`SOURCE_INDEX_SCHEMA_VERSION == 8` from that file and a Rust smoke test that
+compares its build-script-generated constant/environment with the same JSON and
+asserts the planned value is 8.
+Seed a structurally valid version-7 database without `file_gradle_projects` and
+prove `SqliteSourceIndexStore` rejects/resets it before any compatible read.
+Also prove a claimed version-8 database missing either association table or
+`package_state` fails closed rather than returning partial rows.
+
 After rebasing onto #337, migrate `KastPluginBackend` reference and diagnostic
 continuations to the shared store before adding workspace-file leases. Preserve
 their query/source/generation behavior and add TTL/capacity/single-use
 regressions. Adapt the closeable IDEA traversal to the store's typed disposer
-and assert exact-once close on mismatch, terminal consume, expiry/eviction, and
-plugin/server shutdown; one mechanism owns all three continuation families.
+and assert exact-once close on replacement, mismatch, `Complete`, callback
+failure, expiry, eviction, and repeated plugin/server shutdown; one mechanism
+owns all three continuation families.
+Use the real lazy traversal for at least three pages and assert it remains open
+after each `Reissue`, the prior token is invalid, and `Complete` closes once.
+Wire `KastPluginBackend` as a `CloseableAnalysisBackend`, forward close through
+`ObservedAnalysisBackend`, pass it from `KastIdeaBackendRuntime` into
+`AnalysisServer`, and prove repeated `RunningKastIdeaBackend.close()` and server
+shutdown have one backend close owner. Cover reissue versus shutdown/eviction
+and callback failure while the IDEA state is claimed, plus expiry/replacement
+and server-close/callback races.
 
 - [ ] **Step 2: Run the focused red backend test**
 
 ```console
+./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
 ./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*IdeaProjectIndexerModuleNameTest*' :index-store:test --tests '*SqliteSourceIndexStoreTest*' --no-daemon
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
+python3 packaging/homebrew/scripts/test-formulas.py
 ```
 
-Expected: compilation fails because the inventory does not exist.
+Expected: the new inventory/provenance tests fail to compile, and schema
+alignment fails until release state advances to 8 and both generators agree.
 
 - [ ] **Step 3: Implement model-backed candidate collection**
 
@@ -446,20 +539,42 @@ empty complete inventory. Canonical containment is mandatory before ownership
 is recorded.
 
 Reuse that bridge in `IdeaProjectIndexer`: resolve each `.kt` file's IDEA module
-through `GradleModuleDataIndex`, associate it with one direct/composite linked
-build root, and take `GradleModuleData.getGradlePathOrNull()` as the project
-path. Construct the host-neutral identity only after both typed components are
-proved. Collect every containing module's distinct model-proven identity. Add
-the dedicated non-null `file_gradle_projects(prefix_id, filename, build_root,
-project_path)` association table, advance the checked-in source-index schema
-version, add `FileIndexUpdate.gradleProjects` as a
-`Set<BuildQualifiedGradleProjectIdentity>`, and persist the owner set
-transactionally. Adding, replacing, or removing an association increments
-`schema_version.generation` in that same write transaction.
-`PsiSourceIndexScanner` accepts host-neutral module evidence;
-no IntelliJ type crosses into `backend-shared` or `index-store`. Keep
-`module_path` for existing symbol/metrics behavior,
-but workspace discovery must never select or parse it as Gradle identity.
+through `GradleModuleDataIndex`, associate it with direct/composite linked build
+roots, and take `GradleModuleData.getGradlePathOrNull()` as the project path.
+Construct host-neutral project identity only after both typed components are
+proved. Resolve the file's owning Gradle source-set model nodes for its
+model-proven source roots and construct
+`BuildQualifiedGradleSourceSetIdentity(project, GradleSourceSetName)` only from
+those nodes. Delete `sourceSetForFile` as an authority; path fragments and
+source-root basenames may populate only a legacy unproven label.
+
+Add the dedicated non-null `file_gradle_projects(prefix_id, filename,
+build_root, project_path)` and `file_gradle_source_sets(prefix_id, filename,
+build_root, project_path, source_set_name)` association tables. Advance only
+`packaging/homebrew/release-state.json.source_index_schema_version` from 7 to
+8; keep `WriteSourceIndexSchemaVersionTask` and `cli-rs/build.rs` as the Kotlin
+and Rust generators rather than adding literals. Add
+`FileIndexUpdate.gradleProjects`, `gradleSourceSets`, and typed
+`packageEvidence`, then persist them transactionally with required
+`file_metadata.package_state`/`package_unproven_reason` constraints. Adding,
+replacing, or removing any
+association/evidence increments `schema_version.generation` in that transaction.
+
+`PsiSourceIndexScanner` reads `KtFile.packageFqName` or equivalent structured
+Kotlin PSI/compiler evidence and passes canonical `ProvenRoot`, `ProvenNamed`,
+or `Unproven(reason)` to `FileIndexUpdate`. `SourceFileIndexParser` may parse
+declarations but cannot turn nullable package output into root. No IntelliJ
+type crosses into `backend-shared` or `index-store`. Keep `module_path` and
+`source_set` for existing symbol/metrics behavior only; workspace discovery
+must never select or parse either legacy label as proven Gradle identity.
+
+Make `KastPluginBackend` implement `CloseableAnalysisBackend` and drain its
+snapshot/page/reference/diagnostic stores exactly once. Make
+`ObservedAnalysisBackend` implement the same type and forward close to its
+delegate. `KastIdeaBackendRuntime` passes the observed owner to
+`AnalysisServer`; `RunningKastIdeaBackend.close()` cancels indexing and closes
+only the running server. Do not close the backend directly from both runtime
+and server.
 
 - [ ] **Step 4: Page sorted inventory with server-held state**
 
@@ -469,18 +584,29 @@ Replace cap-before-sort logic with generation validation followed by slicing:
 val lease = snapshotStore.requireLease(query.snapshotToken, query.workspaceIdentity)
 val current = inventory.snapshot()
 lease.requireGeneration(current.generation)
-val continuation = query.pageToken?.let { token ->
-    pageStore.consume(token, WorkspacePageQuery.from(query))
-}
-val state = continuation ?: lease.firstPage(query.requireExactModule())
-val allFiles = current.module(state.moduleName).filePaths
-val offset = state.nextOffset
-val files = if (query.includeFiles) allFiles.drop(offset).take(fileLimit) else emptyList()
-val nextOffset = offset + files.size
-val nextToken = nextOffset
-    .takeIf { query.includeFiles && it < allFiles.size }
-    ?.let { pageStore.issue(state.advanceTo(it)) }
+val pageQuery = WorkspacePageQuery.from(query)
+val page = query.pageToken?.let { token ->
+    pageStore.consume(token, pageQuery) { state ->
+        val allFiles = current.module(state.moduleName).filePaths
+        val files = allFiles.drop(state.nextOffset).take(fileLimit)
+        val nextOffset = state.nextOffset + files.size
+        val output = state.output(files)
+        if (nextOffset < allFiles.size) {
+            state.advanceTo(nextOffset)
+            ContinuationTransition.Reissue(output, pageQuery)
+        } else {
+            ContinuationTransition.Complete(output)
+        }
+    }
+} ?: lease.withBorrowedState { state -> firstPage(current, state, pageQuery) }
 ```
+
+`consume` returns output plus a new opaque token only for `Reissue`; neither
+branch returns `State`. The initial-page helper issues one store-owned state
+when another page exists. #337 uses the same transition with its lazy traversal
+as the owned state. The callback has exclusive borrowed access and may advance
+that state's internal cursor before `Reissue`; reissue changes only the owning
+handle/query while keeping the traversal open.
 
 Build and fingerprint the canonical requested-kind inventory in one IDEA read
 action. The fingerprint includes the kind domain, sorted module identities,
@@ -498,20 +624,25 @@ handles on every page. Rust never sees an offset or generation encoding.
 Run:
 
 ```console
+./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
 ./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*KastPluginBackendContractTest*workspace files*' --no-daemon
 ./gradlew :index-store:test --tests '*SourceIndexFilePolicyTest*' --tests '*SqliteSourceIndexStoreTest*' --no-daemon
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
+python3 packaging/homebrew/scripts/test-formulas.py
 ```
 
 Expected: project scripts, shared ownership, included-build associations,
-build-qualified root/included project identities, legacy fallback isolation,
-generation changes, stale responses, and cross-module rejection pass; the
-typed indexing/project-model failures retain their reason; the index-store test
-still proves `.kts` rejection.
+build-qualified root/included project identities, custom `integrationTest`,
+structured package provenance, legacy fallback isolation, schema 8 alignment,
+v7 rejection/reset, generation changes, stale responses, atomic multi-page
+reissue/close, and cross-module rejection pass. Typed indexing/project-model
+failures retain their reason; the index-store test still proves `.kts`
+rejection.
 
 - [ ] **Step 6: Commit backend authority**
 
 ```console
-git add backend-idea backend-shared index-store
+git add backend-idea backend-shared index-store build-logic/AGENTS.md build-logic/src/test/kotlin/WriteSourceIndexSchemaVersionTaskTest.kt packaging/homebrew/release-state.json cli-rs/tests/source_index_schema_version_smoke.rs
 git diff --cached --check
 git commit -m "feat: enumerate project model Kotlin scripts"
 ```
@@ -519,10 +650,13 @@ git commit -m "feat: enumerate project model Kotlin scripts"
 `backend-idea/AGENTS.md` records that the inventory and Java Gradle bridge own
 model-proven `.kt`/`.kts` candidates, server-held generation-bound paging,
 TTL/capacity/integrity behavior, typed
-project-model incompleteness, build-qualified index-producer identity, and the
-focused backend tests above. `index-store/AGENTS.md` records the dedicated
-identity association table and prohibits promoting the legacy module label. These are
-the nearest guides for the new source boundaries.
+project-model incompleteness, atomic reissue, single close ownership,
+build-qualified project/source-set production, structured package evidence, and
+the focused backend tests above. `index-store/AGENTS.md` records version-8
+association/provenance structures and prohibits promoting legacy labels.
+`build-logic/AGENTS.md` records that release state generates the Kotlin schema
+constant and names its alignment gate. These are the nearest guides for the new
+source boundaries.
 
 Do not stage either source-index policy file; both are verification-only.
 
@@ -555,6 +689,10 @@ noncanonical handles and page-token/count combinations that cannot emit files.
 Accept `backend:<exact-name>`, `gradle:.#:app`, and
 `gradle:included/tools#:app`; reject unprefixed/empty selectors, absolute or
 escaping build roots, and non-absolute Gradle project paths.
+Accept canonical Kotlin package selectors for escaped/backticked and general
+Unicode identifiers, normalize them to semantic FQ names, and reject malformed
+package syntax. Accept a typed `integrationTest` source-set name without
+assuming any directory convention.
 
 - [ ] **Step 2: Run the red command tests**
 
@@ -576,6 +714,10 @@ newtypes; Task 4 maps that variant to the inventory identity. Derive the raw/com
 source-only, script-only, or mixed domain from the kind filter, with no filter
 meaning mixed. Use private-field newtypes and `FromStr` validation. Keep the public token type
 distinct from raw snapshot/module-page tokens. The drift enum is:
+Parse package filters through the same canonical Kotlin package-name boundary
+used by producer evidence. Parse source-set filters as names only, but allow
+matches exclusively against model-proven build-qualified source-set evidence.
+Legacy labels never satisfy either filter. The drift enum is:
 
 ```rust
 pub enum WorkspaceDriftFilter {
@@ -626,7 +768,8 @@ git commit -m "feat: add typed workspace file command boundary"
   `WorkspaceIndexSnapshot`, `SourceIndexSnapshotStamp`,
   `SourceIndexGeneration`, `SourceIndexModuleProgress`,
   `SourceIndexPendingCount`, `WorkspacePackageEvidence`,
-  `BuildQualifiedGradleProjectIdentity`,
+  `WorkspaceSourceSetEvidence`, `BuildQualifiedGradleProjectIdentity`,
+  `BuildQualifiedGradleSourceSetIdentity`,
   `WorkspaceIndexRead`, `WorkspaceInventoryLimitationCode`,
   `WorkspaceMatchCoverage`, and `read_workspace_index(&WorkspaceRoot)`.
 - The index reader has no public limit and returns `.kt` rows only.
@@ -639,21 +782,24 @@ leaf below an in-root symlink to outside, a dangling symlink, permission or
 canonicalization failure, and an ancestor race. The first missing leaf is
 admitted through its deepest existing ancestor; every unprovable case is
 excluded with `PATH_CONTAINMENT_UNPROVABLE` and partial candidate coverage. Add
-four package cases:
+package/provenance cases:
 
 1. no `file_metadata` row;
-2. metadata with null `package_fq_id`;
-3. metadata with a joined package name; and
-4. metadata with dangling `package_fq_id`.
+2. `UNPROVEN` metadata with null `package_fq_id`;
+3. `PROVEN_ROOT` metadata with null `package_fq_id`;
+4. `PROVEN_NAMED` metadata joined to canonical escaped/backticked/Unicode names;
+5. a missing semantic parser result that stays `UNPROVEN`; and
+6. illegal state/id combinations or a dangling `package_fq_id`.
 
 Assert 500 valid `.kt` candidates, zero `.kts`, exact package variants, typed
 excluded/invalid counts, and no escaping missing path.
 
-Seed a root-build `:app`, an included-build `:app`, a legacy-only
-`module_path=idea.app.main`, and malformed association rows. Assert the first
-two decode as distinct build-qualified owners of the same file, the legacy
-value is never read as Gradle identity, and malformed build-root/project-path
-values are typed incompatible evidence rather than partial owners.
+Seed a root-build `:app`, an included-build `:app`, a model-proven
+`integrationTest`, legacy-only `module_path=idea.app.main` and `source_set=main`
+labels, and malformed association rows. Assert the projects decode as distinct
+owners, `integrationTest` is structured source-set evidence, neither legacy
+value is read as proof, and malformed components are typed incompatible
+evidence rather than partial owners.
 
 Seed generation, `module_index_progress`, and unapplied `pending_updates`.
 Assert the snapshot carries their typed state; only a nonempty initialized
@@ -672,14 +818,14 @@ Expected: compilation fails because inventory types do not exist.
 
 - [ ] **Step 3: Define the invariant-carrying model**
 
-Use sorted sets for owners and source sets:
+Use sorted sets inside discriminated ownership/evidence types:
 
 ```rust
 pub(crate) struct WorkspaceInventoryFile {
     path: WorkspaceFilePath,
     backend_modules: BTreeSet<BackendModuleName>,
     indexed_gradle_projects: BTreeSet<BuildQualifiedGradleProjectIdentity>,
-    source_sets: BTreeSet<WorkspaceSourceSet>,
+    source_sets: WorkspaceSourceSetEvidence,
     kind: WorkspaceFileKind,
     package: WorkspacePackageEvidence,
     index_state: WorkspaceFileIndexState,
@@ -691,6 +837,9 @@ pub(crate) struct WorkspaceInventoryFile {
 
 Include `NotApplicable` in source-index state and drift. Keep fields private
 with read-only accessors required by agent/#340 consumers.
+Define `WorkspaceSourceSetEvidence::Proven(set)`, `Unproven(legacy_labels)`,
+and `Unavailable`; define package as `ProvenRoot`, `ProvenNamed`, `Unproven`,
+`Unavailable`, or `InvalidReference`. Filters match only proven variants.
 
 Define closed limitation variants for backend capability, metadata, page,
 stale generation, runtime indexing, unavailable project model, unassociated
@@ -705,20 +854,23 @@ when a requested predicate is unknown.
 
 - [ ] **Step 4: Implement the read-only query exactly from the design**
 
-Within one SQLite read transaction, select `metadata_present`, `package_fq_id`,
-joined `fq_name`, and all joined `file_gradle_projects` rows separately,
+Within one SQLite read transaction, select `metadata_present`, required
+`package_state`, `package_unproven_reason`, `package_fq_id`, joined `fq_name`, all joined
+`file_gradle_projects` rows, and all joined `file_gradle_source_sets` rows,
 plus `schema_version.generation`, all module progress rows, and the unapplied
-pending-update count. Never select or parse `module_path` as Gradle ownership. Use
+pending-update count. Never select or parse `module_path` or legacy
+`source_set` as proven Gradle ownership. Use
 `SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI`, configure query-only access, verify
-schema/tables, decode existing path prefixes, reject non-`.kt`, and map the four
-package states without collapsing nulls. For missing paths, canonicalize the
+release-state-generated schema 8 and required structures, decode existing path
+prefixes, reject non-`.kt`, and map the package/source-set provenance states
+without collapsing nulls. For missing paths, canonicalize the
 deepest existing ancestor; lexical containment alone is insufficient.
 
 In `SqliteSourceIndexStore`, increment the existing generation in the same
-write transaction as any candidate-table, build-qualified association,
-progress, or pending applied-state mutation. Task 2 already adds and versions
-the dedicated association table; do not add another ownership column or admit
-`.kts`.
+write transaction as any candidate-table, build-qualified project/source-set
+association, package evidence, progress, or pending applied-state mutation.
+Task 2 already adds and versions the dedicated structures; do not add another
+ownership column or admit `.kts`.
 
 - [ ] **Step 5: Add the scoped ownership guide and verify**
 
@@ -728,7 +880,8 @@ legacy `module_path` as project-model Gradle identity. State in the new Rust gui
 that it owns uncapped exact-root composition, generation/progress/pending-aware
 `.kt` index reads, deepest-existing-ancestor containment, set-valued owners,
 backend page coverage, and Git annotation. Prohibit `.kts` source-index reads
-and filesystem/Git candidate enumeration.
+and filesystem/Git candidate enumeration. Also prohibit treating legacy
+`source_set` or nullable parser output as proven source-set/package evidence.
 
 Run Step 2. Expected: all 500 rows and package/path invariants pass.
 
@@ -995,11 +1148,13 @@ git commit -m "feat: compose exhaustive workspace file evidence"
 
 - [ ] **Step 1: Write failing output, filter, limitation, and budget tests**
 
-Assert compact records contain sorted backend owners and structured
-build-qualified Gradle project owners, source sets, kind, structured
-package evidence, source-index state, drift, dirty state, and paths. Cover each
-filter and conjunction; partial pages, unavailable index/Git, invalid package
-reference, and both candidate sources unavailable. Seed 500 records and assert
+Assert compact records contain sorted backend owners, structured
+build-qualified Gradle project owners, discriminated proven/unproven source-set
+evidence, kind, discriminated package provenance, source-index state, drift,
+dirty state, and paths. Cover each filter and conjunction; custom
+`integrationTest`, escaped/backticked/Unicode package names, nullable parser
+output that remains unproven, partial pages, unavailable index/Git, invalid
+package reference, and both candidate sources unavailable. Seed 500 records and assert
 20 default records, at most 120 lines, and at most 1,500 estimated tokens.
 
 Add dispatcher contract tests for public continuation issue/consume. Prove the
@@ -1034,7 +1189,7 @@ predicate are complete. Cover these counterexamples explicitly:
 
 - complete candidate inventory plus unavailable Git and `--dirty clean` is
   `KNOWN_MINIMUM` with partial filter evidence;
-- unavailable package/source-set metadata with a corresponding filter is
+- unavailable or unproven package/source-set evidence with a corresponding filter is
   `KNOWN_MINIMUM` even if backend paging is complete;
 - partial backend pages or unavailable source-index candidate authority are
   `KNOWN_MINIMUM`; and
@@ -1084,6 +1239,9 @@ corresponding owner type, sort by relative path and sorted owner sets, and only
 then take `limit`. Compute candidate-inventory and selected-filter evidence
 coverage before projection. Do not infer exact match cardinality merely from a
 fully consumed known-candidate vector.
+Package and source-set filters match only `ProvenNamed`/`ProvenRoot` or
+`WorkspaceSourceSetEvidence::Proven`; legacy/unproven values remain visible to
+explain output but cannot become matches.
 
 For a resumed request, consume the opaque public handle through the internal
 server continuation service, require the identical normalized query identity,
@@ -1187,7 +1345,9 @@ Add the command to `cli-rs/src/agent/AGENTS.md`. Teach source/script filters,
 public continuation, partial limitations, backend and cross-source bounded
 retries, per-kind lane relevance, discriminated available/unavailable
 composition stamps, build-qualified Gradle owner sets, and direct path
-composition. State explicitly that `.kts` is not in the Kotlin source index,
+composition. Teach discriminated proven/unproven package and source-set
+evidence, and that filters match only structured proof. State explicitly that
+`.kts` is not in the Kotlin source index,
 unrelated `.kt` progress cannot make script-only discovery partial, and Gradle
 semantic declarations arrive with #340.
 
@@ -1201,9 +1361,9 @@ changes.
 - [ ] **Step 4: Update reference and how-to docs**
 
 Document every flag, limit, page token, result view, typed backend/build-
-qualified Gradle owner set, package state,
+qualified Gradle owner and source-set evidence, package provenance state,
 drift/index truth table, limitations, exact-root behavior, server-held raw
-paging, exact-once store disposal, kind-relevant coherent cross-source
+paging, atomic continuation reissue and exact-once disposal, kind-relevant coherent cross-source
 composition, stable partial continuation, and typed invalid/stale public
 continuation. Replace generic-search-first guidance with `workspace-files`, then
 diagnostics or exact symbol lookup.
@@ -1239,18 +1399,23 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_inventory
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projection_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test cli_core_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test semantic_workspace_admission_smoke
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 ```
 
 - [ ] **Step 2: Run Kotlin and source-index authority gates**
 
 ```console
+./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
 ./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
+python3 packaging/homebrew/scripts/test-formulas.py
 ```
 
 Expected: generation/fingerprint, stale, cursor-binding, paging/project-model
-TTL/capacity/integrity and exact-once disposal, final backend validation,
-build-qualified root/included project identity, source-index generation/
-progress/pending, and kind-relevant composition-barrier tests pass; `.kts`
+TTL/capacity/integrity, atomic reissue, one backend close owner, and exact-once
+disposal pass. Release state, generated Kotlin/Rust schema version 8, v7 reset,
+build-qualified root/included project and custom source-set identities,
+structured package provenance, source-index generation/progress/pending, final
+backend validation, and kind-relevant composition-barrier tests pass; `.kts`
 remains rejected by `SourceIndexFilePolicyTest`.
 
 - [ ] **Step 3: Run full Gradle and IDEA packaging gates**
@@ -1295,8 +1460,9 @@ git diff --name-only origin/main...HEAD
 ```
 
 Expected: issue source/tests/guidance/ADR/spec/plan, the dedicated
-build-qualified source-index schema migration, and required generated contracts
-only; no `.kts` admission or unrelated source-index schema change.
+release-state-owned version-8 project/source-set and package-provenance schema
+migration, and required generated contracts only; no `.kts` admission or
+unrelated source-index schema change.
 
 - [ ] **Step 7: Request independent review**
 
@@ -1307,9 +1473,13 @@ cross-module cursor rejection, included-build project-model script authority,
 mapping, exact-root rejected-no-request proof, package-state SQL, false
 `INDEX_ONLY`, project-model error/reason mapping, metadata failure, zero-module
 global partiality, candidate versus filter coverage, `EXACT` versus
-`KNOWN_MINIMUM`, server-held TTL/capacity/integrity and exact-once disposal,
+`KNOWN_MINIMUM`, server-held TTL/capacity/integrity, atomic multi-page
+`Complete`/`Reissue`, single backend close ownership, and exact-once disposal,
 deepest-ancestor missing-path containment, build-qualified root/included Gradle
-identity without IDEA fallback promotion, index generation/progress/pending
+identity and custom source sets without path/IDEA fallback promotion,
+Kotlin-structured escaped/backticked/Unicode package provenance with no
+null-to-root collapse, release-state/Kotlin/Rust schema-8 alignment and v7
+rejection, index generation/progress/pending
 state, kind-relevant cross-source barrier mutation, available/unavailable lane
 digests, backend/index-only partial continuation, public 200/200/100
 continuation, invalid/stale/query-mismatched public tokens, hand-authored catalog

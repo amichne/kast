@@ -20,6 +20,10 @@ Assume every edit in this unit can affect the whole repo.
 - Treat version bumps and plugin changes as cross-repo work. A small edit here
   can alter every module's compile, test, or packaging behavior.
 - Java 21 and shared version-catalog linkage are the build baseline.
+- `packaging/homebrew/release-state.json` is the checked-in source-index schema
+  authority. `WriteSourceIndexSchemaVersionTask` generates the Kotlin constant
+  from it; do not add a second Kotlin literal or let generated output drift from
+  the Rust build-script value.
 
 ## Verification
 
@@ -34,3 +38,6 @@ Validate both the immediate target and the wider build impact.
   with `./gradlew :backend-headless:syncRuntimeLibs :backend-headless:portableDistZip`
   for runtime-lib or portable distribution changes.
 - For significant build-logic edits, run `./gradlew build`.
+- For source-index schema generation, run
+  `./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest`
+  and the Rust `source_index_schema_version_smoke` alignment test.

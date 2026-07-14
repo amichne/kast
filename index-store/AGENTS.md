@@ -8,8 +8,10 @@ and headless/indexer hydration APIs shared across kast runtimes.
 Keep this unit focused on storage concerns and schema continuity.
 
 - Keep SQLite schema, migrations, interning codecs, and hydration helpers here.
-  `SOURCE_INDEX_SCHEMA_VERSION`, table layouts, and query columns must stay
-  aligned.
+  `packaging/homebrew/release-state.json` owns the checked-in schema version;
+  generated Kotlin/Rust `SOURCE_INDEX_SCHEMA_VERSION` values, table layouts,
+  and query columns must stay aligned. Version 8 is required for workspace-file
+  project/source-set and package-provenance reads; version 7 must reset/rebuild.
 - Treat `schema_version.generation` as the source-index change token. Increment
   it in the same write transaction as candidate-bearing tables, module index
   progress, or pending-update applied state so read-only consumers can prove a
@@ -24,6 +26,15 @@ Keep this unit focused on storage concerns and schema continuity.
   and included builds with the same project path remain distinct. Legacy
   `file_metadata.module_path` is an unqualified symbol/metrics label; never
   promote an IDEA fallback from it into Gradle identity.
+- Persist structured Gradle source-set evidence only in non-null
+  `file_gradle_source_sets` rows keyed by build root, project path, and source-set
+  name. Legacy `file_metadata.source_set` is an unproven label and cannot
+  satisfy workspace source-set filters.
+- Persist package provenance explicitly. `PROVEN_ROOT`, `PROVEN_NAMED`, and
+  `UNPROVEN` must agree with `package_fq_id` constraints; nullable or failed
+  parser output is `UNPROVEN` with a typed reason, never root. Proven states
+  cannot carry an unproven reason. Canonical package names come from
+  Kotlin PSI/compiler evidence, including escaped/backticked/Unicode names.
 - Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access.
   IDEA and other plugin classloaders require explicit driver registration.
 - Keep this unit runtime-agnostic. IDEA PSI logic, CLI process management, and
@@ -50,6 +61,9 @@ Prove storage changes here before relying on higher-level runtime tests.
   root-versus-included-build round trips, multiple owners per file, identical
   project paths in different builds, malformed identity rejection, legacy
   fallback isolation, and transactional generation change.
+- For schema/provenance changes, prove release-state/Kotlin/Rust version
+  alignment, version-7 rejection/reset, required version-8 structures, a custom
+  `integrationTest` source root, and no null-to-root package collapse.
 - If you change schema bootstrap, connection setup, or hydration reads, exercise
   `SqliteSourceIndexStoreTest` and the affected headless/indexer tests.
 - Final acceptance for the cross-module workspace discovery contract also runs
