@@ -92,6 +92,59 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
 }
 
 #[test]
+fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
+    let fixture = GitWorkspaceFixture::new();
+    let workspace = std::fs::canonicalize(fixture.linked()).expect("canonical linked");
+    let home = fixture.linked().join("test-home");
+    let config_home = fixture.linked().join("test-config");
+    let socket_path = fixture.socket_path("linked-verify-views.sock");
+    std::fs::create_dir_all(&home).expect("home");
+    write_macos_plugin_workspace_metadata(&workspace);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
+    let backend = spawn_verify_backend(
+        bind_semantic_listener(&socket_path),
+        workspace.clone(),
+        "idea",
+        15,
+    );
+    let views: [&[&str]; 3] = [&[], &["--fields", "health"], &["--count"]];
+
+    for view in views {
+        let verify = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "verify",
+                "--workspace-root",
+                workspace.to_str().expect("workspace path"),
+                "--backend=idea",
+            ])
+            .args(view)
+            .output()
+            .expect("agent verify");
+        let output: serde_json::Value =
+            serde_json::from_slice(&verify.stdout).expect("verify JSON");
+
+        assert!(verify.status.success(), "view={view:?}: {output:#}");
+        assert_eq!(
+            output["result"]["semanticWorkspace"]["workspaceRoot"],
+            workspace.display().to_string(),
+            "view={view:?}: {output:#}",
+        );
+        assert_eq!(
+            output["result"]["semanticWorkspace"]["workspaceKind"], "LINKED_WORKTREE",
+            "view={view:?}: {output:#}",
+        );
+        assert_eq!(
+            output["result"]["semanticWorkspace"]["evidenceQuality"], "COMPILER_BACKED",
+            "view={view:?}: {output:#}",
+        );
+    }
+    assert_eq!(backend.join().expect("backend thread").len(), 15);
+}
+
+#[test]
 fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
     let fixture = tempfile::tempdir().expect("headless fixture");
     let workspace = fixture.path().join("disposable");
@@ -193,7 +246,7 @@ fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
     let diagnostics_output: serde_json::Value =
         serde_json::from_slice(&diagnostics.stdout).expect("diagnostics JSON");
     assert_eq!(
-        diagnostics_output["result"]["semanticAnalysis"]["semanticOutcome"],
+        diagnostics_output["result"]["analysis"]["semanticOutcome"],
         "COMPLETE"
     );
     assert!(!install_manifest.exists());
@@ -259,31 +312,39 @@ fn unprepared_headless_route_rejects_every_public_applied_mutation() {
 
     let cases = applied_mutation_cases(&target_file, &content_file);
 
-    for mut args in cases {
-        args.extend([
-            "--apply".to_string(),
-            "--idempotency-key".to_string(),
-            "authority-test".to_string(),
-            "--workspace-root".to_string(),
-            workspace.display().to_string(),
-            "--backend=headless".to_string(),
-        ]);
-        let mutation = kast(&home, &config_home)
-            .args(["--output", "json"])
-            .args(args)
-            .output()
-            .expect("applied mutation");
-        assert!(!mutation.status.success(), "unprepared mutation must fail");
-        let output: serde_json::Value =
-            serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
-        assert_eq!(
-            output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
-            "{output:#}"
-        );
-        assert_eq!(
-            output["error"]["details"]["semanticWorkspace"]["workspaceRoot"],
-            workspace.display().to_string()
-        );
+    let views: [&[&str]; 3] = [&[], &["--fields", "state"], &["--count"]];
+    for view in views {
+        for mut args in cases.clone() {
+            args.extend(view.iter().map(|argument| (*argument).to_string()));
+            args.extend([
+                "--apply".to_string(),
+                "--idempotency-key".to_string(),
+                "authority-test".to_string(),
+                "--workspace-root".to_string(),
+                workspace.display().to_string(),
+                "--backend=headless".to_string(),
+            ]);
+            let mutation = kast(&home, &config_home)
+                .args(["--output", "json"])
+                .args(args)
+                .output()
+                .expect("applied mutation");
+            assert!(
+                !mutation.status.success(),
+                "unprepared mutation must fail for view={view:?}",
+            );
+            let output: serde_json::Value =
+                serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
+            assert_eq!(
+                output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+                "view={view:?}: {output:#}",
+            );
+            assert_eq!(
+                output["error"]["details"]["semanticWorkspace"]["workspaceRoot"],
+                workspace.display().to_string(),
+                "view={view:?}: {output:#}",
+            );
+        }
     }
     assert!(
         backend.finish().is_empty(),
@@ -750,12 +811,10 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
         String::from_utf8_lossy(&symbol.stderr)
     );
     let output: serde_json::Value = serde_json::from_slice(&symbol.stdout).expect("symbol JSON");
-    assert_eq!(output["result"]["type"], "KAST_AGENT_SYMBOL_LOOKUP");
-    assert_eq!(output["result"]["outcome"]["type"], "RESOLVED");
-    assert_eq!(
-        output["result"]["outcome"]["symbol"]["workspaceRoot"],
-        workspace.display().to_string()
-    );
+    assert_eq!(output["result"]["type"], "KAST_AGENT_SYMBOL_RESULT");
+    assert_eq!(output["result"]["outcome"], "RESOLVED");
+    assert_eq!(output["result"]["identity"]["fqName"], "Foo");
+    assert_eq!(output["result"]["source"], "compiler");
     assert_eq!(
         backend.join().expect("backend thread"),
         vec!["runtime/status", "capabilities", "symbol/resolve"]
@@ -804,10 +863,7 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     );
     let output: serde_json::Value =
         serde_json::from_slice(&diagnostics.stdout).expect("diagnostics JSON");
-    assert_eq!(
-        output["result"]["semanticAnalysis"]["semanticOutcome"],
-        "COMPLETE"
-    );
+    assert_eq!(output["result"]["analysis"]["semanticOutcome"], "COMPLETE");
     assert_eq!(
         backend.join().expect("backend thread"),
         vec![
@@ -1395,6 +1451,16 @@ fn spawn_verify_backend(
                         "requestedFileCount": file_paths.len(),
                         "analyzedFileCount": file_paths.len(),
                         "skippedFileCount": 0,
+                        "severityCounts": {
+                            "error": 0,
+                            "warning": 0,
+                            "info": 0,
+                            "total": 0
+                        },
+                        "cardinality": {
+                            "type": "EXACT",
+                            "totalCount": 0
+                        },
                         "schemaVersion": 3
                     })
                 }

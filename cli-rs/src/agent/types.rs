@@ -165,19 +165,23 @@ impl AgentSemanticAnalysisEvidence {
                 Self::NotDiagnostics
             };
         };
-        let Ok(request) = serde_json::from_value::<AgentDiagnosticsRequest>(request.clone()) else {
-            return if matches!(method, "raw/diagnostics" | "raw/workspace-refresh") {
-                Self::Invalid
-            } else {
-                Self::NotDiagnostics
-            };
-        };
         match method {
-            "raw/diagnostics" => serde_json::from_value::<AgentDiagnosticsResult>(result.clone())
-                .ok()
-                .and_then(|evidence| evidence.validated_summary(&request.params.file_paths))
-                .map_or(Self::Invalid, Self::Valid),
+            "raw/diagnostics" => {
+                let Ok(request) =
+                    serde_json::from_value::<AgentDiagnosticsRequest>(request.clone())
+                else {
+                    return Self::Invalid;
+                };
+                serde_json::from_value::<AgentDiagnosticsResult>(result.clone())
+                    .ok()
+                    .and_then(|evidence| evidence.validated_summary(&request.params.file_paths))
+                    .map_or(Self::Invalid, Self::Valid)
+            }
             "raw/workspace-refresh" => {
+                let Ok(request) = serde_json::from_value::<AgentRefreshRequest>(request.clone())
+                else {
+                    return Self::Invalid;
+                };
                 serde_json::from_value::<AgentRefreshResult>(result.clone())
                     .ok()
                     .and_then(|evidence| evidence.validated_summary(&request.params.file_paths))
@@ -200,6 +204,17 @@ struct AgentDiagnosticsRequestParams {
     max_results: usize,
     #[serde(default)]
     page_token: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AgentRefreshRequest {
+    params: AgentRefreshRequestParams,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRefreshRequestParams {
+    file_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

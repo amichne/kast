@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use support::*;
 
 #[test]
-fn relative_file_paths_are_canonical_in_backend_requests_and_json_output() {
+fn relative_file_paths_are_canonical_in_every_compact_json_view() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -35,38 +35,57 @@ fn relative_file_paths_are_canonical_in_backend_requests_and_json_output() {
         workspace.clone(),
         complete_refresh_for(&expected),
         complete_clean_diagnostics_for(&expected),
-        4,
+        12,
     );
-    let output = run_diagnostics_arguments(
-        &home,
-        &config_home,
-        &workspace,
-        &["src/First.kt", "src/with spaces/Second.kt"],
-        "json",
-    );
+    let views: [&[&str]; 3] = [&[], &["--fields", "analysis"], &["--count"]];
+    let outputs = views.map(|view| {
+        run_diagnostics_arguments_with_view(
+            &home,
+            &config_home,
+            &workspace,
+            &["src/First.kt", "src/with spaces/Second.kt"],
+            "json",
+            view,
+        )
+    });
+    for output in &outputs {
+        assert!(
+            output.status.success(),
+            "relative diagnostics should succeed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+    }
     let requests = backend.join().expect("fake diagnostics backend");
-    let document = decode_json(&output);
 
-    assert!(
-        output.status.success(),
-        "relative diagnostics should succeed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
-    assert_eq!(request_methods(&requests), expected_diagnostics_methods());
-    assert_eq!(
-        requests[2]["params"]["filePaths"],
-        json!(expected),
-        "refresh request: {:#}",
-        requests[2],
-    );
-    assert_eq!(
-        requests[3]["params"]["filePaths"],
-        json!(expected),
-        "diagnostics request: {:#}",
-        requests[3],
-    );
-    assert_eq!(document["result"]["filePaths"], json!(expected));
+    let refresh_requests = requests
+        .iter()
+        .filter(|request| request["method"] == "raw/workspace-refresh")
+        .collect::<Vec<_>>();
+    let diagnostics_requests = requests
+        .iter()
+        .filter(|request| request["method"] == "raw/diagnostics")
+        .collect::<Vec<_>>();
+    assert_eq!(refresh_requests.len(), 3, "requests={requests:#?}");
+    assert_eq!(diagnostics_requests.len(), 3, "requests={requests:#?}");
+    for request in refresh_requests {
+        assert_eq!(
+            request["params"]["filePaths"],
+            json!(expected),
+            "refresh request: {request:#}",
+        );
+    }
+    for request in diagnostics_requests {
+        assert_eq!(
+            request["params"]["filePaths"],
+            json!(expected),
+            "diagnostics request: {request:#}",
+        );
+    }
+    for output in outputs {
+        let document = decode_json(&output);
+        assert_eq!(document["result"]["filePaths"], json!(expected));
+    }
 }
 
 #[test]
@@ -166,7 +185,7 @@ fn deleted_relative_file_reaches_refresh_with_canonical_path() {
 
     assert!(!output.status.success(), "{document:#}");
     assert_eq!(
-        document["result"]["steps"][1]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+        document["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
         "{document:#}",
     );
     assert_eq!(
@@ -175,7 +194,10 @@ fn deleted_relative_file_reaches_refresh_with_canonical_path() {
         "refresh request: {:#}",
         requests[2],
     );
-    assert_eq!(document["result"]["filePaths"], json!([expected]));
+    assert_eq!(
+        document["error"]["details"]["result"]["fileStatuses"][0]["filePath"],
+        expected,
+    );
 }
 
 #[test]
@@ -275,9 +297,9 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
     );
     assert!(!output.status.success(), "{document:#}");
     assert_eq!(document["ok"], false, "{document:#}");
-    assert_eq!(document["result"]["steps"].as_array().unwrap().len(), 1);
+    assert!(document["result"].is_null(), "{document:#}");
     assert_eq!(
-        document["result"]["steps"][0]["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
+        document["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
         "{document:#}",
     );
     assert_semantic_counts(&document, "INCOMPLETE", 1, 0, 1, "json");
@@ -508,6 +530,24 @@ fn run_diagnostics_arguments(
     file_paths: &[&str],
     output_format: &str,
 ) -> Output {
+    run_diagnostics_arguments_with_view(
+        home,
+        config_home,
+        workspace,
+        file_paths,
+        output_format,
+        &[],
+    )
+}
+
+fn run_diagnostics_arguments_with_view(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    file_paths: &[&str],
+    output_format: &str,
+    view_args: &[&str],
+) -> Output {
     let mut command = kast(home, config_home);
     command.args([
         "--output",
@@ -521,6 +561,7 @@ fn run_diagnostics_arguments(
     for file_path in file_paths {
         command.args(["--file-path", file_path]);
     }
+    command.args(view_args);
     command.output().expect("agent diagnostics")
 }
 

@@ -642,6 +642,8 @@ fn diagnostics_default_keeps_completeness_and_actionable_records_without_steps()
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    write_gradle_marker(&workspace);
+    let workspace = workspace.canonicalize().expect("canonical workspace");
     let file = workspace.join("src/App.kt");
     let socket_path = temp.path().join("idea.sock");
     let backend = spawn_scripted_idea_backend(
@@ -650,7 +652,7 @@ fn diagnostics_default_keeps_completeness_and_actionable_records_without_steps()
         &workspace,
         &socket_path,
         vec![
-            ("raw/workspace-refresh", json!({"ok": true})),
+            ("raw/workspace-refresh", complete_refresh_for(&file)),
             (
                 "raw/diagnostics",
                 json!({
@@ -728,6 +730,8 @@ fn diagnostics_default_bounds_real_high_cardinality_records_and_requests() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    write_gradle_marker(&workspace);
+    let workspace = workspace.canonicalize().expect("canonical workspace");
     let file = workspace.join("src/App.kt");
     let socket_path = temp.path().join("idea.sock");
     let diagnostics = (0..TOTAL_DIAGNOSTICS)
@@ -877,6 +881,7 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     let file = workspace.join("src/Added.kt");
     let socket_path = temp.path().join("idea.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
+    write_gradle_marker(&workspace);
     let backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
@@ -982,6 +987,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let socket_path = temp.path().join("idea.sock");
+    write_gradle_marker(&workspace);
     let runtime = json!({
         "state": "READY",
         "healthy": true,
@@ -1062,6 +1068,43 @@ fn assert_output_budget(output: &str, line_budget: usize, token_budget: usize) {
         tokens <= token_budget,
         "output used {tokens} cl100k_base tokens; budget is {token_budget}"
     );
+}
+
+fn write_gradle_marker(workspace: &Path) {
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle workspace marker");
+}
+
+fn complete_refresh_for(file: &Path) -> Value {
+    let file_path = file.display().to_string();
+    json!({
+        "refreshedFiles": [file_path],
+        "removedFiles": [],
+        "fullRefresh": false,
+        "fileStatuses": [{
+            "filePath": file_path,
+            "fileSystemDiscovery": "DISCOVERED",
+            "sourceModuleOwnership": "OWNED",
+            "indexAdmission": "ADMITTED",
+            "analysisAvailability": "AVAILABLE",
+            "analysisStatus": {
+                "filePath": file_path,
+                "state": "ANALYZED"
+            }
+        }],
+        "semanticOutcome": "COMPLETE",
+        "requestedFileCount": 1,
+        "analyzedFileCount": 1,
+        "skippedFileCount": 0,
+        "removedFileCount": 0,
+        "attemptCount": 1,
+        "elapsedMillis": 0,
+        "schemaVersion": 3
+    })
 }
 
 fn cl100k_tokens(value: &str) -> usize {

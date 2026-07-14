@@ -110,60 +110,67 @@ Cargo integration tests, Markdown docs contracts.
 
 ## Task 7: Review Repair — Honest Reference Work And Bounded Diagnostics
 
-- [ ] Replace unconditional reference totals with required `EXACT` or
+- [x] Replace unconditional reference totals with required `EXACT` or
   `KNOWN_MINIMUM` cardinality and preserve the discriminated union in generated
   wire schemas.
-- [ ] Page indexed references with deterministic `LIMIT + 1` SQL, stop IDEA
+- [x] Page indexed references with deterministic `LIMIT + 1` SQL, stop IDEA
   reference streaming at page evidence, and prove real high-cardinality work.
-- [ ] Replace reference cursors with opaque one-use handles for bounded
+- [x] Replace reference cursors with opaque one-use handles for bounded
   server-held INDEX or lazy IDEA state, bind query/workspace/source/generation,
   and test readiness transitions without offset reinterpretation.
-- [ ] Add typed diagnostics limits and continuation, exact full-set severity
+- [x] Add typed diagnostics limits and continuation, exact full-set severity
   counts/cardinality, an eight-record compact cap, and explicit message/preview
   truncation evidence.
-- [ ] Add 500-record diagnostics page/non-overlap and oversized real-field budget
+- [x] Add 500-record diagnostics page/non-overlap and oversized real-field budget
   tests, plus generated catalog and protocol coverage.
-- [ ] Run focused and full Kotlin, Rust, docs, generated-contract, formatting,
+- [x] Run focused and full Kotlin, Rust, docs, generated-contract, formatting,
   lint, and diff gates; freeze the uncommitted tree for fresh review.
 
 ## Task 8: Frozen-Review Findings
 
-- [ ] Make diagnostics continuation opaque and server-held, reuse one exact
+- [x] Make diagnostics continuation opaque and server-held, reuse one exact
   snapshot without refresh or recomputation, and reject stale, mismatched,
   replayed, unknown, or evicted tokens with a typed conflict.
-- [ ] Preserve full typed mutation placement identity for file/named scopes and
+- [x] Preserve full typed mutation placement identity for file/named scopes and
   at/after/before/statement anchors in compact plans.
-- [ ] Preserve final refresh/admission failures, canonical diagnostic file paths,
+- [x] Preserve final refresh/admission failures, canonical diagnostic file paths,
   verification semantic-workspace evidence, and impact workspace identity in
   every compact projection.
-- [ ] Make diagnostics cardinality statically exact in Kotlin, Rust, OpenAPI,
+- [x] Make diagnostics cardinality statically exact in Kotlin, Rust, OpenAPI,
   examples, and generated catalogs rather than accepting `KNOWN_MINIMUM` and
   rejecting it at runtime.
-- [ ] Reconcile ADR, design, public guidance, generated contracts, and this plan
+- [x] Reconcile ADR, design, public guidance, generated contracts, and this plan
   with the implemented boundaries and the explicit #339 deferral.
 
 ## Task 9: Final-Review Repair And Main Integration
 
-- [ ] Make IDEA reference discovery no-false-negative and genuinely bounded by
+- [x] Make IDEA reference discovery no-false-negative and genuinely bounded by
   accounting for every visited path and PSI read, checking elapsed time during
   discovery, and preserving lazy resume across nonmatching and oversized files.
-- [ ] Prove Kotlin convention references for equality, containment, indexed get
+- [x] Prove Kotlin convention references for equality, containment, indexed get
   and set, delegation, destructuring/component functions, invocation, aliases,
   and operator sites without spelling heuristics.
-- [ ] Return indexed pages and their generation atomically under one store lock,
+- [x] Return indexed pages and their generation atomically under one store lock,
   increment generation for every committed index-content transition, and prove
   production-store mutation rejection between pages.
-- [ ] Capture and validate PSI generations inside the same read epochs as
+- [x] Capture and validate PSI generations inside the same read epochs as
   reference traversal and diagnostics snapshot construction, with
   barrier-controlled concurrent-write regressions.
-- [ ] Add continuation expiry, exact-once disposal, `closeAll`, and runtime and
+- [x] Add continuation expiry, exact-once disposal, `closeAll`, and runtime and
   project shutdown wiring; prove expiry, eviction, replacement collision,
   mismatch, exception, exhaustion, and shutdown behavior.
-- [ ] Preserve cumulative indexed search-scope evidence across pages.
-- [ ] Run focused pre-rebase gates, commit, create a recovery ref, fetch, and
+- [x] Preserve cumulative indexed search-scope evidence across pages.
+- [x] Run focused pre-rebase gates, commit, create a recovery ref, fetch, and
   structurally rebase onto `origin/main` at `6ba55393` or newer while preserving
   #335, #336, #341, and #352 contracts.
-- [ ] Prove compact/count/fields behavior for relative diagnostics, linked
+- [x] Prove compact/count/fields behavior for relative diagnostics, linked
   worktree admission, mutation rejection, and verify evidence, then run the full
   Kotlin, Rust, clippy, fmt, generated-contract, sample, docs, Zensical, diff,
   and Kast verification matrix and freeze a clean worktree.
+
+The post-rebase exact-root `kast agent verify` gate passed with linked-worktree,
+READY IDEA, and compiler-backed evidence. The companion diagnostics gate
+analyzed 31 of 32 changed production Kotlin files, then failed on
+`KastPluginBackend.kt` because IDEA reported a stale PSI/index stamp mismatch.
+The full Gradle suite compiled and tested the same disk state successfully; no
+unsafe global IDE save, reload, or close action was taken to clear user state.
