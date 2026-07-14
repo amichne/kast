@@ -1,14 +1,11 @@
-#[path = "../../tests/support/workspace_files.rs"]
-mod workspace_files_support;
-
 use std::path::Path;
 
 use rusqlite::params;
-use workspace_files_support::WorkspaceIndexFixture;
 
 use super::super::model::{
     WorkspaceFileDrift, WorkspaceIndexRead, WorkspaceInventoryLimitationCode, WorkspaceRoot,
 };
+use super::super::workspace_files_test_support::WorkspaceIndexFixture;
 use super::read_workspace_index;
 
 fn fixture() -> (tempfile::TempDir, WorkspaceRoot, WorkspaceIndexFixture) {

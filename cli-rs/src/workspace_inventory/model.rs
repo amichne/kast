@@ -230,102 +230,19 @@ pub(crate) struct KotlinPackageFqName(String);
 
 impl KotlinPackageFqName {
     pub(super) fn parse_persisted(value: String) -> Option<Self> {
-        if value.is_empty() || value.trim() != value || value.chars().any(char::is_control) {
+        if value.is_empty()
+            || value.trim() != value
+            || value.chars().any(char::is_control)
+            || value.split('.').any(str::is_empty)
+        {
             return None;
         }
-        let mut segment = String::new();
-        let mut in_backticks = false;
-        let mut quoted = false;
-        for character in value.chars() {
-            match character {
-                '`' if segment.is_empty() && !in_backticks => {
-                    in_backticks = true;
-                    quoted = true;
-                }
-                '`' if in_backticks => in_backticks = false,
-                '.' if !in_backticks => {
-                    valid_package_segment(&segment, quoted)?;
-                    segment.clear();
-                    quoted = false;
-                }
-                '.' if in_backticks => return None,
-                _ if quoted && !in_backticks => return None,
-                '/' | '\\' | ':' | '[' | ']' => return None,
-                _ => segment.push(character),
-            }
-        }
-        if in_backticks {
-            return None;
-        }
-        valid_package_segment(&segment, quoted)?;
         Some(Self(value))
     }
 
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
-}
-
-fn valid_package_segment(value: &str, quoted: bool) -> Option<String> {
-    if value.is_empty() || value.chars().any(char::is_control) {
-        return None;
-    }
-    if !quoted && !is_plain_kotlin_identifier(value) {
-        return None;
-    }
-    Some(value.to_string())
-}
-
-fn is_plain_kotlin_identifier(value: &str) -> bool {
-    plain_kotlin_identifier_validator().is_valid(&serde_json::Value::String(value.to_string()))
-        && !is_kotlin_hard_keyword(value)
-}
-
-fn plain_kotlin_identifier_validator() -> &'static jsonschema::Validator {
-    static VALIDATOR: std::sync::OnceLock<jsonschema::Validator> = std::sync::OnceLock::new();
-    VALIDATOR.get_or_init(|| {
-        let schema = serde_json::json!({
-            "type": "string",
-            "pattern": r"^(?:_|\p{L})(?:_|\p{L}|\p{Nd})*$"
-        });
-        jsonschema::options()
-            .with_pattern_options(jsonschema::PatternOptions::regex())
-            .build(&schema)
-            .expect("the static indexed Kotlin package identifier schema is valid")
-    })
-}
-
-fn is_kotlin_hard_keyword(value: &str) -> bool {
-    matches!(
-        value,
-        "as" | "break"
-            | "class"
-            | "continue"
-            | "do"
-            | "else"
-            | "false"
-            | "for"
-            | "fun"
-            | "if"
-            | "in"
-            | "interface"
-            | "is"
-            | "null"
-            | "object"
-            | "package"
-            | "return"
-            | "super"
-            | "this"
-            | "throw"
-            | "true"
-            | "try"
-            | "typealias"
-            | "typeof"
-            | "val"
-            | "var"
-            | "when"
-            | "while"
-    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -373,7 +290,12 @@ impl WorkspaceRelativeGradleBuildRoot {
         if value == "." {
             return Some(Self(PathBuf::new()));
         }
-        if value.is_empty() || value.starts_with('/') || value.contains('\\') {
+        if value.is_empty()
+            || value.starts_with('/')
+            || value.contains('\\')
+            || value.chars().any(char::is_control)
+            || has_windows_drive_prefix(&value)
+        {
             return None;
         }
         let segments: Vec<_> = value.split('/').collect();
@@ -389,6 +311,11 @@ impl WorkspaceRelativeGradleBuildRoot {
     pub(crate) fn as_path(&self) -> &Path {
         &self.0
     }
+}
+
+fn has_windows_drive_prefix(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -531,6 +458,8 @@ pub(crate) enum WorkspaceFileIndexState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WorkspaceFileDrift {
     InSync,
+    FilesystemOnly,
+    IndexOnly,
     MissingOnDisk,
     Unknown,
     NotApplicable,
@@ -542,6 +471,113 @@ pub(crate) enum WorkspaceFileDirtyState {
     Dirty,
     Unknown,
     NotApplicable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum DirtyWorkspaceCoverage {
+    Complete,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DirtyWorkspaceStamp {
+    repository_root: PathBuf,
+    dirty_paths: BTreeSet<WorkspaceFilePath>,
+}
+
+impl DirtyWorkspaceStamp {
+    pub(super) fn new(repository_root: PathBuf, dirty_paths: BTreeSet<WorkspaceFilePath>) -> Self {
+        Self {
+            repository_root,
+            dirty_paths,
+        }
+    }
+
+    pub(crate) fn repository_root(&self) -> &Path {
+        &self.repository_root
+    }
+
+    pub(crate) fn dirty_paths(&self) -> &BTreeSet<WorkspaceFilePath> {
+        &self.dirty_paths
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DirtyWorkspaceSnapshot {
+    stamp: DirtyWorkspaceStamp,
+    coverage: DirtyWorkspaceCoverage,
+}
+
+impl DirtyWorkspaceSnapshot {
+    pub(super) fn complete(stamp: DirtyWorkspaceStamp) -> Self {
+        Self {
+            stamp,
+            coverage: DirtyWorkspaceCoverage::Complete,
+        }
+    }
+
+    pub(crate) fn stamp(&self) -> &DirtyWorkspaceStamp {
+        &self.stamp
+    }
+
+    pub(crate) fn coverage(&self) -> DirtyWorkspaceCoverage {
+        self.coverage
+    }
+
+    pub(crate) fn state_for(&self, path: &WorkspaceFilePath) -> WorkspaceFileDirtyState {
+        if self.stamp.dirty_paths.contains(path) {
+            WorkspaceFileDirtyState::Dirty
+        } else {
+            WorkspaceFileDirtyState::Clean
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DirtyWorkspaceRead {
+    Snapshot(DirtyWorkspaceSnapshot),
+    Unavailable(WorkspaceLaneUnavailableReason),
+}
+
+impl DirtyWorkspaceRead {
+    pub(crate) fn coverage(&self) -> DirtyWorkspaceCoverage {
+        match self {
+            Self::Snapshot(snapshot) => snapshot.coverage(),
+            Self::Unavailable(_) => DirtyWorkspaceCoverage::Unavailable,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum WorkspaceFilesystemPathState {
+    Present(PathBuf),
+    Missing {
+        canonical_ancestor: PathBuf,
+        missing_suffix: PathBuf,
+    },
+    Unprovable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceFilesystemStamp(
+    BTreeMap<WorkspaceFilePath, WorkspaceFilesystemPathState>,
+);
+
+impl WorkspaceFilesystemStamp {
+    pub(super) fn new(states: BTreeMap<WorkspaceFilePath, WorkspaceFilesystemPathState>) -> Self {
+        Self(states)
+    }
+
+    pub(crate) fn states(&self) -> &BTreeMap<WorkspaceFilePath, WorkspaceFilesystemPathState> {
+        &self.0
+    }
+
+    pub(crate) fn state_for(
+        &self,
+        path: &WorkspaceFilePath,
+    ) -> Option<&WorkspaceFilesystemPathState> {
+        self.0.get(path)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -562,6 +598,279 @@ impl BackendModuleName {
 
     pub(crate) fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct BackendWorkspaceSnapshotToken(String);
+
+impl BackendWorkspaceSnapshotToken {
+    pub(super) fn parse(value: String) -> Option<Self> {
+        (!value.is_empty() && value.trim() == value && !value.chars().any(char::is_control))
+            .then_some(Self(value))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct BackendWorkspacePageToken(String);
+
+impl BackendWorkspacePageToken {
+    pub(super) fn parse(value: String) -> Option<Self> {
+        (!value.is_empty() && value.trim() == value && !value.chars().any(char::is_control))
+            .then_some(Self(value))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum WorkspaceRequestedKindDomain {
+    SourceOnly,
+    ScriptOnly,
+    Mixed,
+}
+
+impl WorkspaceRequestedKindDomain {
+    pub(crate) fn includes_sources(self) -> bool {
+        matches!(self, Self::SourceOnly | Self::Mixed)
+    }
+
+    pub(crate) fn includes_scripts(self) -> bool {
+        matches!(self, Self::ScriptOnly | Self::Mixed)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum BackendWorkspaceCoverage {
+    Complete,
+    Partial,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum BackendModuleCoverage {
+    Complete,
+    Partial,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BackendModuleInventory {
+    name: BackendModuleName,
+    source_roots: BTreeSet<PathBuf>,
+    content_roots: BTreeSet<PathBuf>,
+    dependency_module_names: BTreeSet<BackendModuleName>,
+    declared_file_count: usize,
+    coverage: BackendModuleCoverage,
+}
+
+impl BackendModuleInventory {
+    pub(super) fn new(
+        name: BackendModuleName,
+        source_roots: BTreeSet<PathBuf>,
+        content_roots: BTreeSet<PathBuf>,
+        dependency_module_names: BTreeSet<BackendModuleName>,
+        declared_file_count: usize,
+        coverage: BackendModuleCoverage,
+    ) -> Self {
+        Self {
+            name,
+            source_roots,
+            content_roots,
+            dependency_module_names,
+            declared_file_count,
+            coverage,
+        }
+    }
+
+    pub(crate) fn name(&self) -> &BackendModuleName {
+        &self.name
+    }
+
+    pub(crate) fn source_roots(&self) -> &BTreeSet<PathBuf> {
+        &self.source_roots
+    }
+
+    pub(crate) fn content_roots(&self) -> &BTreeSet<PathBuf> {
+        &self.content_roots
+    }
+
+    pub(crate) fn dependency_module_names(&self) -> &BTreeSet<BackendModuleName> {
+        &self.dependency_module_names
+    }
+
+    pub(crate) fn declared_file_count(&self) -> usize {
+        self.declared_file_count
+    }
+
+    pub(crate) fn coverage(&self) -> BackendModuleCoverage {
+        self.coverage
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BackendModuleLeaseFingerprint {
+    source_roots: BTreeSet<PathBuf>,
+    content_roots: BTreeSet<PathBuf>,
+    dependency_module_names: BTreeSet<BackendModuleName>,
+    declared_file_count: usize,
+}
+
+impl BackendModuleLeaseFingerprint {
+    fn from_inventory(module: &BackendModuleInventory) -> Self {
+        Self {
+            source_roots: module.source_roots.clone(),
+            content_roots: module.content_roots.clone(),
+            dependency_module_names: module.dependency_module_names.clone(),
+            declared_file_count: module.declared_file_count,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BackendWorkspaceStamp {
+    snapshot_token: BackendWorkspaceSnapshotToken,
+    modules: BTreeMap<BackendModuleName, BackendModuleLeaseFingerprint>,
+}
+
+impl BackendWorkspaceStamp {
+    fn from_inventory(
+        snapshot_token: BackendWorkspaceSnapshotToken,
+        modules: &BTreeMap<BackendModuleName, BackendModuleInventory>,
+    ) -> Self {
+        Self {
+            snapshot_token,
+            modules: modules
+                .iter()
+                .map(|(name, module)| {
+                    (
+                        name.clone(),
+                        BackendModuleLeaseFingerprint::from_inventory(module),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BackendWorkspaceInventory {
+    files: BTreeMap<WorkspaceFilePath, BTreeSet<BackendModuleName>>,
+    modules: BTreeMap<BackendModuleName, BackendModuleInventory>,
+    coverage: BackendWorkspaceCoverage,
+    snapshot_token: Option<BackendWorkspaceSnapshotToken>,
+    limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
+}
+
+impl BackendWorkspaceInventory {
+    pub(super) fn new(
+        files: BTreeMap<WorkspaceFilePath, BTreeSet<BackendModuleName>>,
+        modules: BTreeMap<BackendModuleName, BackendModuleInventory>,
+        coverage: BackendWorkspaceCoverage,
+        snapshot_token: Option<BackendWorkspaceSnapshotToken>,
+        limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
+    ) -> Self {
+        Self {
+            files,
+            modules,
+            coverage,
+            snapshot_token,
+            limitations,
+        }
+    }
+
+    pub(crate) fn files(&self) -> &BTreeMap<WorkspaceFilePath, BTreeSet<BackendModuleName>> {
+        &self.files
+    }
+
+    pub(crate) fn modules(&self) -> &BTreeMap<BackendModuleName, BackendModuleInventory> {
+        &self.modules
+    }
+
+    pub(crate) fn coverage(&self) -> BackendWorkspaceCoverage {
+        self.coverage
+    }
+
+    pub(crate) fn snapshot_token(&self) -> Option<&BackendWorkspaceSnapshotToken> {
+        self.snapshot_token.as_ref()
+    }
+
+    pub(crate) fn stamp(&self) -> Option<BackendWorkspaceStamp> {
+        self.snapshot_token
+            .clone()
+            .map(|token| BackendWorkspaceStamp::from_inventory(token, &self.modules))
+    }
+
+    pub(crate) fn limitations(&self) -> &BTreeMap<WorkspaceInventoryLimitationCode, usize> {
+        &self.limitations
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct WorkspaceLaneUnavailableReason(String);
+
+impl WorkspaceLaneUnavailableReason {
+    pub(crate) fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum WorkspaceLaneStamp<Stamp> {
+    Available(Stamp),
+    Unavailable(WorkspaceLaneUnavailableReason),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum WorkspaceLanePurpose {
+    CandidateInventory,
+    FilterEvidence,
+    CandidateAndFilter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum WorkspaceLaneEvidence<Stamp> {
+    Irrelevant,
+    Relevant {
+        purpose: WorkspaceLanePurpose,
+        stamp: WorkspaceLaneStamp<Stamp>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct WorkspaceKindMatchCoverage {
+    source: Option<WorkspaceCoverageDimension>,
+    script: Option<WorkspaceCoverageDimension>,
+}
+
+impl WorkspaceKindMatchCoverage {
+    pub(super) fn new(
+        source: Option<WorkspaceCoverageDimension>,
+        script: Option<WorkspaceCoverageDimension>,
+    ) -> Self {
+        Self { source, script }
+    }
+
+    pub(crate) fn source(self) -> Option<WorkspaceCoverageDimension> {
+        self.source
+    }
+
+    pub(crate) fn script(self) -> Option<WorkspaceCoverageDimension> {
+        self.script
+    }
+
+    fn force_partial(&mut self) {
+        self.source = self.source.map(|_| WorkspaceCoverageDimension::Partial);
+        self.script = self.script.map(|_| WorkspaceCoverageDimension::Partial);
     }
 }
 
@@ -642,6 +951,51 @@ impl WorkspaceInventoryFile {
     pub(crate) fn evidence(&self) -> &BTreeSet<WorkspaceEvidenceSource> {
         &self.evidence
     }
+
+    pub(super) fn composed(
+        path: WorkspaceFilePath,
+        backend_modules: BTreeSet<BackendModuleName>,
+        indexed: Option<&WorkspaceInventoryFile>,
+        kind: WorkspaceFileKind,
+        drift: WorkspaceFileDrift,
+        dirty_state: WorkspaceFileDirtyState,
+        evidence: BTreeSet<WorkspaceEvidenceSource>,
+    ) -> Self {
+        let index_state = if kind == WorkspaceFileKind::Script {
+            WorkspaceFileIndexState::NotApplicable
+        } else {
+            indexed
+                .map(|file| file.index_state.clone())
+                .unwrap_or(WorkspaceFileIndexState::MetadataUnavailable)
+        };
+        Self {
+            path,
+            backend_modules,
+            indexed_gradle_projects: indexed
+                .map(|file| file.indexed_gradle_projects.clone())
+                .unwrap_or_default(),
+            source_sets: indexed
+                .map(|file| file.source_sets.clone())
+                .unwrap_or(WorkspaceSourceSetEvidence::Unavailable),
+            kind,
+            package: indexed
+                .map(|file| file.package.clone())
+                .unwrap_or(WorkspacePackageEvidence::Unavailable),
+            index_state,
+            drift,
+            dirty_state,
+            evidence,
+        }
+    }
+
+    pub(super) fn force_cross_source_unknown(&mut self) {
+        if self.kind == WorkspaceFileKind::Source {
+            self.drift = WorkspaceFileDrift::Unknown;
+        }
+        if self.dirty_state != WorkspaceFileDirtyState::NotApplicable {
+            self.dirty_state = WorkspaceFileDirtyState::Unknown;
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -649,7 +1003,7 @@ pub(crate) enum WorkspaceInventoryLimitationCode {
     BackendCapabilityUnavailable,
     BackendMetadataUnavailable,
     BackendPageIncomplete,
-    StaleBackendGeneration,
+    BackendWorkspaceInventoryStale,
     RuntimeIndexing,
     ProjectModelUnavailable,
     LinkedRootUnassociated,
@@ -658,11 +1012,94 @@ pub(crate) enum WorkspaceInventoryLimitationCode {
     SourceIndexProgressIncomplete,
     SourceIndexUpdatesPending,
     GitUnavailable,
-    UnstableCrossSourceComposition,
+    CrossSourceCompositionUnstable,
     PathContainmentUnprovable,
     PackageMetadataInvalid,
     UnknownProjectModelOwnership,
+    ProjectModelOwnershipUnknown,
     OutOfRootExcluded,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct WorkspaceInventorySnapshot {
+    files: Vec<WorkspaceInventoryFile>,
+    backend_coverage: BackendWorkspaceCoverage,
+    coverage: WorkspaceMatchCoverage,
+    kind_coverage: WorkspaceKindMatchCoverage,
+    limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
+    continuation_allowed: bool,
+    composition_digest: String,
+}
+
+impl WorkspaceInventorySnapshot {
+    pub(super) fn new(
+        mut files: Vec<WorkspaceInventoryFile>,
+        backend_coverage: BackendWorkspaceCoverage,
+        coverage: WorkspaceMatchCoverage,
+        kind_coverage: WorkspaceKindMatchCoverage,
+        limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
+        continuation_allowed: bool,
+        composition_digest: String,
+    ) -> Self {
+        files.sort_by(|left, right| left.path.cmp(&right.path));
+        Self {
+            files,
+            backend_coverage,
+            coverage,
+            kind_coverage,
+            limitations,
+            continuation_allowed,
+            composition_digest,
+        }
+    }
+
+    pub(crate) fn files(&self) -> &[WorkspaceInventoryFile] {
+        &self.files
+    }
+
+    pub(crate) fn backend_coverage(&self) -> BackendWorkspaceCoverage {
+        self.backend_coverage
+    }
+
+    pub(crate) fn coverage(&self) -> WorkspaceMatchCoverage {
+        self.coverage
+    }
+
+    pub(crate) fn kind_coverage(&self) -> WorkspaceKindMatchCoverage {
+        self.kind_coverage
+    }
+
+    pub(crate) fn limitations(&self) -> &BTreeMap<WorkspaceInventoryLimitationCode, usize> {
+        &self.limitations
+    }
+
+    pub(crate) fn limitation_count(&self, code: WorkspaceInventoryLimitationCode) -> usize {
+        self.limitations.get(&code).copied().unwrap_or_default()
+    }
+
+    pub(crate) fn continuation_allowed(&self) -> bool {
+        self.continuation_allowed
+    }
+
+    pub(crate) fn composition_digest(&self) -> &str {
+        &self.composition_digest
+    }
+
+    pub(super) fn mark_unstable(&mut self) {
+        self.limitations
+            .entry(WorkspaceInventoryLimitationCode::CrossSourceCompositionUnstable)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+        self.coverage = WorkspaceMatchCoverage::from_dimensions(
+            WorkspaceCoverageDimension::Partial,
+            WorkspaceCoverageDimension::Partial,
+        );
+        self.kind_coverage.force_partial();
+        self.continuation_allowed = false;
+        for file in &mut self.files {
+            file.force_cross_source_unknown();
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
