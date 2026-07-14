@@ -7,7 +7,7 @@
     "kindDomain": "MIXED",
     "maxFilesPerModule": 25,
     "moduleName": ":analysis-api",
-    "pageToken": "example-pageToken",
-    "snapshotToken": "example-snapshotToken"
+    "pageToken": "00000000-0000-4000-8000-000000000339",
+    "snapshotToken": "00000000-0000-4000-8000-000000000338"
   }
 }

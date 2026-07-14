@@ -669,11 +669,13 @@ commands:
           description: Opaque single-use exact-module page handle returned as nextPageToken by the preceding page.
           nullable: true
           optional: true
+          sample: 00000000-0000-4000-8000-000000000339
           type: string
         snapshotToken:
           description: Opaque reusable generation-bound workspace snapshot handle returned by the metadata request.
           nullable: true
           optional: true
+          sample: 00000000-0000-4000-8000-000000000338
           type: string
     responseType: WorkspaceFilesResult
     summary: List generation-bound workspace modules and Kotlin file pages
@@ -726,6 +728,7 @@ commands:
             - limit
             type: object
           pageToken:
+            sample: 00000000-0000-4000-8000-000000000340
             type: string
         required:
         - identity
@@ -754,6 +757,7 @@ commands:
           state:
             fields:
               compositionStampDigest:
+                sample: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
                 type: string
               cumulativeReturnedCount:
                 type: integer

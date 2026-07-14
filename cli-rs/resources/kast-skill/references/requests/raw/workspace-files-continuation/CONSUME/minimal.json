@@ -11,6 +11,6 @@
       "projection": "example-projection",
       "workspaceRoot": "/absolute/path/to/workspace"
     },
-    "pageToken": "example-pageToken"
+    "pageToken": "00000000-0000-4000-8000-000000000340"
   }
 }

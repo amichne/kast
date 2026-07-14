@@ -12,7 +12,7 @@
       "workspaceRoot": "/absolute/path/to/workspace"
     },
     "state": {
-      "compositionStampDigest": "example-compositionStampDigest",
+      "compositionStampDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "cumulativeReturnedCount": 1,
       "identity": {
         "backendName": "example-backendName",
