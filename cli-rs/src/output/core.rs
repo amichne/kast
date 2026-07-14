@@ -7,7 +7,10 @@ pub(crate) fn print_structured(value: &impl Serialize, format: OutputFormat) -> 
     Ok(())
 }
 
-pub(crate) fn render_structured_output(value: &impl Serialize, format: OutputFormat) -> Result<String> {
+pub(crate) fn render_structured_output(
+    value: &impl Serialize,
+    format: OutputFormat,
+) -> Result<String> {
     match format {
         OutputFormat::Json => {
             let mut rendered = serde_json::to_string_pretty(value)?;
@@ -16,9 +19,8 @@ pub(crate) fn render_structured_output(value: &impl Serialize, format: OutputFor
         }
         OutputFormat::Toon => {
             let value = serde_json::to_value(value)?;
-            let mut rendered = toon_format::encode_default(&value)
+            let rendered = toon_format::encode_default(&value)
                 .map_err(|error| CliError::new("TOON_ENCODE_ERROR", error.to_string()))?;
-            rendered.push('\n');
             Ok(rendered)
         }
         OutputFormat::Human => {

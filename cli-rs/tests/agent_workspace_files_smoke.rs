@@ -70,13 +70,24 @@ fn workspace_files_is_public() {
     );
     let help = String::from_utf8_lossy(&output.stdout);
     for example in [
-        "kast agent workspace-files --workspace-root /workspace",
-        "kast agent workspace-files --workspace-root /workspace --source-set main --kind source",
+        "kast agent workspace-files --workspace-root /workspace --module backend:kast.analysis-api.main --package root",
+        "kast agent workspace-files --workspace-root /workspace --module gradle:included/tools#:app --package named:com.example",
         "kast agent workspace-files --workspace-root /workspace --kind script --fields path,module",
     ] {
         assert!(
             help.contains(example),
             "missing example `{example}`: {help}"
+        );
+    }
+    for selector_grammar in [
+        "backend:<name>",
+        "gradle:<root>#<path>",
+        "root",
+        "named:<fq-name>",
+    ] {
+        assert!(
+            help.contains(selector_grammar),
+            "missing selector grammar `{selector_grammar}`: {help}"
         );
     }
 }
@@ -139,6 +150,18 @@ fn documented_workspace_file_arguments_reach_the_typed_boundary() {
         stdout["error"]["details"]["pageHandle"]["token"], "123e4567-e89b-42d3-a456-426614174000",
         "{stdout:#}"
     );
+    assert_eq!(
+        stdout["error"]["details"]["nextAction"]["arguments"],
+        serde_json::json!([
+            "agent",
+            "verify",
+            "--workspace-root",
+            workspace,
+            "--backend",
+            "idea"
+        ]),
+        "{stdout:#}"
+    );
 }
 
 #[test]
@@ -180,6 +203,7 @@ fn module_selectors_are_closed_and_build_qualified() {
         "gradle:../outside#:app",
         "gradle:included/tools#app",
         "gradle:C:/workspace#:app",
+        "gradle:C:workspace#:app",
         "gradle:C:\\workspace#:app",
         "gradle://server/share#:app",
         "gradle:\\\\server\\share#:app",
@@ -259,6 +283,7 @@ fn path_filters_are_normalized_and_workspace_relative() {
         "../outside",
         "src/../outside",
         "C:/workspace/src",
+        "C:workspace/src",
         "C:\\workspace\\src",
         "//server/share/src",
         "\\\\server\\share\\src",
@@ -271,6 +296,7 @@ fn path_filters_are_normalized_and_workspace_relative() {
         "/**/*.kt",
         "../**/*.kt",
         "C:/workspace/**/*.kt",
+        "C:workspace/**/*.kt",
         "C:\\workspace\\**\\*.kt",
         "//server/share/**/*.kt",
         "\\\\server\\share\\**\\*.kt",
@@ -429,8 +455,12 @@ fn unavailable_error_has_structured_next_action_and_toon_stdout_discipline() {
         String::from_utf8_lossy(&output.stderr)
     );
     let toon = std::str::from_utf8(&output.stdout).expect("TOON UTF-8");
+    assert!(
+        !output.stdout.ends_with(b"\n"),
+        "TOON stdout must not have a trailing newline: {toon:?}"
+    );
     let document: serde_json::Value =
-        toon_format::decode_default(toon.trim()).expect("workspace-files TOON");
+        toon_format::decode_default(toon).expect("workspace-files TOON");
     assert_eq!(
         document["error"]["code"], "WORKSPACE_FILE_DISCOVERY_UNAVAILABLE",
         "{document:#}"

@@ -55,17 +55,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             return error_envelope("agent/workspace-files".to_string(), None, error);
         }
     };
-    let next_action = WorkspaceFilesNextAction {
-        kind: "VERIFY_WORKSPACE",
-        command: "kast",
-        arguments: vec![
-            "agent".to_string(),
-            "verify".to_string(),
-            "--workspace-root".to_string(),
-            admitted_query.canonical_workspace_root.clone(),
-        ],
-        mutates_global_install_authority: false,
-    };
+    let next_action = workspace_files_next_action(&admitted_query);
     let mut error = agent_error(
         "WORKSPACE_FILE_DISCOVERY_UNAVAILABLE",
         "Workspace file discovery is not available until the typed inventory is initialized.",
@@ -87,6 +77,26 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         serde_json::to_value(next_action).expect("the workspace-file next action is serializable"),
     );
     error_envelope("agent/workspace-files".to_string(), None, error)
+}
+
+fn workspace_files_next_action(
+    admitted_query: &AdmittedWorkspaceFilesQueryIdentity,
+) -> WorkspaceFilesNextAction {
+    let mut arguments = vec![
+        "agent".to_string(),
+        "verify".to_string(),
+        "--workspace-root".to_string(),
+        admitted_query.canonical_workspace_root.clone(),
+    ];
+    if let Some(backend) = admitted_query.backend {
+        arguments.extend(["--backend".to_string(), backend.to_string()]);
+    }
+    WorkspaceFilesNextAction {
+        kind: "VERIFY_WORKSPACE",
+        command: "kast",
+        arguments,
+        mutates_global_install_authority: false,
+    }
 }
 
 fn admit_workspace_files_query(

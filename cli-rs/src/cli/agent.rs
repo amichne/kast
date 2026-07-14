@@ -93,12 +93,12 @@ pub struct AgentVerifyArgs {
 
 #[derive(Debug, Args, Clone)]
 #[command(
-    after_help = "Examples:\n  kast agent workspace-files --workspace-root /workspace\n  kast agent workspace-files --workspace-root /workspace --source-set main --kind source\n  kast agent workspace-files --workspace-root /workspace --kind script --fields path,module"
+    after_help = "Selector forms:\n  module:  backend:<name> | gradle:<root>#<path>\n  package: root | named:<fq-name>\n\nExamples:\n  kast agent workspace-files --workspace-root /workspace --module backend:kast.analysis-api.main --package root\n  kast agent workspace-files --workspace-root /workspace --module gradle:included/tools#:app --package named:com.example\n  kast agent workspace-files --workspace-root /workspace --kind script --fields path,module"
 )]
 pub struct AgentWorkspaceFilesArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
-    /// Filter to one exact backend module or build-qualified Gradle project.
+    /// Filter by `backend:<name>` or `gradle:<root>#<path>`.
     #[arg(long)]
     pub module: Option<WorkspaceModuleSelector>,
     /// Filter to one model-proven Gradle source-set name.
@@ -107,7 +107,7 @@ pub struct AgentWorkspaceFilesArgs {
     /// Filter Kotlin source files or Kotlin scripts.
     #[arg(long, value_enum)]
     pub kind: Option<WorkspaceFileKindFilter>,
-    /// Filter proven root or named Kotlin package evidence.
+    /// Filter package evidence with `root` or `named:<fq-name>`.
     #[arg(long = "package")]
     pub package_selector: Option<WorkspacePackageSelector>,
     /// Filter clean, dirty, or unknown Git evidence.
@@ -562,7 +562,7 @@ fn normalize_workspace_relative_path(value: &str, label: &str) -> Result<String,
     if value.is_empty()
         || value.trim() != value
         || value.contains('\\')
-        || is_platform_absolute_path(value)
+        || is_platform_qualified_path(value)
     {
         return Err(format!(
             "{label} must be a non-blank workspace-relative forward-slash path"
@@ -591,13 +591,12 @@ fn normalize_workspace_relative_path(value: &str, label: &str) -> Result<String,
     Ok(segments.join("/"))
 }
 
-fn is_platform_absolute_path(value: &str) -> bool {
+fn is_platform_qualified_path(value: &str) -> bool {
     let bytes = value.as_bytes();
     value.starts_with(['/', '\\'])
         || matches!(
             bytes,
-            [drive, b':', separator, ..]
-                if drive.is_ascii_alphabetic() && matches!(separator, b'/' | b'\\')
+            [drive, b':', ..] if drive.is_ascii_alphabetic()
         )
 }
 
