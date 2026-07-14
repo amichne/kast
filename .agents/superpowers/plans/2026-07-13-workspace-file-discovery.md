@@ -129,13 +129,20 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceModule.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFileSnapshotToken.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFilePageToken.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStore.kt`
+- Migrate and generalize:
+  `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ServerHeldContinuationStore.kt`
+  -> `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStore.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationTtl.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationCapacity.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationClock.kt`
+- Migrate and generalize:
+  `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ContinuationClock.kt`
+  -> `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationClock.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationStateDisposer.kt`
-- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationTransition.kt`
-- Create: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStoreTest.kt`
+- Replace: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ContinuationClaim.kt`
+  with `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationTransition.kt`
+- Migrate and expand:
+  `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/ServerHeldContinuationStoreTest.kt`
+  -> `analysis-api/src/test/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStoreTest.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/CloseableAnalysisBackend.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedWorkspaceFilesQuery.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceInventoryStaleException.kt`
@@ -157,6 +164,8 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Modify: `analysis-server/AGENTS.md`
 - Modify: `analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt`
 - Modify: `analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisServerSocketTest.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
+- Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
 
 **Interfaces:**
 
@@ -288,8 +297,12 @@ value class WorkspaceFileSnapshotToken private constructor(val value: String) {
 distinct type. Add `snapshotToken: String?` and `pageToken: String?` to
 `WorkspaceFilesQuery`, add the closed kind domain, parse each once, and reject
 illegal field combinations.
-The shared continuation store owns random issue, TTL cleanup, capacity
-eviction, query comparison, reusable lookup, atomic single-use consumption,
+Start from #337's IDEA-local store, clock, claim outcome, and tests. Move and
+generalize that implementation into `analysis-api`, migrate the reference and
+diagnostic callers to typed store instances, and remove the superseded
+`backend-idea` store/clock/claim files only after those callers compile against
+the shared owner. The shared continuation store owns random issue, TTL cleanup,
+capacity eviction, query comparison, reusable lookup, atomic single-use consumption,
 and exact-once disposal. Its callback receives borrowed state and returns only
 `ContinuationTransition.Complete(output)` or
 `ContinuationTransition.Reissue(output, nextQuery)`. Claim the old handle
