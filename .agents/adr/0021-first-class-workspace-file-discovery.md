@@ -35,7 +35,15 @@ request candidates.
 The backend is authoritative for current compiler/project-model ownership and
 may report one physical path as owned by multiple modules. The source index is
 authoritative only for Kotlin-source facts it actually stores: manifest
-membership, Gradle module path, source set, and package fully qualified name.
+membership, a build-qualified Gradle project identity when the producer proved
+one from the linked Gradle model, source set, and package fully qualified name.
+The legacy `file_metadata.module_path` value is an unqualified module label and
+is never parsed or exposed as a `GradleProjectPath`. The IDEA producer persists
+a set of separate association rows containing `(workspace-relative linked build
+root, absolute Gradle project path)` from `GradleModuleData`; an IDEA
+module-name fallback remains an unproven label and cannot enter those rows.
+Root and included builds may therefore both own `:app` without becoming the
+same indexed owner.
 `SourceIndexFilePolicy` remains `.kt`-only. A `.kts` record is therefore
 `NOT_APPLICABLE` to this Kotlin source index rather than `NOT_INDEXED`; issue
 #340 owns a separate Gradle DSL index. An index row alone does not prove current
@@ -46,19 +54,23 @@ The Rust CLI owns evidence composition. Its internal
 retains every candidate returned by all successfully exhausted backend pages
 and one generation-stamped Kotlin source-index snapshot, plus per-module and
 per-source completeness and limitation evidence. It publishes an exact
-composition only after a barrier proves the backend generation, source-index
-generation/progress/pending state, targeted filesystem evidence, and Git
-snapshot did not move during collection. The whole composition retries once
-when a lane moves; a second movement is typed partial evidence and can never
-produce `EXACT`. The independent bounds allow at most two composition attempts
-with at most two backend-generation attempts each. Issue #340 consumes the
-`.kts` candidates but writes
-Gradle declarations and relationships to its separate Gradle DSL index. If a
+composition only after a kind-relevant barrier proves the required backend
+generation, source-index generation/progress/pending state, targeted filesystem
+evidence, and requested filter/projection evidence did not move during
+collection. A source-only or mixed request requires the Kotlin source-index
+lane; a script-only request and issue #340 mark that lane irrelevant, do not
+read or validate it, and cannot lose exactness because unrelated `.kt` progress
+moves. The whole composition retries once when a relevant lane moves; a second
+movement is typed partial evidence and can never produce `EXACT` for the
+affected kind domain. The independent bounds allow at most two composition
+attempts with at most two backend-generation attempts each. Issue #340
+consumes the `.kts` candidates but writes Gradle declarations and relationships
+to its separate Gradle DSL index. If a
 generic backend page transport fails or returns an invalid token, only that
 module is partial and backend absence remains unprovable for paths that may
 belong to it. A stale workspace generation invalidates the whole backend
-attempt: Rust discards it,
-restarts once from fresh metadata, and returns typed partial evidence if that
+attempt: Rust discards it, restarts once from fresh metadata, and returns typed
+partial evidence if that
 single retry also becomes stale. The partial result carries
 `BACKEND_WORKSPACE_INVENTORY_STALE`, marks every module from the last metadata
 response incomplete, and retains no backend candidates from either stale
@@ -68,10 +80,13 @@ stale retry and preserves the server's typed reason as a public limitation.
 
 ## Raw paging and project-model authority
 
-An unpaged `raw/workspace-files` metadata request lists sorted module metadata
-and counts plus an opaque top-level `snapshotToken`. Rust echoes that token on
-every exact-module request with `includeFiles=true` and a positive
-server-bounded `maxFilesPerModule`. Snapshot and page handles use the shared
+An unpaged `raw/workspace-files` metadata request carries a typed
+source-only/script-only/mixed kind domain and lists sorted relevant module
+metadata and counts plus an opaque top-level `snapshotToken`. Rust echoes that
+kind domain and token on every exact-module request with `includeFiles=true`
+and a positive server-bounded `maxFilesPerModule`. The backend fingerprints and
+pages only the requested domain, so unrelated source movement cannot invalidate
+a script-only snapshot. Snapshot and page handles use the shared
 server-held opaque continuation mechanism established for ADR 0020 paging.
 Random canonical handles address typed state containing the generation, exact
 module, query identity, and next offset; neither clients nor Rust decode or
@@ -90,10 +105,21 @@ already-consumed, or query-mismatched handle fails as
 workspace-wide and discards the backend attempt; an invalid page handle is
 local to its module only while the snapshot lease still validates.
 
-The backend builds a canonical full-workspace inventory in one read action and
+The generic store owns every issued state and never returns an owning reference
+to callers. A typed disposer is invoked exactly once when an entry leaves the
+store through expiry, capacity eviction, replacement, query mismatch, explicit
+invalidation or completion, terminal single-use consumption, or server
+shutdown. Consuming and leased APIs run caller work under store-owned lifetime
+control and dispose in `finally` when ownership terminates, including callback
+failure. Shutdown drains every typed store; one disposer failure cannot skip
+the remaining entries. Stateless continuation families use a no-op disposer,
+while ADR 0020 reference/diagnostic state adapts its closeable IDEA traversal
+to this owner instead of keeping a parallel lifecycle.
+
+The backend builds a canonical requested-kind inventory in one read action and
 fingerprints its sorted module identities, source/content roots, dependencies,
-and candidate paths. Before serving any exact-module page or final barrier
-validation it recomputes the inventory and compares its generation with the
+kind domain, and candidate paths. Before serving any exact-module page or final
+barrier validation it recomputes the inventory and compares its generation with the
 leased snapshot state. Equal-cardinality path replacement, module
 addition/removal, or any other inventory change invalidates the lease and fails
 with `STALE_WORKSPACE_INVENTORY`. Only server-held state for a matching
@@ -138,8 +164,9 @@ The command accepts the standard exact-root `--workspace-root` and `--backend`
 flags and the result-view flags introduced by ADR 0020. Its discovery filters
 are typed and conjunctive:
 
-- `--module` matches any exact backend module name or indexed Gradle module
-  path in the record's ownership sets;
+- `--module` parses a closed selector: `backend:<exact-name>` or
+  `gradle:<workspace-relative-build-root>#<absolute-project-path>`, and matches
+  the corresponding backend owner or build-qualified indexed Gradle project;
 - `--source-set` matches an exact indexed source set;
 - `--kind source|script` distinguishes `.kt` from `.kts`;
 - `--package` matches an exact indexed package fully qualified name;
@@ -180,10 +207,21 @@ explicit new unpaged query.
 Five-hundred-record tests prove 200/200/100 continuation with no gaps or
 overlap.
 
+The composition digest canonically serializes the normalized requested-kind
+domain, each lane's relevance, and every relevant lane's discriminated
+`AVAILABLE(stamp)` or `UNAVAILABLE(reason)` state. It does not require all
+lanes to be available. A stable backend-only or index-only partial composition
+can therefore page its known matches without pretending to be exact; the token
+becomes stale when a bound lane changes stamp, availability, or unavailable
+reason. Irrelevant lanes are represented as `IRRELEVANT` and neither movement
+nor availability in such a lane invalidates a continuation.
+
 Registration and consumption travel through the internal typed
 `raw/workspace-files-continuation` method on the already admitted RPC session.
-That method stores or returns typed state but is not a public agent command or
-capability. It does not accept candidate enumeration authority.
+That method issues state or serializes consumed plain state inside the store's
+lifetime-controlled callback, but is not a public agent command or capability.
+It does not accept candidate enumeration authority or leak an owning state
+reference.
 
 The compact default emits a typed result with the exact workspace root,
 bounded file records, ADR 0020's discriminated `EXACT` or `KNOWN_MINIMUM`
@@ -192,7 +230,8 @@ candidate-inventory and filter-evidence coverage, typed limitations, and schema
 version. Each file record includes:
 
 - absolute `filePath` and workspace-relative `relativePath`;
-- sorted backend-module and indexed-Gradle-module ownership sets;
+- sorted backend-module and build-qualified indexed-Gradle-project ownership
+  sets;
 - source set when known;
 - `KOTLIN_SOURCE` or `KOTLIN_SCRIPT` kind;
 - `INDEXED`, `NOT_INDEXED`, `NOT_APPLICABLE`, or `UNKNOWN` Kotlin source-index
@@ -205,18 +244,26 @@ version. Each file record includes:
   dirty, or unknown; and
 - verbose/explain evidence identifying which sources established the record.
 
-The candidate inventory is `COMPLETE` only when every candidate authority that
-could contribute a matching path is exhaustive. Filter evidence is `COMPLETE`
-only when every predicate used by the request is known for every candidate. A
-complete candidate inventory can therefore coexist with partial filter evidence:
+The candidate inventory is `COMPLETE` only when every candidate authority
+relevant to the requested kind domain could contribute no additional matching
+path. Filter evidence is `COMPLETE` only when every requested predicate is
+known for every candidate in that domain. Source and script coverage are
+tracked separately and conjoined for the overall result whenever the selected
+kind domain is mixed; a script-only result and a script count group may be exact
+while `.kt` index
+progress is incomplete. A complete candidate inventory can therefore coexist
+with partial filter evidence:
 for example, unavailable Git status makes a `--dirty clean` query inexact even
-when all backend and source-index candidates are known. Cardinality is `EXACT`
-only when both relevant coverage dimensions are complete; otherwise it is
+when all kind-relevant backend and source-index candidates are known.
+Cardinality is `EXACT` only when both relevant coverage dimensions are complete;
+otherwise it is
 `KNOWN_MINIMUM` and counts only matches actually proved. `returnedCount` equals
 the emitted file count. `truncated` is true when an exact total exceeds that
 count or cardinality is `KNOWN_MINIMUM`, because unseen matches remain possible.
 `nextPageToken` is non-null only when another currently known matching record
-exists; partial evidence may therefore be truncated without offering a token.
+exists. Coherent partial evidence may continue through all currently known
+matches; unstable evidence, or a partial result with no further known match,
+remains truncated without a token.
 
 The default compact representation must remain within 120 lines and 1,500
 estimated tokens for a high-cardinality fixture. `--fields` selects typed file
@@ -234,15 +281,17 @@ not invent a second path dialect.
 
 The collector opens the configured exact-root source-index database read-only
 and reads one SQLite transaction joining `file_manifest`, `path_prefixes`,
-`file_metadata`, and `fq_names` together with `schema_version.generation`, all
-`module_index_progress`, and the count of unapplied `pending_updates`. It keeps
-only `.kt` candidates because that is the source index's declared policy.
+`file_metadata`, the dedicated `file_gradle_projects` association table, and
+`fq_names` together with `schema_version.generation`, all
+`module_index_progress`, and the count of unapplied `pending_updates`. It never
+promotes legacy `file_metadata.module_path` into Gradle identity. It keeps only
+`.kt` candidates because that is the source index's declared policy.
 Generation increments in the same write transaction as candidate, progress, or
 pending-state changes. Source-index coverage is complete only when the
 initialized progress set is nonempty, every row is `COMPLETE`, indexed counts
 equal totals, and no unapplied update remains. Existing candidates are checked
-individually; the
-implementation does not recurse from the workspace root. Git porcelain may
+individually; the implementation does not recurse from the workspace root. Git
+porcelain may
 annotate a candidate but never adds one absent from backend and index evidence.
 
 Every candidate is normalized against the admitted workspace root. Existing
@@ -257,17 +306,26 @@ race, or absence of any canonicalizable ancestor yields
 partial. Backend module source/content roots receive the same proof before they
 can establish ownership or completeness.
 
-After collecting backend, index, targeted filesystem, and Git evidence, the
-composition barrier validates the backend snapshot lease, re-reads the
-source-index generation/progress/pending stamp in a fresh transaction, repeats
-targeted filesystem facts, and repeats the normalized Git status fingerprint.
-Only identical before/after stamps form a coherent snapshot. One changed lane
-discards the whole attempt and retries once. A second change emits
-`CROSS_SOURCE_COMPOSITION_UNSTABLE`, marks candidate and affected filter
-coverage partial, suppresses public continuation, and forbids `EXACT`. Stable
+Before collection, the normalized query derives a closed source-only,
+script-only, or mixed kind domain and a relevance map for candidate, filter,
+and projection evidence. The composition stores each relevant lane as
+`AVAILABLE(typed stamp)` or `UNAVAILABLE(typed reason)` and marks non-required
+lanes `IRRELEVANT`. After collecting evidence, the barrier validates the
+backend snapshot lease or repeats its unavailable classification, re-reads a
+relevant source-index generation/progress/pending stamp or unavailable
+classification in a fresh transaction, repeats targeted filesystem facts, and
+repeats Git only when the selected filter/view/fields require it. Canonical
+before/after lane states, including availability tags and reasons, must match.
+One changed relevant lane discards the whole attempt and retries once. A second
+change emits `CROSS_SOURCE_COMPOSITION_UNSTABLE`, marks candidate and affected
+filter coverage partial, suppresses public continuation, and forbids `EXACT`.
+Stable
 but incomplete index progress or pending updates emits distinct
 `SOURCE_INDEX_PROGRESS_INCOMPLETE` or `SOURCE_INDEX_UPDATES_PENDING`
-limitations and likewise forbids exact candidate coverage.
+limitations and forbids exact source or mixed candidate coverage, but is
+irrelevant to script-only discovery and #340. Mixed/source/script fixtures
+prove that exactness and continuation invalidation follow only the selected
+kind partitions.
 
 The dirty-state adapter forces `status.relativePaths=false` so Git porcelain v2
 paths are repository-root-relative even when Git runs with
@@ -310,10 +368,11 @@ snapshot staleness, unavailable or incompatible source index, unavailable Git
 status, incomplete index progress, pending index updates, unstable cross-source
 composition, unprovable containment, unavailable or invalid package metadata,
 and excluded out-of-root rows are distinct typed limitations. A usable
-backend-only or index-only snapshot
-may return partial evidence. Exact-root admission failure and malformed backend
-payloads fail closed. When neither backend nor index is usable, the command
-returns `WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` instead of a false empty success.
+backend-only or index-only snapshot may return partial evidence. Exact-root
+admission failure and malformed backend payloads fail closed. When no candidate
+authority relevant to the selected kind
+domain is usable, the command returns `WORKSPACE_FILE_DISCOVERY_UNAVAILABLE`
+instead of a false empty success.
 
 ## Capability callability invariant
 
@@ -337,16 +396,19 @@ agent workflow.
   server-held opaque continuation leases, per-module workspace-file paging,
   public continuation state, source/content-root evidence,
   compiler/project-model `.kt`/`.kts` enumeration, and typed project-model
-  incompleteness. Generated protocol artifacts come from those Kotlin source
-  owners.
+  incompleteness. The shared store owns exact-once disposal, including #337
+  closeable IDEA traversal and server shutdown. Generated protocol artifacts
+  come from those Kotlin source owners.
 - `cli-rs/src/workspace_inventory.rs` and
   `cli-rs/src/workspace_inventory/` own the reusable uncapped inventory,
   generation/progress-aware exact-root Kotlin source-index reader, deepest-
   existing-ancestor containment, targeted filesystem evidence, dirty-state
-  annotation, cross-source composition barrier, and internal types.
-- `index-store` owns transactional maintenance of the existing source-index
-  generation, module progress, and pending-update state; this ADR adds no schema
-  column and does not widen `SourceIndexFilePolicy`.
+  annotation, kind-relevant discriminated cross-source composition barrier, and
+  internal types.
+- `index-store` owns transactional maintenance of the source-index generation,
+  module progress, pending-update state, and new `file_gradle_projects`
+  build-qualified ownership table. The IDEA producer supplies host-neutral
+  identity values; neither owner widens `SourceIndexFilePolicy`.
 - `cli-rs/src/agent/workspace_files.rs` owns public command execution and typed
   filter validation.
 - `cli-rs/src/agent/projection/workspace_files.rs` owns compact, selected,
@@ -385,6 +447,8 @@ cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 ./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
+./gradlew test --no-daemon
+./gradlew buildIdeaPlugin --no-daemon
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
@@ -398,8 +462,9 @@ git diff --check
 The implementation changes the Kotlin workspace-files query/result and shared
 continuation contracts, server validation, IDEA backend enumeration, source-
 index generation maintenance, fake backend, generated protocol, and raw
-catalogs. It does not change `SourceIndexFilePolicy` or the source-index schema.
-The index-store test that rejects `.kts` remains an explicit gate.
+catalogs. It adds and versions the `file_gradle_projects` source-index
+association table but does not change `SourceIndexFilePolicy`. The index-store
+test that rejects `.kts` remains an explicit gate.
 
 ## Change rule
 
@@ -408,7 +473,7 @@ additively. It must preserve exact-root containment, generation-bound
 exhaustive backend paging, the uncapped internal snapshot, set-valued module
 ownership, deterministic consumable public bounds, `.kt`-only source-index
 authority, deepest-existing-ancestor containment, coherent cross-source stamps,
-and the rule that incomplete backend or index evidence cannot prove
-`INDEX_ONLY` or `EXACT`. Any
+and the rule that incomplete relevant backend or index evidence cannot prove
+`INDEX_ONLY` or `EXACT` for its kind partition. Any
 change that uses filesystem or Git enumeration as candidate authority requires
 a superseding ADR.

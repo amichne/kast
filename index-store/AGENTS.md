@@ -18,6 +18,12 @@ Keep this unit focused on storage concerns and schema continuity.
   readable row set is not complete index evidence while the initialized
   progress set is empty/incomplete, indexed counts differ from totals, or
   updates remain pending.
+- Persist project-model Gradle ownership only as non-null association rows in
+  `file_gradle_projects`, produced from linked Gradle model evidence. The build
+  root is workspace-relative, and each file may retain multiple owners, so root
+  and included builds with the same project path remain distinct. Legacy
+  `file_metadata.module_path` is an unqualified symbol/metrics label; never
+  promote an IDEA fallback from it into Gradle identity.
 - Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access.
   IDEA and other plugin classloaders require explicit driver registration.
 - Keep this unit runtime-agnostic. IDEA PSI logic, CLI process management, and
@@ -40,5 +46,11 @@ Prove storage changes here before relying on higher-level runtime tests.
   production continuation invalidation rather than only store-local behavior.
 - For generation/progress/pending changes, prove rollback atomicity and
   before/after generation behavior in `SqliteSourceIndexStoreTest`.
+- For build-qualified identity changes, prove schema migration/reset,
+  root-versus-included-build round trips, multiple owners per file, identical
+  project paths in different builds, malformed identity rejection, legacy
+  fallback isolation, and transactional generation change.
 - If you change schema bootstrap, connection setup, or hydration reads, exercise
   `SqliteSourceIndexStoreTest` and the affected headless/indexer tests.
+- Final acceptance for the cross-module workspace discovery contract also runs
+  `./gradlew test` and `./gradlew buildIdeaPlugin`.

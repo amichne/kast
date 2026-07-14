@@ -43,6 +43,10 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   malformed/forged/unknown/expired failures. Rust never decodes handle state.
   Use distinct token/state namespaces and typed instances of the same generic
   mechanism; never mix continuation families in one untyped map.
+- Give the generic store exact-once disposal ownership. Expiry, eviction,
+  replacement, query mismatch, explicit completion/invalidation, terminal
+  consume, and server shutdown must all remove through the same disposer path;
+  #337 closeable IDEA traversal state is adapted to that owner.
 - Rust page validation is limited to non-repeated handles, non-overlapping
   physical paths, and cumulative returned evidence; generation/module/offset
   integrity belongs to the server-held state.
@@ -53,6 +57,9 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   once. A second stale response is typed partial evidence with no backend
   candidates from either stale attempt.
 - Model physical-file backend and indexed module ownership as sorted sets.
+- Never parse `file_metadata.module_path` as `GradleProjectPath`. Persist and
+  read a separate build-qualified project-model tuple from the IDEA producer;
+  keep an IDEA module-name fallback only as a legacy unproven label.
 - Keep the internal inventory uncapped by public filters and `--limit`.
 - Default `--limit` to 20, reject values outside 1 through 200, and keep compact
   output below 120 lines and 1,500 estimated tokens.
@@ -62,11 +69,17 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Read source-index generation, module progress, and pending updates with the
   candidate rows. Increment generation transactionally on relevant writes and
   require complete progress plus zero pending updates before exact coverage.
+- Derive source-only, script-only, or mixed relevance before collection. The
+  raw backend generation and composition barrier cover only the selected kind
+  domain; `.kt` index state is irrelevant to script-only discovery and #340.
+  Keep per-kind candidate/filter coverage so mixed grouped counts remain honest.
 - Prove missing paths by canonicalizing their deepest existing ancestor.
   Exclude and type any containment that cannot be proved.
-- Revalidate backend, source-index, targeted filesystem, and Git stamps after
-  composition. Retry the entire attempt once when a lane moves; a second change
-  or stable incomplete lane forbids `EXACT`. Enforce a ceiling of two
+- Revalidate only kind/query-relevant backend, source-index, targeted
+  filesystem, and Git lane states after composition. Retry the entire attempt
+  once when a relevant lane moves; a second change
+  or stable incomplete relevant lane forbids `EXACT` for its kind partition.
+  Enforce a ceiling of two
   composition attempts with at most two backend-generation attempts each.
 - Change Kotlin wire/backend/generated contracts when required by paging;
   regenerate them from their source owners.
@@ -81,6 +94,8 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   primary agent reviews every delegated result and runs final verification.
 - Preserve unrelated worktree changes and commit each red-green slice
   independently with a conventional commit.
+- Final acceptance must run both `./gradlew test` and
+  `./gradlew buildIdeaPlugin` after focused module gates.
 
 ---
 
@@ -91,6 +106,7 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Modify: `analysis-api/AGENTS.md`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/WorkspaceFilesQuery.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceFilesResult.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/WorkspaceFileKindDomain.kt`
 - Modify: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/ServerLimits.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceModule.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFileSnapshotToken.kt`
@@ -99,6 +115,7 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationTtl.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationCapacity.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationClock.kt`
+- Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ContinuationStateDisposer.kt`
 - Create: `analysis-api/src/test/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStoreTest.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedWorkspaceFilesQuery.kt`
 - Create: `analysis-api/src/main/kotlin/io/github/amichne/kast/api/protocol/WorkspaceInventoryStaleException.kt`
@@ -120,6 +137,7 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
 **Interfaces:**
 
 - Produces: `WorkspaceFileSnapshotToken`, `WorkspaceFilePageToken`,
+  `WorkspaceFileKindDomain`,
   `ParsedWorkspaceFilesQuery.snapshotToken`,
   `ParsedWorkspaceFilesQuery.pageToken`, `WorkspaceFilesResult.snapshotToken`,
   `WorkspaceModule.returnedFileCount`, `WorkspaceModule.nextPageToken`, and
@@ -129,18 +147,20 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   `WorkspaceProjectModelIncompleteReason` details.
 - Produces: reusable `ServerHeldContinuationStore<Token, Query, State>` with
   typed positive TTL/capacity, injected clock, deterministic eviction,
-  reusable leases, and single-use consumption.
+  reusable leases, single-use consumption, and exact-once state disposal.
 - Invariant: snapshot and page tokens are canonical random UUID handles, not
   encoded state. An input snapshot token is legal with `includeFiles=true` and
   one exact module, or with `includeFiles=false` and no module for final barrier
-  validation. A page token additionally requires the paging form.
+  validation. A page token additionally requires the paging form. Every page
+  and validation request reproduces the metadata request's exact kind domain.
 
 - [ ] **Step 1: Write failing query and server tests**
 
 Add parsing cases for canonical opaque snapshot/page handles and rejection of
 blank/noncanonical UUIDs, page token without snapshot token, either token with
 an illegal module/include-files combination, and a page size above server
-`maxResults`. Accept only the explicit snapshot-validation form with
+`maxResults`. Cover source-only, script-only, and mixed parsing plus kind-domain
+mismatch on a snapshot or page handle. Accept only the explicit snapshot-validation form with
 `includeFiles=false`, no module, and a snapshot token. Add fake-backend tests
 for two pages over five sorted files:
 
@@ -183,6 +203,16 @@ and migrate `FakeAnalysisBackend` reference/diagnostic continuation maps to this
 store before adding fake workspace-file state; do not maintain three ad hoc map
 policies.
 
+Use a close-counting fake state and prove exactly one disposal for expiry,
+eviction, same-handle replacement, query mismatch, explicit invalidation or
+successful completion, terminal consume, callback failure, and server
+shutdown. Trigger a second removal path after each case and assert the count
+stays one. A throwing disposer must not prevent shutdown from draining and
+disposing later entries. Adapt #337's closeable IDEA traversal to the same
+test surface so its resource lifetime is not merely theoretical. Race terminal
+consume against shutdown and expiry cleanup against replacement; atomic
+ownership transfer/removal must still close each fake state once.
+
 Assert invalid raw errors expose only typed `details.scope` of
 `SNAPSHOT_HANDLE` or `PAGE_HANDLE`. Snapshot failure discards the workspace-wide
 backend attempt; page failure remains module-local only if the snapshot lease
@@ -219,10 +249,16 @@ value class WorkspaceFileSnapshotToken private constructor(val value: String) {
 
 `WorkspaceFilePageToken` has the same canonical wire boundary but remains a
 distinct type. Add `snapshotToken: String?` and `pageToken: String?` to
-`WorkspaceFilesQuery`, parse each once, and reject illegal field combinations.
+`WorkspaceFilesQuery`, add the closed kind domain, parse each once, and reject
+illegal field combinations.
 The shared continuation store owns random issue, TTL cleanup, capacity
-eviction, query comparison, reusable lookup, and single-use consumption. Do
-not encode or decode offsets, generations, modules, or queries in a token. Keep
+eviction, query comparison, reusable lookup, single-use consumption, and
+exact-once disposal. Its lease/consume APIs accept callbacks rather than
+returning owning state; every terminating path removes through one
+idempotence-guarded disposer and `close()` drains the store at server shutdown.
+Make the dispatcher/server lifecycle the single owner that closes every typed
+store instance exactly once.
+Do not encode or decode offsets, generations, modules, or queries in a token. Keep
 the server's positive page-size and
 maximum checks. Add matching `AnalysisException` subtypes: stale inventory is
 HTTP/JSON-RPC status 409, code `STALE_WORKSPACE_INVENTORY`, and retryable;
@@ -267,8 +303,8 @@ cross-module, and non-overlap tests pass.
 
 - [ ] **Step 6: Update source ownership and commit**
 
-Record query/result/generated ownership and paging gates in
-`analysis-api/AGENTS.md`.
+Record query/result/generated ownership, exact-once continuation disposal, and
+paging/shutdown gates in `analysis-api/AGENTS.md`.
 
 ```console
 git add analysis-api analysis-server
@@ -289,22 +325,38 @@ git commit -m "feat: page raw workspace file results"
 - Create: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceInventoryGeneration.kt`
 - Create: `backend-idea/src/main/java/io/github/amichne/kast/idea/IdeaGradleWorkspaceFileBridge.java`
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginBackend.kt`
+- Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaProjectIndexer.kt`
 - Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventoryTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
+- Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaProjectIndexerModuleNameTest.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/BuildQualifiedGradleProjectIdentity.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/GradleProjectPath.kt`
+- Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/WorkspaceRelativeGradleBuildRoot.kt`
+- Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/FileIndexUpdate.kt`
+- Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/SourceFileIndexParser.kt`
+- Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt`
+- Modify: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SqliteSourceIndexStoreTest.kt`
+- Modify: `index-store/AGENTS.md`
+- Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScanner.kt`
 - Verify unchanged: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/SourceIndexFilePolicy.kt`
 - Verify unchanged: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SourceIndexFilePolicyTest.kt`
 
 **Interfaces:**
 
 - Produces:
-  `IdeaWorkspaceFileInventory.snapshot(): IdeaWorkspaceFileInventorySnapshot`.
+  `IdeaWorkspaceFileInventory.snapshot(WorkspaceFileKindDomain): IdeaWorkspaceFileInventorySnapshot`.
 - The inventory snapshot has one `IdeaWorkspaceInventoryGeneration` over every
-  module. Each module snapshot has sorted contained source/content roots,
-  sorted dependency names, and a complete sorted set of project-model `.kt`
-  and `.kts` paths.
+  module and the requested kind domain. Each module snapshot has sorted
+  contained source/content roots, sorted dependency names, and a complete
+  sorted set of project-model paths for that domain.
 - `IdeaWorkspaceFileSnapshotLease` and `IdeaWorkspaceFileContinuation` are
   typed server-held states addressed only by opaque UUID handles. They contain
   generation, exact module/query identity, next offset, and cumulative evidence.
+- Produces: host-neutral `BuildQualifiedGradleProjectIdentity` containing a
+  workspace-relative linked build root and absolute Gradle project path. The
+  source index persists a set of those owners in the dedicated
+  `file_gradle_projects` association table, distinct from legacy
+  `file_metadata.module_path`.
 
 - [ ] **Step 1: Write failing project-model inventory tests**
 
@@ -328,6 +380,11 @@ the last page, and a handle issued for one module returns
 capacity eviction, single-use, forged/unknown, and query mismatch through the
 real backend adapter.
 
+Exercise source-only, script-only, and mixed raw snapshots. Mutating only a
+`.kt` path must not stale a script-only lease, while mutating `.kts` must;
+source-only has the inverse rule and mixed reacts to either kind. Passing a
+lease or page handle with a different kind domain is an invalid cursor.
+
 Add three failure fixtures: IDEA dumb/index-not-ready state, unavailable linked
 Gradle project-model data, and a linked root with no root-module association.
 Assert the backend returns `WORKSPACE_PROJECT_MODEL_INCOMPLETE` with respective
@@ -336,15 +393,28 @@ typed reasons `RUNTIME_INDEXING`, `PROJECT_MODEL_UNAVAILABLE`, and
 Rust can distinguish whole-inventory failure from a generic page transport
 failure.
 
+Add a composite-build producer fixture in which both the admitted root build
+and an included build contain `:app`. Assert the IDEA adapter emits two
+different `BuildQualifiedGradleProjectIdentity` values, the source-index round
+trip preserves both build roots/project paths, and workspace identity never
+comes from `indexedModuleNameForFilePath` or an IDEA module-name fallback. Add
+missing/ambiguous Gradle-data cases that preserve only the legacy unproven label
+and leave the build-qualified owner set empty. Add malformed association rows
+whose build root or project path fails typed parsing. Prove multiple owners per
+file, schema migration/reset, and generation change when an association is
+added, replaced, or removed.
+
 After rebasing onto #337, migrate `KastPluginBackend` reference and diagnostic
 continuations to the shared store before adding workspace-file leases. Preserve
 their query/source/generation behavior and add TTL/capacity/single-use
-regressions; one mechanism owns all three continuation families.
+regressions. Adapt the closeable IDEA traversal to the store's typed disposer
+and assert exact-once close on mismatch, terminal consume, expiry/eviction, and
+plugin/server shutdown; one mechanism owns all three continuation families.
 
 - [ ] **Step 2: Run the focused red backend test**
 
 ```console
-./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --no-daemon
+./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*IdeaProjectIndexerModuleNameTest*' :index-store:test --tests '*SqliteSourceIndexStoreTest*' --no-daemon
 ```
 
 Expected: compilation fails because the inventory does not exist.
@@ -375,6 +445,22 @@ module data to `PROJECT_MODEL_UNAVAILABLE`; do not allow either to become an
 empty complete inventory. Canonical containment is mandatory before ownership
 is recorded.
 
+Reuse that bridge in `IdeaProjectIndexer`: resolve each `.kt` file's IDEA module
+through `GradleModuleDataIndex`, associate it with one direct/composite linked
+build root, and take `GradleModuleData.getGradlePathOrNull()` as the project
+path. Construct the host-neutral identity only after both typed components are
+proved. Collect every containing module's distinct model-proven identity. Add
+the dedicated non-null `file_gradle_projects(prefix_id, filename, build_root,
+project_path)` association table, advance the checked-in source-index schema
+version, add `FileIndexUpdate.gradleProjects` as a
+`Set<BuildQualifiedGradleProjectIdentity>`, and persist the owner set
+transactionally. Adding, replacing, or removing an association increments
+`schema_version.generation` in that same write transaction.
+`PsiSourceIndexScanner` accepts host-neutral module evidence;
+no IntelliJ type crosses into `backend-shared` or `index-store`. Keep
+`module_path` for existing symbol/metrics behavior,
+but workspace discovery must never select or parse it as Gradle identity.
+
 - [ ] **Step 4: Page sorted inventory with server-held state**
 
 Replace cap-before-sort logic with generation validation followed by slicing:
@@ -396,10 +482,11 @@ val nextToken = nextOffset
     ?.let { pageStore.issue(state.advanceTo(it)) }
 ```
 
-Build and fingerprint the canonical full inventory in one IDEA read action.
-The fingerprint includes sorted module identities, source/content roots,
-dependency names, and file paths, so equal-cardinality replacement and module
-add/remove cannot reuse a generation. Metadata requests store the typed snapshot
+Build and fingerprint the canonical requested-kind inventory in one IDEA read
+action. The fingerprint includes the kind domain, sorted module identities,
+source/content roots, dependency names, and relevant file paths, so
+equal-cardinality replacement and module add/remove cannot reuse a generation,
+while excluded-kind movement is irrelevant. Metadata requests store the typed snapshot
 lease and return only its opaque handle. Exact-module and final validation
 requests recompute and match the leased generation before slicing or success;
 unknown state, out-of-range stored offsets, or query/cross-module mismatch
@@ -412,10 +499,11 @@ Run:
 
 ```console
 ./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*KastPluginBackendContractTest*workspace files*' --no-daemon
-./gradlew :index-store:test --tests '*SourceIndexFilePolicyTest*' --no-daemon
+./gradlew :index-store:test --tests '*SourceIndexFilePolicyTest*' --tests '*SqliteSourceIndexStoreTest*' --no-daemon
 ```
 
 Expected: project scripts, shared ownership, included-build associations,
+build-qualified root/included project identities, legacy fallback isolation,
 generation changes, stale responses, and cross-module rejection pass; the
 typed indexing/project-model failures retain their reason; the index-store test
 still proves `.kts` rejection.
@@ -423,7 +511,7 @@ still proves `.kts` rejection.
 - [ ] **Step 6: Commit backend authority**
 
 ```console
-git add backend-idea
+git add backend-idea backend-shared index-store
 git diff --cached --check
 git commit -m "feat: enumerate project model Kotlin scripts"
 ```
@@ -431,8 +519,10 @@ git commit -m "feat: enumerate project model Kotlin scripts"
 `backend-idea/AGENTS.md` records that the inventory and Java Gradle bridge own
 model-proven `.kt`/`.kts` candidates, server-held generation-bound paging,
 TTL/capacity/integrity behavior, typed
-project-model incompleteness, and the focused backend tests above. This is the
-nearest guide for the new source boundary.
+project-model incompleteness, build-qualified index-producer identity, and the
+focused backend tests above. `index-store/AGENTS.md` records the dedicated
+identity association table and prohibits promoting the legacy module label. These are
+the nearest guides for the new source boundaries.
 
 Do not stage either source-index policy file; both are verification-only.
 
@@ -451,8 +541,8 @@ Do not stage either source-index policy file; both are verification-only.
 **Interfaces:**
 
 - Produces: `AgentCommand::WorkspaceFiles`, typed filters,
-  `AgentWorkspaceFilesField`, distinct `WorkspaceFilesPublicPageToken`, and a
-  temporary typed unavailable result.
+  `AgentWorkspaceFilesField`, closed `WorkspaceModuleSelector`, distinct
+  `WorkspaceFilesPublicPageToken`, and a temporary typed unavailable result.
 - Consumes: ADR 0020 `AgentResultView` and existing `AgentRuntimeArgs`.
 
 - [ ] **Step 1: Write failing command/help/argument tests**
@@ -462,6 +552,9 @@ all documented flags parse and reject limit `0`/`201`, absolute or parent path
 prefixes, `regex:` globs, blank selectors, and incompatible result views.
 Include `--drift not-applicable` and canonical `--page-token`; reject blank or
 noncanonical handles and page-token/count combinations that cannot emit files.
+Accept `backend:<exact-name>`, `gradle:.#:app`, and
+`gradle:included/tools#:app`; reject unprefixed/empty selectors, absolute or
+escaping build roots, and non-absolute Gradle project paths.
 
 - [ ] **Step 2: Run the red command tests**
 
@@ -477,7 +570,11 @@ Expected: Clap does not recognize `workspace-files`.
 Add `AgentWorkspaceFilesArgs` with `AgentRuntimeArgs`, the family-specific
 ADR 0020 view args, optional module/source-set/kind/package/dirty/drift/path
 prefix/glob filters, `WorkspaceFileLimit`, and `WorkspaceFilesPublicPageToken`.
-Use private-field newtypes and `FromStr` validation. Keep the public token type
+Parse module as `WorkspaceModuleSelector::Backend(BackendModuleName)` or a
+`Gradle` variant carrying private validated build-root and project-path selector
+newtypes; Task 4 maps that variant to the inventory identity. Derive the raw/composition
+source-only, script-only, or mixed domain from the kind filter, with no filter
+meaning mixed. Use private-field newtypes and `FromStr` validation. Keep the public token type
 distinct from raw snapshot/module-page tokens. The drift enum is:
 
 ```rust
@@ -529,6 +626,7 @@ git commit -m "feat: add typed workspace file command boundary"
   `WorkspaceIndexSnapshot`, `SourceIndexSnapshotStamp`,
   `SourceIndexGeneration`, `SourceIndexModuleProgress`,
   `SourceIndexPendingCount`, `WorkspacePackageEvidence`,
+  `BuildQualifiedGradleProjectIdentity`,
   `WorkspaceIndexRead`, `WorkspaceInventoryLimitationCode`,
   `WorkspaceMatchCoverage`, and `read_workspace_index(&WorkspaceRoot)`.
 - The index reader has no public limit and returns `.kt` rows only.
@@ -550,6 +648,12 @@ four package cases:
 
 Assert 500 valid `.kt` candidates, zero `.kts`, exact package variants, typed
 excluded/invalid counts, and no escaping missing path.
+
+Seed a root-build `:app`, an included-build `:app`, a legacy-only
+`module_path=idea.app.main`, and malformed association rows. Assert the first
+two decode as distinct build-qualified owners of the same file, the legacy
+value is never read as Gradle identity, and malformed build-root/project-path
+values are typed incompatible evidence rather than partial owners.
 
 Seed generation, `module_index_progress`, and unapplied `pending_updates`.
 Assert the snapshot carries their typed state; only a nonempty initialized
@@ -574,7 +678,7 @@ Use sorted sets for owners and source sets:
 pub(crate) struct WorkspaceInventoryFile {
     path: WorkspaceFilePath,
     backend_modules: BTreeSet<BackendModuleName>,
-    indexed_gradle_modules: BTreeSet<GradleModulePath>,
+    indexed_gradle_projects: BTreeSet<BuildQualifiedGradleProjectIdentity>,
     source_sets: BTreeSet<WorkspaceSourceSet>,
     kind: WorkspaceFileKind,
     package: WorkspacePackageEvidence,
@@ -602,21 +706,25 @@ when a requested predicate is unknown.
 - [ ] **Step 4: Implement the read-only query exactly from the design**
 
 Within one SQLite read transaction, select `metadata_present`, `package_fq_id`,
-and joined `fq_name` separately, plus `schema_version.generation`, all module
-progress rows, and the unapplied pending-update count. Use
+joined `fq_name`, and all joined `file_gradle_projects` rows separately,
+plus `schema_version.generation`, all module progress rows, and the unapplied
+pending-update count. Never select or parse `module_path` as Gradle ownership. Use
 `SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI`, configure query-only access, verify
 schema/tables, decode existing path prefixes, reject non-`.kt`, and map the four
 package states without collapsing nulls. For missing paths, canonicalize the
 deepest existing ancestor; lexical containment alone is insufficient.
 
 In `SqliteSourceIndexStore`, increment the existing generation in the same
-write transaction as any candidate-table, progress, or pending applied-state
-mutation. Do not add a schema column or admit `.kts`.
+write transaction as any candidate-table, build-qualified association,
+progress, or pending applied-state mutation. Task 2 already adds and versions
+the dedicated association table; do not add another ownership column or admit
+`.kts`.
 
 - [ ] **Step 5: Add the scoped ownership guide and verify**
 
 Update `index-store/AGENTS.md` to make transactional generation maintenance and
-truthful progress/pending state storage-owned gates. State in the new Rust guide
+truthful progress/pending state storage-owned gates, and to forbid interpreting
+legacy `module_path` as project-model Gradle identity. State in the new Rust guide
 that it owns uncapped exact-root composition, generation/progress/pending-aware
 `.kt` index reads, deepest-existing-ancestor containment, set-valued owners,
 backend page coverage, and Git annotation. Prohibit `.kts` source-index reads
@@ -654,6 +762,10 @@ git commit -m "feat: add uncapped Kotlin source inventory"
 - Backend collection uses one admitted `RawRpcSession`, a top-level opaque
   snapshot token, exact-module opaque cursors, bounded restart, and typed
   `BackendWorkspaceCoverage`/`BackendModuleCoverage`.
+- Produces: `WorkspaceRequestedKindDomain`, `WorkspaceLaneEvidence<Stamp>`,
+  `WorkspaceLaneStamp<Stamp>`, `WorkspaceLanePurpose`, and per-kind
+  `WorkspaceKindMatchCoverage`. Composition digests canonicalize those exact
+  discriminated states.
 
 - [ ] **Step 1: Write failing page-exhaustion and multi-owner tests**
 
@@ -725,6 +837,19 @@ cross-source drift/absence to `UNKNOWN`. Stable incomplete progress or pending
 updates does not spin and emits its specific partial limitation. Assert call
 counts never exceed two composition attempts times two backend attempts.
 
+Represent every relevant before/after observation as
+`WorkspaceLaneStamp::Available(stamp)` or `Unavailable(reason)` and cover
+available-to-unavailable, unavailable-to-available, and unavailable-reason
+changes. A stable unavailable lane is coherent partial evidence and may page
+known results; its canonical tag/reason participates in the continuation
+digest. Add source-only, script-only, and mixed queries. Prove script-only and
+#340 neither open nor validate the Kotlin source index and remain exact while
+`.kt` generation/progress/pending changes; prove source-only and mixed queries
+retry or become partial for the same mutation. In mixed count output, assert an
+exact script group can coexist with a known-minimum source group and overall
+count. Git movement is relevant only when dirty filtering/grouping/projection
+requests it.
+
 - [ ] **Step 5: Add the root-A/root-B exact-root regression**
 
 In both smoke files, configure root A with only root B's ready descriptor and
@@ -752,8 +877,9 @@ collector is absent.
 
 - [ ] **Step 7: Implement strict backend paging**
 
-Fetch module metadata and its opaque snapshot token, sort exact module names,
-and echo the snapshot while requesting opaque cursors until each module
+Derive the typed source-only/script-only/mixed kind domain before any lane read.
+Fetch matching module metadata and its opaque snapshot token, sort exact module
+names, and echo both kind domain and snapshot while requesting opaque cursors until each module
 returns no next token. Never parse or construct a token in Rust. Validate
 only non-repeated handles, non-overlapping physical paths, and cumulative
 returned evidence that never exceeds and finally equals the declared module
@@ -792,6 +918,10 @@ every possible owner complete. Unknown or overlapping partial ownership emits
 `PROJECT_MODEL_OWNERSHIP_UNKNOWN`. `.kts` never queries the source index and
 uses `NotApplicable` states.
 
+Read `.kt` rows only for source-only or mixed domains. Decode indexed Gradle
+ownership exclusively from the complete build-root/project-path pair; retain it
+as `BuildQualifiedGradleProjectIdentity` and never parse legacy `module_path`.
+
 For every missing candidate, walk to the deepest existing ancestor and
 canonicalize it against the admitted canonical root before appending normalized
 missing components. Exclude escaping or unprovable paths with
@@ -807,12 +937,16 @@ paths from repository root through the exact workspace prefix. Parse records
 
 - [ ] **Step 10: Implement the coherent composition barrier**
 
-Record the backend snapshot lease, source-index generation/progress/pending
-stamp, targeted filesystem fingerprint, and Git fingerprint. After composition,
-validate the backend lease and re-read every other lane. Publish a coherent
-snapshot only when stamps match. Retry the entire composition once after a
+Record the kind domain and each lane as relevant-with-purpose or irrelevant;
+each relevant lane contains an exact `Available(stamp)` or
+`Unavailable(reason)`. After composition, re-observe only relevant lanes and
+compare canonical discriminated states, including availability transitions and
+reason changes. Publish a coherent snapshot when all relevant states match,
+including stable unavailability. Retry the entire composition once after a
 change. A second change returns typed partial evidence, never mixed exact
-evidence. Stable incomplete index state is partial without retry.
+evidence. Stable incomplete index state is partial without retry only for a
+selected source partition. Canonically digest kind domain, relevance/purpose,
+and lane states for public continuation.
 
 - [ ] **Step 11: Run focused tests green and commit**
 
@@ -861,7 +995,8 @@ git commit -m "feat: compose exhaustive workspace file evidence"
 
 - [ ] **Step 1: Write failing output, filter, limitation, and budget tests**
 
-Assert compact records contain sorted owner sets, source sets, kind, structured
+Assert compact records contain sorted backend owners and structured
+build-qualified Gradle project owners, source sets, kind, structured
 package evidence, source-index state, drift, dirty state, and paths. Cover each
 filter and conjunction; partial pages, unavailable index/Git, invalid package
 reference, and both candidate sources unavailable. Seed 500 records and assert
@@ -880,11 +1015,19 @@ query rather than automatic restart.
 With `--limit 200`, consume returned public tokens and assert page sizes
 200/200/100, strictly increasing relative paths, no overlap or gaps, stable
 cardinality, per-page `returnedCount`, and no terminal token. Assert a changed
-backend/index/filesystem/Git composition stamp returns
+relevant bound backend/index/filesystem/Git composition lane returns
 `STALE_WORKSPACE_FILES_PAGE`; malformed, forged, unknown, expired, evicted, or
 already-consumed state returns `INVALID_WORKSPACE_FILES_PAGE_TOKEN`; and any
 filter, view, field selection, backend, root, or limit mismatch fails rather
 than reinterpreting the cursor.
+
+Run the same continuation fixture with stable backend-only and index-only
+partial evidence. Assert tokens are issued for further known matches, retain
+`KNOWN_MINIMUM`, and bind canonical `Unavailable(reason)` lane state without
+requiring a nonexistent stamp. Availability or unavailable-reason changes are
+stale. For script-only paging, mutate `.kt` generation/progress/pending between
+pages and assert the token remains valid because the index lane is irrelevant;
+the same mutations stale source-only and mixed tokens.
 
 Assert `EXACT.totalCount` only when candidate inventory and every selected
 predicate are complete. Cover these counterexamples explicitly:
@@ -897,6 +1040,10 @@ predicate are complete. Cover these counterexamples explicitly:
   `KNOWN_MINIMUM`; and
 - a complete inventory without a predicate that depends on unavailable Git is
   still `EXACT`.
+
+Also prove incomplete `.kt` progress leaves `--kind script` exact, makes
+`--kind source` known-minimum, and gives a mixed count an exact script group
+beside a known-minimum source group and overall result.
 
 In every view, assert `returnedCount == files.len()`. `truncated` is true when
 an exact total exceeds returned count or cardinality is `KNOWN_MINIMUM`.
@@ -930,8 +1077,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_result_projec
 - [ ] **Step 4: Execute admitted collection and apply typed filters**
 
 Call `semantic_workspace_route`, copy the admitted root/backend into runtime
-args, open one raw session, collect the uncapped snapshot, then filter. Match
-module against any owner, sort by relative path and sorted owner sets, and only
+args, derive the normalized kind domain and lane relevance, open one raw
+session, collect the uncapped snapshot, then filter. Match the closed
+`backend:<name>` or `gradle:<build-root>#<project-path>` selector against its
+corresponding owner type, sort by relative path and sorted owner sets, and only
 then take `limit`. Compute candidate-inventory and selected-filter evidence
 coverage before projection. Do not infer exact match cardinality merely from a
 fully consumed known-candidate vector.
@@ -939,8 +1088,10 @@ fully consumed known-candidate vector.
 For a resumed request, consume the opaque public handle through the internal
 server continuation service, require the identical normalized query identity,
 recollect through the composition barrier, and compare the full composition-
-stamp digest. Seek strictly after the stored relative path and verify cumulative
-returned evidence. Never fall back to page one after invalid or stale state.
+stamp digest, including kind domain, lane relevance/purpose, and exact
+available/unavailable state. Seek strictly after the stored relative path and
+verify cumulative returned evidence. Never fall back to page one after invalid
+or stale state.
 
 - [ ] **Step 5: Add compact, fields, count, verbose, and explain projections**
 
@@ -957,7 +1108,8 @@ Register continuation state through the shared server-held store only after a
 coherent composition and only when more known matches remain. Store exact root,
 backend, normalized query/view/limit, composition-stamp digest, last path, and
 cumulative returned count; do not store or trust a serialized candidate page.
-Suppress continuation for an unstable composition.
+Coherent partial compositions with stable unavailable lane states may continue
+known matches; suppress continuation only for an unstable composition.
 
 - [ ] **Step 6: Implement the route registry and verification intersection**
 
@@ -1033,9 +1185,11 @@ Keep an unowned on-disk `.kt` file and assert it is absent.
 
 Add the command to `cli-rs/src/agent/AGENTS.md`. Teach source/script filters,
 public continuation, partial limitations, backend and cross-source bounded
-retries, owner sets, and direct path composition. State explicitly that `.kts`
-is not in the Kotlin source index and Gradle semantic declarations arrive with
-#340.
+retries, per-kind lane relevance, discriminated available/unavailable
+composition stamps, build-qualified Gradle owner sets, and direct path
+composition. State explicitly that `.kts` is not in the Kotlin source index,
+unrelated `.kt` progress cannot make script-only discovery partial, and Gradle
+semantic declarations arrive with #340.
 
 Update `cli-rs/AGENTS.md` to list `workspace-files` in the public typed command
 surface and assign `workspace_inventory` coherence/continuation ownership.
@@ -1046,11 +1200,13 @@ changes.
 
 - [ ] **Step 4: Update reference and how-to docs**
 
-Document every flag, limit, page token, result view, owner set, package state,
+Document every flag, limit, page token, result view, typed backend/build-
+qualified Gradle owner set, package state,
 drift/index truth table, limitations, exact-root behavior, server-held raw
-paging, coherent cross-source composition, and typed invalid/stale public
-continuation. Replace generic-search-first guidance with `workspace-files`,
-then diagnostics or exact symbol lookup.
+paging, exact-once store disposal, kind-relevant coherent cross-source
+composition, stable partial continuation, and typed invalid/stale public
+continuation. Replace generic-search-first guidance with `workspace-files`, then
+diagnostics or exact symbol lookup.
 
 - [ ] **Step 5: Validate guidance and commit**
 
@@ -1092,11 +1248,22 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test semantic_workspace_
 ```
 
 Expected: generation/fingerprint, stale, cursor-binding, paging/project-model
-TTL/capacity/integrity, final backend validation, source-index generation/
-progress/pending, and composition-barrier tests pass; `.kts` remains rejected
-by `SourceIndexFilePolicyTest`.
+TTL/capacity/integrity and exact-once disposal, final backend validation,
+build-qualified root/included project identity, source-index generation/
+progress/pending, and kind-relevant composition-barrier tests pass; `.kts`
+remains rejected by `SourceIndexFilePolicyTest`.
 
-- [ ] **Step 3: Run full Rust quality gates**
+- [ ] **Step 3: Run full Gradle and IDEA packaging gates**
+
+```console
+./gradlew test --no-daemon
+./gradlew buildIdeaPlugin --no-daemon
+```
+
+Expected: the complete JVM suite and packaged IDEA plugin pass after the
+cross-module continuation lifecycle, schema, and producer changes.
+
+- [ ] **Step 4: Run full Rust quality gates**
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked
@@ -1104,7 +1271,7 @@ cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 ```
 
-- [ ] **Step 4: Prove generated contracts and docs are current**
+- [ ] **Step 5: Prove generated contracts and docs are current**
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
@@ -1118,7 +1285,7 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_sm
 zensical build --clean
 ```
 
-- [ ] **Step 5: Review scope and whitespace**
+- [ ] **Step 6: Review scope and whitespace**
 
 ```console
 git status --short --branch
@@ -1127,10 +1294,11 @@ git diff --check origin/main...HEAD
 git diff --name-only origin/main...HEAD
 ```
 
-Expected: issue source/tests/guidance/ADR/spec/plan and required generated
-contracts only; no source-index schema or `SourceIndexFilePolicy` change.
+Expected: issue source/tests/guidance/ADR/spec/plan, the dedicated
+build-qualified source-index schema migration, and required generated contracts
+only; no `.kts` admission or unrelated source-index schema change.
 
-- [ ] **Step 6: Request independent review**
+- [ ] **Step 7: Request independent review**
 
 Ask a fresh reviewer to check generation-bound paging determinism,
 equal-cardinality/module-set stale detection, single bounded restart,
@@ -1139,11 +1307,14 @@ cross-module cursor rejection, included-build project-model script authority,
 mapping, exact-root rejected-no-request proof, package-state SQL, false
 `INDEX_ONLY`, project-model error/reason mapping, metadata failure, zero-module
 global partiality, candidate versus filter coverage, `EXACT` versus
-`KNOWN_MINIMUM`, server-held TTL/capacity/integrity, deepest-ancestor missing-
-path containment, index generation/progress/pending state, cross-source barrier
-mutation, public 200/200/100 continuation, invalid/stale/query-mismatched public
-tokens, hand-authored catalog ownership, Kotlin type isolation, scoped ownership
-guidance, package/LSP/routing gates, capability callability, #340 reuse,
+`KNOWN_MINIMUM`, server-held TTL/capacity/integrity and exact-once disposal,
+deepest-ancestor missing-path containment, build-qualified root/included Gradle
+identity without IDEA fallback promotion, index generation/progress/pending
+state, kind-relevant cross-source barrier mutation, available/unavailable lane
+digests, backend/index-only partial continuation, public 200/200/100
+continuation, invalid/stale/query-mismatched public tokens, hand-authored catalog
+ownership, Kotlin type isolation, scoped ownership guidance, package/LSP/routing
+gates, capability callability, #340 reuse, full `test`/`buildIdeaPlugin` gates,
 budgets, and every issue acceptance criterion. Repair each blocking finding
 with a focused red-green commit and rerun the affected gate plus full Rust and
 Kotlin suites.

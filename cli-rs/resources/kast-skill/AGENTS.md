@@ -35,11 +35,14 @@ AXI command dialect, and validation gates is
   `kast agent` commands.
 - Skill guidance routes workspace discovery through public
   `kast agent workspace-files`, including typed source/script filters,
-  generation/query-bound public continuation, partial coverage, and direct
-  `filePath` composition with diagnostics and exact symbol lookup. It must not
-  teach `raw/workspace-files` as a public workflow.
+  generation/query-bound public continuation, kind-relevant partial coverage,
+  build-qualified Gradle ownership, and direct `filePath` composition with
+  diagnostics and exact symbol lookup. It must not teach
+  `raw/workspace-files` as a public workflow.
 - Keep `.kts` source-index limitations and cross-source coherence limitations
-  explicit. Never describe a partial or pending candidate lane as exhaustive.
+  explicit. `.kt` index progress is irrelevant to a script-only request and
+  #340, but relevant source/mixed partitions must remain partial. Never describe
+  a partial or pending relevant candidate lane as exhaustive.
 - The packaged script is an internal verification helper. Keep it
   JSON-emitting, eager about input validation, and read-only by default.
 
@@ -69,6 +72,8 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_sm
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean
+./gradlew test --no-daemon
+./gradlew buildIdeaPlugin --no-daemon
 ```
 
 The format-impact reports remain optional experiments. When running them, set

@@ -22,8 +22,9 @@ resources.
 - `src/workspace_inventory.rs` and `src/workspace_inventory/` own uncapped
   exact-root `.kt` index reads, compiler/project-model candidate composition,
   deepest-existing-ancestor path containment, source generation/progress/
-  pending evidence, the backend/index/filesystem/Git coherence barrier, and
-  typed limitations used by `agent workspace-files` and Gradle DSL consumers.
+  pending evidence, build-qualified indexed Gradle project identities, the
+  kind-relevant backend/index/filesystem/Git coherence barrier, and typed
+  limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
 - `resources/kast-skill/` owns the packaged `SKILL.md` and internal catalog
@@ -45,11 +46,21 @@ and validation gates live in
   commands.
 - Keep raw workspace paging handles and public workspace-file continuation
   handles distinct and opaque. Public continuations bind every result-affecting
-  query field and the coherent multi-source composition stamp; invalid or stale
-  state must never restart at page one.
+  query field and the coherent multi-source composition stamp, including each
+  relevant lane's exact available/unavailable state; invalid or stale state
+  must never restart at page one. Stable backend-only/index-only partial pages
+  may continue known matches without claiming exactness.
 - Do not assert `EXACT`, `INDEX_ONLY`, or clean filter evidence while a relevant
   backend, source-index, filesystem, or Git lane is moving, incomplete, pending,
   or unprovable. Retry the full composition only within its documented bound.
+- Compute lane relevance from the normalized source-only, script-only, or mixed
+  kind domain before collection. `.kt` index progress is irrelevant to
+  script-only discovery and #340; mixed results retain separate source/script
+  coverage before computing overall and grouped cardinality.
+- Never parse legacy `file_metadata.module_path` as Gradle project identity.
+  Indexed Gradle owners require validated rows from the dedicated
+  `file_gradle_projects` association table and render/filter as a
+  build-qualified identity.
 - Captured or agent-run commands default to compact structured output. Public
   mutations are plan-first and gated: repair and rename require `--apply`;
   setup supports `--dry-run`; forceful replacement requires `--force`.
@@ -96,4 +107,6 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_sm
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean
+./gradlew test --no-daemon
+./gradlew buildIdeaPlugin --no-daemon
 ```
