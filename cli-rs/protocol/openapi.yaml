@@ -396,6 +396,32 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/workspace-files-continuation":
+    post:
+      operationId: workspaceFilesContinuation
+      summary: Issue or consume server-held public workspace-file continuation state
+      tags:
+        - read
+      x-jsonrpc-method: raw/workspace-files-continuation
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/WorkspaceFilesContinuationQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/WorkspaceFilesContinuationResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
   "/rpc/raw/implementations":
     post:
       operationId: implementations
@@ -847,6 +873,12 @@ components:
         perFileScanBudgetMillis:
           type: integer
           format: int64
+        continuationTtlMillis:
+          type: integer
+          format: int64
+        continuationCapacity:
+          type: integer
+          format: int32
       additionalProperties: false
       required:
         - maxResults
@@ -1097,6 +1129,10 @@ components:
           type: array
           items:
             type: string
+        contentRoots:
+          type: array
+          items:
+            type: string
         dependencyModuleNames:
           type: array
           items:
@@ -1105,6 +1141,13 @@ components:
           type: array
           items:
             type: string
+        returnedFileCount:
+          type: integer
+          format: int32
+        nextPageToken:
+          anyOf:
+            - type: string
+            - type: "null"
         filesTruncated:
           type: boolean
         fileCount:
@@ -1706,6 +1749,8 @@ components:
     WorkspaceFilesQuery:
       type: object
       properties:
+        kindDomain:
+          "$ref": "#/components/schemas/WorkspaceFileKindDomain"
         moduleName:
           anyOf:
             - type: string
@@ -1717,7 +1762,21 @@ components:
             - type: integer
               format: int32
             - type: "null"
+        snapshotToken:
+          anyOf:
+            - type: string
+            - type: "null"
+        pageToken:
+          anyOf:
+            - type: string
+            - type: "null"
       additionalProperties: false
+    WorkspaceFileKindDomain:
+      type: string
+      enum:
+        - SOURCE_ONLY
+        - SCRIPT_ONLY
+        - MIXED
     WorkspaceFilesResult:
       type: object
       properties:
@@ -1725,12 +1784,185 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/WorkspaceModule"
+        snapshotToken:
+          type: string
         schemaVersion:
           type: integer
           format: int32
       additionalProperties: false
       required:
         - modules
+        - snapshotToken
+    WorkspaceFilesContinuationAction:
+      type: string
+      enum:
+        - ISSUE
+        - CONSUME
+    WorkspaceFilesContinuationQuery:
+      type: object
+      properties:
+        action:
+          "$ref": "#/components/schemas/WorkspaceFilesContinuationAction"
+        identity:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationIdentity"
+        state:
+          anyOf:
+            - "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationState"
+            - type: "null"
+        pageToken:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - action
+        - identity
+    WorkspaceFilesPublicContinuationIdentity:
+      type: object
+      properties:
+        workspaceRoot:
+          "$ref": "#/components/schemas/WorkspaceRoot"
+        backendName:
+          "$ref": "#/components/schemas/BackendName"
+        normalizedQuery:
+          "$ref": "#/components/schemas/NormalizedQuery"
+        projection:
+          "$ref": "#/components/schemas/Projection"
+        limit:
+          "$ref": "#/components/schemas/Limit"
+      additionalProperties: false
+      required:
+        - workspaceRoot
+        - backendName
+        - normalizedQuery
+        - projection
+        - limit
+    WorkspaceRoot:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    BackendName:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    NormalizedQuery:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    Projection:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    Limit:
+      type: object
+      properties:
+        value:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - value
+    WorkspaceFilesPublicContinuationState:
+      type: object
+      properties:
+        identity:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationIdentity"
+        compositionStampDigest:
+          "$ref": "#/components/schemas/CompositionStampDigest"
+        lastRelativePath:
+          "$ref": "#/components/schemas/LastRelativePath"
+        cumulativeReturnedCount:
+          "$ref": "#/components/schemas/CumulativeReturnedCount"
+      additionalProperties: false
+      required:
+        - identity
+        - compositionStampDigest
+        - lastRelativePath
+        - cumulativeReturnedCount
+    CompositionStampDigest:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    LastRelativePath:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    CumulativeReturnedCount:
+      type: object
+      properties:
+        value:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - value
+    WorkspaceFilesPublicContinuationProjection:
+      type: object
+      properties:
+        identity:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationIdentity"
+        compositionStampDigest:
+          "$ref": "#/components/schemas/CompositionStampDigest"
+        lastRelativePath:
+          "$ref": "#/components/schemas/LastRelativePath"
+        cumulativeReturnedCount:
+          "$ref": "#/components/schemas/CumulativeReturnedCount"
+      additionalProperties: false
+      required:
+        - identity
+        - compositionStampDigest
+        - lastRelativePath
+        - cumulativeReturnedCount
+    WorkspaceFilesContinuationResult:
+      type: object
+    WorkspaceFilesContinuationResult.Issued:
+      type: object
+      properties:
+        pageToken:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicPageToken"
+      additionalProperties: false
+      required:
+        - pageToken
+    WorkspaceFilesPublicPageToken:
+      type: object
+      properties:
+        value:
+          type: string
+      additionalProperties: false
+      required:
+        - value
+    WorkspaceFilesContinuationResult.Consumed:
+      type: object
+      properties:
+        state:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationProjection"
+      additionalProperties: false
+      required:
+        - state
     ImplementationsQuery:
       type: object
       properties:

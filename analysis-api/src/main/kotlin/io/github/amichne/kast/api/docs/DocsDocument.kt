@@ -16,6 +16,9 @@ import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationAction
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
@@ -40,6 +43,9 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationProjection
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
@@ -48,6 +54,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
@@ -122,6 +129,14 @@ object DocsDocument {
         "WorkspaceSearchResult" to WorkspaceSearchResult.serializer(),
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
+        "WorkspaceFilesContinuationAction" to WorkspaceFilesContinuationAction.serializer(),
+        "WorkspaceFilesContinuationQuery" to WorkspaceFilesContinuationQuery.serializer(),
+        "WorkspaceFilesPublicContinuationIdentity" to WorkspaceFilesPublicContinuationIdentity.serializer(),
+        "WorkspaceFilesPublicContinuationState" to WorkspaceFilesPublicContinuationState.serializer(),
+        "WorkspaceFilesPublicContinuationProjection" to WorkspaceFilesPublicContinuationProjection.serializer(),
+        "WorkspaceFilesContinuationResult" to WorkspaceFilesContinuationResult.serializer(),
+        "WorkspaceFilesContinuationResult.Issued" to WorkspaceFilesContinuationResult.Issued.serializer(),
+        "WorkspaceFilesContinuationResult.Consumed" to WorkspaceFilesContinuationResult.Consumed.serializer(),
         "ImplementationsQuery" to ImplementationsQuery.serializer(),
         "ImplementationsResult" to ImplementationsResult.serializer(),
         "CodeActionsQuery" to CodeActionsQuery.serializer(),
@@ -297,6 +312,13 @@ object DocsDocument {
             return
         }
         val descriptor = serializer.descriptor
+        if (descriptor.kind == PolymorphicKind.SEALED) {
+            val variants = schemaSerializers.keys.filter { candidate -> candidate.startsWith("$schemaName.") }
+            line("| Variant |")
+            line("|---------|")
+            variants.forEach { variant -> line("| `${variant.substringAfterLast('.')}` |") }
+            return
+        }
         if (descriptor.elementsCount == 0) {
             line("*No fields.*")
             return

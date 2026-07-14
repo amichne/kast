@@ -16,6 +16,8 @@ import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
@@ -42,12 +44,16 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationProjection
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
@@ -125,6 +131,21 @@ class DocFieldCoverageTest {
         "SearchMatch" to SearchMatch.serializer(),
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
+        "WorkspaceFilesContinuationQuery" to WorkspaceFilesContinuationQuery.serializer(),
+        "WorkspaceFilesPublicContinuationIdentity" to WorkspaceFilesPublicContinuationIdentity.serializer(),
+        "WorkspaceRoot" to WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.serializer(),
+        "BackendName" to WorkspaceFilesPublicContinuationIdentity.BackendName.serializer(),
+        "NormalizedQuery" to WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.serializer(),
+        "Projection" to WorkspaceFilesPublicContinuationIdentity.Projection.serializer(),
+        "Limit" to WorkspaceFilesPublicContinuationIdentity.Limit.serializer(),
+        "WorkspaceFilesPublicContinuationState" to WorkspaceFilesPublicContinuationState.serializer(),
+        "CompositionStampDigest" to WorkspaceFilesPublicContinuationState.CompositionStampDigest.serializer(),
+        "LastRelativePath" to WorkspaceFilesPublicContinuationState.LastRelativePath.serializer(),
+        "CumulativeReturnedCount" to WorkspaceFilesPublicContinuationState.CumulativeReturnedCount.serializer(),
+        "WorkspaceFilesPublicContinuationProjection" to WorkspaceFilesPublicContinuationProjection.serializer(),
+        "WorkspaceFilesContinuationResult.Issued" to WorkspaceFilesContinuationResult.Issued.serializer(),
+        "WorkspaceFilesContinuationResult.Consumed" to WorkspaceFilesContinuationResult.Consumed.serializer(),
+        "WorkspaceFilesPublicPageToken" to WorkspaceFilesPublicPageToken.serializer(),
         "ImplementationsQuery" to ImplementationsQuery.serializer(),
         "ImplementationsResult" to ImplementationsResult.serializer(),
         "CodeActionsQuery" to CodeActionsQuery.serializer(),
@@ -198,6 +219,7 @@ class DocFieldCoverageTest {
             "JsonRpcErrorObject", "JsonRpcErrorResponse",
             "JsonRpcRequest", "JsonRpcSuccessResponse",
             "FileOperation",
+            "WorkspaceFilesContinuationResult",
         )
         val expected = objectSchemas - wireTypes
 

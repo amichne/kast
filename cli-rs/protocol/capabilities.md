@@ -109,7 +109,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        12 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
+        13 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
     ??? info "raw/resolve — Resolve the symbol at a file position"
 
@@ -305,15 +305,36 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
+            | `#!kotlin kindDomain: WorkspaceFileKindDomain` :material-information-outline:{ title="Default: MIXED" } | Closed file-kind domain fingerprinted by workspace inventory paging. |
             | `#!kotlin moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
             | `#!kotlin includeFiles: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
             | `#!kotlin maxFilesPerModule: Int?` :material-information-outline:{ title="Default: null" } | Maximum file paths to return per module when includeFiles is true. Omit to use the server maxResults limit. |
+            | `#!kotlin snapshotToken: String?` | Opaque workspace inventory snapshot handle returned by a metadata request. |
+            | `#!kotlin pageToken: String?` | Opaque single-use module page handle returned by the preceding page. |
         === "Output: WorkspaceFilesResult"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
+            | `#!kotlin snapshotToken: String` | Opaque reusable handle identifying the coherent workspace inventory snapshot. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/workspace-files-continuation — Issue or consume public workspace-file continuation state"
+
+        === "Input: WorkspaceFilesContinuationQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin action: WorkspaceFilesContinuationAction` | Whether this internal request issues a new handle or consumes an existing handle. |
+            | `#!kotlin identity: WorkspaceFilesPublicContinuationIdentity` | Exact workspace, backend, normalized query, projection, and limit bound to the handle. |
+            | `#!kotlin state: WorkspaceFilesPublicContinuationState?` | Server-owned continuation state supplied only when issuing a handle. |
+            | `#!kotlin pageToken: String?` | Opaque single-use public continuation handle supplied only when consuming a handle. |
+        === "Output: WorkspaceFilesContinuationResult"
+
+            | Variant |
+            |---------|
+            | `Issued` |
+            | `Consumed` |
 
     ??? info "raw/implementations — Find concrete implementations and subclasses for a declaration"
 

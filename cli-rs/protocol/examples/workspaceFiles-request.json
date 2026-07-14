@@ -1,7 +1,10 @@
 {
     "method": "raw/workspace-files",
     "params": {
-        "includeFiles": false
+        "kindDomain": "MIXED",
+        "moduleName": "fake-module",
+        "includeFiles": true,
+        "maxFilesPerModule": 1
     },
     "id": 1,
     "jsonrpc": "2.0"

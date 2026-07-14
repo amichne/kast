@@ -22,9 +22,12 @@ import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -83,6 +86,7 @@ object DocExampleGenerator {
                 val responseElement = json.parseToJsonElement(responseRaw)
                 val responseJson = json.encodeToString(JsonElement.serializer(), responseElement)
                     .replace(pathToSanitize, "/workspace")
+                    .withDeterministicWorkspaceHandles(operationId)
                 result[operationId] = ExamplePair(requestJson, responseJson)
             }
             return result
@@ -189,7 +193,40 @@ object DocExampleGenerator {
             "raw/workspace-files",
             json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
-                WorkspaceFilesQuery(),
+                WorkspaceFilesQuery(
+                    moduleName = "fake-module",
+                    includeFiles = true,
+                    maxFilesPerModule = 1,
+                ),
+            ),
+        )
+        val continuationIdentity = WorkspaceFilesPublicContinuationIdentity(
+            workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse(
+                Path.of(sampleFile).parent.parent.toString(),
+            ),
+            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("fake"),
+            normalizedQuery = WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.parse(
+                "kind=mixed;module=*;package=*;sourceSet=*",
+            ),
+            projection = WorkspaceFilesPublicContinuationIdentity.Projection.parse("compact:path,evidence"),
+            limit = WorkspaceFilesPublicContinuationIdentity.Limit.of(1),
+        )
+        ops += "workspaceFilesContinuation" to request(
+            "raw/workspace-files-continuation",
+            json.encodeToJsonElement(
+                WorkspaceFilesContinuationQuery.serializer(),
+                WorkspaceFilesContinuationQuery.issue(
+                    identity = continuationIdentity,
+                    state = WorkspaceFilesPublicContinuationState(
+                        identity = continuationIdentity,
+                        compositionStampDigest =
+                            WorkspaceFilesPublicContinuationState.CompositionStampDigest.parse("0".repeat(64)),
+                        lastRelativePath =
+                            WorkspaceFilesPublicContinuationState.LastRelativePath.parse("src/Sample.kt"),
+                        cumulativeReturnedCount =
+                            WorkspaceFilesPublicContinuationState.CumulativeReturnedCount.of(1),
+                    ),
+                ),
             ),
         )
         ops += "workspaceSearch" to request(
@@ -279,6 +316,24 @@ object DocExampleGenerator {
 
         return ops
     }
+
+    private fun String.withDeterministicWorkspaceHandles(operationId: String): String = when (operationId) {
+        "workspaceFiles" ->
+            replaceUuidField("nextPageToken", RAW_WORKSPACE_PAGE_HANDLE)
+                .replaceUuidField("snapshotToken", RAW_WORKSPACE_SNAPSHOT_HANDLE)
+        "workspaceFilesContinuation" -> replaceUuidField("pageToken", PUBLIC_WORKSPACE_PAGE_HANDLE)
+        else -> this
+    }
+
+    private fun String.replaceUuidField(field: String, replacement: String): String =
+        Regex("""("$field"\s*:\s*")$UUID_PATTERN(")""").replace(this) { match ->
+            match.groupValues[1] + replacement + match.groupValues[2]
+        }
+
+    private const val UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    private const val RAW_WORKSPACE_PAGE_HANDLE = "00000000-0000-4000-8000-000000000001"
+    private const val RAW_WORKSPACE_SNAPSHOT_HANDLE = "00000000-0000-4000-8000-000000000002"
+    private const val PUBLIC_WORKSPACE_PAGE_HANDLE = "00000000-0000-4000-8000-000000000003"
 }
 
 private fun repoRoot(): Path =

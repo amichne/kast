@@ -6,9 +6,34 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import kotlin.io.path.readText
 
 class DocExampleGeneratorTest {
+
+    @Test
+    fun `random workspace handles are deterministic valid version four UUID examples`() {
+        val first = DocExampleGenerator.generateExamples()
+        val second = DocExampleGenerator.generateExamples()
+
+        assertEquals(first, second, "Generated examples must not retain runtime-random continuation handles")
+
+        val expectedHandles = setOf(
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+            "00000000-0000-4000-8000-000000000003",
+        )
+        val generatedHandles = listOf("workspaceFiles", "workspaceFilesContinuation")
+            .mapNotNull(first::get)
+            .flatMap { pair -> UUID_PATTERN.findAll(pair.response).map(MatchResult::value).toList() }
+            .toSet()
+
+        assertEquals(expectedHandles, generatedHandles)
+        generatedHandles.map(UUID::fromString).forEach { handle ->
+            assertEquals(4, handle.version())
+            assertEquals(2, handle.variant())
+        }
+    }
 
     @Test
     fun `checked in doc examples match generated examples`() {
@@ -39,4 +64,8 @@ class DocExampleGeneratorTest {
     private fun repoRoot(): Path =
         generateSequence(Path.of("").toAbsolutePath()) { it.parent }
             .first { Files.isDirectory(it.resolve("docs")) }
+
+    private companion object {
+        val UUID_PATTERN = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+    }
 }

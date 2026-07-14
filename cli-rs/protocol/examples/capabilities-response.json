@@ -29,7 +29,9 @@
             "maxResults": 100,
             "requestTimeoutMillis": 30000,
             "maxConcurrentRequests": 4,
-            "perFileScanBudgetMillis": 5000
+            "perFileScanBudgetMillis": 5000,
+            "continuationTtlMillis": 60000,
+            "continuationCapacity": 256
         },
         "schemaVersion": 3
     },

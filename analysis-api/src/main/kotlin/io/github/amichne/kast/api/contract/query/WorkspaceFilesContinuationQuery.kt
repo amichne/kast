@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.contract.query
 
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
+import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFilesPageTokenException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
@@ -8,9 +9,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class WorkspaceFilesContinuationQuery(
+    @DocField(description = "Whether this internal request issues a new handle or consumes an existing handle.")
     val action: WorkspaceFilesContinuationAction,
+    @DocField(description = "Exact workspace, backend, normalized query, projection, and limit bound to the handle.")
     val identity: WorkspaceFilesPublicContinuationIdentity,
+    @DocField(description = "Server-owned continuation state supplied only when issuing a handle.")
     val state: WorkspaceFilesPublicContinuationState? = null,
+    @DocField(description = "Opaque single-use public continuation handle supplied only when consuming a handle.")
     val pageToken: String? = null,
 ) {
     fun parsed(): Parsed = when (action) {

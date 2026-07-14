@@ -35,6 +35,9 @@ import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationAction
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
@@ -61,6 +64,9 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationProjection
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
@@ -232,6 +238,14 @@ object OpenApiDocument {
         registry.register("WorkspaceSearchResult", WorkspaceSearchResult.serializer())
         registry.register("WorkspaceFilesQuery", WorkspaceFilesQuery.serializer())
         registry.register("WorkspaceFilesResult", WorkspaceFilesResult.serializer())
+        registry.register("WorkspaceFilesContinuationAction", WorkspaceFilesContinuationAction.serializer())
+        registry.register("WorkspaceFilesContinuationQuery", WorkspaceFilesContinuationQuery.serializer())
+        registry.register("WorkspaceFilesPublicContinuationIdentity", WorkspaceFilesPublicContinuationIdentity.serializer())
+        registry.register("WorkspaceFilesPublicContinuationState", WorkspaceFilesPublicContinuationState.serializer())
+        registry.register("WorkspaceFilesPublicContinuationProjection", WorkspaceFilesPublicContinuationProjection.serializer())
+        registry.register("WorkspaceFilesContinuationResult", WorkspaceFilesContinuationResult.serializer())
+        registry.register("WorkspaceFilesContinuationResult.Issued", WorkspaceFilesContinuationResult.Issued.serializer())
+        registry.register("WorkspaceFilesContinuationResult.Consumed", WorkspaceFilesContinuationResult.Consumed.serializer())
         registry.register("ImplementationsQuery", ImplementationsQuery.serializer())
         registry.register("ImplementationsResult", ImplementationsResult.serializer())
         registry.register("CodeActionsQuery", CodeActionsQuery.serializer())
@@ -372,6 +386,13 @@ object OpenApiDocument {
             responseSchema = "WorkspaceFilesResult",
             capability = "WORKSPACE_FILES",
         ),
+        "/rpc/raw/workspace-files-continuation" to internalReadMethod(
+            operationId = "workspaceFilesContinuation",
+            summary = "Issue or consume server-held public workspace-file continuation state",
+            method = "raw/workspace-files-continuation",
+            requestSchema = "WorkspaceFilesContinuationQuery",
+            responseSchema = "WorkspaceFilesContinuationResult",
+        ),
         "/rpc/raw/implementations" to readMethod(
             operationId = "implementations",
             summary = "Find concrete implementations and subclasses for a declaration",
@@ -474,6 +495,40 @@ object OpenApiDocument {
             "tags" to listOf("read"),
             "x-jsonrpc-method" to method,
             "x-kast-required-capability" to capability,
+            "requestBody" to linkedMapOf(
+                "required" to true,
+                "content" to linkedMapOf(
+                    "application/json" to linkedMapOf(
+                        "schema" to ref(requestSchema),
+                    ),
+                ),
+            ),
+            "responses" to linkedMapOf(
+                "200" to linkedMapOf(
+                    "description" to "JSON-RPC success result",
+                    "content" to linkedMapOf(
+                        "application/json" to linkedMapOf(
+                            "schema" to ref(responseSchema),
+                        ),
+                    ),
+                ),
+                "default" to errorResponse(),
+            ),
+        ),
+    )
+
+    private fun internalReadMethod(
+        operationId: String,
+        summary: String,
+        method: String,
+        requestSchema: String,
+        responseSchema: String,
+    ): Map<String, Any?> = linkedMapOf(
+        "post" to linkedMapOf(
+            "operationId" to operationId,
+            "summary" to summary,
+            "tags" to listOf("read"),
+            "x-jsonrpc-method" to method,
             "requestBody" to linkedMapOf(
                 "required" to true,
                 "content" to linkedMapOf(

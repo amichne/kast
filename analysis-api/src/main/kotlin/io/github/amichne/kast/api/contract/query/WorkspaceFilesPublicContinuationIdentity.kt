@@ -1,19 +1,28 @@
 package io.github.amichne.kast.api.contract.query
 
+import io.github.amichne.kast.api.docs.DocField
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class WorkspaceFilesPublicContinuationIdentity(
+    @DocField(description = "Normalized absolute workspace root bound to this continuation.")
     val workspaceRoot: WorkspaceRoot,
+    @DocField(description = "Normalized backend identity bound to this continuation.")
     val backendName: BackendName,
+    @DocField(description = "Canonical serialization of every result-affecting workspace-files query field.")
     val normalizedQuery: NormalizedQuery,
+    @DocField(description = "Canonical result projection requested by the public command.")
     val projection: Projection,
+    @DocField(description = "Maximum number of public file records returned per page.")
     val limit: Limit,
 ) {
     @Serializable
     @JvmInline
-    value class WorkspaceRoot private constructor(val value: String) {
+    value class WorkspaceRoot private constructor(
+        @DocField(description = "Normalized absolute workspace root path.")
+        val value: String,
+    ) {
         init {
             require(value.isNotBlank()) { "Workspace root must not be blank" }
             require(value.none(Char::isISOControl)) { "Workspace root must not contain control characters" }
@@ -29,7 +38,10 @@ data class WorkspaceFilesPublicContinuationIdentity(
 
     @Serializable
     @JvmInline
-    value class BackendName private constructor(val value: String) {
+    value class BackendName private constructor(
+        @DocField(description = "Normalized backend identity.")
+        val value: String,
+    ) {
         init {
             require(value.isNotBlank()) { "Backend name must not be blank" }
             require(value == value.trim()) { "Backend name must be normalized" }
@@ -43,7 +55,10 @@ data class WorkspaceFilesPublicContinuationIdentity(
 
     @Serializable
     @JvmInline
-    value class NormalizedQuery private constructor(val value: String) {
+    value class NormalizedQuery private constructor(
+        @DocField(description = "Canonical normalized workspace-files query.")
+        val value: String,
+    ) {
         init {
             require(value.isNotBlank()) { "Normalized workspace-file query must not be blank" }
             require(value.none(Char::isISOControl)) {
@@ -58,7 +73,10 @@ data class WorkspaceFilesPublicContinuationIdentity(
 
     @Serializable
     @JvmInline
-    value class Projection private constructor(val value: String) {
+    value class Projection private constructor(
+        @DocField(description = "Canonical public workspace-files result projection.")
+        val value: String,
+    ) {
         init {
             require(value.isNotBlank()) { "Workspace-file projection must not be blank" }
             require(value.none(Char::isISOControl)) {
@@ -73,7 +91,10 @@ data class WorkspaceFilesPublicContinuationIdentity(
 
     @Serializable
     @JvmInline
-    value class Limit private constructor(val value: Int) {
+    value class Limit private constructor(
+        @DocField(description = "Public result page size from 1 through 200.")
+        val value: Int,
+    ) {
         init {
             require(value in 1..200) { "Workspace-file continuation limit must be between 1 and 200" }
         }

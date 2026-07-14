@@ -2,13 +2,18 @@ package io.github.amichne.kast.api.contract.result
 
 import io.github.amichne.kast.api.continuation.ContinuationOwnedState
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
+import io.github.amichne.kast.api.docs.DocField
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class WorkspaceFilesPublicContinuationState(
+    @DocField(description = "Exact public query identity bound to this server-held continuation.")
     val identity: WorkspaceFilesPublicContinuationIdentity,
+    @DocField(description = "Lowercase SHA-256 digest of the coherent multi-source composition stamp.")
     val compositionStampDigest: CompositionStampDigest,
+    @DocField(description = "Last normalized workspace-relative path returned before this continuation.")
     val lastRelativePath: LastRelativePath,
+    @DocField(description = "Total number of file records returned before this continuation was issued.")
     val cumulativeReturnedCount: CumulativeReturnedCount,
 ) : ContinuationOwnedState() {
     fun toProjection(): WorkspaceFilesPublicContinuationProjection =
@@ -21,7 +26,10 @@ data class WorkspaceFilesPublicContinuationState(
 
     @Serializable
     @JvmInline
-    value class CompositionStampDigest private constructor(val value: String) {
+    value class CompositionStampDigest private constructor(
+        @DocField(description = "Lowercase SHA-256 digest of the coherent composition stamp.")
+        val value: String,
+    ) {
         init {
             require(value.length == SHA_256_HEX_LENGTH && value.all { it in '0'..'9' || it in 'a'..'f' }) {
                 "Workspace-file composition stamp digest must be lowercase SHA-256 hex"
@@ -37,7 +45,10 @@ data class WorkspaceFilesPublicContinuationState(
 
     @Serializable
     @JvmInline
-    value class LastRelativePath private constructor(val value: String) {
+    value class LastRelativePath private constructor(
+        @DocField(description = "Normalized workspace-relative path with forward slashes.")
+        val value: String,
+    ) {
         init {
             require(value.isNotBlank()) { "Workspace-file continuation path must not be blank" }
             require(value.none(Char::isISOControl)) {
@@ -65,7 +76,10 @@ data class WorkspaceFilesPublicContinuationState(
 
     @Serializable
     @JvmInline
-    value class CumulativeReturnedCount private constructor(val value: Int) {
+    value class CumulativeReturnedCount private constructor(
+        @DocField(description = "Non-negative cumulative count of returned file records.")
+        val value: Int,
+    ) {
         init {
             require(value >= 0) { "Workspace-file cumulative returned count must not be negative" }
         }

@@ -33,6 +33,7 @@ class AnalysisOpenApiDocumentTest {
             "raw/file-outline",
             "raw/workspace-symbol",
             "raw/workspace-files",
+            "raw/workspace-files-continuation",
             "raw/implementations",
             "raw/code-actions",
             "raw/completions",
@@ -115,6 +116,28 @@ class AnalysisOpenApiDocumentTest {
                 "System path $path should not have a capability requirement",
             )
         }
+    }
+
+    @Test
+    fun `workspace file continuation is internal and not capability gated`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val lines = yaml.lines()
+        val path = "/rpc/raw/workspace-files-continuation"
+        val pathIndex = lines.indexOfFirst { it.contains(path) }
+
+        assertTrue(pathIndex >= 0, "Internal continuation path $path not found")
+
+        val nextPathIndex = lines.drop(pathIndex + 1)
+            .indexOfFirst { it.trimStart().startsWith("\"/rpc/") }
+            .let { if (it == -1) lines.size else pathIndex + 1 + it }
+        val sectionLines = lines.subList(pathIndex, nextPathIndex)
+
+        assertTrue(
+            sectionLines.none { it.contains("x-kast-required-capability") },
+            "Internal workspace-file continuation must not advertise a backend capability",
+        )
+        assertTrue(sectionLines.any { it.contains("WorkspaceFilesContinuationQuery") })
+        assertTrue(sectionLines.any { it.contains("WorkspaceFilesContinuationResult") })
     }
 
     @Test
