@@ -422,12 +422,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin includeUsageSiteScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the nearest enclosing declaration scope for each reference usage site. |
             | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of reference locations to return. |
             | `#!kotlin pageToken: String?` | Opaque continuation token from the preceding reference page. |
+            | `#!kotlin selector: KastExactSymbolSelector?` | Exact declaration identity required by the agent references endpoint. |
         === "Output: ReferencesResult"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
-            | `#!kotlin references: List<Location>` | List of source locations where the symbol is referenced. |
+            | `#!kotlin references: List<ReferenceOccurrence>` | Reference locations with containing-symbol semantic evidence. |
             | `#!kotlin cardinality: ResultCardinality` | Exact or known-minimum cardinality established by bounded reference work. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
@@ -485,12 +486,17 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     },
                     "references": [
                         {
-                            "filePath": "/workspace/src/Sample.kt",
-                            "startOffset": 48,
-                            "endOffset": 53,
-                            "startLine": 4,
-                            "startColumn": 13,
-                            "preview": "greet"
+                            "location": {
+                                "filePath": "/workspace/src/Sample.kt",
+                                "startOffset": 48,
+                                "endOffset": 53,
+                                "startLine": 4,
+                                "startColumn": 13,
+                                "preview": "greet"
+                            },
+                            "containingSymbol": {
+                                "type": "TOP_LEVEL"
+                            }
                         }
                     ],
                     "cardinality": {

@@ -142,12 +142,13 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin includeUsageSiteScope: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes the nearest enclosing declaration scope for each reference usage site. |
             | `#!kotlin maxResults: Int` :material-information-outline:{ title="Default: 100" } | Maximum number of reference locations to return. |
             | `#!kotlin pageToken: String?` | Opaque continuation token from the preceding reference page. |
+            | `#!kotlin selector: KastExactSymbolSelector?` | Exact declaration identity required by the agent references endpoint. |
         === "Output: ReferencesResult"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
-            | `#!kotlin references: List<Location>` | List of source locations where the symbol is referenced. |
+            | `#!kotlin references: List<ReferenceOccurrence>` | Reference locations with containing-symbol semantic evidence. |
             | `#!kotlin cardinality: ResultCardinality` | Exact or known-minimum cardinality established by bounded reference work. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |

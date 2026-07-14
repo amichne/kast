@@ -1198,9 +1198,36 @@ components:
           anyOf:
             - type: string
             - type: "null"
+        selector:
+          anyOf:
+            - "$ref": "#/components/schemas/KastExactSymbolSelector"
+            - type: "null"
       additionalProperties: false
       required:
         - position
+    KastExactSymbolSelector:
+      type: object
+      properties:
+        fqName:
+          type: string
+        declarationFile:
+          type: string
+        declarationStartOffset:
+          type: integer
+          format: int32
+        kind:
+          anyOf:
+            - "$ref": "#/components/schemas/SymbolKind"
+            - type: "null"
+        containingType:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - fqName
+        - declarationFile
+        - declarationStartOffset
     ResultCardinality:
       oneOf:
         - "$ref": "#/components/schemas/EXACT"
@@ -1246,7 +1273,7 @@ components:
         references:
           type: array
           items:
-            "$ref": "#/components/schemas/Location"
+            "$ref": "#/components/schemas/ReferenceOccurrence"
         cardinality:
           "$ref": "#/components/schemas/ResultCardinality"
         page:
@@ -1264,6 +1291,19 @@ components:
       required:
         - references
         - cardinality
+    ReferenceOccurrence:
+      type: object
+      properties:
+        location:
+          "$ref": "#/components/schemas/Location"
+        containingSymbol:
+          "$ref": "#/components/schemas/ContainingSymbolEvidence"
+      additionalProperties: false
+      required:
+        - location
+        - containingSymbol
+    ContainingSymbolEvidence:
+      type: object
     CallHierarchyQuery:
       type: object
       properties:
