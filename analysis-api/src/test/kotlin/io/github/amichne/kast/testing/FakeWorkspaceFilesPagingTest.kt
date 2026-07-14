@@ -91,6 +91,18 @@ class FakeWorkspaceFilesPagingTest {
             }
 
             assertEquals(InvalidWorkspaceFileCursorScope.PAGE_HANDLE, failure.scope)
+            val consumedFailure = try {
+                backend.workspaceFiles(
+                    pageQuery(
+                        snapshotToken = metadata.snapshotToken,
+                        pageToken = first.modules.single().nextPageToken,
+                    ).parsed(),
+                )
+                fail("Expected a query-mismatched page handle to be consumed")
+            } catch (failure: InvalidWorkspaceFileCursorException) {
+                failure
+            }
+            assertEquals(InvalidWorkspaceFileCursorScope.PAGE_HANDLE, consumedFailure.scope)
         } finally {
             backend.close()
         }

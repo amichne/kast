@@ -693,10 +693,7 @@ class FakeAnalysisBackend private constructor(
                 modules = workspaceMetadataModules(snapshot.inventory, requestedModule),
             )
         }
-        if (requestedModule != null && requestedModule != FAKE_MODULE_NAME) {
-            query.pageToken?.let {
-                throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
-            }
+        if (requestedModule != null && requestedModule != FAKE_MODULE_NAME && query.pageToken == null) {
             return workspaceFilesResult(snapshot, emptyList())
         }
 
