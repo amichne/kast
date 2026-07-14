@@ -1,5 +1,6 @@
 mod support;
 
+use support::metrics::{seed_high_cardinality_impact, seed_source_index};
 use support::{kast, spawn_scripted_idea_backend};
 
 fn exact_selector() -> [&'static str; 6] {
@@ -189,6 +190,280 @@ fn relationship_types_reject_invalid_values_before_runtime_io() {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr),
         );
+    }
+}
+
+#[test]
+fn impact_requires_the_reusable_exact_selector_and_bounded_controls() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+
+    for args in [
+        vec!["agent", "impact", "--symbol", "sample.Service"],
+        vec![
+            "agent",
+            "impact",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "Service.kt",
+            "--declaration-start-offset",
+            "15",
+            "--limit",
+            "0",
+        ],
+        vec![
+            "agent",
+            "impact",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "Service.kt",
+            "--declaration-start-offset",
+            "15",
+            "--limit",
+            "201",
+        ],
+        vec![
+            "agent",
+            "impact",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "Service.kt",
+            "--declaration-start-offset",
+            "15",
+            "--depth",
+            "0",
+        ],
+        vec![
+            "agent",
+            "impact",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "Service.kt",
+            "--declaration-start-offset",
+            "15",
+            "--depth",
+            "9",
+        ],
+        vec![
+            "agent",
+            "impact",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            "Service.kt",
+            "--declaration-start-offset",
+            "15",
+            "--page-token",
+            "not-an-impact-token",
+        ],
+    ] {
+        let output = kast(&home, &config)
+            .args(args)
+            .output()
+            .expect("invalid impact command");
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+    }
+}
+
+#[test]
+fn impact_pages_are_query_bound_and_do_not_overlap() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    seed_source_index(&workspace);
+    seed_high_cardinality_impact(&workspace, "lib.Foo", 500);
+    let declaration_file =
+        std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("impact declaration");
+    let resolved = serde_json::json!({
+        "symbol": {
+            "fqName": "lib.Foo",
+            "kind": "CLASS",
+            "location": {
+                "filePath": declaration_file,
+                "startOffset": 1,
+                "endOffset": 2
+            }
+        }
+    });
+    let run_page = |index: usize, page_token: Option<&str>| {
+        let socket = temp.path().join(format!("impact-page-{index}.sock"));
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &socket,
+            vec![("raw/resolve", resolved.clone())],
+        );
+        let mut args = vec![
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--symbol",
+            "lib.Foo",
+            "--declaration-file",
+            declaration_file.to_str().expect("declaration file"),
+            "--declaration-start-offset",
+            "1",
+            "--kind",
+            "class",
+            "--depth",
+            "3",
+            "--limit",
+            "4",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ];
+        if let Some(token) = page_token {
+            args.extend(["--page-token", token]);
+        }
+        let output = kast(&home, &config)
+            .args(args)
+            .output()
+            .expect("impact page");
+        let requests = backend.join().expect("impact backend");
+        assert_eq!(
+            requests.last().expect("resolve request")["method"],
+            "raw/resolve"
+        );
+        assert_eq!(
+            requests.last().expect("resolve request")["params"]["position"]["offset"],
+            1
+        );
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        serde_json::from_slice::<serde_json::Value>(&output.stdout).expect("impact page json")
+    };
+
+    let first = run_page(1, None);
+    let token = first["result"]["nextPageToken"]
+        .as_str()
+        .expect("first impact page token")
+        .to_string();
+    let second = run_page(2, Some(&token));
+    let first_paths = first["result"]["nodes"]
+        .as_array()
+        .expect("first nodes")
+        .iter()
+        .map(|node| node["sourcePath"].as_str().expect("first path"))
+        .collect::<std::collections::BTreeSet<_>>();
+    let second_paths = second["result"]["nodes"]
+        .as_array()
+        .expect("second nodes")
+        .iter()
+        .map(|node| node["sourcePath"].as_str().expect("second path"))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(first_paths.is_disjoint(&second_paths));
+    assert_eq!(second["result"]["query"]["offset"], 4);
+
+    let mismatch = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--symbol",
+            "lib.Target",
+            "--declaration-file",
+            workspace
+                .join("lib/Target.kt")
+                .to_str()
+                .expect("target file"),
+            "--declaration-start-offset",
+            "1",
+            "--kind",
+            "class",
+            "--page-token",
+            &token,
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("mismatched impact token");
+    assert_eq!(mismatch.status.code(), Some(1));
+    let mismatch: serde_json::Value =
+        serde_json::from_slice(&mismatch.stdout).expect("impact mismatch json");
+    assert_eq!(mismatch["error"]["code"], "IMPACT_PAGE_TOKEN_MISMATCH");
+}
+
+#[test]
+fn impact_stops_before_sql_for_mismatched_and_unsupported_subjects() {
+    for (index, kind, resolved_offset, expected_outcome) in [
+        (0usize, "CLASS", 16u64, "SUBJECT_IDENTITY_MISMATCH"),
+        (1usize, "PARAMETER", 15u64, "UNSUPPORTED_SUBJECT_KIND"),
+    ] {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join("home");
+        let config = temp.path().join("config");
+        let workspace = temp.path().join("workspace");
+        let declaration_file = workspace.join("Service.kt");
+        std::fs::create_dir_all(&workspace).expect("workspace");
+        std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+        let canonical = std::fs::canonicalize(&declaration_file).expect("canonical source");
+        let socket = temp.path().join(format!("impact-closed-{index}.sock"));
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &socket,
+            vec![(
+                "raw/resolve",
+                serde_json::json!({
+                    "symbol": {
+                        "fqName": "sample.Service",
+                        "kind": kind,
+                        "location": {
+                            "filePath": canonical,
+                            "startOffset": resolved_offset,
+                            "endOffset": resolved_offset + 1
+                        }
+                    }
+                }),
+            )],
+        );
+        let output = kast(&home, &config)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "impact",
+                "--symbol",
+                "sample.Service",
+                "--declaration-file",
+                declaration_file.to_str().expect("declaration file"),
+                "--declaration-start-offset",
+                "15",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("closed impact outcome");
+        backend.join().expect("closed impact backend");
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let result: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("closed impact json");
+        assert_eq!(result["result"]["outcome"], expected_outcome, "{result}");
     }
 }
 

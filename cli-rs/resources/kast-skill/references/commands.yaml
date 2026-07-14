@@ -90,6 +90,32 @@ commands:
           - search
           - graph
           type: string
+        offset:
+          optional: true
+          type: integer
+        subject:
+          fields:
+            declarationFile:
+              type: string
+            declarationStartOffset:
+              type: integer
+            fqName:
+              type: string
+            kind:
+              enum:
+              - CLASS
+              - INTERFACE
+              - OBJECT
+              - FUNCTION
+              - PROPERTY
+              type: string
+          optional: true
+          required:
+          - fqName
+          - declarationFile
+          - declarationStartOffset
+          - kind
+          type: object
         symbol:
           nullable: true
           optional: true

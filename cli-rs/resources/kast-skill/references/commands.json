@@ -2503,6 +2503,41 @@
             "type": "integer",
             "optional": true
           },
+          "offset": {
+            "type": "integer",
+            "optional": true
+          },
+          "subject": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "fqName": {
+                "type": "string"
+              },
+              "declarationFile": {
+                "type": "string"
+              },
+              "declarationStartOffset": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "OBJECT",
+                  "FUNCTION",
+                  "PROPERTY"
+                ]
+              }
+            },
+            "required": [
+              "fqName",
+              "declarationFile",
+              "declarationStartOffset",
+              "kind"
+            ]
+          },
           "fileGlob": {
             "type": "string",
             "optional": true,

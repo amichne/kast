@@ -123,32 +123,7 @@ fn execute_agent_symbol(args: AgentSymbolArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {
-    let budget = match AgentImpactResultBudget::try_from(args.limit) {
-        Ok(budget) => budget,
-        Err(message) => {
-            return error_envelope(
-                "agent/impact".to_string(),
-                None,
-                agent_error("AGENT_USAGE", message),
-            );
-        }
-    };
-    let limit = budget.request_limit(impact_result_view(&args.view).detailed());
-    execute_agent_steps(
-        "agent/impact",
-        args.runtime,
-        vec![AgentPublicStep::new(
-            "impact",
-            "database/metrics",
-            json!({
-                "metric": "impact",
-                "symbol": args.symbol,
-                "depth": args.depth,
-                "limit": limit,
-            }),
-            false,
-        )],
-    )
+    execute_identity_first_impact(args)
 }
 
 fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {

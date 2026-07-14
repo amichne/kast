@@ -476,9 +476,33 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
     let workspace = temp.path().join("workspace");
     seed_source_index(&workspace);
     seed_high_cardinality_impact(&workspace, "lib.Foo", HIGH_CARDINALITY_IMPACT_NODES);
+    let declaration_file =
+        std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("canonical impact declaration");
+    let resolved = json!({
+        "symbol": {
+            "fqName": "lib.Foo",
+            "kind": "CLASS",
+            "location": {
+                "filePath": declaration_file,
+                "startOffset": 1,
+                "endOffset": 2
+            }
+        }
+    });
+    let run_index = std::cell::Cell::new(0usize);
 
     let run = |view: &[&str]| {
-        kast(&home, &config_home)
+        let index = run_index.get();
+        run_index.set(index + 1);
+        let socket = temp.path().join(format!("impact-{index}.sock"));
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config_home,
+            &workspace,
+            &socket,
+            vec![("raw/resolve", resolved.clone())],
+        );
+        let output = kast(&home, &config_home)
             .args([
                 "--output",
                 "json",
@@ -486,6 +510,12 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
                 "impact",
                 "--symbol",
                 "lib.Foo",
+                "--declaration-file",
+                declaration_file.to_str().expect("declaration file"),
+                "--declaration-start-offset",
+                "1",
+                "--kind",
+                "class",
                 "--depth",
                 "3",
                 "--workspace-root",
@@ -493,7 +523,9 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
             ])
             .args(view)
             .output()
-            .expect("agent impact")
+            .expect("agent impact");
+        backend.join().expect("impact backend");
+        output
     };
 
     let output = run(&[]);
@@ -535,7 +567,10 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
 
     let count: Value =
         serde_json::from_slice(&run(&["--count"]).stdout).expect("count impact json");
-    assert_eq!(count["result"]["type"], "KAST_AGENT_IMPACT_COUNT");
+    assert_eq!(
+        count["result"]["type"], "KAST_AGENT_IMPACT_COUNT",
+        "{count}"
+    );
     assert_eq!(
         count["result"]["totalCount"],
         HIGH_CARDINALITY_IMPACT_NODES + EXISTING_IMPACT_NODES

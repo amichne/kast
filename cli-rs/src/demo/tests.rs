@@ -374,6 +374,8 @@ mod tests {
         snapshot.candidates.push(DemoCandidate {
             kind: DemoCandidateKind::SemanticAmbiguity,
             fq_name: "lib.FooWidget".to_string(),
+            symbol_kind: Some("CLASS".to_string()),
+            declaration_offset: Some(1),
             title: "Separate text matches from FooWidget".to_string(),
             evidence_count: 2,
             file: Some("/workspace/lib/FooWidget.kt".to_string()),
@@ -504,6 +506,8 @@ mod tests {
             candidates: vec![DemoCandidate {
                 kind: DemoCandidateKind::ImpactHub,
                 fq_name: "lib.Foo".to_string(),
+                symbol_kind: Some("CLASS".to_string()),
+                declaration_offset: Some(1),
                 title: "Trace the impact of Foo".to_string(),
                 evidence_count: 3,
                 file: Some("/workspace/lib/Foo.kt".to_string()),
@@ -512,9 +516,7 @@ mod tests {
             selected_story: None,
             chapters: index_only_chapters(),
             warnings: Vec::new(),
-            help: vec![
-                "kast agent impact --symbol lib.Foo --workspace-root <repo>".to_string(),
-            ],
+            help: vec!["kast agent impact --symbol lib.Foo --declaration-file /workspace/lib/Foo.kt --declaration-start-offset 1 --kind class --workspace-root <repo>".to_string()],
             schema_version: SCHEMA_VERSION,
         }
     }

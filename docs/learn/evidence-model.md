@@ -67,7 +67,13 @@ letting agents diagnose the layer that actually failed.
 
     ```console
     kast agent symbol --query OrderService --workspace-root "$PWD"
-    kast agent impact --symbol com.example.OrderService --workspace-root "$PWD" --depth 3
+    kast agent impact \
+      --symbol com.example.OrderService \
+      --declaration-file "$PWD/src/main/kotlin/com/example/OrderService.kt" \
+      --declaration-start-offset 42 \
+      --kind class \
+      --workspace-root "$PWD" \
+      --depth 3
     kast agent replace-declaration \
       --symbol com.example.OrderService.process \
       --kind function \

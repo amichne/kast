@@ -60,6 +60,40 @@
           ],
           "type": "string"
         },
+        "offset": {
+          "type": "integer"
+        },
+        "subject": {
+          "additionalProperties": false,
+          "properties": {
+            "declarationFile": {
+              "type": "string"
+            },
+            "declarationStartOffset": {
+              "type": "integer"
+            },
+            "fqName": {
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "CLASS",
+                "INTERFACE",
+                "OBJECT",
+                "FUNCTION",
+                "PROPERTY"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "fqName",
+            "declarationFile",
+            "declarationStartOffset",
+            "kind"
+          ],
+          "type": "object"
+        },
         "symbol": {
           "type": [
             "string",

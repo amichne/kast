@@ -8,6 +8,13 @@
     "folderFilter": "src/main/kotlin",
     "limit": 25,
     "metric": "graph",
+    "offset": 128,
+    "subject": {
+      "declarationFile": "example-declarationFile",
+      "declarationStartOffset": 128,
+      "fqName": "com.example.Widget",
+      "kind": "PROPERTY"
+    },
     "symbol": "Widget",
     "workspaceRoot": "/absolute/path/to/workspace"
   }

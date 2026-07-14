@@ -113,6 +113,65 @@ Different questions need different evidence:
 | What files might be affected? | Source-index impact |
 | Does the backend see a clean file? | Diagnostics |
 
+## Trace Usage And Impact Without Text Search
+
+Resolve once, preserve the complete declaration anchor, and pass it unchanged
+to each relationship command. This sequence uses compiler identity and the
+source index only:
+
+```bash
+identity_json="$(kast --output json agent symbol \
+  --query OrderService \
+  --fields identity \
+  --workspace-root "$PWD")"
+
+fq_name="$(jq -r '.result.identity.fqName' <<<"$identity_json")"
+declaration_file="$(jq -r '.result.identity.declarationFile' <<<"$identity_json")"
+declaration_offset="$(jq -r '.result.identity.declarationStartOffset' <<<"$identity_json")"
+kind="$(jq -r '.result.identity.kind | ascii_downcase' <<<"$identity_json")"
+
+references_page_one="$(kast --output json agent references \
+  --symbol "$fq_name" \
+  --declaration-file "$declaration_file" \
+  --declaration-start-offset "$declaration_offset" \
+  --kind "$kind" \
+  --workspace-root "$PWD")"
+
+kast agent callers \
+  --symbol "$fq_name" \
+  --declaration-file "$declaration_file" \
+  --declaration-start-offset "$declaration_offset" \
+  --kind "$kind" \
+  --workspace-root "$PWD"
+
+reference_page_token="$(jq -r '.result.page.nextPageToken // empty' \
+  <<<"$references_page_one")"
+if [[ -n "$reference_page_token" ]]; then
+  kast agent references \
+    --symbol "$fq_name" \
+    --declaration-file "$declaration_file" \
+    --declaration-start-offset "$declaration_offset" \
+    --kind "$kind" \
+    --page-token "$reference_page_token" \
+    --workspace-root "$PWD"
+fi
+
+kast agent impact \
+  --symbol "$fq_name" \
+  --declaration-file "$declaration_file" \
+  --declaration-start-offset "$declaration_offset" \
+  --kind "$kind" \
+  --depth 3 \
+  --workspace-root "$PWD"
+```
+
+Reference and compiler-traversal tokens are runtime-owned and single-use.
+Impact tokens are stateless SQLite offsets. Every token is bound to the exact
+selector and result-affecting options, so changing the subject, depth, or limit
+fails before navigation. A function or property may return the typed
+`IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE` limitation when the source index
+cannot distinguish same-file overloads.
+
 ## Continue To Safe Edits
 
 After the target identity and file state are clear, an agent can plan an edit.
@@ -126,12 +185,20 @@ Continue with [plan safe edits](plan-safe-edits.md) for the mutation flow.
     kast agent workspace-files --kind source --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
-    kast agent symbol --query OrderService --references --workspace-root "$PWD"
+    kast agent references \
+      --symbol com.example.OrderService \
+      --declaration-file "$PWD/src/main/kotlin/com/example/OrderService.kt" \
+      --declaration-start-offset 42 \
+      --kind class \
+      --workspace-root "$PWD"
     kast agent diagnostics \
       --file-path "$PWD/src/main/kotlin/App.kt" \
       --workspace-root "$PWD"
     kast agent impact \
       --symbol com.example.OrderService \
+      --declaration-file "$PWD/src/main/kotlin/com/example/OrderService.kt" \
+      --declaration-start-offset 42 \
+      --kind class \
       --workspace-root "$PWD" \
       --depth 3
     ```

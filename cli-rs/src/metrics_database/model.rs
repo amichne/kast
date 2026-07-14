@@ -141,12 +141,106 @@ struct ChangeImpactNode {
     confidence: Confidence,
 }
 
+const MAX_IMPACT_PAGE_OFFSET: usize = 10_000;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum ImpactSubjectKind {
+    Class,
+    Interface,
+    Object,
+    Function,
+    Property,
+}
+
+impl ImpactSubjectKind {
+    fn as_index_kind(self) -> &'static str {
+        match self {
+            Self::Class => "CLASS",
+            Self::Interface => "INTERFACE",
+            Self::Object => "OBJECT",
+            Self::Function => "FUNCTION",
+            Self::Property => "PROPERTY",
+        }
+    }
+
+    fn is_callable(self) -> bool {
+        matches!(self, Self::Function | Self::Property)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ImpactSubjectIdentity {
+    fq_name: String,
+    declaration_file: PathBuf,
+    declaration_start_offset: u64,
+    kind: ImpactSubjectKind,
+}
+
+impl ImpactSubjectIdentity {
+    pub(crate) fn new(
+        fq_name: String,
+        declaration_file: PathBuf,
+        declaration_start_offset: u64,
+        kind: ImpactSubjectKind,
+    ) -> Self {
+        Self {
+            fq_name,
+            declaration_file,
+            declaration_start_offset,
+            kind,
+        }
+    }
+
+    pub(crate) fn fq_name(&self) -> &str {
+        &self.fq_name
+    }
+
+    pub(crate) fn is_valid(&self) -> bool {
+        !self.fq_name.trim().is_empty()
+            && !self.declaration_file.as_os_str().is_empty()
+            && self.declaration_file.extension().is_some_and(|extension| {
+                matches!(extension.to_str(), Some("kt" | "kts"))
+            })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AgentImpactPageOffset(u16);
+
+impl AgentImpactPageOffset {
+    pub(crate) fn first() -> Self {
+        Self(0)
+    }
+
+    pub(crate) fn get(self) -> usize {
+        usize::from(self.0)
+    }
+}
+
+impl TryFrom<usize> for AgentImpactPageOffset {
+    type Error = String;
+
+    fn try_from(value: usize) -> std::result::Result<Self, Self::Error> {
+        if value > MAX_IMPACT_PAGE_OFFSET {
+            return Err(format!(
+                "impact page offset must be at most {MAX_IMPACT_PAGE_OFFSET}"
+            ));
+        }
+        u16::try_from(value)
+            .map(Self)
+            .map_err(|_| "impact page offset exceeded its typed range".to_string())
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct BoundedMetricsResult {
     pub(crate) results: Value,
     pub(crate) total_count: usize,
     pub(crate) returned_count: usize,
     pub(crate) truncated: bool,
+    pub(crate) next_offset: Option<AgentImpactPageOffset>,
 }
 
 #[derive(Debug)]

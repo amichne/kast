@@ -30,15 +30,15 @@ request `--verbose` or `--explain` only when detailed evidence is required.
 ```console
 kast agent verify --workspace-root "$PWD"
 kast agent workspace-files --workspace-root "$PWD"
-kast agent symbol --query EventBean --workspace-root "$PWD" --references
-kast agent symbol --query process --workspace-root "$PWD" --callers incoming
 kast --output json agent symbol --query EventBean --workspace-root "$PWD" --fields identity,location
+kast agent references --workspace-root "$PWD" --symbol com.example.EventBean --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 42 --kind class
+kast agent callers --workspace-root "$PWD" --symbol com.example.EventBean --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 42 --kind class
 kast agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt
 kast --output json agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt --count
 # Continue only when the preceding result includes nextPageToken.
 kast agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt --page-token '<nextPageToken>'
-kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean
-kast --output json agent impact --workspace-root "$PWD" --symbol com.example.EventBean --fields query,confidence
+kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 42 --kind class
+kast --output json agent impact --workspace-root "$PWD" --symbol com.example.EventBean --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 42 --kind class --fields query,confidence
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply --idempotency-key rename-event-bean
 ```
@@ -77,6 +77,37 @@ kast agent symbol --workspace-root "$PWD" --query EventBean --file-hint '<filePa
 Diagnostic continuation tokens are opaque and one-use. A continuation reuses
 the server-held first-page snapshot automatically, so it does not refresh the
 workspace or recompute diagnostics.
+
+For identity-first navigation, capture the compiler anchor once and reuse it;
+do not rediscover by name between operations:
+
+```bash
+resolved="$(kast --output json agent symbol --query EventBean --fields identity --workspace-root "$PWD")"
+fq_name="$(jq -r '.result.identity.fqName' <<<"$resolved")"
+declaration_file="$(jq -r '.result.identity.declarationFile' <<<"$resolved")"
+declaration_offset="$(jq -r '.result.identity.declarationStartOffset' <<<"$resolved")"
+kind="$(jq -r '.result.identity.kind | ascii_downcase' <<<"$resolved")"
+
+selector=(
+  --symbol "$fq_name"
+  --declaration-file "$declaration_file"
+  --declaration-start-offset "$declaration_offset"
+  --kind "$kind"
+  --workspace-root "$PWD"
+)
+
+references="$(kast --output json agent references "${selector[@]}")"
+kast agent callers "${selector[@]}"
+page_token="$(jq -r '.result.page.nextPageToken // empty' <<<"$references")"
+if [[ -n "$page_token" ]]; then
+  kast agent references "${selector[@]}" --page-token "$page_token"
+fi
+kast agent impact "${selector[@]}" --depth 3
+```
+
+The page token is bound to the selector and page options. Impact returns
+`IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE` for a function or property when the
+production source-index key cannot isolate same-file overloads.
 
 `--symbol` means a compiler-resolved fully-qualified identity. Use
 `agent symbol --query <name>` for lookup before mutation.
