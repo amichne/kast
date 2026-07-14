@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     id("kast.published-library")
     id("kast.kotlin-serialization")
@@ -14,6 +17,16 @@ dependencies {
     implementation(libs.bundles.coroutines)
     testImplementation(libs.json.schema.validator)
     testFixturesImplementation(libs.jimfs)
+}
+
+val workspaceFilesContinuationSamples = rootProject.layout.projectDirectory.dir(
+    "cli-rs/resources/kast-skill/references/requests/raw/workspace-files-continuation",
+)
+
+tasks.named<Test>("test") {
+    inputs.dir(workspaceFilesContinuationSamples)
+        .withPropertyName("workspaceFilesContinuationSamples")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.register<JavaExec>("generateOpenApiSpec") {
