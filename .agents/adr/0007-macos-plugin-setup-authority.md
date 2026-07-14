@@ -29,6 +29,18 @@ The IntelliJ plugin owns project-open bootstrap:
 - back up and remove prior active Kast-managed artifacts that are not required
   or tolerated by the incoming version.
 
+Delegated agents that use linked Git worktrees apply the same authority to each
+exact worktree root. The coordinating agent must open every worker worktree as
+its own IntelliJ IDEA or Android Studio project, wait for plugin-prepared
+metadata, and run `kast agent verify --workspace-root "$PWD"` from that root
+before the worker starts. A worker must not reuse another worktree's runtime,
+metadata, or semantic evidence.
+
+The IDE project remains open while its worker and worktree are active. Before a
+worktree is retired or removed, the coordinating agent closes that exact IDE
+project or window first. The plugin-installed skill and managed guidance region
+must teach this setup and teardown lifecycle to every prepared workspace.
+
 Unknown prior state is unmanaged state. Every incoming version must explicitly
 recognize, require, tolerate, migrate, or remove prior managed artifacts. If a
 backup, removal, metadata write, version check, or binary check fails, activation
@@ -59,6 +71,11 @@ guidance. They must not write skill-only or resource-only state.
 - macOS readiness metadata check: `cli-rs/src/self_mgmt.rs`
 - Homebrew plugin install/repair: `cli-rs/src/install/`
 - Public docs and skill guidance: `README.md`, `docs/`, and `cli-rs/resources/kast-skill/`
+
+`PluginWorkspaceBootstrap` is the source of truth for the thin repo-local Kast
+skill and managed guidance installed by the plugin. Its contract tests must
+prove the delegated-worktree setup, isolation, lifetime, and teardown rules are
+present in both outputs.
 
 ## Validation Gates
 
