@@ -46,6 +46,8 @@ import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CallRelation
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionItem
 import io.github.amichne.kast.api.contract.result.CompletionsResult
@@ -60,6 +62,9 @@ import io.github.amichne.kast.api.contract.HealthResponse
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImplementationRelation
+import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
@@ -89,6 +94,13 @@ import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
+import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
+import io.github.amichne.kast.api.contract.result.TypeHierarchyRelation
+import io.github.amichne.kast.api.contract.result.RelationTraversalFamily
+import io.github.amichne.kast.api.contract.result.RelationTraversalHandle
+import io.github.amichne.kast.api.contract.skill.KastCallersQuery
+import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
+import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
@@ -179,6 +191,7 @@ internal class KastPluginBackend(
         tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
         stateDisposer = ContinuationStateDisposer { },
     )
+    private val relationshipContinuations = RelationshipContinuationStore(limits)
     private val workspaceFilePaging = IdeaWorkspaceFilePaging(
         workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
         inventory = IdeaProjectModelWorkspaceFileInventory(project, workspaceIdentity),
@@ -1038,6 +1051,63 @@ internal class KastPluginBackend(
         }
     }
 
+    override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult =
+        withContext(readDispatcher) {
+            val continuationQuery = RelationshipContinuationStore.CallQuery(
+                selector = query.selector,
+                direction = query.direction,
+                depth = query.depth,
+                limit = query.maxResults,
+            )
+            val handle = query.pageToken?.let(RelationTraversalHandle::parse)
+            if (handle != null) {
+                return@withContext relationshipContinuations.calls(
+                    continuationQuery,
+                    handle,
+                    null,
+                    psiGeneration(),
+                )
+            }
+            val generation = psiGeneration()
+            val direction = when (query.direction) {
+                io.github.amichne.kast.api.contract.skill.WrapperCallDirection.INCOMING ->
+                    io.github.amichne.kast.api.contract.CallDirection.INCOMING
+                io.github.amichne.kast.api.contract.skill.WrapperCallDirection.OUTGOING ->
+                    io.github.amichne.kast.api.contract.CallDirection.OUTGOING
+            }
+            val result = callHierarchy(
+                io.github.amichne.kast.api.contract.query.CallHierarchyQuery(
+                    position = io.github.amichne.kast.api.contract.FilePosition(
+                        filePath = query.selector.declarationFile,
+                        offset = query.selector.declarationStartOffset,
+                    ),
+                    direction = direction,
+                    depth = query.depth,
+                    maxTotalCalls = RELATIONSHIP_STATE_CAPACITY,
+                    maxChildrenPerNode = RELATIONSHIP_STATE_CAPACITY,
+                    timeoutMillis = limits.requestTimeoutMillis,
+                ).parsed(),
+            )
+            if (psiGeneration() != generation) throw continuationConflict("generationChanged")
+            if (result.stats.timeoutReached) throw continuationConflict("timeout")
+            if (result.stats.truncatedNodes > 0 ||
+                result.stats.maxTotalCallsReached ||
+                result.stats.maxChildrenPerNodeReached
+            ) {
+                throw continuationConflict("candidateBudgetReached")
+            }
+            val records = flattenCallRelations(result.root, direction)
+            if (records.size > RELATIONSHIP_STATE_CAPACITY) {
+                throw continuationConflict("traversalStateBudgetReached")
+            }
+            relationshipContinuations.calls(
+                continuationQuery,
+                null,
+                records,
+                generation,
+            )
+        }
+
     override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.TYPE_HIERARCHY, "kast.idea.typeHierarchy") {
         val rootTarget = readAction {
@@ -1059,6 +1129,70 @@ internal class KastPluginBackend(
         TypeHierarchyResult(root = root, stats = budget.toStats())
         }
     }
+
+    override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult =
+        withContext(readDispatcher) {
+            val continuationQuery = RelationshipContinuationStore.HierarchyQuery(
+                selector = query.selector,
+                direction = query.direction,
+                depth = query.depth,
+                limit = query.maxResults,
+            )
+            val handle = query.pageToken?.let(RelationTraversalHandle::parse)
+            if (handle != null) {
+                return@withContext relationshipContinuations.hierarchy(
+                    continuationQuery,
+                    handle,
+                    null,
+                    psiGeneration(),
+                )
+            }
+            val generation = psiGeneration()
+            val directions = when (query.direction) {
+                io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUPERTYPES ->
+                    listOf(io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUPERTYPES)
+                io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUBTYPES ->
+                    listOf(io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUBTYPES)
+                io.github.amichne.kast.api.contract.TypeHierarchyDirection.BOTH -> listOf(
+                    io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUPERTYPES,
+                    io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUBTYPES,
+                )
+            }
+            val records = directions.flatMap { direction ->
+                val result = typeHierarchy(
+                    io.github.amichne.kast.api.contract.query.TypeHierarchyQuery(
+                        position = io.github.amichne.kast.api.contract.FilePosition(
+                            filePath = query.selector.declarationFile,
+                            offset = query.selector.declarationStartOffset,
+                        ),
+                        direction = direction,
+                        depth = query.depth,
+                        maxResults = RELATIONSHIP_STATE_CAPACITY,
+                    ).parsed(),
+                )
+                if (result.stats.truncated) throw continuationConflict("candidateBudgetReached")
+                flattenHierarchyRelations(result.root, direction)
+            }.sortedWith(
+                compareBy<TypeHierarchyRelation>(
+                    TypeHierarchyRelation::depth,
+                    { relation -> relation.relatedSymbol.fqName },
+                    { relation -> relation.relatedSymbol.kind.name },
+                    { relation -> relation.relatedSymbol.declarationFile.value },
+                    { relation -> relation.relatedSymbol.declarationStartOffset.value },
+                    { relation -> relation.relation.name },
+                ),
+            )
+            if (psiGeneration() != generation) throw continuationConflict("generationChanged")
+            if (records.size > RELATIONSHIP_STATE_CAPACITY) {
+                throw continuationConflict("traversalStateBudgetReached")
+            }
+            relationshipContinuations.hierarchy(
+                continuationQuery,
+                null,
+                records,
+                generation,
+            )
+        }
 
     override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.IMPLEMENTATIONS, "kast.idea.implementations") {
@@ -1102,6 +1236,51 @@ internal class KastPluginBackend(
             exhaustive = exhaustive,
         )
         }
+    }
+
+    override suspend fun implementationRelations(
+        query: KastImplementationsQuery,
+    ): ImplementationRelationsResult = withContext(readDispatcher) {
+        val continuationQuery = RelationshipContinuationStore.ImplementationQuery(
+            selector = query.selector,
+            limit = query.maxResults,
+        )
+        val handle = query.pageToken?.let(RelationTraversalHandle::parse)
+        if (handle != null) {
+            return@withContext relationshipContinuations.implementations(
+                continuationQuery,
+                handle,
+                null,
+                psiGeneration(),
+            )
+        }
+        val generation = psiGeneration()
+        val result = implementations(
+            io.github.amichne.kast.api.contract.query.ImplementationsQuery(
+                position = io.github.amichne.kast.api.contract.FilePosition(
+                    filePath = query.selector.declarationFile,
+                    offset = query.selector.declarationStartOffset,
+                ),
+                maxResults = RELATIONSHIP_STATE_CAPACITY,
+            ).parsed(),
+        )
+        if (psiGeneration() != generation) throw continuationConflict("generationChanged")
+        if (!result.exhaustive) throw continuationConflict("candidateBudgetReached")
+        val records = result.implementations.map { symbol ->
+            ImplementationRelation(
+                implementation = symbol.relationshipIdentity(),
+                declarationLocation = symbol.location,
+            )
+        }
+        if (records.size > RELATIONSHIP_STATE_CAPACITY) {
+            throw continuationConflict("traversalStateBudgetReached")
+        }
+        relationshipContinuations.implementations(
+            continuationQuery,
+            null,
+            records,
+            generation,
+        )
     }
 
     override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {
@@ -1895,10 +2074,99 @@ internal class KastPluginBackend(
         val pageOffset: Int,
     ) : ContinuationProjection()
 
+    private fun flattenCallRelations(
+        root: io.github.amichne.kast.api.contract.CallNode,
+        direction: io.github.amichne.kast.api.contract.CallDirection,
+    ): List<CallRelation> {
+        data class PendingCall(
+            val node: io.github.amichne.kast.api.contract.CallNode,
+            val depth: Int,
+            val parent: io.github.amichne.kast.api.contract.SymbolIdentity,
+        )
+
+        val records = mutableListOf<CallRelation>()
+        val rootIdentity = root.symbol.relationshipIdentity()
+        val queue = ArrayDeque<PendingCall>()
+        root.children.forEach { child -> queue += PendingCall(child, 1, rootIdentity) }
+        while (queue.isNotEmpty()) {
+            val pending = queue.removeFirst()
+            val related = pending.node.symbol.relationshipIdentity()
+            val callSite = pending.node.callSite
+                ?: throw continuationConflict("malformedEvidence")
+            val containing = if (direction == io.github.amichne.kast.api.contract.CallDirection.INCOMING) {
+                related
+            } else {
+                pending.parent
+            }
+            records += CallRelation(
+                relation = if (direction == io.github.amichne.kast.api.contract.CallDirection.INCOMING) {
+                    CallRelation.Kind.CALLER
+                } else {
+                    CallRelation.Kind.CALLEE
+                },
+                relatedSymbol = related,
+                callSite = callSite,
+                depth = pending.depth,
+                containingSymbol = ContainingSymbolEvidence.Known(containing),
+            )
+            pending.node.children.forEach { child ->
+                queue += PendingCall(child, pending.depth + 1, related)
+            }
+        }
+        return records
+    }
+
+    private fun flattenHierarchyRelations(
+        root: TypeHierarchyNode,
+        direction: io.github.amichne.kast.api.contract.TypeHierarchyDirection,
+    ): List<TypeHierarchyRelation> {
+        data class PendingType(val node: TypeHierarchyNode, val depth: Int)
+
+        val records = mutableListOf<TypeHierarchyRelation>()
+        val queue = ArrayDeque<PendingType>()
+        root.children.forEach { child -> queue += PendingType(child, 1) }
+        while (queue.isNotEmpty()) {
+            val pending = queue.removeFirst()
+            val identity = pending.node.symbol.relationshipIdentity()
+            records += TypeHierarchyRelation(
+                relation = when (direction) {
+                    io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUPERTYPES ->
+                        TypeHierarchyRelation.Kind.SUPERTYPE
+                    io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUBTYPES ->
+                        TypeHierarchyRelation.Kind.SUBTYPE
+                    io.github.amichne.kast.api.contract.TypeHierarchyDirection.BOTH ->
+                        error("BOTH hierarchy traversal must be split before flattening")
+                },
+                relatedSymbol = identity,
+                declarationLocation = pending.node.symbol.location,
+                depth = pending.depth,
+            )
+            pending.node.children.forEach { child ->
+                queue += PendingType(child, pending.depth + 1)
+            }
+        }
+        return records
+    }
+
+    private fun Symbol.relationshipIdentity(): io.github.amichne.kast.api.contract.SymbolIdentity =
+        io.github.amichne.kast.api.contract.SymbolIdentity(
+            fqName = fqName,
+            kind = kind,
+            declarationFile = NormalizedPath.parse(location.filePath),
+            declarationStartOffset = NonNegativeInt(location.startOffset),
+            containingType = containingDeclaration,
+        )
+
+    private fun continuationConflict(reason: String): ConflictException = ConflictException(
+        message = "Relationship traversal could not preserve bounded exact evidence",
+        details = mapOf("continuationFailure" to reason),
+    )
+
     override fun close() {
         val failures = listOf(
             runCatching(referenceContinuations::close).exceptionOrNull(),
             runCatching(diagnosticContinuations::close).exceptionOrNull(),
+            runCatching(relationshipContinuations::close).exceptionOrNull(),
             runCatching(workspaceFilePaging::close).exceptionOrNull(),
         ).filterNotNull()
         failures.firstOrNull()?.let { first ->
@@ -1908,6 +2176,7 @@ internal class KastPluginBackend(
     }
 
     companion object {
+        private const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384
         private val BACKEND_VERSION = readBackendVersion()
 
         private fun readBackendVersion(): String =

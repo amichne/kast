@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.query.CompletionsQuery
@@ -34,9 +35,12 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -237,6 +241,92 @@ class AnalysisDispatcherTest {
         assertEquals("sample.greet", success.symbol.fqName)
         assertEquals(file.toString(), success.filePath)
         assertEquals(true, success.ok)
+    }
+
+    @Test
+    fun `call relationship missing capability degrades without entering traversal`() {
+        val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val backend = RecordingPagedRelationshipsBackend(
+            delegate = ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(symbol),
+            ),
+            missingCapability = ReadCapability.CALL_HIERARCHY,
+        )
+
+        val result = dispatchSuccessWithBackend<KastCallersResponse>(
+            backend = backend,
+            method = "symbol/callers",
+            params = json.encodeToJsonElement(
+                KastCallersRequest.serializer(),
+                KastCallersRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = symbol.exactSelector(),
+                ),
+            ),
+        )
+
+        val degraded = assertInstanceOf(KastCallersDegradedResponse::class.java, result)
+        assertEquals(KastCallDegradedReason.CALL_HIERARCHY_UNAVAILABLE, degraded.reason)
+        assertEquals(0, backend.callRelationCalls)
+    }
+
+    @Test
+    fun `implementation relationship unsupported kind returns without entering traversal`() {
+        val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val backend = RecordingPagedRelationshipsBackend(
+            ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(symbol),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastImplementationsResponse>(
+            backend = backend,
+            method = "symbol/implementations",
+            params = json.encodeToJsonElement(
+                KastImplementationsRequest.serializer(),
+                KastImplementationsRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = symbol.exactSelector(),
+                ),
+            ),
+        )
+
+        assertInstanceOf(KastImplementationsUnsupportedSubjectKindResponse::class.java, result)
+        assertEquals(0, backend.implementationRelationCalls)
+    }
+
+    @Test
+    fun `hierarchy relationship budget conflict is a typed degraded zero work outcome`() {
+        val symbol = lookupSymbol("sample.Service", SymbolKind.CLASS, "Service.kt")
+        val backend = RecordingPagedRelationshipsBackend(
+            delegate = ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(symbol),
+            ),
+            hierarchyFailure = ConflictException(
+                message = "candidate budget reached",
+                details = mapOf("continuationFailure" to "candidateBudgetReached"),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastHierarchyResponse>(
+            backend = backend,
+            method = "symbol/hierarchy",
+            params = json.encodeToJsonElement(
+                KastHierarchyRequest.serializer(),
+                KastHierarchyRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = symbol.exactSelector(),
+                    direction = TypeHierarchyDirection.BOTH,
+                ),
+            ),
+        )
+
+        val degraded = assertInstanceOf(KastHierarchyDegradedResponse::class.java, result)
+        assertEquals(KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED, degraded.reason)
+        assertEquals(1, backend.hierarchyRelationCalls)
     }
 
     @Test
@@ -1681,6 +1771,14 @@ class AnalysisDispatcherTest {
         containingDeclaration = containingDeclaration,
     )
 
+    private fun Symbol.exactSelector(): KastExactSymbolSelector = KastExactSymbolSelector(
+        fqName = fqName,
+        declarationFile = location.filePath,
+        declarationStartOffset = location.startOffset,
+        kind = kind,
+        containingType = containingDeclaration,
+    )
+
     private fun dispatchRaw(
         method: String,
         params: JsonElement? = null,
@@ -1900,4 +1998,43 @@ private class ExactLookupBackend(
                 symbol.location.startOffset == query.position.offset.value
         },
     )
+}
+
+private class RecordingPagedRelationshipsBackend(
+    private val delegate: AnalysisBackend,
+    private val missingCapability: ReadCapability? = null,
+    private val hierarchyFailure: ConflictException? = null,
+) : AnalysisBackend by delegate {
+    var callRelationCalls: Int = 0
+        private set
+    var implementationRelationCalls: Int = 0
+        private set
+    var hierarchyRelationCalls: Int = 0
+        private set
+
+    override suspend fun capabilities(): BackendCapabilities {
+        val capabilities = delegate.capabilities()
+        return if (missingCapability == null) {
+            capabilities
+        } else {
+            capabilities.copy(readCapabilities = capabilities.readCapabilities - missingCapability)
+        }
+    }
+
+    override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult {
+        callRelationCalls += 1
+        error("Call relationship traversal was not expected")
+    }
+
+    override suspend fun implementationRelations(
+        query: KastImplementationsQuery,
+    ): ImplementationRelationsResult {
+        implementationRelationCalls += 1
+        error("Implementation relationship traversal was not expected")
+    }
+
+    override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult {
+        hierarchyRelationCalls += 1
+        throw requireNotNull(hierarchyFailure) { "Hierarchy traversal was not expected" }
+    }
 }

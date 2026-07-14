@@ -23,7 +23,7 @@
     },
     "method": {
       "enum": [
-        "symbol/callers"
+        "symbol/hierarchy"
       ],
       "type": "string"
     },
@@ -35,8 +35,9 @@
         },
         "direction": {
           "enum": [
-            "incoming",
-            "outgoing"
+            "SUPERTYPES",
+            "SUBTYPES",
+            "BOTH"
           ],
           "type": "string"
         },
@@ -111,6 +112,6 @@
     "params",
     "id"
   ],
-  "title": "Kast symbol/callers JSON-RPC request",
+  "title": "Kast symbol/hierarchy JSON-RPC request",
   "type": "object"
 }

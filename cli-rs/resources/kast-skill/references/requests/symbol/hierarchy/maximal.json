@@ -1,10 +1,10 @@
 {
   "id": 1,
   "jsonrpc": "2.0",
-  "method": "symbol/callers",
+  "method": "symbol/hierarchy",
   "params": {
     "depth": 2,
-    "direction": "outgoing",
+    "direction": "BOTH",
     "maxResults": 25,
     "pageToken": "example-pageToken",
     "selector": {

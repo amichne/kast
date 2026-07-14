@@ -9,6 +9,9 @@ value class RelationTraversalHandle private constructor(val value: String) {
     val family: RelationTraversalFamily
         get() = parsedParts(value).family
 
+    val opaqueId: String
+        get() = parsedParts(value).opaqueId
+
     init {
         parsedParts(value)
     }
@@ -20,6 +23,9 @@ value class RelationTraversalHandle private constructor(val value: String) {
             PREFIX.length + "implementations".length + 1 + UUID_TEXT_LENGTH
 
         fun parse(value: String): RelationTraversalHandle = RelationTraversalHandle(value)
+
+        fun create(family: RelationTraversalFamily, opaqueId: String): RelationTraversalHandle =
+            RelationTraversalHandle("$PREFIX${family.wireName}_$opaqueId")
 
         private fun parsedParts(value: String): ParsedHandleParts {
             require(value.isNotBlank()) { "Relationship traversal handle must not be blank" }
@@ -46,9 +52,12 @@ value class RelationTraversalHandle private constructor(val value: String) {
             require(uuid.toString() == rawUuid) {
                 "Relationship traversal handle UUID must be canonical lowercase text"
             }
-            return ParsedHandleParts(family)
+            return ParsedHandleParts(family, rawUuid)
         }
     }
 
-    private data class ParsedHandleParts(val family: RelationTraversalFamily)
+    private data class ParsedHandleParts(
+        val family: RelationTraversalFamily,
+        val opaqueId: String,
+    )
 }

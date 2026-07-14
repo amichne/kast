@@ -1,9 +1,8 @@
 {
   "id": 1,
   "jsonrpc": "2.0",
-  "method": "symbol/callers",
+  "method": "symbol/implementations",
   "params": {
-    "direction": "incoming",
     "selector": {
       "declarationFile": "example-declarationFile",
       "declarationStartOffset": 128,

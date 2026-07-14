@@ -82,20 +82,6 @@ data class KastDiscoverRequest(
 )
 
 @Serializable
-data class KastCallersRequest(
-    val workspaceRoot: String? = null,
-    val symbol: String,
-    val fileHint: String? = null,
-    val kind: WrapperNamedSymbolKind? = null,
-    val containingType: String? = null,
-    val direction: WrapperCallDirection = WrapperCallDirection.INCOMING,
-    val depth: Int = 2,
-    val maxTotalCalls: Int? = null,
-    val maxChildrenPerNode: Int? = null,
-    val timeoutMillis: Int? = null,
-)
-
-@Serializable
 data class KastDiagnosticsRequest(
     val workspaceRoot: String? = null,
     val filePaths: List<String>,
@@ -499,20 +485,6 @@ data class KastResolveContext(
 )
 
 @Serializable
-data class KastCallersQuery(
-    val workspaceRoot: String,
-    val symbol: String,
-    val fileHint: String? = null,
-    val kind: WrapperNamedSymbolKind? = null,
-    val containingType: String? = null,
-    val direction: WrapperCallDirection = WrapperCallDirection.INCOMING,
-    val depth: Int = 2,
-    val maxTotalCalls: Int? = null,
-    val maxChildrenPerNode: Int? = null,
-    val timeoutMillis: Int? = null,
-)
-
-@Serializable
 data class KastDiagnosticsQuery(
     val workspaceRoot: String,
     val filePaths: List<String>,
@@ -670,36 +642,6 @@ data class KastDiscoverFailureResponse(
     val error: ApiErrorResponse? = null,
     val errorText: String? = null,
 ) : KastDiscoverResponse
-
-@Serializable
-sealed interface KastCallersResponse
-
-@Serializable
-@SerialName("CALLERS_SUCCESS")
-data class KastCallersSuccessResponse(
-    val ok: Boolean = true,
-    val query: KastCallersQuery,
-    val symbol: Symbol,
-    val filePath: String,
-    val offset: Int,
-    val root: CallNode,
-    val stats: CallHierarchyStats,
-    val candidateCount: Int? = null,
-    val alternatives: List<String>? = null,
-    val logFile: String,
-) : KastCallersResponse
-
-@Serializable
-@SerialName("CALLERS_FAILURE")
-data class KastCallersFailureResponse(
-    val ok: Boolean = false,
-    val stage: String,
-    val message: String,
-    val query: KastCallersQuery,
-    val logFile: String,
-    val error: ApiErrorResponse? = null,
-    val errorText: String? = null,
-) : KastCallersResponse
 
 @Serializable
 sealed interface KastDiagnosticsResponse

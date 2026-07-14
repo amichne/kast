@@ -19,6 +19,57 @@ fn help_lists_command(stdout: &str, command: &str) -> bool {
         .any(|line| line.trim_start().starts_with(command))
 }
 
+fn relation_identity(
+    fq_name: &str,
+    kind: &str,
+    file: &std::path::Path,
+    start_offset: u64,
+) -> serde_json::Value {
+    serde_json::json!({
+        "fqName": fq_name,
+        "kind": kind,
+        "declarationFile": file,
+        "declarationStartOffset": start_offset
+    })
+}
+
+fn relation_location(file: &std::path::Path, start_offset: u64) -> serde_json::Value {
+    serde_json::json!({
+        "filePath": file,
+        "startOffset": start_offset,
+        "endOffset": start_offset + 1
+    })
+}
+
+fn exact_relation_page(total_count: usize) -> serde_json::Value {
+    serde_json::json!({
+        "cardinality": {"type": "EXACT", "totalCount": total_count},
+        "returnedCount": total_count,
+        "visitedCandidateCount": total_count,
+        "truncated": false
+    })
+}
+
+fn call_relation_record(
+    relation: &str,
+    index: usize,
+    workspace: &std::path::Path,
+) -> serde_json::Value {
+    let file = workspace.join(format!("Caller{index}.kt"));
+    serde_json::json!({
+        "relation": relation,
+        "relatedSymbol": relation_identity(
+            &format!("sample.Caller{index}.call"),
+            "FUNCTION",
+            &file,
+            index as u64,
+        ),
+        "callSite": relation_location(&file, index as u64 + 10),
+        "depth": 1,
+        "containingSymbol": {"type": "TOP_LEVEL"}
+    })
+}
+
 #[test]
 fn standalone_relationship_commands_are_public() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -137,6 +188,50 @@ fn relationship_types_reject_invalid_values_before_runtime_io() {
             "command={command} stdout={} stderr={}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr),
+        );
+    }
+}
+
+#[test]
+fn traversal_tokens_reject_wrong_query_or_relation_before_runtime_io() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let handle = "rth1_callers_00000000-0000-4000-8000-000000000339";
+
+    for token in [
+        format!("krp1.callers.000000000000000000000000.traversal.{handle}"),
+        format!("krp1.callees.000000000000000000000000.traversal.{handle}"),
+    ] {
+        let output = kast(&temp.path().join("home"), &temp.path().join("config"))
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "callers",
+                "--symbol",
+                "sample.Service",
+                "--declaration-file",
+                declaration_file.to_str().expect("declaration file"),
+                "--declaration-start-offset",
+                "15",
+                "--kind",
+                "class",
+                "--page-token",
+                &token,
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("mismatched traversal token");
+        assert_eq!(output.status.code(), Some(1));
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("mismatch json");
+        assert_eq!(
+            stdout["error"]["code"], "RELATION_PAGE_TOKEN_MISMATCH",
+            "token={token} output={stdout}",
         );
     }
 }
@@ -816,8 +911,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
     let canonical_file = std::fs::canonicalize(&declaration_file).expect("canonical source");
 
     for (index, (command, expected_direction, expected_relation)) in [
-        ("callers", "INCOMING", "CALLER"),
-        ("callees", "OUTGOING", "CALLEE"),
+        ("callers", "incoming", "CALLER"),
+        ("callees", "outgoing", "CALLEE"),
     ]
     .into_iter()
     .enumerate()
@@ -829,52 +924,28 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
             &workspace,
             &socket,
             vec![(
-                "raw/call-hierarchy",
+                "symbol/callers",
                 serde_json::json!({
-                    "root": {
-                        "symbol": {
-                            "fqName": "sample.Service.run",
-                            "kind": "FUNCTION",
-                            "location": {
-                                "filePath": declaration_file,
-                                "startOffset": 15,
-                                "endOffset": 18,
-                                "startLine": 2,
-                                "startColumn": 1
-                            }
-                        },
-                        "children": [{
-                            "symbol": {
-                                "fqName": "sample.Client.call",
-                                "kind": "FUNCTION",
-                                "location": {
-                                    "filePath": workspace.join("Client.kt"),
-                                    "startOffset": 20,
-                                    "endOffset": 24,
-                                    "startLine": 2,
-                                    "startColumn": 1
-                                }
-                            },
-                            "callSite": {
-                                "filePath": workspace.join("Client.kt"),
-                                "startOffset": 30,
-                                "endOffset": 33,
-                                "startLine": 3,
-                                "startColumn": 2
-                            },
-                            "children": []
-                        }]
-                    },
-                    "stats": {
-                        "totalNodes": 2,
-                        "totalEdges": 1,
-                        "truncatedNodes": 0,
-                        "maxDepthReached": 1,
-                        "timeoutReached": false,
-                        "maxTotalCallsReached": false,
-                        "maxChildrenPerNodeReached": false,
-                        "filesVisited": 1
-                    },
+                    "type": "AVAILABLE",
+                    "subject": relation_identity(
+                        "sample.Service.run",
+                        "FUNCTION",
+                        &canonical_file,
+                        15,
+                    ),
+                    "records": [{
+                        "relation": expected_relation,
+                        "relatedSymbol": relation_identity(
+                            "sample.Client.call",
+                            "FUNCTION",
+                            &workspace.join("Client.kt"),
+                            20,
+                        ),
+                        "callSite": relation_location(&workspace.join("Client.kt"), 30),
+                        "depth": 1,
+                        "containingSymbol": {"type": "TOP_LEVEL"}
+                    }],
+                    "page": exact_relation_page(1),
                     "schemaVersion": 3
                 }),
             )],
@@ -918,14 +989,16 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
         );
         let requests = backend.join().expect("call backend");
         assert_eq!(
-            requests[2]["params"]["position"]["filePath"],
+            requests[2]["params"]["selector"]["declarationFile"],
             canonical_file.to_string_lossy().as_ref()
         );
-        assert_eq!(requests[2]["params"]["position"]["offset"], 15);
+        assert_eq!(
+            requests[2]["params"]["selector"]["declarationStartOffset"],
+            15
+        );
         assert_eq!(requests[2]["params"]["direction"], expected_direction);
         assert_eq!(requests[2]["params"]["depth"], 2);
-        assert_eq!(requests[2]["params"]["maxTotalCalls"], 4);
-        assert_eq!(requests[2]["params"]["maxChildrenPerNode"], 4);
+        assert_eq!(requests[2]["params"]["maxResults"], 4);
     }
 
     let implementations_socket = temp.path().join("idea-implementations.sock");
@@ -935,31 +1008,29 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
         &workspace,
         &implementations_socket,
         vec![(
-            "raw/implementations",
+            "symbol/implementations",
             serde_json::json!({
-                "declaration": {
-                    "fqName": "sample.Service",
-                    "kind": "INTERFACE",
-                    "location": {
-                        "filePath": declaration_file,
-                        "startOffset": 15,
-                        "endOffset": 22,
-                        "startLine": 2,
-                        "startColumn": 1
-                    }
-                },
-                "implementations": [{
-                    "fqName": "sample.RealService",
-                    "kind": "CLASS",
-                    "location": {
-                        "filePath": workspace.join("RealService.kt"),
-                        "startOffset": 10,
-                        "endOffset": 21,
-                        "startLine": 2,
-                        "startColumn": 1
-                    }
+                "type": "AVAILABLE",
+                "subject": relation_identity(
+                    "sample.Service",
+                    "INTERFACE",
+                    &canonical_file,
+                    15,
+                ),
+                "records": [{
+                    "relation": "IMPLEMENTATION",
+                    "implementation": relation_identity(
+                        "sample.RealService",
+                        "CLASS",
+                        &workspace.join("RealService.kt"),
+                        10,
+                    ),
+                    "declarationLocation": relation_location(
+                        &workspace.join("RealService.kt"),
+                        10,
+                    )
                 }],
-                "exhaustive": true,
+                "page": exact_relation_page(1),
                 "schemaVersion": 3
             }),
         )],
@@ -997,7 +1068,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
         .expect("implementations backend");
     assert_eq!(implementation_requests[2]["params"]["maxResults"], 4);
     assert_eq!(
-        implementation_requests[2]["params"]["position"]["filePath"],
+        implementation_requests[2]["params"]["selector"]["declarationFile"],
         canonical_file.to_string_lossy().as_ref()
     );
 
@@ -1008,36 +1079,30 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
         &workspace,
         &hierarchy_socket,
         vec![(
-            "raw/type-hierarchy",
+            "symbol/hierarchy",
             serde_json::json!({
-                "root": {
-                    "symbol": {
-                        "fqName": "sample.Service",
-                        "kind": "INTERFACE",
-                        "location": {
-                            "filePath": declaration_file,
-                            "startOffset": 15,
-                            "endOffset": 22,
-                            "startLine": 2,
-                            "startColumn": 1
-                        }
-                    },
-                    "children": [{
-                        "symbol": {
-                            "fqName": "sample.RealService",
-                            "kind": "CLASS",
-                            "location": {
-                                "filePath": workspace.join("RealService.kt"),
-                                "startOffset": 10,
-                                "endOffset": 21,
-                                "startLine": 2,
-                                "startColumn": 1
-                            }
-                        },
-                        "children": []
-                    }]
-                },
-                "stats": {"totalNodes": 2, "maxDepthReached": 1, "truncated": false},
+                "type": "AVAILABLE",
+                "subject": relation_identity(
+                    "sample.Service",
+                    "INTERFACE",
+                    &canonical_file,
+                    15,
+                ),
+                "records": [{
+                    "relation": "SUBTYPE",
+                    "relatedSymbol": relation_identity(
+                        "sample.RealService",
+                        "CLASS",
+                        &workspace.join("RealService.kt"),
+                        10,
+                    ),
+                    "declarationLocation": relation_location(
+                        &workspace.join("RealService.kt"),
+                        10,
+                    ),
+                    "depth": 1
+                }],
+                "page": exact_relation_page(1),
                 "schemaVersion": 3
             }),
         )],
@@ -1081,6 +1146,427 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
 }
 
 #[test]
+fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let canonical_file = std::fs::canonicalize(&declaration_file).expect("canonical source");
+    let handle = "rth1_callers_00000000-0000-4000-8000-000000000339";
+    let first_records = (0..4)
+        .map(|index| call_relation_record("CALLER", index, &workspace))
+        .collect::<Vec<_>>();
+    let first_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("idea-first-page.sock"),
+        vec![(
+            "symbol/callers",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": relation_identity(
+                    "sample.Service.run",
+                    "FUNCTION",
+                    &canonical_file,
+                    15,
+                ),
+                "records": first_records,
+                "page": {
+                    "cardinality": {"type": "KNOWN_MINIMUM", "knownMinimumCount": 5},
+                    "returnedCount": 4,
+                    "visitedCandidateCount": 5,
+                    "truncated": true,
+                    "nextHandle": handle
+                },
+                "schemaVersion": 3
+            }),
+        )],
+    );
+    let first = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "callers",
+            "--symbol",
+            "sample.Service.run",
+            "--declaration-file",
+            declaration_file.to_str().expect("declaration file"),
+            "--declaration-start-offset",
+            "15",
+            "--kind",
+            "function",
+            "--depth",
+            "2",
+            "--limit",
+            "4",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("first call page");
+    assert!(
+        first.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&first.stdout),
+        String::from_utf8_lossy(&first.stderr),
+    );
+    let first_json: serde_json::Value =
+        serde_json::from_slice(&first.stdout).expect("first page json");
+    let public_token = first_json["result"]["page"]["nextPageToken"]
+        .as_str()
+        .expect("public traversal token")
+        .to_string();
+    assert!(public_token.starts_with("krp1.callers."));
+    assert!(public_token.ends_with(&format!(".traversal.{handle}")));
+    assert!(!public_token.contains("generation"));
+    assert!(!public_token.contains("frontier"));
+    let first_requests = first_backend.join().expect("first page backend");
+    assert!(first_requests[2]["params"]["pageToken"].is_null());
+
+    let second_record = call_relation_record("CALLER", 4, &workspace);
+    let second_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("idea-second-page.sock"),
+        vec![(
+            "symbol/callers",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": relation_identity(
+                    "sample.Service.run",
+                    "FUNCTION",
+                    &canonical_file,
+                    15,
+                ),
+                "records": [second_record],
+                "page": {
+                    "cardinality": {"type": "EXACT", "totalCount": 5},
+                    "returnedCount": 1,
+                    "visitedCandidateCount": 1,
+                    "truncated": false
+                },
+                "schemaVersion": 3
+            }),
+        )],
+    );
+    let second = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "callers",
+            "--symbol",
+            "sample.Service.run",
+            "--declaration-file",
+            declaration_file.to_str().expect("declaration file"),
+            "--declaration-start-offset",
+            "15",
+            "--kind",
+            "function",
+            "--depth",
+            "2",
+            "--limit",
+            "4",
+            "--page-token",
+            &public_token,
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("second call page");
+    assert!(
+        second.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&second.stdout),
+        String::from_utf8_lossy(&second.stderr),
+    );
+    let second_json: serde_json::Value =
+        serde_json::from_slice(&second.stdout).expect("second page json");
+    let first_names = first_json["result"]["records"]
+        .as_array()
+        .expect("first records")
+        .iter()
+        .map(|record| {
+            record["relatedSymbol"]["fqName"]
+                .as_str()
+                .expect("first name")
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    let second_names = second_json["result"]["records"]
+        .as_array()
+        .expect("second records")
+        .iter()
+        .map(|record| {
+            record["relatedSymbol"]["fqName"]
+                .as_str()
+                .expect("second name")
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(first_names.is_disjoint(&second_names));
+    assert_eq!(first_names.len() + second_names.len(), 5);
+    assert!(second_json["result"]["page"]["nextPageToken"].is_null());
+    let second_requests = second_backend.join().expect("second page backend");
+    assert_eq!(second_requests[2]["params"]["pageToken"], handle);
+}
+
+#[test]
+fn typed_relationship_commands_project_closed_non_available_outcomes() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let canonical_file = std::fs::canonicalize(&declaration_file).expect("canonical source");
+
+    for (index, (command, method, kind, expected_outcome, response)) in [
+        (
+            "callers",
+            "symbol/callers",
+            "function",
+            "DEGRADED",
+            serde_json::json!({
+                "type": "DEGRADED",
+                "selector": {
+                    "fqName": "sample.Service",
+                    "declarationFile": canonical_file,
+                    "declarationStartOffset": 15,
+                    "kind": "FUNCTION"
+                },
+                "subject": relation_identity(
+                    "sample.Service",
+                    "FUNCTION",
+                    &canonical_file,
+                    15,
+                ),
+                "reason": "CALL_HIERARCHY_UNAVAILABLE"
+            }),
+        ),
+        (
+            "implementations",
+            "symbol/implementations",
+            "function",
+            "UNSUPPORTED_SUBJECT_KIND",
+            serde_json::json!({
+                "type": "UNSUPPORTED_SUBJECT_KIND",
+                "selector": {
+                    "fqName": "sample.Service",
+                    "declarationFile": canonical_file,
+                    "declarationStartOffset": 15,
+                    "kind": "FUNCTION"
+                },
+                "subject": relation_identity(
+                    "sample.Service",
+                    "FUNCTION",
+                    &canonical_file,
+                    15,
+                )
+            }),
+        ),
+        (
+            "hierarchy",
+            "symbol/hierarchy",
+            "class",
+            "DEGRADED",
+            serde_json::json!({
+                "type": "DEGRADED",
+                "selector": {
+                    "fqName": "sample.Service",
+                    "declarationFile": canonical_file,
+                    "declarationStartOffset": 15,
+                    "kind": "CLASS"
+                },
+                "subject": relation_identity(
+                    "sample.Service",
+                    "CLASS",
+                    &canonical_file,
+                    15,
+                ),
+                "reason": "TYPE_HIERARCHY_UNAVAILABLE"
+            }),
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp.path().join(format!("idea-outcome-{index}.sock")),
+            vec![(method, response)],
+        );
+        let mut args = vec![
+            "--output".to_string(),
+            "json".to_string(),
+            "agent".to_string(),
+            command.to_string(),
+            "--symbol".to_string(),
+            "sample.Service".to_string(),
+            "--declaration-file".to_string(),
+            declaration_file.to_string_lossy().into_owned(),
+            "--declaration-start-offset".to_string(),
+            "15".to_string(),
+            "--kind".to_string(),
+            kind.to_string(),
+        ];
+        if command == "hierarchy" {
+            args.extend(["--direction".to_string(), "subtypes".to_string()]);
+        }
+        args.extend([
+            "--workspace-root".to_string(),
+            workspace.to_string_lossy().into_owned(),
+        ]);
+        let output = kast(&home, &config)
+            .args(args)
+            .output()
+            .expect("closed relationship outcome");
+        assert!(
+            output.status.success(),
+            "command={command} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("relationship outcome json");
+        assert_eq!(stdout["result"]["outcome"], expected_outcome);
+        assert!(stdout["result"].get("records").is_none());
+        backend.join().expect("outcome backend");
+    }
+}
+
+#[test]
+fn typed_relationship_commands_reject_inconsistent_non_available_identity_evidence() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let canonical_file = std::fs::canonicalize(&declaration_file).expect("canonical source");
+    let selector = serde_json::json!({
+        "fqName": "sample.Service",
+        "declarationFile": canonical_file,
+        "declarationStartOffset": 15,
+        "kind": "CLASS"
+    });
+
+    for (index, (command, method, kind, direction, response)) in [
+        (
+            "callers",
+            "symbol/callers",
+            "function",
+            None,
+            serde_json::json!({
+                "type": "DEGRADED",
+                "selector": {
+                    "fqName": "sample.Service",
+                    "declarationFile": canonical_file,
+                    "declarationStartOffset": 15,
+                    "kind": "FUNCTION"
+                },
+                "subject": relation_identity(
+                    "sample.OtherService",
+                    "FUNCTION",
+                    &canonical_file,
+                    15,
+                ),
+                "reason": "CALL_HIERARCHY_UNAVAILABLE"
+            }),
+        ),
+        (
+            "implementations",
+            "symbol/implementations",
+            "class",
+            None,
+            serde_json::json!({
+                "type": "UNSUPPORTED_SUBJECT_KIND",
+                "selector": selector.clone(),
+                "subject": relation_identity(
+                    "sample.Service",
+                    "CLASS",
+                    &canonical_file,
+                    15,
+                )
+            }),
+        ),
+        (
+            "hierarchy",
+            "symbol/hierarchy",
+            "class",
+            Some("subtypes"),
+            serde_json::json!({
+                "type": "SUBJECT_IDENTITY_MISMATCH",
+                "selector": selector,
+                "actual": relation_identity(
+                    "sample.Service",
+                    "CLASS",
+                    &canonical_file,
+                    15,
+                )
+            }),
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp
+                .path()
+                .join(format!("idea-invalid-outcome-{index}.sock")),
+            vec![(method, response)],
+        );
+        let mut args = vec![
+            "--output".to_string(),
+            "json".to_string(),
+            "agent".to_string(),
+            command.to_string(),
+            "--symbol".to_string(),
+            "sample.Service".to_string(),
+            "--declaration-file".to_string(),
+            declaration_file.to_string_lossy().into_owned(),
+            "--declaration-start-offset".to_string(),
+            "15".to_string(),
+            "--kind".to_string(),
+            kind.to_string(),
+        ];
+        if let Some(direction) = direction {
+            args.extend(["--direction".to_string(), direction.to_string()]);
+        }
+        args.extend([
+            "--workspace-root".to_string(),
+            workspace.to_string_lossy().into_owned(),
+        ]);
+        let output = kast(&home, &config)
+            .args(args)
+            .output()
+            .expect("invalid relationship outcome");
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "command={command} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("invalid relationship outcome json");
+        assert_eq!(stdout["error"]["code"], "AGENT_RESULT_INVALID");
+        backend.join().expect("invalid outcome backend");
+    }
+}
+
+#[test]
 fn call_relationships_fail_closed_on_over_depth_backend_evidence() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -1096,60 +1582,28 @@ fn call_relationships_fail_closed_on_over_depth_backend_evidence() {
         &workspace,
         &socket,
         vec![(
-            "raw/call-hierarchy",
+            "symbol/callers",
             serde_json::json!({
-                "root": {
-                    "symbol": {
-                        "fqName": "sample.Service.run",
-                        "kind": "FUNCTION",
-                        "location": {
-                            "filePath": declaration_file,
-                            "startOffset": 15,
-                            "endOffset": 18
-                        }
-                    },
-                    "children": [{
-                        "symbol": {
-                            "fqName": "sample.First.call",
-                            "kind": "FUNCTION",
-                            "location": {
-                                "filePath": workspace.join("First.kt"),
-                                "startOffset": 20,
-                                "endOffset": 24
-                            }
-                        },
-                        "callSite": {
-                            "filePath": workspace.join("First.kt"),
-                            "startOffset": 30,
-                            "endOffset": 33
-                        },
-                        "children": [{
-                            "symbol": {
-                                "fqName": "sample.Second.call",
-                                "kind": "FUNCTION",
-                                "location": {
-                                    "filePath": workspace.join("Second.kt"),
-                                    "startOffset": 40,
-                                    "endOffset": 45
-                                }
-                            },
-                            "callSite": {
-                                "filePath": workspace.join("Second.kt"),
-                                "startOffset": 50,
-                                "endOffset": 53
-                            },
-                            "children": []
-                        }]
-                    }]
-                },
-                "stats": {
-                    "totalEdges": 2,
-                    "truncatedNodes": 0,
-                    "maxDepthReached": 2,
-                    "timeoutReached": false,
-                    "maxTotalCallsReached": false,
-                    "maxChildrenPerNodeReached": false
-                },
+                "type": "AVAILABLE",
+                "subject": relation_identity(
+                    "sample.Service.run",
+                    "FUNCTION",
+                    &std::fs::canonicalize(&declaration_file).expect("canonical source"),
+                    15,
+                ),
+                "records": [{
+                    "relation": "CALLER",
+                    "relatedSymbol": relation_identity(
+                        "sample.Second.call",
+                        "FUNCTION",
+                        &workspace.join("Second.kt"),
+                        40,
+                    ),
+                    "callSite": relation_location(&workspace.join("Second.kt"), 50),
+                    "depth": 2,
+                    "containingSymbol": {"type": "TOP_LEVEL"}
+                }],
+                "page": exact_relation_page(1),
                 "schemaVersion": 3
             }),
         )],
