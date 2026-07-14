@@ -215,6 +215,8 @@ require_contains "$ci_workflow" "Rust CLI" "CI must validate the in-repo Rust CL
 require_contains "$ci_workflow" "runs-on: ubuntu-22.04" "CI Linux CLI asset must build on an Ubuntu 22.04 glibc baseline"
 require_contains "$ci_workflow" "working-directory: cli-rs" "CI Rust commands must run from cli-rs"
 require_contains "$ci_build_and_test_workflow" "cache-cleanup: always" "CI Gradle setup must keep persisted Gradle caches pruned"
+require_block_contains "$ci_build_and_test_workflow" "      - uses: gradle/actions/setup-gradle@v5" "      - name: Cache IntelliJ runtime distributions" 'GRADLE_BUILD_ACTION_SKIP_RESTORE: ${{ runner.os == '\''macOS'\'' && '\''dependencies transforms'\'' || '\'''\'' }}' "CI macOS builds must skip dependency and transform archives that setup-gradle can only warn about partially restoring"
+require_not_contains "$ci_build_and_test_workflow" "cache-disabled: true" "CI must retain useful Gradle caches while isolating unsafe macOS shared archives"
 require_contains "$ci_build_and_test_workflow" "~/.gradle/kast/headless-idea-distributions" "CI must cache the actual headless IntelliJ extraction directory"
 require_contains "$ci_build_and_test_workflow" "~/.gradle/kast/shared-idea-distributions" "CI must cache the actual shared IntelliJ extraction directory"
 require_contains "$ci_build_and_test_workflow" "~/.gradle/kast/backend-idea-distributions" "CI must cache the actual IDEA backend extraction directory"

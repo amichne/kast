@@ -37,6 +37,10 @@ jobs:
           df -h /
 
       - uses: gradle/actions/setup-gradle@v5
+        env:
+          # setup-gradle v5 continues after shared archive extraction warnings.
+          # Do not expose macOS builds to a partially restored Gradle cache tree.
+          GRADLE_BUILD_ACTION_SKIP_RESTORE: ${{ runner.os == 'macOS' && 'dependencies transforms' || '' }}
         with:
           cache-cleanup: always
 
