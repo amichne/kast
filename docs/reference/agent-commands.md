@@ -86,7 +86,7 @@ are not a public command surface.
 
 | Argument | Contract |
 | --- | --- |
-| `--workspace-root <path>` | Required exact normalized workspace root; another checkout or worktree is never substituted |
+| `--workspace-root <path>` | Uses this exact normalized workspace root; when omitted, the current directory supplies the root. Another checkout or worktree is never substituted |
 | `--backend idea|headless` | Selects one admitted runtime when automatic selection is ambiguous |
 | `--module backend:<name>` | Matches an exact backend module owner |
 | `--module gradle:<build-root>#<project-path>` | Matches a model-proven indexed Gradle owner; the build root is workspace-relative and the project path is absolute, such as `gradle:included/tools#:app` |
