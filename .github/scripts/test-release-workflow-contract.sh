@@ -40,6 +40,24 @@ require_order() {
   [[ "$earlier_line" -lt "$later_line" ]] || die "${description}: '${earlier}' must appear before '${later}'"
 }
 
+require_block_contains() {
+  local file_path="$1"
+  local block_start="$2"
+  local block_end="$3"
+  local expected="$4"
+  local description="$5"
+  local block
+  block="$(
+    awk -v block_start="$block_start" -v block_end="$block_end" '
+      index($0, block_start) { in_block = 1 }
+      in_block && index($0, block_end) && !index($0, block_start) { exit }
+      in_block { print }
+    ' "$file_path"
+  )"
+  [[ -n "$block" ]] || die "${description}: missing block '${block_start}' in ${file_path}"
+  grep -Fq -- "$expected" <<< "$block" || die "${description}: missing '${expected}' in '${block_start}' block"
+}
+
 repo_root="$(resolve_repo_root)"
 ci_workflow="${repo_root}/.github/workflows/ci.yml"
 release_workflow="${repo_root}/.github/workflows/release.yml"
@@ -139,6 +157,10 @@ require_contains "$ci_workflow" "Maven publication metadata" "CI must validate M
 require_contains "$ci_workflow" 'group: ci-${{ github.event.pull_request.number || github.ref }}' "CI must cancel superseded branch or PR validation runs"
 require_contains "$ci_workflow" "runtime-contracts:" "CI must isolate runtime command and bundle contracts from the static preflight"
 require_contains "$ci_workflow" "Runtime command and bundle contracts" "CI must retain runtime command and bundle contract coverage"
+require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "    needs: workflow-contracts" "CI runtime contracts must wait for the static workflow preflight"
+require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test terminal command contract" "CI runtime contracts must own the terminal command contract"
+require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test Kast Copilot plugin package" "CI runtime contracts must reuse the terminal build for the Copilot package contract"
+require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Smoke Ubuntu/Debian bundle contract" "CI runtime contracts must own the Ubuntu/Debian bundle smoke"
 require_contains "$ci_workflow" "Test CI artifact ledger" "CI must test artifact ledger recording and verification"
 require_contains "$ci_workflow" "ci-artifact-ledger-maven-publication" "CI must upload the Maven publication validation ledger"
 require_contains "$ci_workflow" "ci-artifact-ledger-rust-cli-linux-x64" "CI must upload the Rust CLI build ledger"
@@ -194,6 +216,8 @@ require_not_contains "$snapshot_workflow" "pull_request:" "Snapshot publication 
 require_not_contains "$snapshot_workflow" "github.event.pull_request.head.sha" "Snapshot concurrency must be scoped only to publication events"
 require_contains "$snapshot_workflow" "Set up Java for manual snapshot validation" "Snapshot validation must install Java only for manual publication"
 require_contains "$snapshot_workflow" "Set up Gradle for manual snapshot validation" "Snapshot validation must initialize Gradle only for manual publication"
+require_block_contains "$snapshot_workflow" "      - name: Set up Java for manual snapshot validation" "      - name: Set up Gradle for manual snapshot validation" "        if: github.event_name == 'workflow_dispatch'" "Snapshot Java setup must remain manual-only"
+require_block_contains "$snapshot_workflow" "      - name: Set up Gradle for manual snapshot validation" "      - name: Resolve snapshot version" "        if: github.event_name == 'workflow_dispatch'" "Snapshot Gradle setup must remain manual-only"
 require_contains "$snapshot_workflow" "Download CI Maven publication ledger" "Snapshot publication must consume CI's Maven validation ledger"
 require_contains "$snapshot_workflow" "snapshot-artifact-ledger-maven-publication" "Snapshot publish jobs must consume a validation ledger artifact"
 require_contains "$snapshot_workflow" "Verify snapshot publication ledger" "Snapshot publish jobs must verify Maven validation ledgers"
