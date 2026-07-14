@@ -1,11 +1,10 @@
 package io.github.amichne.kast.idea
 
 import java.lang.ref.WeakReference
+import java.time.Duration
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 
 internal class ServerHeldContinuationStore<Key, Value>(
     private val maxEntries: Int,
@@ -13,14 +12,16 @@ internal class ServerHeldContinuationStore<Key, Value>(
     private val clock: ContinuationClock = ContinuationClock.System,
     private val onDiscard: (Value) -> Unit = {},
 ) {
-    private val timeToLiveNanos = timeToLive.inWholeNanoseconds
+    private val timeToLiveNanos = timeToLive.toNanos()
     private val entries = LinkedHashMap<Key, Entry<Value>>()
     private var expiryTask: ScheduledFuture<*>? = null
     private var closed = false
 
     init {
         require(maxEntries > 0) { "Server-held continuation capacity must be positive" }
-        require(timeToLive.isPositive()) { "Server-held continuation time to live must be positive" }
+        require(!timeToLive.isZero && !timeToLive.isNegative) {
+            "Server-held continuation time to live must be positive"
+        }
     }
 
     @Synchronized
@@ -144,7 +145,7 @@ internal class ServerHeldContinuationStore<Key, Value>(
     }
 
     private companion object {
-        val DEFAULT_TIME_TO_LIVE: Duration = 2.minutes
+        val DEFAULT_TIME_TO_LIVE: Duration = Duration.ofMinutes(2)
         val EXPIRY_EXECUTOR = ScheduledThreadPoolExecutor(1) { runnable ->
             Thread(runnable, "kast-continuation-expiry").apply { isDaemon = true }
         }.apply {

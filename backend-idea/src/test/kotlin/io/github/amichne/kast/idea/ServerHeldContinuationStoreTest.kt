@@ -8,8 +8,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
+import java.time.Duration
 
 class ServerHeldContinuationStoreTest {
     @Test
@@ -18,14 +17,14 @@ class ServerHeldContinuationStoreTest {
         val discarded = mutableListOf<RetainedValue>()
         val store = ServerHeldContinuationStore<String, RetainedValue>(
             maxEntries = 2,
-            timeToLive = 5.seconds,
+            timeToLive = Duration.ofSeconds(5),
             clock = clock,
             onDiscard = discarded::add,
         )
         val value = RetainedValue("expired")
         store.put("token", value)
 
-        clock.advance(6.seconds.inWholeNanoseconds)
+        clock.advance(Duration.ofSeconds(6).toNanos())
 
         assertEquals(ContinuationClaim.Expired, store.claim("token"))
         assertEquals(listOf(value), discarded)
@@ -38,7 +37,7 @@ class ServerHeldContinuationStoreTest {
         val discarded = mutableListOf<RetainedValue>()
         val store = ServerHeldContinuationStore<String, RetainedValue>(
             maxEntries = 2,
-            timeToLive = 5.seconds,
+            timeToLive = Duration.ofSeconds(5),
             onDiscard = discarded::add,
         )
         val replaced = RetainedValue("replaced")
@@ -61,7 +60,7 @@ class ServerHeldContinuationStoreTest {
         val discarded = mutableListOf<RetainedValue>()
         val store = ServerHeldContinuationStore<String, RetainedValue>(
             maxEntries = 1,
-            timeToLive = 5.seconds,
+            timeToLive = Duration.ofSeconds(5),
             onDiscard = discarded::add,
         )
         val value = RetainedValue("claimed")
@@ -79,7 +78,7 @@ class ServerHeldContinuationStoreTest {
         val discarded = mutableListOf<RetainedValue>()
         val store = ServerHeldContinuationStore<String, RetainedValue>(
             maxEntries = 1,
-            timeToLive = 5.seconds,
+            timeToLive = Duration.ofSeconds(5),
             onDiscard = discarded::add,
         )
         val late = RetainedValue("late")
@@ -99,7 +98,7 @@ class ServerHeldContinuationStoreTest {
         val discarded = mutableListOf<RetainedValue>()
         val store = ServerHeldContinuationStore<String, RetainedValue>(
             maxEntries = 1,
-            timeToLive = 5.seconds,
+            timeToLive = Duration.ofSeconds(5),
             onDiscard = discarded::add,
         )
         val value = RetainedValue("claimed-before-shutdown")
@@ -128,7 +127,7 @@ class ServerHeldContinuationStoreTest {
         val expired = CountDownLatch(1)
         val store = ServerHeldContinuationStore<String, RetainedValue>(
             maxEntries = 1,
-            timeToLive = 50.milliseconds,
+            timeToLive = Duration.ofMillis(50),
             onDiscard = {
                 discarded.incrementAndGet()
                 expired.countDown()
