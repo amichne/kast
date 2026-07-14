@@ -163,6 +163,54 @@ def required_fields(spec: dict[str, Any]) -> set[str]:
     return set(required)
 
 
+def request_variants(spec: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    variants = spec.get("variants")
+    if variants is None:
+        return {}
+    if not isinstance(variants, dict) or not variants:
+        raise ValueError(f"{spec.get('method')} variants must be a non-empty object")
+    if not all(
+        isinstance(name, str) and name and isinstance(request, dict)
+        for name, request in variants.items()
+    ):
+        raise ValueError(f"{spec.get('method')} variants must map names to request objects")
+    return variants
+
+
+def variant_param_rows(spec: dict[str, Any]) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for variant_name, request in request_variants(spec).items():
+        context = {"method": f"{spec.get('method')}.{variant_name}", "request": request}
+        fields = fields_for(context)
+        required = required_fields(context)
+        rows.append(
+            [
+                f"`{variant_name}`",
+                param_list([name for name in fields if name in required]),
+                param_list([name for name in fields if name not in required]),
+            ]
+        )
+    return rows
+
+
+def summarized_required_params(
+    spec: dict[str, Any],
+    fields: dict[str, Any],
+    required: set[str],
+) -> str:
+    values = [f"`{name}`" for name in fields if name in required]
+    for variant_name, variant_request in request_variants(spec).items():
+        context = {
+            "method": f"{spec.get('method')}.{variant_name}",
+            "request": variant_request,
+        }
+        variant_fields = fields_for(context)
+        variant_required = required_fields(context)
+        names = ", ".join(f"`{name}`" for name in variant_fields if name in variant_required)
+        values.append(f"`{variant_name}`: {names or 'none'}")
+    return "<br>".join(values) if values else "none"
+
+
 def type_label(field: dict[str, Any]) -> str:
     base = str(field.get("type", "unknown"))
     if base == "array":
@@ -309,7 +357,7 @@ def render_summary(catalog: dict[str, Any]) -> str:
                 f"`{spec.get('category', '')}`",
                 spec.get("dataSource", ""),
                 spec.get("summary", ""),
-                param_list([name for name in fields if name in required]),
+                summarized_required_params(spec, fields, required),
                 param_list(optional),
                 f"`{spec.get('responseType', 'none')}`",
                 response_variants(spec),
@@ -367,6 +415,16 @@ def render_summary(catalog: dict[str, Any]) -> str:
             lines.extend(render_table(["Field", "Type", "Required", "Nullable", "Values"], detail_rows))
         else:
             lines.append("No request parameters.")
+        variant_rows = variant_param_rows(spec)
+        if variant_rows:
+            lines.extend(
+                [
+                    "",
+                    "Request variants:",
+                    "",
+                    *render_table(["Variant", "Required params", "Optional params"], variant_rows),
+                ]
+            )
         lines.extend(
             [
                 "",

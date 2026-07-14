@@ -247,6 +247,8 @@ fn command_catalog_is_schema_backed_and_self_consistent() {
     );
 
     let catalog = catalog();
+    let catalog_schema = schema_value("resources/kast-skill/references/commands.schema.json");
+    assert_valid(&catalog_schema, &catalog);
     assert_eq!(catalog["$schema"], "./commands.schema.json");
 
     let commands = catalog["commands"].as_object().expect("commands object");
@@ -480,6 +482,77 @@ fn workspace_files_continuation_catalog_declares_issue_and_consume_variants() {
         assert_eq!(sample["params"]["action"], expected_action);
         assert!(sample["params"].get("type").is_none());
     }
+}
+
+#[test]
+fn workspace_file_catalog_samples_use_typed_token_and_digest_wire_values() {
+    let raw_maximal =
+        schema_value("resources/kast-skill/references/requests/raw/workspace-files/maximal.json");
+    assert_canonical_uuid(
+        &raw_maximal["params"]["snapshotToken"],
+        "raw snapshot token",
+    );
+    assert_canonical_uuid(&raw_maximal["params"]["pageToken"], "raw page token");
+
+    for variant in ["minimal", "maximal"] {
+        let issue = schema_value(&format!(
+            "resources/kast-skill/references/requests/raw/workspace-files-continuation/ISSUE/{variant}.json"
+        ));
+        assert_lowercase_sha256(
+            &issue["params"]["state"]["compositionStampDigest"],
+            "continuation composition stamp",
+        );
+
+        let consume = schema_value(&format!(
+            "resources/kast-skill/references/requests/raw/workspace-files-continuation/CONSUME/{variant}.json"
+        ));
+        assert_canonical_uuid(&consume["params"]["pageToken"], "public continuation token");
+    }
+}
+
+#[test]
+fn api_specification_documents_variant_specific_required_fields() {
+    let specification = include_str!("../protocol/api-specification.md");
+    let continuation = specification
+        .split_once(
+            "<summary><code>raw/workspace-files-continuation</code> - Issue or consume server-held public workspace-file continuation state</summary>",
+        )
+        .expect("workspace-files continuation details")
+        .1
+        .split_once("</details>")
+        .expect("workspace-files continuation details end")
+        .0;
+
+    assert!(
+        continuation.contains("| `ISSUE` | `identity`<br>`state` | none |"),
+        "ISSUE requirements must be rendered: {continuation}"
+    );
+    assert!(
+        continuation.contains("| `CONSUME` | `identity`<br>`pageToken` | none |"),
+        "CONSUME requirements must be rendered: {continuation}"
+    );
+}
+
+fn assert_canonical_uuid(value: &Value, context: &str) {
+    let value = value
+        .as_str()
+        .unwrap_or_else(|| panic!("{context} must be a string: {value}"));
+    let parsed = uuid::Uuid::parse_str(value)
+        .unwrap_or_else(|error| panic!("{context} must be a UUID: {value}: {error}"));
+    assert_eq!(parsed.to_string(), value, "{context} must be canonical");
+}
+
+fn assert_lowercase_sha256(value: &Value, context: &str) {
+    let value = value
+        .as_str()
+        .unwrap_or_else(|| panic!("{context} must be a string: {value}"));
+    assert_eq!(value.len(), 64, "{context} must contain 64 hex digits");
+    assert!(
+        value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "{context} must be lowercase hexadecimal: {value}"
+    );
 }
 
 #[test]

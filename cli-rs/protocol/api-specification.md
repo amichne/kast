@@ -86,17 +86,17 @@ uses a discriminated response envelope.
 | `runtime/shutdown` | `system` | backend | Ask the runtime host to shut down after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `runtime/restart` | `system` | backend | Ask the runtime host to restart after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
-| `mutation/submit` | `mutation` | backend | Submit an idempotent semantic mutation and return its stable operation identity | `type` | none | `KastMutationSubmissionReceipt` | single result |
-| `mutation/status` | `mutation` | backend | Retrieve retained semantic mutation state by operation identity or idempotency key | `type` | none | `KastMutationOperationSnapshot` | single result |
-| `mutation/cancel` | `mutation` | backend | Request cooperative cancellation and retrieve the latest semantic mutation state | `type` | none | `KastMutationOperationSnapshot` | single result |
+| `mutation/submit` | `mutation` | backend | Submit an idempotent semantic mutation and return its stable operation identity | `type`<br>`RENAME`: `idempotencyKey`, `request`<br>`ADD_FILE`: `idempotencyKey`, `request`<br>`ADD_DECLARATION`: `idempotencyKey`, `request`<br>`ADD_IMPLEMENTATION`: `idempotencyKey`, `request`<br>`ADD_STATEMENT`: `idempotencyKey`, `request`<br>`REPLACE_DECLARATION`: `idempotencyKey`, `request` | none | `KastMutationSubmissionReceipt` | single result |
+| `mutation/status` | `mutation` | backend | Retrieve retained semantic mutation state by operation identity or idempotency key | `type`<br>`BY_OPERATION_ID`: `operationId`<br>`BY_IDEMPOTENCY_KEY`: `idempotencyKey` | none | `KastMutationOperationSnapshot` | single result |
+| `mutation/cancel` | `mutation` | backend | Request cooperative cancellation and retrieve the latest semantic mutation state | `type`<br>`BY_OPERATION_ID`: `operationId`<br>`BY_IDEMPOTENCY_KEY`: `idempotencyKey` | none | `KastMutationOperationSnapshot` | single result |
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
 | `symbol/resolve` | `symbol` | backend | Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_NOT_FOUND`<br>`RESOLVE_AMBIGUOUS`<br>`RESOLVE_FAILURE` |
 | `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration`<br>`maxResults`<br>`pageToken` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
 | `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
-| `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
-| `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
+| `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`RENAME_BY_SYMBOL_REQUEST`: `symbol`, `newName`<br>`RENAME_BY_OFFSET_REQUEST`: `filePath`, `offset`, `newName` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
+| `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type`<br>`CREATE_FILE_REQUEST`: `filePath`<br>`INSERT_AT_OFFSET_REQUEST`: `filePath`, `offset`<br>`REPLACE_RANGE_REQUEST`: `filePath`, `startOffset`, `endOffset` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
 | `symbol/add-file` | `symbol` | backend | Create a Kotlin file from a content file and validate the result | `filePath`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/add-declaration` | `symbol` | backend | Insert declaration content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
 | `symbol/add-implementation` | `symbol` | backend | Insert implementation content into a file or named Kotlin scope and validate the result | `placement`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
@@ -116,7 +116,7 @@ uses a discriminated response envelope.
 | `raw/workspace-symbol` | `raw` | backend | Search the workspace for symbols by name pattern | `pattern` | `kind`<br>`maxResults`<br>`regex`<br>`includeDeclarationScope` | `WorkspaceSymbolResult` | single result |
 | `raw/workspace-search` | `raw` | backend | Search workspace file contents by text or regex | `pattern` | `regex`<br>`maxResults`<br>`fileGlob`<br>`caseSensitive` | `WorkspaceSearchResult` | single result |
 | `raw/workspace-files` | `raw` | backend | List generation-bound workspace modules and Kotlin file pages | none | `kindDomain`<br>`moduleName`<br>`includeFiles`<br>`maxFilesPerModule`<br>`snapshotToken`<br>`pageToken` | `WorkspaceFilesResult` | single result |
-| `raw/workspace-files-continuation` | `raw` | backend | Issue or consume server-held public workspace-file continuation state | `action` | none | `WorkspaceFilesContinuationResult` | `ISSUED`<br>`CONSUMED` |
+| `raw/workspace-files-continuation` | `raw` | backend | Issue or consume server-held public workspace-file continuation state | `action`<br>`ISSUE`: `identity`, `state`<br>`CONSUME`: `identity`, `pageToken` | none | `WorkspaceFilesContinuationResult` | `ISSUED`<br>`CONSUMED` |
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
@@ -178,6 +178,17 @@ Response type: `BackendCapabilities`.
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `RENAME`<br>`ADD_FILE`<br>`ADD_DECLARATION`<br>`ADD_IMPLEMENTATION`<br>`ADD_STATEMENT`<br>`REPLACE_DECLARATION` |
 
+Request variants:
+
+| Variant | Required params | Optional params |
+| --- | --- | --- |
+| `RENAME` | `idempotencyKey`<br>`request` | none |
+| `ADD_FILE` | `idempotencyKey`<br>`request` | none |
+| `ADD_DECLARATION` | `idempotencyKey`<br>`request` | none |
+| `ADD_IMPLEMENTATION` | `idempotencyKey`<br>`request` | none |
+| `ADD_STATEMENT` | `idempotencyKey`<br>`request` | none |
+| `REPLACE_DECLARATION` | `idempotencyKey`<br>`request` | none |
+
 Response type: `KastMutationSubmissionReceipt`.
 
 </details>
@@ -189,6 +200,13 @@ Response type: `KastMutationSubmissionReceipt`.
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `BY_OPERATION_ID`<br>`BY_IDEMPOTENCY_KEY` |
 
+Request variants:
+
+| Variant | Required params | Optional params |
+| --- | --- | --- |
+| `BY_OPERATION_ID` | `operationId` | none |
+| `BY_IDEMPOTENCY_KEY` | `idempotencyKey` | none |
+
 Response type: `KastMutationOperationSnapshot`.
 
 </details>
@@ -199,6 +217,13 @@ Response type: `KastMutationOperationSnapshot`.
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `BY_OPERATION_ID`<br>`BY_IDEMPOTENCY_KEY` |
+
+Request variants:
+
+| Variant | Required params | Optional params |
+| --- | --- | --- |
+| `BY_OPERATION_ID` | `operationId` | none |
+| `BY_IDEMPOTENCY_KEY` | `idempotencyKey` | none |
 
 Response type: `KastMutationOperationSnapshot`.
 
@@ -363,6 +388,13 @@ Notes:
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `RENAME_BY_SYMBOL_REQUEST`<br>`RENAME_BY_OFFSET_REQUEST` |
 
+Request variants:
+
+| Variant | Required params | Optional params |
+| --- | --- | --- |
+| `RENAME_BY_SYMBOL_REQUEST` | `symbol`<br>`newName` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType` |
+| `RENAME_BY_OFFSET_REQUEST` | `filePath`<br>`offset`<br>`newName` | `workspaceRoot` |
+
 Response type: `KastRenameResponse`.
 Result variants: `RENAME_SUCCESS`, `RENAME_FAILURE`.
 
@@ -374,6 +406,14 @@ Result variants: `RENAME_SUCCESS`, `RENAME_FAILURE`.
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `CREATE_FILE_REQUEST`<br>`INSERT_AT_OFFSET_REQUEST`<br>`REPLACE_RANGE_REQUEST` |
+
+Request variants:
+
+| Variant | Required params | Optional params |
+| --- | --- | --- |
+| `CREATE_FILE_REQUEST` | `filePath` | `workspaceRoot`<br>`content`<br>`contentFile` |
+| `INSERT_AT_OFFSET_REQUEST` | `filePath`<br>`offset` | `workspaceRoot`<br>`content`<br>`contentFile` |
+| `REPLACE_RANGE_REQUEST` | `filePath`<br>`startOffset`<br>`endOffset` | `workspaceRoot`<br>`content`<br>`contentFile` |
 
 Response type: `KastWriteAndValidateResponse`.
 Result variants: `WRITE_AND_VALIDATE_SUCCESS`, `WRITE_AND_VALIDATE_FAILURE`.
@@ -667,6 +707,13 @@ Notes:
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `action` | `string` | yes | no | `ISSUE`<br>`CONSUME` |
+
+Request variants:
+
+| Variant | Required params | Optional params |
+| --- | --- | --- |
+| `ISSUE` | `identity`<br>`state` | none |
+| `CONSUME` | `identity`<br>`pageToken` | none |
 
 Response type: `WorkspaceFilesContinuationResult`.
 Result variants: `ISSUED`, `CONSUMED`.

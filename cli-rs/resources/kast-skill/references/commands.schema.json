@@ -89,6 +89,7 @@
         },
         "variants": {
           "type": "object",
+          "minProperties": 1,
           "additionalProperties": {
             "$ref": "#/$defs/request"
           }
@@ -103,7 +104,17 @@
         "tool": {
           "$ref": "#/$defs/tool"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["variantDiscriminator"]
+          },
+          "then": {
+            "required": ["variants"]
+          }
+        }
+      ]
     },
     "request": {
       "type": "object",
@@ -178,6 +189,9 @@
             "$ref": "#/$defs/fieldName"
           },
           "uniqueItems": true
+        },
+        "sample": {
+          "description": "Concrete value used by generated request samples when the field shape alone cannot produce a valid wire value."
         }
       }
     },
