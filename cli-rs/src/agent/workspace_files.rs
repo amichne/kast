@@ -409,8 +409,12 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     }
     let coverage = snapshot.coverage();
     let index_evidence_complete = workspace_files_index_evidence_complete(&snapshot);
-    let filter_coverage =
-        workspace_files_filter_coverage(snapshot.files(), &args, index_evidence_complete);
+    let filter_coverage = workspace_files_filter_coverage(
+        snapshot.files(),
+        snapshot.backend_coverage(),
+        &args,
+        index_evidence_complete,
+    );
     let exact = coverage.candidate_inventory() == WorkspaceCoverageDimension::Complete
         && filter_coverage == WorkspaceCoverageDimension::Complete;
     let matching = snapshot
@@ -722,11 +726,12 @@ fn workspace_file_matches(file: &WorkspaceInventoryFile, args: &AgentWorkspaceFi
 
 fn workspace_files_filter_coverage(
     candidates: &[WorkspaceInventoryFile],
+    backend_coverage: BackendWorkspaceCoverage,
     args: &AgentWorkspaceFilesArgs,
     index_evidence_complete: bool,
 ) -> WorkspaceCoverageDimension {
     let module_complete = args.module.as_ref().is_none_or(|selector| match selector {
-        WorkspaceModuleSelector::Backend(_) => true,
+        WorkspaceModuleSelector::Backend(_) => backend_coverage == BackendWorkspaceCoverage::Complete,
         WorkspaceModuleSelector::Gradle { .. } => candidates
             .iter()
             .all(|file| workspace_file_gradle_ownership_evidence_complete(file, index_evidence_complete)),
