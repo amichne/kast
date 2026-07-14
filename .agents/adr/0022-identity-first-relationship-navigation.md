@@ -246,24 +246,22 @@ token. Impact tokens alone carry a validated SQLite offset. These small typed
 payloads use canonical ASCII fields and existing SHA-256/hex support; they do
 not require a base64 dependency.
 
-All compiler-backed relationship continuation is stateful and has one owner:
-the runtime backend. `backend-idea` owns one relationship-specific adapter over
-#338's generic `analysis-api` `ServerHeldContinuationStore`;
-`analysis-server` transports handles and does not own or reconstruct semantic
-continuation state. The adapter's sealed owned state contains a reference state
-plus family-specific call/implementation/hierarchy state. The reference state
-holds #337's source and provider position; traversal state holds the
-breadth-first frontier, visited identities, and per-provider continuation.
-Every state also holds consumed evidence, returned-before proof, normalized
-query fingerprint, selected subject, and semantic generation. It extends
-`ContinuationOwnedState`, returns only domain-specific
-`ContinuationProjection` values, and uses the shared store's single-use
-`Complete`/`Reissue` transition instead of returning an owning state object.
+All compiler-backed relationship continuation is stateful and owned by the
+runtime backend. `analysis-server` transports handles and does not own or
+reconstruct semantic continuation state. References retain #337's
+source-aware continuation store. Call, implementation, and hierarchy pages use
+`backend-idea`'s `RelationshipContinuationStore` over #338's generic
+`analysis-api` `ServerHeldContinuationStore`. Its owned state contains the
+normalized query, semantic generation, returned-before proof, and the
+unreturned suffix of one complete bounded canonical-record snapshot. It never
+contains PSI, smart pointers, analysis-session objects, or a client-visible
+provider position. The store returns only domain projections and uses the
+shared store's single-use `Complete`/`Reissue` transitions.
 
 Relationship handles use the landed typed continuation TTL and capacity from
 `ServerLimits` (currently 60 seconds and 256 entries per typed store by
 default), while each relationship state admits at most 16,384
-candidate/frontier/visited/provider entries. Expiry, eviction, query mismatch,
+canonical result records. Expiry, eviction, query mismatch,
 callback failure, terminal consumption, backend close, and server shutdown
 dispose the owned state exactly once. `RunningAnalysisServer` remains the
 single backend close owner; closing `KastPluginBackend` drains the relationship
@@ -285,22 +283,17 @@ zero or silently select another subject. Continuation handles retain #337's
 one-shot consumption rule: replaying a consumed handle is `UNKNOWN_HANDLE` and
 cannot duplicate provider work.
 
-IDEA invokes the shared store's consume/reissue transition inside one
-`timedReadAction`: typed query/family validation, reading
-`PsiModificationTracker.modificationCount`, comparing the stored generation,
-target resolution, provider work, state mutation, and next-handle publication
-all occur while the read lock is held. The read lock makes generation
-validation and provider work atomic with respect to PSI writes. State never
-retains PSI, smart pointers, or analysis-session objects. Shared-store
-`UnknownToken`, `ExpiredToken`, and `QueryMismatch` failures map to the
-relationship family's closed invalid/stale outcomes; a traversal handle's
-typed family prefix rejects `FAMILY_MISMATCH` before store/provider work.
-`ObservedAnalysisBackend`
-delegates every handle-bearing method without default-method fallback and
-records the operation once. Tests queue a write between pages and during a
-continuation read action to prove that old state is rejected before provider
-work and that a write cannot slip between the generation check and state
-commit.
+IDEA captures `PsiModificationTracker.modificationCount` before collecting a
+call or type snapshot. It commits that snapshot only inside a
+`timedReadAction` after proving the generation is unchanged. Every continuation
+consume/reissue also runs inside `timedReadAction`, so generation comparison,
+state mutation, and next-handle publication are atomic with respect to writes.
+Provider work never repeats on a continuation. Shared-store `UnknownToken`,
+`ExpiredToken`, and `QueryMismatch` failures map to the relationship family's
+closed invalid/stale outcomes; a traversal handle's typed family prefix rejects
+`FAMILY_MISMATCH` before state work. `ObservedAnalysisBackend` delegates every
+handle-bearing method without default-method fallback and records the operation
+once.
 
 For an unchanged admitted workspace, relation ordering is deterministic:
 
@@ -312,53 +305,19 @@ For an unchanged admitted workspace, relation ordering is deterministic:
   file path, and declaration offset; and
 - impact nodes sort by depth, source path, target identity, and edge kind.
 
-`limit + 1` is an emitted-record window, not by itself a backend-work bound.
-The named IDEA strategy is bounded snapshot-then-sort. References and incoming
-calls stream workspace Kotlin files through `FileTypeIndex.processFiles` into a
-candidate-path buffer that admits at most the state/candidate cap plus one.
-Exactly cap-plus-one proves overflow: the provider stops immediately and
-returns a typed family budget outcome with no records, page claim, or retained
-partial snapshot. At or below the cap, it sorts the complete bounded snapshot,
-then scans each file in lexical offset order with `PsiReferenceScanner`.
-Outgoing calls use a resumable lexical depth-first walk of the selected
-declaration body. The pure-data continuation is a bounded root-to-current stack
-of child indexes plus the next reference index; it rehydrates PSI only inside
-the same generation-checked read action. The walk descends through nested
-blocks, local property initializers, and lambda bodies. Lambdas remain owned by
-the enclosing named callable because this surface exposes no navigable lambda
-identity. The walk skips only nested named function, class, object, and
-property-accessor bodies so calls owned by another navigable declaration are
-not attributed to the selected function. Page boundaries may occur at any
-element/reference position without replay or omission. `EXACT` is legal only
-after the DFS exhausts every owned node, including lambda bodies.
-
-This lexical provider order is the public call-edge order; the engine does not
-collect unseen children and resort by related name. BFS frontier parents use
-canonical identity order, and each parent emits call sites by canonical
-file/start/end offset. References sharing the same call-site range form the
-only local tie group and sort by related identity before emission; that group
-is charged to the candidate/state budget and degrades without a partial group
-if it exceeds the bound. This makes mid-provider continuation globally ordered
-without an unbounded child snapshot.
-Implementations and direct subtypes use
-`ClassInheritorsSearch.search(..., checkDeep = false).forEach` with the same
-cap-plus-one admission rule, canonicalize anchors in the same read action, and
-sort only a complete admitted snapshot. No provider emits a sorted prefix when
-enumeration exceeds its cap. Exceeding a buffer or visit budget is a typed
-family limitation, not permission to materialize more. The engine updates
-stored frontier/visited/provider state atomically before issuing the next
-handle. `FileTypeIndex.getFiles(...).toList()`, `ReferencesSearch.findAll`,
-unbounded declaration walks, and inheritor `findAll()` are prohibited. Tests
-tripwire those APIs, count provider visits, exercise the exact cap and cap plus
-one, assert overflow returns no partial page, force a page boundary within one
-file/frontier/provider stream, and prove page two neither revisits nor skips
-evidence. Outgoing tests cover nested blocks, local property initializers,
-included lambdas, excluded nested named functions/classes/objects/accessors,
-and page breaks on both sides of an excluded declaration boundary. A fixture
-whose related names are reverse lexical by call-site proves page order follows
-the canonical call site, not an unseen related-name sort, with no overlap. A
-named function whose only callee is inside a lambda proves that lambda evidence
-is retained; a page boundary inside a lambda resumes without omission.
+`limit + 1` is the public emitted-record window. Compiler-backed call and type
+relationships use a bounded complete-snapshot strategy: the existing typed
+call/type engines receive the 16,384-record relationship-state ceiling as both
+their total and per-node result budget. Timeout, engine truncation, or state-cap
+overflow returns a typed budget limitation before any page or continuation is
+issued. At or below the ceiling, the complete result is flattened into
+canonical immutable records, deterministically sorted, and committed to the
+backend store. Page two and later consume only the stored suffix, so they never
+repeat provider work and cannot overlap or skip records. Exact cardinality is
+reported only for an admitted complete snapshot; a next handle proves at least
+one additional stored record. Earlier agent-only design and implementation-plan
+text that describes resumable call/type provider frontiers is non-normative;
+this bounded complete-snapshot decision controls the shipped implementation.
 
 The hard SQLite impact offset ceiling is 10,000. Impact keeps its separate
 exact node count and applies `LIMIT limit + 1 OFFSET offset` to the ordered row
@@ -368,7 +327,7 @@ exact only after the exact target-anchor query is exhausted. Otherwise they
 remain `KNOWN_MINIMUM`. SQLite impact tokens remain stateless and do not
 promise a snapshot across index changes. #337 reference and every other
 compiler continuation instead reject a handle when the backend-held semantic
-generation changes; they never apply old provider state to new PSI.
+generation changes; they never apply an old stored snapshot to new PSI.
 
 ## Degraded outcomes
 
@@ -486,6 +445,6 @@ versions, state lifetime/capacity, generation semantics, default budgets, or
 capability fallbacks require a superseding ADR. Future work must preserve
 anchored overload identity, lossless #337 cardinality and reference cursor
 evidence, typed degraded/stale/invalid outcomes, deterministic bounded provider
-work, and closed per-family records. A generic relation string, unchecked raw
+admission, and closed per-family records. A generic relation string, unchecked raw
 position, arbitrary JSON filter, client-serialized traversal frontier, or
 unbounded detailed view is not an acceptable public extension point.

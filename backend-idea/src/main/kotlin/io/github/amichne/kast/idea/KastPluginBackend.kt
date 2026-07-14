@@ -1061,12 +1061,18 @@ internal class KastPluginBackend(
             )
             val handle = query.pageToken?.let(RelationTraversalHandle::parse)
             if (handle != null) {
-                return@withContext relationshipContinuations.calls(
-                    continuationQuery,
-                    handle,
-                    null,
-                    psiGeneration(),
-                )
+                return@withContext timedReadAction(
+                    telemetry,
+                    IdeaTelemetryScope.CALL_HIERARCHY,
+                    "kast.idea.callRelations.continue",
+                ) {
+                    relationshipContinuations.calls(
+                        continuationQuery,
+                        handle,
+                        null,
+                        psiGeneration(),
+                    )
+                }
             }
             val generation = psiGeneration()
             val direction = when (query.direction) {
@@ -1088,7 +1094,6 @@ internal class KastPluginBackend(
                     timeoutMillis = limits.requestTimeoutMillis,
                 ).parsed(),
             )
-            if (psiGeneration() != generation) throw continuationConflict("generationChanged")
             if (result.stats.timeoutReached) throw continuationConflict("timeout")
             if (result.stats.truncatedNodes > 0 ||
                 result.stats.maxTotalCallsReached ||
@@ -1100,12 +1105,19 @@ internal class KastPluginBackend(
             if (records.size > RELATIONSHIP_STATE_CAPACITY) {
                 throw continuationConflict("traversalStateBudgetReached")
             }
-            relationshipContinuations.calls(
-                continuationQuery,
-                null,
-                records,
-                generation,
-            )
+            timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.CALL_HIERARCHY,
+                "kast.idea.callRelations.commit",
+            ) {
+                if (psiGeneration() != generation) throw continuationConflict("generationChanged")
+                relationshipContinuations.calls(
+                    continuationQuery,
+                    null,
+                    records,
+                    generation,
+                )
+            }
         }
 
     override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult = withContext(readDispatcher) {
@@ -1140,12 +1152,18 @@ internal class KastPluginBackend(
             )
             val handle = query.pageToken?.let(RelationTraversalHandle::parse)
             if (handle != null) {
-                return@withContext relationshipContinuations.hierarchy(
-                    continuationQuery,
-                    handle,
-                    null,
-                    psiGeneration(),
-                )
+                return@withContext timedReadAction(
+                    telemetry,
+                    IdeaTelemetryScope.TYPE_HIERARCHY,
+                    "kast.idea.hierarchyRelations.continue",
+                ) {
+                    relationshipContinuations.hierarchy(
+                        continuationQuery,
+                        handle,
+                        null,
+                        psiGeneration(),
+                    )
+                }
             }
             val generation = psiGeneration()
             val directions = when (query.direction) {
@@ -1182,16 +1200,22 @@ internal class KastPluginBackend(
                     { relation -> relation.relation.name },
                 ),
             )
-            if (psiGeneration() != generation) throw continuationConflict("generationChanged")
             if (records.size > RELATIONSHIP_STATE_CAPACITY) {
                 throw continuationConflict("traversalStateBudgetReached")
             }
-            relationshipContinuations.hierarchy(
-                continuationQuery,
-                null,
-                records,
-                generation,
-            )
+            timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.TYPE_HIERARCHY,
+                "kast.idea.hierarchyRelations.commit",
+            ) {
+                if (psiGeneration() != generation) throw continuationConflict("generationChanged")
+                relationshipContinuations.hierarchy(
+                    continuationQuery,
+                    null,
+                    records,
+                    generation,
+                )
+            }
         }
 
     override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult = withContext(readDispatcher) {
@@ -1247,12 +1271,18 @@ internal class KastPluginBackend(
         )
         val handle = query.pageToken?.let(RelationTraversalHandle::parse)
         if (handle != null) {
-            return@withContext relationshipContinuations.implementations(
-                continuationQuery,
-                handle,
-                null,
-                psiGeneration(),
-            )
+            return@withContext timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.IMPLEMENTATIONS,
+                "kast.idea.implementationRelations.continue",
+            ) {
+                relationshipContinuations.implementations(
+                    continuationQuery,
+                    handle,
+                    null,
+                    psiGeneration(),
+                )
+            }
         }
         val generation = psiGeneration()
         val result = implementations(
@@ -1264,7 +1294,6 @@ internal class KastPluginBackend(
                 maxResults = RELATIONSHIP_STATE_CAPACITY,
             ).parsed(),
         )
-        if (psiGeneration() != generation) throw continuationConflict("generationChanged")
         if (!result.exhaustive) throw continuationConflict("candidateBudgetReached")
         val records = result.implementations.map { symbol ->
             ImplementationRelation(
@@ -1275,12 +1304,19 @@ internal class KastPluginBackend(
         if (records.size > RELATIONSHIP_STATE_CAPACITY) {
             throw continuationConflict("traversalStateBudgetReached")
         }
-        relationshipContinuations.implementations(
-            continuationQuery,
-            null,
-            records,
-            generation,
-        )
+        timedReadAction(
+            telemetry,
+            IdeaTelemetryScope.IMPLEMENTATIONS,
+            "kast.idea.implementationRelations.commit",
+        ) {
+            if (psiGeneration() != generation) throw continuationConflict("generationChanged")
+            relationshipContinuations.implementations(
+                continuationQuery,
+                null,
+                records,
+                generation,
+            )
+        }
     }
 
     override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult = withContext(readDispatcher) {

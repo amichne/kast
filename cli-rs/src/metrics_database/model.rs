@@ -179,6 +179,7 @@ pub(crate) struct ImpactSubjectIdentity {
 }
 
 impl ImpactSubjectIdentity {
+    #[cfg(test)]
     pub(crate) fn new(
         fq_name: String,
         declaration_file: PathBuf,

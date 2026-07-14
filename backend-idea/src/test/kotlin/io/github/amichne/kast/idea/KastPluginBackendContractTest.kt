@@ -19,6 +19,7 @@ import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
@@ -28,6 +29,11 @@ import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
+import io.github.amichne.kast.api.contract.skill.KastCallersQuery
+import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
+import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
+import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
+import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
@@ -1439,6 +1445,72 @@ class KastPluginBackendContractTest {
             implementationFqNames.any { it == "demo.hierarchy.Circle" },
             "Expected Circle in implementations but got: $implementationFqNames",
         )
+    }
+
+    @Test
+    fun `typed relationship snapshots execute against IDEA and preserve exact anchors`() = runBlocking {
+        ensureProjectReady()
+        val (workspaceRoot, greetSelector, shapeSelector) = readAction {
+            val root = commonWorkspaceRoot(
+                sampleFile.virtualFile.path,
+                hierarchyFile.virtualFile.path,
+            )
+            Triple(
+                root,
+                KastExactSymbolSelector(
+                    fqName = "demo.greet",
+                    declarationFile = sampleFile.virtualFile.path,
+                    declarationStartOffset = sampleFile.text.indexOf("greet"),
+                    kind = SymbolKind.FUNCTION,
+                ),
+                KastExactSymbolSelector(
+                    fqName = "demo.hierarchy.Shape",
+                    declarationFile = hierarchyFile.virtualFile.path,
+                    declarationStartOffset = hierarchyFile.text.indexOf("Shape"),
+                    kind = SymbolKind.INTERFACE,
+                ),
+            )
+        }
+        val backend = backend(workspaceRoot)
+
+        val callers = backend.callRelations(
+            KastCallersQuery(
+                workspaceRoot = workspaceRoot.toString(),
+                selector = greetSelector,
+                direction = WrapperCallDirection.INCOMING,
+                depth = 1,
+                maxResults = 4,
+            ),
+        )
+        val implementations = backend.implementationRelations(
+            KastImplementationsQuery(
+                workspaceRoot = workspaceRoot.toString(),
+                selector = shapeSelector,
+                maxResults = 4,
+            ),
+        )
+        val hierarchy = backend.hierarchyRelations(
+            KastHierarchyQuery(
+                workspaceRoot = workspaceRoot.toString(),
+                selector = shapeSelector,
+                direction = TypeHierarchyDirection.SUBTYPES,
+                depth = 1,
+                maxResults = 4,
+            ),
+        )
+
+        assertEquals(listOf("demo.useGreeting"), callers.records.map { it.relatedSymbol.fqName })
+        assertEquals(ResultCardinality.Exact(1), callers.page.cardinality)
+        assertEquals(
+            listOf("demo.hierarchy.Circle"),
+            implementations.records.map { it.implementation.fqName },
+        )
+        assertEquals(ResultCardinality.Exact(1), implementations.page.cardinality)
+        assertEquals(
+            listOf("demo.hierarchy.Circle"),
+            hierarchy.records.map { it.relatedSymbol.fqName },
+        )
+        assertEquals(ResultCardinality.Exact(1), hierarchy.page.cardinality)
     }
 
     @Test
