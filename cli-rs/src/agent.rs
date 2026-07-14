@@ -16,7 +16,21 @@ use crate::cli::{
     WorkspaceRelativeGlob, WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
 };
 use crate::error::{CliError, Result};
+use crate::workspace_inventory::backend::{
+    BackendRpcFailure, BackendWorkspaceRpc, RawRpcWorkspaceBackend,
+};
+use crate::workspace_inventory::collect::{
+    SystemWorkspaceLaneReader, WorkspaceInventoryInputs, collect_workspace_inventory,
+};
+use crate::workspace_inventory::model::{
+    BackendModuleCoverage, BackendWorkspaceCoverage, WorkspaceCoverageDimension,
+    WorkspaceEvidenceSource, WorkspaceFileDirtyState, WorkspaceFileDrift, WorkspaceFileIndexState,
+    WorkspaceFileKind, WorkspaceInventoryFile, WorkspaceInventoryLimitationCode,
+    WorkspaceKindMatchCoverage, WorkspacePackageEvidence, WorkspaceRequestedKindDomain,
+    WorkspaceRoot, WorkspaceSourceSetEvidence,
+};
 use crate::{output, runtime, validate};
+use clap::CommandFactory;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -24,6 +38,7 @@ use std::path::{Component, Path, PathBuf};
 
 include!("agent/types.rs");
 include!("agent/path.rs");
+include!("agent/public_capabilities.rs");
 include!("agent/workspace_files.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");

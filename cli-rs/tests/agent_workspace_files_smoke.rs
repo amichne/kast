@@ -31,9 +31,13 @@ fn assert_typed_boundary(extra_args: &[&str]) -> serde_json::Value {
     );
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("workspace-files JSON error");
-    assert_eq!(
-        stdout["error"]["code"], "WORKSPACE_FILE_DISCOVERY_UNAVAILABLE",
-        "{stdout:#}"
+    assert!(
+        stdout["error"]["code"].is_string(),
+        "typed admission must return a structured error: {stdout:#}"
+    );
+    assert!(
+        stdout["error"]["details"]["admittedQuery"].is_object(),
+        "typed query admission must precede exact-root runtime admission: {stdout:#}"
     );
     stdout
 }
@@ -50,6 +54,780 @@ fn assert_usage_error(extra_args: &[&str]) {
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("workspace-files usage JSON");
     assert_eq!(stdout["code"], "CLI_USAGE", "{stdout:#}");
+}
+
+fn create_workspace_index(
+    home: &std::path::Path,
+    workspace: &std::path::Path,
+    workspace_id: &str,
+    source_count: usize,
+) -> workspace_files::WorkspaceIndexFixture {
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let workspaces_data = default_install_root(home).join("state/workspaces");
+    std::fs::create_dir_all(workspaces_data.join("local")).expect("local workspace data");
+    std::fs::write(
+        workspaces_data.join("local-workspaces.json"),
+        serde_json::to_vec_pretty(&serde_json::json!({
+            workspace.display().to_string(): workspace_id
+        }))
+        .expect("workspace registry JSON"),
+    )
+    .expect("workspace registry");
+    let mut sanitized_workspace = String::new();
+    for character in workspace.display().to_string().chars() {
+        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+            sanitized_workspace.push(character);
+        } else if !sanitized_workspace.ends_with('-') {
+            sanitized_workspace.push('-');
+        }
+    }
+    let sanitized_workspace = sanitized_workspace
+        .trim_matches('-')
+        .chars()
+        .take(80)
+        .collect::<String>();
+    let database_path = workspaces_data
+        .join("local")
+        .join(format!("{sanitized_workspace}--{workspace_id}"))
+        .join("cache/source-index.db");
+    let index =
+        workspace_files::WorkspaceIndexFixture::at_database_path(&workspace, &database_path);
+    index.seed_high_cardinality_sources(source_count);
+    index.seed_progress(
+        "app",
+        "COMPLETE",
+        i64::try_from(source_count).expect("fixture source count fits i64"),
+        i64::try_from(source_count).expect("fixture source count fits i64"),
+    );
+    index
+}
+
+fn spawn_paged_workspace_files_backend(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    socket: &std::path::Path,
+    consumed_state: Option<serde_json::Value>,
+    issued_token: Option<&'static str>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    let runtime = serde_json::json!({
+        "state": "READY",
+        "healthy": true,
+        "active": true,
+        "indexing": false,
+        "backendName": "idea",
+        "backendVersion": "scripted-test",
+        "workspaceRoot": workspace.display().to_string(),
+        "schemaVersion": 3
+    });
+    let capabilities = serde_json::json!({
+        "backendName": "idea",
+        "backendVersion": "scripted-test",
+        "workspaceRoot": workspace.display().to_string(),
+        "readCapabilities": ["WORKSPACE_FILES"],
+        "mutationCapabilities": [],
+        "limits": {
+            "requestTimeoutMillis": 60000,
+            "maxResults": 1000,
+            "maxConcurrentRequests": 4
+        },
+        "schemaVersion": 3
+    });
+    let source_root = workspace.join("src/main/kotlin");
+    let page = |range: std::ops::Range<usize>, next_page_token: Option<&str>| {
+        let files = range
+            .map(|index| {
+                source_root
+                    .join(format!("sample/Source{index:04}.kt"))
+                    .display()
+                    .to_string()
+            })
+            .collect::<Vec<_>>();
+        serde_json::json!({
+            "snapshotToken": "snapshot-500",
+            "modules": [{
+                "name": "fixture.main",
+                "sourceRoots": [source_root.display().to_string()],
+                "contentRoots": [workspace.display().to_string()],
+                "dependencyModuleNames": [],
+                "returnedFileCount": files.len(),
+                "filesTruncated": next_page_token.is_some(),
+                "fileCount": 500,
+                "nextPageToken": next_page_token,
+                "files": files
+            }],
+            "schemaVersion": 3
+        })
+    };
+    let validation = serde_json::json!({
+        "snapshotToken": "snapshot-500",
+        "modules": [],
+        "schemaVersion": 3
+    });
+    let mut responses = vec![("runtime/status", runtime), ("capabilities", capabilities)];
+    if let Some(state) = consumed_state {
+        responses.push((
+            "raw/workspace-files-continuation",
+            serde_json::json!({"type": "CONSUMED", "state": state}),
+        ));
+    }
+    responses.extend([
+        (
+            "raw/workspace-files",
+            serde_json::json!({
+                "snapshotToken": "snapshot-500",
+                "modules": [{
+                    "name": "fixture.main",
+                    "sourceRoots": [source_root.display().to_string()],
+                    "contentRoots": [workspace.display().to_string()],
+                    "dependencyModuleNames": [],
+                    "returnedFileCount": 0,
+                    "filesTruncated": false,
+                    "fileCount": 500,
+                    "nextPageToken": null,
+                    "files": []
+                }],
+                "schemaVersion": 3
+            }),
+        ),
+        ("raw/workspace-files", page(0..200, Some("raw-page-2"))),
+        ("raw/workspace-files", page(200..400, Some("raw-page-3"))),
+        ("raw/workspace-files", page(400..500, None)),
+        ("raw/workspace-files", validation.clone()),
+        ("raw/workspace-files", validation),
+    ]);
+    if let Some(page_token) = issued_token {
+        responses.push((
+            "raw/workspace-files-continuation",
+            serde_json::json!({"type": "ISSUED", "pageToken": page_token}),
+        ));
+    }
+    spawn_sequenced_idea_backend(home, config_home, workspace, socket, responses)
+}
+
+fn run_workspace_files_page(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    page_token: Option<&str>,
+) -> std::process::Output {
+    let mut command = kast(home, config_home);
+    command.args([
+        "--output",
+        "json",
+        "agent",
+        "workspace-files",
+        "--workspace-root",
+        workspace.to_str().expect("UTF-8 workspace"),
+        "--backend",
+        "idea",
+        "--kind",
+        "source",
+        "--limit",
+        "200",
+        "--verbose",
+    ]);
+    if let Some(page_token) = page_token {
+        command.args(["--page-token", page_token]);
+    }
+    command.output().expect("workspace-files page")
+}
+
+fn workspace_files_issue_state(requests: &[serde_json::Value]) -> serde_json::Value {
+    requests
+        .iter()
+        .find(|request| {
+            request["method"] == "raw/workspace-files-continuation"
+                && request["params"]["action"] == "ISSUE"
+        })
+        .unwrap_or_else(|| panic!("missing workspace-files continuation issue: {requests:#?}"))
+        ["params"]["state"]
+        .clone()
+}
+
+fn spawn_small_mixed_workspace_files_backend(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    socket: &std::path::Path,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    let source_root = workspace.join("src/main/kotlin");
+    let module = |files: serde_json::Value, returned_file_count: usize| {
+        serde_json::json!({
+            "snapshotToken": "snapshot-mixed",
+            "modules": [{
+                "name": "fixture.main",
+                "sourceRoots": [source_root.display().to_string()],
+                "contentRoots": [workspace.display().to_string()],
+                "dependencyModuleNames": [],
+                "files": files,
+                "returnedFileCount": returned_file_count,
+                "filesTruncated": false,
+                "fileCount": 2,
+                "nextPageToken": null
+            }],
+            "schemaVersion": 3
+        })
+    };
+    let validation = serde_json::json!({
+        "snapshotToken": "snapshot-mixed",
+        "modules": [],
+        "schemaVersion": 3
+    });
+    spawn_scripted_idea_backend(
+        home,
+        config_home,
+        workspace,
+        socket,
+        vec![
+            ("raw/workspace-files", module(serde_json::json!([]), 0)),
+            (
+                "raw/workspace-files",
+                module(
+                    serde_json::json!([
+                        source_root.join("sample/Script.kts").display().to_string(),
+                        source_root
+                            .join("sample/Source0000.kt")
+                            .display()
+                            .to_string()
+                    ]),
+                    2,
+                ),
+            ),
+            ("raw/workspace-files", validation.clone()),
+            ("raw/workspace-files", validation),
+        ],
+    )
+}
+
+fn grouped_cardinality<'a>(
+    output: &'a serde_json::Value,
+    group: &str,
+    value: &str,
+) -> &'a serde_json::Value {
+    output["result"]["groupedCardinalities"][group]
+        .as_array()
+        .expect("grouped cardinalities")
+        .iter()
+        .find(|entry| entry["value"] == value)
+        .unwrap_or_else(|| panic!("missing {group}={value} group: {output:#}"))
+}
+
+#[test]
+fn exact_root_inventory_returns_a_bounded_compact_public_result() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = create_workspace_index(&home, &workspace, "exact-inventory", 1);
+    let source = workspace.join("src/main/kotlin/sample/Source0000.kt");
+    let socket = temp.path().join("workspace-files.sock");
+    let module = |files: serde_json::Value, include_files: bool| {
+        serde_json::json!({
+            "snapshotToken": "snapshot-one",
+            "modules": [{
+                "name": "fixture.main",
+                "sourceRoots": [workspace.join("src/main/kotlin").display().to_string()],
+                "contentRoots": [workspace.display().to_string()],
+                "dependencyModuleNames": [],
+                "files": files,
+                "returnedFileCount": if include_files { 1 } else { 0 },
+                "filesTruncated": false,
+                "fileCount": 1,
+                "nextPageToken": null
+            }],
+            "schemaVersion": 3
+        })
+    };
+    let server = spawn_scripted_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket,
+        vec![
+            ("raw/workspace-files", module(serde_json::json!([]), false)),
+            (
+                "raw/workspace-files",
+                module(serde_json::json!([source.display().to_string()]), true),
+            ),
+            (
+                "raw/workspace-files",
+                serde_json::json!({
+                    "snapshotToken": "snapshot-one",
+                    "modules": [],
+                    "schemaVersion": 3
+                }),
+            ),
+            (
+                "raw/workspace-files",
+                serde_json::json!({
+                    "snapshotToken": "snapshot-one",
+                    "modules": [],
+                    "schemaVersion": 3
+                }),
+            ),
+        ],
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--kind",
+            "source",
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("workspace-files command");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("workspace-files JSON result");
+    assert_eq!(stdout["method"], "agent/workspace-files", "{stdout:#}");
+    assert_eq!(
+        stdout["result"]["cardinality"]["type"], "EXACT",
+        "{stdout:#}"
+    );
+    assert_eq!(
+        stdout["result"]["cardinality"]["totalCount"], 1,
+        "{stdout:#}"
+    );
+    assert_eq!(stdout["result"]["returnedCount"], 1, "{stdout:#}");
+    assert_eq!(
+        stdout["result"]["files"][0]["relativePath"], "src/main/kotlin/sample/Source0000.kt",
+        "{stdout:#}"
+    );
+    assert_eq!(
+        stdout["result"]["files"][0]["kind"], "KOTLIN_SOURCE",
+        "{stdout:#}"
+    );
+    assert_eq!(
+        stdout["result"]["files"][0]["package"]["type"], "PROVEN_NAMED",
+        "{stdout:#}"
+    );
+    assert_eq!(
+        stdout["result"]["files"][0]["package"]["name"], "sample",
+        "{stdout:#}"
+    );
+    assert!(
+        !stdout["result"]["truncated"].as_bool().unwrap_or(true),
+        "{stdout:#}"
+    );
+
+    let requests = server.join().expect("scripted backend");
+    assert_eq!(requests.len(), 6, "one admitted raw session: {requests:#?}");
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| request["method"] == "raw/workspace-files")
+            .count(),
+        4,
+        "{requests:#?}"
+    );
+}
+
+#[test]
+fn public_continuations_return_five_hundred_files_as_200_200_100_without_gaps() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = create_workspace_index(&home, &workspace, "paged-inventory", 500);
+
+    let first_server = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("page-1.sock"),
+        None,
+        Some("550e8400-e29b-41d4-a716-446655440001"),
+    );
+    let first_output = run_workspace_files_page(&home, &config_home, &workspace, None);
+    assert!(
+        first_output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&first_output.stdout),
+        String::from_utf8_lossy(&first_output.stderr),
+    );
+    let first: serde_json::Value =
+        serde_json::from_slice(&first_output.stdout).expect("first workspace-files page");
+    let first_requests = first_server.join().expect("first workspace-files backend");
+    let first_state = workspace_files_issue_state(&first_requests);
+
+    let second_server = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("page-2.sock"),
+        Some(first_state),
+        Some("550e8400-e29b-41d4-a716-446655440002"),
+    );
+    let second_output = run_workspace_files_page(
+        &home,
+        &config_home,
+        &workspace,
+        Some("550e8400-e29b-41d4-a716-446655440001"),
+    );
+    assert!(
+        second_output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&second_output.stdout),
+        String::from_utf8_lossy(&second_output.stderr),
+    );
+    let second: serde_json::Value =
+        serde_json::from_slice(&second_output.stdout).expect("second workspace-files page");
+    let second_requests = second_server
+        .join()
+        .expect("second workspace-files backend");
+    let second_state = workspace_files_issue_state(&second_requests);
+
+    let third_server = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("page-3.sock"),
+        Some(second_state),
+        None,
+    );
+    let third_output = run_workspace_files_page(
+        &home,
+        &config_home,
+        &workspace,
+        Some("550e8400-e29b-41d4-a716-446655440002"),
+    );
+    assert!(
+        third_output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&third_output.stdout),
+        String::from_utf8_lossy(&third_output.stderr),
+    );
+    let third: serde_json::Value =
+        serde_json::from_slice(&third_output.stdout).expect("third workspace-files page");
+    third_server.join().expect("third workspace-files backend");
+
+    let pages = [&first, &second, &third];
+    assert_eq!(
+        pages.map(|page| page["result"]["returnedCount"].as_u64()),
+        [Some(200), Some(200), Some(100)]
+    );
+    assert_eq!(
+        first["result"]["nextPageToken"],
+        "550e8400-e29b-41d4-a716-446655440001"
+    );
+    assert_eq!(
+        second["result"]["nextPageToken"],
+        "550e8400-e29b-41d4-a716-446655440002"
+    );
+    assert!(third["result"].get("nextPageToken").is_none(), "{third:#}");
+    for page in pages {
+        assert_eq!(page["result"]["cardinality"]["type"], "EXACT", "{page:#}");
+        assert_eq!(page["result"]["cardinality"]["totalCount"], 500, "{page:#}");
+        assert_eq!(
+            page["result"]["returnedCount"].as_u64(),
+            page["result"]["files"]
+                .as_array()
+                .map(|files| files.len() as u64),
+            "{page:#}"
+        );
+    }
+    let relative_paths = pages
+        .into_iter()
+        .flat_map(|page| {
+            page["result"]["files"]
+                .as_array()
+                .expect("workspace files")
+                .iter()
+                .map(|file| {
+                    file["relativePath"]
+                        .as_str()
+                        .expect("relative path")
+                        .to_string()
+                })
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(relative_paths.len(), 500);
+    assert!(relative_paths.windows(2).all(|pair| pair[0] < pair[1]));
+    assert_eq!(
+        relative_paths.first().map(String::as_str),
+        Some("src/main/kotlin/sample/Source0000.kt")
+    );
+    assert_eq!(
+        relative_paths.last().map(String::as_str),
+        Some("src/main/kotlin/sample/Source0499.kt")
+    );
+}
+
+#[test]
+fn high_cardinality_default_compact_page_stays_within_agent_budget() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = create_workspace_index(&home, &workspace, "compact-budget", 500);
+    let server = spawn_paged_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("compact-budget.sock"),
+        None,
+        Some("550e8400-e29b-41d4-a716-446655440003"),
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--kind",
+            "source",
+        ])
+        .output()
+        .expect("compact workspace-files page");
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    server.join().expect("compact budget backend");
+    let raw = String::from_utf8(output.stdout).expect("compact UTF-8");
+    let stdout: serde_json::Value =
+        toon_format::decode_default(&raw).expect("compact default TOON");
+    assert_eq!(stdout["result"]["returnedCount"], 20);
+    let lines = raw.lines().count();
+    let tokens = tiktoken_rs::cl100k_base()
+        .expect("cl100k tokenizer")
+        .encode_with_special_tokens(&raw)
+        .len();
+    assert!(
+        lines <= 120,
+        "compact page used {lines} lines and {tokens} cl100k tokens; budgets are 120/1500"
+    );
+    assert!(
+        tokens <= 1_500,
+        "compact page used {tokens} cl100k tokens; budget is 1500"
+    );
+}
+
+#[test]
+fn mixed_count_keeps_the_script_group_exact_when_source_inventory_is_partial() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = create_workspace_index(&home, &workspace, "mixed-count", 1);
+    index.seed_progress("app", "INDEXING", 1, 2);
+    let script = workspace.join("src/main/kotlin/sample/Script.kts");
+    std::fs::write(&script, "println(\"fixture\")\n").expect("Kotlin script");
+    let server = spawn_small_mixed_workspace_files_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("mixed-count.sock"),
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "workspace-files",
+            "--workspace-root",
+            workspace.to_str().expect("UTF-8 workspace"),
+            "--backend",
+            "idea",
+            "--count",
+        ])
+        .output()
+        .expect("mixed workspace-file count");
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    server.join().expect("mixed count backend");
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("mixed count JSON");
+    assert_eq!(stdout["result"]["type"], "KAST_AGENT_WORKSPACE_FILES_COUNT");
+    assert_eq!(stdout["result"]["cardinality"]["type"], "KNOWN_MINIMUM");
+    assert_eq!(stdout["result"]["cardinality"]["knownMinimumCount"], 2);
+    assert_eq!(stdout["result"]["returnedCount"], 0);
+    assert!(stdout["result"].get("files").is_none(), "{stdout:#}");
+    assert_eq!(
+        grouped_cardinality(&stdout, "kind", "KOTLIN_SOURCE")["cardinality"]["type"],
+        "KNOWN_MINIMUM"
+    );
+    assert_eq!(
+        grouped_cardinality(&stdout, "kind", "KOTLIN_SCRIPT")["cardinality"],
+        serde_json::json!({"type": "EXACT", "totalCount": 1})
+    );
+    assert_eq!(
+        grouped_cardinality(&stdout, "index", "NOT_APPLICABLE")["cardinality"],
+        serde_json::json!({"type": "EXACT", "totalCount": 1})
+    );
+}
+
+#[test]
+fn selected_verbose_and_explain_views_add_only_their_typed_evidence() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("Gradle settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = create_workspace_index(&home, &workspace, "projection-views", 1);
+    index.seed_progress("app", "INDEXING", 1, 2);
+    std::fs::write(
+        workspace.join("src/main/kotlin/sample/Script.kts"),
+        "println(\"fixture\")\n",
+    )
+    .expect("Kotlin script");
+
+    for (view_name, view_args) in [
+        ("fields", vec!["--fields", "path,kind"]),
+        ("verbose", vec!["--verbose"]),
+        ("explain", vec!["--explain"]),
+    ] {
+        let server = spawn_small_mixed_workspace_files_backend(
+            &home,
+            &config_home,
+            &workspace,
+            &temp.path().join(format!("{view_name}.sock")),
+        );
+        let output = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "workspace-files",
+                "--workspace-root",
+                workspace.to_str().expect("UTF-8 workspace"),
+                "--backend",
+                "idea",
+            ])
+            .args(view_args)
+            .output()
+            .expect("workspace-file projection");
+        assert!(
+            output.status.success(),
+            "view={view_name} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        server.join().expect("projection backend");
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("workspace-file projection JSON");
+        assert_eq!(
+            stdout["result"]["returnedCount"].as_u64(),
+            stdout["result"]["files"]
+                .as_array()
+                .map(|files| files.len() as u64),
+            "{stdout:#}"
+        );
+        match view_name {
+            "fields" => {
+                assert_eq!(
+                    stdout["result"]["type"],
+                    "KAST_AGENT_WORKSPACE_FILES_SELECTION"
+                );
+                for file in stdout["result"]["files"]
+                    .as_array()
+                    .expect("selected files")
+                {
+                    let keys = file
+                        .as_object()
+                        .expect("selected file")
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    assert_eq!(keys, vec!["filePath", "relativePath", "kind"]);
+                }
+                assert!(stdout["result"].get("backendPageCoverage").is_none());
+            }
+            "verbose" => {
+                assert_eq!(stdout["result"]["view"], "VERBOSE");
+                assert_eq!(
+                    stdout["result"]["backendPageCoverage"]["workspace"],
+                    "COMPLETE"
+                );
+                assert_eq!(
+                    stdout["result"]["backendPageCoverage"]["modules"][0],
+                    serde_json::json!({
+                        "moduleName": "fixture.main",
+                        "declaredFileCount": 2,
+                        "coverage": "COMPLETE"
+                    })
+                );
+                assert!(stdout["result"].get("classificationEvidence").is_none());
+                assert!(stdout["result"].get("normalizedQuery").is_none());
+            }
+            "explain" => {
+                assert_eq!(stdout["result"]["view"], "EXPLAIN");
+                assert!(stdout["result"]["normalizedQuery"].is_string());
+                assert!(stdout["result"]["compositionDigest"].is_string());
+                assert_eq!(
+                    stdout["result"]["classificationEvidence"]
+                        .as_array()
+                        .map(Vec::len),
+                    Some(2)
+                );
+                assert_eq!(
+                    stdout["result"]["classificationEvidence"][1]["package"],
+                    "PROVEN_NAMED"
+                );
+            }
+            _ => unreachable!("closed projection fixture"),
+        }
+    }
 }
 
 #[test]
@@ -461,8 +1239,10 @@ fn unavailable_error_has_structured_next_action_and_toon_stdout_discipline() {
     );
     let document: serde_json::Value =
         toon_format::decode_default(toon).expect("workspace-files TOON");
+    assert_eq!(document["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
     assert_eq!(
-        document["error"]["code"], "WORKSPACE_FILE_DISCOVERY_UNAVAILABLE",
+        document["error"]["details"]["semanticWorkspace"]["nextActions"],
+        serde_json::json!([]),
         "{document:#}"
     );
     assert_eq!(

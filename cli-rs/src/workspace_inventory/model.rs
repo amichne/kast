@@ -1063,6 +1063,7 @@ pub(crate) enum WorkspaceInventoryLimitationCode {
 pub(crate) struct WorkspaceInventorySnapshot {
     files: Vec<WorkspaceInventoryFile>,
     backend_coverage: BackendWorkspaceCoverage,
+    backend_modules: BTreeMap<BackendModuleName, BackendModuleInventory>,
     coverage: WorkspaceMatchCoverage,
     kind_coverage: WorkspaceKindMatchCoverage,
     limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
@@ -1074,6 +1075,7 @@ impl WorkspaceInventorySnapshot {
     pub(super) fn new(
         mut files: Vec<WorkspaceInventoryFile>,
         backend_coverage: BackendWorkspaceCoverage,
+        backend_modules: BTreeMap<BackendModuleName, BackendModuleInventory>,
         coverage: WorkspaceMatchCoverage,
         kind_coverage: WorkspaceKindMatchCoverage,
         limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
@@ -1084,6 +1086,7 @@ impl WorkspaceInventorySnapshot {
         Self {
             files,
             backend_coverage,
+            backend_modules,
             coverage,
             kind_coverage,
             limitations,
@@ -1098,6 +1101,10 @@ impl WorkspaceInventorySnapshot {
 
     pub(crate) fn backend_coverage(&self) -> BackendWorkspaceCoverage {
         self.backend_coverage
+    }
+
+    pub(crate) fn backend_modules(&self) -> &BTreeMap<BackendModuleName, BackendModuleInventory> {
+        &self.backend_modules
     }
 
     pub(crate) fn coverage(&self) -> WorkspaceMatchCoverage {
