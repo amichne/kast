@@ -22,11 +22,13 @@ class ServerHeldContinuationStore<
     private val lock = ReentrantLock()
     private val callbacksDrained = lock.newCondition()
     private val entries = LinkedHashMap<Token, Entry<Query, State>>()
-    private val inFlightTokens = mutableSetOf<Token>()
+    private val inFlightTokens = mutableMapOf<Token, Thread>()
+    private val disposalThreads = mutableMapOf<Thread, Int>()
     private var expiryTask: ScheduledFuture<*>? = null
     private var activeCallbacks = 0
     private var activeDisposals = 0
     private var publicationInProgress = false
+    private var publicationOwner: Thread? = null
     private var closing = false
     private var closeCompleted = false
     private var closeFailure: Throwable? = null
@@ -183,31 +185,30 @@ class ServerHeldContinuationStore<
     override fun close() {
         val retained = lock.withLock {
             if (closing) {
-                while (!closeCompleted) callbacksDrained.awaitUninterruptibly()
                 null
             } else {
                 closing = true
                 expiryTask?.cancel(false)
                 expiryTask = null
                 callbacksDrained.signalAll()
-                entries.values.map(Entry<Query, State>::state).also { entries.clear() }
+                registerDisposalLocked(
+                    entries.values.map(Entry<Query, State>::state).also { entries.clear() },
+                )
             }
         }
-        if (retained == null) {
-            lock.withLock { closeFailure }?.let { throw it }
-            return
-        }
-
-        val retainedFailure = disposeAllCapturingFailure(retained)
+        disposeRegisteredCapturingFailure(retained)
+        var reentrant = false
         val failure = lock.withLock {
-            recordCloseFailureLocked(retainedFailure)
-            while (activeCallbacks > 0 || activeDisposals > 0 || publicationInProgress) {
-                callbacksDrained.awaitUninterruptibly()
+            signalOwnershipDrainedLocked()
+            if (isCurrentThreadStoreOwnedLocked()) {
+                reentrant = true
+                null
+            } else {
+                while (!closeCompleted) callbacksDrained.awaitUninterruptibly()
+                closeFailure
             }
-            closeCompleted = true
-            callbacksDrained.signalAll()
-            closeFailure
         }
+        if (reentrant) return
         failure?.let { throw it }
     }
 
@@ -228,7 +229,9 @@ class ServerHeldContinuationStore<
                 failure = failure,
             )
         } else {
-            check(inFlightTokens.add(token)) { "Continuation token was already in flight" }
+            check(inFlightTokens.putIfAbsent(token, Thread.currentThread()) == null) {
+                "Continuation token was already in flight"
+            }
             activeCallbacks = Math.addExact(activeCallbacks, 1)
             ClaimDecision.Claimed(token, entry)
         }
@@ -412,7 +415,9 @@ class ServerHeldContinuationStore<
     }
 
     private fun finishCallbackLocked(token: Token, disposeFailure: Throwable?) {
-        check(inFlightTokens.remove(token)) { "Continuation callback token was not in flight" }
+        check(inFlightTokens.remove(token) != null) {
+            "Continuation callback token was not in flight"
+        }
         activeCallbacks = Math.subtractExact(activeCallbacks, 1)
         if (closing) recordCloseFailureLocked(disposeFailure)
         signalOwnershipDrainedLocked()
@@ -425,12 +430,14 @@ class ServerHeldContinuationStore<
     private fun startPublicationLocked() {
         check(!publicationInProgress) { "Continuation publication was already in progress" }
         publicationInProgress = true
+        publicationOwner = Thread.currentThread()
     }
 
     private fun finishPublicationLocked() {
         check(publicationInProgress) { "Continuation publication was not in progress" }
         publicationInProgress = false
-        callbacksDrained.signalAll()
+        publicationOwner = null
+        signalOwnershipDrainedLocked()
     }
 
     private fun removeExpiredLocked(nowNanos: Long): List<State> = buildList {
@@ -509,13 +516,29 @@ class ServerHeldContinuationStore<
 
     private fun disposeRegisteredCapturingFailure(disposal: RegisteredDisposal<State>?): Throwable? {
         if (disposal == null) return null
-        val failure = disposeAllCapturingFailure(disposal.states)
-        finishDisposal(failure)
+        val thread = Thread.currentThread()
+        lock.withLock {
+            disposalThreads[thread] = Math.addExact(disposalThreads[thread] ?: 0, 1)
+        }
+        val failure = try {
+            disposeAllCapturingFailure(disposal.states)
+        } catch (unexpectedFailure: Throwable) {
+            unexpectedFailure
+        }
+        finishDisposal(thread, failure)
         return failure
     }
 
-    private fun finishDisposal(failure: Throwable?) {
+    private fun finishDisposal(thread: Thread, failure: Throwable?) {
         lock.withLock {
+            val ownershipCount = checkNotNull(disposalThreads[thread]) {
+                "Continuation disposal thread was not registered"
+            }
+            if (ownershipCount == 1) {
+                disposalThreads.remove(thread)
+            } else {
+                disposalThreads[thread] = Math.subtractExact(ownershipCount, 1)
+            }
             activeDisposals = Math.subtractExact(activeDisposals, 1)
             if (closing) recordCloseFailureLocked(failure)
             signalOwnershipDrainedLocked()
@@ -523,9 +546,23 @@ class ServerHeldContinuationStore<
     }
 
     private fun signalOwnershipDrainedLocked() {
-        if (activeCallbacks == 0 && activeDisposals == 0 && !publicationInProgress) {
-            callbacksDrained.signalAll()
+        if (
+            closing &&
+            !closeCompleted &&
+            activeCallbacks == 0 &&
+            activeDisposals == 0 &&
+            !publicationInProgress
+        ) {
+            closeCompleted = true
         }
+        callbacksDrained.signalAll()
+    }
+
+    private fun isCurrentThreadStoreOwnedLocked(): Boolean {
+        val thread = Thread.currentThread()
+        return publicationOwner === thread ||
+            thread in disposalThreads ||
+            inFlightTokens.values.any { owner -> owner === thread }
     }
 
     private fun disposeCapturingFailure(state: State): Throwable? = try {

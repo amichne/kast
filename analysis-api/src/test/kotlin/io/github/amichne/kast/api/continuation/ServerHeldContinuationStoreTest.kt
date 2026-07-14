@@ -41,13 +41,8 @@ class ServerHeldContinuationStoreTest {
     }
 
     @Test
-    fun `nullable output remains explicit inside a nominal projection wrapper`() {
-        val store = ServerHeldContinuationStore<
-            TestToken,
-            String,
-            TestState,
-            ContinuationProjection.Value<String?>,
-        >(
+    fun `nullable output remains explicit inside a domain projection`() {
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, TestProjection>(
             capacity = ContinuationCapacity.of(1),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -59,8 +54,8 @@ class ServerHeldContinuationStoreTest {
         }
 
         assertEquals(
-            ContinuationLeaseResult.Granted(ContinuationProjection.Value<String?>(null)),
-            store.lease(token, "query") { ContinuationProjection.Value<String?>(null) },
+            ContinuationLeaseResult.Granted(TestProjection(null)),
+            store.lease(token, "query") { TestProjection(null) },
         )
         store.close()
     }
@@ -494,6 +489,60 @@ class ServerHeldContinuationStoreTest {
     }
 
     @Test
+    fun `issue cleanup may close the store reentrantly without awaiting its own publication`() {
+        val disposed = mutableListOf<TestState>()
+        val cleanupStarted = CountDownLatch(1)
+        val reentrantCloseReturned = CountDownLatch(1)
+        val operationCompleted = CountDownLatch(1)
+        val storeReference = AtomicReference<
+            ServerHeldContinuationStore<TestToken, String, TestState, TestProjection>
+        >()
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, TestProjection>(
+            capacity = ContinuationCapacity.of(1),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = ScriptedTokenIssuer(1, 2),
+            stateDisposer = ContinuationStateDisposer { state ->
+                synchronized(disposed) { disposed += state }
+                if (state.name == "evicted") {
+                    cleanupStarted.countDown()
+                    storeReference.get().close()
+                    reentrantCloseReturned.countDown()
+                }
+            },
+        )
+        storeReference.set(store)
+        store.issueToken("first", TestState("evicted"))
+        val result = AtomicReference<ContinuationIssueResult<TestToken>>()
+        val failure = AtomicReference<Throwable?>()
+        val issuer = thread(name = "reentrant-close-issue", isDaemon = true) {
+            try {
+                result.set(store.issue("second", TestState("pending")))
+            } catch (actual: Throwable) {
+                failure.set(actual)
+            } finally {
+                operationCompleted.countDown()
+            }
+        }
+
+        assertTrue(cleanupStarted.await(5, TimeUnit.SECONDS))
+        assertTrue(reentrantCloseReturned.await(5, TimeUnit.SECONDS))
+        assertTrue(operationCompleted.await(5, TimeUnit.SECONDS))
+        issuer.join(5_000)
+
+        assertFalse(issuer.isAlive)
+        assertEquals(null, failure.get())
+        assertEquals(
+            ContinuationIssueResult.Rejected(ContinuationAccessFailure.StoreClosed),
+            result.get(),
+        )
+        store.close()
+        assertEquals(
+            listOf(TestState("evicted"), TestState("pending")),
+            synchronized(disposed) { disposed.toList() },
+        )
+    }
+
+    @Test
     fun `throwing expiry rolls back and disposes the undisclosed issued state`() {
         val clock = FakeClock()
         val disposed = mutableListOf<TestState>()
@@ -560,6 +609,65 @@ class ServerHeldContinuationStoreTest {
         )
         store.close()
         assertEquals(listOf(replaced, claimed), disposed)
+    }
+
+    @Test
+    fun `reissue cleanup may close the store reentrantly without awaiting its own publication`() {
+        val disposed = mutableListOf<TestState>()
+        val cleanupStarted = CountDownLatch(1)
+        val reentrantCloseReturned = CountDownLatch(1)
+        val operationCompleted = CountDownLatch(1)
+        val storeReference = AtomicReference<
+            ServerHeldContinuationStore<TestToken, String, TestState, TestProjection>
+        >()
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, TestProjection>(
+            capacity = ContinuationCapacity.of(2),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = ScriptedTokenIssuer(1, 2, 2),
+            stateDisposer = ContinuationStateDisposer { state ->
+                synchronized(disposed) { disposed += state }
+                if (state.name == "replaced") {
+                    cleanupStarted.countDown()
+                    storeReference.get().close()
+                    reentrantCloseReturned.countDown()
+                }
+            },
+        )
+        storeReference.set(store)
+        val claimedToken = store.issueToken("claimed", TestState("claimed"))
+        store.issueToken("replaced", TestState("replaced"))
+        val result = AtomicReference<ContinuationConsumeResult<TestToken, TestProjection>>()
+        val failure = AtomicReference<Throwable?>()
+        val consumer = thread(name = "reentrant-close-reissue", isDaemon = true) {
+            try {
+                result.set(
+                    store.consume(claimedToken, "claimed") {
+                        ContinuationTransition.Reissue(TestProjection("page"), "next")
+                    },
+                )
+            } catch (actual: Throwable) {
+                failure.set(actual)
+            } finally {
+                operationCompleted.countDown()
+            }
+        }
+
+        assertTrue(cleanupStarted.await(5, TimeUnit.SECONDS))
+        assertTrue(reentrantCloseReturned.await(5, TimeUnit.SECONDS))
+        assertTrue(operationCompleted.await(5, TimeUnit.SECONDS))
+        consumer.join(5_000)
+
+        assertFalse(consumer.isAlive)
+        assertEquals(null, failure.get())
+        assertEquals(
+            ContinuationConsumeResult.Rejected(ContinuationAccessFailure.StoreClosed),
+            result.get(),
+        )
+        store.close()
+        assertEquals(
+            listOf(TestState("replaced"), TestState("claimed")),
+            synchronized(disposed) { disposed.toList() },
+        )
     }
 
     @Test
