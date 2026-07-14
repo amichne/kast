@@ -764,7 +764,7 @@ kast agent workspace-files \
   [--module backend:<exact-name>|gradle:<build-root>#<project-path>] \
   [--source-set <exact-source-set>] \
   [--kind source|script] \
-  [--package <exact-package>] \
+  [--package root|named:<canonical-package-fq-name>] \
   [--dirty clean|dirty|unknown] \
   [--drift none|filesystem-only|index-only|missing-on-disk|not-applicable|unknown] \
   [--path-prefix <workspace-relative-prefix>] \
@@ -779,10 +779,13 @@ All filters use AND semantics before the default limit of 20. Module parses a
 closed backend or build-qualified Gradle selector; `gradle:.#:app` identifies
 `:app` in the root build while `gradle:included/tools#:app` is distinct. Path
 prefix matches at a segment boundary; glob matches only normalized relative
-paths. Source-set and package filters match only structured `Proven` evidence;
-unavailable or legacy-unproven evidence does not match and makes filter
-coverage partial. Escaped, backticked, and Unicode package input is parsed to
-the same canonical Kotlin FQ-name type used by the producer. `--page-token`
+paths. Package selection is a closed `WorkspacePackageSelector::Root` or
+`WorkspacePackageSelector::Named(WorkspacePackageName)` union. `root` matches
+only `ProvenRoot`; `named:` parses escaped, backticked, and Unicode input to the
+same canonical Kotlin FQ-name type used by the producer and matches only the
+equal `ProvenNamed` value. Source-set filters likewise match only structured
+`Proven` evidence. Unavailable or legacy-unproven evidence does not match and
+makes filter coverage partial. `--page-token`
 conflicts with `--count`;
 all other result-affecting arguments must reproduce the original normalized
 query exactly.

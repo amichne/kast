@@ -194,8 +194,10 @@ are typed and conjunctive:
   the corresponding backend owner or build-qualified indexed Gradle project;
 - `--source-set` matches an exact model-proven Gradle source-set name;
 - `--kind source|script` distinguishes `.kt` from `.kts`;
-- `--package` matches an exact compiler/PSI-proven canonical Kotlin package
-  fully qualified name;
+- `--package` parses a closed selector: `root` or
+  `named:<canonical-kotlin-package-fq-name>`; `root` matches only
+  `PROVEN_ROOT`, while `named:` matches only the exact compiler/PSI-proven
+  `PROVEN_NAMED` canonical name;
 - `--dirty clean|dirty|unknown` filters the typed Git state class;
 - `--drift none|filesystem-only|index-only|missing-on-disk|not-applicable|unknown`
   filters cross-source drift;

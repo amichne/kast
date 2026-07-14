@@ -717,8 +717,9 @@ Do not stage either source-index policy file; both are verification-only.
 **Interfaces:**
 
 - Produces: `AgentCommand::WorkspaceFiles`, typed filters,
-  `AgentWorkspaceFilesField`, closed `WorkspaceModuleSelector`, distinct
-  `WorkspaceFilesPublicPageToken`, and a temporary typed unavailable result.
+  `AgentWorkspaceFilesField`, closed `WorkspaceModuleSelector`, closed
+  `WorkspacePackageSelector`, distinct `WorkspaceFilesPublicPageToken`, and a
+  temporary typed unavailable result.
 - Consumes: ADR 0020 `AgentResultView` and existing `AgentRuntimeArgs`.
 
 - [ ] **Step 1: Write failing command/help/argument tests**
@@ -731,10 +732,11 @@ noncanonical handles and page-token/count combinations that cannot emit files.
 Accept `backend:<exact-name>`, `gradle:.#:app`, and
 `gradle:included/tools#:app`; reject unprefixed/empty selectors, absolute or
 escaping build roots, and non-absolute Gradle project paths.
-Accept canonical Kotlin package selectors for escaped/backticked and general
-Unicode identifiers, normalize them to semantic FQ names, and reject malformed
-package syntax. Accept a typed `integrationTest` source-set name without
-assuming any directory convention.
+Accept `root` and canonical `named:<fq-name>` package selectors. Cover
+escaped/backticked and general Unicode named identifiers, normalize named
+selectors to semantic FQ names, and reject unprefixed names, `named:` without a
+name, and malformed package syntax. Accept a typed `integrationTest` source-set
+name without assuming any directory convention.
 
 - [ ] **Step 2: Run the red command tests**
 
@@ -755,9 +757,11 @@ Parse module as `WorkspaceModuleSelector::Backend(BackendModuleName)` or a
 newtypes; Task 4 maps that variant to the inventory identity. Derive the raw/composition
 source-only, script-only, or mixed domain from the kind filter, with no filter
 meaning mixed. Use private-field newtypes and `FromStr` validation. Keep the public token type
-distinct from raw snapshot/module-page tokens. The drift enum is:
-Parse package filters through the same canonical Kotlin package-name boundary
-used by producer evidence. Parse source-set filters as names only, but allow
+distinct from raw snapshot/module-page tokens. Parse package filters as the
+closed `WorkspacePackageSelector::Root` or
+`WorkspacePackageSelector::Named(WorkspacePackageName)` union. Parse the named
+variant through the same canonical Kotlin package-name boundary used by
+producer evidence. Parse source-set filters as names only, but allow
 matches exclusively against model-proven build-qualified source-set evidence.
 Legacy labels never satisfy either filter. The drift enum is:
 
@@ -1281,7 +1285,9 @@ corresponding owner type, sort by relative path and sorted owner sets, and only
 then take `limit`. Compute candidate-inventory and selected-filter evidence
 coverage before projection. Do not infer exact match cardinality merely from a
 fully consumed known-candidate vector.
-Package and source-set filters match only `ProvenNamed`/`ProvenRoot` or
+`WorkspacePackageSelector::Root` matches only `ProvenRoot`, and
+`WorkspacePackageSelector::Named(expected)` matches only an equal
+`ProvenNamed(actual)`. Source-set filters match only
 `WorkspaceSourceSetEvidence::Proven`; legacy/unproven values remain visible to
 explain output but cannot become matches.
 

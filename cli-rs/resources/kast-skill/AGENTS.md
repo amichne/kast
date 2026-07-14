@@ -46,7 +46,9 @@ AXI command dialect, and validation gates is
   a partial or pending relevant candidate lane as exhaustive.
 - Teach package/source-set filters as proof-only: structured Kotlin
   PSI/compiler package evidence and Gradle model source sets may match; legacy
-  or unavailable labels remain explicit partial evidence.
+  or unavailable labels remain explicit partial evidence. Teach the closed
+  package selector as `root` for proven-root evidence or
+  `named:<canonical-kotlin-package-fq-name>` for exact proven-named evidence.
 - The packaged script is an internal verification helper. Keep it
   JSON-emitting, eager about input validation, and read-only by default.
 

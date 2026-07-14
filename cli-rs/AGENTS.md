@@ -65,6 +65,9 @@ and validation gates live in
 - Never match package/source-set filters against legacy strings. Only
   compiler/PSI-proven package states and model-proven build-qualified Gradle
   source sets match; unproven values remain explicit partial filter evidence.
+  The package selector is closed: `root` matches only proven-root evidence and
+  `named:<canonical-kotlin-package-fq-name>` matches only equal proven-named
+  evidence.
 - `packaging/homebrew/release-state.json` is the schema-version source consumed
   by `build.rs`. Keep its generated Rust value aligned with build-logic's Kotlin
   value and fail closed on an older/malformed source-index schema.
