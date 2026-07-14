@@ -57,6 +57,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         ),
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         AgentCommand::Verify(args) => execute_agent_verify(args),
+        AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
         AgentCommand::Symbol(args) => execute_agent_symbol(args),
         AgentCommand::Impact(args) => execute_agent_impact(args),
         AgentCommand::Diagnostics(args) => execute_agent_diagnostics(args),
@@ -538,10 +539,9 @@ fn execute_agent_steps(
             }
             Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
                 let mut error = agent_error(rejection.code, rejection.message);
-                error.details.insert(
-                    "semanticWorkspace".to_string(),
-                    json!(rejection.evidence),
-                );
+                error
+                    .details
+                    .insert("semanticWorkspace".to_string(), json!(rejection.evidence));
                 return error_envelope(method.to_string(), None, error);
             }
             Err(error) => {
@@ -613,9 +613,9 @@ fn execute_agent_steps(
             break;
         }
     }
-    let semantic_workspace = workspace_admission.as_ref().and_then(|admission| {
-        verification_workspace_evidence(method, admission, &step_results)
-    });
+    let semantic_workspace = workspace_admission
+        .as_ref()
+        .and_then(|admission| verification_workspace_evidence(method, admission, &step_results));
     if method == "agent/verify" && semantic_workspace.is_none() && issues.is_empty() {
         issues.push(json!({
             "code": "SEMANTIC_WORKSPACE_EVIDENCE_INVALID",
@@ -634,9 +634,7 @@ fn execute_agent_steps(
     if let (Some(summary), Some(result)) = (semantic_analysis, result.as_object_mut()) {
         result.insert("semanticAnalysis".to_string(), json!(summary));
     }
-    if let (Some(semantic_workspace), Some(result)) =
-        (semantic_workspace, result.as_object_mut())
-    {
+    if let (Some(semantic_workspace), Some(result)) = (semantic_workspace, result.as_object_mut()) {
         result.insert("semanticWorkspace".to_string(), json!(semantic_workspace));
     }
     let error = (!ok).then(|| {
