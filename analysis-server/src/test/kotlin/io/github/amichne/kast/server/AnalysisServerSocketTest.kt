@@ -12,8 +12,10 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
+import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
+import io.github.amichne.kast.api.protocol.JSON_RPC_SERVER_ERROR_BASE
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.CompletableDeferred
@@ -22,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -230,6 +233,9 @@ class AnalysisServerSocketTest {
                 descriptorDirectory = tempDir.resolve("instances"),
             ),
         ).start().use {
+            val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
+            val preAdmission = pollMutationStatus(socketPath, selector)
+            assertEquals(MutationStatusPoll.NotAdmitted, preAdmission)
             sendWithoutReadingResponse(
                 socketPath = socketPath,
                 request = JsonRpcRequest(
@@ -238,10 +244,7 @@ class AnalysisServerSocketTest {
                     params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
                 ),
             )
-            Thread.sleep(25)
-
-            val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
-            val terminal = awaitMutationTerminal(socketPath, selector)
+            val terminal = awaitMutationTerminal(socketPath, selector, preAdmission)
 
             assertTrue(terminal.state is KastMutationOperationState.Completed)
             assertEquals("package sample\n\nclass Reconnected\n", Files.readString(target))
@@ -342,34 +345,83 @@ class AnalysisServerSocketTest {
     private fun awaitMutationTerminal(
         socketPath: Path,
         selector: KastMutationOperationSelector,
+        initialPoll: MutationStatusPoll,
     ): KastMutationOperationSnapshot {
+        var poll = initialPoll
         repeat(200) {
-            val response = callSocket(
-                socketPath = socketPath,
-                request = JsonRpcRequest(
-                    id = JsonPrimitive(2),
-                    method = "mutation/status",
-                    params = json.encodeToJsonElement(KastMutationOperationSelector.serializer(), selector),
-                ),
-            )
-            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
-            val snapshot = json.decodeFromJsonElement(KastMutationOperationSnapshot.serializer(), success.result)
-            if (
-                snapshot.state is KastMutationOperationState.Completed ||
-                snapshot.state is KastMutationOperationState.Failed ||
-                snapshot.state is KastMutationOperationState.Cancelled
-            ) {
-                return snapshot
+            when (val current = poll) {
+                MutationStatusPoll.NotAdmitted -> Unit
+                is MutationStatusPoll.Available -> {
+                    val snapshot = current.snapshot
+                    if (
+                        snapshot.state is KastMutationOperationState.Completed ||
+                        snapshot.state is KastMutationOperationState.Failed ||
+                        snapshot.state is KastMutationOperationState.Cancelled
+                    ) {
+                        return snapshot
+                    }
+                }
             }
             Thread.sleep(5)
+            poll = pollMutationStatus(socketPath, selector)
         }
         error("Mutation operation did not become terminal after reconnect")
+    }
+
+    private fun pollMutationStatus(
+        socketPath: Path,
+        selector: KastMutationOperationSelector,
+    ): MutationStatusPoll {
+        val response = callSocket(
+            socketPath = socketPath,
+            request = JsonRpcRequest(
+                id = JsonPrimitive(2),
+                method = "mutation/status",
+                params = json.encodeToJsonElement(KastMutationOperationSelector.serializer(), selector),
+            ),
+        )
+        val responseObject = json.parseToJsonElement(response).jsonObject
+        responseObject["result"]?.let {
+            val success = json.decodeFromJsonElement(JsonRpcSuccessResponse.serializer(), responseObject)
+            return MutationStatusPoll.Available(
+                json.decodeFromJsonElement(KastMutationOperationSnapshot.serializer(), success.result),
+            )
+        }
+
+        val failure = json.decodeFromJsonElement(JsonRpcErrorResponse.serializer(), responseObject)
+        val errorData = failure.error.data
+        check(
+            failure.error.code == JSON_RPC_SERVER_ERROR_BASE - HTTP_NOT_FOUND_STATUS &&
+                errorData?.code == NOT_FOUND_ERROR_CODE &&
+                errorData.details.entries.containsAll(selector.expectedNotFoundDetails().entries),
+        ) {
+            "Unexpected mutation/status failure while awaiting admission: $response"
+        }
+        return MutationStatusPoll.NotAdmitted
+    }
+
+    private fun KastMutationOperationSelector.expectedNotFoundDetails(): Map<String, String> = when (this) {
+        is KastMutationOperationSelector.ByOperationId -> mapOf("operationId" to operationId.value)
+        is KastMutationOperationSelector.ByIdempotencyKey -> mapOf("idempotencyKey" to idempotencyKey.value)
+    }
+
+    private sealed interface MutationStatusPoll {
+        data object NotAdmitted : MutationStatusPoll
+
+        data class Available(
+            val snapshot: KastMutationOperationSnapshot,
+        ) : MutationStatusPoll
     }
 
     private fun awaitClientHandlerCompletion() {
         repeat(50) {
             Thread.sleep(10)
         }
+    }
+
+    private companion object {
+        const val HTTP_NOT_FOUND_STATUS = 404
+        const val NOT_FOUND_ERROR_CODE = "NOT_FOUND"
     }
 
     @Test
