@@ -6,13 +6,17 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
+import io.github.amichne.kast.api.contract.mutation.KastMutationOperationId
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
+import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationKind
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
+import io.github.amichne.kast.api.protocol.ApiErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
+import io.github.amichne.kast.api.protocol.JsonRpcErrorObject
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.protocol.JSON_RPC_SERVER_ERROR_BASE
@@ -252,6 +256,70 @@ class AnalysisServerSocketTest {
     }
 
     @Test
+    fun `mutation status polling rejects registry loss after admission`() {
+        val idempotencyKey = KastMutationIdempotencyKey("issue-333-registry-loss")
+        val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
+        val available = MutationStatusPoll.Available(
+            KastMutationOperationSnapshot(
+                operationId = KastMutationOperationId.random(),
+                idempotencyKey = idempotencyKey,
+                mutationKind = KastSemanticMutationKind.ADD_FILE,
+                state = KastMutationOperationState.Queued(),
+            ),
+        )
+        val admitted = MutationStatusAwaitPhase.AwaitingAdmission.observe(available)
+        val matchingNotFound = decodeMutationStatus(
+            mutationNotFoundResponse(mapOf("idempotencyKey" to idempotencyKey.value)),
+            selector,
+        )
+        assertEquals(MutationStatusAwaitPhase.Admitted, admitted)
+        assertEquals(MutationStatusPoll.NotAdmitted, matchingNotFound)
+
+        org.junit.jupiter.api.assertThrows<IllegalStateException> {
+            admitted.observe(matchingNotFound)
+        }
+    }
+
+    @Test
+    fun `mutation status polling rejects wrong and extra not found selector details`() {
+        val idempotencyKey = KastMutationIdempotencyKey("issue-333-closed-error-shape")
+        val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
+        val expectedDetails = mapOf("idempotencyKey" to idempotencyKey.value)
+        val invalidDetails = listOf(
+            mapOf("idempotencyKey" to "another-operation"),
+            expectedDetails + ("operationId" to KastMutationOperationId.random().value),
+        )
+
+        invalidDetails.forEach { details ->
+            org.junit.jupiter.api.assertThrows<IllegalStateException> {
+                decodeMutationStatus(mutationNotFoundResponse(details), selector)
+            }
+        }
+    }
+
+    @Test
+    fun `mutation status polling does not fetch an uninspected response beyond its bound`() {
+        val poll = MutationStatusPoll.Available(
+            KastMutationOperationSnapshot(
+                operationId = KastMutationOperationId.random(),
+                idempotencyKey = KastMutationIdempotencyKey("issue-333-poll-bound"),
+                mutationKind = KastSemanticMutationKind.ADD_FILE,
+                state = KastMutationOperationState.Queued(),
+            ),
+        )
+        var subsequentPolls = 0
+
+        org.junit.jupiter.api.assertThrows<IllegalStateException> {
+            awaitMutationTerminal(poll) {
+                subsequentPolls += 1
+                poll
+            }
+        }
+
+        assertEquals(MAX_MUTATION_STATUS_POLLS - 1, subsequentPolls)
+    }
+
+    @Test
     fun `server close cancels and joins mutation before removing descriptor authority`() {
         val socketPath = tempDir.resolve("run").resolve("c.sock")
         val descriptorDirectory = tempDir.resolve("close-instances")
@@ -346,9 +414,19 @@ class AnalysisServerSocketTest {
         socketPath: Path,
         selector: KastMutationOperationSelector,
         initialPoll: MutationStatusPoll,
+    ): KastMutationOperationSnapshot = awaitMutationTerminal(initialPoll) {
+        Thread.sleep(MUTATION_STATUS_POLL_INTERVAL_MILLIS)
+        pollMutationStatus(socketPath, selector)
+    }
+
+    private fun awaitMutationTerminal(
+        initialPoll: MutationStatusPoll,
+        nextPoll: () -> MutationStatusPoll,
     ): KastMutationOperationSnapshot {
         var poll = initialPoll
-        repeat(200) {
+        var phase: MutationStatusAwaitPhase = MutationStatusAwaitPhase.AwaitingAdmission
+        repeat(MAX_MUTATION_STATUS_POLLS) { pollIndex ->
+            phase = phase.observe(poll)
             when (val current = poll) {
                 MutationStatusPoll.NotAdmitted -> Unit
                 is MutationStatusPoll.Available -> {
@@ -362,8 +440,9 @@ class AnalysisServerSocketTest {
                     }
                 }
             }
-            Thread.sleep(5)
-            poll = pollMutationStatus(socketPath, selector)
+            if (pollIndex < MAX_MUTATION_STATUS_POLLS - 1) {
+                poll = nextPoll()
+            }
         }
         error("Mutation operation did not become terminal after reconnect")
     }
@@ -380,6 +459,13 @@ class AnalysisServerSocketTest {
                 params = json.encodeToJsonElement(KastMutationOperationSelector.serializer(), selector),
             ),
         )
+        return decodeMutationStatus(response, selector)
+    }
+
+    private fun decodeMutationStatus(
+        response: String,
+        selector: KastMutationOperationSelector,
+    ): MutationStatusPoll {
         val responseObject = json.parseToJsonElement(response).jsonObject
         responseObject["result"]?.let {
             val success = json.decodeFromJsonElement(JsonRpcSuccessResponse.serializer(), responseObject)
@@ -393,12 +479,30 @@ class AnalysisServerSocketTest {
         check(
             failure.error.code == JSON_RPC_SERVER_ERROR_BASE - HTTP_NOT_FOUND_STATUS &&
                 errorData?.code == NOT_FOUND_ERROR_CODE &&
-                errorData.details.entries.containsAll(selector.expectedNotFoundDetails().entries),
+                errorData.details == selector.expectedNotFoundDetails(),
         ) {
             "Unexpected mutation/status failure while awaiting admission: $response"
         }
         return MutationStatusPoll.NotAdmitted
     }
+
+    private fun mutationNotFoundResponse(details: Map<String, String>): String = json.encodeToString(
+        JsonRpcErrorResponse.serializer(),
+        JsonRpcErrorResponse(
+            id = JsonPrimitive(2),
+            error = JsonRpcErrorObject(
+                code = JSON_RPC_SERVER_ERROR_BASE - HTTP_NOT_FOUND_STATUS,
+                message = "Mutation operation was not found",
+                data = ApiErrorResponse(
+                    requestId = "2",
+                    code = NOT_FOUND_ERROR_CODE,
+                    message = "Mutation operation was not found",
+                    retryable = false,
+                    details = details,
+                ),
+            ),
+        ),
+    )
 
     private fun KastMutationOperationSelector.expectedNotFoundDetails(): Map<String, String> = when (this) {
         is KastMutationOperationSelector.ByOperationId -> mapOf("operationId" to operationId.value)
@@ -413,6 +517,24 @@ class AnalysisServerSocketTest {
         ) : MutationStatusPoll
     }
 
+    private sealed interface MutationStatusAwaitPhase {
+        data object AwaitingAdmission : MutationStatusAwaitPhase
+
+        data object Admitted : MutationStatusAwaitPhase
+    }
+
+    private fun MutationStatusAwaitPhase.observe(poll: MutationStatusPoll): MutationStatusAwaitPhase = when (this) {
+        MutationStatusAwaitPhase.AwaitingAdmission -> when (poll) {
+            MutationStatusPoll.NotAdmitted -> this
+            is MutationStatusPoll.Available -> MutationStatusAwaitPhase.Admitted
+        }
+
+        MutationStatusAwaitPhase.Admitted -> when (poll) {
+            MutationStatusPoll.NotAdmitted -> error("Mutation status disappeared after admission")
+            is MutationStatusPoll.Available -> this
+        }
+    }
+
     private fun awaitClientHandlerCompletion() {
         repeat(50) {
             Thread.sleep(10)
@@ -421,6 +543,8 @@ class AnalysisServerSocketTest {
 
     private companion object {
         const val HTTP_NOT_FOUND_STATUS = 404
+        const val MAX_MUTATION_STATUS_POLLS = 200
+        const val MUTATION_STATUS_POLL_INTERVAL_MILLIS = 5L
         const val NOT_FOUND_ERROR_CODE = "NOT_FOUND"
     }
 
