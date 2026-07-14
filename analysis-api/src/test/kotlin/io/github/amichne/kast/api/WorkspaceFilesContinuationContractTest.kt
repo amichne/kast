@@ -9,6 +9,7 @@ import io.github.amichne.kast.api.protocol.InvalidWorkspaceFilesPageTokenExcepti
 import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
 import java.nio.file.Path
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
@@ -27,6 +28,29 @@ class WorkspaceFilesContinuationContractTest {
         }
         assertThrows(IllegalArgumentException::class.java) {
             Json.decodeFromString(WorkspaceFilesPublicPageToken.serializer(), "\"not-a-handle\"")
+        }
+    }
+
+    @Test
+    fun `generated continuation request samples cross the typed request boundary`() {
+        val repoRoot = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
+            .first { java.nio.file.Files.isDirectory(it.resolve("cli-rs")) }
+        val samplesRoot = repoRoot.resolve(
+            "cli-rs/resources/kast-skill/references/requests/raw/workspace-files-continuation",
+        )
+
+        for (variant in listOf("ISSUE", "CONSUME")) {
+            for (shape in listOf("minimal", "maximal")) {
+                val request = Json.parseToJsonElement(
+                    java.nio.file.Files.readString(samplesRoot.resolve("$variant/$shape.json")),
+                ).jsonObject
+                val query = Json.decodeFromString(
+                    WorkspaceFilesContinuationQuery.serializer(),
+                    request.getValue("params").toString(),
+                )
+
+                query.parsed()
+            }
         }
     }
 

@@ -300,6 +300,19 @@ fn command_catalog_is_schema_backed_and_self_consistent() {
 }
 
 #[test]
+fn command_catalog_schema_rejects_unrecognized_command_properties() {
+    let catalog_schema = schema_value("resources/kast-skill/references/commands.schema.json");
+    let validator = jsonschema::validator_for(&catalog_schema).expect("schema compiles");
+    let mut invalid_catalog = catalog();
+    invalid_catalog["commands"]["symbol/query"]["unrecognized"] = Value::Bool(true);
+
+    assert!(
+        validator.validate(&invalid_catalog).is_err(),
+        "declaring failureReasons must not weaken command additional-property checks"
+    );
+}
+
+#[test]
 fn symbol_query_catalog_documents_relevance_filters() {
     let catalog = catalog();
     let filters = &catalog["commands"]["symbol/query"]["request"]["fields"]["filters"]["fields"];
@@ -624,6 +637,15 @@ fn agent_tool_surface_exposes_navigation_without_internal_transport_leaks() {
             && metrics_description.contains("impact questions"),
         "database/metrics should disclose source-index database access: {metrics_description}"
     );
+}
+
+#[test]
+fn installed_skill_teaches_public_workspace_files_without_raw_continuation() {
+    let skill = include_str!("../resources/kast-skill/SKILL.md");
+
+    assert!(skill.contains("kast agent workspace-files"));
+    assert!(!skill.contains("raw/workspace-files"));
+    assert!(!skill.contains("raw/workspace-files-continuation"));
 }
 
 #[test]
