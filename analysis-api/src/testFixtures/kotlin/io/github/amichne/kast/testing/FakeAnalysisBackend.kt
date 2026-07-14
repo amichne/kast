@@ -1,6 +1,13 @@
 package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.continuation.ContinuationAccessFailure
+import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
+import io.github.amichne.kast.api.continuation.ContinuationIssueResult
+import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
+import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
+import io.github.amichne.kast.api.continuation.ContinuationTransition
+import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
@@ -75,9 +82,21 @@ class FakeAnalysisBackend private constructor(
     private val typeHierarchySubtypeSymbol: Symbol,
     private val limits: ServerLimits,
     private val backendName: String,
-) : AnalysisBackend {
-    private val referenceContinuations = mutableMapOf<ReferencePageToken, FakeReferenceContinuation>()
-    private val diagnosticContinuations = mutableMapOf<DiagnosticPageToken, FakeDiagnosticContinuation>()
+) : AnalysisBackend, AutoCloseable {
+    private val referenceContinuations =
+        ServerHeldContinuationStore<ReferencePageToken, FakeReferenceIdentity, FakeReferenceContinuation>(
+            capacity = limits.typedContinuationCapacity,
+            timeToLive = limits.typedContinuationTtl,
+            tokenIssuer = ContinuationTokenIssuer(ReferencePageToken::random),
+            stateDisposer = ContinuationStateDisposer { },
+        )
+    private val diagnosticContinuations =
+        ServerHeldContinuationStore<DiagnosticPageToken, FakeDiagnosticIdentity, FakeDiagnosticContinuation>(
+            capacity = limits.typedContinuationCapacity,
+            timeToLive = limits.typedContinuationTtl,
+            tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
+            stateDisposer = ContinuationStateDisposer { },
+        )
     private val availableFiles: MutableSet<String> = buildSet {
         addAll(symbolAnchors.map(Location::filePath))
         addAll(diagnosticsByFile.keys)
@@ -139,38 +158,40 @@ class FakeAnalysisBackend private constructor(
             .distinctBy { location -> Triple(location.filePath, location.startOffset, location.endOffset) }
             .sortedWith(compareBy({ it.filePath }, { it.startOffset }, { it.endOffset }))
         val identity = fakeReferenceIdentity(query)
-        val continuation = query.pageToken?.let { token ->
-            referenceContinuations.remove(token)
-                ?: throw ConflictException("Unknown or consumed reference continuation token")
-        }
-        if (continuation != null && continuation.identity != identity) {
-            throw ConflictException("Reference continuation token belongs to another query")
-        }
-        val pageStart = continuation?.offset ?: 0
-        val probeLimit = query.maxResults.value.let { maxResults ->
-            if (maxResults == Int.MAX_VALUE) maxResults else maxResults + 1
-        }
-        val pageProbe = allReferences.drop(pageStart).take(probeLimit)
-        val references = pageProbe.take(query.maxResults.value)
-        val page = if (pageProbe.size > references.size) {
-            val token = ReferencePageToken.random()
-            referenceContinuations[token] = FakeReferenceContinuation(
-                identity = identity,
-                offset = Math.addExact(pageStart, references.size),
+        val pageToken = query.pageToken
+        if (pageToken == null) {
+            val page = fakeReferencePage(
+                allReferences = allReferences,
+                pageStart = 0,
+                maxResults = query.maxResults.value,
             )
-            PageInfo(
-                truncated = true,
-                nextPageToken = token.value,
-            )
-        } else {
-            null
+            val nextPageToken = if (page.hasMore) {
+                issueReferenceContinuation(identity, FakeReferenceContinuation(page.nextOffset)).value
+            } else {
+                null
+            }
+            return page.toResult(declaration, allReferences.size, nextPageToken)
         }
-        return ReferencesResult(
-            declaration = declaration,
-            references = references,
-            cardinality = io.github.amichne.kast.api.contract.result.ResultCardinality.Exact(allReferences.size),
-            page = page,
-        )
+
+        return when (val consumed = referenceContinuations.consume(pageToken, identity) { continuation ->
+            val page = fakeReferencePage(
+                allReferences = allReferences,
+                pageStart = continuation.offset,
+                maxResults = query.maxResults.value,
+            )
+            if (page.hasMore) {
+                continuation.offset = page.nextOffset
+                ContinuationTransition.Reissue(page, identity)
+            } else {
+                ContinuationTransition.Complete(page)
+            }
+        }) {
+            is ContinuationConsumeResult.Completed ->
+                consumed.output.toResult(declaration, allReferences.size, nextPageToken = null)
+            is ContinuationConsumeResult.Reissued ->
+                consumed.output.toResult(declaration, allReferences.size, consumed.token.value)
+            is ContinuationConsumeResult.Rejected -> throwReferenceContinuationFailure(consumed.failure)
+        }
     }
 
     override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult {
@@ -286,39 +307,50 @@ class FakeAnalysisBackend private constructor(
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult {
         val filePaths = query.filePaths.value
         filePaths.forEach { requireKnownFile(it.value) }
-        val identity = filePaths.map { path -> path.value } to query.maxResults.value
-        val continuation = query.pageToken?.let { token ->
-            diagnosticContinuations.remove(token)
-                ?: throw ConflictException("Unknown or consumed diagnostic continuation token")
+        val identity = FakeDiagnosticIdentity(
+            filePaths = filePaths.map { path -> path.value },
+            maxResults = query.maxResults.value,
+        )
+        val pageToken = query.pageToken
+        if (pageToken != null) {
+            return when (val consumed = diagnosticContinuations.consume(pageToken, identity) { continuation ->
+                val page = continuation.page(query.maxResults.value)
+                if (page.hasMore) {
+                    continuation.offset = page.nextOffset
+                    ContinuationTransition.Reissue(page, identity)
+                } else {
+                    ContinuationTransition.Complete(page)
+                }
+            }) {
+                is ContinuationConsumeResult.Completed -> consumed.output.toResult(nextPageToken = null)
+                is ContinuationConsumeResult.Reissued -> consumed.output.toResult(consumed.token.value)
+                is ContinuationConsumeResult.Rejected -> throwDiagnosticContinuationFailure(consumed.failure)
+            }
         }
-        if (continuation != null && continuation.identity != identity) {
-            throw ConflictException("Diagnostic continuation token belongs to another query")
-        }
-        val diagnostics = continuation?.diagnostics ?: filePaths
+
+        val diagnostics = filePaths
             .flatMap { filePath -> diagnosticsByFile[filePath.value].orEmpty() }
             .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }))
-        val fileStatuses = continuation?.fileStatuses ?: filePaths.map(FileAnalysisStatus::analyzed)
-        val pageOffset = continuation?.offset ?: 0
-        val nextOffset = Math.addExact(pageOffset, minOf(query.maxResults.value, diagnostics.size - pageOffset))
-        val nextPageToken = if (nextOffset < diagnostics.size) {
-            val token = DiagnosticPageToken.random()
-            diagnosticContinuations[token] = FakeDiagnosticContinuation(
-                identity = identity,
-                diagnostics = diagnostics,
-                fileStatuses = fileStatuses,
-                offset = nextOffset,
-            )
-            token.value
+        val fileStatuses = filePaths.map(FileAnalysisStatus::analyzed)
+        val page = FakeDiagnosticPage(
+            diagnostics = diagnostics,
+            fileStatuses = fileStatuses,
+            pageOffset = 0,
+            maxResults = query.maxResults.value,
+        )
+        val nextPageToken = if (page.hasMore) {
+            issueDiagnosticContinuation(
+                identity,
+                FakeDiagnosticContinuation(
+                    diagnostics = diagnostics,
+                    fileStatuses = fileStatuses,
+                    offset = page.nextOffset,
+                ),
+            ).value
         } else {
             null
         }
-        return DiagnosticsResult.paged(
-            diagnostics = diagnostics,
-            fileStatuses = fileStatuses,
-            pageOffset = pageOffset,
-            maxResults = query.maxResults.value,
-            nextPageToken = nextPageToken,
-        )
+        return page.toResult(nextPageToken)
     }
 
     override suspend fun rename(query: ParsedRenameQuery): RenameResult {
@@ -654,6 +686,18 @@ class FakeAnalysisBackend private constructor(
         )
     }
 
+    override fun close() {
+        val referenceFailure = runCatching(referenceContinuations::close).exceptionOrNull()
+        val diagnosticFailure = runCatching(diagnosticContinuations::close).exceptionOrNull()
+        when {
+            referenceFailure != null -> {
+                diagnosticFailure?.let(referenceFailure::addSuppressed)
+                throw referenceFailure
+            }
+            diagnosticFailure != null -> throw diagnosticFailure
+        }
+    }
+
     private fun requireAnchor(position: ParsedFilePosition) {
         requireKnownFile(position.filePath.value)
         if (!hasMatchingAnchor(symbolAnchors, position)) {
@@ -771,6 +815,51 @@ class FakeAnalysisBackend private constructor(
         maxResults = query.maxResults.value,
     )
 
+    private fun fakeReferencePage(
+        allReferences: List<Location>,
+        pageStart: Int,
+        maxResults: Int,
+    ): FakeReferencePage {
+        val probeLimit = if (maxResults == Int.MAX_VALUE) maxResults else maxResults + 1
+        val pageProbe = allReferences.drop(pageStart).take(probeLimit)
+        val references = pageProbe.take(maxResults)
+        return FakeReferencePage(
+            references = references,
+            nextOffset = Math.addExact(pageStart, references.size),
+            hasMore = pageProbe.size > references.size,
+        )
+    }
+
+    private fun issueReferenceContinuation(
+        identity: FakeReferenceIdentity,
+        continuation: FakeReferenceContinuation,
+    ): ReferencePageToken = when (val issued = referenceContinuations.issue(identity, continuation)) {
+        is ContinuationIssueResult.Issued -> issued.token
+        is ContinuationIssueResult.Rejected -> throwReferenceContinuationFailure(issued.failure)
+    }
+
+    private fun throwReferenceContinuationFailure(failure: ContinuationAccessFailure): Nothing =
+        if (failure == ContinuationAccessFailure.QueryMismatch) {
+            throw ConflictException("Reference continuation token belongs to another query")
+        } else {
+            throw ConflictException("Unknown or consumed reference continuation token")
+        }
+
+    private fun issueDiagnosticContinuation(
+        identity: FakeDiagnosticIdentity,
+        continuation: FakeDiagnosticContinuation,
+    ): DiagnosticPageToken = when (val issued = diagnosticContinuations.issue(identity, continuation)) {
+        is ContinuationIssueResult.Issued -> issued.token
+        is ContinuationIssueResult.Rejected -> throwDiagnosticContinuationFailure(issued.failure)
+    }
+
+    private fun throwDiagnosticContinuationFailure(failure: ContinuationAccessFailure): Nothing =
+        if (failure == ContinuationAccessFailure.QueryMismatch) {
+            throw ConflictException("Diagnostic continuation token belongs to another query")
+        } else {
+            throw ConflictException("Unknown or consumed diagnostic continuation token")
+        }
+
     private data class FakeReferenceIdentity(
         val filePath: String,
         val offset: Int,
@@ -780,16 +869,71 @@ class FakeAnalysisBackend private constructor(
     )
 
     private data class FakeReferenceContinuation(
-        val identity: FakeReferenceIdentity,
-        val offset: Int,
+        var offset: Int,
+    )
+
+    private data class FakeReferencePage(
+        val references: List<Location>,
+        val nextOffset: Int,
+        val hasMore: Boolean,
+    ) {
+        fun toResult(
+            declaration: Symbol?,
+            totalCount: Int,
+            nextPageToken: String?,
+        ): ReferencesResult = ReferencesResult(
+            declaration = declaration,
+            references = references,
+            cardinality = io.github.amichne.kast.api.contract.result.ResultCardinality.Exact(totalCount),
+            page = if (hasMore) {
+                PageInfo(
+                    truncated = true,
+                    nextPageToken = checkNotNull(nextPageToken),
+                )
+            } else {
+                null
+            },
+        )
+    }
+
+    private data class FakeDiagnosticIdentity(
+        val filePaths: List<String>,
+        val maxResults: Int,
     )
 
     private data class FakeDiagnosticContinuation(
-        val identity: Pair<List<String>, Int>,
         val diagnostics: List<Diagnostic>,
         val fileStatuses: List<FileAnalysisStatus>,
-        val offset: Int,
-    )
+        var offset: Int,
+    ) {
+        fun page(maxResults: Int): FakeDiagnosticPage = FakeDiagnosticPage(
+            diagnostics = diagnostics,
+            fileStatuses = fileStatuses,
+            pageOffset = offset,
+            maxResults = maxResults,
+        )
+    }
+
+    private data class FakeDiagnosticPage(
+        val diagnostics: List<Diagnostic>,
+        val fileStatuses: List<FileAnalysisStatus>,
+        val pageOffset: Int,
+        val maxResults: Int,
+    ) {
+        val nextOffset: Int = Math.addExact(
+            pageOffset,
+            minOf(maxResults, diagnostics.size - pageOffset),
+        )
+        val hasMore: Boolean = nextOffset < diagnostics.size
+
+        fun toResult(nextPageToken: String?): DiagnosticsResult = DiagnosticsResult.paged(
+            diagnostics = diagnostics,
+            fileStatuses = fileStatuses,
+            pageOffset = pageOffset,
+            maxResults = maxResults,
+            nextPageToken = nextPageToken,
+        )
+    }
 
     companion object {
         fun sample(
