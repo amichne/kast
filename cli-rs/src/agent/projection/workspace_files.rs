@@ -1,5 +1,5 @@
 fn project_workspace_files_result(
-    result: WorkspaceFilesCompactResult,
+    result: WorkspaceFilesResult,
     view: &AgentWorkspaceFilesViewArgs,
     matching: &[&WorkspaceInventoryFile],
     cardinality: AgentResultCardinality,
@@ -30,13 +30,13 @@ fn project_workspace_files_result(
                 }
             }
         }
-    } else if view.verbose || view.explain {
-        if let Some(object) = value.as_object_mut() {
-            object.insert(
-                "view".to_string(),
-                Value::String(if view.explain { "EXPLAIN" } else { "VERBOSE" }.to_string()),
-            );
-        }
+    } else if (view.verbose || view.explain)
+        && let Some(object) = value.as_object_mut()
+    {
+        object.insert(
+            "view".to_string(),
+            Value::String(if view.explain { "EXPLAIN" } else { "VERBOSE" }.to_string()),
+        );
     }
     value
 }

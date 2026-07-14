@@ -15,9 +15,10 @@ use super::model::{
     WorkspaceEvidenceSource, WorkspaceFileDirtyState, WorkspaceFileDrift, WorkspaceFileKind,
     WorkspaceFilePath, WorkspaceFilesystemPathState, WorkspaceFilesystemStamp, WorkspaceIndexRead,
     WorkspaceIndexSnapshot, WorkspaceInventoryFile, WorkspaceInventoryLimitationCode,
-    WorkspaceInventorySnapshot, WorkspaceKindMatchCoverage, WorkspaceLaneEvidence,
-    WorkspaceLanePurpose, WorkspaceLaneStamp, WorkspaceLaneUnavailableReason,
-    WorkspaceMatchCoverage, WorkspaceRequestedKindDomain, WorkspaceRoot,
+    WorkspaceInventorySnapshot, WorkspaceInventorySnapshotInputs, WorkspaceKindMatchCoverage,
+    WorkspaceLaneEvidence, WorkspaceLanePurpose, WorkspaceLaneStamp,
+    WorkspaceLaneUnavailableReason, WorkspaceMatchCoverage, WorkspaceRequestedKindDomain,
+    WorkspaceRoot,
 };
 
 pub(crate) trait WorkspaceInventoryLaneReader {
@@ -347,16 +348,16 @@ fn compose_snapshot(
         ),
         dirty_lane_evidence(dirty_read),
     );
-    WorkspaceInventorySnapshot::new(
+    WorkspaceInventorySnapshot::new(WorkspaceInventorySnapshotInputs {
         files,
-        backend.coverage(),
-        backend.modules().clone(),
+        backend_coverage: backend.coverage(),
+        backend_modules: backend.modules().clone(),
         coverage,
-        WorkspaceKindMatchCoverage::new(source_coverage, script_coverage),
+        kind_coverage: WorkspaceKindMatchCoverage::new(source_coverage, script_coverage),
         limitations,
-        true,
-        digest,
-    )
+        continuation_allowed: true,
+        composition_digest: digest,
+    })
 }
 
 fn file_index_and_drift(

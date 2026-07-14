@@ -113,9 +113,9 @@ filter-evidence `coverage`, typed `limitations`, and a schema version. Compact
 output is budgeted below 120 lines and 1,500 estimated tokens for the standard
 high-cardinality fixture.
 
-Each file contains:
+`files` groups only consecutive globally path-sorted records with identical
+typed evidence. Each group contains:
 
-- absolute `filePath` and workspace-relative `relativePath`;
 - every sorted backend owner and build-qualified indexed Gradle owner;
 - `KOTLIN_SOURCE` or `KOTLIN_SCRIPT`;
 - discriminated model-proven or unproven source-set evidence;
@@ -125,7 +125,12 @@ Each file contains:
 - `NONE`, `FILESYSTEM_ONLY`, `INDEX_ONLY`, `MISSING_ON_DISK`,
   `NOT_APPLICABLE`, or `UNKNOWN` drift;
 - typed clean, dirty, unknown, or not-applicable Git state; and
-- evidence sources when the selected projection requests them.
+- a `paths` array with the absolute `filePath` and workspace-relative
+  `relativePath` for each file sharing that evidence.
+
+Flattening `files[group].paths` reproduces the globally sorted page. Equal
+evidence separated by a different record remains in separate groups, so
+grouping never changes path order. `returnedCount` counts path rows, not groups.
 
 Candidate coverage is complete only when every authority relevant to the
 selected kind could add no path. Filter coverage is complete only when every
@@ -145,11 +150,11 @@ declaration semantics remain a separate Gradle DSL index surface.
 ### Result views
 
 `--fields` accepts `path,module,source-set,kind,package,index,drift,dirty,evidence`
-and keeps the common result metadata. `--count` removes file payloads and
-returns typed overall and grouped cardinalities. `--verbose` preserves the
-complete validated workspace-file evidence. `--explain` adds the normalized
-query and classification/coverage evidence. These four view choices are
-mutually exclusive.
+and returns flat per-file records with the common result metadata. `--count`
+removes file payloads and returns typed overall and grouped cardinalities.
+`--verbose` preserves flat per-file complete validated workspace-file evidence.
+`--explain` adds the normalized query and classification/coverage evidence.
+These four view choices are mutually exclusive.
 
 ### Public continuation failures
 
@@ -185,8 +190,10 @@ candidate authority is usable, the command fails with
 `WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` instead of returning a false empty
 success.
 
-`filePath` is the direct input for `kast agent diagnostics --file-path <path>`
-and for `kast agent symbol --query <name> --file-hint <path>`.
+Use `files[group].paths[i].filePath` from the compact default, or select a flat
+record with `--fields path`. That `filePath` is the direct input for
+`kast agent diagnostics --file-path <path>` and for
+`kast agent symbol --query <name> --file-hint <path>`.
 
 ## Workspace-relative file paths
 

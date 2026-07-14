@@ -252,12 +252,13 @@ It does not accept candidate enumeration authority or leak an owning state
 reference.
 
 The compact default emits a typed result with the exact workspace root,
-bounded file records, ADR 0020's discriminated `EXACT` or `KNOWN_MINIMUM`
+bounded file paths, ADR 0020's discriminated `EXACT` or `KNOWN_MINIMUM`
 cardinality, returned count, truncation, optional next-page token, separate
 candidate-inventory and filter-evidence coverage, typed limitations, and schema
-version. Each file record includes:
+version. Its `files` array groups only consecutive records with identical typed
+evidence after the records are globally sorted by normalized workspace-relative
+path. Each group carries:
 
-- absolute `filePath` and workspace-relative `relativePath`;
 - sorted backend-module and build-qualified indexed-Gradle-project ownership
   sets;
 - discriminated proven/unproven source-set evidence, with build-qualified
@@ -272,7 +273,14 @@ version. Each file record includes:
   only for `PROVEN_NAMED`;
 - detailed dirty state collapsed by the public dirty filter into clean,
   dirty, or unknown; and
-- verbose/explain evidence identifying which sources established the record.
+- a `paths` array whose rows retain both the absolute `filePath` and
+  workspace-relative `relativePath` for every file with that evidence.
+
+Grouping does not reorder paths or merge equal evidence across an intervening
+different record. Flattening `files[group].paths` therefore reproduces the
+globally path-sorted page exactly. `--fields`, `--verbose`, and `--explain`
+retain flat per-file records; verbose/explain also identify which evidence
+sources established each record.
 
 The candidate inventory is `COMPLETE` only when every candidate authority
 relevant to the requested kind domain could contribute no additional matching
@@ -288,8 +296,9 @@ when all kind-relevant backend and source-index candidates are known.
 Cardinality is `EXACT` only when both relevant coverage dimensions are complete;
 otherwise it is
 `KNOWN_MINIMUM` and counts only matches actually proved. `returnedCount` equals
-the emitted file count. `truncated` is true when an exact total exceeds that
-count or cardinality is `KNOWN_MINIMUM`, because unseen matches remain possible.
+the emitted path-row count, not the compact evidence-group count. `truncated`
+is true when an exact total exceeds that count or cardinality is
+`KNOWN_MINIMUM`, because unseen matches remain possible.
 `nextPageToken` is non-null only when another currently known matching record
 exists. Coherent partial evidence may continue through all currently known
 matches; unstable evidence, or a partial result with no further known match,
@@ -302,7 +311,8 @@ cardinalities for grouped counts without file payloads, and `--verbose` or
 `--explain` exposes source coverage and evidence without making raw transport
 envelopes the default.
 
-`filePath` is the direct composition key for
+The compact composition key is `files[group].paths[i].filePath`; `--fields path`
+returns the same key in a flat per-file record. `filePath` is the direct input for
 `kast agent diagnostics --file-path <path>` and
 `kast agent symbol --query <name> --file-hint <path>`. The public command does
 not invent a second path dialect.
