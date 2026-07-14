@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::path::Path;
 
 use rusqlite::params;
@@ -6,10 +6,11 @@ use rusqlite::params;
 use super::model::{
     BackendModuleCoverage, BackendWorkspaceCoverage, DirtyWorkspaceRead,
     WorkspaceCoverageDimension, WorkspaceFileDirtyState, WorkspaceFileDrift,
-    WorkspaceFileIndexState, WorkspaceFilePath, WorkspaceIndexRead, WorkspaceIndexReadFailure,
-    WorkspaceIndexSnapshot, WorkspaceInventoryLimitationCode, WorkspaceMatchCoverage,
-    WorkspacePackageEvidence, WorkspacePackageInvalidReference, WorkspacePackageUnprovenReason,
-    WorkspaceRequestedKindDomain, WorkspaceRoot, WorkspaceSourceSetEvidence,
+    WorkspaceFileIndexState, WorkspaceFileKind, WorkspaceFilePath, WorkspaceIndexRead,
+    WorkspaceIndexReadFailure, WorkspaceIndexSnapshot, WorkspaceInventoryLimitationCode,
+    WorkspaceMatchCoverage, WorkspacePackageEvidence, WorkspacePackageInvalidReference,
+    WorkspacePackageUnprovenReason, WorkspaceRequestedKindDomain, WorkspaceRoot,
+    WorkspaceSourceSetEvidence,
 };
 use super::read_workspace_index;
 use super::workspace_files_test_support::WorkspaceIndexFixture;
@@ -84,6 +85,30 @@ fn read_workspace_index_returns_every_kotlin_source_without_a_public_cap() {
     assert_eq!(snapshot.coverage(), WorkspaceMatchCoverage::complete());
     assert!(snapshot.stamp().is_exact());
     assert_eq!(snapshot.stamp().generation().value(), 41);
+    let progress = snapshot
+        .stamp()
+        .module_progress()
+        .iter()
+        .next()
+        .expect("module progress");
+    assert_eq!(progress.module_name().as_str(), "app");
+}
+
+#[test]
+fn source_index_incompatibilities_preserve_each_fail_closed_reason() {
+    use super::model::SourceIndexIncompatibility;
+
+    let incompatibilities = BTreeSet::from([
+        SourceIndexIncompatibility::MissingPathPrefix,
+        SourceIndexIncompatibility::InvalidPackageMetadata,
+        SourceIndexIncompatibility::InvalidGradleProjectIdentity,
+        SourceIndexIncompatibility::InvalidGradleSourceSetIdentity,
+        SourceIndexIncompatibility::DanglingGradleSourceSetOwner,
+        SourceIndexIncompatibility::OrphanGradleAssociation,
+        SourceIndexIncompatibility::InvalidProgress,
+    ]);
+
+    assert_eq!(incompatibilities.len(), 7);
 }
 
 #[test]
@@ -666,11 +691,17 @@ fn backend_pages_are_exhausted_in_opaque_cursor_order_and_shared_paths_keep_ever
         .iter()
         .filter_map(|request| request["params"]["pageToken"].as_str())
         .collect();
+    let module_a = inventory
+        .modules()
+        .values()
+        .find(|module| module.name().as_str() == "module-a")
+        .expect("module-a inventory");
 
     assert_eq!(inventory.coverage(), BackendWorkspaceCoverage::Complete);
     assert_eq!(inventory.files().len(), 4);
     assert_eq!(owners, ["module-a", "module-b"]);
     assert_eq!(cursors, ["opaque not an offset", "a-last", "b-last"]);
+    assert_eq!(module_a.declared_file_count(), 3);
     assert!(
         backend.requests[1]["params"].get("pageToken").is_none(),
         "the first exact-module request is cursorless: {:?}",
@@ -1228,6 +1259,10 @@ fn nested_git_mapping_overrides_relative_paths_and_maps_only_workspace_records()
     let DirtyWorkspaceRead::Snapshot(snapshot) = super::dirty::read_dirty_workspace(&root) else {
         panic!("nested Git workspace must be readable");
     };
+    assert_eq!(
+        snapshot.stamp().repository_root(),
+        std::fs::canonicalize(repository).expect("canonical repository")
+    );
     let dirty: Vec<_> = snapshot
         .stamp()
         .dirty_paths()
@@ -1311,15 +1346,6 @@ fn complete_backend_responses(
     responses
 }
 
-fn repeat_backend_responses(
-    responses: &[Result<serde_json::Value, super::backend::BackendRpcFailure>],
-    repetitions: usize,
-) -> Vec<Result<serde_json::Value, super::backend::BackendRpcFailure>> {
-    (0..repetitions)
-        .flat_map(|_| responses.iter().cloned())
-        .collect()
-}
-
 #[test]
 fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
     let (_temp, root, fixture) = fixture();
@@ -1373,6 +1399,11 @@ fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
             .map(|file| (file.index_state().clone(), file.drift()))
             .unwrap_or_else(|| panic!("composed file {path}"))
     };
+    let both = snapshot
+        .files()
+        .iter()
+        .find(|file| file.path().as_path() == Path::new("src/main/kotlin/sample/Both.kt"))
+        .expect("composed source");
 
     assert_eq!(
         drift("build.gradle.kts"),
@@ -1400,6 +1431,25 @@ fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
     assert_eq!(
         snapshot.coverage().candidate_inventory(),
         WorkspaceCoverageDimension::Complete
+    );
+    assert_eq!(
+        snapshot.coverage().filter_evidence(),
+        WorkspaceCoverageDimension::Complete
+    );
+    assert_eq!(both.kind(), WorkspaceFileKind::Source);
+    assert_eq!(
+        both.backend_modules()
+            .iter()
+            .map(|module| module.as_str())
+            .collect::<Vec<_>>(),
+        ["module"]
+    );
+    assert!(snapshot.limitations().is_empty());
+    assert_eq!(
+        snapshot
+            .limitations()
+            .get(&WorkspaceInventoryLimitationCode::BackendCapabilityUnavailable),
+        None
     );
     assert_eq!(
         backend.requests.len(),
@@ -2024,7 +2074,15 @@ impl super::collect::WorkspaceInventoryLaneReader for MutatingFilesystemLaneRead
         if self.filesystem_reads == 2 {
             std::fs::remove_file(&self.target).expect("filesystem lane mutation");
         }
-        super::collect::WorkspaceInventoryLaneReader::read_filesystem(&mut self.inner, root, paths)
+        let stamp = super::collect::WorkspaceInventoryLaneReader::read_filesystem(
+            &mut self.inner,
+            root,
+            paths,
+        );
+        if let super::model::WorkspaceLaneStamp::Available(stamp) = &stamp {
+            assert_eq!(stamp.states().len(), paths.len());
+        }
+        stamp
     }
 }
 
@@ -2091,10 +2149,12 @@ impl super::collect::WorkspaceInventoryLaneReader for UnavailableFilesystemLaneR
 fn stable_filesystem_unavailability_retains_proven_backend_candidates_and_reason_identity() {
     let (_temp, root, _fixture, responses) = barrier_fixture();
     let mut digests = Vec::new();
-    for reason in ["permission-denied", "observer-closed"] {
+    for reason_text in ["permission-denied", "observer-closed"] {
         let mut backend = ScriptedWorkspaceBackend::new(responses.clone());
+        let reason = super::model::WorkspaceLaneUnavailableReason::new(reason_text);
+        assert_eq!(reason.as_str(), reason_text);
         let mut lanes = UnavailableFilesystemLaneReader {
-            reason: super::model::WorkspaceLaneUnavailableReason::new(reason),
+            reason,
             inner: super::collect::SystemWorkspaceLaneReader,
         };
 

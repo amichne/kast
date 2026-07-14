@@ -8,12 +8,6 @@ pub(crate) struct WorkspaceIndexFixture {
 }
 
 impl WorkspaceIndexFixture {
-    pub(crate) fn new(workspace_root: &Path) -> Self {
-        std::fs::create_dir_all(workspace_root).expect("workspace root");
-        let database_path = workspace_root.join(".gradle/kast/cache/source-index.db");
-        Self::at_database_path(workspace_root, &database_path)
-    }
-
     pub(crate) fn at_database_path(workspace_root: &Path, database_path: &Path) -> Self {
         std::fs::create_dir_all(workspace_root).expect("workspace root");
         std::fs::create_dir_all(database_path.parent().expect("database parent"))

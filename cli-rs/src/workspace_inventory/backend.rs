@@ -755,6 +755,18 @@ mod rpc_error_tests {
     use super::*;
 
     #[test]
+    fn raw_rpc_backend_constructor_preserves_the_session_lifetime() {
+        fn construct<'session>(
+            session: &'session crate::runtime::RawRpcSession,
+            root: &WorkspaceRoot,
+        ) -> RawRpcWorkspaceBackend<'session> {
+            RawRpcWorkspaceBackend::new(session, root)
+        }
+
+        let _constructor = construct;
+    }
+
+    #[test]
     fn project_model_reason_is_decoded_from_the_typed_error_details_envelope() {
         for (reason, expected) in [
             (
