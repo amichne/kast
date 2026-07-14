@@ -1,7 +1,10 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.continuation.ContinuationCapacity
+import io.github.amichne.kast.api.continuation.ContinuationTtl
 import java.nio.file.Path
+import java.time.Duration
 import kotlin.math.ln
 
 data class AnalysisServerConfig(
@@ -12,9 +15,17 @@ data class AnalysisServerConfig(
     val requestTimeoutMillis: Long = 30_000,
     val maxResults: Int = 500,
     val maxConcurrentRequests: Int = 4,
+    val continuationTtlMillis: Long = 60_000,
+    val continuationCapacity: Int = 256,
     val descriptorDirectory: Path? = null,
     val workspaceFileCount: Int = 0,
 ) {
+    val typedContinuationTtl: ContinuationTtl
+        get() = ContinuationTtl.of(Duration.ofMillis(continuationTtlMillis))
+
+    val typedContinuationCapacity: ContinuationCapacity
+        get() = ContinuationCapacity.of(continuationCapacity)
+
     /**
      * Returns the effective request timeout in milliseconds, scaling up [requestTimeoutMillis]
      * logarithmically for large workspaces (> 1 000 files) to avoid spurious timeouts on slow
@@ -36,6 +47,8 @@ data class AnalysisServerConfig(
     }
 
     private fun validate() {
+        require(continuationTtlMillis > 0) { "Continuation time to live must be positive" }
+        require(continuationCapacity > 0) { "Continuation capacity must be positive" }
         val isLoopback = host == "127.0.0.1" || host == "::1" || host.equals("localhost", ignoreCase = true)
         require(isLoopback || !token.isNullOrBlank()) {
             "Binding to non-loopback address '$host' requires a non-empty token for security. " +

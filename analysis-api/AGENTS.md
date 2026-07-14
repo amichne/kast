@@ -42,6 +42,13 @@ Keep this unit small, stable, and reusable across every runtime host.
 - Use the explicit `CloseableAnalysisBackend` contract for server-owned backend
   lifetime. Do not discover closeability with a runtime cast or give runtime
   and server two independent owners.
+- Keep public workspace-file continuation state distinct from raw backend
+  snapshot/page state. The issue/consume identity binds the exact normalized
+  root, backend, filters, projection, and limit; the owned state additionally
+  binds the composition digest, last relative path, and cumulative count.
+  Tokens are canonical random UUID handles. Keep the owned state and consumed
+  projection as different nominal types so the generic store cannot return an
+  owning state object.
 
 ## Verification
 
@@ -50,6 +57,11 @@ Validate the contract locally before you rely on downstream failures.
 - Run `./gradlew :analysis-api:test` for local changes.
 - If you change public models, capabilities, or descriptor schema, also run
   `./gradlew :analysis-server:test`.
+- For public workspace-file continuation changes, start with
+  `WorkspaceFilesContinuationContractTest` and
+  `WorkspaceFilesContinuationServiceTest`; prove wire validation, exact-query
+  single-use consumption, TTL/capacity invalidation, and state-free issue
+  responses.
 - If you change shared config loading, descriptor discovery, or other
   startup-facing helpers, also run `./gradlew :backend-idea:test` when the
   IDEA Platform artifacts for the pinned IDE version are available.

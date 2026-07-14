@@ -54,7 +54,9 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
@@ -91,6 +93,10 @@ class RpcAnalysisDispatcher(
 ) : Closeable {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
     private val mutationRpc = MutationOperationService(skillRpc, json)
+    private val workspaceFilesContinuation = WorkspaceFilesContinuationService(
+        capacity = config.typedContinuationCapacity,
+        timeToLive = config.typedContinuationTtl,
+    )
     private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
 
     suspend fun dispatch(request: JsonRpcRequest): String {
@@ -342,6 +348,13 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
+            "raw/workspace-files-continuation" -> encode(
+                WorkspaceFilesContinuationResult.serializer(),
+                workspaceFilesContinuation.execute(
+                    decodeParams(WorkspaceFilesContinuationQuery.serializer(), params).parsed(),
+                ),
+            )
+
             "symbol/resolve" -> encode(
                 KastResolveResponse.serializer(),
                 skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
@@ -458,7 +471,22 @@ class RpcAnalysisDispatcher(
     }
 
     override fun close() {
-        mutationRpc.close()
+        var firstFailure: Throwable? = null
+        listOf<() -> Unit>(
+            mutationRpc::close,
+            workspaceFilesContinuation::close,
+        ).forEach { closePhase ->
+            try {
+                closePhase()
+            } catch (failure: Throwable) {
+                if (firstFailure == null) {
+                    firstFailure = failure
+                } else {
+                    firstFailure.addSuppressed(failure)
+                }
+            }
+        }
+        firstFailure?.let { throw it }
     }
 
     private suspend fun requestLifecycle(action: RuntimeLifecycleAction): RuntimeLifecycleResponse {

@@ -223,6 +223,8 @@ internal fun ideaAnalysisServerConfig(
     requestTimeoutMillis = limits.requestTimeoutMillis,
     maxResults = limits.maxResults,
     maxConcurrentRequests = limits.maxConcurrentRequests,
+    continuationTtlMillis = limits.continuationTtlMillis,
+    continuationCapacity = limits.continuationCapacity,
     descriptorDirectory = config.paths.descriptorDir.toPath(),
 )
 
