@@ -40,6 +40,31 @@ require_order() {
   [[ "$earlier_line" -lt "$later_line" ]] || die "${description}: '${earlier}' must appear before '${later}'"
 }
 
+require_block_order() {
+  local file_path="$1"
+  local block_start="$2"
+  local block_end="$3"
+  local earlier="$4"
+  local later="$5"
+  local description="$6"
+  local block
+  local earlier_line
+  local later_line
+  block="$(
+    awk -v block_start="$block_start" -v block_end="$block_end" '
+      index($0, block_start) { in_block = 1 }
+      in_block && index($0, block_end) && !index($0, block_start) { exit }
+      in_block { print }
+    ' "$file_path"
+  )"
+  [[ -n "$block" ]] || die "${description}: missing block '${block_start}' in ${file_path}"
+  earlier_line="$(grep -nF -- "$earlier" <<< "$block" | head -1 | cut -d: -f1)"
+  later_line="$(grep -nF -- "$later" <<< "$block" | head -1 | cut -d: -f1)"
+  [[ -n "$earlier_line" ]] || die "${description}: missing earlier marker '${earlier}' in '${block_start}' block"
+  [[ -n "$later_line" ]] || die "${description}: missing later marker '${later}' in '${block_start}' block"
+  [[ "$earlier_line" -lt "$later_line" ]] || die "${description}: '${earlier}' must appear before '${later}' in '${block_start}' block"
+}
+
 require_block_contains() {
   local file_path="$1"
   local block_start="$2"
@@ -215,6 +240,16 @@ require_contains "$ci_workflow" "Package kast-action runtime inputs" "CI must pa
 require_contains "$ci_workflow" "uses: amichne/kast-action@v2" "CI must invoke the published kast-action v2 line"
 require_not_contains "$ci_workflow" "amichne/kast-action@v1" "CI must not invoke the old kast-action v1 line"
 require_not_contains "$ci_workflow" "uses: ./setup-kast" "CI must not invoke a deleted local setup-kast action"
+require_contains "$ci_workflow" "Free disk for kast-action runtime installation" "CI must reclaim unused runner SDKs before restoring runtime-contract caches"
+require_block_order "$ci_workflow" "  kast-action-runtime-contract:" "  analysis-server-transport:" "Free disk for kast-action runtime installation" "uses: gradle/actions/setup-gradle@v5" "CI must reclaim unused runner SDKs before restoring runtime-contract caches"
+require_block_order "$ci_workflow" "  kast-action-runtime-contract:" "  analysis-server-transport:" "Free disk for kast-action runtime installation" "Package kast-action runtime inputs" "CI must establish the runtime installation disk budget before packaging"
+require_contains "$ci_workflow" "Reclaim verified runtime packaging inputs" "CI must release verified producer inputs before kast-action expands the runtime"
+require_order "$ci_workflow" "Package kast-action runtime inputs" "Reclaim verified runtime packaging inputs" "CI must verify and package producer artifacts before reclaiming them"
+require_order "$ci_workflow" "Reclaim verified runtime packaging inputs" "Install packaged runtime with kast-action" "CI must reclaim runtime packaging inputs before kast-action extraction"
+require_block_contains "$ci_workflow" "      - name: Reclaim verified runtime packaging inputs" "      - name: Install packaged runtime with kast-action" 'rm -f "$backend_asset" "$cli_asset"' "CI must reclaim only the consumed producer archives"
+require_block_contains "$ci_workflow" "      - name: Reclaim verified runtime packaging inputs" "      - name: Install packaged runtime with kast-action" '"$GRADLE_USER_HOME"/caches/transforms-*' "CI must release rebuildable Gradle transforms before runtime extraction"
+require_block_contains "$ci_workflow" "      - name: Reclaim verified runtime packaging inputs" "      - name: Install packaged runtime with kast-action" "df -h /" "CI runtime disk reclamation must report the resulting disk budget"
+require_block_not_contains "$ci_workflow" "      - name: Reclaim verified runtime packaging inputs" "      - name: Install packaged runtime with kast-action" '"$GRADLE_USER_HOME"/caches/modules-' "CI must retain Gradle dependency artifacts for the installed-runtime warm check"
 require_contains "$ci_workflow" "scripts/verify-setup-kast-install.sh" "CI must run the shared setup-kast install verifier"
 require_contains "$ci_workflow" "--workspace-id kast-action-ci-smoke" "CI kast-action verifier must use an explicit workspace id"
 require_contains "$ci_workflow" '--gradle-root "$GITHUB_WORKSPACE"' "CI kast-action verifier must run a repo-level Gradle warm step after installation"

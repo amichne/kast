@@ -353,6 +353,18 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Free disk for kast-action runtime installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-cleanup: always
@@ -429,6 +441,28 @@ jobs:
           printf 'runtime_version=%s\n' "$runtime_version" >> "$GITHUB_OUTPUT"
           printf 'runtime_sha=%s\n' "$(awk '{ print $1 }' dist/kast-headless-linux-x64.sha256)" >> "$GITHUB_OUTPUT"
           printf 'gradle_cache_sha=%s\n' "$(awk '{ print $1 }' dist/gradle-ro-dep-cache.sha256)" >> "$GITHUB_OUTPUT"
+
+      - name: Reclaim verified runtime packaging inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
+          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
+          [[ -f "$cli_asset" ]] || { echo "Missing consumed Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
+          [[ -n "$backend_asset" ]] || { echo "Missing consumed headless backend portable zip" >&2; exit 1; }
+
+          printf '%s\n' "Disk use before reclaiming verified runtime inputs:"
+          df -h /
+          du -sh "$backend_asset" "$cli_asset" "$GRADLE_USER_HOME/caches" 2>/dev/null || true
+
+          rm -f "$backend_asset" "$cli_asset"
+          rm -rf \
+            "$GRADLE_USER_HOME"/caches/build-cache-* \
+            "$GRADLE_USER_HOME"/caches/transforms-* \
+            "$GRADLE_USER_HOME"/caches/*/transforms
+
+          printf '%s\n' "Disk use after reclaiming verified runtime inputs and rebuildable Gradle state:"
+          df -h /
 
       - name: Install packaged runtime with kast-action
         uses: amichne/kast-action@v2
