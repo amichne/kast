@@ -1402,7 +1402,11 @@ fn spawn_verify_backend(
                     "symbol": {
                         "fqName": request["params"]["symbol"],
                         "kind": "CLASS",
-                        "workspaceRoot": workspace.display().to_string()
+                        "workspaceRoot": workspace.display().to_string(),
+                        "location": {
+                            "filePath": workspace.join("Foo.kt"),
+                            "startOffset": 0
+                        }
                     },
                     "schemaVersion": 3
                 }),
