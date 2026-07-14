@@ -1481,37 +1481,21 @@ commands:
   symbol/references:
     category: symbol
     dataSource: backend
-    failureType: REFERENCES_FAILURE
     method: symbol/references
     notes:
-    - The 'symbol' field takes simple names only.
-    - Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.
+    - The selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.
+    - Optional kind and containingType values are hard identity assertions.
     - maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
     - Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.
     - Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
     request:
       fields:
-        containingType:
-          nullable: true
-          optional: true
-          type: string
-        fileHint:
-          nullable: true
-          optional: true
-          type: string
         includeDeclaration:
           optional: true
           type: boolean
-        kind:
-          enum:
-          - class
-          - interface
-          - object
-          - function
-          - property
-          nullable: true
+        includeUsageSiteScope:
           optional: true
-          type: string
+          type: boolean
         maxResults:
           optional: true
           type: integer
@@ -1520,16 +1504,51 @@ commands:
           optional: true
           sample: 00000000-0000-4000-8000-000000000337
           type: string
-        symbol:
-          type: string
+        selector:
+          fields:
+            containingType:
+              nullable: true
+              optional: true
+              type: string
+            declarationFile:
+              type: string
+            declarationStartOffset:
+              type: integer
+            fqName:
+              type: string
+            kind:
+              enum:
+              - CLASS
+              - INTERFACE
+              - OBJECT
+              - FUNCTION
+              - PROPERTY
+              - PARAMETER
+              - UNKNOWN
+              nullable: true
+              optional: true
+              type: string
+          required:
+          - fqName
+          - declarationFile
+          - declarationStartOffset
+          type: object
         workspaceRoot:
           nullable: true
           optional: true
           type: string
       required:
-      - symbol
+      - selector
     responseType: KastReferencesResponse
-    successType: REFERENCES_SUCCESS
+    responseVariants:
+    - AVAILABLE
+    - SUBJECT_NOT_FOUND
+    - SUBJECT_IDENTITY_MISMATCH
+    - UNSUPPORTED_SUBJECT_KIND
+    - DEGRADED
+    - CURSOR_STALE
+    - CURSOR_INVALID
+    successType: AVAILABLE
     summary: Find every usage of a Kotlin symbol
     tool:
       description: Find every usage of a Kotlin symbol. Prefer this over grep for Kotlin identity because it can disambiguate overloads, inherited members, imports, and aliases.

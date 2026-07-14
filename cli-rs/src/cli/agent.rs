@@ -855,6 +855,12 @@ pub struct AgentHierarchyArgs {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CanonicalSymbolName(String);
 
+impl CanonicalSymbolName {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl std::str::FromStr for CanonicalSymbolName {
     type Err = String;
 
@@ -866,6 +872,12 @@ impl std::str::FromStr for CanonicalSymbolName {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceDeclarationFile(String);
+
+impl WorkspaceDeclarationFile {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 impl std::str::FromStr for WorkspaceDeclarationFile {
     type Err = String;
@@ -883,6 +895,12 @@ impl std::str::FromStr for WorkspaceDeclarationFile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DeclarationStartOffset(u32);
 
+impl DeclarationStartOffset {
+    pub(crate) fn get(self) -> u32 {
+        self.0
+    }
+}
+
 impl std::str::FromStr for DeclarationStartOffset {
     type Err = String;
 
@@ -896,6 +914,12 @@ impl std::str::FromStr for DeclarationStartOffset {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AgentRelationLimit(std::num::NonZeroU8);
+
+impl AgentRelationLimit {
+    pub(crate) fn get(self) -> u8 {
+        self.0.get()
+    }
+}
 
 impl Default for AgentRelationLimit {
     fn default() -> Self {
@@ -960,6 +984,12 @@ impl std::str::FromStr for AgentRelationDepth {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentRelationPageToken(String);
+
+impl AgentRelationPageToken {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 impl std::str::FromStr for AgentRelationPageToken {
     type Err = String;

@@ -6,14 +6,15 @@ use crate::cli::{
     AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiagnosticsField,
     AgentDiagnosticsViewArgs, AgentImpactArgs, AgentImpactField, AgentImpactViewArgs,
     AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentOperationArgs,
-    AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
-    AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
-    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField, AgentSymbolMode,
-    AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
-    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
-    WorkspaceDirtyFilter, WorkspaceDriftFilter, WorkspaceFileKindFilter,
-    WorkspaceFilesPublicPageToken, WorkspaceModuleSelector, WorkspacePackageSelector,
-    WorkspaceRelativeGlob, WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
+    AgentOperationCommand, AgentOperationSelectorArgs, AgentReferencesArgs, AgentRelationField,
+    AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs, AgentReplaceDeclarationArgs,
+    AgentRuntimeArgs, AgentScopedMutationArgs, AgentStatementMutationArgs, AgentSymbolArgs,
+    AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField,
+    AgentVerifyViewArgs, AgentWorkspaceFilesArgs, AgentWorkspaceFilesField,
+    AgentWorkspaceFilesViewArgs, BackendName, CanonicalSymbolName, WorkspaceDirtyFilter,
+    WorkspaceDriftFilter, WorkspaceFileKindFilter, WorkspaceFilesPublicPageToken,
+    WorkspaceModuleSelector, WorkspacePackageSelector, WorkspaceRelativeGlob,
+    WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
 };
 use crate::error::{CliError, Result};
 use crate::workspace_inventory::backend::{
@@ -40,6 +41,7 @@ include!("agent/types.rs");
 include!("agent/path.rs");
 include!("agent/public_capabilities.rs");
 include!("agent/workspace_files.rs");
+include!("agent/relations.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");
 include!("agent/envelope.rs");

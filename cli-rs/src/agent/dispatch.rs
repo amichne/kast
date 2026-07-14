@@ -59,10 +59,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
         AgentCommand::Symbol(args) => execute_agent_symbol(args),
-        AgentCommand::References(args) => execute_pending_relationship_command(
-            "agent/references",
-            args.runtime,
-        ),
+        AgentCommand::References(args) => execute_agent_references(args),
         AgentCommand::Callers(args) => execute_pending_relationship_command(
             "agent/callers",
             args.runtime,

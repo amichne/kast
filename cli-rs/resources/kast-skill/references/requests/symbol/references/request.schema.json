@@ -30,34 +30,11 @@
     "params": {
       "additionalProperties": false,
       "properties": {
-        "containingType": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "fileHint": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "includeDeclaration": {
           "type": "boolean"
         },
-        "kind": {
-          "enum": [
-            "class",
-            "interface",
-            "object",
-            "function",
-            "property",
-            null
-          ],
-          "type": [
-            "string",
-            "null"
-          ]
+        "includeUsageSiteScope": {
+          "type": "boolean"
         },
         "maxResults": {
           "type": "integer"
@@ -68,8 +45,47 @@
             "null"
           ]
         },
-        "symbol": {
-          "type": "string"
+        "selector": {
+          "additionalProperties": false,
+          "properties": {
+            "containingType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declarationFile": {
+              "type": "string"
+            },
+            "declarationStartOffset": {
+              "type": "integer"
+            },
+            "fqName": {
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "CLASS",
+                "INTERFACE",
+                "OBJECT",
+                "FUNCTION",
+                "PROPERTY",
+                "PARAMETER",
+                "UNKNOWN",
+                null
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "fqName",
+            "declarationFile",
+            "declarationStartOffset"
+          ],
+          "type": "object"
         },
         "workspaceRoot": {
           "type": [
@@ -79,7 +95,7 @@
         }
       },
       "required": [
-        "symbol"
+        "selector"
       ],
       "type": "object"
     }
