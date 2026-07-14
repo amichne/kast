@@ -407,11 +407,23 @@ commands:
     category: raw
     dataSource: backend
     method: raw/diagnostics
+    notes:
+    - The first page computes exact severity counts and cardinality while capturing a server-held diagnostic snapshot.
+    - pageToken is an opaque, one-use handle bound to the ordered files, maxResults, and Kotlin PSI generation; continuations reuse the snapshot without refresh or recomputation.
+    - Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
     request:
       fields:
         filePaths:
           items: string
           type: array
+        maxResults:
+          optional: true
+          type: integer
+        pageToken:
+          nullable: true
+          optional: true
+          sample: 00000000-0000-4000-8000-000000000337
+          type: string
       required:
       - filePaths
     responseType: DiagnosticsResult
@@ -474,6 +486,10 @@ commands:
     category: raw
     dataSource: backend
     method: raw/references
+    notes:
+    - maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
+    - pageToken is an opaque, one-use handle bound to the workspace, query options, evidence source, and source generation.
+    - Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
     request:
       fields:
         includeDeclaration:
@@ -482,6 +498,14 @@ commands:
         includeUsageSiteScope:
           optional: true
           type: boolean
+        maxResults:
+          optional: true
+          type: integer
+        pageToken:
+          nullable: true
+          optional: true
+          sample: 00000000-0000-4000-8000-000000000337
+          type: string
         position:
           fields:
             filePath:
@@ -1327,6 +1351,9 @@ commands:
     notes:
     - The 'symbol' field takes simple names only.
     - Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.
+    - maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
+    - Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.
+    - Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
     request:
       fields:
         containingType:
@@ -1349,6 +1376,14 @@ commands:
           - property
           nullable: true
           optional: true
+          type: string
+        maxResults:
+          optional: true
+          type: integer
+        pageToken:
+          nullable: true
+          optional: true
+          sample: 00000000-0000-4000-8000-000000000337
           type: string
         symbol:
           type: string

@@ -59,6 +59,15 @@
             "null"
           ]
         },
+        "maxResults": {
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "symbol": {
           "type": "string"
         },

@@ -18,10 +18,10 @@ the first iteration surface.
 
 1. Orient with `kast`, `kast help agent`, and read-only `kast ready --workspace-root "$PWD"` when install or backend state matters.
 2. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`; exact lookup is the default. Use `--mode discovery` only for fuzzy candidates, then rerun exact lookup with the chosen identity. Add `--kind`, `--file-hint`, `--containing-type`, `--references`, or `--callers incoming|outgoing` only when needed.
-3. Check changed files with `kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"`.
-4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`.
+3. Check changed files with `kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"`. Compact mode returns at most eight actionable records with exact full-set counts; continue with `--page-token <nextPageToken>` when needed.
+4. Query source-index impact with `kast agent impact --symbol <fq-name> --workspace-root "$PWD"`; compact mode bounds the database fetch, and impact fields `query,summary,nodes,confidence` or `--count` avoid requesting a larger view.
 5. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply --idempotency-key <stable-key>` after reviewing the plan and content file.
-6. Agent results are compact by default. Use `--output json` for JSON-only parsed scripts, `--fields <family-fields>` for a typed subset, `--count` for aggregates, and `--verbose` or `--explain` only when the task needs detailed evidence.
+6. Agent results are compact by default. Treat `EXACT` and `KNOWN_MINIMUM` relationship cardinality distinctly, and continue reference pages with `--reference-page-token <nextPageToken>`. Use `--output json` for JSON-only parsed scripts, `--fields <family-fields>` for a typed subset, `--count` for aggregates, and `--verbose` or `--explain` only when the task needs detailed evidence.
 
 Completion criterion: every Kotlin semantic claim, edit target, relationship set,
 and validation result is backed by a typed `kast agent` command, or the remaining

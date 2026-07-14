@@ -76,15 +76,19 @@ sent to the backend. Absolute in-workspace targets remain supported.
 
 Agent results are compact by default. Symbol results retain identity, location,
 lookup mode, ambiguity, and only the relationships the command requested.
-Diagnostics retain semantic completeness counts and actionable diagnostics.
+Diagnostics retain semantic completeness, exact full-set severity/cardinality,
+and a bounded actionable page with explicit message/preview truncation flags.
 Mutation results retain operation and edit-application state, changed files and
 edits when available, diagnostic counts, and failure or cancellation evidence.
 Verification retains backend, runtime, and capability evidence. Raw
 request/response and multi-step envelopes are not part of the default result.
+Impact retains its query, bounded source paths, confidence summary, and explicit
+total/returned/truncated counts.
 
 Use `--verbose` to preserve the complete validated command envelope. Use
-`--explain` when ranking, surrounding-member, or next-request evidence is needed;
-the command requests that extra evidence only for the detailed view.
+`--explain` when ranking, surrounding-member, indexed fallback, or next-request
+evidence is needed; the command requests that extra evidence only for the
+detailed view.
 
 JSON consumers can select a family-specific field set with `--fields` or request
 aggregates with `--count`:
@@ -92,8 +96,9 @@ aggregates with `--count`:
 | Command family | `--fields` values | `--count` retains |
 | --- | --- | --- |
 | `verify` | `health,runtime,capabilities` | check and capability counts |
-| `symbol` | `identity,location,mode,outcome,source,ambiguity,relationships` | result, candidate, and relationship counts |
-| `diagnostics` | `analysis,diagnostics,severity-counts` | analyzed/skipped and severity counts |
+| `symbol` | `identity,location,mode,outcome,source,ambiguity,relationships` | result, candidate, and exact-or-known-minimum relationship cardinality |
+| `impact` | `query,summary,nodes,confidence` | total, returned, and truncated node counts |
+| `diagnostics` | `analysis,diagnostics,severity-counts` | analyzed/skipped, exact severity counts, and cardinality |
 | mutations and `operation` | `operation,state,edits,files,diagnostics` | lifecycle state and edit/file/diagnostic counts |
 
 Unknown or cross-family fields fail during argument parsing. `--fields` and
@@ -150,7 +155,43 @@ Not-found and ambiguous outcomes never trigger fuzzy search.
 `--mode discovery` is the explicit fuzzy surface. It reports `DISCOVERED` with
 `source: fuzzy`; `--references` and `--callers` are unavailable in that mode.
 Relation requests run only after compiler resolution and use the returned
-canonical fully-qualified name.
+canonical fully-qualified name. `--limit` bounds detailed reference evidence
+and caller traversal output. Compact mode caps requested and emitted records at
+four for each requested
+relationship kind and reports an `EXACT` or `KNOWN_MINIMUM` cardinality,
+`returnedCount`, `truncated`, and a reference `nextPageToken` when more results
+exist. Continue references with `--reference-page-token <token>`. Tokens are
+opaque, one-use handles for bounded server-held traversal. They bind the
+workspace, resolved query and options, INDEX or IDEA evidence source, and source
+generation, so readiness or PSI changes cannot reinterpret an offset. Unknown,
+replayed, mismatched, evicted, and stale tokens fail with a typed conflict;
+accepted pages remain deterministic and non-overlapping. Caller and type
+hierarchy resolvers may still enumerate the underlying compiler search before
+the hierarchy engine applies its typed cap. The public caller result is bounded,
+but it does not claim bounded resolver enumeration; pre-materialization resolver
+budgets are tracked separately by issue #339.
+
+## Diagnostics
+
+Compact diagnostics request at most eight records while retaining exact
+severity counts and exact cardinality for the full compiler result. Messages
+are capped at 256 characters and source previews at 160 characters;
+`messageTruncated` and `previewTruncated` state whether the displayed text is
+complete. Use `--limit <1..500>` for detailed pages and consume
+`nextPageToken` with `--page-token <token>`. The first page captures one exact
+server-held snapshot. Continuations are opaque, one-use, and bound to the
+ordered files, limit, and Kotlin PSI generation; they reuse that snapshot
+without workspace refresh or compiler recomputation. Unknown, replayed,
+mismatched, evicted, or stale tokens fail with a typed conflict.
+
+## Impact
+
+`kast agent impact --symbol <fq-name>` queries source-index change impact with a
+typed `--depth` and `--limit`. The default compact request fetches at most four
+impact nodes while SQLite counts the full set separately. The compact result
+reports the exact executed query, bounded nodes, confidence evidence, and whether the full node set was
+truncated. Use `--fields query,confidence` for metadata without nodes or
+`--count` for cardinality only.
 
 ??? info "Command names for agent authors"
     The current typed agent commands are:
@@ -178,6 +219,7 @@ canonical fully-qualified name.
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent symbol --query OrderService --explain --workspace-root "$PWD"
+    kast agent impact --symbol com.example.OrderService --count --workspace-root "$PWD"
     kast agent diagnostics \
       --file-path src/main/kotlin/App.kt \
       --workspace-root "$PWD"

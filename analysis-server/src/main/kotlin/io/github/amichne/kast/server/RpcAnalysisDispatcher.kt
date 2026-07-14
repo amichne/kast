@@ -37,6 +37,7 @@ import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -212,10 +213,15 @@ class RpcAnalysisDispatcher(
             "raw/references" -> encode(
                 ReferencesResult.serializer(),
                 backend.findReferences(
-                    decodeParams(ReferencesQuery.serializer(), params).parsed().also {
+                    decodeParams(ReferencesQuery.serializer(), params).parsed().also { query ->
                         requireReadCapability(ReadCapability.FIND_REFERENCES)
+                        if (query.maxResults.value > config.maxResults) {
+                            throw ValidationException(
+                                "References maxResults must be less than or equal to server maxResults (${config.maxResults})",
+                            )
+                        }
                     },
-                ).withLimit(config.maxResults, ::referencePageToken),
+                ),
             )
 
             "raw/call-hierarchy" -> encode(
@@ -248,10 +254,11 @@ class RpcAnalysisDispatcher(
             "raw/diagnostics" -> encode(
                 DiagnosticsResult.serializer(),
                 backend.diagnostics(
-                    decodeParams(DiagnosticsQuery.serializer(), params).parsed().also {
+                    decodeParams(DiagnosticsQuery.serializer(), params).parsed().let { query ->
                         requireReadCapability(ReadCapability.DIAGNOSTICS)
+                        query.copy(maxResults = PositiveInt(minOf(query.maxResults.value, config.maxResults)))
                     },
-                ).withLimit(config.maxResults, ::diagnosticPageToken),
+                ),
             )
 
             "raw/rename" -> encode(
@@ -543,12 +550,6 @@ private fun requestId(id: JsonElement): String {
         candidate.isNotBlank() && candidate != JsonNull.toString()
     } ?: UUID.randomUUID().toString()
 }
-
-private fun referencePageToken(location: io.github.amichne.kast.api.contract.Location): String =
-    location.startOffset.toString()
-
-private fun diagnosticPageToken(diagnostic: io.github.amichne.kast.api.contract.Diagnostic): String =
-    diagnostic.location.startOffset.toString()
 
 private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
 

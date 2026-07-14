@@ -22,6 +22,9 @@ Keep this unit small, stable, and reusable across every runtime host.
 - Treat `SCHEMA_VERSION`, serialized field changes, and descriptor transport
   fields as protocol changes. Update callers, tests, and docs together when
   the wire contract moves.
+- Keep materially edited public skill request and query models in matching
+  files under `contract/skill`; direct sealed response variants stay with
+  their sealed response root in its matching file.
 - Keep edit application deterministic. Preserve conflict detection,
   non-overlapping range validation, and partial-apply reporting through any
   redesign.

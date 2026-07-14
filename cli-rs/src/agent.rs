@@ -4,9 +4,10 @@ use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{
     AgentAddFileArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiagnosticsField,
-    AgentDiagnosticsViewArgs, AgentImpactArgs, AgentMutationApplyArgs, AgentMutationField,
-    AgentMutationViewArgs, AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs,
-    AgentRenameArgs, AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
+    AgentDiagnosticsViewArgs, AgentImpactArgs, AgentImpactField, AgentImpactViewArgs,
+    AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentOperationArgs,
+    AgentOperationCommand, AgentOperationSelectorArgs, AgentRenameArgs,
+    AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
     AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField, AgentSymbolMode,
     AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
 };
@@ -35,7 +36,8 @@ mod semantic_analysis_evidence_tests {
     fn normalized_requested_file_path_matches_normalized_status_path() {
         let request = json!({
             "params": {
-                "filePaths": ["/workspace/src/../src/Sample.kt"]
+                "filePaths": ["/workspace/src/../src/Sample.kt"],
+                "maxResults": 8
             }
         });
         let result = json!({
@@ -47,7 +49,9 @@ mod semantic_analysis_evidence_tests {
             "semanticOutcome": "COMPLETE",
             "requestedFileCount": 1,
             "analyzedFileCount": 1,
-            "skippedFileCount": 0
+            "skippedFileCount": 0,
+            "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+            "cardinality": {"type": "EXACT", "totalCount": 0}
         });
 
         assert!(matches!(

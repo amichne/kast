@@ -34,10 +34,17 @@ kast agent symbol --query process --workspace-root "$PWD" --callers incoming
 kast --output json agent symbol --query EventBean --workspace-root "$PWD" --fields identity,location
 kast agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt
 kast --output json agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt --count
+# Continue only when the preceding result includes nextPageToken.
+kast agent diagnostics --workspace-root "$PWD" --file-path src/main/kotlin/App.kt --page-token '<nextPageToken>'
 kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean
+kast --output json agent impact --workspace-root "$PWD" --symbol com.example.EventBean --fields query,confidence
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply --idempotency-key rename-event-bean
 ```
+
+Diagnostic continuation tokens are opaque and one-use. A continuation reuses
+the server-held first-page snapshot automatically, so it does not refresh the
+workspace or recompute diagnostics.
 
 `--symbol` means a compiler-resolved fully-qualified identity. Use
 `agent symbol --query <name>` for lookup before mutation.

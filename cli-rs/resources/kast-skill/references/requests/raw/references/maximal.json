@@ -5,6 +5,8 @@
   "params": {
     "includeDeclaration": true,
     "includeUsageSiteScope": true,
+    "maxResults": 25,
+    "pageToken": "00000000-0000-4000-8000-000000000337",
     "position": {
       "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
       "offset": 128

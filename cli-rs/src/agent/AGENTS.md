@@ -10,7 +10,7 @@ with bounded flags and structured output.
 Keep compact public result projection families under `projection/`; the
 `projection.rs` wrapper owns only their deterministic include order. Shared
 view routing and envelope helpers stay in `view.rs` and `common.rs`, while
-symbol, diagnostics, verification, and mutation evidence remain in their
+symbol, impact, diagnostics, verification, and mutation evidence remain in their
 same-named family files.
 
 Agent-facing semantic flows use `kast agent verify`, `kast agent symbol`,

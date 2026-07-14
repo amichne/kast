@@ -19,4 +19,8 @@ data class ReferencesQuery(
         defaultValue = "false",
     )
     val includeUsageSiteScope: Boolean = false,
+    @DocField(description = "Maximum number of reference locations to return.", defaultValue = "100")
+    val maxResults: Int = 100,
+    @DocField(description = "Opaque continuation token from the preceding reference page.")
+    val pageToken: String? = null,
 )

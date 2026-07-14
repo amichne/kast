@@ -32,6 +32,8 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.result.DiagnosticSeverityCounts
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
@@ -94,6 +96,8 @@ class DocFieldCoverageTest {
         "SymbolQuery" to SymbolQuery.serializer(),
         "SymbolResult" to SymbolResult.serializer(),
         "ReferencesQuery" to ReferencesQuery.serializer(),
+        "EXACT" to ResultCardinality.Exact.serializer(),
+        "KNOWN_MINIMUM" to ResultCardinality.KnownMinimum.serializer(),
         "ReferencesResult" to ReferencesResult.serializer(),
         "CallHierarchyQuery" to CallHierarchyQuery.serializer(),
         "CallHierarchyResult" to CallHierarchyResult.serializer(),
@@ -109,6 +113,7 @@ class DocFieldCoverageTest {
         "SemanticInsertionResult" to SemanticInsertionResult.serializer(),
         "DiagnosticsQuery" to DiagnosticsQuery.serializer(),
         "DiagnosticsResult" to DiagnosticsResult.serializer(),
+        "DiagnosticSeverityCounts" to DiagnosticSeverityCounts.serializer(),
         "FileAnalysisStatus" to FileAnalysisStatus.serializer(),
         "Diagnostic" to Diagnostic.serializer(),
         "FileOutlineQuery" to FileOutlineQuery.serializer(),

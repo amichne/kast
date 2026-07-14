@@ -41,20 +41,62 @@ struct AgentMutationPlanParamsInput {
     content_file: Option<String>,
     #[serde(default)]
     placement: Option<AgentMutationPlanPlacementInput>,
-}
-
-#[derive(Debug, Deserialize)]
-struct AgentMutationPlanPlacementInput {
-    scope: AgentMutationPlanScopeInput,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentMutationPlanScopeInput {
-    #[serde(default)]
-    inside_file: Option<String>,
     #[serde(default)]
     inside_scope: Option<String>,
+    #[serde(default, rename = "anchor")]
+    statement_anchor: Option<AgentMutationPlanStatementAnchorInput>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct AgentMutationPlanPlacementInput {
+    scope: AgentMutationPlanScopeInput,
+    anchor: AgentMutationPlanAnchorInput,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentMutationPlanScopeInput {
+    FileScope { inside_file: String },
+    NamedScope { inside_scope: String },
+}
+
+impl AgentMutationPlanScopeInput {
+    fn inside_file(&self) -> Option<&str> {
+        match self {
+            Self::FileScope { inside_file } => Some(inside_file),
+            Self::NamedScope { .. } => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentMutationPlanAnchorInput {
+    AtAnchor { anchor: String },
+    AfterSymbol { symbol: String },
+    BeforeSymbol { symbol: String },
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentMutationPlanStatementAnchorInput {
+    BodyEnd,
+}
+
+impl AgentMutationPlanStatementAnchorInput {
+    fn canonical(self) -> &'static str {
+        match self {
+            Self::BodyEnd => "body-end",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -170,6 +212,7 @@ struct AgentAppliedEditProjection {
     start_offset: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     end_offset: Option<u64>,
+    new_text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -206,10 +249,14 @@ struct AgentMutationFailureResponseProjectionInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AgentProtocolErrorProjectionInput {
+    request_id: String,
     code: String,
     message: String,
     retryable: bool,
+    #[serde(default)]
+    details: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -219,11 +266,15 @@ struct AgentMutationFailureProjection {
     #[serde(skip_serializing_if = "Option::is_none")]
     stage: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     code: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     retryable: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    details: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -267,7 +318,11 @@ struct AgentMutationPlanProjection {
     #[serde(skip_serializing_if = "Option::is_none")]
     content_file: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    placement: Option<AgentMutationPlanPlacementInput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     inside_scope: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    anchor: Option<AgentMutationPlanAnchorInput>,
 }
 
 #[derive(Debug)]
@@ -327,11 +382,8 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                 let inside_file = params
                     .placement
                     .as_ref()
-                    .and_then(|placement| placement.scope.inside_file.clone());
-                let inside_scope = params
-                    .placement
-                    .as_ref()
-                    .and_then(|placement| placement.scope.inside_scope.clone());
+                    .and_then(|placement| placement.scope.inside_file())
+                    .map(str::to_string);
                 let file_path = params.file_path.or(inside_file);
                 let mutation_kind = params
                     .mutation_kind
@@ -358,7 +410,13 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                         containing_type: params.containing_type,
                         file_path: file_path.clone(),
                         content_file: params.content_file,
-                        inside_scope,
+                        placement: params.placement,
+                        inside_scope: params.inside_scope,
+                        anchor: params.statement_anchor.map(|anchor| {
+                            AgentMutationPlanAnchorInput::AtAnchor {
+                                anchor: anchor.canonical().to_string(),
+                            }
+                        }),
                     }),
                     edit_count: 0,
                     edits: Vec::new(),
@@ -543,9 +601,15 @@ impl AgentMutationFailureProjectionInput {
                 .clone()
                 .or_else(|| response.error_text.clone())
         });
-        let (code, message, retryable) = match protocol_error {
-            Some(error) => (Some(error.code), Some(error.message), Some(error.retryable)),
-            None => (None, response_message, None),
+        let (request_id, code, message, retryable, details) = match protocol_error {
+            Some(error) => (
+                Some(error.request_id),
+                Some(error.code),
+                Some(error.message),
+                Some(error.retryable),
+                Some(error.details),
+            ),
+            None => (None, None, response_message, None, None),
         };
         let mut edit_count = 0;
         let mut edits = Vec::new();
@@ -583,9 +647,11 @@ impl AgentMutationFailureProjectionInput {
             failure: AgentMutationFailureProjection {
                 kind: self.failure_type,
                 stage,
+                request_id,
                 code,
                 message,
                 retryable,
+                details,
             },
             result: AgentMutationResultEvidence {
                 edit_count,

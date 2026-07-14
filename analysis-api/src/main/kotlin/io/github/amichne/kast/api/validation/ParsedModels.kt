@@ -78,12 +78,6 @@ data class ParsedSymbolQuery(
     val includeDocumentation: Boolean,
 ) : PositionQuery
 
-data class ParsedReferencesQuery(
-    override val position: ParsedFilePosition,
-    val includeDeclaration: Boolean,
-    val includeUsageSiteScope: Boolean,
-) : PositionQuery
-
 data class ParsedCallHierarchyQuery(
     override val position: ParsedFilePosition,
     val direction: CallDirection,
@@ -104,10 +98,6 @@ data class ParsedSemanticInsertionQuery(
     override val position: ParsedFilePosition,
     val target: SemanticInsertionTarget,
 ) : PositionQuery
-
-data class ParsedDiagnosticsQuery(
-    val filePaths: NonEmptyList<NormalizedPath>,
-)
 
 data class ParsedRenameQuery(
     override val position: ParsedFilePosition,
@@ -232,6 +222,8 @@ fun ReferencesQuery.parsed(): ParsedReferencesQuery = validationBoundary {
         position = position.parsed(),
         includeDeclaration = includeDeclaration,
         includeUsageSiteScope = includeUsageSiteScope,
+        maxResults = PositiveInt(maxResults),
+        pageToken = pageToken?.let(ReferencePageToken::parse),
     )
 }
 
@@ -265,6 +257,8 @@ fun SemanticInsertionQuery.parsed(): ParsedSemanticInsertionQuery = validationBo
 fun DiagnosticsQuery.parsed(): ParsedDiagnosticsQuery = validationBoundary {
     ParsedDiagnosticsQuery(
         filePaths = NonEmptyList(filePaths.map(NormalizedPath::parse)),
+        maxResults = PositiveInt(maxResults),
+        pageToken = pageToken?.let(DiagnosticPageToken::parse),
     )
 }
 

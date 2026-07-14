@@ -3,7 +3,8 @@
     "params": {
         "filePaths": [
             "/workspace/src/Sample.kt"
-        ]
+        ],
+        "maxResults": 500
     },
     "id": 1,
     "jsonrpc": "2.0"

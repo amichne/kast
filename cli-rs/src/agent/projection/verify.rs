@@ -74,6 +74,8 @@ struct AgentVerifyCompactResult {
     health: AgentHealthProjection,
     runtime: AgentRuntimeProjection,
     capabilities: AgentCapabilitiesProjection,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
     schema_version: u32,
 }
 
@@ -89,6 +91,8 @@ struct AgentVerifySelectedResult {
     runtime: Option<AgentRuntimeProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
     capabilities: Option<AgentCapabilitiesProjection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
     schema_version: u32,
 }
 
@@ -103,6 +107,8 @@ struct AgentVerifyCountResult {
     failed_count: usize,
     read_capability_count: usize,
     mutation_capability_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
     schema_version: u32,
 }
 
@@ -125,32 +131,23 @@ fn project_verify_envelope(
             );
         }
     };
+    if !envelope.ok {
+        return compact_command_error_envelope(envelope, &command);
+    }
     let Some(health_step) = command.step("health") else {
-        return if envelope.ok {
-            invalid_projection_envelope(envelope.method, "verification result omitted health")
-        } else {
-            compact_command_error_envelope(envelope, &command)
-        };
+        return invalid_projection_envelope(envelope.method, "verification result omitted health");
     };
     let Some(runtime_step) = command.step("runtime/status") else {
-        return if envelope.ok {
-            invalid_projection_envelope(
-                envelope.method,
-                "verification result omitted runtime status",
-            )
-        } else {
-            compact_command_error_envelope(envelope, &command)
-        };
+        return invalid_projection_envelope(
+            envelope.method,
+            "verification result omitted runtime status",
+        );
     };
     let Some(capabilities_step) = command.step("capabilities") else {
-        return if envelope.ok {
-            invalid_projection_envelope(
-                envelope.method,
-                "verification result omitted capabilities",
-            )
-        } else {
-            compact_command_error_envelope(envelope, &command)
-        };
+        return invalid_projection_envelope(
+            envelope.method,
+            "verification result omitted capabilities",
+        );
     };
     let runtime = match runtime_step
         .result
@@ -185,6 +182,7 @@ fn project_verify_envelope(
     let check_count = command.steps.len();
     let passed_count = command.steps.iter().filter(|step| step.ok).count();
     let failed_count = check_count.saturating_sub(passed_count);
+    let semantic_workspace = command.semantic_workspace;
     let ok = envelope.ok;
     let method = envelope.method;
     let error = compact_agent_error(envelope.error);
@@ -198,6 +196,7 @@ fn project_verify_envelope(
                 health,
                 runtime,
                 capabilities,
+                semantic_workspace,
                 schema_version: SCHEMA_VERSION,
             },
             error,
@@ -214,6 +213,7 @@ fn project_verify_envelope(
                     runtime: selected(AgentVerifyField::Runtime).then_some(runtime),
                     capabilities: selected(AgentVerifyField::Capabilities)
                         .then_some(capabilities),
+                    semantic_workspace,
                     schema_version: SCHEMA_VERSION,
                 },
                 error,
@@ -230,6 +230,7 @@ fn project_verify_envelope(
                 failed_count,
                 read_capability_count: capabilities.read_count,
                 mutation_capability_count: capabilities.mutation_count,
+                semantic_workspace,
                 schema_version: SCHEMA_VERSION,
             },
             error,

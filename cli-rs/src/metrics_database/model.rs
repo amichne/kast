@@ -142,6 +142,14 @@ struct ChangeImpactNode {
 }
 
 #[derive(Debug)]
+pub(crate) struct BoundedMetricsResult {
+    pub(crate) results: Value,
+    pub(crate) total_count: usize,
+    pub(crate) returned_count: usize,
+    pub(crate) truncated: bool,
+}
+
+#[derive(Debug)]
 pub(crate) enum DirectMetricsError {
     Unavailable(String),
     Query(CliError),

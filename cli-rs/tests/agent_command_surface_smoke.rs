@@ -181,11 +181,24 @@ fn agent_symbol_relations_use_canonical_compiler_identity() {
             ("symbol/resolve", symbol_result(&workspace, "sample.when")),
             (
                 "symbol/references",
-                json!({"type":"REFERENCES_SUCCESS","ok":true,"references":[]}),
+                json!({
+                    "type":"REFERENCES_SUCCESS",
+                    "ok":true,
+                    "references":[],
+                    "cardinality": {"type": "EXACT", "totalCount": 0}
+                }),
             ),
             (
                 "symbol/callers",
-                json!({"type":"CALLERS_SUCCESS","ok":true,"calls":[]}),
+                json!({
+                    "type":"CALLERS_SUCCESS",
+                    "ok":true,
+                    "root": {
+                        "symbol": {"fqName": "sample.when"},
+                        "children": []
+                    },
+                    "stats": {"totalEdges": 0}
+                }),
             ),
         ],
     );
@@ -194,7 +207,13 @@ fn agent_symbol_relations_use_canonical_compiler_identity() {
         &home,
         &config_home,
         &workspace,
-        &["--references", "--callers", "incoming"],
+        &[
+            "--references",
+            "--reference-page-token",
+            "v1:IDEA:4:4",
+            "--callers",
+            "incoming",
+        ],
     );
 
     assert!(
@@ -204,7 +223,33 @@ fn agent_symbol_relations_use_canonical_compiler_identity() {
     );
     let requests = handle.join().expect("scripted backend");
     assert_eq!(requests[3]["params"]["symbol"], "sample.when");
+    assert_eq!(requests[3]["params"]["maxResults"], 4);
+    assert_eq!(requests[3]["params"]["pageToken"], "v1:IDEA:4:4");
     assert_eq!(requests[4]["params"]["symbol"], "sample.when");
+    assert_eq!(requests[4]["params"]["maxTotalCalls"], 4);
+    assert_eq!(requests[4]["params"]["maxChildrenPerNode"], 4);
+}
+
+#[test]
+fn agent_symbol_relations_reject_invalid_result_budgets_before_runtime_io() {
+    for limit in ["0", "501"] {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join("home");
+        let config_home = temp.path().join("config");
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace).expect("workspace");
+
+        let output = run_agent_symbol(
+            &home,
+            &config_home,
+            &workspace,
+            &["--references", "--limit", limit],
+        );
+
+        assert!(!output.status.success(), "limit={limit}");
+        let stdout: Value = serde_json::from_slice(&output.stdout).expect("budget failure json");
+        assert_eq!(stdout["error"]["code"], "AGENT_USAGE", "{stdout}");
+    }
 }
 
 #[test]
@@ -263,6 +308,10 @@ fn agent_symbol_uses_indexed_exact_only_when_compiler_is_unavailable() {
     assert_eq!(
         stdout["result"]["request"]["params"]["modes"],
         json!(["exact"])
+    );
+    assert_eq!(
+        stdout["result"]["request"]["params"]["includeEvidence"],
+        true
     );
     assert_eq!(
         stdout["result"]["outcome"]["candidates"]
@@ -798,10 +847,10 @@ fn relative_file_targets_are_canonical_in_mutation_plans() {
             .output()
             .unwrap_or_else(|error| panic!("{name} plan: {error}"));
         let document: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("plan JSON");
-        let params = &document["result"]["request"]["params"];
+        let plan_result = &document["result"]["plan"];
         let target = target_path
             .iter()
-            .fold(params, |value, segment| &value[*segment]);
+            .fold(plan_result, |value, segment| &value[*segment]);
 
         assert!(
             plan.status.success(),
@@ -811,7 +860,7 @@ fn relative_file_targets_are_canonical_in_mutation_plans() {
         );
         assert_eq!(target, &expected_target, "{name}: {document:#}");
         assert_eq!(
-            params["contentFile"],
+            plan_result["contentFile"],
             content_file.to_str().expect("snippet"),
             "{name}: {document:#}",
         );
@@ -848,6 +897,144 @@ fn relative_file_target_requires_explicit_workspace_root() {
     assert_eq!(
         document["error"]["code"], "AGENT_RELATIVE_FILE_REQUIRES_WORKSPACE",
         "{document:#}",
+    );
+}
+
+#[test]
+fn agent_mutation_plans_preserve_scope_and_anchor_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let source_root = workspace.join("src");
+    std::fs::create_dir_all(&source_root).expect("source root");
+    let file_path = source_root
+        .canonicalize()
+        .expect("canonical source root")
+        .join("App.kt");
+    let content_file = temp.path().join("snippet.kt");
+    std::fs::write(&content_file, "println(\"added\")\n").expect("snippet");
+
+    let declaration = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "add-declaration",
+            "--inside-scope",
+            "sample.Container",
+            "--after-symbol",
+            "sample.Container.existing",
+            "--content-file",
+            content_file.to_str().expect("snippet"),
+        ])
+        .args(["--workspace-root", workspace.to_str().expect("workspace")])
+        .output()
+        .expect("declaration plan");
+    assert!(
+        declaration.status.success(),
+        "{}",
+        String::from_utf8_lossy(&declaration.stdout)
+    );
+    let declaration: serde_json::Value = serde_json::from_slice(&declaration.stdout).expect("json");
+    assert_eq!(
+        declaration["result"]["plan"]["placement"],
+        serde_json::json!({
+            "scope": {"type": "NAMED_SCOPE", "insideScope": "sample.Container"},
+            "anchor": {"type": "AFTER_SYMBOL", "symbol": "sample.Container.existing"}
+        })
+    );
+
+    let file_anchor = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "add-declaration",
+            "--inside-file",
+            file_path.to_str().expect("file path"),
+            "--at",
+            "file-bottom",
+            "--content-file",
+            content_file.to_str().expect("snippet"),
+        ])
+        .args(["--workspace-root", workspace.to_str().expect("workspace")])
+        .output()
+        .expect("file anchor plan");
+    assert!(
+        file_anchor.status.success(),
+        "{}",
+        String::from_utf8_lossy(&file_anchor.stdout)
+    );
+    let file_anchor: serde_json::Value = serde_json::from_slice(&file_anchor.stdout).expect("json");
+    assert_eq!(
+        file_anchor["result"]["plan"]["placement"],
+        serde_json::json!({
+            "scope": {"type": "FILE_SCOPE", "insideFile": file_path},
+            "anchor": {"type": "AT_ANCHOR", "anchor": "file-bottom"}
+        })
+    );
+
+    let before_symbol = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "add-implementation",
+            "--inside-scope",
+            "sample.Container",
+            "--before-symbol",
+            "sample.Container.existing",
+            "--content-file",
+            content_file.to_str().expect("snippet"),
+        ])
+        .args(["--workspace-root", workspace.to_str().expect("workspace")])
+        .output()
+        .expect("before-symbol plan");
+    assert!(
+        before_symbol.status.success(),
+        "{}",
+        String::from_utf8_lossy(&before_symbol.stdout)
+    );
+    let before_symbol: serde_json::Value =
+        serde_json::from_slice(&before_symbol.stdout).expect("json");
+    assert_eq!(
+        before_symbol["result"]["plan"]["placement"],
+        serde_json::json!({
+            "scope": {"type": "NAMED_SCOPE", "insideScope": "sample.Container"},
+            "anchor": {"type": "BEFORE_SYMBOL", "symbol": "sample.Container.existing"}
+        })
+    );
+
+    let statement = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "add-statement",
+            "--inside-scope",
+            "sample.Container.run",
+            "--at",
+            "body-end",
+            "--content-file",
+            content_file.to_str().expect("snippet"),
+        ])
+        .args(["--workspace-root", workspace.to_str().expect("workspace")])
+        .output()
+        .expect("statement plan");
+    assert!(
+        statement.status.success(),
+        "{}",
+        String::from_utf8_lossy(&statement.stdout)
+    );
+    let statement: serde_json::Value = serde_json::from_slice(&statement.stdout).expect("json");
+    assert_eq!(
+        statement["result"]["plan"]["insideScope"],
+        "sample.Container.run"
+    );
+    assert_eq!(
+        statement["result"]["plan"]["anchor"],
+        serde_json::json!({"type": "AT_ANCHOR", "anchor": "body-end"})
     );
 }
 

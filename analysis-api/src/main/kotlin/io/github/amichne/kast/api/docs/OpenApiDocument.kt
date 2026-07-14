@@ -51,6 +51,7 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
@@ -202,6 +203,9 @@ object OpenApiDocument {
         registry.register("SymbolQuery", SymbolQuery.serializer())
         registry.register("SymbolResult", SymbolResult.serializer())
         registry.register("ReferencesQuery", ReferencesQuery.serializer())
+        registry.register("ResultCardinality", ResultCardinality.serializer())
+        registry.register("EXACT", ResultCardinality.Exact.serializer())
+        registry.register("KNOWN_MINIMUM", ResultCardinality.KnownMinimum.serializer())
         registry.register("ReferencesResult", ReferencesResult.serializer())
         registry.register("CallHierarchyQuery", CallHierarchyQuery.serializer())
         registry.register("CallHierarchyResult", CallHierarchyResult.serializer())
@@ -657,6 +661,18 @@ internal class SchemaRegistry {
             "FileOperation.DeleteFile" -> subtypeWithDiscriminator(
                 FileOperation.DeleteFile.serializer(),
                 discriminatorValue = "DELETE_FILE",
+            )
+            "ResultCardinality" -> discriminatedUnion(
+                "EXACT" to "EXACT",
+                "KNOWN_MINIMUM" to "KNOWN_MINIMUM",
+            )
+            "EXACT" -> subtypeWithDiscriminator(
+                ResultCardinality.Exact.serializer(),
+                discriminatorValue = "EXACT",
+            )
+            "KNOWN_MINIMUM" -> subtypeWithDiscriminator(
+                ResultCardinality.KnownMinimum.serializer(),
+                discriminatorValue = "KNOWN_MINIMUM",
             )
             else -> null
         }

@@ -117,6 +117,17 @@ fn execute_agent_symbol(args: AgentSymbolArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {
+    let budget = match AgentImpactResultBudget::try_from(args.limit) {
+        Ok(budget) => budget,
+        Err(message) => {
+            return error_envelope(
+                "agent/impact".to_string(),
+                None,
+                agent_error("AGENT_USAGE", message),
+            );
+        }
+    };
+    let limit = budget.request_limit(impact_result_view(&args.view).detailed());
     execute_agent_steps(
         "agent/impact",
         args.runtime,
@@ -127,7 +138,7 @@ fn execute_agent_impact(args: AgentImpactArgs) -> AgentEnvelope {
                 "metric": "impact",
                 "symbol": args.symbol,
                 "depth": args.depth,
-                "limit": args.limit,
+                "limit": limit,
             }),
             false,
         )],
@@ -143,8 +154,19 @@ fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {
         Ok(file_paths) => file_paths,
         Err(error) => return error_envelope("agent/diagnostics".to_string(), None, error),
     };
+    let budget = match AgentDiagnosticsResultBudget::try_from(args.limit) {
+        Ok(budget) => budget,
+        Err(message) => {
+            return error_envelope(
+                "agent/diagnostics".to_string(),
+                None,
+                agent_error("AGENT_USAGE", message),
+            );
+        }
+    };
+    let limit = budget.request_limit(diagnostics_result_view(&args.view).detailed());
     let mut steps = Vec::new();
-    if !args.skip_refresh {
+    if args.page_token.is_none() && !args.skip_refresh {
         steps.push(AgentPublicStep::new(
             "workspace-refresh",
             "raw/workspace-refresh",
@@ -155,7 +177,11 @@ fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {
     steps.push(AgentPublicStep::new(
         "diagnostics",
         "raw/diagnostics",
-        json!({ "filePaths": &file_paths }),
+        drop_nulls(json!({
+            "filePaths": &file_paths,
+            "maxResults": limit,
+            "pageToken": args.page_token,
+        })),
         false,
     ));
     let mut envelope = execute_agent_steps("agent/diagnostics", args.runtime, steps);
@@ -553,7 +579,7 @@ fn execute_agent_steps(
                 method: step.method.to_string(),
                 request: json_rpc_request(step.method, step.params),
                 runtime: runtime.clone(),
-                full_response: false,
+                full_response: step.method == "raw/diagnostics",
                 operation: AgentOperation::ReadOnly,
             },
             step_session,

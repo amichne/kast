@@ -20,10 +20,24 @@ class RunningKastIdeaBackend internal constructor(
     val backend: AnalysisBackend,
     val server: RunningAnalysisServer,
     private val projectIndexing: KastIdeaProjectIndexing,
+    private val backendResources: AutoCloseable,
+    private val sourceIndexStore: SqliteSourceIndexStore,
 ) : AutoCloseable {
     override fun close() {
-        projectIndexing.cancel()
-        server.close()
+        var firstFailure: Throwable? = null
+        listOf<() -> Unit>(
+            projectIndexing::cancel,
+            server::close,
+            backendResources::close,
+            sourceIndexStore::close,
+        ).forEach { close ->
+            try {
+                close()
+            } catch (failure: Throwable) {
+                if (firstFailure == null) firstFailure = failure
+            }
+        }
+        firstFailure?.let { failure -> throw failure }
     }
 
     fun await() {
@@ -74,16 +88,17 @@ object KastIdeaBackendRuntime {
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
+        val pluginBackend = KastPluginBackend(
+            project = project,
+            workspaceRoot = workspaceIdentity.workspaceRootPath,
+            limits = limits,
+            telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
+            backendName = backendName,
+            workspaceIdentity = workspaceIdentity,
+            referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
+        )
         val backend = ObservedAnalysisBackend(
-            delegate = KastPluginBackend(
-                project = project,
-                workspaceRoot = workspaceIdentity.workspaceRootPath,
-                limits = limits,
-                telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
-                backendName = backendName,
-                workspaceIdentity = workspaceIdentity,
-                referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
-            ),
+            delegate = pluginBackend,
             diagnostics = diagnostics,
         )
         val server = AnalysisServer(
@@ -111,6 +126,8 @@ object KastIdeaBackendRuntime {
             backend = backend,
             server = server,
             projectIndexing = projectIndexing,
+            backendResources = pluginBackend,
+            sourceIndexStore = sourceIndexStore,
         )
     }
 }

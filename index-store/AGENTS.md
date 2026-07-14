@@ -18,11 +18,17 @@ Keep this unit focused on storage concerns and schema continuity.
   contract-sensitive. Operational source-index reads belong in the Rust CLI;
   Kotlin reads SQLite for headless hydration or targeted indexer/cache
   behavior.
+- Return paged index evidence and its generation atomically under the same
+  store lock. Every committed transition that can change indexed declarations,
+  references, manifests, or reconciliation state must advance the generation;
+  consumers use it to reject stale continuation pages.
 
 ## Verification
 
 Prove storage changes here before relying on higher-level runtime tests.
 
 - Run `./gradlew :index-store:test`.
+- For page/generation changes, also run `./gradlew :backend-idea:test` to prove
+  production continuation invalidation rather than only store-local behavior.
 - If you change schema bootstrap, connection setup, or hydration reads, exercise
   `SqliteSourceIndexStoreTest` and the affected headless/indexer tests.

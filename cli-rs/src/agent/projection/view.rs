@@ -35,8 +35,15 @@ impl<Field: Clone> AgentResultView<Field> {
 #[derive(Debug, Clone)]
 enum AgentProjectionRequest {
     Passthrough,
-    Symbol(AgentResultView<AgentSymbolField>),
-    Diagnostics(AgentResultView<AgentDiagnosticsField>),
+    Symbol {
+        view: AgentResultView<AgentSymbolField>,
+        relation_limit: usize,
+    },
+    Diagnostics {
+        view: AgentResultView<AgentDiagnosticsField>,
+        result_limit: usize,
+    },
+    Impact(AgentResultView<AgentImpactField>),
     Mutation(AgentResultView<AgentMutationField>),
     Verify(AgentResultView<AgentVerifyField>),
 }
@@ -45,10 +52,19 @@ impl AgentProjectionRequest {
     fn for_command(command: &AgentCommand) -> Self {
         match command {
             AgentCommand::Verify(args) => Self::Verify(verify_result_view(&args.view)),
-            AgentCommand::Symbol(args) => Self::Symbol(symbol_result_view(&args.view)),
-            AgentCommand::Diagnostics(args) => {
-                Self::Diagnostics(diagnostics_result_view(&args.view))
-            }
+            AgentCommand::Symbol(args) => Self::Symbol {
+                view: symbol_result_view(&args.view),
+                relation_limit: AgentRelationResultBudget::try_from(args.limit)
+                    .map(AgentRelationResultBudget::projection_limit)
+                    .unwrap_or_default(),
+            },
+            AgentCommand::Diagnostics(args) => Self::Diagnostics {
+                view: diagnostics_result_view(&args.view),
+                result_limit: AgentDiagnosticsResultBudget::try_from(args.limit)
+                    .map(AgentDiagnosticsResultBudget::projection_limit)
+                    .unwrap_or_default(),
+            },
+            AgentCommand::Impact(args) => Self::Impact(impact_result_view(&args.view)),
             AgentCommand::Rename(args) => Self::Mutation(mutation_result_view(&args.mutation.view)),
             AgentCommand::AddFile(args) => {
                 Self::Mutation(mutation_result_view(&args.mutation.view))
@@ -68,7 +84,6 @@ impl AgentProjectionRequest {
                 }
             },
             AgentCommand::Lsp(_)
-            | AgentCommand::Impact(_)
             | AgentCommand::Tools(_)
             | AgentCommand::Call(_)
             | AgentCommand::Workflow(_) => Self::Passthrough,
@@ -77,8 +92,14 @@ impl AgentProjectionRequest {
 
     fn project(self, envelope: AgentEnvelope) -> AgentEnvelope {
         match self {
-            Self::Symbol(view) => project_symbol_envelope(envelope, view),
-            Self::Diagnostics(view) => project_diagnostics_envelope(envelope, view),
+            Self::Symbol {
+                view,
+                relation_limit,
+            } => project_symbol_envelope(envelope, view, relation_limit),
+            Self::Diagnostics { view, result_limit } => {
+                project_diagnostics_envelope(envelope, view, result_limit)
+            }
+            Self::Impact(view) => project_impact_envelope(envelope, view),
             Self::Mutation(view) => project_mutation_envelope(envelope, view),
             Self::Verify(view) => project_verify_envelope(envelope, view),
             Self::Passthrough => envelope,
@@ -100,6 +121,10 @@ fn diagnostics_result_view(
     AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
 }
 
+fn impact_result_view(view: &AgentImpactViewArgs) -> AgentResultView<AgentImpactField> {
+    AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
+}
+
 fn mutation_result_view(view: &AgentMutationViewArgs) -> AgentResultView<AgentMutationField> {
     AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
 }
@@ -110,6 +135,79 @@ struct AgentStepCommandProjectionInput {
     #[serde(rename = "type")]
     result_type: String,
     steps: Vec<AgentStepProjectionInput>,
+    #[serde(default)]
+    file_paths: Vec<String>,
+    #[serde(default)]
+    semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSemanticWorkspaceProjection {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    backend_name: Option<String>,
+    workspace_root: String,
+    workspace_kind: AgentSemanticWorkspaceKindProjection,
+    source_module_names: Vec<String>,
+    limitations: Vec<AgentSemanticWorkspaceLimitationProjection>,
+    evidence_quality: AgentSemanticEvidenceQualityProjection,
+    next_actions: Vec<AgentSemanticWorkspaceNextActionProjection>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    backend_candidates: Vec<AgentSemanticBackendCandidateProjection>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSemanticWorkspaceKindProjection {
+    PrimaryCheckout,
+    LinkedWorktree,
+    DisposableCheckout,
+    StandaloneGradleWorkspace,
+    UnsupportedProject,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSemanticWorkspaceLimitationProjection {
+    WorkspaceUnprepared,
+    SourceModulesUnavailable,
+    UnsupportedProject,
+    MutationAuthorityRequired,
+    BackendSelectionAmbiguous,
+    RuntimeIndexing,
+    ReferenceIndexUnavailable,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSemanticEvidenceQualityProjection {
+    Unavailable,
+    CompilerBacked,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSemanticWorkspaceNextActionProjection {
+    kind: AgentSemanticWorkspaceNextActionKindProjection,
+    command: String,
+    mutates_global_install_authority: bool,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSemanticWorkspaceNextActionKindProjection {
+    PrepareIdeaWorkspace,
+    UseHeadlessDistribution,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSemanticBackendCandidateProjection {
+    backend_name: String,
+    backend_version: String,
+    workspace_root: String,
+    ready: bool,
+    evidence_quality: AgentSemanticEvidenceQualityProjection,
 }
 
 #[derive(Debug, Deserialize)]

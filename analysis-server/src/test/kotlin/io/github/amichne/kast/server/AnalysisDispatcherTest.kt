@@ -43,6 +43,7 @@ import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
@@ -71,11 +72,13 @@ import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
+import io.github.amichne.kast.api.validation.ParsedReferencesQuery
 import io.github.amichne.kast.api.validation.ParsedSymbolQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
 import io.github.amichne.kast.api.validation.ParsedImportOptimizeQuery
 import io.github.amichne.kast.api.validation.ParsedRefreshQuery
 import io.github.amichne.kast.api.validation.ParsedRenameQuery
+import io.github.amichne.kast.testing.AnalysisBackendContractFixture
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -442,6 +445,81 @@ class AnalysisDispatcherTest {
             params = json.encodeToJsonElement(
                 KastDiscoverRequest.serializer(),
                 KastDiscoverRequest(symbol = "greet", maxResults = 0),
+            ),
+        )
+
+        val error = json.decodeFromJsonElement(
+            JsonRpcErrorResponse.serializer(),
+            response,
+        )
+        assertEquals("VALIDATION_ERROR", error.error.data?.code)
+    }
+
+    @Test
+    fun `symbol references sends typed bounds to backend and continuation has no duplicates`() {
+        val fixture = AnalysisBackendContractFixture.create(tempDir)
+        val delegate = FakeAnalysisBackend.contractFixture(fixture)
+        val observedQueries = mutableListOf<ParsedReferencesQuery>()
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult {
+                observedQueries += query
+                return delegate.findReferences(query)
+            }
+        }
+
+        val firstResult = dispatchSuccessWithBackend<KastReferencesResponse>(
+            backend = backend,
+            method = "symbol/references",
+            params = json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = fixture.symbolFqName,
+                    maxResults = 1,
+                ),
+            ),
+        )
+
+        val firstPage = assertInstanceOf(KastReferencesSuccessResponse::class.java, firstResult)
+        assertEquals(1, firstPage.query.maxResults)
+        assertEquals(ResultCardinality.Exact(2), firstPage.cardinality)
+        assertEquals(1, firstPage.references.size)
+        assertTrue(checkNotNull(firstPage.page).truncated)
+        assertTrue(firstPage.page?.nextPageToken != null)
+
+        val secondResult = dispatchSuccessWithBackend<KastReferencesResponse>(
+            backend = backend,
+            method = "symbol/references",
+            params = json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(
+                    workspaceRoot = tempDir.toString(),
+                    symbol = fixture.symbolFqName,
+                    maxResults = 1,
+                    pageToken = checkNotNull(firstPage.page?.nextPageToken),
+                ),
+            ),
+        )
+
+        val secondPage = assertInstanceOf(KastReferencesSuccessResponse::class.java, secondResult)
+        assertEquals(ResultCardinality.Exact(2), secondPage.cardinality)
+        assertEquals(1, secondPage.references.size)
+        assertEquals(null, secondPage.page)
+        assertTrue(firstPage.references.single() !in secondPage.references)
+        assertEquals(2, observedQueries.size)
+        assertEquals(1, observedQueries[0].maxResults.value)
+        assertEquals(null, observedQueries[0].pageToken)
+        assertEquals(1, observedQueries[1].maxResults.value)
+        assertEquals(firstPage.page?.nextPageToken, observedQueries[1].pageToken?.value)
+    }
+
+    @Test
+    fun `symbol references rejects non positive max results`() {
+        val response = dispatchRaw(
+            method = "symbol/references",
+            params = json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(symbol = "greet", maxResults = 0),
             ),
         )
 

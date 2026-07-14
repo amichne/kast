@@ -36,6 +36,15 @@
         "includeUsageSiteScope": {
           "type": "boolean"
         },
+        "maxResults": {
+          "type": "integer"
+        },
+        "pageToken": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "position": {
           "additionalProperties": false,
           "properties": {

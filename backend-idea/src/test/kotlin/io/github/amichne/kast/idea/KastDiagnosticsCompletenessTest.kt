@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -17,12 +18,19 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
+import io.github.amichne.kast.api.protocol.ConflictException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 @TestApplication
 class KastDiagnosticsCompletenessTest {
@@ -65,10 +73,15 @@ class KastDiagnosticsCompletenessTest {
     private val workspaceRoot: Path
         get() = sourceRoot.parent
 
-    private fun backend(): KastPluginBackend = KastPluginBackend(
+    private fun backend(
+        psiGeneration: () -> Long = { 1L },
+        readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
+    ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
         limits = defaultLimits,
+        psiGeneration = psiGeneration,
+        readEpochObserver = readEpochObserver,
     )
 
     private fun ensureProjectReady() {
@@ -125,6 +138,132 @@ class KastDiagnosticsCompletenessTest {
         assertEquals(0, result.skippedFileCount)
         assertTrue(result.diagnostics.isNotEmpty())
         assertTrue(result.diagnostics.none { it.code == "ANALYSIS_FAILURE" })
+    }
+
+    @Test
+    fun `diagnostic continuation rejects unknown mismatched and consumed tokens`() = runBlocking {
+        ensureProjectReady()
+        val backend = backend()
+        val missingA = sourceRoot.resolve("MissingA.kt").toString()
+        val missingB = sourceRoot.resolve("MissingB.kt").toString()
+        val first = backend.diagnostics(
+            DiagnosticsQuery(filePaths = listOf(missingA, missingB), maxResults = 1),
+        )
+        val token = requireNotNull(first.page?.nextPageToken)
+
+        val mismatch = runCatching {
+            backend.diagnostics(
+                DiagnosticsQuery(
+                    filePaths = listOf(missingB, missingA),
+                    maxResults = 1,
+                    pageToken = token,
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(mismatch is ConflictException)
+
+        val consumed = runCatching {
+            backend.diagnostics(
+                DiagnosticsQuery(
+                    filePaths = listOf(missingA, missingB),
+                    maxResults = 1,
+                    pageToken = token,
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(consumed is ConflictException)
+
+        val unknown = runCatching {
+            backend.diagnostics(
+                DiagnosticsQuery(
+                    filePaths = listOf(missingA, missingB),
+                    maxResults = 1,
+                    pageToken = "00000000-0000-0000-0000-000000000338",
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(unknown is ConflictException)
+    }
+
+    @Test
+    fun `diagnostic continuation rejects a changed PSI generation`() = runBlocking {
+        ensureProjectReady()
+        val generation = AtomicLong(1)
+        val backend = backend(generation::get)
+        val missingA = sourceRoot.resolve("MissingA.kt").toString()
+        val missingB = sourceRoot.resolve("MissingB.kt").toString()
+        val first = backend.diagnostics(
+            DiagnosticsQuery(filePaths = listOf(missingA, missingB), maxResults = 1),
+        )
+        val token = requireNotNull(first.page?.nextPageToken)
+        generation.set(2)
+
+        val failure = runCatching {
+            backend.diagnostics(
+                DiagnosticsQuery(
+                    filePaths = listOf(missingA, missingB),
+                    maxResults = 1,
+                    pageToken = token,
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is ConflictException, "expected generation conflict, got $failure")
+        assertTrue(failure?.message.orEmpty().contains("PSI changed"))
+    }
+
+    @Test
+    fun `diagnostic snapshot and generation share one read epoch against a concurrent write`() = runBlocking {
+        ensureProjectReady()
+        val generation = AtomicLong(1)
+        val enteredReadEpoch = CountDownLatch(1)
+        val releaseReadEpoch = CountDownLatch(1)
+        val blockedOnce = AtomicBoolean(false)
+        val observer = IdeaReadEpochObserver { kind ->
+            if (kind == IdeaReadEpochKind.DIAGNOSTICS && blockedOnce.compareAndSet(false, true)) {
+                enteredReadEpoch.countDown()
+                assertTrue(releaseReadEpoch.await(10, TimeUnit.SECONDS))
+            }
+        }
+        val backend = backend(
+            psiGeneration = generation::get,
+            readEpochObserver = observer,
+        )
+        val missingA = sourceRoot.resolve("ConcurrentMissingA.kt").toString()
+        val missingB = sourceRoot.resolve("ConcurrentMissingB.kt").toString()
+        val firstDeferred = async(Dispatchers.Default) {
+            backend.diagnostics(DiagnosticsQuery(filePaths = listOf(missingA, missingB), maxResults = 1))
+        }
+        assertTrue(enteredReadEpoch.await(10, TimeUnit.SECONDS))
+
+        val writeStarted = CountDownLatch(1)
+        val writeCompleted = CountDownLatch(1)
+        val application = ApplicationManager.getApplication()
+        application.invokeLater {
+            writeStarted.countDown()
+            application.runWriteAction {
+                generation.set(2)
+            }
+            writeCompleted.countDown()
+        }
+        assertTrue(writeStarted.await(10, TimeUnit.SECONDS))
+        assertTrue(!writeCompleted.await(100, TimeUnit.MILLISECONDS))
+
+        releaseReadEpoch.countDown()
+        val first = firstDeferred.await()
+        assertTrue(writeCompleted.await(10, TimeUnit.SECONDS))
+
+        val failure = runCatching {
+            backend.diagnostics(
+                DiagnosticsQuery(
+                    filePaths = listOf(missingA, missingB),
+                    maxResults = 1,
+                    pageToken = requireNotNull(first.page?.nextPageToken),
+                ),
+            )
+        }.exceptionOrNull()
+        assertTrue(failure is ConflictException)
+        assertTrue(failure?.message.orEmpty().contains("PSI changed"))
     }
 
     @Test

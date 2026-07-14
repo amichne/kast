@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore.store
 
+import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
@@ -9,7 +11,10 @@ import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
+import io.github.amichne.kast.indexstore.api.reference.GeneratedSymbolReferencePage
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import io.github.amichne.kast.indexstore.store.codec.StringInterningCodec
@@ -113,10 +118,12 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                 loadInterningTables(conn)
                 return true
             }
+            val previousGeneration = readGenerationOrNullInTransaction(conn) ?: SourceIndexGeneration(0)
             conn.autoCommit = false
             try {
                 dropAllTables(conn)
                 createAllTables(conn)
+                writeGenerationInTransaction(conn, SourceIndexGeneration(Math.addExact(previousGeneration.value, 1L)))
                 conn.commit()
             } catch (e: Exception) {
                 conn.rollback()
@@ -398,6 +405,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                 pruneReferencesOutsideManifestInTransaction(conn, eligibleManifest.keys)
                 removeIneligibleSourceIndexRows(conn)
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM pending_updates") }
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -420,6 +428,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                 internPathsInTransaction(conn, listOf(update.path))
                 internFqNamesInTransaction(conn, fqNamesFor(update))
                 insertFileDataInTransaction(conn, update)
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -438,6 +447,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
             conn.autoCommit = false
             try {
                 deleteFileRowsInTransaction(conn, encodedPath.first, encodedPath.second)
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 conn.rollback()
@@ -508,6 +518,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
                 insertManifestInTransaction(conn, eligibleEntries)
                 removeIneligibleSourceIndexRows(conn)
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -541,6 +552,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                     stmt.setLong(3, lastModifiedMillis)
                     stmt.executeUpdate()
                 }
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -768,6 +780,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                     targetOffset = eligibleTargetPath?.let { targetOffset },
                     edgeKind = edgeKind,
                 )
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -849,6 +862,62 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
         }
     }
 
+    fun generatedReferencePageToSymbol(
+        targetFqName: String,
+        offset: NonNegativeInt,
+        maxResults: PositiveInt,
+    ): GeneratedSymbolReferencePage {
+        synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            val generation = readGenerationInTransaction(conn)
+            val targetFqId = fqCodec.idFor(targetFqName)
+                ?: return GeneratedSymbolReferencePage(
+                    page = SymbolReferencePage(references = emptyList(), nextOffset = null),
+                    generation = generation,
+                )
+            val page = conn.prepareStatement(
+                """SELECT refs.src_prefix_id, refs.src_filename, refs.source_offset,
+                          refs.source_fq_id, refs.target_fq_id, refs.tgt_prefix_id,
+                          refs.tgt_filename, refs.target_offset, refs.edge_kind
+                   FROM symbol_references refs
+                   JOIN path_prefixes prefixes ON prefixes.prefix_id = refs.src_prefix_id
+                   WHERE refs.target_fq_id = ?
+                   ORDER BY prefixes.dir_path, refs.src_filename, refs.source_offset
+                   LIMIT ? OFFSET ?""",
+            ).use { stmt ->
+                stmt.setInt(1, targetFqId)
+                stmt.setLong(2, maxResults.value.toLong() + 1L)
+                stmt.setInt(3, offset.value)
+                val rs = stmt.executeQuery()
+                val references = buildList {
+                    while (size < maxResults.value && rs.next()) {
+                        val rowSourceFqId = rs.getNullableInt(4)
+                        val rowTargetFqId = rs.getInt(5)
+                        add(
+                            SymbolReferenceRow(
+                                sourcePath = pathCodec.decode(rs.getInt(1), rs.getString(2)),
+                                sourceOffset = rs.getInt(3),
+                                sourceFqName = rowSourceFqId?.let(fqCodec::resolve),
+                                targetFqName = fqCodec.resolve(rowTargetFqId),
+                                targetPath = decodeNullablePath(rs, prefixColumn = 6, filenameColumn = 7),
+                                targetOffset = rs.getNullableInt(8),
+                                edgeKind = EdgeKind.valueOf(rs.getString(9)),
+                            ),
+                        )
+                    }
+                }
+                val nextOffset = if (rs.next()) {
+                    NonNegativeInt(Math.addExact(offset.value, references.size))
+                } else {
+                    null
+                }
+                SymbolReferencePage(references = references, nextOffset = nextOffset)
+            }
+            return GeneratedSymbolReferencePage(page = page, generation = generation)
+        }
+    }
+
     fun referencesFromFile(sourcePath: String): List<SymbolReferenceRow> {
         synchronized(writeLock) {
             val conn = connection()
@@ -886,7 +955,18 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
 
     fun clearReferencesFromFile(sourcePath: String) {
         synchronized(writeLock) {
-            clearReferencesFromFileInTransaction(connection(), sourcePath)
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                clearReferencesFromFileInTransaction(conn, sourcePath)
+                incrementGenerationInTransaction(conn)
+                conn.commit()
+            } catch (e: Exception) {
+                rollbackAndReloadPrefixes(conn)
+                throw e
+            } finally {
+                conn.autoCommit = true
+            }
         }
     }
 
@@ -907,49 +987,60 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
     fun removeReferencesOutsideSources(sourcePaths: Collection<String>) {
         synchronized(writeLock) {
             val conn = connection()
-            if (sourcePaths.isEmpty()) {
-                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
-                return
-            }
-            loadInterningTables(conn)
-            val encodedSources = sourcePaths.mapNotNull { pathCodec.encodeIfInterned(it) }.toSet()
-            if (encodedSources.isEmpty()) {
-                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
-                return
-            }
-            conn.createStatement().use { stmt ->
-                stmt.execute(
-                    """CREATE TEMP TABLE IF NOT EXISTS temp_valid_sources (
-                        prefix_id INTEGER NOT NULL,
-                        filename TEXT NOT NULL,
-                        PRIMARY KEY (prefix_id, filename)
-                    )""",
-                )
-                stmt.execute("DELETE FROM temp_valid_sources")
-            }
+            conn.autoCommit = false
             try {
-                conn.prepareStatement("INSERT OR IGNORE INTO temp_valid_sources (prefix_id, filename) VALUES (?, ?)")
-                    .use { stmt ->
-                        for ((prefixId, filename) in encodedSources) {
-                            stmt.setInt(1, prefixId)
-                            stmt.setString(2, filename)
-                            stmt.addBatch()
+                if (sourcePaths.isEmpty()) {
+                    conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
+                } else {
+                    loadInterningTables(conn)
+                    val encodedSources = sourcePaths.mapNotNull { pathCodec.encodeIfInterned(it) }.toSet()
+                    if (encodedSources.isEmpty()) {
+                        conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
+                    } else {
+                        conn.createStatement().use { stmt ->
+                            stmt.execute(
+                                """CREATE TEMP TABLE IF NOT EXISTS temp_valid_sources (
+                                    prefix_id INTEGER NOT NULL,
+                                    filename TEXT NOT NULL,
+                                    PRIMARY KEY (prefix_id, filename)
+                                )""",
+                            )
+                            stmt.execute("DELETE FROM temp_valid_sources")
                         }
-                        stmt.executeBatch()
+                        try {
+                            conn.prepareStatement(
+                                "INSERT OR IGNORE INTO temp_valid_sources (prefix_id, filename) VALUES (?, ?)",
+                            ).use { stmt ->
+                                for ((prefixId, filename) in encodedSources) {
+                                    stmt.setInt(1, prefixId)
+                                    stmt.setString(2, filename)
+                                    stmt.addBatch()
+                                }
+                                stmt.executeBatch()
+                            }
+                            conn.createStatement().use { stmt ->
+                                stmt.execute(
+                                    """DELETE FROM symbol_references
+                                       WHERE NOT EXISTS (
+                                           SELECT 1
+                                           FROM temp_valid_sources valid
+                                           WHERE valid.prefix_id = symbol_references.src_prefix_id
+                                             AND valid.filename = symbol_references.src_filename
+                                       )""",
+                                )
+                            }
+                        } finally {
+                            conn.createStatement().use { stmt -> stmt.execute("DROP TABLE IF EXISTS temp_valid_sources") }
+                        }
                     }
-                conn.createStatement().use { stmt ->
-                    stmt.execute(
-                        """DELETE FROM symbol_references
-                           WHERE NOT EXISTS (
-                               SELECT 1
-                               FROM temp_valid_sources valid
-                               WHERE valid.prefix_id = symbol_references.src_prefix_id
-                                 AND valid.filename = symbol_references.src_filename
-                           )""",
-                    )
                 }
+                incrementGenerationInTransaction(conn)
+                conn.commit()
+            } catch (e: Exception) {
+                rollbackAndReloadPrefixes(conn)
+                throw e
             } finally {
-                conn.createStatement().use { stmt -> stmt.execute("DROP TABLE IF EXISTS temp_valid_sources") }
+                conn.autoCommit = true
             }
         }
     }
@@ -1004,6 +1095,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                     }
                 }
                 removeIneligibleSourceIndexRows(conn)
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -1045,6 +1137,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                     declarations.forEach { declaration -> insertDeclarationInTransaction(conn, declaration) }
                 }
                 removeIneligibleSourceIndexRows(conn)
+                incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
                 rollbackAndReloadPrefixes(conn)
@@ -1125,6 +1218,7 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
                 }
                 markPendingUpdatesApplied(conn, pending)
                 cleanupAppliedPendingUpdates(conn)
+                if (pending.isNotEmpty()) incrementGenerationInTransaction(conn)
                 conn.commit()
                 pending.size
             } catch (e: Exception) {
@@ -1163,27 +1257,42 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
         }
     }
 
-    fun readGeneration(): Int {
+    fun readGeneration(): SourceIndexGeneration {
         synchronized(writeLock) {
             val conn = connection()
             return try {
-                conn.prepareStatement("SELECT generation FROM schema_version LIMIT 1").use { stmt ->
-                    val rs = stmt.executeQuery()
-                    if (rs.next()) rs.getInt(1) else 0
-                }
+                readGenerationInTransaction(conn)
             } catch (_: Exception) {
-                0
+                SourceIndexGeneration(0)
             }
         }
     }
 
-    fun incrementGeneration(): Int {
-        synchronized(writeLock) {
-            val conn = connection()
-            conn.createStatement().use { stmt ->
-                stmt.executeUpdate("UPDATE schema_version SET generation = generation + 1")
-            }
-            return readGeneration()
+    private fun readGenerationInTransaction(conn: Connection): SourceIndexGeneration =
+        conn.prepareStatement("SELECT generation FROM schema_version LIMIT 1").use { stmt ->
+            val rs = stmt.executeQuery()
+            SourceIndexGeneration(if (rs.next()) rs.getLong(1) else 0L)
+        }
+
+    private fun readGenerationOrNullInTransaction(conn: Connection): SourceIndexGeneration? = try {
+        conn.prepareStatement("SELECT generation FROM schema_version LIMIT 1").use { stmt ->
+            val rs = stmt.executeQuery()
+            if (rs.next()) SourceIndexGeneration(rs.getLong(1)) else null
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun writeGenerationInTransaction(conn: Connection, generation: SourceIndexGeneration) {
+        conn.prepareStatement("UPDATE schema_version SET generation = ?").use { stmt ->
+            stmt.setLong(1, generation.value)
+            stmt.executeUpdate()
+        }
+    }
+
+    private fun incrementGenerationInTransaction(conn: Connection) {
+        conn.createStatement().use { stmt ->
+            stmt.executeUpdate("UPDATE schema_version SET generation = generation + 1")
         }
     }
 

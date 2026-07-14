@@ -232,7 +232,7 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
             String::from_utf8_lossy(&output.stderr),
         );
         assert_eq!(document["ok"], false, "{format}: {document:#}");
-        assert_eq!(document["result"]["ok"], false, "{format}: {document:#}");
+        assert!(document["result"].is_null(), "{format}: {document:#}");
         assert_eq!(
             document["error"]["code"], "SEMANTIC_ANALYSIS_INCOMPLETE",
             "{format}: {document:#}",
@@ -601,7 +601,10 @@ fn assert_semantic_counts(
     skipped: u64,
     format: &str,
 ) {
-    let summary = &document["result"]["analysis"];
+    let summary = document
+        .pointer("/result/analysis")
+        .or_else(|| document.pointer("/error/details/semanticAnalysis"))
+        .unwrap_or_else(|| panic!("{format}: semantic analysis summary missing: {document:#}"));
     assert_eq!(
         summary["semanticOutcome"], outcome,
         "{format}: {document:#}"
@@ -849,6 +852,8 @@ fn incomplete_diagnostics(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
         "skippedFileCount": 1,
+        "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
+        "cardinality": {"type": "EXACT", "totalCount": 1},
         "schemaVersion": 3
     })
 }
@@ -869,6 +874,8 @@ fn complete_compiler_diagnostics(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
+        "cardinality": {"type": "EXACT", "totalCount": 1},
         "schemaVersion": 3
     })
 }
@@ -891,6 +898,8 @@ fn complete_clean_diagnostics_for(file_paths: &[String]) -> Value {
         "requestedFileCount": file_paths.len(),
         "analyzedFileCount": file_paths.len(),
         "skippedFileCount": 0,
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }
@@ -900,7 +909,7 @@ fn incomplete_diagnostics_with_truncated_page(file: &Path) -> Value {
         file,
         Some(json!({
             "truncated": true,
-            "nextPageToken": "0"
+            "nextPageToken": "00000000-0000-4000-8000-000000000337"
         })),
     )
 }
@@ -944,6 +953,8 @@ fn incomplete_diagnostics_with_page(file: &Path, page: Option<Value>) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 1, "warning": 1, "info": 0, "total": 2},
+        "cardinality": {"type": "EXACT", "totalCount": 2},
         "schemaVersion": 3
     });
     if let Some(page) = page {
@@ -955,6 +966,8 @@ fn incomplete_diagnostics_with_page(file: &Path, page: Option<Value>) -> Value {
 fn omitted_completeness_proof(_file: &Path) -> Value {
     json!({
         "diagnostics": [],
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }
@@ -971,6 +984,8 @@ fn complete_outcome_with_skipped_file(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
         "skippedFileCount": 1,
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }
@@ -982,6 +997,8 @@ fn missing_file_status_ledger(_file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }
@@ -997,6 +1014,8 @@ fn mismatched_file_status_ledger(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
         "skippedFileCount": 1,
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }
@@ -1012,6 +1031,8 @@ fn unknown_file_analysis_state(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }
@@ -1032,6 +1053,8 @@ fn malformed_diagnostic_code(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
+        "cardinality": {"type": "EXACT", "totalCount": 1},
         "schemaVersion": 3
     })
 }
@@ -1051,6 +1074,8 @@ fn malformed_diagnostic_structure(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
+        "cardinality": {"type": "EXACT", "totalCount": 1},
         "schemaVersion": 3
     })
 }
@@ -1066,6 +1091,8 @@ fn malformed_completeness_evidence(file: &Path) -> Value {
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
         "skippedFileCount": 0,
+        "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "cardinality": {"type": "EXACT", "totalCount": 0},
         "schemaVersion": 3
     })
 }

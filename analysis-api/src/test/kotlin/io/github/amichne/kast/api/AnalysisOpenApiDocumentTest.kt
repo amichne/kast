@@ -130,6 +130,25 @@ class AnalysisOpenApiDocumentTest {
         assertTrue(unresolved.isEmpty(), "Unresolved schema refs: $unresolved")
     }
 
+    @Test
+    fun `result cardinality schema preserves exact and known minimum wire variants`() {
+        val yaml = OpenApiDocument.renderYaml()
+
+        assertTrue(yaml.contains("ResultCardinality:\n      oneOf:"))
+        assertTrue(yaml.contains("const: EXACT"))
+        assertTrue(yaml.contains("const: KNOWN_MINIMUM"))
+        assertTrue(yaml.contains("knownMinimumCount:"))
+        assertTrue(yaml.contains("totalCount:"))
+    }
+
+    @Test
+    fun `diagnostics schema admits only exact cardinality`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val diagnosticsSchema = yaml.substringAfter("    DiagnosticsResult:").substringBefore("    Diagnostic:")
+
+        assertTrue(diagnosticsSchema.contains("cardinality:\n          \"\$ref\": \"#/components/schemas/EXACT\""))
+    }
+
     private fun repoRoot(): Path =
         generateSequence(Path.of("").toAbsolutePath()) { current -> current.parent }
             .first { candidate -> Files.isDirectory(candidate.resolve("docs")) }

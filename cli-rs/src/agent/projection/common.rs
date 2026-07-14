@@ -21,11 +21,7 @@ fn compact_command_error_envelope(
 }
 
 fn compact_agent_error(error: Option<AgentError>) -> Option<AgentError> {
-    error.map(|error| AgentError {
-        code: error.code,
-        message: error.message,
-        details: BTreeMap::new(),
-    })
+    error
 }
 
 fn projected_agent_envelope(

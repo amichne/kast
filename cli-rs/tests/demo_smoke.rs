@@ -672,7 +672,8 @@ fn spawn_ready_demo_backend(
                             "startColumn": 9,
                             "preview": "Foo()"
                         }
-                    ]
+                    ],
+                    "cardinality": {"type": "EXACT", "totalCount": 2}
                 }),
                 "raw/diagnostics" => serde_json::json!({
                     "diagnostics": [],

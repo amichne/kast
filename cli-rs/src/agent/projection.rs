@@ -1,5 +1,6 @@
 include!("projection/view.rs");
 include!("projection/diagnostics.rs");
+include!("projection/impact.rs");
 include!("projection/verify.rs");
 include!("projection/mutation.rs");
 include!("projection/symbol.rs");

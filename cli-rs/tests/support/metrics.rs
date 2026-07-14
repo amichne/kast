@@ -393,6 +393,54 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
     }
 }
 
+pub(crate) fn seed_high_cardinality_impact(
+    workspace: &std::path::Path,
+    target_fq_name: &str,
+    source_count: usize,
+) {
+    let db_path = workspace.join(".gradle/kast/cache/source-index.db");
+    let mut conn = Connection::open(db_path).expect("sqlite");
+    let target_fq_id: i64 = conn
+        .query_row(
+            "SELECT fq_id FROM fq_names WHERE fq_name = ?",
+            params![target_fq_name],
+            |row| row.get(0),
+        )
+        .expect("impact target fq id");
+    let tx = conn.transaction().expect("impact seed transaction");
+    for index in 0..source_count {
+        let fq_id = 1_000 + i64::try_from(index).expect("impact fq id");
+        let fq_name = format!("app.ImpactSource{index:04}");
+        let filename = format!("ImpactSource{index:04}.kt");
+        tx.execute(
+            "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
+            params![fq_id, fq_name],
+        )
+        .expect("impact fq name");
+        tx.execute(
+            "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (1, ?, ':app', 'main')",
+            params![filename],
+        )
+        .expect("impact file metadata");
+        tx.execute(
+            "INSERT INTO file_manifest(prefix_id, filename, last_modified_millis) VALUES (1, ?, 1)",
+            params![filename],
+        )
+        .expect("impact file manifest");
+        tx.execute(
+            "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, 'CLASS', 'PUBLIC', 1, ?, 1, ':app', 'main')",
+            params![fq_id, filename],
+        )
+        .expect("impact declaration");
+        tx.execute(
+            "INSERT INTO symbol_references(src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id, tgt_prefix_id, tgt_filename, target_offset, edge_kind) VALUES (1, ?, 1, ?, ?, 2, 'Foo.kt', 1, 'CALL')",
+            params![filename, fq_id, target_fq_id],
+        )
+        .expect("impact reference");
+    }
+    tx.commit().expect("impact seed commit");
+}
+
 pub(crate) fn seed_exact_lookup_symbols(workspace: &std::path::Path) {
     let db_path = workspace.join(".gradle/kast/cache/source-index.db");
     let conn = Connection::open(db_path).expect("sqlite");

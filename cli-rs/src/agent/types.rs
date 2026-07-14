@@ -25,6 +25,112 @@ pub struct AgentError {
     pub details: BTreeMap<String, Value>,
 }
 
+const AGENT_MAX_RELATION_RESULTS: u32 = 500;
+const AGENT_MAX_COMPACT_RELATION_ITEMS_PER_KIND: usize = 4;
+const AGENT_MAX_IMPACT_RESULTS: u32 = 500;
+const AGENT_MAX_COMPACT_IMPACT_NODES: u32 = 4;
+const AGENT_MAX_DIAGNOSTIC_RESULTS: u32 = 500;
+const AGENT_MAX_COMPACT_DIAGNOSTICS: usize = 8;
+
+#[derive(Debug, Clone, Copy)]
+struct AgentRelationResultBudget(std::num::NonZeroU16);
+
+impl TryFrom<u32> for AgentRelationResultBudget {
+    type Error = String;
+
+    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
+        if value > AGENT_MAX_RELATION_RESULTS {
+            return Err(format!(
+                "relationship result limit must be at most {AGENT_MAX_RELATION_RESULTS}"
+            ));
+        }
+        let value = u16::try_from(value)
+            .map_err(|_| "relationship result limit exceeded its typed range".to_string())?;
+        let value = std::num::NonZeroU16::new(value)
+            .ok_or_else(|| "relationship result limit must be greater than 0".to_string())?;
+        Ok(Self(value))
+    }
+}
+
+impl AgentRelationResultBudget {
+    fn request_limit(self, detailed: bool) -> u32 {
+        if detailed {
+            u32::from(self.0.get())
+        } else {
+            u32::try_from(self.projection_limit()).expect("compact relationship limit fits u32")
+        }
+    }
+
+    fn projection_limit(self) -> usize {
+        usize::from(self.0.get()).min(AGENT_MAX_COMPACT_RELATION_ITEMS_PER_KIND)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AgentImpactResultBudget(std::num::NonZeroU16);
+
+impl TryFrom<u32> for AgentImpactResultBudget {
+    type Error = String;
+
+    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
+        if value > AGENT_MAX_IMPACT_RESULTS {
+            return Err(format!(
+                "impact result limit must be at most {AGENT_MAX_IMPACT_RESULTS}"
+            ));
+        }
+        let value = u16::try_from(value)
+            .map_err(|_| "impact result limit exceeded its typed range".to_string())?;
+        let value = std::num::NonZeroU16::new(value)
+            .ok_or_else(|| "impact result limit must be greater than 0".to_string())?;
+        Ok(Self(value))
+    }
+}
+
+impl AgentImpactResultBudget {
+    fn request_limit(self, detailed: bool) -> u32 {
+        let requested = u32::from(self.0.get());
+        if detailed {
+            requested
+        } else {
+            requested.min(AGENT_MAX_COMPACT_IMPACT_NODES)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AgentDiagnosticsResultBudget(std::num::NonZeroU16);
+
+impl TryFrom<u32> for AgentDiagnosticsResultBudget {
+    type Error = String;
+
+    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
+        if value > AGENT_MAX_DIAGNOSTIC_RESULTS {
+            return Err(format!(
+                "diagnostic result limit must be at most {AGENT_MAX_DIAGNOSTIC_RESULTS}"
+            ));
+        }
+        let value = u16::try_from(value)
+            .map_err(|_| "diagnostic result limit exceeded its typed range".to_string())?;
+        let value = std::num::NonZeroU16::new(value)
+            .ok_or_else(|| "diagnostic result limit must be greater than 0".to_string())?;
+        Ok(Self(value))
+    }
+}
+
+impl AgentDiagnosticsResultBudget {
+    fn request_limit(self, detailed: bool) -> u32 {
+        if detailed {
+            u32::from(self.0.get())
+        } else {
+            u32::try_from(self.projection_limit()).expect("compact diagnostic limit fits u32")
+        }
+    }
+
+    fn projection_limit(self) -> usize {
+        usize::from(self.0.get()).min(AGENT_MAX_COMPACT_DIAGNOSTICS)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentSemanticAnalysisSummary {
@@ -91,6 +197,71 @@ struct AgentDiagnosticsRequest {
 #[serde(rename_all = "camelCase")]
 struct AgentDiagnosticsRequestParams {
     file_paths: Vec<String>,
+    max_results: usize,
+    #[serde(default)]
+    page_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentDiagnosticSeverityCounts {
+    error: usize,
+    warning: usize,
+    info: usize,
+    total: usize,
+}
+
+impl AgentDiagnosticSeverityCounts {
+    fn is_valid(self) -> bool {
+        self.error
+            .checked_add(self.warning)
+            .and_then(|count| count.checked_add(self.info))
+            == Some(self.total)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentResultCardinality {
+    Exact { total_count: usize },
+    KnownMinimum { known_minimum_count: usize },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentExactCardinality {
+    Exact { total_count: usize },
+}
+
+impl AgentExactCardinality {
+    fn total_count(self) -> usize {
+        match self {
+            Self::Exact { total_count } => total_count,
+        }
+    }
+}
+
+impl AgentResultCardinality {
+    fn known_minimum(self) -> usize {
+        match self {
+            Self::Exact { total_count } => total_count,
+            Self::KnownMinimum {
+                known_minimum_count,
+            } => known_minimum_count,
+        }
+    }
+
+    fn is_exact(self) -> bool {
+        matches!(self, Self::Exact { .. })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,9 +269,13 @@ struct AgentDiagnosticsRequestParams {
 struct AgentDiagnosticsResult {
     diagnostics: Vec<AgentDiagnostic>,
     file_statuses: Vec<AgentFileAnalysisStatus>,
+    severity_counts: AgentDiagnosticSeverityCounts,
+    cardinality: AgentExactCardinality,
     page: Option<AgentDiagnosticsPage>,
-    #[serde(flatten)]
-    summary: AgentSemanticAnalysisSummary,
+    semantic_outcome: AgentSemanticAnalysisOutcome,
+    requested_file_count: usize,
+    analyzed_file_count: usize,
+    skipped_file_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,6 +286,15 @@ struct AgentDiagnosticsPage {
 }
 
 impl AgentDiagnosticsResult {
+    fn summary(&self) -> AgentSemanticAnalysisSummary {
+        AgentSemanticAnalysisSummary {
+            semantic_outcome: self.semantic_outcome,
+            requested_file_count: self.requested_file_count,
+            analyzed_file_count: self.analyzed_file_count,
+            skipped_file_count: self.skipped_file_count,
+        }
+    }
+
     fn validated_summary(
         self,
         requested_file_paths: &[String],
@@ -125,7 +309,11 @@ impl AgentDiagnosticsResult {
             .map(|status| normalized_absolute_path(&status.file_path))
             .collect::<Option<Vec<_>>>()?;
         let status_file_paths_match = status_file_paths == requested_file_paths;
+        let exact_total = self.cardinality.total_count();
         if !status_file_paths_match
+            || !self.severity_counts.is_valid()
+            || self.severity_counts.total != exact_total
+            || self.diagnostics.len() > exact_total
             || self
                 .file_statuses
                 .iter()
@@ -149,7 +337,8 @@ impl AgentDiagnosticsResult {
             .iter()
             .any(|diagnostic| diagnostic.code.as_deref() == Some("ANALYSIS_FAILURE"));
         let visible_evidence_is_incomplete = skipped_file_count > 0 || has_analysis_failure;
-        let semantic_outcome_is_valid = match self.summary.semantic_outcome {
+        let summary = self.summary();
+        let semantic_outcome_is_valid = match summary.semantic_outcome {
             AgentSemanticAnalysisOutcome::Complete => !visible_evidence_is_incomplete,
             AgentSemanticAnalysisOutcome::Incomplete => {
                 visible_evidence_is_incomplete
@@ -157,15 +346,15 @@ impl AgentDiagnosticsResult {
             }
         };
 
-        if self.summary.requested_file_count != requested_file_paths.len()
-            || self.summary.requested_file_count != self.file_statuses.len()
-            || self.summary.analyzed_file_count != analyzed_file_count
-            || self.summary.skipped_file_count != skipped_file_count
+        if summary.requested_file_count != requested_file_paths.len()
+            || summary.requested_file_count != self.file_statuses.len()
+            || summary.analyzed_file_count != analyzed_file_count
+            || summary.skipped_file_count != skipped_file_count
             || !semantic_outcome_is_valid
         {
             return None;
         }
-        Some(self.summary)
+        Some(summary)
     }
 }
 

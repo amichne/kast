@@ -32,6 +32,10 @@
                 "preview": "greet"
             }
         ],
+        "cardinality": {
+            "type": "EXACT",
+            "totalCount": 1
+        },
         "schemaVersion": 3
     },
     "id": 1,

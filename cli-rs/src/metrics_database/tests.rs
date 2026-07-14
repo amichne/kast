@@ -82,11 +82,63 @@ mod tests {
         let db = MetricsDatabase::open_with_controls(&request, controls).expect("open metrics db");
 
         let error = db
-            .impact("lib.Popular", 3)
+            .impact("lib.Popular", 3, 50)
             .expect_err("impact should be interrupted")
             .into_cli_error();
 
         assert_eq!(error.code, "METRICS_QUERY_CANCELLED");
+    }
+
+    #[test]
+    fn impact_returns_typed_total_and_truncation_with_bounded_rows() {
+        let fixture = seed_fixture();
+        seed_high_cardinality_impact(&fixture, 500);
+        let request = fixture.request("impact", Some("lib.Popular"), 1, 3);
+        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
+            .expect("open metrics db");
+
+        let result = db.impact("lib.Popular", 3, 1).expect("bounded impact");
+
+        assert_eq!(result.total_count, 503);
+        assert_eq!(result.returned_count, 1);
+        assert!(result.truncated);
+        assert_eq!(result.results.as_array().expect("impact results").len(), 1);
+    }
+
+    fn seed_high_cardinality_impact(fixture: &Fixture, source_count: usize) {
+        let mut conn = Connection::open(&fixture.database).expect("sqlite");
+        let tx = conn.transaction().expect("impact transaction");
+        for index in 0..source_count {
+            let fq_id = 1_000 + i64::try_from(index).expect("impact fq id");
+            let fq_name = format!("app.ImpactSource{index:04}");
+            let filename = format!("ImpactSource{index:04}.kt");
+            tx.execute(
+                "INSERT INTO fq_names(fq_id, fq_name) VALUES (?, ?)",
+                params![fq_id, fq_name],
+            )
+            .expect("impact fq name");
+            tx.execute(
+                "INSERT INTO file_metadata(prefix_id, filename, module_path, source_set) VALUES (1, ?, ':app', 'main')",
+                params![filename],
+            )
+            .expect("impact file metadata");
+            tx.execute(
+                "INSERT INTO file_manifest(prefix_id, filename, last_modified_millis) VALUES (1, ?, 1)",
+                params![filename],
+            )
+            .expect("impact file manifest");
+            tx.execute(
+                "INSERT INTO declarations(fq_id, kind, visibility, prefix_id, filename, declaration_offset, module_path, source_set) VALUES (?, 'CLASS', 'PUBLIC', 1, ?, 1, ':app', 'main')",
+                params![fq_id, filename],
+            )
+            .expect("impact declaration");
+            tx.execute(
+                "INSERT INTO symbol_references(src_prefix_id, src_filename, source_offset, source_fq_id, target_fq_id, tgt_prefix_id, tgt_filename, target_offset, edge_kind) VALUES (1, ?, 1, ?, 7, 2, 'Popular.kt', 1, 'CALL')",
+                params![filename, fq_id],
+            )
+            .expect("impact reference");
+        }
+        tx.commit().expect("impact transaction commit");
     }
 
     #[test]
