@@ -37,6 +37,9 @@ Keep this unit focused on transport concerns around the backend interface.
   `AnalysisBackend`. `symbol/scaffold` composition preserves
   `ReferenceOccurrence.containingSymbol`; it must not collapse results to
   `List<Location>`.
+- Forward family `UNSUPPORTED_SUBJECT_KIND`, cursor-invalid, and cursor-stale
+  variants losslessly. The server must not infer issuer/restart history from an
+  opaque UUID or perform its own subject-kind/provider preflight.
 - PSI logic, workspace discovery, and CLI parsing stay in their runtime host
   and Rust CLI owners.
 

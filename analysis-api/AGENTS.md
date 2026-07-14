@@ -37,6 +37,12 @@ Keep this unit small, stable, and reusable across every runtime host.
   stringly or cross-family degradation codes are prohibited. A continuation
   page must prove `KNOWN_MINIMUM >= returnedBefore + returnedCount + 1`, even
   though returned-before remains backend-private.
+- Each response root also owns closed `UNSUPPORTED_SUBJECT_KIND`. Preserve the
+  selector and verified subject; command-family kind admission happens before
+  provider/index work. Cursor-invalid `UNKNOWN_HANDLE` covers every canonical
+  handle absent from the current runtime. Cursor-stale reasons require
+  positively recognized retained state, such as a generation mismatch or
+  retained expiry; wire types must not pretend a UUID proves its issuer.
 - `ReferenceOccurrence` owns containing-symbol evidence. Keep
   `KastScaffoldReferences` in its same-named file and never adapt occurrences
   back to bare locations.

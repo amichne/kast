@@ -43,16 +43,19 @@ cardinality proof for at least one additional record.
 
 `projection/relations.rs` owns the closed public record families and validates
 each response family's own degraded-reason enum, non-null mismatch actual, and
-stale/invalid variants. Impact admits aggregate rows only after compiler anchor
-verification and production path/offset/kind index identity; functions and
-properties degrade because the production key cannot prove overload isolation.
+unsupported-kind/stale/invalid variants. Preserve selector and verified subject
+for `UNSUPPORTED_SUBJECT_KIND`; reject a variant whose family or actual kind is
+not allowed by ADR 0022. Impact admits aggregate rows only after compiler
+anchor verification and production path/offset/kind index identity; functions
+and properties degrade because the production key cannot prove overload
+isolation.
 Do not reintroduce one-shot relationship work under symbol lookup, FQ-only
 indexed reference reads, cross-family degradation codes, or client-serialized
 semantic state.
 
 Changes to this surface require
 `cli-rs/tests/agent_relationship_navigation_smoke.rs` plus the command-surface,
-result-projection, packaged-content, and generated-contract gates. Token
-changes use existing dependencies unless a reviewed plan explicitly owns a
-manifest update; `Cargo.toml` and `Cargo.lock` stay unchanged for opaque handle
-wrapping.
+result-projection, packaged-content, and generated-contract gates. Runtime
+token changes use existing dependencies. The exact 1,500 `cl100k_base` compact
+budget is executable through the reviewed `tiktoken-rs` test-only dependency;
+`Cargo.toml` and `Cargo.lock` are owned whenever that gate changes.
