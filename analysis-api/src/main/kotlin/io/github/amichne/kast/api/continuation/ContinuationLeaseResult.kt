@@ -1,7 +1,7 @@
 package io.github.amichne.kast.api.continuation
 
-sealed interface ContinuationLeaseResult<out Output> {
-    data class Granted<Output>(val output: Output) : ContinuationLeaseResult<Output>
+sealed interface ContinuationLeaseResult<out Projection> {
+    data class Granted<Projection>(val output: Projection) : ContinuationLeaseResult<Projection>
 
     data class Rejected(
         val failure: ContinuationAccessFailure,

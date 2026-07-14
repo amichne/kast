@@ -8,4 +8,6 @@ sealed interface ContinuationAccessFailure {
     data object ExpiredToken : ContinuationAccessFailure
 
     data object QueryMismatch : ContinuationAccessFailure
+
+    data object TokenCollision : ContinuationAccessFailure
 }

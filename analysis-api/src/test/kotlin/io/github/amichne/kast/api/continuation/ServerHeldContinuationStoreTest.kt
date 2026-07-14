@@ -17,10 +17,34 @@ import org.junit.jupiter.api.Test
 
 class ServerHeldContinuationStoreTest {
     @Test
+    fun `public access binds projection to the store and never returns the state role`() {
+        val accessMethods = ServerHeldContinuationStore::class.java.declaredMethods
+            .filter { method -> method.name == "lease" || method.name == "consume" }
+
+        assertEquals(setOf("lease", "consume"), accessMethods.mapTo(mutableSetOf()) { it.name })
+        assertTrue(accessMethods.all { method -> method.typeParameters.isEmpty() })
+        assertTrue(accessMethods.none { method -> method.genericReturnType.typeName.contains("State") })
+
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
+            capacity = ContinuationCapacity.of(1),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = IncrementingTokenIssuer(),
+            stateDisposer = ContinuationStateDisposer { },
+        )
+        val token = store.issueToken("query", TestState("owned"))
+        val projected: ContinuationLeaseResult<String> = store.lease(token, "query") { state ->
+            state.name
+        }
+
+        assertEquals(ContinuationLeaseResult.Granted("owned"), projected)
+        store.close()
+    }
+
+    @Test
     fun `complete consumes the token and disposes owned state exactly once`() {
         val issuer = IncrementingTokenIssuer()
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(2),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = issuer,
@@ -51,7 +75,7 @@ class ServerHeldContinuationStoreTest {
     @Test
     fun `lease is callback scoped and reusable without transferring state ownership`() {
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(2),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -61,10 +85,10 @@ class ServerHeldContinuationStoreTest {
         val token = store.issueToken(query = "query", state = state)
 
         val first = store.lease(token, query = "query") { borrowed -> borrowed.name }
-        val second = store.lease(token, query = "query") { borrowed -> borrowed.name.length }
+        val second = store.lease(token, query = "query") { borrowed -> borrowed.name.length.toString() }
 
         assertEquals(ContinuationLeaseResult.Granted("leased"), first)
-        assertEquals(ContinuationLeaseResult.Granted(6), second)
+        assertEquals(ContinuationLeaseResult.Granted("6"), second)
         assertEquals(emptyList<TestState>(), disposed)
 
         assertEquals(
@@ -75,9 +99,65 @@ class ServerHeldContinuationStoreTest {
     }
 
     @Test
+    fun `lease clears its claim before republishing the reusable token`() {
+        val clock = FakeClock()
+        val disposed = mutableListOf<TestState>()
+        val evictionStarted = CountDownLatch(1)
+        val releaseEviction = CountDownLatch(1)
+        val callbackStarted = CountDownLatch(1)
+        val releaseCallback = CountDownLatch(1)
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
+            capacity = ContinuationCapacity.of(2),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = IncrementingTokenIssuer(),
+            stateDisposer = ContinuationStateDisposer { state ->
+                if (state.name == "oldest") {
+                    evictionStarted.countDown()
+                    assertTrue(releaseEviction.await(5, TimeUnit.SECONDS))
+                }
+                synchronized(disposed) { disposed += state }
+            },
+            clock = clock,
+        )
+        store.issueToken("oldest", TestState("oldest"))
+        clock.advanceNanos(1)
+        val leasedToken = store.issueToken("leased", TestState("leased"))
+        val firstResult = AtomicReference<ContinuationLeaseResult<String>>()
+        val firstLease = thread(name = "first-continuation-lease", isDaemon = true) {
+            firstResult.set(
+                store.lease(leasedToken, "leased") { state ->
+                    callbackStarted.countDown()
+                    assertTrue(releaseCallback.await(5, TimeUnit.SECONDS))
+                    state.name
+                },
+            )
+        }
+        assertTrue(callbackStarted.await(5, TimeUnit.SECONDS))
+        clock.advanceNanos(1)
+        store.issueToken("newest", TestState("newest"))
+        releaseCallback.countDown()
+        assertTrue(evictionStarted.await(5, TimeUnit.SECONDS))
+
+        try {
+            assertEquals(
+                ContinuationLeaseResult.Granted("leased"),
+                store.lease(leasedToken, "leased") { state -> state.name },
+            )
+        } finally {
+            releaseEviction.countDown()
+        }
+        firstLease.join(5_000)
+
+        assertFalse(firstLease.isAlive)
+        assertEquals(ContinuationLeaseResult.Granted("leased"), firstResult.get())
+        store.close()
+        assertEquals(3, synchronized(disposed) { disposed.size })
+    }
+
+    @Test
     fun `close waits for an admitted consume and terminalizes racing reissue`() {
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(2),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -132,7 +212,7 @@ class ServerHeldContinuationStoreTest {
     @Test
     fun `explicit invalidation disposes once and returns a typed outcome`() {
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(1),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -156,7 +236,7 @@ class ServerHeldContinuationStoreTest {
     fun `abandoned state expires passively without a later store operation`() {
         val disposeCount = AtomicInteger()
         val expired = CountDownLatch(1)
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(1),
             timeToLive = ContinuationTtl.of(Duration.ofMillis(50)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -175,9 +255,40 @@ class ServerHeldContinuationStoreTest {
     }
 
     @Test
+    fun `close waits for passive expiry disposal already in progress`() {
+        val disposalStarted = CountDownLatch(1)
+        val releaseDisposal = CountDownLatch(1)
+        val closeCompleted = CountDownLatch(1)
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
+            capacity = ContinuationCapacity.of(1),
+            timeToLive = ContinuationTtl.of(Duration.ofMillis(20)),
+            tokenIssuer = IncrementingTokenIssuer(),
+            stateDisposer = ContinuationStateDisposer {
+                disposalStarted.countDown()
+                assertTrue(releaseDisposal.await(5, TimeUnit.SECONDS))
+            },
+        )
+        store.issueToken("query", TestState("expiring"))
+        assertTrue(disposalStarted.await(5, TimeUnit.SECONDS))
+        val closer = thread(name = "passive-expiry-closer", isDaemon = true) {
+            store.close()
+            closeCompleted.countDown()
+        }
+
+        try {
+            assertFalse(closeCompleted.await(100, TimeUnit.MILLISECONDS))
+        } finally {
+            releaseDisposal.countDown()
+        }
+        assertTrue(closeCompleted.await(5, TimeUnit.SECONDS))
+        closer.join(5_000)
+        assertFalse(closer.isAlive)
+    }
+
+    @Test
     fun `reissue moves the same state behind a fresh token until completion`() {
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(2),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -216,7 +327,7 @@ class ServerHeldContinuationStoreTest {
     fun `query mismatch disposes state without invoking the callback`() {
         val disposed = mutableListOf<TestState>()
         val callbackInvoked = AtomicBoolean(false)
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(1),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -229,6 +340,7 @@ class ServerHeldContinuationStoreTest {
             ContinuationLeaseResult.Rejected(ContinuationAccessFailure.QueryMismatch),
             store.lease(token, query = "different") {
                 callbackInvoked.set(true)
+                "unexpected"
             },
         )
         assertFalse(callbackInvoked.get())
@@ -238,7 +350,7 @@ class ServerHeldContinuationStoreTest {
     @Test
     fun `callback failure disposes state and leaves the consumed token unknown`() {
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(1),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -249,7 +361,7 @@ class ServerHeldContinuationStoreTest {
         val expected = IllegalStateException("callback failed")
 
         val actual = assertThrows(IllegalStateException::class.java) {
-            store.consume<String>(token, query = "query") { throw expected }
+            store.consume(token, query = "query") { throw expected }
         }
 
         assertSame(expected, actual)
@@ -263,7 +375,7 @@ class ServerHeldContinuationStoreTest {
     @Test
     fun `replacement and capacity eviction dispose in deterministic ownership order`() {
         val disposed = mutableListOf<TestState>()
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(2),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = ScriptedTokenIssuer(1, 2, 1, 3),
@@ -285,11 +397,114 @@ class ServerHeldContinuationStoreTest {
     }
 
     @Test
+    fun `capacity evicts the oldest expiry after a lease reinsert`() {
+        val clock = FakeClock()
+        val disposed = mutableListOf<TestState>()
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
+            capacity = ContinuationCapacity.of(2),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = IncrementingTokenIssuer(),
+            stateDisposer = ContinuationStateDisposer(disposed::add),
+            clock = clock,
+        )
+        val oldest = TestState("oldest-expiry")
+        val newer = TestState("newer-expiry")
+        val newest = TestState("newest-expiry")
+        val oldestToken = store.issueToken("oldest", oldest)
+        clock.advanceNanos(1)
+        store.issueToken("newer", newer)
+
+        assertEquals(
+            ContinuationLeaseResult.Granted("oldest-expiry"),
+            store.lease(oldestToken, "oldest") { state -> state.name },
+        )
+        clock.advanceNanos(1)
+        store.issueToken("newest", newest)
+
+        assertEquals(listOf(oldest), disposed)
+        store.close()
+        assertEquals(setOf(oldest, newer, newest), disposed.toSet())
+        assertEquals(3, disposed.size)
+    }
+
+    @Test
+    fun `issuer collision with a leased token rejects and disposes the offered state`() {
+        val disposed = mutableListOf<TestState>()
+        val callbackStarted = CountDownLatch(1)
+        val releaseCallback = CountDownLatch(1)
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
+            capacity = ContinuationCapacity.of(2),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = ScriptedTokenIssuer(1, 1),
+            stateDisposer = ContinuationStateDisposer { state ->
+                synchronized(disposed) { disposed += state }
+            },
+        )
+        val retained = TestState("retained")
+        val offered = TestState("offered")
+        val token = store.issueToken("retained", retained)
+        val lease = thread(name = "collision-lease", isDaemon = true) {
+            store.lease(token, "retained") { state ->
+                callbackStarted.countDown()
+                assertTrue(releaseCallback.await(5, TimeUnit.SECONDS))
+                state.name
+            }
+        }
+        assertTrue(callbackStarted.await(5, TimeUnit.SECONDS))
+
+        try {
+            assertEquals(
+                ContinuationIssueResult.Rejected(ContinuationAccessFailure.TokenCollision),
+                store.issue("collision", offered),
+            )
+            assertEquals(listOf(offered), synchronized(disposed) { disposed.toList() })
+        } finally {
+            releaseCallback.countDown()
+        }
+        lease.join(5_000)
+        assertFalse(lease.isAlive)
+        store.close()
+        assertEquals(setOf(offered, retained), synchronized(disposed) { disposed.toSet() })
+        assertEquals(2, synchronized(disposed) { disposed.size })
+    }
+
+    @Test
+    fun `reissue collision is terminal and cannot strand close`() {
+        val disposed = mutableListOf<TestState>()
+        val closeCompleted = CountDownLatch(1)
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
+            capacity = ContinuationCapacity.of(1),
+            timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
+            tokenIssuer = ScriptedTokenIssuer(1, 1),
+            stateDisposer = ContinuationStateDisposer(disposed::add),
+        )
+        val state = TestState("collision")
+        val token = store.issueToken("query", state)
+
+        assertEquals(
+            ContinuationConsumeResult.Rejected(ContinuationAccessFailure.TokenCollision),
+            store.consume(token, "query") {
+                ContinuationTransition.Reissue("page", nextQuery = "next")
+            },
+        )
+        assertEquals(listOf(state), disposed)
+        val closer = thread(name = "collision-closer", isDaemon = true) {
+            store.close()
+            closeCompleted.countDown()
+        }
+
+        assertTrue(closeCompleted.await(5, TimeUnit.SECONDS))
+        closer.join(5_000)
+        assertFalse(closer.isAlive)
+        assertEquals(listOf(state), disposed)
+    }
+
+    @Test
     fun `close drains every state when disposers throw and remains idempotent`() {
         val disposed = mutableListOf<TestState>()
         val firstFailure = IllegalStateException("first dispose failed")
         val secondFailure = IllegalStateException("second dispose failed")
-        val store = ServerHeldContinuationStore<TestToken, String, TestState>(
+        val store = ServerHeldContinuationStore<TestToken, String, TestState, String>(
             capacity = ContinuationCapacity.of(3),
             timeToLive = ContinuationTtl.of(Duration.ofMinutes(1)),
             tokenIssuer = IncrementingTokenIssuer(),
@@ -313,7 +528,7 @@ class ServerHeldContinuationStoreTest {
         assertEquals(states, disposed)
     }
 
-    private fun ServerHeldContinuationStore<TestToken, String, TestState>.issueToken(
+    private fun ServerHeldContinuationStore<TestToken, String, TestState, String>.issueToken(
         query: String,
         state: TestState,
     ): TestToken = when (val issued = issue(query, state)) {
@@ -336,5 +551,15 @@ class ServerHeldContinuationStoreTest {
         private val tokens = tokens.iterator()
 
         override fun issue(): TestToken = TestToken(tokens.nextInt())
+    }
+
+    private class FakeClock : ContinuationClock {
+        private var nowNanos = 0L
+
+        override fun nowNanos(): Long = nowNanos
+
+        fun advanceNanos(nanoseconds: Long) {
+            nowNanos = Math.addExact(nowNanos, nanoseconds)
+        }
     }
 }

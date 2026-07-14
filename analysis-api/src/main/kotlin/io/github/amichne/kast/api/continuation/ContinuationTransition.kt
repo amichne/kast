@@ -1,10 +1,10 @@
 package io.github.amichne.kast.api.continuation
 
-sealed interface ContinuationTransition<out Output, out Query> {
-    data class Complete<Output>(val output: Output) : ContinuationTransition<Output, Nothing>
+sealed interface ContinuationTransition<out Projection, out Query> {
+    data class Complete<Projection>(val output: Projection) : ContinuationTransition<Projection, Nothing>
 
-    data class Reissue<Output, Query>(
-        val output: Output,
+    data class Reissue<Projection, Query>(
+        val output: Projection,
         val nextQuery: Query,
-    ) : ContinuationTransition<Output, Query>
+    ) : ContinuationTransition<Projection, Query>
 }
