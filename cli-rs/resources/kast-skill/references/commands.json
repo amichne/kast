@@ -2105,13 +2105,15 @@
             "type": "string",
             "optional": true,
             "nullable": true,
-            "description": "Opaque reusable generation-bound workspace snapshot handle returned by the metadata request."
+            "description": "Opaque reusable generation-bound workspace snapshot handle returned by the metadata request.",
+            "sample": "00000000-0000-4000-8000-000000000338"
           },
           "pageToken": {
             "type": "string",
             "optional": true,
             "nullable": true,
-            "description": "Opaque single-use exact-module page handle returned as nextPageToken by the preceding page."
+            "description": "Opaque single-use exact-module page handle returned as nextPageToken by the preceding page.",
+            "sample": "00000000-0000-4000-8000-000000000339"
           }
         }
       },
@@ -2208,7 +2210,8 @@
                   ]
                 },
                 "compositionStampDigest": {
-                  "type": "string"
+                  "type": "string",
+                  "sample": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 },
                 "lastRelativePath": {
                   "type": "string"
@@ -2260,7 +2263,8 @@
               ]
             },
             "pageToken": {
-              "type": "string"
+              "type": "string",
+              "sample": "00000000-0000-4000-8000-000000000340"
             }
           },
           "required": [

@@ -54,6 +54,19 @@ pub fn request_schema_for_command(method: &str, command: &Value) -> Result<Value
 }
 
 fn params_schema(command: &Value, method: &str) -> Result<Value> {
+    if command.get("variantDiscriminator").is_some()
+        && command
+            .get("variants")
+            .and_then(Value::as_object)
+            .is_none_or(Map::is_empty)
+    {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant method `{method}` with an explicit variantDiscriminator must define non-empty variants."
+            ),
+        ));
+    }
     match command.get("variants").and_then(Value::as_object) {
         Some(variants) if !variants.is_empty() => {
             let discriminator = variant_discriminator(command, method)?;
@@ -192,7 +205,10 @@ pub(crate) fn variant_discriminator(command: &Value, method: &str) -> Result<Str
             )
         })?;
     let variant_names = variants.keys().map(String::as_str).collect();
-    if enum_names != variant_names {
+    if enum_names.len() != enum_values.len()
+        || enum_names.len() != variants.len()
+        || enum_names != variant_names
+    {
         return Err(CliError::new(
             "RPC_CATALOG_INVALID",
             format!(
@@ -602,6 +618,74 @@ mod tests {
             assert_eq!(error.code, "RPC_CATALOG_INVALID");
             assert!(error.message.contains("non-empty string"));
         }
+    }
+
+    #[test]
+    fn explicit_variant_discriminator_requires_a_non_empty_variant_map() {
+        for (description, variants) in [
+            ("missing", None),
+            ("empty", Some(json!({}))),
+            ("non-object", Some(json!([]))),
+        ] {
+            let mut command = json!({
+                "variantDiscriminator": "action",
+                "request": {
+                    "fields": {
+                        "action": {
+                            "type": "string",
+                            "enum": ["ISSUE"]
+                        }
+                    },
+                    "required": ["action"]
+                }
+            });
+            if let Some(variants) = variants {
+                command["variants"] = variants;
+            }
+            let catalog = json!({
+                "commands": {
+                    "raw/workspace-files-continuation": command
+                }
+            });
+
+            let failure = format!("{description} variants must fail closed");
+            let error =
+                request_schema(&catalog, "raw/workspace-files-continuation").expect_err(&failure);
+
+            assert_eq!(error.code, "RPC_CATALOG_INVALID", "{description}");
+            assert!(error.message.contains("non-empty variants"), "{error:?}");
+        }
+    }
+
+    #[test]
+    fn variant_discriminator_enum_rejects_duplicate_variant_names() {
+        let catalog = json!({
+            "commands": {
+                "raw/workspace-files-continuation": {
+                    "variantDiscriminator": "action",
+                    "request": {
+                        "fields": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["ISSUE", "ISSUE"]
+                            }
+                        },
+                        "required": ["action"]
+                    },
+                    "variants": {
+                        "ISSUE": {
+                            "fields": {}
+                        }
+                    }
+                }
+            }
+        });
+
+        let error = request_schema(&catalog, "raw/workspace-files-continuation")
+            .expect_err("duplicate variant enum entries must fail closed");
+
+        assert_eq!(error.code, "RPC_CATALOG_INVALID");
+        assert!(error.message.contains("exactly once"), "{error:?}");
     }
 
     #[test]
