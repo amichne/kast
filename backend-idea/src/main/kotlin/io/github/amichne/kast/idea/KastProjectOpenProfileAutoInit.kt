@@ -366,7 +366,7 @@ object PluginWorkspaceBootstrap {
         """
         |---
         |name: kast
-        |description: Kotlin semantic work in Gradle repositories prepared by the Kast IntelliJ plugin.
+        |description: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.
         |---
         |
         |# Kast
@@ -376,6 +376,18 @@ object PluginWorkspaceBootstrap {
         |Use `kast agent verify --workspace-root "${'$'}PWD"` before Kotlin semantic work when state is uncertain.
         |Use typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename`.
         |Do not run `kast setup` or install Kast runtime/resources separately on macOS; reopen the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled.
+        |
+        |## Linked Worktrees
+        |
+        |For every delegated worker using a linked Git worktree:
+        |
+        |1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.
+        |2. Wait for `.kast/setup/workspace.json`, then run `kast agent verify --workspace-root "${'$'}PWD"` from that worktree.
+        |3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.
+        |4. Keep that IDE project open while the worker and worktree are active.
+        |5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.
+        |
+        |The coordinating agent owns this setup and teardown for every delegated worktree.
         |
         |Prepared plugin version: ${request.pluginVersion.value}
         |CLI invocation: `${request.cliBinary}`
@@ -389,6 +401,9 @@ object PluginWorkspaceBootstrap {
             "Use `kast agent verify --workspace-root \"\$PWD\"` to verify the plugin-prepared workspace.",
             "Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.",
             "Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.",
+            "Before each linked worker starts, open the exact worktree root as its own IDE project and run `kast agent verify --workspace-root \"\$PWD\"` from that worktree.",
+            "Never reuse another worktree's Kast runtime, metadata, or semantic evidence.",
+            "Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.",
             KAST_MANAGED_FENCE_END,
         ).joinToString("\n")
 
