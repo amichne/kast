@@ -31,15 +31,28 @@ stamp; invalid or stale state must fail instead of restarting at page one.
 
 `symbol_lookup.rs` owns identity lookup only. Exact lookup projects one
 reusable anchored identity containing canonical declaration file and start
-offset. `relations.rs` owns anchored relationship request construction,
-query-bound page tokens, lossless wrapping of the #337 reference cursor,
-opaque server traversal handles, impact offsets, and typed degraded/stale/
-invalid outcomes. `projection/relations.rs` owns the closed public record
-families; do not reintroduce one-shot relationship work under symbol lookup or
-serialize traversal frontiers in Rust.
+offset. `RESOLVED`, including indexed fallback, requires exactly one complete
+anchor; otherwise project `IDENTITY_ANCHOR_UNAVAILABLE`.
+
+`relations.rs` owns anchored relationship request construction, query-bound
+page tokens, opaque wrapping of #337's UUID `ReferencePageToken`, opaque backend
+traversal handles, and impact offsets. Rust must not decode or serialize the
+reference source, provider position, returned-before count, query, subject,
+generation, or traversal frontier. A continued page requires the typed
+cardinality proof for at least one additional record.
+
+`projection/relations.rs` owns the closed public record families and validates
+each response family's own degraded-reason enum, non-null mismatch actual, and
+stale/invalid variants. Impact admits aggregate rows only after compiler anchor
+verification and production path/offset/kind index identity; functions and
+properties degrade because the production key cannot prove overload isolation.
+Do not reintroduce one-shot relationship work under symbol lookup, FQ-only
+indexed reference reads, cross-family degradation codes, or client-serialized
+semantic state.
 
 Changes to this surface require
 `cli-rs/tests/agent_relationship_navigation_smoke.rs` plus the command-surface,
 result-projection, packaged-content, and generated-contract gates. Token
 changes use existing dependencies unless a reviewed plan explicitly owns a
-manifest update.
+manifest update; `Cargo.toml` and `Cargo.lock` stay unchanged for opaque handle
+wrapping.

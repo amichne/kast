@@ -29,6 +29,14 @@ Keep this unit focused on transport concerns around the backend interface.
   consume to the exact query identity, consume mismatches terminally, apply the
   configured TTL/capacity policy, and drain the store when the dispatcher
   closes.
+- Relationship continuation state is runtime-owned. This module transports
+  opaque `ReferencePageToken` and traversal handles, but must not own a second
+  store, read semantic generation separately, reconstruct reference source or
+  counters, or perform provider work outside the backend read-action boundary.
+- Anchored relationship dispatch forwards the complete selector and handle to
+  `AnalysisBackend`. `symbol/scaffold` composition preserves
+  `ReferenceOccurrence.containingSymbol`; it must not collapse results to
+  `List<Location>`.
 - PSI logic, workspace discovery, and CLI parsing stay in their runtime host
   and Rust CLI owners.
 
