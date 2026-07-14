@@ -15,11 +15,13 @@ Keep this unit focused on transport concerns around the backend interface.
   descriptor directory; shutdown removes them.
 - Keep capability checks, truncation, and request-limit handling aligned with
   backend responses.
-- `RunningAnalysisServer` is the single close owner after start. Stop transport
-  admission, drain dispatcher-owned continuation state, close the explicit
-  `CloseableAnalysisBackend` once, and clean up descriptors even when one close
-  step fails. Repeated runtime/server close must be idempotent; never rely on a
-  cast to infer backend ownership.
+- `RunningAnalysisServer` is the single backend and continuation close owner
+  after start. Stop transport admission, drain dispatcher-owned continuation
+  state, close the explicit `CloseableAnalysisBackend` once, and clean up
+  descriptors even when one close step fails. Repeated runtime/server close must
+  be idempotent; never rely on a cast to infer backend ownership. Runtime-owned
+  resources outside the backend contract, such as the IDEA source-index store,
+  remain with their runtime orchestrator and close only after this server owner.
 - PSI logic, workspace discovery, and CLI parsing stay in their runtime host
   and Rust CLI owners.
 

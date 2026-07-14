@@ -195,10 +195,17 @@ implements the closeable backend contract and drains its continuation stores.
 `KastIdeaBackendRuntime` passes that observed closeable backend to
 `AnalysisServer`; `RunningAnalysisServer.close()` stops request admission,
 closes dispatcher-owned public continuation state, and closes the backend once.
-`RunningKastIdeaBackend.close()` cancels indexing and delegates only to the
-running server, so no second backend owner exists. Headless and fake backends
-provide explicit no-resource close implementations instead of relying on a
-runtime cast.
+`RunningKastIdeaBackend.close()` is the outer resource choreography: cancel
+project indexing, close the running server as the sole backend/continuation
+owner, then close the separately owned `SqliteSourceIndexStore` shared by the
+reference lookup and indexer. It removes only the now-redundant
+`backendResources::close` action. Cleanup continues through later phases after
+an earlier failure, reports failure only after all phases are attempted, and is
+idempotent under repeated close. This ordering prevents indexing from racing
+shutdown, lets the server drain every lookup/continuation before the shared
+store closes, and never gives the runtime a second backend owner. Headless and
+fake backends provide explicit no-resource close implementations instead of
+relying on a runtime cast.
 
 The backend gathers the complete requested-kind candidate set in one IDEA read
 action, maps paths and roots through exact-root containment, deduplicates, and
@@ -298,7 +305,8 @@ one model-proven direct or composite build root, and reads
 `GradleModuleData.getGradlePathOrNull()` as the absolute project path. The
 host-neutral `BuildQualifiedGradleProjectIdentity` crossing into `index-store`
 contains only a normalized workspace-relative build root and typed Gradle
-project path; no IntelliJ type crosses that dependency firewall. The producer
+project path; no IntelliJ type crosses from `backend-idea` into `index-store`.
+The producer
 collects every model-proven owner for a file, and the store persists the set in
 dedicated `file_gradle_projects` association rows. `module_path` remains a
 legacy unqualified label for existing symbol/metrics consumers, and an IDEA
@@ -315,13 +323,17 @@ legacy labels but cannot construct a proven source-set identity. A fixture maps
 a nonconventional root to `integrationTest` and proves the model, not the path,
 owns that fact.
 
-`PsiSourceIndexScanner` accepts a `KtFile` semantic-evidence producer. It reads
-the Kotlin PSI/compiler package FQ name and passes a typed `ProvenRoot`,
-`ProvenNamed`, or `Unproven(reason)` value into host-neutral `FileIndexUpdate`.
-`SourceFileIndexParser` may continue parsing declarations, but its nullable or
-failed package extraction cannot construct root-package evidence. Tests cover
-escaped keyword, backticked non-identifier, and general Unicode package names
-through their canonical Kotlin semantic names.
+`backend-shared` intentionally owns IntelliJ and Kotlin PSI analysis.
+`PsiSourceIndexScanner` obtains a `KtFile`, reads its `packageFqName` or
+equivalent structured compiler evidence, and converts it inside
+`backend-shared` to host-neutral `IndexedPackageEvidence.ProvenRoot`,
+`ProvenNamed`, or `Unproven(reason)` before constructing `FileIndexUpdate`.
+No `PsiFile`, `KtFile`, IntelliJ `FqName`, or other IntelliJ/Kotlin PSI type
+crosses from `backend-shared` into `index-store`. `SourceFileIndexParser` may
+continue parsing declarations, but its nullable or failed package extraction
+cannot construct root-package evidence. Tests cover escaped keyword,
+backticked non-identifier, and general Unicode package names through their
+canonical Kotlin semantic names.
 
 The fake backend implements the same generation/fingerprint and server-held
 cursor contract. Contract tests cover expiry, deterministic capacity eviction,
@@ -937,10 +949,13 @@ The TDD sequence proves:
     and never expose an IDEA/path fallback as Gradle identity;
 21. mixed/source/script fixtures prove source-index progress is relevant only
     to a selected source partition, including continuation digests and grouped
-    cardinality; and
+    cardinality;
 22. release-state schema version 8 generates equal Kotlin and Rust constants,
     version 7 is rejected/reset before reads, and required association/provenance
-    structures cannot be absent from a compatible database.
+    structures cannot be absent from a compatible database; and
+23. runtime shutdown cancels indexing, closes the server-owned backend and
+    continuations, then closes the separately owned source-index store, without
+    duplicate backend close or failure-short-circuited cleanup.
 
 The exact-root regression lives in both
 `agent_workspace_files_smoke.rs` and `semantic_workspace_admission_smoke.rs`.
@@ -952,8 +967,11 @@ whole.
 `analysis-api/AGENTS.md` records the atomic `Complete`/`Reissue` wire-neutral
 lifecycle contract. `analysis-server/AGENTS.md` records the single backend
 close owner. `backend-idea/AGENTS.md` records project-model inventory, Gradle
-bridge, structured project/source-set and Kotlin package producers, typed
-incompleteness, and paging gates. `build-logic/AGENTS.md` records generated
+bridge, structured project/source-set production, typed incompleteness,
+runtime/source-index-store close choreography, and paging gates.
+`backend-shared/AGENTS.md` records that PSI is legal inside that module but must
+be converted to host-neutral package evidence before the `index-store` boundary.
+`build-logic/AGENTS.md` records generated
 Kotlin schema ownership from release state. `index-store/AGENTS.md` owns the
 version-8 tables, package provenance, generation, and legacy-label prohibition.
 The new Rust inventory directory owns its own scoped guide. `cli-rs/AGENTS.md` and

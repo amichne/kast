@@ -71,8 +71,10 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   keep an IDEA module-name fallback only as a legacy unproven label.
 - Never treat path-derived `file_metadata.source_set` or nullable text-parser
   package output as proof. Persist model-proven build-qualified Gradle source
-  sets and Kotlin PSI/compiler package provenance as discriminated types. A
-  missing parser result is `UNPROVEN`, never root.
+  sets and Kotlin PSI/compiler package provenance as discriminated types.
+  `backend-shared` owns the PSI read and converts it to host-neutral
+  `IndexedPackageEvidence` before the `index-store` boundary. A missing parser
+  result is `UNPROVEN`, never root.
 - Advance `packaging/homebrew/release-state.json` from source-index schema 7 to
   8 in Task 2. It remains the only checked-in schema source; generated Kotlin
   and Rust constants and their tests must agree before a version-8 DB is read.
@@ -172,7 +174,9 @@ v2, tempfile integration fixtures, Markdown, and Zensical.
   reusable leases, atomic single-use `Complete`/`Reissue` transitions, and
   exact-once state disposal.
 - Produces: `CloseableAnalysisBackend`, an explicit server-owned lifecycle
-  contract. `RunningAnalysisServer` is the sole close owner after start.
+  contract. `RunningAnalysisServer` is the sole backend and continuation close
+  owner after start; outer runtimes retain separately owned non-backend
+  resources.
 - Invariant: snapshot and page tokens are canonical random UUID handles, not
   encoded state. An input snapshot token is legal with `includeFiles=true` and
   one exact module, or with `includeFiles=false` and no module for final barrier
@@ -242,8 +246,9 @@ terminal and every fake closes once.
 
 Add socket/stdio lifecycle tests around a close-counting
 `CloseableAnalysisBackend`. Prove transport admission stops before backend
-close, dispatcher stores drain, backend close runs once on repeated server and
-runtime close, and a backend close failure does not skip descriptor cleanup.
+close, dispatcher stores drain, backend close runs once on repeated server
+close, and a backend close failure does not skip descriptor cleanup. The outer
+IDEA runtime/resource-order tests belong to Task 2.
 
 Assert invalid raw errors expose only typed `details.scope` of
 `SNAPSHOT_HANDLE` or `PAGE_HANDLE`. Snapshot failure discards the workspace-wide
@@ -372,6 +377,7 @@ git commit -m "feat: page raw workspace file results"
 - Modify: `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaProjectIndexer.kt`
 - Create: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceFileInventoryTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastPluginBackendContractTest.kt`
+- Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/KastIdeaBackendRuntimeTest.kt`
 - Modify: `backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaProjectIndexerModuleNameTest.kt`
 - Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/BuildQualifiedGradleProjectIdentity.kt`
 - Create: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/GradleProjectPath.kt`
@@ -385,6 +391,7 @@ git commit -m "feat: page raw workspace file results"
 - Modify: `index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt`
 - Modify: `index-store/src/test/kotlin/io/github/amichne/kast/indexstore/SqliteSourceIndexStoreTest.kt`
 - Modify: `index-store/AGENTS.md`
+- Modify: `backend-shared/AGENTS.md`
 - Modify: `backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScanner.kt`
 - Create: `backend-shared/src/test/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScannerTest.kt`
 - Modify: `build-logic/AGENTS.md`
@@ -414,8 +421,10 @@ git commit -m "feat: page raw workspace file results"
   `file_gradle_projects` association table, distinct from legacy
   `file_metadata.module_path`.
 - Produces: `BuildQualifiedGradleSourceSetIdentity` from model-owned Gradle
-  source roots and `IndexedPackageEvidence` from Kotlin PSI/compiler structure.
-  Legacy path/module labels remain explicit unproven evidence.
+  source roots. `backend-shared` converts Kotlin PSI/compiler structure to
+  host-neutral `IndexedPackageEvidence` before constructing `FileIndexUpdate`;
+  no IntelliJ/Kotlin PSI type crosses into `index-store`. Legacy path/module
+  labels remain explicit unproven evidence.
 - Produces: release-state source-index schema version 8, with Kotlin and Rust
   constants generated from that one file and tested for alignment.
 
@@ -471,7 +480,10 @@ produces `BuildQualifiedGradleSourceSetIdentity` while `/src/main/`, source-root
 basename, and IDEA module-name heuristics cannot. Add Kotlin PSI/compiler
 package fixtures for root, escaped keyword (`com.example.\`when\``), backticked
 non-identifier, and general Unicode names. A missing/failed semantic package
-producer must persist `UNPROVEN`, never `PROVEN_ROOT`. Prove legacy
+producer must persist `UNPROVEN`, never `PROVEN_ROOT`. In
+`PsiSourceIndexScannerTest`, prove the `KtFile` result is converted to
+`IndexedPackageEvidence` inside `backend-shared` and only the host-neutral
+`FileIndexUpdate` crosses into `index-store`. Prove legacy
 `file_metadata.source_set` is unproven and cannot satisfy `--source-set`.
 
 Set `packaging/homebrew/release-state.json.source_index_schema_version` to 8.
@@ -496,15 +508,22 @@ after each `Reissue`, the prior token is invalid, and `Complete` closes once.
 Wire `KastPluginBackend` as a `CloseableAnalysisBackend`, forward close through
 `ObservedAnalysisBackend`, pass it from `KastIdeaBackendRuntime` into
 `AnalysisServer`, and prove repeated `RunningKastIdeaBackend.close()` and server
-shutdown have one backend close owner. Cover reissue versus shutdown/eviction
-and callback failure while the IDEA state is claimed, plus expiry/replacement
-and server-close/callback races.
+shutdown have one backend close owner. In `KastIdeaBackendRuntimeTest`, record
+the outer close sequence and prove it cancels project indexing, closes
+`RunningAnalysisServer`, then closes the separately owned
+`SqliteSourceIndexStore`. Inject failures at each phase and prove later cleanup
+still runs; repeated close must not repeat any phase. Assert the server phase
+closes the plugin backend/continuations exactly once, the source-index store
+remains usable until that phase completes, and no separate
+`backendResources::close` action survives. Cover reissue versus
+shutdown/eviction and callback failure while the IDEA state is claimed, plus
+expiry/replacement and server-close/callback races.
 
 - [ ] **Step 2: Run the focused red backend test**
 
 ```console
 ./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
-./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*IdeaProjectIndexerModuleNameTest*' :index-store:test --tests '*SqliteSourceIndexStoreTest*' --no-daemon
+./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*IdeaProjectIndexerModuleNameTest*' --tests '*KastIdeaBackendRuntimeTest*' :backend-shared:test --tests '*PsiSourceIndexScannerTest*' :index-store:test --tests '*SqliteSourceIndexStoreTest*' --no-daemon
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 python3 packaging/homebrew/scripts/test-formulas.py
 ```
@@ -561,20 +580,27 @@ replacing, or removing any
 association/evidence increments `schema_version.generation` in that transaction.
 
 `PsiSourceIndexScanner` reads `KtFile.packageFqName` or equivalent structured
-Kotlin PSI/compiler evidence and passes canonical `ProvenRoot`, `ProvenNamed`,
-or `Unproven(reason)` to `FileIndexUpdate`. `SourceFileIndexParser` may parse
-declarations but cannot turn nullable package output into root. No IntelliJ
-type crosses into `backend-shared` or `index-store`. Keep `module_path` and
-`source_set` for existing symbol/metrics behavior only; workspace discovery
-must never select or parse either legacy label as proven Gradle identity.
+Kotlin PSI/compiler evidence inside `backend-shared`, converts it there to
+canonical `IndexedPackageEvidence.ProvenRoot`, `ProvenNamed`, or
+`Unproven(reason)`, and passes only that host-neutral value through
+`FileIndexUpdate` to `index-store`. `SourceFileIndexParser` may parse
+declarations but cannot turn nullable package output into root. IntelliJ and
+Kotlin PSI types are allowed inside `backend-shared`; none may cross from it
+into `index-store`. Keep `module_path` and `source_set` for existing
+symbol/metrics behavior only; workspace discovery must never select or parse
+either legacy label as proven Gradle identity.
 
 Make `KastPluginBackend` implement `CloseableAnalysisBackend` and drain its
 snapshot/page/reference/diagnostic stores exactly once. Make
 `ObservedAnalysisBackend` implement the same type and forward close to its
 delegate. `KastIdeaBackendRuntime` passes the observed owner to
-`AnalysisServer`; `RunningKastIdeaBackend.close()` cancels indexing and closes
-only the running server. Do not close the backend directly from both runtime
-and server.
+`AnalysisServer`; `RunningAnalysisServer` is the sole backend/continuation close
+owner. `RunningKastIdeaBackend.close()` cancels indexing, closes that server,
+and then closes the separately owned `SqliteSourceIndexStore` shared by lookup
+and indexing. Remove only the redundant `backendResources::close` phase. Keep
+the three outer phases ordered, idempotent, and failure-tolerant so an earlier
+failure cannot skip later cleanup; do not close the backend directly from both
+runtime and server.
 
 - [ ] **Step 4: Page sorted inventory with server-held state**
 
@@ -625,7 +651,8 @@ Run:
 
 ```console
 ./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
-./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*KastPluginBackendContractTest*workspace files*' --no-daemon
+./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*KastPluginBackendContractTest*workspace files*' --tests '*KastIdeaBackendRuntimeTest*' --no-daemon
+./gradlew :backend-shared:test --tests '*PsiSourceIndexScannerTest*' --no-daemon
 ./gradlew :index-store:test --tests '*SourceIndexFilePolicyTest*' --tests '*SqliteSourceIndexStoreTest*' --no-daemon
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 python3 packaging/homebrew/scripts/test-formulas.py
@@ -635,9 +662,9 @@ Expected: project scripts, shared ownership, included-build associations,
 build-qualified root/included project identities, custom `integrationTest`,
 structured package provenance, legacy fallback isolation, schema 8 alignment,
 v7 rejection/reset, generation changes, stale responses, atomic multi-page
-reissue/close, and cross-module rejection pass. Typed indexing/project-model
-failures retain their reason; the index-store test still proves `.kts`
-rejection.
+reissue/close, runtime close ordering/failure continuation, and cross-module
+rejection pass. Typed indexing/project-model failures retain their reason; the
+index-store test still proves `.kts` rejection.
 
 - [ ] **Step 6: Commit backend authority**
 
@@ -651,8 +678,10 @@ git commit -m "feat: enumerate project model Kotlin scripts"
 model-proven `.kt`/`.kts` candidates, server-held generation-bound paging,
 TTL/capacity/integrity behavior, typed
 project-model incompleteness, atomic reissue, single close ownership,
-build-qualified project/source-set production, structured package evidence, and
-the focused backend tests above. `index-store/AGENTS.md` records version-8
+build-qualified project/source-set production, runtime/source-index-store close
+choreography, and the focused backend tests above. `backend-shared/AGENTS.md`
+records PSI package-evidence ownership and the host-neutral `index-store`
+firewall. `index-store/AGENTS.md` records version-8
 association/provenance structures and prohibits promoting legacy labels.
 `build-logic/AGENTS.md` records that release state generates the Kotlin schema
 constant and names its alignment gate. These are the nearest guides for the new
@@ -1406,13 +1435,14 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema
 
 ```console
 ./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
-./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
+./gradlew :analysis-api:test :analysis-server:test :backend-shared:test :index-store:test :backend-idea:test --no-daemon
 python3 packaging/homebrew/scripts/test-formulas.py
 ```
 
 Expected: generation/fingerprint, stale, cursor-binding, paging/project-model
-TTL/capacity/integrity, atomic reissue, one backend close owner, and exact-once
-disposal pass. Release state, generated Kotlin/Rust schema version 8, v7 reset,
+TTL/capacity/integrity, atomic reissue, one backend close owner, ordered
+runtime/source-index-store shutdown, and exact-once disposal pass. Release
+state, generated Kotlin/Rust schema version 8, v7 reset,
 build-qualified root/included project and custom source-set identities,
 structured package provenance, source-index generation/progress/pending, final
 backend validation, and kind-relevant composition-barrier tests pass; `.kts`
@@ -1475,6 +1505,8 @@ mapping, exact-root rejected-no-request proof, package-state SQL, false
 global partiality, candidate versus filter coverage, `EXACT` versus
 `KNOWN_MINIMUM`, server-held TTL/capacity/integrity, atomic multi-page
 `Complete`/`Reissue`, single backend close ownership, and exact-once disposal,
+runtime cancellation/server/source-index-store close ordering under repeated and
+failing close,
 deepest-ancestor missing-path containment, build-qualified root/included Gradle
 identity and custom source sets without path/IDEA fallback promotion,
 Kotlin-structured escaped/backticked/Unicode package provenance with no

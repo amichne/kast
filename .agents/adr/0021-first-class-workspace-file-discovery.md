@@ -130,10 +130,16 @@ has exited and its state has reached that terminal disposal path. One disposer
 failure cannot skip remaining entries.
 Stateless continuation families use a no-op disposer. `KastPluginBackend` owns
 the backend stores, `ObservedAnalysisBackend` forwards an explicit closeable
-backend contract, and `RunningAnalysisServer.close()` is the single lifecycle
-owner that drains the dispatcher and backend stores after request admission
-stops. `RunningKastIdeaBackend` closes only that server owner and never closes
-the backend a second time.
+backend contract, and `RunningAnalysisServer.close()` is the single backend and
+continuation lifecycle owner that drains the dispatcher and backend stores after
+request admission stops. `RunningKastIdeaBackend` remains the outer
+runtime-resource orchestrator:
+it cancels project indexing, closes `RunningAnalysisServer` as the sole
+backend/continuation owner, and only then closes the separately owned
+`SqliteSourceIndexStore` shared by backend lookup and indexing. It removes the
+redundant `backendResources::close` step rather than dropping source-index-store
+ownership. A failure in one phase does not skip the later phases, and repeated
+runtime close does not repeat any ownership action.
 
 The backend builds a canonical requested-kind inventory in one read action and
 fingerprints its sorted module identities, source/content roots, dependencies,
@@ -369,9 +375,14 @@ outside the workspace annotates only its contained endpoint. Failure to prove
 this mapping produces `DIRTY_STATE_UNAVAILABLE`; unmatched nested-workspace
 paths never become false `CLEAN` evidence.
 
-The index query selects a metadata-row marker, required `package_state`, typed
-`package_unproven_reason`, `package_fq_id`, the joined package name, and
-structured source-set association rows separately. `PROVEN_ROOT` requires a
+`backend-shared` owns the IntelliJ/Kotlin PSI read. `PsiSourceIndexScanner`
+converts `KtFile.packageFqName` or equivalent structured compiler evidence to
+host-neutral `IndexedPackageEvidence` inside that module and passes only that
+typed value in `FileIndexUpdate` to `index-store`; no IntelliJ or Kotlin PSI
+type crosses that boundary. The index query selects a metadata-row marker,
+required `package_state`, typed `package_unproven_reason`, `package_fq_id`, the
+joined package name, and structured source-set association rows separately.
+`PROVEN_ROOT` requires a
 null id/reason; `PROVEN_NAMED` requires one valid joined canonical name and null
 reason; `UNPROVEN` carries no package id and one typed reason; and any
 constraint violation or dangling id is `INVALID_REFERENCE` plus
@@ -438,9 +449,14 @@ agent workflow.
   compiler/project-model `.kt`/`.kts` enumeration, and typed project-model
   incompleteness. The shared store owns atomic `Complete`/`Reissue` transfer
   and exact-once disposal, including #337 closeable IDEA traversal.
-  `ObservedAnalysisBackend` and the running server lifecycle expose one backend
-  close owner so shutdown cannot leak or double-close those stores. Generated
-  protocol artifacts come from those Kotlin source owners.
+  `ObservedAnalysisBackend` and `RunningAnalysisServer` expose one backend and
+  continuation close owner. The IDEA runtime then closes its separately owned
+  source-index store after that server owner; it does not close the backend a
+  second time. Generated protocol artifacts come from those Kotlin source
+  owners.
+- `backend-shared` owns Kotlin PSI package extraction and converts it to
+  host-neutral `IndexedPackageEvidence` before calling `index-store`. IntelliJ
+  and Kotlin PSI types stay on the `backend-shared` side of that boundary.
 - `cli-rs/src/workspace_inventory.rs` and
   `cli-rs/src/workspace_inventory/` own the reusable uncapped inventory,
   generation/progress-aware exact-root Kotlin source-index reader, deepest-
@@ -453,8 +469,9 @@ agent workflow.
 - `index-store` owns transactional maintenance of the source-index generation,
   module progress, pending-update state, `package_state`, and new
   `file_gradle_projects` and `file_gradle_source_sets` association tables. The
-  IDEA producer supplies host-neutral structured identity values; neither
-  owner widens `SourceIndexFilePolicy` or promotes legacy guesses into proof.
+  IDEA and shared PSI producers supply host-neutral structured identity values;
+  no IntelliJ or Kotlin PSI type enters this module. Neither owner widens
+  `SourceIndexFilePolicy` or promotes legacy guesses into proof.
 - `cli-rs/src/agent/workspace_files.rs` owns public command execution and typed
   filter validation.
 - `cli-rs/src/agent/projection/workspace_files.rs` owns compact, selected,
@@ -475,10 +492,11 @@ agent workflow.
 The new inventory directory receives a scoped `AGENTS.md` when implementation
 begins because it creates a new source-ownership boundary. `backend-idea`
 receives its nearest ownership guide for the project-model inventory and Gradle
-bridge. `analysis-api` and generated-contract ownership guidance is updated
-with the wire change. `analysis-server`, `build-logic`, and `index-store`
-guidance records the single close owner, release-state generation chain, and
-version-8 provenance structures respectively.
+bridge. `backend-shared/AGENTS.md` records PSI ownership and the host-neutral
+`index-store` boundary. `analysis-api` and generated-contract ownership guidance
+is updated with the wire change. `analysis-server`, `build-logic`, and
+`index-store` guidance record the single backend close owner, release-state
+generation chain, and version-8 provenance structures respectively.
 
 ## Validation
 
@@ -495,7 +513,7 @@ cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 ./gradlew -p build-logic test --tests WriteSourceIndexSchemaVersionTaskTest
-./gradlew :analysis-api:test :analysis-server:test :index-store:test :backend-idea:test --no-daemon
+./gradlew :analysis-api:test :analysis-server:test :backend-shared:test :index-store:test :backend-idea:test --no-daemon
 python3 packaging/homebrew/scripts/test-formulas.py
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 ./gradlew test --no-daemon

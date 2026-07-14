@@ -37,8 +37,11 @@ Keep this unit focused on storage concerns and schema continuity.
   Kotlin PSI/compiler evidence, including escaped/backticked/Unicode names.
 - Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access.
   IDEA and other plugin classloaders require explicit driver registration.
-- Keep this unit runtime-agnostic. IDEA PSI logic, CLI process management, and
-  JSON-RPC transport code live in their runtime, CLI, and server owners.
+- Keep this unit runtime-agnostic. `backend-shared` may use IntelliJ/Kotlin PSI,
+  but it must convert package semantics to host-neutral
+  `IndexedPackageEvidence` before constructing `FileIndexUpdate`; no PSI type
+  crosses into this module. CLI process management and JSON-RPC transport code
+  live in their CLI and server owners.
 - Treat schema resets, additive migrations, and cache hydration changes as
   contract-sensitive. Operational source-index reads belong in the Rust CLI;
   Kotlin reads SQLite for headless hydration or targeted indexer/cache
