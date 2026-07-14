@@ -19,6 +19,7 @@ import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
 import io.github.amichne.kast.indexstore.api.reference.GeneratedSymbolReferencePage
+import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
@@ -1236,6 +1237,93 @@ class SqliteSourceIndexStore private constructor(
             } catch (e: Exception) {
                 runCatching { conn.rollback() }
                 throw e
+            } finally {
+                conn.autoCommit = true
+            }
+        }
+    }
+
+    fun generatedReferencePageToExactSymbol(
+        target: ExactReferenceTarget,
+        offset: NonNegativeInt,
+        maxResults: PositiveInt,
+    ): GeneratedSymbolReferencePage {
+        synchronized(writeLock) {
+            val conn = connection()
+            conn.autoCommit = false
+            try {
+                loadInterningTables(conn)
+                val generation = readGenerationInTransaction(conn)
+                pageReadObserver.generationRead()
+                val targetFqId = fqCodec.idFor(target.fqName)
+                val targetPath = pathCodec.encodeIfInterned(target.declarationFile.value)
+                val exactIdentityAvailable = targetFqId == null || conn.prepareStatement(
+                    """SELECT NOT EXISTS(
+                           SELECT 1 FROM symbol_references
+                           WHERE target_fq_id = ?
+                             AND (tgt_prefix_id IS NULL OR tgt_filename IS NULL OR target_offset IS NULL)
+                       )""",
+                ).use { stmt ->
+                    stmt.setInt(1, targetFqId)
+                    stmt.executeQuery().use { rs -> rs.next() && rs.getBoolean(1) }
+                }
+                val page = if (targetFqId == null || targetPath == null) {
+                    SymbolReferencePage(references = emptyList(), nextOffset = null)
+                } else {
+                    conn.prepareStatement(
+                        """SELECT refs.src_prefix_id, refs.src_filename, refs.source_offset,
+                                  refs.source_fq_id, refs.target_fq_id, refs.tgt_prefix_id,
+                                  refs.tgt_filename, refs.target_offset, refs.edge_kind
+                           FROM symbol_references refs
+                           JOIN path_prefixes prefixes ON prefixes.prefix_id = refs.src_prefix_id
+                           WHERE refs.target_fq_id = ?
+                             AND refs.tgt_prefix_id = ?
+                             AND refs.tgt_filename = ?
+                             AND refs.target_offset = ?
+                           ORDER BY prefixes.dir_path, refs.src_filename, refs.source_offset
+                           LIMIT ? OFFSET ?""",
+                    ).use { stmt ->
+                        stmt.setInt(1, targetFqId)
+                        stmt.setInt(2, targetPath.first)
+                        stmt.setString(3, targetPath.second)
+                        stmt.setInt(4, target.declarationStartOffset.value)
+                        stmt.setLong(5, maxResults.value.toLong() + 1L)
+                        stmt.setInt(6, offset.value)
+                        val rs = stmt.executeQuery()
+                        val references = buildList {
+                            while (size < maxResults.value && rs.next()) {
+                                val rowSourceFqId = rs.getNullableInt(4)
+                                val rowTargetFqId = rs.getInt(5)
+                                add(
+                                    SymbolReferenceRow(
+                                        sourcePath = pathCodec.decode(rs.getInt(1), rs.getString(2)),
+                                        sourceOffset = rs.getInt(3),
+                                        sourceFqName = rowSourceFqId?.let(fqCodec::resolve),
+                                        targetFqName = fqCodec.resolve(rowTargetFqId),
+                                        targetPath = decodeNullablePath(rs, prefixColumn = 6, filenameColumn = 7),
+                                        targetOffset = rs.getNullableInt(8),
+                                        edgeKind = EdgeKind.valueOf(rs.getString(9)),
+                                    ),
+                                )
+                            }
+                        }
+                        val nextOffset = if (rs.next()) {
+                            NonNegativeInt(Math.addExact(offset.value, references.size))
+                        } else {
+                            null
+                        }
+                        SymbolReferencePage(references = references, nextOffset = nextOffset)
+                    }
+                }
+                conn.commit()
+                return GeneratedSymbolReferencePage(
+                    page = page,
+                    generation = generation,
+                    exactIdentityAvailable = exactIdentityAvailable,
+                )
+            } catch (error: Exception) {
+                runCatching { conn.rollback() }
+                throw error
             } finally {
                 conn.autoCommit = true
             }

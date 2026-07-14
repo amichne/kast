@@ -32,6 +32,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
+import io.github.amichne.kast.api.continuation.ContinuationAccessFailure
 import io.github.amichne.kast.api.continuation.ContinuationIssueResult
 import io.github.amichne.kast.api.continuation.ContinuationOwnedState
 import io.github.amichne.kast.api.continuation.ContinuationProjection
@@ -62,6 +63,7 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PositiveInt
@@ -69,6 +71,9 @@ import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
+import io.github.amichne.kast.api.contract.result.ContainingSymbolUnavailableReason
+import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
@@ -112,6 +117,7 @@ import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEngine
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import io.github.amichne.kast.shared.hierarchy.TraversalBudget
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -320,7 +326,17 @@ internal class KastPluginBackend(
                     is ContinuationConsumeResult.Reissued -> consumed.output to consumed.token
                     is ContinuationConsumeResult.Rejected -> throw ConflictException(
                         message = "The reference page token is unknown, expired, consumed, or belongs to another query",
-                        details = mapOf("pageToken" to token.value),
+                        details = mapOf(
+                            "pageToken" to token.value,
+                            "continuationFailure" to when (consumed.failure) {
+                                ContinuationAccessFailure.ExpiredToken -> "expired"
+                                ContinuationAccessFailure.QueryMismatch -> "queryMismatch"
+                                ContinuationAccessFailure.StoreClosed,
+                                ContinuationAccessFailure.TokenCollision,
+                                ContinuationAccessFailure.UnknownToken,
+                                -> "unknown"
+                            },
+                        ),
                     )
                 }
             } else {
@@ -340,7 +356,8 @@ internal class KastPluginBackend(
                     )) {
                         is ContinuationIssueResult.Issued -> issued.token
                         is ContinuationIssueResult.Rejected -> throw ConflictException(
-                            "Reference continuation store is unavailable",
+                            message = "Reference continuation store is unavailable",
+                            details = mapOf("continuationFailure" to "boundSourceUnavailable"),
                         )
                     }
                 }
@@ -418,11 +435,34 @@ internal class KastPluginBackend(
                 val file = findKtFile(query.position.filePath.value)
                 val element = resolveTarget(file, query.position.offset.value)
                 val targetFqName = element.targetFqNameAndPackage()?.first?.value
+                val symbol = analyze(file) {
+                    element.toSymbolModel(containingDeclaration = compilerContainingDeclarationName(element))
+                }
+                query.selector?.let { selector ->
+                    val selectorMatches = selector.fqName == symbol.fqName &&
+                        NormalizedPath.parse(selector.declarationFile) == NormalizedPath.parse(symbol.location.filePath) &&
+                        selector.declarationStartOffset == symbol.location.startOffset &&
+                        (selector.kind == null || selector.kind == symbol.kind) &&
+                        (selector.containingType == null || selector.containingType == symbol.containingDeclaration)
+                    if (!selectorMatches) {
+                        throw ConflictException(
+                            message = "The resolved reference target does not match its exact selector",
+                            details = mapOf("referenceTarget" to "identityMismatch"),
+                        )
+                    }
+                }
                 ReferenceResolvedTarget(
                     pointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(element),
                     targetFqName = targetFqName,
+                    exactTarget = targetFqName?.let { fqName ->
+                        ExactReferenceTarget(
+                            fqName = fqName,
+                            declarationFile = NormalizedPath.parse(symbol.location.filePath),
+                            declarationStartOffset = NonNegativeInt(symbol.location.startOffset),
+                        )
+                    },
                     declaration = if (query.includeDeclaration) {
-                        analyze(file) { element.toSymbolModel(containingDeclaration = null) }
+                        symbol
                     } else {
                         null
                     },
@@ -451,6 +491,7 @@ internal class KastPluginBackend(
         return ReferenceSearchPlan(
             target = target.pointer,
             targetFqName = target.targetFqName,
+            exactTarget = target.exactTarget,
             declaration = target.declaration,
             visibility = target.visibility,
             searchScope = scope.searchScope,
@@ -464,10 +505,10 @@ internal class KastPluginBackend(
         continuation: ReferenceContinuationPosition.Index?,
         span: IdeaTelemetrySpan,
     ): ReferenceSearchOutcome? = span.child("kast.idea.findReferences.indexLookup") { indexSpan ->
-        val targetFqName = plan.targetFqName ?: return@child null
+        val target = plan.exactTarget ?: return@child null
         when (
             val lookup = referenceIndexLookup.referencesTo(
-                targetFqName,
+                target,
                 continuation?.offset ?: io.github.amichne.kast.api.contract.NonNegativeInt(0),
                 query.maxResults,
             )
@@ -477,7 +518,24 @@ internal class KastPluginBackend(
                 if (continuation != null) {
                     throw ConflictException(
                         message = "The source index became unavailable while continuing an indexed reference page",
-                        details = mapOf("pageTokenSource" to "INDEX"),
+                        details = mapOf(
+                            "pageTokenSource" to "INDEX",
+                            "continuationFailure" to "boundSourceUnavailable",
+                        ),
+                    )
+                }
+                null
+            }
+            is IndexedReferenceLookupResult.IdentityUnavailable -> {
+                indexSpan.setAttribute("kast.references.indexReady", true)
+                indexSpan.setAttribute("kast.references.indexIdentityAvailable", false)
+                if (continuation != null) {
+                    throw ConflictException(
+                        message = "The source index cannot prove the exact reference target identity",
+                        details = mapOf(
+                            "pageTokenSource" to "INDEX",
+                            "continuationFailure" to "indexIdentityUnavailable",
+                        ),
                     )
                 }
                 null
@@ -486,7 +544,10 @@ internal class KastPluginBackend(
                 if (continuation != null && continuation.generation != lookup.generation) {
                     throw ConflictException(
                         message = "The source index changed after the preceding reference page",
-                        details = mapOf("pageTokenSource" to "INDEX"),
+                        details = mapOf(
+                            "pageTokenSource" to "INDEX",
+                            "continuationFailure" to "generationChanged",
+                        ),
                     )
                 }
                 val indexedRows = runIdeaReadAction {
@@ -539,8 +600,8 @@ internal class KastPluginBackend(
     private fun indexedReferenceLocations(
         rows: List<SymbolReferenceRow>,
         includeUsageSiteScope: Boolean,
-    ): List<Location> {
-        val locations = mutableListOf<Location>()
+    ): List<ReferenceOccurrence> {
+        val locations = mutableListOf<ReferenceOccurrence>()
         for (batch in rows.chunked(READ_ACTION_BATCH_SIZE)) {
             val batchLocations = runIdeaReadAction {
                 batch.mapNotNull { row -> indexedReferenceLocationOrNull(row, includeUsageSiteScope) }
@@ -548,12 +609,14 @@ internal class KastPluginBackend(
             locations.addAll(batchLocations)
         }
         return locations
+            .distinctBy { it.location.key() }
+            .sortedWith(referenceOccurrenceOrder)
     }
 
     private fun indexedReferenceLocationOrNull(
         row: SymbolReferenceRow,
         includeUsageSiteScope: Boolean,
-    ): Location? = try {
+    ): ReferenceOccurrence? = try {
         indexedReferenceLocation(row, includeUsageSiteScope)
     } catch (error: ProcessCanceledException) {
         throw error
@@ -566,7 +629,7 @@ internal class KastPluginBackend(
     private fun indexedReferenceLocation(
         row: SymbolReferenceRow,
         includeUsageSiteScope: Boolean,
-    ): Location? {
+    ): ReferenceOccurrence? {
         if (!isWorkspaceFile(row.sourcePath)) return null
         val file = findKtFile(row.sourcePath)
         val sourceOffset = row.sourceOffset.coerceIn(0, file.textLength)
@@ -576,11 +639,15 @@ internal class KastPluginBackend(
         if (!element.isValid) return null
         val range = reference?.absoluteTextRange() ?: indexedFallbackRange(file, row)
         val location = element.toKastLocation(range)
-        return if (includeUsageSiteScope) {
+        val enrichedLocation = if (includeUsageSiteScope) {
             location.copy(usageSiteScope = element.usageSiteDeclarationScope())
         } else {
             location
         }
+        return ReferenceOccurrence(
+            location = enrichedLocation,
+            containingSymbol = element.containingSymbolEvidence(),
+        )
     }
 
     private fun indexedFallbackRange(
@@ -606,7 +673,7 @@ internal class KastPluginBackend(
             throw failure
         }
         fallbackSpan.setAttribute("kast.references.fallbackApi", "server-held-psi-traversal")
-        val locations = mutableListOf<Location>()
+        val locations = mutableListOf<ReferenceOccurrence>()
         var completion: ReferenceSearchCompletion = ReferenceSearchCompletion.Exhaustive
         var pathProbes = 0
         var psiFileProbes = 0
@@ -624,7 +691,10 @@ internal class KastPluginBackend(
                     continuation.traversal.close()
                     throw ConflictException(
                         message = "Kotlin PSI changed after the preceding reference page",
-                        details = mapOf("pageTokenSource" to "IDEA"),
+                        details = mapOf(
+                            "pageTokenSource" to "IDEA",
+                            "continuationFailure" to "generationChanged",
+                        ),
                     )
                 }
                 if (position == null) {
@@ -776,9 +846,9 @@ internal class KastPluginBackend(
                                 resolved != null &&
                                 (resolved == target || resolved.navigationElement == target.navigationElement)
                             ) {
-                                reference.toReferenceLocation(query.includeUsageSiteScope)?.let { location ->
-                                    if (activePosition.seenLocations.add(location.key())) {
-                                        locations += location
+                                reference.toReferenceOccurrence(query.includeUsageSiteScope)?.let { occurrence ->
+                                    if (activePosition.seenLocations.add(occurrence.location.key())) {
+                                        locations += occurrence
                                     }
                                 }
                             }
@@ -810,9 +880,9 @@ internal class KastPluginBackend(
                                 providerStoppedForLimit = true
                                 return@Processor false
                             }
-                            reference.toReferenceLocation(query.includeUsageSiteScope)?.let { location ->
-                                if (activePosition.seenLocations.add(location.key())) {
-                                    locations += location
+                            reference.toReferenceOccurrence(query.includeUsageSiteScope)?.let { occurrence ->
+                                if (activePosition.seenLocations.add(occurrence.location.key())) {
+                                    locations += occurrence
                                 }
                             }
                             if (locations.size > query.maxResults.value) {
@@ -854,7 +924,7 @@ internal class KastPluginBackend(
         if (resolutionFailed && completion == ReferenceSearchCompletion.Exhaustive) {
             completion = ReferenceSearchCompletion.Partial(ReferencePartialReason.PSI_RESOLUTION_FAILED)
         }
-        val pageReferences = locations.take(query.maxResults.value)
+        val pageReferences = locations.take(query.maxResults.value).sortedWith(referenceOccurrenceOrder)
         val pending = locations.getOrNull(query.maxResults.value)
         val nextPosition = if (completedPosition.traversal.exhausted) {
             null
@@ -890,15 +960,44 @@ internal class KastPluginBackend(
         )
     }
 
-    private fun PsiReference.toReferenceLocation(includeUsageSiteScope: Boolean): Location? {
+    private fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? {
         val referenceElement = element
         if (!referenceElement.isValid) return null
         val location = referenceElement.toKastLocation(absoluteTextRange())
         if (!isWorkspaceFile(location.filePath)) return null
-        return if (includeUsageSiteScope) {
+        val enrichedLocation = if (includeUsageSiteScope) {
             location.copy(usageSiteScope = referenceElement.usageSiteDeclarationScope())
         } else {
             location
+        }
+        return ReferenceOccurrence(
+            location = enrichedLocation,
+            containingSymbol = referenceElement.containingSymbolEvidence(),
+        )
+    }
+
+    private fun PsiElement.containingSymbolEvidence(): ContainingSymbolEvidence {
+        val owner = PsiTreeUtil.getParentOfType(this, KtNamedDeclaration::class.java, false)
+            ?: return ContainingSymbolEvidence.TopLevel
+        return try {
+            val symbol = analyze(owner.containingKtFile) {
+                owner.toSymbolModel(containingDeclaration = compilerContainingDeclarationName(owner))
+            }
+            ContainingSymbolEvidence.Known(
+                io.github.amichne.kast.api.contract.SymbolIdentity(
+                    fqName = symbol.fqName,
+                    kind = symbol.kind,
+                    declarationFile = NormalizedPath.parse(symbol.location.filePath),
+                    declarationStartOffset = NonNegativeInt(symbol.location.startOffset),
+                    containingType = symbol.containingDeclaration,
+                ),
+            )
+        } catch (failure: ProcessCanceledException) {
+            throw failure
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (_: Exception) {
+            ContainingSymbolEvidence.Unavailable(ContainingSymbolUnavailableReason.NO_SEMANTIC_OWNER)
         }
     }
 
@@ -1823,6 +1922,7 @@ internal class KastPluginBackend(
 private data class ReferenceResolvedTarget(
     val pointer: SmartPsiElementPointer<PsiElement>,
     val targetFqName: String?,
+    val exactTarget: ExactReferenceTarget?,
     val declaration: Symbol?,
     val visibility: SymbolVisibility,
 )
@@ -1835,6 +1935,7 @@ private data class ReferenceScopePlan(
 private data class ReferenceSearchPlan(
     val target: SmartPsiElementPointer<PsiElement>,
     val targetFqName: String?,
+    val exactTarget: ExactReferenceTarget?,
     val declaration: Symbol?,
     val visibility: SymbolVisibility,
     val searchScope: GlobalSearchScope,
@@ -1843,7 +1944,7 @@ private data class ReferenceSearchPlan(
 
 private data class ReferenceSearchOutcome(
     val source: ReferenceSearchSource,
-    val references: List<Location>,
+    val references: List<ReferenceOccurrence>,
     val consumedEvidence: Int,
     val observedEvidence: Int,
     val nextPosition: ReferenceContinuationPosition?,
@@ -1858,6 +1959,9 @@ private data class ReferenceSearchOutcome(
 private data class ReferenceQueryIdentity(
     val filePath: String,
     val offset: Int,
+    val fqName: String?,
+    val kind: String?,
+    val containingType: String?,
     val includeDeclaration: Boolean,
     val includeUsageSiteScope: Boolean,
     val maxResults: Int,
@@ -1866,6 +1970,9 @@ private data class ReferenceQueryIdentity(
         fun from(query: ParsedReferencesQuery): ReferenceQueryIdentity = ReferenceQueryIdentity(
             filePath = query.position.filePath.value,
             offset = query.position.offset.value,
+            fqName = query.selector?.fqName,
+            kind = query.selector?.kind?.name,
+            containingType = query.selector?.containingType,
             includeDeclaration = query.includeDeclaration,
             includeUsageSiteScope = query.includeUsageSiteScope,
             maxResults = query.maxResults.value,
@@ -1910,7 +2017,7 @@ private sealed interface ReferenceContinuationPosition {
 
     data class Idea(
         val traversal: IdeaReferenceTraversal,
-        val pending: Location?,
+        val pending: ReferenceOccurrence?,
         val generation: Long,
         val candidateFilePaths: MutableSet<String>,
         val searchedFilePaths: MutableSet<String>,
@@ -1977,6 +2084,19 @@ private fun Location.key(): ReferenceLocationKey = ReferenceLocationKey(
     filePath = filePath,
     startOffset = startOffset,
     endOffset = endOffset,
+)
+
+private val referenceOccurrenceOrder = compareBy<ReferenceOccurrence>(
+    { it.location.filePath },
+    { it.location.startOffset },
+    { it.location.endOffset },
+    {
+        when (val evidence = it.containingSymbol) {
+            is ContainingSymbolEvidence.Known -> evidence.symbol.fqName
+            ContainingSymbolEvidence.TopLevel -> ""
+            is ContainingSymbolEvidence.Unavailable -> evidence.reason.name
+        }
+    },
 )
 
 private enum class ReferenceSearchSource {

@@ -34,6 +34,8 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
+import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.DiagnosticSeverityCounts
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -53,6 +55,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
 
 import kotlinx.serialization.KSerializer
@@ -103,6 +106,9 @@ class DocFieldCoverageTest {
         "SymbolQuery" to SymbolQuery.serializer(),
         "SymbolResult" to SymbolResult.serializer(),
         "ReferencesQuery" to ReferencesQuery.serializer(),
+        "KastExactSymbolSelector" to KastExactSymbolSelector.serializer(),
+        "ReferenceOccurrence" to ReferenceOccurrence.serializer(),
+        "ContainingSymbolEvidence" to ContainingSymbolEvidence.serializer(),
         "EXACT" to ResultCardinality.Exact.serializer(),
         "KNOWN_MINIMUM" to ResultCardinality.KnownMinimum.serializer(),
         "ReferencesResult" to ReferencesResult.serializer(),

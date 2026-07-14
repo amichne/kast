@@ -3,6 +3,7 @@
 package io.github.amichne.kast.api.contract.query
 
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.docs.DocField
 import kotlinx.serialization.ExperimentalSerializationApi
 
@@ -23,4 +24,6 @@ data class ReferencesQuery(
     val maxResults: Int = 100,
     @DocField(description = "Opaque continuation token from the preceding reference page.")
     val pageToken: String? = null,
+    @DocField(description = "Exact declaration identity required by the agent references endpoint.")
+    val selector: KastExactSymbolSelector? = null,
 )

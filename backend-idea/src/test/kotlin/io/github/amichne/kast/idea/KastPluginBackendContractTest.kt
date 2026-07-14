@@ -27,6 +27,7 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
@@ -315,8 +316,8 @@ class KastPluginBackendContractTest {
         )
 
         val usageScope = result.references
-            .single { reference -> reference.preview.contains("greet(\"idea\")") }
-            .usageSiteScope
+            .single { reference -> reference.location.preview.contains("greet(\"idea\")") }
+            .location.usageSiteScope
         assertNotNull(usageScope)
         assertTrue(usageScope?.sourceText.orEmpty().contains("fun useGreeting"))
     }
@@ -346,7 +347,7 @@ class KastPluginBackendContractTest {
         assertTrue(result.references.isEmpty())
         assertNotNull(result.page?.nextPageToken)
 
-        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+        val references = mutableListOf<ReferenceOccurrence>()
         references += result.references
         repeat(10) {
             val nextPageToken = result.page?.nextPageToken ?: return@repeat
@@ -364,7 +365,7 @@ class KastPluginBackendContractTest {
         val searchScope = checkNotNull(result.searchScope)
         assertTrue(searchScope.candidateFileCount > 64)
         assertTrue(searchScope.searchedFileCount <= searchScope.candidateFileCount)
-        assertTrue(references.any { reference -> reference.preview.contains("greet(\"idea\")") })
+        assertTrue(references.any { reference -> reference.location.preview.contains("greet(\"idea\")") })
         deleteKotlinFiles(irrelevantFiles)
     }
 
@@ -428,8 +429,8 @@ class KastPluginBackendContractTest {
             )
         }
         var lookedUpFqName: String? = null
-        val referenceIndexLookup = ReferenceIndexLookup { targetFqName, offset, maxResults ->
-            lookedUpFqName = targetFqName
+        val referenceIndexLookup = ReferenceIndexLookup { target, offset, maxResults ->
+            lookedUpFqName = target.fqName
             assertEquals(0, offset.value)
             assertEquals(100, maxResults.value)
             IndexedReferenceLookupResult.Ready(
@@ -438,7 +439,7 @@ class KastPluginBackendContractTest {
                         SymbolReferenceRow(
                             sourcePath = referenceData.usageFilePath,
                             sourceOffset = referenceData.usageOffset,
-                            targetFqName = targetFqName,
+                            targetFqName = target.fqName,
                             targetPath = referenceData.declarationFilePath,
                             targetOffset = referenceData.declarationOffset,
                         ),
@@ -465,9 +466,9 @@ class KastPluginBackendContractTest {
 
         assertEquals("demo.greet", lookedUpFqName)
         val reference = result.references.single()
-        assertEquals(referenceData.usageFilePath, reference.filePath)
-        assertTrue(reference.preview.contains("greet(\"idea\")"))
-        assertNotNull(reference.usageSiteScope)
+        assertEquals(referenceData.usageFilePath, reference.location.filePath)
+        assertTrue(reference.location.preview.contains("greet(\"idea\")"))
+        assertNotNull(reference.location.usageSiteScope)
         assertEquals(true, result.searchScope?.exhaustive)
         assertEquals(result.searchScope?.candidateFileCount, result.searchScope?.searchedFileCount)
     }
@@ -486,7 +487,7 @@ class KastPluginBackendContractTest {
             )
         }
         var indexReady = true
-        val lookup = ReferenceIndexLookup { targetFqName, _, _ ->
+        val lookup = ReferenceIndexLookup { target, _, _ ->
             if (indexReady) {
                 IndexedReferenceLookupResult.Ready(
                     SymbolReferencePage(
@@ -494,7 +495,7 @@ class KastPluginBackendContractTest {
                             SymbolReferenceRow(
                                 sourcePath = referenceData.usageFilePath,
                                 sourceOffset = referenceData.usageOffset,
-                                targetFqName = targetFqName,
+                                targetFqName = target.fqName,
                                 targetPath = referenceData.declarationFilePath,
                                 targetOffset = referenceData.declarationOffset,
                             ),
@@ -691,8 +692,8 @@ class KastPluginBackendContractTest {
         )
 
         assertTrue(result.references.any { reference ->
-            reference.filePath.endsWith("AliasedUsage.kt") &&
-                reference.startOffset == aliasFile.text.indexOf("welcome(\"idea\")")
+            reference.location.filePath.endsWith("AliasedUsage.kt") &&
+                reference.location.startOffset == aliasFile.text.indexOf("welcome(\"idea\")")
         }) { "Expected aliased compiler reference, got: ${result.references}" }
     }
 
@@ -750,8 +751,8 @@ class KastPluginBackendContractTest {
         )
 
         assertTrue(result.references.any { reference ->
-            reference.filePath.endsWith("OperatorUsage.kt") &&
-                reference.startOffset == usageFile.text.indexOf("+")
+            reference.location.filePath.endsWith("OperatorUsage.kt") &&
+                reference.location.startOffset == usageFile.text.indexOf("+")
         }) { "Expected operator compiler reference, got: ${result.references}" }
     }
 
@@ -839,7 +840,7 @@ class KastPluginBackendContractTest {
                 ),
             )
             expectedPreviews.forEach { expectedPreview ->
-                assertTrue(references.any { reference -> reference.preview.contains(expectedPreview) }) {
+                assertTrue(references.any { reference -> reference.location.preview.contains(expectedPreview) }) {
                     "Expected $declarationName reference at '$expectedPreview', got: $references"
                 }
             }
@@ -927,7 +928,7 @@ class KastPluginBackendContractTest {
             referenceSearchClock = ReferenceSearchClock(clockNanos::get),
             referenceTraversalObserver = observer,
         )
-        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+        val references = mutableListOf<ReferenceOccurrence>()
         val first = backend.findReferences(
             ReferencesQuery(position = testData.position, includeDeclaration = false, maxResults = 50),
         )
@@ -949,7 +950,7 @@ class KastPluginBackendContractTest {
         assertTrue(referencesInLeaf > 1, "test usage leaf did not expose multiple Kotlin references")
         assertEquals((0 until referencesInLeaf).toList(), processedReferenceIndices)
         assertEquals(references.distinct(), references)
-        assertEquals(1, references.count { reference -> reference.preview.contains("target()") })
+        assertEquals(1, references.count { reference -> reference.location.preview.contains("target()") })
     }
 
     @Test
@@ -1042,14 +1043,14 @@ class KastPluginBackendContractTest {
             )
         }
         var generation = SourceIndexGeneration(1)
-        val lookup = ReferenceIndexLookup { targetFqName, _, _ ->
+        val lookup = ReferenceIndexLookup { target, _, _ ->
             IndexedReferenceLookupResult.Ready(
                 page = SymbolReferencePage(
                     references = listOf(
                         SymbolReferenceRow(
                             sourcePath = referenceData.usageFilePath,
                             sourceOffset = referenceData.usageOffset,
-                            targetFqName = targetFqName,
+                            targetFqName = target.fqName,
                             targetPath = referenceData.declarationFilePath,
                             targetOffset = referenceData.declarationOffset,
                         ),
@@ -1108,8 +1109,8 @@ class KastPluginBackendContractTest {
                 targetPath = referenceData.declarationFilePath,
                 targetOffset = referenceData.declarationOffset,
             )
-            val lookup = ReferenceIndexLookup { targetFqName, offset, maxResults ->
-                val generated = store.generatedReferencePageToSymbol(targetFqName, offset, maxResults)
+            val lookup = ReferenceIndexLookup { target, offset, maxResults ->
+                val generated = store.generatedReferencePageToExactSymbol(target, offset, maxResults)
                 IndexedReferenceLookupResult.Ready(generated.page, generated.generation)
             }
             val backend = backend(referenceData.workspaceRoot, referenceIndexLookup = lookup)
@@ -1145,12 +1146,12 @@ class KastPluginBackendContractTest {
                 usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
             )
         }
-        val lookup = ReferenceIndexLookup { targetFqName, offset, _ ->
+        val lookup = ReferenceIndexLookup { target, offset, _ ->
             val row = if (offset.value == 0) {
                 SymbolReferenceRow(
                     sourcePath = referenceData.declarationFilePath,
                     sourceOffset = referenceData.declarationOffset,
-                    targetFqName = targetFqName,
+                    targetFqName = target.fqName,
                     targetPath = null,
                     targetOffset = null,
                 )
@@ -1158,7 +1159,7 @@ class KastPluginBackendContractTest {
                 SymbolReferenceRow(
                     sourcePath = referenceData.usageFilePath,
                     sourceOffset = referenceData.usageOffset,
-                    targetFqName = targetFqName,
+                    targetFqName = target.fqName,
                     targetPath = null,
                     targetOffset = null,
                 )
@@ -1319,7 +1320,7 @@ class KastPluginBackendContractTest {
         )
 
         val referenceFileNames = result.references
-            .map { Path.of(it.filePath).fileName.toString() }
+            .map { Path.of(it.location.filePath).fileName.toString() }
             .toSet()
         assertEquals(SearchScopeKind.DEPENDENT_MODULES, result.searchScope?.scope)
         assertTrue("InternalDeclaration.kt" in referenceFileNames) {
@@ -1375,8 +1376,8 @@ class KastPluginBackendContractTest {
     private suspend fun collectAllReferencePages(
         backend: KastPluginBackend,
         position: FilePosition,
-    ): List<io.github.amichne.kast.api.contract.Location> {
-        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+    ): List<ReferenceOccurrence> {
+        val references = mutableListOf<ReferenceOccurrence>()
         var pageToken: String? = null
         do {
             val result = backend.findReferences(

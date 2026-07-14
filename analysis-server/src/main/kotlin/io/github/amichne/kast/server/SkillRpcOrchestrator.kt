@@ -12,9 +12,11 @@ import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.Symbol
+import io.github.amichne.kast.api.contract.SymbolIdentity
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
@@ -30,6 +32,8 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
+import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.skill.KastCallersFailureResponse
@@ -46,11 +50,9 @@ import io.github.amichne.kast.api.contract.skill.KastDiscoverSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastDiscoveryCandidate
 import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
 import io.github.amichne.kast.api.contract.skill.KastNextRequest
-import io.github.amichne.kast.api.contract.skill.KastReferencesFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastReferencesQuery
 import io.github.amichne.kast.api.contract.skill.KastReferencesRequest
 import io.github.amichne.kast.api.contract.skill.KastReferencesResponse
-import io.github.amichne.kast.api.contract.skill.KastReferencesSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastRenameByOffsetQuery
 import io.github.amichne.kast.api.contract.skill.KastRenameByOffsetRequest
 import io.github.amichne.kast.api.contract.skill.KastRenameBySymbolQuery
@@ -94,6 +96,8 @@ import io.github.amichne.kast.api.contract.skill.WrapperNamedSymbolKind
 import io.github.amichne.kast.api.contract.skill.WrapperScaffoldMode
 import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
+import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
@@ -240,48 +244,92 @@ internal class SkillRpcOrchestrator(
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val query = KastReferencesQuery(
             workspaceRoot = workspaceRoot,
-            symbol = request.symbol,
-            fileHint = request.fileHint,
-            kind = request.kind,
-            containingType = request.containingType,
+            selector = request.selector,
             includeDeclaration = request.includeDeclaration,
+            includeUsageSiteScope = request.includeUsageSiteScope,
             maxResults = request.maxResults,
             pageToken = request.pageToken,
         )
         validateReferencesQuery(query)
-        val resolved = resolveNamedSymbol(
-            symbolName = request.symbol,
-            fileHint = request.fileHint,
-            kind = request.kind,
-            containingType = request.containingType,
-        ) ?: return KastReferencesFailureResponse(
-            stage = "resolve",
-            message = "No symbol matching '${request.symbol}' found in workspace",
-            query = query,
-            logFile = placeholderLogFile(),
-        )
+        requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
+        val resolved = try {
+            backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(
+                        filePath = request.selector.declarationFile,
+                        offset = request.selector.declarationStartOffset,
+                    ),
+                ).parsed(),
+            ).symbol
+        } catch (_: NotFoundException) {
+            return KastReferencesSubjectNotFoundResponse(request.selector)
+        }
+        val subject = resolved.toSymbolIdentity()
+        if (!request.selector.matches(subject)) {
+            return KastReferencesSubjectIdentityMismatchResponse(request.selector, subject)
+        }
+        if (subject.kind == SymbolKind.UNKNOWN) {
+            return KastReferencesUnsupportedSubjectKindResponse(request.selector, subject)
+        }
         requireReadCapability(ReadCapability.FIND_REFERENCES)
-        val completeResult = backend.findReferences(
-            ReferencesQuery(
-                position = FilePosition(filePath = resolved.filePath, offset = resolved.offset),
-                includeDeclaration = request.includeDeclaration,
-                maxResults = request.maxResults,
-                pageToken = request.pageToken,
-            ).parsed(),
-        )
-        return KastReferencesSuccessResponse(
-            query = query,
-            symbol = resolved.symbol,
-            filePath = resolved.filePath,
-            offset = resolved.offset,
+        val completeResult = try {
+            backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(
+                        filePath = request.selector.declarationFile,
+                        offset = request.selector.declarationStartOffset,
+                    ),
+                    includeDeclaration = request.includeDeclaration,
+                    includeUsageSiteScope = request.includeUsageSiteScope,
+                    maxResults = request.maxResults,
+                    pageToken = request.pageToken,
+                    selector = request.selector,
+                ).parsed(),
+            )
+        } catch (failure: ConflictException) {
+            return when (failure.details["continuationFailure"]) {
+                "generationChanged" -> KastReferencesCursorStaleResponse(
+                    request.selector,
+                    RelationCursorStaleReason.GENERATION_CHANGED,
+                )
+                "expired" -> KastReferencesCursorStaleResponse(
+                    request.selector,
+                    RelationCursorStaleReason.EXPIRED,
+                )
+                "queryMismatch" -> KastReferencesCursorInvalidResponse(
+                    request.selector,
+                    RelationCursorInvalidReason.QUERY_MISMATCH,
+                )
+                "boundSourceUnavailable" -> KastReferencesDegradedResponse(
+                    request.selector,
+                    subject,
+                    KastReferencesDegradedReason.BOUND_SOURCE_UNAVAILABLE,
+                )
+                "indexIdentityUnavailable" -> KastReferencesDegradedResponse(
+                    request.selector,
+                    subject,
+                    KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
+                )
+                else -> KastReferencesCursorInvalidResponse(
+                    request.selector,
+                    RelationCursorInvalidReason.UNKNOWN_HANDLE,
+                )
+            }
+        }
+        if (completeResult.searchScope?.exhaustive == false) {
+            return KastReferencesDegradedResponse(
+                selector = request.selector,
+                subject = subject,
+                reason = KastReferencesDegradedReason.REFERENCES_UNAVAILABLE,
+            )
+        }
+        return KastReferencesAvailableResponse(
+            subject = subject,
             references = completeResult.references,
             cardinality = completeResult.cardinality,
             page = completeResult.page,
             searchScope = completeResult.searchScope,
             declaration = completeResult.declaration,
-            candidateCount = resolved.candidateCount.takeIf { it > 1 },
-            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
-            logFile = placeholderLogFile(),
         )
     }
 
@@ -1469,8 +1517,14 @@ internal class SkillRpcOrchestrator(
     }
 
     private fun validateReferencesQuery(query: KastReferencesQuery) {
-        if (query.symbol.isBlank()) {
-            throw ValidationException("symbol must not be blank")
+        if (query.selector.fqName.isBlank()) {
+            throw ValidationException("selector.fqName must not be blank")
+        }
+        if (query.selector.declarationFile.isBlank()) {
+            throw ValidationException("selector.declarationFile must not be blank")
+        }
+        if (query.selector.declarationStartOffset < 0) {
+            throw ValidationException("selector.declarationStartOffset must not be negative")
         }
         if (query.maxResults <= 0) {
             throw ValidationException("maxResults must be greater than 0")
@@ -1479,6 +1533,21 @@ internal class SkillRpcOrchestrator(
             throw ValidationException("maxResults must be less than or equal to server maxResults (${config.maxResults})")
         }
     }
+
+    private fun Symbol.toSymbolIdentity(): SymbolIdentity = SymbolIdentity(
+        fqName = fqName,
+        kind = kind,
+        declarationFile = NormalizedPath.parse(location.filePath),
+        declarationStartOffset = io.github.amichne.kast.api.contract.NonNegativeInt(location.startOffset),
+        containingType = containingDeclaration,
+    )
+
+    private fun KastExactSymbolSelector.matches(actual: SymbolIdentity): Boolean =
+        fqName == actual.fqName &&
+            NormalizedPath.parse(declarationFile) == actual.declarationFile &&
+            declarationStartOffset == actual.declarationStartOffset.value &&
+            (kind == null || kind == actual.kind) &&
+            (containingType == null || containingType == actual.containingType)
 
     private suspend fun workspaceRootFor(explicit: String?): String =
         explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath() ?: backend.runtimeStatus().workspaceRoot
