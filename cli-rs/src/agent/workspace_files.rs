@@ -1098,7 +1098,6 @@ fn workspace_files_coverage(dimension: WorkspaceCoverageDimension) -> WorkspaceF
 
 fn workspace_files_limitation_code(code: WorkspaceInventoryLimitationCode) -> &'static str {
     match code {
-        WorkspaceInventoryLimitationCode::BackendCapabilityUnavailable => "BACKEND_CAPABILITY_UNAVAILABLE",
         WorkspaceInventoryLimitationCode::BackendMetadataUnavailable => "BACKEND_METADATA_UNAVAILABLE",
         WorkspaceInventoryLimitationCode::BackendPageIncomplete => "BACKEND_PAGE_INCOMPLETE",
         WorkspaceInventoryLimitationCode::BackendWorkspaceInventoryStale => "BACKEND_WORKSPACE_INVENTORY_STALE",
