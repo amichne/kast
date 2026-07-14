@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
+import io.github.amichne.kast.indexstore.store.SourceIndexPageReadObserver
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
@@ -18,6 +19,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.sql.DriverManager
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
 
 class SqliteSourceIndexStoreTest {
     @TempDir
@@ -478,6 +483,57 @@ class SqliteSourceIndexStoreTest {
                 (0 until 8).map { index -> "/src/Caller${index.toString().padStart(3, '0')}.kt" },
                 first.page.references.map { it.sourcePath } + second.page.references.map { it.sourcePath },
             )
+        }
+    }
+
+    @Test
+    fun `reference generation and rows share one database snapshot across store connections`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val generationRead = CountDownLatch(1)
+        val writerCommitted = CountDownLatch(1)
+        val result = AtomicReference<io.github.amichne.kast.indexstore.api.reference.GeneratedSymbolReferencePage>()
+        SqliteSourceIndexStore(normalized).use { writer ->
+            writer.ensureSchema()
+            writer.upsertSymbolReference(
+                sourcePath = "/src/Before.kt",
+                sourceOffset = 1,
+                targetFqName = "demo.Target",
+                targetPath = "/src/Target.kt",
+                targetOffset = 1,
+            )
+            val generationBeforeMutation = writer.readGeneration()
+            SqliteSourceIndexStore(
+                workspaceRoot = normalized,
+                pageReadObserver = SourceIndexPageReadObserver {
+                    generationRead.countDown()
+                    assertTrue(writerCommitted.await(10, TimeUnit.SECONDS))
+                },
+            ).use { reader ->
+                val readThread = thread(name = "source-index-snapshot-reader") {
+                    result.set(
+                        reader.generatedReferencePageToSymbol(
+                            targetFqName = "demo.Target",
+                            offset = NonNegativeInt(0),
+                            maxResults = PositiveInt(10),
+                        ),
+                    )
+                }
+                assertTrue(generationRead.await(10, TimeUnit.SECONDS))
+                writer.upsertSymbolReference(
+                    sourcePath = "/src/After.kt",
+                    sourceOffset = 2,
+                    targetFqName = "demo.Target",
+                    targetPath = "/src/Target.kt",
+                    targetOffset = 1,
+                )
+                writerCommitted.countDown()
+                readThread.join(10_000)
+                assertFalse(readThread.isAlive, "snapshot reader did not complete")
+
+                val page = requireNotNull(result.get())
+                assertEquals(generationBeforeMutation, page.generation)
+                assertEquals(listOf("/src/Before.kt"), page.page.references.map { it.sourcePath })
+            }
         }
     }
 

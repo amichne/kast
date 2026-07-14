@@ -847,6 +847,112 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `reference continuation resumes at the exact reference inside a leaf after budget interruption`() = runBlocking {
+        ensureProjectReady()
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                val root = mainSourceRootFixture.get().virtualFile
+                VfsUtil.saveText(
+                    root.createChildData(this, "MidLeafContinuationDeclaration.kt"),
+                    """
+                    package demo.midleaf
+
+                    class Invokable {
+                        operator fun invoke(): Int = 1
+                    }
+                    """.trimIndent(),
+                )
+                VfsUtil.saveText(
+                    root.createChildData(this, "MidLeafContinuationUsage.kt"),
+                    """
+                    package demo.midleaf
+
+                    fun useInvocation(target: Invokable): Int = target()
+                    """.trimIndent(),
+                )
+            }
+        }
+        waitUntilIndexesAreReady(project)
+        val declarationFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("MidLeafContinuationDeclaration.kt"))
+        }
+        val usageFile = readAction {
+            checkNotNull(mainSourceRootFixture.get().findFile("MidLeafContinuationUsage.kt"))
+        }
+        val testData = readAction {
+            MidLeafReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(declarationFile.virtualFile.path, usageFile.virtualFile.path),
+                position = FilePosition(
+                    declarationFile.virtualFile.path,
+                    declarationFile.text.indexOf("invoke"),
+                ),
+                usageFilePath = usageFile.virtualFile.path,
+                usageLeafOffset = usageFile.text.indexOf("target()"),
+            )
+        }
+        val clockNanos = AtomicLong(0L)
+        val interrupted = AtomicBoolean(false)
+        val processedReferenceIndices = mutableListOf<Int>()
+        var referencesInLeaf = 0
+        val observer = object : ReferenceTraversalObserver {
+            override fun closed() = Unit
+
+            override fun referenceProcessed(
+                filePath: String,
+                leafOffset: Int,
+                referenceIndex: Int,
+                referenceCount: Int,
+            ) {
+                if (
+                    filePath == testData.usageFilePath &&
+                    leafOffset == testData.usageLeafOffset &&
+                    referenceCount > 1
+                ) {
+                    processedReferenceIndices += referenceIndex
+                    referencesInLeaf = referenceCount
+                    if (referenceIndex == 0 && interrupted.compareAndSet(false, true)) {
+                        clockNanos.set(2_000_000L)
+                    }
+                }
+            }
+        }
+        val backend = backend(
+            workspaceRoot = testData.workspaceRoot,
+            limits = defaultLimits.copy(
+                requestTimeoutMillis = 1L,
+                perFileScanBudgetMillis = 30_000L,
+            ),
+            referenceIndexLookup = ReferenceIndexLookup.Unavailable,
+            referenceSearchClock = ReferenceSearchClock(clockNanos::get),
+            referenceTraversalObserver = observer,
+        )
+        val references = mutableListOf<io.github.amichne.kast.api.contract.Location>()
+        val first = backend.findReferences(
+            ReferencesQuery(position = testData.position, includeDeclaration = false, maxResults = 50),
+        )
+        references += first.references
+        var pageToken: String? = requireNotNull(first.page?.nextPageToken)
+        do {
+            val page = backend.findReferences(
+                ReferencesQuery(
+                    position = testData.position,
+                    includeDeclaration = false,
+                    maxResults = 50,
+                    pageToken = pageToken,
+                ),
+            )
+            references += page.references
+            pageToken = page.page?.nextPageToken
+        } while (pageToken != null)
+
+        assertTrue(referencesInLeaf > 1, "test usage leaf did not expose multiple Kotlin references")
+        assertEquals((0 until referencesInLeaf).toList(), processedReferenceIndices)
+        assertEquals(references.distinct(), references)
+        assertEquals(1, references.count { reference -> reference.preview.contains("target()") })
+    }
+
+    @Test
     fun `reference traversal disposes exactly once on exhaustion exception and shutdown`() = runBlocking {
         ensureProjectReady()
         val application = ApplicationManager.getApplication()
@@ -1354,4 +1460,11 @@ private data class IndexedReferenceTestData(
     val declarationOffset: Int,
     val usageFilePath: String,
     val usageOffset: Int,
+)
+
+private data class MidLeafReferenceTestData(
+    val workspaceRoot: Path,
+    val position: FilePosition,
+    val usageFilePath: String,
+    val usageLeafOffset: Int,
 )

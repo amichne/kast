@@ -32,8 +32,18 @@ import java.sql.DriverManager
  * All data lives in a single `source-index.db` database under the kast cache
  * directory. WAL journal mode is enabled so readers never block writers.
  */
-class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseable, SourceIndexWriter {
+class SqliteSourceIndexStore private constructor(
+    workspaceIdentity: WorkspaceIdentity,
+    private val pageReadObserver: SourceIndexPageReadObserver,
+) : AutoCloseable, SourceIndexWriter {
+    constructor(workspaceIdentity: WorkspaceIdentity) : this(workspaceIdentity, SourceIndexPageReadObserver.Disabled)
+
     constructor(workspaceRoot: Path) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot))
+
+    internal constructor(
+        workspaceRoot: Path,
+        pageReadObserver: SourceIndexPageReadObserver,
+    ) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), pageReadObserver)
 
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
@@ -869,52 +879,62 @@ class SqliteSourceIndexStore(workspaceIdentity: WorkspaceIdentity) : AutoCloseab
     ): GeneratedSymbolReferencePage {
         synchronized(writeLock) {
             val conn = connection()
-            loadInterningTables(conn)
-            val generation = readGenerationInTransaction(conn)
-            val targetFqId = fqCodec.idFor(targetFqName)
-                ?: return GeneratedSymbolReferencePage(
-                    page = SymbolReferencePage(references = emptyList(), nextOffset = null),
-                    generation = generation,
-                )
-            val page = conn.prepareStatement(
-                """SELECT refs.src_prefix_id, refs.src_filename, refs.source_offset,
-                          refs.source_fq_id, refs.target_fq_id, refs.tgt_prefix_id,
-                          refs.tgt_filename, refs.target_offset, refs.edge_kind
-                   FROM symbol_references refs
-                   JOIN path_prefixes prefixes ON prefixes.prefix_id = refs.src_prefix_id
-                   WHERE refs.target_fq_id = ?
-                   ORDER BY prefixes.dir_path, refs.src_filename, refs.source_offset
-                   LIMIT ? OFFSET ?""",
-            ).use { stmt ->
-                stmt.setInt(1, targetFqId)
-                stmt.setLong(2, maxResults.value.toLong() + 1L)
-                stmt.setInt(3, offset.value)
-                val rs = stmt.executeQuery()
-                val references = buildList {
-                    while (size < maxResults.value && rs.next()) {
-                        val rowSourceFqId = rs.getNullableInt(4)
-                        val rowTargetFqId = rs.getInt(5)
-                        add(
-                            SymbolReferenceRow(
-                                sourcePath = pathCodec.decode(rs.getInt(1), rs.getString(2)),
-                                sourceOffset = rs.getInt(3),
-                                sourceFqName = rowSourceFqId?.let(fqCodec::resolve),
-                                targetFqName = fqCodec.resolve(rowTargetFqId),
-                                targetPath = decodeNullablePath(rs, prefixColumn = 6, filenameColumn = 7),
-                                targetOffset = rs.getNullableInt(8),
-                                edgeKind = EdgeKind.valueOf(rs.getString(9)),
-                            ),
-                        )
+            conn.autoCommit = false
+            try {
+                loadInterningTables(conn)
+                val generation = readGenerationInTransaction(conn)
+                pageReadObserver.generationRead()
+                val targetFqId = fqCodec.idFor(targetFqName)
+                val page = if (targetFqId == null) {
+                    SymbolReferencePage(references = emptyList(), nextOffset = null)
+                } else {
+                    conn.prepareStatement(
+                        """SELECT refs.src_prefix_id, refs.src_filename, refs.source_offset,
+                                  refs.source_fq_id, refs.target_fq_id, refs.tgt_prefix_id,
+                                  refs.tgt_filename, refs.target_offset, refs.edge_kind
+                           FROM symbol_references refs
+                           JOIN path_prefixes prefixes ON prefixes.prefix_id = refs.src_prefix_id
+                           WHERE refs.target_fq_id = ?
+                           ORDER BY prefixes.dir_path, refs.src_filename, refs.source_offset
+                           LIMIT ? OFFSET ?""",
+                    ).use { stmt ->
+                        stmt.setInt(1, targetFqId)
+                        stmt.setLong(2, maxResults.value.toLong() + 1L)
+                        stmt.setInt(3, offset.value)
+                        val rs = stmt.executeQuery()
+                        val references = buildList {
+                            while (size < maxResults.value && rs.next()) {
+                                val rowSourceFqId = rs.getNullableInt(4)
+                                val rowTargetFqId = rs.getInt(5)
+                                add(
+                                    SymbolReferenceRow(
+                                        sourcePath = pathCodec.decode(rs.getInt(1), rs.getString(2)),
+                                        sourceOffset = rs.getInt(3),
+                                        sourceFqName = rowSourceFqId?.let(fqCodec::resolve),
+                                        targetFqName = fqCodec.resolve(rowTargetFqId),
+                                        targetPath = decodeNullablePath(rs, prefixColumn = 6, filenameColumn = 7),
+                                        targetOffset = rs.getNullableInt(8),
+                                        edgeKind = EdgeKind.valueOf(rs.getString(9)),
+                                    ),
+                                )
+                            }
+                        }
+                        val nextOffset = if (rs.next()) {
+                            NonNegativeInt(Math.addExact(offset.value, references.size))
+                        } else {
+                            null
+                        }
+                        SymbolReferencePage(references = references, nextOffset = nextOffset)
                     }
                 }
-                val nextOffset = if (rs.next()) {
-                    NonNegativeInt(Math.addExact(offset.value, references.size))
-                } else {
-                    null
-                }
-                SymbolReferencePage(references = references, nextOffset = nextOffset)
+                conn.commit()
+                return GeneratedSymbolReferencePage(page = page, generation = generation)
+            } catch (e: Exception) {
+                runCatching { conn.rollback() }
+                throw e
+            } finally {
+                conn.autoCommit = true
             }
-            return GeneratedSymbolReferencePage(page = page, generation = generation)
         }
     }
 

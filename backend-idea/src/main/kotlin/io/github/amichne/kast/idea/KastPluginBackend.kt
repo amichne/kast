@@ -645,6 +645,7 @@ internal class KastPluginBackend(
                             currentFile = virtualFile
                             activePosition.traversal.currentFile = virtualFile
                             activePosition.traversal.nextOffset = 0
+                            activePosition.traversal.nextReferenceIndex = 0
                             activePosition.candidateFilePaths += virtualFile.path
                             break
                         }
@@ -667,6 +668,7 @@ internal class KastPluginBackend(
                         activePosition.searchedFilePaths += currentFile.path
                         activePosition.traversal.currentFile = null
                         activePosition.traversal.nextOffset = 0
+                        activePosition.traversal.nextReferenceIndex = 0
                         continue
                     }
                     val fileStartedNanos = budget.fileStarted()
@@ -683,10 +685,11 @@ internal class KastPluginBackend(
                         }
                         val leafStart = leaf.textRange.startOffset
                         val nextLeaf = PsiTreeUtil.nextLeaf(leaf, true)
-                        activePosition.traversal.nextOffset = nextLeaf?.textRange?.startOffset ?: file.textLength
                         elementProbes += 1
                         val references = referencesAtLeaf(file, leaf, leafStart)
-                        for (reference in references) {
+                        var referenceIndex = activePosition.traversal.nextReferenceIndex
+                        activePosition.traversal.nextOffset = leafStart
+                        while (referenceIndex < references.size) {
                             if (budget.requestExhausted()) {
                                 completion = ReferenceSearchCompletion.Partial(
                                     ReferencePartialReason.REQUEST_BUDGET_EXHAUSTED,
@@ -699,6 +702,7 @@ internal class KastPluginBackend(
                                 )
                                 break@search
                             }
+                            val reference = references[referenceIndex]
                             referenceProbes += 1
                             val resolved = try {
                                 reference.resolve()
@@ -720,7 +724,18 @@ internal class KastPluginBackend(
                                     }
                                 }
                             }
+                            referenceTraversalObserver.referenceProcessed(
+                                filePath = currentFile.path,
+                                leafOffset = leafStart,
+                                referenceIndex = referenceIndex,
+                                referenceCount = references.size,
+                            )
+                            referenceIndex += 1
+                            activePosition.traversal.nextReferenceIndex = referenceIndex
+                            if (locations.size > query.maxResults.value) break@search
                         }
+                        activePosition.traversal.nextOffset = nextLeaf?.textRange?.startOffset ?: file.textLength
+                        activePosition.traversal.nextReferenceIndex = 0
                         leaf = nextLeaf
                     }
                     var providerStoppedForBudget = false
@@ -770,6 +785,7 @@ internal class KastPluginBackend(
                     activePosition.searchedFilePaths += currentFile.path
                     activePosition.traversal.currentFile = null
                     activePosition.traversal.nextOffset = 0
+                    activePosition.traversal.nextReferenceIndex = 0
                 }
             }
         } catch (failure: Throwable) {
@@ -1820,6 +1836,7 @@ private class IdeaReferenceTraversal(
     val paths = WorkspacePathTraversal(searchRoots)
     var currentFile: VirtualFile? = null
     var nextOffset: Int = 0
+    var nextReferenceIndex: Int = 0
     var exhausted: Boolean = false
 
     override fun close() {

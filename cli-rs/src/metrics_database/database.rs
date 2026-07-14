@@ -2,6 +2,14 @@ pub(crate) struct MetricsDatabase<'a> {
     request: &'a MetricsRequest,
     conn: Connection,
     controls: MetricsQueryControls,
+    #[cfg(test)]
+    impact_snapshot_barrier: Option<ImpactSnapshotBarrier>,
+}
+
+#[cfg(test)]
+struct ImpactSnapshotBarrier {
+    count_complete: Arc<std::sync::Barrier>,
+    mutation_complete: Arc<std::sync::Barrier>,
 }
 
 fn sql_row_bound(value: usize) -> i64 {
@@ -33,6 +41,8 @@ impl<'a> MetricsDatabase<'a> {
             request,
             conn,
             controls,
+            #[cfg(test)]
+            impact_snapshot_barrier: None,
         };
         if !db.schema_is_current().map_err(sql_error)? {
             return Err(DirectMetricsError::Unavailable(format!(
@@ -288,17 +298,27 @@ impl<'a> MetricsDatabase<'a> {
         depth: usize,
         limit: usize,
     ) -> DirectResult<BoundedMetricsResult> {
+        // Impact owns the transaction boundary on this private read-only connection; the
+        // shared borrow lets every existing query helper participate in the same snapshot.
+        let snapshot = self.conn.unchecked_transaction().map_err(sql_error)?;
         let total_count = self.change_impact_count(fq_name, depth)?;
+        #[cfg(test)]
+        if let Some(barrier) = &self.impact_snapshot_barrier {
+            barrier.count_complete.wait();
+            barrier.mutation_complete.wait();
+        }
         let probe_limit = limit.saturating_add(1);
         let mut nodes = self.change_impact_nodes(fq_name, depth, probe_limit)?;
         nodes.truncate(limit);
         let returned_count = nodes.len();
-        Ok(BoundedMetricsResult {
+        let result = BoundedMetricsResult {
             results: serde_json::to_value(nodes).map_err(json_direct_error)?,
             total_count,
             returned_count,
             truncated: total_count > returned_count,
-        })
+        };
+        snapshot.commit().map_err(sql_error)?;
+        Ok(result)
     }
 
     pub(crate) fn search(&self, query: &str, limit: usize) -> DirectResult<Value> {

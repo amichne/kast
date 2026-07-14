@@ -168,9 +168,35 @@ Cargo integration tests, Markdown docs contracts.
   Kotlin, Rust, clippy, fmt, generated-contract, sample, docs, Zensical, diff,
   and Kast verification matrix and freeze a clean worktree.
 
+## Task 10: Frozen-Review Repair — Exact Continuations And Atomic Snapshots
+
+- [x] Resume IDEA fallback traversal at the exact leaf/reference index after a
+  page or time-budget interruption, retain at most one overflow lookahead, and
+  prove a multi-reference Kotlin convention leaf has no overlap or omission.
+- [x] Read the source-index generation, interning tables, and reference page in
+  one SQLite snapshot, with a deterministic two-store WAL commit barrier.
+- [x] Make continuation-store shutdown terminal, dispose late publication and
+  claimed-value reissue exactly once, and passively expire abandoned traversal
+  resources through weak, entry-scoped scheduling that does not retain IDEA
+  projects.
+- [x] Read impact count and impact nodes in one Rust SQLite transaction, with a
+  deterministic second-connection commit barrier proving count/page coherence.
+- [x] Run focused RED/GREEN regressions, full Kotlin and Rust suites, clippy,
+  fmt, generated-contract and sample checks, docs and Zensical checks, package
+  and LSP gates, exact-root Kast verification, and diff validation.
+
 The post-rebase exact-root `kast agent verify` gate passed with linked-worktree,
 READY IDEA, and compiler-backed evidence. The companion diagnostics gate
 analyzed 31 of 32 changed production Kotlin files, then failed on
 `KastPluginBackend.kt` because IDEA reported a stale PSI/index stamp mismatch.
 The full Gradle suite compiled and tested the same disk state successfully; no
 unsafe global IDE save, reload, or close action was taken to clear user state.
+
+The Task 10 exact-root `kast agent verify` gate passed with linked-worktree,
+READY IDEA, and compiler-backed evidence. Changed-file diagnostics were clean
+for the IDEA traversal/store production files, the new index observer, and the
+continuation-store test. IDEA reported stale PSI/index stamps for the two large
+contract test files, while the large SQLite store analysis could not resolve
+its sibling `api.index` package and emitted cascading diagnostics. The full
+Gradle suite compiled and tested those same files successfully; no unsafe IDE
+reload, save, or close action was taken to alter user state.
