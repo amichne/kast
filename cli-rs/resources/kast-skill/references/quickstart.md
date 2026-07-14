@@ -82,7 +82,7 @@ For identity-first navigation, capture the compiler anchor once and reuse it;
 do not rediscover by name between operations:
 
 ```bash
-resolved="$(kast --output json agent symbol --query EventBean --fields identity --workspace-root "$PWD")"
+resolved="$(kast --output json agent symbol --query EventBean.process --fields identity --workspace-root "$PWD")"
 fq_name="$(jq -r '.result.identity.fqName' <<<"$resolved")"
 declaration_file="$(jq -r '.result.identity.declarationFile' <<<"$resolved")"
 declaration_offset="$(jq -r '.result.identity.declarationStartOffset' <<<"$resolved")"

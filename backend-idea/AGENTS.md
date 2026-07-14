@@ -42,58 +42,39 @@ owned source-index store.
 `backend-idea` owns compiler/PSI execution and all semantic relationship
 continuation state for the IDEA runtime.
 
-- `RelationshipContinuationStore` is the only reference/call/type semantic
-  state owner. It adapts #338's generic `analysis-api`
-  `ServerHeldContinuationStore`; its sealed state extends
-  `ContinuationOwnedState`, its output extends `ContinuationProjection`, and
-  its explicit disposer participates in the landed backend/server close
-  lifecycle. Store pure canonical anchors, query/source/generation proof,
-  bounded candidate/frontier/visited/provider positions, and returned-before
-  counts; never retain PSI, smart pointers, or analysis-session objects.
+- `RelationshipContinuationStore` owns call, implementation, and hierarchy
+  pages. References continue to use the dedicated source-aware continuation
+  state landed by #337. Both compose #338's generic `analysis-api`
+  `ServerHeldContinuationStore` and participate in backend/server close.
+- Call and type relationship state contains only the normalized query, the
+  semantic generation, returned-before proof, and at most 16,384 canonical
+  result records. Never retain PSI, smart pointers, or analysis-session
+  objects. A first request computes one complete bounded snapshot; later pages
+  consume that snapshot without repeating provider work.
 - Shared-store consume is typed as retained exact-query, expired,
   query-mismatched, or absent. An absent canonical handle is always invalid
   `UNKNOWN_HANDLE`, including
   restart-to-fresh-backend, random UUID, replay, and eviction. Stale requires
   retained generation mismatch or retained expiry. Test backend-A to backend-B
   and random UUID equivalence with zero provider work.
-- Invoke the shared store's consume/reissue transition inside one
-  `timedReadAction`. Family/query validation, `PsiModificationTracker`
-  generation comparison, target resolution, provider work, state mutation,
-  and next-token publication happen under that read lock. `Complete` disposes;
-  `Reissue` atomically moves the same owned state behind a fresh handle.
-  `RunningAnalysisServer` is the single backend close owner, and
-  `analysis-server` must not preflight generation or own another semantic
-  store.
+- Capture the PSI generation before snapshot collection. Commit a successful
+  snapshot only inside `timedReadAction` after proving the generation is
+  unchanged, and consume/reissue every later page inside `timedReadAction` so
+  generation comparison and next-token publication are atomic with respect to
+  writes. `Complete` disposes; `Reissue` moves the same owned state behind a
+  fresh single-use handle. `RunningAnalysisServer` is the single backend close
+  owner, and `analysis-server` must not own another semantic store.
 - `ObservedAnalysisBackend` explicitly delegates every handle-bearing method
   and records exactly one matching operation. Add delegation and queued-write
   race tests whenever the backend contract changes.
 - Exact INDEX references query FQ name plus canonical target path and non-null
   target offset. Unsafe first-page index evidence may fall back to IDEA; an
   INDEX-bound continuation never switches sources.
-- Bounded IDEA reference/incoming-call discovery streams
-  `FileTypeIndex.processFiles` through cap plus one. Cap-plus-one stops
-  enumeration and returns a typed family budget outcome with no records, page
-  claim, or retained partial snapshot; at or below the cap, sort the complete
-  buffer and use `PsiReferenceScanner` in lexical offset order. Direct
-  inheritors use the same cap-plus-one rule around bounded
-  `ClassInheritorsSearch.search(...).forEach` and sort only complete admitted
-  canonical-anchor snapshots. Do not materialize
-  `FileTypeIndex.getFiles(...)`, call `ReferencesSearch.findAll`, or call
-  inheritor `findAll()`.
-- Outgoing calls use resumable lexical DFS over the selected declaration body.
-  Persist only a bounded root-to-current child-index stack and next-reference
-  index. Traverse nested blocks, local property initializers, and lambda bodies;
-  lambda-contained calls belong to the enclosing named callable because the
-  relationship contract has no navigable lambda identity. Skip nested named
-  function, class, object, and accessor bodies. Report `Exact` only after every
-  owned node, including lambdas, is exhausted. Emit breadth-first edges by
-  depth, canonical parent identity, canonical call-site file/start/end, then
-  canonical related identity; never globally sort an unseen child set by
-  related name. References sharing an exact call-site range are one local tie
-  group sorted by related identity and charged to the candidate/state bound;
-  overflow degrades without a partial group. Test reverse-related-name pages,
-  lambda-only callees, and page resume inside a lambda without replay or PSI
-  retention.
+- Compiler relationship snapshots use the existing call/type engines with the
+  16,384-record state ceiling as their explicit result and candidate budget.
+  Any timeout, engine truncation, or cap overflow returns a typed budget
+  limitation before a page or continuation is issued. Only a complete admitted
+  snapshot is sorted and paged; no partial snapshot is retained.
 - After exact anchor verification, apply ADR 0022's command-family subject-kind
   matrix before provider/index work or state creation. Unsupported pairs return
   the owning response's `UNSUPPORTED_SUBJECT_KIND`; test every pair with a
@@ -102,12 +83,10 @@ continuation state for the IDEA runtime.
 ## Verification
 
 Run `./gradlew :backend-idea:test` and the affected `:analysis-server:test`
-contract tests. Relationship changes also require cap/cap-plus-one provider
-tests, generation/write-race tests, `ObservedAnalysisBackend` delegation tests,
-opaque continuation resume tests, absent-versus-stale classification tests,
-outgoing lexical-DFS nested-declaration/page-resume tests, reverse-related-name
-global page-order/no-overlap tests, lambda-only callee and lambda-resume tests,
-and the complete subject-kind zero-work matrix.
+contract tests. Relationship changes also require state-cap rejection,
+generation validation, `ObservedAnalysisBackend` delegation, opaque
+continuation resume, absent-versus-stale classification, deterministic
+no-overlap paging, and the complete subject-kind zero-work matrix.
 
 Workspace inventory changes also require:
 

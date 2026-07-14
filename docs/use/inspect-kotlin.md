@@ -121,7 +121,7 @@ source index only:
 
 ```bash
 identity_json="$(kast --output json agent symbol \
-  --query OrderService \
+  --query OrderService.process \
   --fields identity \
   --workspace-root "$PWD")"
 
