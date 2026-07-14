@@ -75,6 +75,40 @@ KAST_CI_GRADLE_ATTEMPTS=2 KAST_CI_GRADLE_RETRY_DELAY_SECONDS=0 "$retry" "$transi
 grep -Fq "retried" "${scratch_dir}/transient.out" || die "Retry helper did not retry transient failure"
 [[ "$(cat "${scratch_dir}/transient-count")" == "2" ]] || die "Transient command was not attempted twice"
 
+closed_file_system_gradlew="${scratch_dir}/gradlew"
+cat > "$closed_file_system_gradlew" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+state_dir="${FAKE_GRADLE_STATE_DIR:?state directory}"
+if [[ "${1:-}" == "--stop" ]]; then
+  printf '%s\n' "stopped" > "${state_dir}/stop"
+  exit 0
+fi
+count=0
+if [[ -f "${state_dir}/count" ]]; then
+  count="$(cat "${state_dir}/count")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "${state_dir}/count"
+if [[ "$count" -eq 1 ]]; then
+  printf '%s\n' "java.nio.file.ClosedFileSystemException"
+  exit 43
+fi
+printf '%s\n' "recovered"
+SCRIPT
+chmod +x "$closed_file_system_gradlew"
+
+closed_file_system_state="${scratch_dir}/closed-file-system"
+mkdir -p "$closed_file_system_state"
+FAKE_GRADLE_STATE_DIR="$closed_file_system_state" \
+  KAST_CI_GRADLE_ATTEMPTS=2 \
+  KAST_CI_GRADLE_RETRY_DELAY_SECONDS=0 \
+  "$retry" "$closed_file_system_gradlew" test \
+  >"${scratch_dir}/closed-file-system.out" 2>&1
+grep -Fq "recovered" "${scratch_dir}/closed-file-system.out" || die "Retry helper did not recover from a closed Gradle file system"
+[[ "$(cat "${closed_file_system_state}/count")" == "2" ]] || die "Closed-file-system command was not attempted twice"
+[[ "$(cat "${closed_file_system_state}/stop")" == "stopped" ]] || die "Retry helper did not stop the failed Gradle daemon"
+
 deterministic_script="${scratch_dir}/deterministic.sh"
 cat > "$deterministic_script" <<'SCRIPT'
 #!/usr/bin/env bash
