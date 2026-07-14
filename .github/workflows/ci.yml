@@ -47,10 +47,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-kast-routing-evals.sh
 
-      - name: Test Kast Copilot plugin package
-        shell: bash
-        run: ./.github/scripts/test-kast-copilot-plugin.sh
-
       - name: Test release asset verifier
         shell: bash
         run: ./.github/scripts/test-release-asset-verifier.sh
@@ -97,6 +93,10 @@ jobs:
       - name: Test terminal command contract
         shell: bash
         run: ./.github/scripts/test-terminal-command-contract.sh
+
+      - name: Test Kast Copilot plugin package
+        shell: bash
+        run: ./.github/scripts/test-kast-copilot-plugin.sh
 
       - name: Smoke Ubuntu/Debian bundle contract
         shell: bash
