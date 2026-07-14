@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.result.RelationTraversalFamily
 import io.github.amichne.kast.api.contract.result.RelationTraversalHandle
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
 import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.result.ReferencesResult
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -68,6 +69,12 @@ class RelationshipModelTest {
             occurrence,
             json.decodeFromString(ReferenceOccurrence.serializer(), encodedOccurrence),
         )
+
+        val result = ReferencesResult(
+            references = listOf(occurrence),
+            cardinality = ResultCardinality.Exact(1),
+        )
+        assertEquals(listOf(occurrence), result.items)
     }
 
     @Test
