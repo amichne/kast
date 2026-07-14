@@ -13,8 +13,13 @@ is_positive_integer() {
 is_retryable_gradle_failure() {
   local log_file="$1"
   grep -Eq \
-    'Received status code (429|5[0-9][0-9])|Connection reset|Connection refused|Read timed out|Remote host terminated the handshake|Connection timed out|temporarily unavailable|Temporary failure in name resolution' \
+    'Received status code (429|5[0-9][0-9])|Connection reset|Connection refused|Read timed out|Remote host terminated the handshake|Connection timed out|temporarily unavailable|Temporary failure in name resolution|java\.nio\.file\.ClosedFileSystemException' \
     "$log_file"
+}
+
+is_closed_file_system_failure() {
+  local log_file="$1"
+  grep -Fq 'java.nio.file.ClosedFileSystemException' "$log_file"
 }
 
 attempts="${KAST_CI_GRADLE_ATTEMPTS:-3}"
@@ -42,7 +47,11 @@ while true; do
     exit "$status"
   fi
 
-  printf 'Gradle command failed with retryable transport error; retrying in %ss (%s/%s).\n' \
+  if is_closed_file_system_failure "$log_file" && [[ "$(basename -- "$1")" == "gradlew" ]]; then
+    "$1" --stop >/dev/null 2>&1 || true
+  fi
+
+  printf 'Gradle command failed with retryable infrastructure error; retrying in %ss (%s/%s).\n' \
     "$delay_seconds" "$attempt" "$attempts" >&2
   rm -f "$log_file"
   sleep "$delay_seconds"

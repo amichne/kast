@@ -43,20 +43,9 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-macos-installer-contract.sh
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Test terminal command contract
-        shell: bash
-        run: ./.github/scripts/test-terminal-command-contract.sh
-
       - name: Test Kast routing evals
         shell: bash
         run: ./.github/scripts/test-kast-routing-evals.sh
-
-      - name: Test Kast Copilot plugin package
-        shell: bash
-        run: ./.github/scripts/test-kast-copilot-plugin.sh
 
       - name: Test release asset verifier
         shell: bash
@@ -90,6 +79,24 @@ jobs:
       - name: Test Homebrew package renderer
         shell: bash
         run: packaging/homebrew/scripts/test-formulas.py
+
+  runtime-contracts:
+    name: Runtime command and bundle contracts
+    runs-on: ubuntu-latest
+    needs: workflow-contracts
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test terminal command contract
+        shell: bash
+        run: ./.github/scripts/test-terminal-command-contract.sh
+
+      - name: Test Kast Copilot plugin package
+        shell: bash
+        run: ./.github/scripts/test-kast-copilot-plugin.sh
 
       - name: Smoke Ubuntu/Debian bundle contract
         shell: bash
@@ -226,128 +233,25 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  build-and-test:
-    name: Build & test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  build-and-test-linux:
+    name: Build & test (ubuntu-latest)
     needs: workflow-contracts
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-    steps:
-      - uses: actions/checkout@v5
+    uses: ./.github/workflows/ci-build-and-test.yml
+    with:
+      runner: ubuntu-latest
 
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Free disk for headless backend distribution
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL
-          df -h /
-
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          cache-cleanup: always
-
-      - name: Cache IntelliJ runtime distributions
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/kast/headless-idea-distributions
-            ~/.gradle/kast/shared-idea-distributions
-            ~/.gradle/kast/backend-idea-distributions
-          key: intellij-runtime-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            intellij-runtime-${{ runner.os }}-
-
-      - name: Test JVM backend modules
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          :analysis-api:test
-          :analysis-server:test
-          :backend-shared:compileKotlin
-          :backend-headless:test
-
-      - name: Build headless backend distribution
-        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip
-
-      - name: Assert headless distribution excludes fat jar
-        shell: bash
-        run: |
-          set -euo pipefail
-          if find backend-headless/build/portable-dist -name '*-all.jar' -print -quit | grep -q .; then
-            echo "Headless portable distribution must not contain fat jars" >&2
-            find backend-headless/build/portable-dist -name '*-all.jar' -print >&2
-            exit 1
-          fi
-
-      - name: Upload build-and-test test reports
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: build-and-test-reports-${{ matrix.os }}
-          path: |
-            **/build/test-results/test/*.xml
-            **/build/reports/tests/test/
-          if-no-files-found: ignore
-          retention-days: 3
-
-      - name: Upload headless backend distribution
-        uses: actions/upload-artifact@v6
-        with:
-          name: kast-headless-${{ matrix.os }}
-          path: backend-headless/build/distributions/backend-headless-*-portable.zip
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Record headless backend ledger
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers
-          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
-          [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
-          scripts/verify-ci-artifact-ledger.py record \
-            --output "dist/ci-ledgers/headless-${{ matrix.os }}.json" \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "$GITHUB_REF" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind "ci-headless-${{ matrix.os }}" \
-            --artifact-name "kast-headless-${{ matrix.os }}" \
-            --artifact-path "$backend_asset" \
-            --producer-job build-and-test-${{ matrix.os }} \
-            --build-command-id ci-headless-portable-dist
-
-      - name: Upload headless backend ledger
-        uses: actions/upload-artifact@v6
-        with:
-          name: ci-artifact-ledger-headless-${{ matrix.os }}
-          path: dist/ci-ledgers/headless-${{ matrix.os }}.json
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Build agent headless backend distribution
-        if: matrix.os == 'ubuntu-latest'
-        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip -PkastHeadlessIdeaHomeProfile=agent
+  build-and-test-macos:
+    name: Build & test (macos-latest)
+    needs: workflow-contracts
+    uses: ./.github/workflows/ci-build-and-test.yml
+    with:
+      runner: macos-latest
 
   install-ubuntu-debian-container:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     needs:
-      - build-and-test
+      - build-and-test-linux
       - rust-cli
     strategy:
       fail-fast: false
@@ -439,7 +343,7 @@ jobs:
     name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
-      - build-and-test
+      - build-and-test-linux
       - rust-cli
     steps:
       - uses: actions/checkout@v5
