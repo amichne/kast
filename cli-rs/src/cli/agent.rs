@@ -92,6 +92,9 @@ pub struct AgentVerifyArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+#[command(
+    after_help = "Examples:\n  kast agent workspace-files --workspace-root /workspace\n  kast agent workspace-files --workspace-root /workspace --source-set main --kind source\n  kast agent workspace-files --workspace-root /workspace --kind script --fields path,module"
+)]
 pub struct AgentWorkspaceFilesArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
@@ -556,7 +559,11 @@ fn invalid_exact_name(value: &str) -> bool {
 }
 
 fn normalize_workspace_relative_path(value: &str, label: &str) -> Result<String, String> {
-    if value.is_empty() || value.trim() != value || value.contains('\\') {
+    if value.is_empty()
+        || value.trim() != value
+        || value.contains('\\')
+        || is_platform_absolute_path(value)
+    {
         return Err(format!(
             "{label} must be a non-blank workspace-relative forward-slash path"
         ));
@@ -582,6 +589,16 @@ fn normalize_workspace_relative_path(value: &str, label: &str) -> Result<String,
         return Err(format!("{label} must name a workspace-relative path"));
     }
     Ok(segments.join("/"))
+}
+
+fn is_platform_absolute_path(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    value.starts_with(['/', '\\'])
+        || matches!(
+            bytes,
+            [drive, b':', separator, ..]
+                if drive.is_ascii_alphabetic() && matches!(separator, b'/' | b'\\')
+        )
 }
 
 fn canonical_kotlin_package_segments(value: &str) -> Result<Vec<String>, String> {
@@ -638,12 +655,22 @@ fn canonical_kotlin_package_segment(value: &str, quoted: bool) -> Result<String,
 }
 
 fn is_plain_kotlin_identifier(value: &str) -> bool {
-    let mut characters = value.chars();
-    characters
-        .next()
-        .is_some_and(|first| first == '_' || first.is_alphabetic())
-        && characters.all(|character| character == '_' || character.is_alphanumeric())
+    plain_kotlin_identifier_validator().is_valid(&serde_json::Value::String(value.to_string()))
         && !is_kotlin_hard_keyword(value)
+}
+
+fn plain_kotlin_identifier_validator() -> &'static jsonschema::Validator {
+    static VALIDATOR: std::sync::OnceLock<jsonschema::Validator> = std::sync::OnceLock::new();
+    VALIDATOR.get_or_init(|| {
+        let schema = serde_json::json!({
+            "type": "string",
+            "pattern": r"^(?:_|\p{L})(?:_|\p{L}|\p{Nd})*$"
+        });
+        jsonschema::options()
+            .with_pattern_options(jsonschema::PatternOptions::regex())
+            .build(&schema)
+            .expect("the static Kotlin package identifier schema is valid")
+    })
 }
 
 fn is_kotlin_hard_keyword(value: &str) -> bool {
@@ -956,6 +983,22 @@ pub enum AgentWorkspaceFilesField {
     Drift,
     Dirty,
     Evidence,
+}
+
+impl AgentWorkspaceFilesField {
+    pub(crate) fn canonical(self) -> &'static str {
+        match self {
+            Self::Path => "path",
+            Self::Module => "module",
+            Self::SourceSet => "source-set",
+            Self::Kind => "kind",
+            Self::Package => "package",
+            Self::Index => "index",
+            Self::Drift => "drift",
+            Self::Dirty => "dirty",
+            Self::Evidence => "evidence",
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone, Default)]
