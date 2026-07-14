@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.api.contract.result
 
-import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.SearchScope
@@ -17,8 +16,8 @@ import kotlinx.serialization.Serializable
 data class ReferencesResult(
     @DocField(description = "The resolved declaration symbol, included when `includeDeclaration` was set.")
     val declaration: Symbol? = null,
-    @DocField(description = "List of source locations where the symbol is referenced.")
-    val references: List<Location>,
+    @DocField(description = "Reference locations with containing-symbol semantic evidence.")
+    val references: List<ReferenceOccurrence>,
     @DocField(description = "Exact or known-minimum cardinality established by bounded reference work.")
     val cardinality: ResultCardinality,
     @DocField(description = "Pagination metadata when results are truncated.")
@@ -27,11 +26,14 @@ data class ReferencesResult(
     val searchScope: SearchScope? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-) : PageableResult<Location> {
-    override val items: List<Location>
+) : PageableResult<ReferenceOccurrence> {
+    override val items: List<ReferenceOccurrence>
         get() = references
 
-    override fun withItems(items: List<Location>, page: PageInfo?): PageableResult<Location> = copy(
+    override fun withItems(
+        items: List<ReferenceOccurrence>,
+        page: PageInfo?,
+    ): PageableResult<ReferenceOccurrence> = copy(
         references = items,
         page = page,
     )

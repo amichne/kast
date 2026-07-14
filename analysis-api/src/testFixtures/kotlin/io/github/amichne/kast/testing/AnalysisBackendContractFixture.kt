@@ -277,12 +277,12 @@ object AnalysisBackendContractAssertions {
         expectEquals(fixture.symbolFqName, result.declaration?.fqName, "references declaration fqName")
         expectEquals(
             fixture.referenceLocations.map(Location::filePath),
-            result.references.map(Location::filePath),
+            result.references.map { occurrence -> occurrence.location.filePath },
             "reference files",
         )
         expectEquals(
             fixture.referenceLocations.map(Location::preview),
-            result.references.map(Location::preview),
+            result.references.map { occurrence -> occurrence.location.preview },
             "reference previews",
         )
     }

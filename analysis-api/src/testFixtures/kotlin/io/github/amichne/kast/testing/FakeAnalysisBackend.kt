@@ -50,6 +50,8 @@ import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
+import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
+import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
@@ -1136,7 +1138,12 @@ class FakeAnalysisBackend private constructor(
             nextPageToken: String?,
         ): ReferencesResult = ReferencesResult(
             declaration = declaration,
-            references = references,
+            references = references.map { location ->
+                ReferenceOccurrence(
+                    location = location,
+                    containingSymbol = ContainingSymbolEvidence.TopLevel,
+                )
+            },
             cardinality = io.github.amichne.kast.api.contract.result.ResultCardinality.Exact(totalCount),
             page = if (hasMore) {
                 PageInfo(
