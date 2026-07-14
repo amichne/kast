@@ -86,10 +86,14 @@ fn create_workspace_index(
         .chars()
         .take(80)
         .collect::<String>();
-    let database_path = workspaces_data
-        .join("local")
-        .join(format!("{sanitized_workspace}--{workspace_id}"))
-        .join("cache/source-index.db");
+    let database_path = if workspace.starts_with(std::env::temp_dir()) {
+        workspace.join(".gradle/kast/cache/source-index.db")
+    } else {
+        workspaces_data
+            .join("local")
+            .join(format!("{sanitized_workspace}--{workspace_id}"))
+            .join("cache/source-index.db")
+    };
     let index =
         workspace_files::WorkspaceIndexFixture::at_database_path(&workspace, &database_path);
     index.seed_high_cardinality_sources(source_count);
