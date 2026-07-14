@@ -37,7 +37,7 @@ class IndexProvenanceTypesTest {
             gradleProjects = setOf(project),
             gradleSourceSets = setOf(sourceSet),
             packageEvidence = IndexedPackageEvidence.ProvenNamed(
-                IndexedPackageEvidence.CanonicalName.parse("com.example.`when`"),
+                IndexedPackageEvidence.CanonicalName.parse("com.example.when"),
             ),
         )
 
@@ -119,14 +119,14 @@ class IndexProvenanceTypesTest {
     fun `package evidence cannot collapse missing semantics into the root package`() {
         val root = IndexedPackageEvidence.ProvenRoot
         val named = IndexedPackageEvidence.ProvenNamed(
-            IndexedPackageEvidence.CanonicalName.parse("com.example.`when`"),
+            IndexedPackageEvidence.CanonicalName.parse("com.example.when"),
         )
         val unproven = IndexedPackageEvidence.Unproven(
             IndexedPackageUnprovenReason.SEMANTIC_ANALYSIS_UNAVAILABLE,
         )
 
         assertNotEquals(root, unproven)
-        assertEquals("com.example.`when`", named.canonicalName.value)
+        assertEquals("com.example.when", named.canonicalName.value)
         assertThrows(IllegalArgumentException::class.java) {
             IndexedPackageEvidence.CanonicalName.parse("")
         }

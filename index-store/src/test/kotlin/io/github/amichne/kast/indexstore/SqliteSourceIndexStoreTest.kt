@@ -56,7 +56,7 @@ class SqliteSourceIndexStoreTest {
                     gradleProjects = setOf(rootProject, includedProject),
                     gradleSourceSets = setOf(integrationTest),
                     packageEvidence = IndexedPackageEvidence.ProvenNamed(
-                        IndexedPackageEvidence.CanonicalName.parse("com.example.`when`.Δ"),
+                        IndexedPackageEvidence.CanonicalName.parse("com.example.when.Δ"),
                     ),
                 ),
             )
@@ -66,7 +66,7 @@ class SqliteSourceIndexStoreTest {
             assertEquals(setOf(integrationTest), store.gradleSourceSetsForFile(path))
             assertEquals(
                 IndexedPackageEvidence.ProvenNamed(
-                    IndexedPackageEvidence.CanonicalName.parse("com.example.`when`.Δ"),
+                    IndexedPackageEvidence.CanonicalName.parse("com.example.when.Δ"),
                 ),
                 store.packageEvidenceForFile(path),
             )

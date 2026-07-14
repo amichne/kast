@@ -11,6 +11,7 @@ import io.github.amichne.kast.indexstore.api.index.IndexedPackageUnprovenReason
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,6 +20,30 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 class PsiSourceIndexScannerTest {
+    @Test
+    fun `Kotlin PSI removes source escaping from canonical package names`() {
+        listOf(
+            KotlinCanonicalPackageFixture("package com.example.`when`", "com.example.when"),
+            KotlinCanonicalPackageFixture(
+                "package com.example.`not-an-identifier`",
+                "com.example.not-an-identifier",
+            ),
+            KotlinCanonicalPackageFixture(
+                "package com.example.`semi;colon`",
+                "com.example.semi;colon",
+            ),
+            KotlinCanonicalPackageFixture(
+                "package com.example.`angle<name>`",
+                "com.example.angle<name>",
+            ),
+            KotlinCanonicalPackageFixture("package café.日本", "café.日本"),
+        ).forEachIndexed { index, fixture ->
+            val kotlinFile = kotlinFile("CanonicalPackage$index.kt", fixture.source)
+
+            assertEquals(fixture.expected, kotlinFile.packageFqName.asString())
+        }
+    }
+
     @Test
     fun `Kotlin PSI preserves canonical package evidence`() {
         listOf(
@@ -95,7 +120,7 @@ class PsiSourceIndexScannerTest {
     private fun scannerFor(psiFile: PsiFile): PsiSourceIndexScanner =
         PsiSourceIndexScanner(TestReferenceIndexEnvironment(psiFile))
 
-    private fun kotlinFile(name: String, source: String): PsiFile = psiFactory.createFile(name, source)
+    private fun kotlinFile(name: String, source: String): KtFile = psiFactory.createFile(name, source)
 
     private fun canonicalName(raw: String): IndexedPackageEvidence.CanonicalName =
         IndexedPackageEvidence.CanonicalName.parse(raw)
@@ -103,6 +128,11 @@ class PsiSourceIndexScannerTest {
     private data class KotlinPackageFixture(
         val source: String,
         val expected: IndexedPackageEvidence,
+    )
+
+    private data class KotlinCanonicalPackageFixture(
+        val source: String,
+        val expected: String,
     )
 
     private class TestReferenceIndexEnvironment(

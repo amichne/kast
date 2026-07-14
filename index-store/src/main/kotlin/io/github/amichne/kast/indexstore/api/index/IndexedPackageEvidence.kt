@@ -16,11 +16,16 @@ sealed interface IndexedPackageEvidence {
                 require(raw.none(Char::isISOControl)) {
                     "Proven Kotlin package name must not contain control characters"
                 }
+                require(raw.none { character -> character in forbiddenCanonicalCharacters }) {
+                    "Proven Kotlin package name contains a non-canonical character"
+                }
                 require(raw.split('.').all(String::isNotEmpty)) {
                     "Proven Kotlin package name must not contain empty segments"
                 }
                 return CanonicalName(raw)
             }
+
+            private val forbiddenCanonicalCharacters = setOf('/', '\\', ':', '[', ']', '`')
         }
     }
 }
