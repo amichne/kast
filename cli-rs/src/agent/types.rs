@@ -25,46 +25,10 @@ pub struct AgentError {
     pub details: BTreeMap<String, Value>,
 }
 
-const AGENT_MAX_RELATION_RESULTS: u32 = 500;
-const AGENT_MAX_COMPACT_RELATION_ITEMS_PER_KIND: usize = 4;
 const AGENT_MAX_IMPACT_RESULTS: u32 = 500;
 const AGENT_MAX_COMPACT_IMPACT_NODES: u32 = 4;
 const AGENT_MAX_DIAGNOSTIC_RESULTS: u32 = 500;
 const AGENT_MAX_COMPACT_DIAGNOSTICS: usize = 8;
-
-#[derive(Debug, Clone, Copy)]
-struct AgentRelationResultBudget(std::num::NonZeroU16);
-
-impl TryFrom<u32> for AgentRelationResultBudget {
-    type Error = String;
-
-    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
-        if value > AGENT_MAX_RELATION_RESULTS {
-            return Err(format!(
-                "relationship result limit must be at most {AGENT_MAX_RELATION_RESULTS}"
-            ));
-        }
-        let value = u16::try_from(value)
-            .map_err(|_| "relationship result limit exceeded its typed range".to_string())?;
-        let value = std::num::NonZeroU16::new(value)
-            .ok_or_else(|| "relationship result limit must be greater than 0".to_string())?;
-        Ok(Self(value))
-    }
-}
-
-impl AgentRelationResultBudget {
-    fn request_limit(self, detailed: bool) -> u32 {
-        if detailed {
-            u32::from(self.0.get())
-        } else {
-            u32::try_from(self.projection_limit()).expect("compact relationship limit fits u32")
-        }
-    }
-
-    fn projection_limit(self) -> usize {
-        usize::from(self.0.get()).min(AGENT_MAX_COMPACT_RELATION_ITEMS_PER_KIND)
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 struct AgentImpactResultBudget(std::num::NonZeroU16);

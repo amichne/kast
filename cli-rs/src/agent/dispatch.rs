@@ -59,6 +59,26 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
         AgentCommand::Symbol(args) => execute_agent_symbol(args),
+        AgentCommand::References(args) => execute_pending_relationship_command(
+            "agent/references",
+            args.runtime,
+        ),
+        AgentCommand::Callers(args) => execute_pending_relationship_command(
+            "agent/callers",
+            args.runtime,
+        ),
+        AgentCommand::Callees(args) => execute_pending_relationship_command(
+            "agent/callees",
+            args.runtime,
+        ),
+        AgentCommand::Implementations(args) => execute_pending_relationship_command(
+            "agent/implementations",
+            args.runtime,
+        ),
+        AgentCommand::Hierarchy(args) => execute_pending_relationship_command(
+            "agent/hierarchy",
+            args.runtime,
+        ),
         AgentCommand::Impact(args) => execute_agent_impact(args),
         AgentCommand::Diagnostics(args) => execute_agent_diagnostics(args),
         AgentCommand::Rename(args) => execute_agent_rename(args),
@@ -81,6 +101,20 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::ReplaceDeclaration(args) => execute_agent_replace_declaration(args),
         AgentCommand::Operation(args) => execute_agent_operation(args),
     }
+}
+
+fn execute_pending_relationship_command(
+    method: &str,
+    _runtime: AgentRuntimeArgs,
+) -> AgentEnvelope {
+    error_envelope(
+        method.to_string(),
+        None,
+        agent_error(
+            "RELATIONSHIP_ENDPOINT_UNAVAILABLE",
+            "The typed relationship command boundary is available, but its compiler endpoint is not yet installed.",
+        ),
+    )
 }
 
 fn replacement_commands<const N: usize>(commands: [&str; N]) -> Vec<Value> {

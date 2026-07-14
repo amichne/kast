@@ -13,8 +13,18 @@ pub enum AgentCommand {
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
     WorkspaceFiles(AgentWorkspaceFilesArgs),
-    /// Query and resolve a symbol, optionally gathering references and callers.
+    /// Query and resolve a symbol identity.
     Symbol(AgentSymbolArgs),
+    /// Find bounded references to one compiler-anchored declaration.
+    References(AgentReferencesArgs),
+    /// Find bounded incoming callers of one compiler-anchored function.
+    Callers(AgentCallersArgs),
+    /// Find bounded outgoing callees of one compiler-anchored function.
+    Callees(AgentCalleesArgs),
+    /// Find bounded implementations of one compiler-anchored type.
+    Implementations(AgentImplementationsArgs),
+    /// Navigate a bounded type hierarchy from one compiler-anchored type.
+    Hierarchy(AgentHierarchyArgs),
     /// Query source-index impact for a fully-qualified symbol.
     Impact(AgentImpactArgs),
     /// Refresh touched files and run diagnostics.
@@ -721,20 +731,257 @@ pub struct AgentSymbolArgs {
     pub file_hint: Option<String>,
     #[arg(long)]
     pub containing_type: Option<String>,
-    #[arg(long)]
-    pub references: bool,
-    /// Opaque continuation token from a preceding reference relationship page.
-    #[arg(long, requires = "references")]
-    pub reference_page_token: Option<String>,
-    #[arg(long, value_enum)]
-    pub callers: Option<AgentSymbolCallDirection>,
-    #[arg(long, default_value_t = 3)]
-    pub caller_depth: u32,
-    /// Maximum discovery candidates or backend relationship results.
+    /// Maximum discovery candidates.
     #[arg(long, default_value_t = 10)]
     pub limit: u32,
     #[command(flatten)]
     pub view: AgentSymbolViewArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentExactSymbolSelectorArgs {
+    /// Fully-qualified compiler symbol identity.
+    #[arg(long)]
+    pub symbol: CanonicalSymbolName,
+    /// Absolute or workspace-root-relative declaration file returned by exact lookup.
+    #[arg(long = "declaration-file")]
+    pub declaration_file: WorkspaceDeclarationFile,
+    /// Non-negative declaration start offset returned by exact lookup.
+    #[arg(long = "declaration-start-offset")]
+    pub declaration_start_offset: DeclarationStartOffset,
+    /// Optional hard assertion for the declaration kind.
+    #[arg(long, value_enum)]
+    pub kind: Option<AgentSymbolKind>,
+    /// Optional hard assertion for the containing type.
+    #[arg(long = "containing-type")]
+    pub containing_type: Option<CanonicalSymbolName>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentReferencesArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[command(flatten)]
+    pub selector: AgentExactSymbolSelectorArgs,
+    /// Include the selected declaration in reference evidence.
+    #[arg(long)]
+    pub include_declaration: bool,
+    /// Maximum relationship records to return.
+    #[arg(long, default_value_t)]
+    pub limit: AgentRelationLimit,
+    /// Opaque query-bound token from the preceding references page.
+    #[arg(long)]
+    pub page_token: Option<AgentRelationPageToken>,
+    #[command(flatten)]
+    pub view: AgentRelationViewArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentCallersArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[command(flatten)]
+    pub selector: AgentExactSymbolSelectorArgs,
+    /// Maximum call traversal depth.
+    #[arg(long, default_value_t)]
+    pub depth: AgentRelationDepth,
+    /// Maximum relationship records to return.
+    #[arg(long, default_value_t)]
+    pub limit: AgentRelationLimit,
+    /// Opaque query-bound token from the preceding callers page.
+    #[arg(long)]
+    pub page_token: Option<AgentRelationPageToken>,
+    #[command(flatten)]
+    pub view: AgentRelationViewArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentCalleesArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[command(flatten)]
+    pub selector: AgentExactSymbolSelectorArgs,
+    /// Maximum call traversal depth.
+    #[arg(long, default_value_t)]
+    pub depth: AgentRelationDepth,
+    /// Maximum relationship records to return.
+    #[arg(long, default_value_t)]
+    pub limit: AgentRelationLimit,
+    /// Opaque query-bound token from the preceding callees page.
+    #[arg(long)]
+    pub page_token: Option<AgentRelationPageToken>,
+    #[command(flatten)]
+    pub view: AgentRelationViewArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentImplementationsArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[command(flatten)]
+    pub selector: AgentExactSymbolSelectorArgs,
+    /// Maximum relationship records to return.
+    #[arg(long, default_value_t)]
+    pub limit: AgentRelationLimit,
+    /// Opaque query-bound token from the preceding implementations page.
+    #[arg(long)]
+    pub page_token: Option<AgentRelationPageToken>,
+    #[command(flatten)]
+    pub view: AgentRelationViewArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentHierarchyArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    #[command(flatten)]
+    pub selector: AgentExactSymbolSelectorArgs,
+    /// Type hierarchy direction.
+    #[arg(long, value_enum)]
+    pub direction: AgentHierarchyDirection,
+    /// Maximum type traversal depth.
+    #[arg(long, default_value_t)]
+    pub depth: AgentRelationDepth,
+    /// Maximum relationship records to return.
+    #[arg(long, default_value_t)]
+    pub limit: AgentRelationLimit,
+    /// Opaque query-bound token from the preceding hierarchy page.
+    #[arg(long)]
+    pub page_token: Option<AgentRelationPageToken>,
+    #[command(flatten)]
+    pub view: AgentRelationViewArgs,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanonicalSymbolName(String);
+
+impl std::str::FromStr for CanonicalSymbolName {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        validate_exact_name(value, "symbol")?;
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceDeclarationFile(String);
+
+impl std::str::FromStr for WorkspaceDeclarationFile {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        validate_exact_name(value, "declaration file")?;
+        let path = std::path::Path::new(value);
+        if !matches!(path.extension().and_then(|extension| extension.to_str()), Some("kt" | "kts")) {
+            return Err("declaration file must end in .kt or .kts".to_string());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DeclarationStartOffset(u32);
+
+impl std::str::FromStr for DeclarationStartOffset {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        value
+            .parse::<u32>()
+            .map(Self)
+            .map_err(|_| "declaration start offset must be a non-negative integer".to_string())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AgentRelationLimit(std::num::NonZeroU8);
+
+impl Default for AgentRelationLimit {
+    fn default() -> Self {
+        Self(std::num::NonZeroU8::new(4).expect("relationship default limit is positive"))
+    }
+}
+
+impl std::fmt::Display for AgentRelationLimit {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl std::str::FromStr for AgentRelationLimit {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let value = value
+            .parse::<u16>()
+            .map_err(|_| "relationship limit must be an integer from 1 through 200".to_string())?;
+        if !(1..=200).contains(&value) {
+            return Err("relationship limit must be from 1 through 200".to_string());
+        }
+        let value = u8::try_from(value)
+            .map_err(|_| "relationship limit exceeded its typed range".to_string())?;
+        Ok(Self(std::num::NonZeroU8::new(value).ok_or_else(|| {
+            "relationship limit must be greater than 0".to_string()
+        })?))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AgentRelationDepth(std::num::NonZeroU8);
+
+impl Default for AgentRelationDepth {
+    fn default() -> Self {
+        Self(std::num::NonZeroU8::new(1).expect("relationship default depth is positive"))
+    }
+}
+
+impl std::fmt::Display for AgentRelationDepth {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl std::str::FromStr for AgentRelationDepth {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let value = value
+            .parse::<u8>()
+            .map_err(|_| "relationship depth must be an integer from 1 through 8".to_string())?;
+        if !(1..=8).contains(&value) {
+            return Err("relationship depth must be from 1 through 8".to_string());
+        }
+        Ok(Self(std::num::NonZeroU8::new(value).ok_or_else(|| {
+            "relationship depth must be greater than 0".to_string()
+        })?))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentRelationPageToken(String);
+
+impl std::str::FromStr for AgentRelationPageToken {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.len() > 4_096
+            || !value.is_ascii()
+            || value.chars().any(char::is_control)
+            || !value.starts_with("krp1.")
+        {
+            return Err("relationship page token is malformed".to_string());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AgentHierarchyDirection {
+    Supertypes,
+    Subtypes,
+    Both,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -1125,6 +1372,36 @@ pub enum AgentMutationField {
     Diagnostics,
 }
 
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("relation_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentRelationViewArgs {
+    /// Preserve the complete validated relationship envelope.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Include detailed evidence for the bounded relationship page.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected relationship result fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentRelationField>,
+    /// Return relationship cardinality and page evidence only.
+    #[arg(long)]
+    pub count: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentRelationField {
+    Subject,
+    Relation,
+    Records,
+    Page,
+    Limitations,
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AgentSymbolKind {
     Class,
@@ -1132,6 +1409,8 @@ pub enum AgentSymbolKind {
     Object,
     Function,
     Property,
+    Parameter,
+    Unknown,
 }
 
 impl AgentSymbolKind {
@@ -1142,6 +1421,8 @@ impl AgentSymbolKind {
             Self::Object => "object",
             Self::Function => "function",
             Self::Property => "property",
+            Self::Parameter => "parameter",
+            Self::Unknown => "unknown",
         }
     }
 }
@@ -1176,21 +1457,6 @@ impl AgentStatementAnchor {
     pub fn canonical(self) -> &'static str {
         match self {
             Self::BodyEnd => "body-end",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub enum AgentSymbolCallDirection {
-    Incoming,
-    Outgoing,
-}
-
-impl AgentSymbolCallDirection {
-    pub fn canonical(self) -> &'static str {
-        match self {
-            Self::Incoming => "incoming",
-            Self::Outgoing => "outgoing",
         }
     }
 }
