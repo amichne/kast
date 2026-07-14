@@ -74,6 +74,11 @@ function isPublicCommand(name) {
     name.startsWith("kast status") ||
     name.startsWith("kast agent verify") ||
     name.startsWith("kast agent symbol") ||
+    name.startsWith("kast agent references") ||
+    name.startsWith("kast agent callers") ||
+    name.startsWith("kast agent callees") ||
+    name.startsWith("kast agent implementations") ||
+    name.startsWith("kast agent hierarchy") ||
     name.startsWith("kast agent diagnostics") ||
     name.startsWith("kast agent impact") ||
     name.startsWith("kast agent rename")
@@ -227,10 +232,10 @@ const requiredActions = [
   "kast agent verify",
   "kast agent symbol --query",
   "kast agent symbol --query --file-hint",
-  "kast agent symbol --query --references",
-  "kast agent symbol --query --callers incoming",
+  "kast agent references --symbol --declaration-file --declaration-start-offset",
+  "kast agent callers --symbol --declaration-file --declaration-start-offset",
   "kast agent diagnostics --file-path",
-  "kast agent impact --symbol",
+  "kast agent impact --symbol --declaration-file --declaration-start-offset",
   "kast agent rename --symbol --new-name",
 ];
 const missingActions = requiredActions.filter((name) => !actionNames.has(name));
