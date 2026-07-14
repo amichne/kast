@@ -322,10 +322,12 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             return error_envelope("agent/workspace-files".to_string(), None, error);
         }
         Err(error) => {
+            let mut error = AgentError::from_cli_error(error);
+            workspace_files_query_details(&mut error, &admitted_query, page_handle.as_ref());
             return error_envelope(
                 "agent/workspace-files".to_string(),
                 None,
-                AgentError::from_cli_error(error),
+                error,
             );
         }
     };
@@ -334,10 +336,12 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     let root = match WorkspaceRoot::try_from(admission.workspace_root.as_path()) {
         Ok(root) => root,
         Err(error) => {
+            let mut error = agent_error("AGENT_WORKSPACE_INVALID", error.to_string());
+            workspace_files_query_details(&mut error, &admitted_query, page_handle.as_ref());
             return error_envelope(
                 "agent/workspace-files".to_string(),
                 None,
-                agent_error("AGENT_WORKSPACE_INVALID", error.to_string()),
+                error,
             );
         }
     };
@@ -347,10 +351,12 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     ) {
         Ok(session) => session,
         Err(error) => {
+            let mut error = AgentError::from_cli_error(error);
+            workspace_files_query_details(&mut error, &admitted_query, page_handle.as_ref());
             return error_envelope(
                 "agent/workspace-files".to_string(),
                 None,
-                AgentError::from_cli_error(error),
+                error,
             );
         }
     };
