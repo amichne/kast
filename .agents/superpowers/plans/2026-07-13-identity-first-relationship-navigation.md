@@ -137,8 +137,9 @@ New and materially changed files have one responsibility:
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedReferenceProvider.kt`
   owns bounded `FileTypeIndex.processFiles` plus `PsiReferenceScanner` paging.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaOutgoingLexicalDfsProvider.kt`
-  owns resumable lexical DFS for outgoing calls; its bounded child-index stack
-  and next-reference position are pure data under `backend-shared`.
+  owns resumable lexical DFS for outgoing calls and emits provider-stable
+  canonical call-site order; its bounded child-index stack and next-reference
+  position are pure data under `backend-shared`.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaBoundedInheritorProvider.kt`
   owns bounded `ClassInheritorsSearch.forEach` direct-inheritor paging.
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/ObservedAnalysisBackend.kt`
@@ -174,7 +175,7 @@ The implementation is incomplete until every row is executable:
 | Subject kinds | The complete command-by-`SymbolKind` matrix returns closed `UNSUPPORTED_SUBJECT_KIND` for rejected pairs after identity verification and before provider/index work; every reject has a zero-work assertion. |
 | References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt`/fixtures consume occurrences; #337 opaque cursor round-trips without source/counter serialization; exact target path/offset isolates forced INDEX overloads; unsafe first INDEX falls back to IDEA while continuation never switches; plus-one cardinality, containment, stable pages, and 500-record budget are proved. |
 | Atomic state | Backend store is sole owner; generation check/provider work/state commit share one read action; queued-write races and `ObservedAnalysisBackend` delegation are covered; server owns no state; A-issued/restart-to-B, random UUID, replay, and eviction are identically absent/invalid while retained generation mismatch is stale. |
-| Calls | Incoming/outgoing fixed by command; BFS ordering; bounded `FileTypeIndex.processFiles`/`PsiReferenceScanner` incoming provider and resumable lexical-DFS outgoing provider; nested blocks/local initializers are visited, nested callable/type/lambda bodies are excluded, and page resume preserves the pure-data stack without revisit; depth, result, state, visit, cap-plus-one, and forbidden-materializer gates are tested. |
+| Calls | Incoming/outgoing fixed by command; provider-stable BFS ordering by depth, parent identity, canonical call-site file/start/end, then related identity; bounded `FileTypeIndex.processFiles`/`PsiReferenceScanner` incoming provider and resumable lexical-DFS outgoing provider; nested blocks/local initializers/lambdas are visited, nested named callable/type/accessor bodies are excluded, and page resume preserves the pure-data stack without revisit; reverse-lexical related names, lambda-only callees, lambda page breaks, depth, result, state, visit, cap-plus-one, and forbidden-materializer gates are tested. |
 | Implementations | Interface implementation and class subclass records; exact versus known-minimum cardinality; stateful deterministic bounded provider pages; stale/invalid handles; capability absent degrades. |
 | Hierarchy | Supertypes/subtypes/both; depth; cycle; stateful deterministic bounded provider pages; semantic-generation changes invalidate continuation; capability absent degrades. |
 | Impact | Compiler position verifies the anchor; production row path/offset/kind gates non-callable impact; a production-store same-file overload regression proves FQ row counts cannot authorize callable impact; ordered `limit + 1 offset`, 503 records, and incompatible-index degradation are covered. |
@@ -833,13 +834,24 @@ uses the preserved frontier, visited identities, and exact provider
 continuation without replay or overlap.
 
 Build an outgoing function containing calls in nested `if`/`when`/`try`
-blocks, a local property initializer, a local function, a local class method,
-and a lambda. Assert lexical DFS includes the nested-block and initializer
-calls, excludes the nested function/class/lambda bodies, and stores only a
-root-to-current child-index stack plus next-reference index. Break a page
-immediately before and after an excluded local declaration; resume under the
-same generation and prove page two starts at the exact next owned call without
-duplicate, omission, or PSI/smart-pointer state.
+blocks, a local property initializer, a local function, local class/object
+methods, an accessor, and a lambda. Assert lexical DFS includes the
+nested-block, initializer, and lambda calls under the enclosing named callable,
+excludes nested named function/class/object/accessor bodies, and stores only a
+root-to-current child-index stack plus next-reference index. A lambda has no
+navigable relationship identity in this contract, so its body must not be
+silently excluded or reported exhausted before it has been visited. Add a
+function whose only callee is inside a lambda and prove that callee is visible.
+Break pages immediately before and after an excluded local declaration and
+inside a lambda; resume under the same generation and prove page two starts at
+the exact next owned call without duplicate, omission, or PSI/smart-pointer
+state. Put a call to a reverse-lexical related name before a call to the
+lexically smaller related name and use a one-record page: global page order
+must follow canonical call-site file/start/end order with no overlap, not an
+unseen global related-name sort. If multiple references share the exact same
+call-site range, sort only that local tie group by canonical related identity;
+prove the group is charged to the candidate/state bound and degrades without a
+partial group when the bound is exceeded.
 
 Instrument fake call/type candidate providers with an atomic visit counter.
 Seed 20,000 incoming references, a declaration with 20,000 outgoing PSI
@@ -954,19 +966,29 @@ Outgoing evidence uses `IdeaOutgoingLexicalDfsProvider`. Starting at the
 selected declaration body, it walks PSI children depth-first in lexical order
 and persists a bounded pure-data root-to-current child-index stack plus the
 next reference index. It descends into nested blocks and local property
-initializers, skips nested functions/classes/objects/accessors/lambdas, and
+initializers and lambda bodies, assigning lambda-contained calls to the
+enclosing named callable because the relationship contract has no navigable
+lambda identity. It skips nested named functions/classes/objects/accessors and
 rehydrates the stack only after the same read action has validated the stored
-generation. It never stores PSI or restarts the declaration walk on page two.
+generation. It never stores PSI, restarts the declaration walk on page two, or
+reports `Exact` until every owned node, including lambda bodies, is exhausted.
+The provider emits references in canonical call-site file/start/end order. It
+does not collect an unseen child set for a global related-identity sort. Only
+references with the exact same call-site range form a local tie group sorted by
+canonical related identity; that group consumes the candidate/state bound and
+overflow degrades without emitting or retaining a partial group.
 `IdeaBoundedInheritorProvider` uses
 `ClassInheritorsSearch.search(..., checkDeep = false).forEach` through the
 direct-inheritor cap plus one and applies the same no-partial-state overflow
 rule. At or below the cap, it canonicalizes the complete anchor snapshot
 inside the same read action and only then sorts. It never calls `findAll()`.
-Calls flatten
-breadth-first using `(depth, parent identity, related identity, call-site)`;
-implementations and hierarchy use the same canonical identity order. Persist
-the updated frontier, visited identities, provider continuation, consumed
-evidence, and returned-before proof behind the next backend handle. Retain
+Calls flatten breadth-first using `(depth, canonical parent identity,
+canonical call-site file/start/end, canonical related identity)`. Parents at
+each depth use canonical identity order and each outgoing provider supplies its
+own call-site-stable stream, so continuation never depends on sorting unseen
+children. Implementations and hierarchy use the same canonical identity order.
+Persist the updated frontier, visited identities, provider continuation,
+consumed evidence, and returned-before proof behind the next backend handle. Retain
 cycle/timeout/max-depth/candidate-budget/state-budget evidence, and return
 `ResultCardinality.Exact` only when exhausted; otherwise return
 `KnownMinimum`, including the plus-one lower bound whenever a next handle
@@ -1532,7 +1554,9 @@ binding, atomic read-action generation/provider/state behavior,
 `ObservedAnalysisBackend` delegation, frontier/visited resume behavior,
 family-specific typed stale/invalid/degraded outcomes, consistent absent-handle
 invalidity, subject-kind admission, plus-one cardinality, resumable outgoing
-lexical DFS with nested-declaration exclusion, bounded named IDEA providers,
+lexical DFS with lambda ownership and nested named-declaration exclusion,
+provider-stable call-site ordering across reverse-related-name pages, bounded
+same-call-site tie groups, bounded named IDEA providers,
 executable locked token-budget proof, production-schema impact identity and
 overload regression, SQL bounds, and #338/#340 isolation.
 Repair findings with new focused RED/GREEN commits and rerun affected plus full

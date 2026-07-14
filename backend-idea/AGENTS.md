@@ -73,9 +73,18 @@ continuation state for the IDEA runtime.
   inheritor `findAll()`.
 - Outgoing calls use resumable lexical DFS over the selected declaration body.
   Persist only a bounded root-to-current child-index stack and next-reference
-  index. Traverse nested blocks and local property initializers; skip nested
-  function, class, object, accessor, and lambda bodies. Test local-declaration
-  exclusion and page resume without replay or PSI retention.
+  index. Traverse nested blocks, local property initializers, and lambda bodies;
+  lambda-contained calls belong to the enclosing named callable because the
+  relationship contract has no navigable lambda identity. Skip nested named
+  function, class, object, and accessor bodies. Report `Exact` only after every
+  owned node, including lambdas, is exhausted. Emit breadth-first edges by
+  depth, canonical parent identity, canonical call-site file/start/end, then
+  canonical related identity; never globally sort an unseen child set by
+  related name. References sharing an exact call-site range are one local tie
+  group sorted by related identity and charged to the candidate/state bound;
+  overflow degrades without a partial group. Test reverse-related-name pages,
+  lambda-only callees, and page resume inside a lambda without replay or PSI
+  retention.
 - After exact anchor verification, apply ADR 0022's command-family subject-kind
   matrix before provider/index work or state creation. Unsupported pairs return
   the owning response's `UNSUPPORTED_SUBJECT_KIND`; test every pair with a
@@ -87,8 +96,9 @@ Run `./gradlew :backend-idea:test` and the affected `:analysis-server:test`
 contract tests. Relationship changes also require cap/cap-plus-one provider
 tests, generation/write-race tests, `ObservedAnalysisBackend` delegation tests,
 opaque continuation resume tests, absent-versus-stale classification tests,
-outgoing lexical-DFS nested-declaration/page-resume tests, and the complete
-subject-kind zero-work matrix.
+outgoing lexical-DFS nested-declaration/page-resume tests, reverse-related-name
+global page-order/no-overlap tests, lambda-only callee and lambda-resume tests,
+and the complete subject-kind zero-work matrix.
 
 Workspace inventory changes also require:
 
