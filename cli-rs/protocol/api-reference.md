@@ -1235,9 +1235,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "method": "raw/workspace-files",
                 "params": {
                     "kindDomain": "MIXED",
-                    "moduleName": "fake-module",
-                    "includeFiles": true,
-                    "maxFilesPerModule": 1
+                    "includeFiles": false
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1258,12 +1256,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
                                 "/workspace"
                             ],
                             "dependencyModuleNames": [],
-                            "files": [
-                                "/workspace/src/Sample.kt"
-                            ],
-                            "returnedFileCount": 1,
-                            "nextPageToken": "00000000-0000-4000-8000-000000000001",
-                            "filesTruncated": true,
+                            "files": [],
+                            "returnedFileCount": 0,
+                            "filesTruncated": false,
                             "fileCount": 2
                         }
                     ],

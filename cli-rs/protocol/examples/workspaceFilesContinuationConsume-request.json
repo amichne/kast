@@ -1,0 +1,16 @@
+{
+    "method": "raw/workspace-files-continuation",
+    "params": {
+        "action": "CONSUME",
+        "identity": {
+            "workspaceRoot": "/workspace",
+            "backendName": "fake",
+            "normalizedQuery": "kind=mixed;module=*;package=*;sourceSet=*",
+            "projection": "compact:path,evidence",
+            "limit": 1
+        },
+        "pageToken": "00000000-0000-4000-8000-000000000003"
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

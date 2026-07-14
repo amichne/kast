@@ -57,6 +57,7 @@ import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.StructureKind
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -132,6 +133,8 @@ class DocFieldCoverageTest {
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
         "WorkspaceFilesContinuationQuery" to WorkspaceFilesContinuationQuery.serializer(),
+        "WorkspaceFilesContinuationQuery.Issue" to WorkspaceFilesContinuationQuery.serializer(),
+        "WorkspaceFilesContinuationQuery.Consume" to WorkspaceFilesContinuationQuery.serializer(),
         "WorkspaceFilesPublicContinuationIdentity" to WorkspaceFilesPublicContinuationIdentity.serializer(),
         "WorkspaceRoot" to WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.serializer(),
         "BackendName" to WorkspaceFilesPublicContinuationIdentity.BackendName.serializer(),
@@ -194,6 +197,20 @@ class DocFieldCoverageTest {
         assertTrue(violations.isEmpty()) {
             "Found ${violations.size} undocumented properties:\n${violations.joinToString("\n") { "  • $it" }}"
         }
+    }
+
+    @Test
+    fun `continuation ttl documents its fixed lifetime from issuance`() {
+        val descriptor = ServerLimits.serializer().descriptor
+        val ttlIndex = (0 until descriptor.elementsCount)
+            .single { index -> descriptor.getElementName(index) == "continuationTtlMillis" }
+        val description = descriptor.getElementAnnotations(ttlIndex)
+            .filterIsInstance<DocField>()
+            .single()
+            .description
+
+        assertTrue(description.contains("issuance"), description)
+        assertFalse(description.contains("unused"), description)
     }
 
     @Test

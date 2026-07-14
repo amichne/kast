@@ -28,11 +28,14 @@ import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
+import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -68,6 +71,7 @@ object DocExampleGenerator {
             val friendlyGreeterOffset = typeContent.indexOf("FriendlyGreeter")
 
             val pathToSanitize = tempDir.toString()
+            val continuationIdentity = continuationIdentity(sampleFile)
 
             val operations = buildOperations(
                 sampleFile = sampleFile,
@@ -76,18 +80,60 @@ object DocExampleGenerator {
                 greetDeclarationOffset = greetDeclarationOffset,
                 greetReferenceOffset = greetReferenceOffset,
                 friendlyGreeterOffset = friendlyGreeterOffset,
+                continuationIdentity = continuationIdentity,
             )
 
             val result = linkedMapOf<String, ExamplePair>()
             for ((operationId, request) in operations) {
                 val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
                     .replace(pathToSanitize, "/workspace")
+                    .withDeterministicWorkspaceHandles(operationId)
                 val responseRaw = runBlocking { dispatcher.dispatch(request) }
                 val responseElement = json.parseToJsonElement(responseRaw)
                 val responseJson = json.encodeToString(JsonElement.serializer(), responseElement)
                     .replace(pathToSanitize, "/workspace")
                     .withDeterministicWorkspaceHandles(operationId)
                 result[operationId] = ExamplePair(requestJson, responseJson)
+
+                when (operationId) {
+                    "workspaceFiles" -> {
+                        val snapshotToken = responseElement.resultString("snapshotToken")
+                        val pageRequest = request(
+                            method = "raw/workspace-files",
+                            params = json.encodeToJsonElement(
+                                WorkspaceFilesQuery.serializer(),
+                                WorkspaceFilesQuery(
+                                    moduleName = "fake-module",
+                                    includeFiles = true,
+                                    maxFilesPerModule = 1,
+                                    snapshotToken = snapshotToken,
+                                ),
+                            ),
+                        )
+                        result["workspaceFilesPage"] = executeExample(
+                            operationId = "workspaceFilesPage",
+                            request = pageRequest,
+                            dispatcher = dispatcher,
+                            pathToSanitize = pathToSanitize,
+                        )
+                    }
+                    "workspaceFilesContinuation" -> {
+                        val pageToken = WorkspaceFilesPublicPageToken.parse(responseElement.resultString("pageToken"))
+                        val consumeRequest = request(
+                            method = "raw/workspace-files-continuation",
+                            params = json.encodeToJsonElement(
+                                WorkspaceFilesContinuationQuery.serializer(),
+                                WorkspaceFilesContinuationQuery.consume(continuationIdentity, pageToken),
+                            ),
+                        )
+                        result["workspaceFilesContinuationConsume"] = executeExample(
+                            operationId = "workspaceFilesContinuationConsume",
+                            request = consumeRequest,
+                            dispatcher = dispatcher,
+                            pathToSanitize = pathToSanitize,
+                        )
+                    }
+                }
             }
             return result
         } finally {
@@ -102,11 +148,9 @@ object DocExampleGenerator {
         greetDeclarationOffset: Int,
         greetReferenceOffset: Int,
         friendlyGreeterOffset: Int,
+        continuationIdentity: WorkspaceFilesPublicContinuationIdentity,
     ): List<Pair<String, JsonRpcRequest>> {
         val ops = mutableListOf<Pair<String, JsonRpcRequest>>()
-
-        fun request(method: String, params: JsonElement? = null) =
-            JsonRpcRequest(id = JsonPrimitive(1), method = method, params = params)
 
         // System operations (no params)
         ops += "health" to request("health")
@@ -193,23 +237,8 @@ object DocExampleGenerator {
             "raw/workspace-files",
             json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
-                WorkspaceFilesQuery(
-                    moduleName = "fake-module",
-                    includeFiles = true,
-                    maxFilesPerModule = 1,
-                ),
+                WorkspaceFilesQuery(),
             ),
-        )
-        val continuationIdentity = WorkspaceFilesPublicContinuationIdentity(
-            workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse(
-                Path.of(sampleFile).parent.parent.toString(),
-            ),
-            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("fake"),
-            normalizedQuery = WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.parse(
-                "kind=mixed;module=*;package=*;sourceSet=*",
-            ),
-            projection = WorkspaceFilesPublicContinuationIdentity.Projection.parse("compact:path,evidence"),
-            limit = WorkspaceFilesPublicContinuationIdentity.Limit.of(1),
         )
         ops += "workspaceFilesContinuation" to request(
             "raw/workspace-files-continuation",
@@ -317,11 +346,47 @@ object DocExampleGenerator {
         return ops
     }
 
+    private fun continuationIdentity(sampleFile: String): WorkspaceFilesPublicContinuationIdentity =
+        WorkspaceFilesPublicContinuationIdentity(
+            workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse(
+                Path.of(sampleFile).parent.parent.toString(),
+            ),
+            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("fake"),
+            normalizedQuery = WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.parse(
+                "kind=mixed;module=*;package=*;sourceSet=*",
+            ),
+            projection = WorkspaceFilesPublicContinuationIdentity.Projection.parse("compact:path,evidence"),
+            limit = WorkspaceFilesPublicContinuationIdentity.Limit.of(1),
+        )
+
+    private fun request(method: String, params: JsonElement? = null): JsonRpcRequest =
+        JsonRpcRequest(id = JsonPrimitive(1), method = method, params = params)
+
+    private fun executeExample(
+        operationId: String,
+        request: JsonRpcRequest,
+        dispatcher: RpcAnalysisDispatcher,
+        pathToSanitize: String,
+    ): ExamplePair {
+        val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
+            .replace(pathToSanitize, "/workspace")
+            .withDeterministicWorkspaceHandles(operationId)
+        val responseElement = json.parseToJsonElement(runBlocking { dispatcher.dispatch(request) })
+        val responseJson = json.encodeToString(JsonElement.serializer(), responseElement)
+            .replace(pathToSanitize, "/workspace")
+            .withDeterministicWorkspaceHandles(operationId)
+        return ExamplePair(requestJson, responseJson)
+    }
+
+    private fun JsonElement.resultString(field: String): String =
+        jsonObject.getValue("result").jsonObject.getValue(field).jsonPrimitive.content
+
     private fun String.withDeterministicWorkspaceHandles(operationId: String): String = when (operationId) {
-        "workspaceFiles" ->
+        "workspaceFiles", "workspaceFilesPage" ->
             replaceUuidField("nextPageToken", RAW_WORKSPACE_PAGE_HANDLE)
                 .replaceUuidField("snapshotToken", RAW_WORKSPACE_SNAPSHOT_HANDLE)
-        "workspaceFilesContinuation" -> replaceUuidField("pageToken", PUBLIC_WORKSPACE_PAGE_HANDLE)
+        "workspaceFilesContinuation", "workspaceFilesContinuationConsume" ->
+            replaceUuidField("pageToken", PUBLIC_WORKSPACE_PAGE_HANDLE)
         else -> this
     }
 

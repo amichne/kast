@@ -10,9 +10,12 @@
                     "/workspace"
                 ],
                 "dependencyModuleNames": [],
-                "files": [],
-                "returnedFileCount": 0,
-                "filesTruncated": false,
+                "files": [
+                    "/workspace/src/Sample.kt"
+                ],
+                "returnedFileCount": 1,
+                "nextPageToken": "00000000-0000-4000-8000-000000000001",
+                "filesTruncated": true,
                 "fileCount": 2
             }
         ],

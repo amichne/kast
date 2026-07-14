@@ -1799,24 +1799,44 @@ components:
         - ISSUE
         - CONSUME
     WorkspaceFilesContinuationQuery:
+      oneOf:
+        - "$ref": "#/components/schemas/WorkspaceFilesContinuationQuery.Issue"
+        - "$ref": "#/components/schemas/WorkspaceFilesContinuationQuery.Consume"
+      discriminator:
+        propertyName: action
+        mapping:
+          ISSUE: "#/components/schemas/WorkspaceFilesContinuationQuery.Issue"
+          CONSUME: "#/components/schemas/WorkspaceFilesContinuationQuery.Consume"
+    WorkspaceFilesContinuationQuery.Issue:
       type: object
       properties:
         action:
-          "$ref": "#/components/schemas/WorkspaceFilesContinuationAction"
+          type: string
+          const: ISSUE
         identity:
           "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationIdentity"
         state:
-          anyOf:
-            - "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationState"
-            - type: "null"
-        pageToken:
-          anyOf:
-            - type: string
-            - type: "null"
+          "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationState"
       additionalProperties: false
       required:
         - action
         - identity
+        - state
+    WorkspaceFilesContinuationQuery.Consume:
+      type: object
+      properties:
+        action:
+          type: string
+          const: CONSUME
+        identity:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationIdentity"
+        pageToken:
+          "$ref": "#/components/schemas/WorkspaceFilesPublicPageToken"
+      additionalProperties: false
+      required:
+        - action
+        - identity
+        - pageToken
     WorkspaceFilesPublicContinuationIdentity:
       type: object
       properties:
@@ -1838,46 +1858,22 @@ components:
         - projection
         - limit
     WorkspaceRoot:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      minLength: 1
     BackendName:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      minLength: 1
     NormalizedQuery:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      minLength: 1
     Projection:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      minLength: 1
     Limit:
-      type: object
-      properties:
-        value:
-          type: integer
-          format: int32
-      additionalProperties: false
-      required:
-        - value
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 200
     WorkspaceFilesPublicContinuationState:
       type: object
       properties:
@@ -1896,30 +1892,18 @@ components:
         - lastRelativePath
         - cumulativeReturnedCount
     CompositionStampDigest:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      minLength: 64
+      maxLength: 64
+      pattern: "^[0-9a-f]{64}$"
     LastRelativePath:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      minLength: 1
+      pattern: "^(?!/)(?![A-Za-z]:)(?![.]{1,2}(?:/|$))(?!.*(?:/)[.]{1,2}(?:/|$))(?!.*//)[^\\\\\\u0000-\\u001F\\u007F-\\u009F]+$"
     CumulativeReturnedCount:
-      type: object
-      properties:
-        value:
-          type: integer
-          format: int32
-      additionalProperties: false
-      required:
-        - value
+      type: integer
+      format: int32
+      minimum: 0
     WorkspaceFilesPublicContinuationProjection:
       type: object
       properties:
@@ -1938,30 +1922,43 @@ components:
         - lastRelativePath
         - cumulativeReturnedCount
     WorkspaceFilesContinuationResult:
-      type: object
+      oneOf:
+        - "$ref": "#/components/schemas/WorkspaceFilesContinuationResult.Issued"
+        - "$ref": "#/components/schemas/WorkspaceFilesContinuationResult.Consumed"
+      discriminator:
+        propertyName: type
+        mapping:
+          ISSUED: "#/components/schemas/WorkspaceFilesContinuationResult.Issued"
+          CONSUMED: "#/components/schemas/WorkspaceFilesContinuationResult.Consumed"
     WorkspaceFilesContinuationResult.Issued:
       type: object
       properties:
+        type:
+          type: string
+          const: ISSUED
         pageToken:
           "$ref": "#/components/schemas/WorkspaceFilesPublicPageToken"
       additionalProperties: false
       required:
+        - type
         - pageToken
     WorkspaceFilesPublicPageToken:
-      type: object
-      properties:
-        value:
-          type: string
-      additionalProperties: false
-      required:
-        - value
+      type: string
+      format: uuid
+      minLength: 36
+      maxLength: 36
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     WorkspaceFilesContinuationResult.Consumed:
       type: object
       properties:
+        type:
+          type: string
+          const: CONSUMED
         state:
           "$ref": "#/components/schemas/WorkspaceFilesPublicContinuationProjection"
       additionalProperties: false
       required:
+        - type
         - state
     ImplementationsQuery:
       type: object

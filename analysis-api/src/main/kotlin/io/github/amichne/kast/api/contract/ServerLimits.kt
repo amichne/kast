@@ -20,7 +20,10 @@ data class ServerLimits(
     val maxConcurrentRequests: Int,
     @DocField(description = "Maximum time in milliseconds to spend walking a single candidate file during reference search. Files whose PSI walk exceeds this budget are skipped.")
     val perFileScanBudgetMillis: Long = 5_000,
-    @DocField(description = "Time in milliseconds before an unused server-held continuation expires.", defaultValue = "60000")
+    @DocField(
+        description = "Fixed lifetime in milliseconds from issuance before a server-held continuation expires.",
+        defaultValue = "60000",
+    )
     val continuationTtlMillis: Long = 60_000,
     @DocField(description = "Maximum server-held continuations retained by one typed store.", defaultValue = "256")
     val continuationCapacity: Int = 256,
