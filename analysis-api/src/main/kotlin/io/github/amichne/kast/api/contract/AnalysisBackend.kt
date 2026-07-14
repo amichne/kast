@@ -2,11 +2,14 @@ package io.github.amichne.kast.api.contract
 
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -17,6 +20,9 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
+import io.github.amichne.kast.api.contract.skill.KastCallersQuery
+import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
+import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.validation.*
 
 interface AnalysisBackend {
@@ -55,10 +61,24 @@ interface AnalysisBackend {
         )
     }
 
+    suspend fun callRelations(query: KastCallersQuery): CallRelationsResult {
+        throw CapabilityNotSupportedException(
+            capability = "CALL_HIERARCHY",
+            message = "Paged call relationships are not available for this backend",
+        )
+    }
+
     suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult {
         throw CapabilityNotSupportedException(
             capability = "TYPE_HIERARCHY",
             message = "Type hierarchy is not available for this backend",
+        )
+    }
+
+    suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult {
+        throw CapabilityNotSupportedException(
+            capability = "TYPE_HIERARCHY",
+            message = "Paged type relationships are not available for this backend",
         )
     }
 
@@ -121,6 +141,15 @@ interface AnalysisBackend {
         throw CapabilityNotSupportedException(
             capability = "IMPLEMENTATIONS",
             message = "Go to implementation is not available for this backend",
+        )
+    }
+
+    suspend fun implementationRelations(
+        query: KastImplementationsQuery,
+    ): ImplementationRelationsResult {
+        throw CapabilityNotSupportedException(
+            capability = "IMPLEMENTATIONS",
+            message = "Paged implementation relationships are not available for this backend",
         )
     }
 

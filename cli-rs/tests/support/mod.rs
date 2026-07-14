@@ -229,6 +229,8 @@ pub(crate) fn spawn_scripted_idea_backend(
                         "symbol/resolve",
                         "symbol/references",
                         "symbol/callers",
+                        "symbol/implementations",
+                        "symbol/hierarchy",
                         "raw/call-hierarchy",
                         "raw/implementations",
                         "raw/type-hierarchy"

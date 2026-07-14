@@ -375,6 +375,18 @@ class RpcAnalysisDispatcher(
                 skillRpc.callers(decodeParams(KastCallersRequest.serializer(), params)),
             )
 
+            "symbol/implementations" -> encode(
+                KastImplementationsResponse.serializer(),
+                skillRpc.implementations(
+                    decodeParams(KastImplementationsRequest.serializer(), params),
+                ),
+            )
+
+            "symbol/hierarchy" -> encode(
+                KastHierarchyResponse.serializer(),
+                skillRpc.hierarchy(decodeParams(KastHierarchyRequest.serializer(), params)),
+            )
+
             "symbol/scaffold" -> encode(
                 KastScaffoldResponse.serializer(),
                 skillRpc.scaffold(decodeParams(KastScaffoldRequest.serializer(), params)),

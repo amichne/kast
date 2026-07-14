@@ -7,11 +7,14 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
 import io.github.amichne.kast.api.contract.result.CodeActionsResult
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
+import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -38,6 +41,9 @@ import io.github.amichne.kast.api.validation.ParsedTypeHierarchyQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceFilesQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceSearchQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
+import io.github.amichne.kast.api.contract.skill.KastCallersQuery
+import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
+import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 
 internal class ObservedAnalysisBackend(
     private val delegate: CloseableAnalysisBackend,
@@ -66,8 +72,14 @@ internal class ObservedAnalysisBackend(
     override suspend fun callHierarchy(query: ParsedCallHierarchyQuery): CallHierarchyResult =
         observe(KastBackendOperation.CALL_HIERARCHY) { delegate.callHierarchy(query) }
 
+    override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult =
+        observe(KastBackendOperation.CALL_HIERARCHY) { delegate.callRelations(query) }
+
     override suspend fun typeHierarchy(query: ParsedTypeHierarchyQuery): TypeHierarchyResult =
         observe(KastBackendOperation.TYPE_HIERARCHY) { delegate.typeHierarchy(query) }
+
+    override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult =
+        observe(KastBackendOperation.TYPE_HIERARCHY) { delegate.hierarchyRelations(query) }
 
     override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult =
         observe(KastBackendOperation.SEMANTIC_INSERTION_POINT) { delegate.semanticInsertionPoint(query) }
@@ -101,6 +113,12 @@ internal class ObservedAnalysisBackend(
 
     override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult =
         observe(KastBackendOperation.IMPLEMENTATIONS) { delegate.implementations(query) }
+
+    override suspend fun implementationRelations(
+        query: KastImplementationsQuery,
+    ): ImplementationRelationsResult = observe(KastBackendOperation.IMPLEMENTATIONS) {
+        delegate.implementationRelations(query)
+    }
 
     override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult =
         observe(KastBackendOperation.CODE_ACTIONS) { delegate.codeActions(query) }

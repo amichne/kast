@@ -23,23 +23,13 @@
     },
     "method": {
       "enum": [
-        "symbol/callers"
+        "symbol/implementations"
       ],
       "type": "string"
     },
     "params": {
       "additionalProperties": false,
       "properties": {
-        "depth": {
-          "type": "integer"
-        },
-        "direction": {
-          "enum": [
-            "incoming",
-            "outgoing"
-          ],
-          "type": "string"
-        },
         "maxResults": {
           "type": "integer"
         },
@@ -99,8 +89,7 @@
         }
       },
       "required": [
-        "selector",
-        "direction"
+        "selector"
       ],
       "type": "object"
     }
@@ -111,6 +100,6 @@
     "params",
     "id"
   ],
-  "title": "Kast symbol/callers JSON-RPC request",
+  "title": "Kast symbol/implementations JSON-RPC request",
   "type": "object"
 }

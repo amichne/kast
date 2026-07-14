@@ -32,6 +32,8 @@ categories:
   - symbol/resolve
   - symbol/references
   - symbol/callers
+  - symbol/implementations
+  - symbol/hierarchy
   - symbol/rename
   - symbol/write-and-validate
   - symbol/add-file
@@ -1158,16 +1160,13 @@ commands:
   symbol/callers:
     category: symbol
     dataSource: backend
-    failureType: CALLERS_FAILURE
     method: symbol/callers
     notes:
-    - The 'symbol' field takes simple names only.
+    - The selector consumes the canonical identity returned by exact symbol lookup.
+    - direction is fixed by the public callers or callees command.
+    - pageToken is an opaque backend-owned rth1 traversal handle.
     request:
       fields:
-        containingType:
-          nullable: true
-          optional: true
-          type: string
         depth:
           optional: true
           type: integer
@@ -1175,47 +1174,63 @@ commands:
           enum:
           - incoming
           - outgoing
-          optional: true
           type: string
-        fileHint:
-          nullable: true
-          optional: true
-          type: string
-        kind:
-          enum:
-          - class
-          - interface
-          - object
-          - function
-          - property
-          nullable: true
-          optional: true
-          type: string
-        maxChildrenPerNode:
-          nullable: true
+        maxResults:
           optional: true
           type: integer
-        maxTotalCalls:
+        pageToken:
           nullable: true
           optional: true
-          type: integer
-        symbol:
           type: string
-        timeoutMillis:
-          nullable: true
-          optional: true
-          type: integer
+        selector:
+          fields:
+            containingType:
+              nullable: true
+              optional: true
+              type: string
+            declarationFile:
+              type: string
+            declarationStartOffset:
+              type: integer
+            fqName:
+              type: string
+            kind:
+              enum:
+              - CLASS
+              - INTERFACE
+              - OBJECT
+              - FUNCTION
+              - PROPERTY
+              - PARAMETER
+              - UNKNOWN
+              nullable: true
+              optional: true
+              type: string
+          required:
+          - fqName
+          - declarationFile
+          - declarationStartOffset
+          type: object
         workspaceRoot:
           nullable: true
           optional: true
           type: string
       required:
-      - symbol
+      - selector
+      - direction
     responseType: KastCallersResponse
-    successType: CALLERS_SUCCESS
-    summary: Expand an incoming or outgoing call hierarchy
+    responseVariants:
+    - AVAILABLE
+    - SUBJECT_NOT_FOUND
+    - SUBJECT_IDENTITY_MISMATCH
+    - UNSUPPORTED_SUBJECT_KIND
+    - DEGRADED
+    - CURSOR_STALE
+    - CURSOR_INVALID
+    successType: AVAILABLE
+    summary: Page exact incoming or outgoing call relationships
     tool:
-      description: Trace incoming or outgoing call hierarchy for a Kotlin function. Use to understand flow, blast radius, or the entry points reaching a target.
+      description: Trace incoming or outgoing call relationships for one exact Kotlin function identity.
       name: kast_callers
   symbol/discover:
     category: symbol
@@ -1273,6 +1288,134 @@ commands:
     tool:
       description: Rank candidate Kotlin declarations for a simple symbol name, optionally using file, line, and snippet context. Use before kast_resolve when a name is ambiguous; each candidate returns resolveParams and a nextRequest.
       name: kast_symbol_discover
+  symbol/hierarchy:
+    category: symbol
+    dataSource: backend
+    method: symbol/hierarchy
+    request:
+      fields:
+        depth:
+          optional: true
+          type: integer
+        direction:
+          enum:
+          - SUPERTYPES
+          - SUBTYPES
+          - BOTH
+          type: string
+        maxResults:
+          optional: true
+          type: integer
+        pageToken:
+          nullable: true
+          optional: true
+          type: string
+        selector:
+          fields:
+            containingType:
+              nullable: true
+              optional: true
+              type: string
+            declarationFile:
+              type: string
+            declarationStartOffset:
+              type: integer
+            fqName:
+              type: string
+            kind:
+              enum:
+              - CLASS
+              - INTERFACE
+              - OBJECT
+              - FUNCTION
+              - PROPERTY
+              - PARAMETER
+              - UNKNOWN
+              nullable: true
+              optional: true
+              type: string
+          required:
+          - fqName
+          - declarationFile
+          - declarationStartOffset
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - selector
+      - direction
+    responseType: KastHierarchyResponse
+    responseVariants:
+    - AVAILABLE
+    - SUBJECT_NOT_FOUND
+    - SUBJECT_IDENTITY_MISMATCH
+    - UNSUPPORTED_SUBJECT_KIND
+    - DEGRADED
+    - CURSOR_STALE
+    - CURSOR_INVALID
+    successType: AVAILABLE
+    summary: Page exact type hierarchy relationships
+  symbol/implementations:
+    category: symbol
+    dataSource: backend
+    method: symbol/implementations
+    request:
+      fields:
+        maxResults:
+          optional: true
+          type: integer
+        pageToken:
+          nullable: true
+          optional: true
+          type: string
+        selector:
+          fields:
+            containingType:
+              nullable: true
+              optional: true
+              type: string
+            declarationFile:
+              type: string
+            declarationStartOffset:
+              type: integer
+            fqName:
+              type: string
+            kind:
+              enum:
+              - CLASS
+              - INTERFACE
+              - OBJECT
+              - FUNCTION
+              - PROPERTY
+              - PARAMETER
+              - UNKNOWN
+              nullable: true
+              optional: true
+              type: string
+          required:
+          - fqName
+          - declarationFile
+          - declarationStartOffset
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - selector
+    responseType: KastImplementationsResponse
+    responseVariants:
+    - AVAILABLE
+    - SUBJECT_NOT_FOUND
+    - SUBJECT_IDENTITY_MISMATCH
+    - UNSUPPORTED_SUBJECT_KIND
+    - DEGRADED
+    - CURSOR_STALE
+    - CURSOR_INVALID
+    successType: AVAILABLE
+    summary: Page exact implementation relationships
   symbol/query:
     category: symbol
     dataSource: sqlite

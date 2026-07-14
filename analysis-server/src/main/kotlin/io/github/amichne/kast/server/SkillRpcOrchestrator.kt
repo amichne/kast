@@ -36,11 +36,9 @@ import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
-import io.github.amichne.kast.api.contract.skill.KastCallersFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastCallersRequest
 import io.github.amichne.kast.api.contract.skill.KastCallersResponse
-import io.github.amichne.kast.api.contract.skill.KastCallersSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastCandidate
 import io.github.amichne.kast.api.contract.skill.KastDiscoverFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastDiscoverQuery
@@ -335,51 +333,111 @@ internal class SkillRpcOrchestrator(
 
     suspend fun callers(request: KastCallersRequest): KastCallersResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selector = request.selector.normalizedFor(workspaceRoot)
         val query = KastCallersQuery(
             workspaceRoot = workspaceRoot,
-            symbol = request.symbol,
-            fileHint = request.fileHint,
-            kind = request.kind,
-            containingType = request.containingType,
+            selector = selector,
             direction = request.direction,
             depth = request.depth,
-            maxTotalCalls = request.maxTotalCalls,
-            maxChildrenPerNode = request.maxChildrenPerNode,
-            timeoutMillis = request.timeoutMillis,
+            maxResults = request.maxResults,
+            pageToken = request.pageToken,
         )
-        val resolved = resolveNamedSymbol(
-            symbolName = request.symbol,
-            fileHint = request.fileHint,
-            kind = request.kind,
-            containingType = request.containingType,
-        ) ?: return KastCallersFailureResponse(
-            stage = "resolve",
-            message = "No symbol matching '${request.symbol}' found in workspace",
-            query = query,
-            logFile = placeholderLogFile(),
+        validateRelationshipQuery(selector, request.depth, request.maxResults)
+        val subject = resolveRelationshipSubject(selector)
+            ?: return KastCallersSubjectNotFoundResponse(selector)
+        if (!selector.matches(subject)) {
+            return KastCallersSubjectIdentityMismatchResponse(selector, subject)
+        }
+        if (subject.kind != SymbolKind.FUNCTION) {
+            return KastCallersUnsupportedSubjectKindResponse(selector, subject)
+        }
+        if (ReadCapability.CALL_HIERARCHY !in backend.capabilities().readCapabilities) {
+            return KastCallersDegradedResponse(
+                selector,
+                subject,
+                KastCallDegradedReason.CALL_HIERARCHY_UNAVAILABLE,
+            )
+        }
+        val result = try {
+            backend.callRelations(query)
+        } catch (failure: ConflictException) {
+            return callContinuationOutcome(selector, subject, failure)
+        }
+        return KastCallersAvailableResponse(
+            subject = subject,
+            records = result.records,
+            page = result.page,
         )
-        requireReadCapability(ReadCapability.CALL_HIERARCHY)
-        val result = backend.callHierarchy(
-            CallHierarchyQuery(
-                position = FilePosition(filePath = resolved.filePath, offset = resolved.offset),
-                direction = request.direction.toCallDirection(),
-                depth = request.depth,
-                maxTotalCalls = request.maxTotalCalls ?: 256,
-                maxChildrenPerNode = request.maxChildrenPerNode ?: 64,
-                timeoutMillis = request.timeoutMillis?.toLong(),
-            ).parsed(),
+    }
+
+    suspend fun implementations(
+        request: KastImplementationsRequest,
+    ): KastImplementationsResponse {
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selector = request.selector.normalizedFor(workspaceRoot)
+        val query = KastImplementationsQuery(
+            workspaceRoot = workspaceRoot,
+            selector = selector,
+            maxResults = request.maxResults,
+            pageToken = request.pageToken,
         )
-        return KastCallersSuccessResponse(
-            query = query,
-            symbol = resolved.symbol,
-            filePath = resolved.filePath,
-            offset = resolved.offset,
-            root = result.root,
-            stats = result.stats,
-            candidateCount = resolved.candidateCount.takeIf { it > 1 },
-            alternatives = resolved.alternativeFqNames.takeIf { it.isNotEmpty() },
-            logFile = placeholderLogFile(),
+        validateRelationshipQuery(selector, null, request.maxResults)
+        val subject = resolveRelationshipSubject(selector)
+            ?: return KastImplementationsSubjectNotFoundResponse(selector)
+        if (!selector.matches(subject)) {
+            return KastImplementationsSubjectIdentityMismatchResponse(selector, subject)
+        }
+        if (subject.kind !in setOf(SymbolKind.CLASS, SymbolKind.INTERFACE)) {
+            return KastImplementationsUnsupportedSubjectKindResponse(selector, subject)
+        }
+        if (ReadCapability.IMPLEMENTATIONS !in backend.capabilities().readCapabilities) {
+            return KastImplementationsDegradedResponse(
+                selector,
+                subject,
+                KastImplementationsDegradedReason.IMPLEMENTATIONS_UNAVAILABLE,
+            )
+        }
+        val result = try {
+            backend.implementationRelations(query)
+        } catch (failure: ConflictException) {
+            return implementationContinuationOutcome(selector, subject, failure)
+        }
+        return KastImplementationsAvailableResponse(subject, result.records, result.page)
+    }
+
+    suspend fun hierarchy(request: KastHierarchyRequest): KastHierarchyResponse {
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selector = request.selector.normalizedFor(workspaceRoot)
+        val query = KastHierarchyQuery(
+            workspaceRoot = workspaceRoot,
+            selector = selector,
+            direction = request.direction,
+            depth = request.depth,
+            maxResults = request.maxResults,
+            pageToken = request.pageToken,
         )
+        validateRelationshipQuery(selector, request.depth, request.maxResults)
+        val subject = resolveRelationshipSubject(selector)
+            ?: return KastHierarchySubjectNotFoundResponse(selector)
+        if (!selector.matches(subject)) {
+            return KastHierarchySubjectIdentityMismatchResponse(selector, subject)
+        }
+        if (subject.kind !in setOf(SymbolKind.CLASS, SymbolKind.INTERFACE, SymbolKind.OBJECT)) {
+            return KastHierarchyUnsupportedSubjectKindResponse(selector, subject)
+        }
+        if (ReadCapability.TYPE_HIERARCHY !in backend.capabilities().readCapabilities) {
+            return KastHierarchyDegradedResponse(
+                selector,
+                subject,
+                KastHierarchyDegradedReason.TYPE_HIERARCHY_UNAVAILABLE,
+            )
+        }
+        val result = try {
+            backend.hierarchyRelations(query)
+        } catch (failure: ConflictException) {
+            return hierarchyContinuationOutcome(selector, subject, failure)
+        }
+        return KastHierarchyAvailableResponse(subject, result.records, result.page)
     }
 
     suspend fun scaffold(request: KastScaffoldRequest): KastScaffoldResponse {
@@ -1532,6 +1590,182 @@ internal class SkillRpcOrchestrator(
         if (query.maxResults > config.maxResults) {
             throw ValidationException("maxResults must be less than or equal to server maxResults (${config.maxResults})")
         }
+    }
+
+    private suspend fun resolveRelationshipSubject(
+        selector: KastExactSymbolSelector,
+    ): SymbolIdentity? {
+        requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
+        return try {
+            backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(
+                        filePath = selector.declarationFile,
+                        offset = selector.declarationStartOffset,
+                    ),
+                ).parsed(),
+            ).symbol.toSymbolIdentity()
+        } catch (_: NotFoundException) {
+            null
+        }
+    }
+
+    private fun validateRelationshipQuery(
+        selector: KastExactSymbolSelector,
+        depth: Int?,
+        maxResults: Int,
+    ) {
+        if (selector.fqName.isBlank()) {
+            throw ValidationException("selector.fqName must not be blank")
+        }
+        if (selector.declarationFile.isBlank()) {
+            throw ValidationException("selector.declarationFile must not be blank")
+        }
+        if (selector.declarationStartOffset < 0) {
+            throw ValidationException("selector.declarationStartOffset must not be negative")
+        }
+        if (depth != null && depth !in 1..8) {
+            throw ValidationException("depth must be from 1 through 8")
+        }
+        if (maxResults !in 1..minOf(200, config.maxResults)) {
+            throw ValidationException(
+                "maxResults must be from 1 through ${minOf(200, config.maxResults)}",
+            )
+        }
+    }
+
+    private fun callContinuationOutcome(
+        selector: KastExactSymbolSelector,
+        subject: SymbolIdentity,
+        failure: ConflictException,
+    ): KastCallersResponse = when (failure.details["continuationFailure"]) {
+        "generationChanged" -> KastCallersCursorStaleResponse(
+            selector,
+            RelationCursorStaleReason.GENERATION_CHANGED,
+        )
+        "expired" -> KastCallersCursorStaleResponse(selector, RelationCursorStaleReason.EXPIRED)
+        "familyMismatch" -> KastCallersCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.FAMILY_MISMATCH,
+        )
+        "queryMismatch" -> KastCallersCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.QUERY_MISMATCH,
+        )
+        "unknown" -> KastCallersCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.UNKNOWN_HANDLE,
+        )
+        "candidateBudgetReached" -> KastCallersDegradedResponse(
+            selector,
+            subject,
+            KastCallDegradedReason.CANDIDATE_BUDGET_REACHED,
+        )
+        "traversalStateBudgetReached" -> KastCallersDegradedResponse(
+            selector,
+            subject,
+            KastCallDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+        )
+        "timeout" -> KastCallersDegradedResponse(selector, subject, KastCallDegradedReason.TIMEOUT)
+        else -> throw failure
+    }
+
+    private fun implementationContinuationOutcome(
+        selector: KastExactSymbolSelector,
+        subject: SymbolIdentity,
+        failure: ConflictException,
+    ): KastImplementationsResponse = when (failure.details["continuationFailure"]) {
+        "generationChanged" -> KastImplementationsCursorStaleResponse(
+            selector,
+            RelationCursorStaleReason.GENERATION_CHANGED,
+        )
+        "expired" -> KastImplementationsCursorStaleResponse(
+            selector,
+            RelationCursorStaleReason.EXPIRED,
+        )
+        "familyMismatch" -> KastImplementationsCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.FAMILY_MISMATCH,
+        )
+        "queryMismatch" -> KastImplementationsCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.QUERY_MISMATCH,
+        )
+        "unknown" -> KastImplementationsCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.UNKNOWN_HANDLE,
+        )
+        "candidateBudgetReached" -> KastImplementationsDegradedResponse(
+            selector,
+            subject,
+            KastImplementationsDegradedReason.CANDIDATE_BUDGET_REACHED,
+        )
+        "traversalStateBudgetReached" -> KastImplementationsDegradedResponse(
+            selector,
+            subject,
+            KastImplementationsDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+        )
+        "timeout" -> KastImplementationsDegradedResponse(
+            selector,
+            subject,
+            KastImplementationsDegradedReason.TIMEOUT,
+        )
+        else -> throw failure
+    }
+
+    private fun hierarchyContinuationOutcome(
+        selector: KastExactSymbolSelector,
+        subject: SymbolIdentity,
+        failure: ConflictException,
+    ): KastHierarchyResponse = when (failure.details["continuationFailure"]) {
+        "generationChanged" -> KastHierarchyCursorStaleResponse(
+            selector,
+            RelationCursorStaleReason.GENERATION_CHANGED,
+        )
+        "expired" -> KastHierarchyCursorStaleResponse(
+            selector,
+            RelationCursorStaleReason.EXPIRED,
+        )
+        "familyMismatch" -> KastHierarchyCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.FAMILY_MISMATCH,
+        )
+        "queryMismatch" -> KastHierarchyCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.QUERY_MISMATCH,
+        )
+        "unknown" -> KastHierarchyCursorInvalidResponse(
+            selector,
+            RelationCursorInvalidReason.UNKNOWN_HANDLE,
+        )
+        "candidateBudgetReached" -> KastHierarchyDegradedResponse(
+            selector,
+            subject,
+            KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED,
+        )
+        "traversalStateBudgetReached" -> KastHierarchyDegradedResponse(
+            selector,
+            subject,
+            KastHierarchyDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+        )
+        "timeout" -> KastHierarchyDegradedResponse(
+            selector,
+            subject,
+            KastHierarchyDegradedReason.TIMEOUT,
+        )
+        else -> throw failure
+    }
+
+    private fun KastExactSymbolSelector.normalizedFor(
+        workspaceRoot: String,
+    ): KastExactSymbolSelector {
+        val input = Path.of(declarationFile)
+        val normalized = if (input.isAbsolute) {
+            input.toAbsolutePath().normalize()
+        } else {
+            Path.of(workspaceRoot).resolve(input).toAbsolutePath().normalize()
+        }
+        return copy(declarationFile = normalized.toString())
     }
 
     private fun Symbol.toSymbolIdentity(): SymbolIdentity = SymbolIdentity(

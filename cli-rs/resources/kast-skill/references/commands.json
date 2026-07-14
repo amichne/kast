@@ -21,6 +21,8 @@
       "symbol/resolve",
       "symbol/references",
       "symbol/callers",
+      "symbol/implementations",
+      "symbol/hierarchy",
       "symbol/rename",
       "symbol/write-and-validate",
       "symbol/add-file",
@@ -936,7 +938,7 @@
     "symbol/callers": {
       "method": "symbol/callers",
       "category": "symbol",
-      "summary": "Expand an incoming or outgoing call hierarchy",
+      "summary": "Page exact incoming or outgoing call relationships",
       "dataSource": "backend",
       "request": {
         "fields": {
@@ -945,34 +947,28 @@
             "optional": true,
             "nullable": true
           },
-          "symbol": {
-            "type": "string"
-          },
-          "fileHint": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "kind": {
-            "type": "string",
-            "optional": true,
-            "nullable": true,
-            "enum": [
-              "class",
-              "interface",
-              "object",
-              "function",
-              "property"
-            ]
-          },
-          "containingType": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
+          "selector": {
+            "type": "object",
+            "fields": {
+              "fqName": { "type": "string" },
+              "declarationFile": { "type": "string" },
+              "declarationStartOffset": { "type": "integer" },
+              "kind": {
+                "type": "string",
+                "optional": true,
+                "nullable": true,
+                "enum": ["CLASS", "INTERFACE", "OBJECT", "FUNCTION", "PROPERTY", "PARAMETER", "UNKNOWN"]
+              },
+              "containingType": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              }
+            },
+            "required": ["fqName", "declarationFile", "declarationStartOffset"]
           },
           "direction": {
             "type": "string",
-            "optional": true,
             "enum": [
               "incoming",
               "outgoing"
@@ -982,36 +978,91 @@
             "type": "integer",
             "optional": true
           },
-          "maxTotalCalls": {
+          "maxResults": {
             "type": "integer",
-            "optional": true,
-            "nullable": true
+            "optional": true
           },
-          "maxChildrenPerNode": {
-            "type": "integer",
-            "optional": true,
-            "nullable": true
-          },
-          "timeoutMillis": {
-            "type": "integer",
+          "pageToken": {
+            "type": "string",
             "optional": true,
             "nullable": true
           }
         },
         "required": [
-          "symbol"
+          "selector",
+          "direction"
         ]
       },
       "responseType": "KastCallersResponse",
-      "successType": "CALLERS_SUCCESS",
-      "failureType": "CALLERS_FAILURE",
+      "successType": "AVAILABLE",
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"],
       "notes": [
-        "The 'symbol' field takes simple names only."
+        "The selector consumes the canonical identity returned by exact symbol lookup.",
+        "direction is fixed by the public callers or callees command.",
+        "pageToken is an opaque backend-owned rth1 traversal handle."
       ],
       "tool": {
         "name": "kast_callers",
-        "description": "Trace incoming or outgoing call hierarchy for a Kotlin function. Use to understand flow, blast radius, or the entry points reaching a target."
+        "description": "Trace incoming or outgoing call relationships for one exact Kotlin function identity."
       }
+    },
+    "symbol/implementations": {
+      "method": "symbol/implementations",
+      "category": "symbol",
+      "summary": "Page exact implementation relationships",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
+          "selector": {
+            "type": "object",
+            "fields": {
+              "fqName": { "type": "string" },
+              "declarationFile": { "type": "string" },
+              "declarationStartOffset": { "type": "integer" },
+              "kind": { "type": "string", "optional": true, "nullable": true, "enum": ["CLASS", "INTERFACE", "OBJECT", "FUNCTION", "PROPERTY", "PARAMETER", "UNKNOWN"] },
+              "containingType": { "type": "string", "optional": true, "nullable": true }
+            },
+            "required": ["fqName", "declarationFile", "declarationStartOffset"]
+          },
+          "maxResults": { "type": "integer", "optional": true },
+          "pageToken": { "type": "string", "optional": true, "nullable": true }
+        },
+        "required": ["selector"]
+      },
+      "responseType": "KastImplementationsResponse",
+      "successType": "AVAILABLE",
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"]
+    },
+    "symbol/hierarchy": {
+      "method": "symbol/hierarchy",
+      "category": "symbol",
+      "summary": "Page exact type hierarchy relationships",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
+          "selector": {
+            "type": "object",
+            "fields": {
+              "fqName": { "type": "string" },
+              "declarationFile": { "type": "string" },
+              "declarationStartOffset": { "type": "integer" },
+              "kind": { "type": "string", "optional": true, "nullable": true, "enum": ["CLASS", "INTERFACE", "OBJECT", "FUNCTION", "PROPERTY", "PARAMETER", "UNKNOWN"] },
+              "containingType": { "type": "string", "optional": true, "nullable": true }
+            },
+            "required": ["fqName", "declarationFile", "declarationStartOffset"]
+          },
+          "direction": { "type": "string", "enum": ["SUPERTYPES", "SUBTYPES", "BOTH"] },
+          "depth": { "type": "integer", "optional": true },
+          "maxResults": { "type": "integer", "optional": true },
+          "pageToken": { "type": "string", "optional": true, "nullable": true }
+        },
+        "required": ["selector", "direction"]
+      },
+      "responseType": "KastHierarchyResponse",
+      "successType": "AVAILABLE",
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"]
     },
     "symbol/rename": {
       "method": "symbol/rename",

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `40`.
+Catalog version: `dev`. Methods: `42`.
 
 #### Method families
 
@@ -54,7 +54,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit`<br>`mutation/status`<br>`mutation/cancel` |
-| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
@@ -93,8 +93,10 @@ uses a discriminated response envelope.
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
 | `symbol/resolve` | `symbol` | backend | Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_NOT_FOUND`<br>`RESOLVE_AMBIGUOUS`<br>`RESOLVE_FAILURE` |
-| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclaration`<br>`maxResults`<br>`pageToken` | `KastReferencesResponse` | `REFERENCES_SUCCESS`<br>`REFERENCES_FAILURE` |
-| `symbol/callers` | `symbol` | backend | Expand an incoming or outgoing call hierarchy | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`direction`<br>`depth`<br>`maxTotalCalls`<br>`maxChildrenPerNode`<br>`timeoutMillis` | `KastCallersResponse` | `CALLERS_SUCCESS`<br>`CALLERS_FAILURE` |
+| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `selector` | `workspaceRoot`<br>`includeDeclaration`<br>`includeUsageSiteScope`<br>`maxResults`<br>`pageToken` | `KastReferencesResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
+| `symbol/callers` | `symbol` | backend | Page exact incoming or outgoing call relationships | `selector`<br>`direction` | `workspaceRoot`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastCallersResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
+| `symbol/implementations` | `symbol` | backend | Page exact implementation relationships | `selector` | `workspaceRoot`<br>`maxResults`<br>`pageToken` | `KastImplementationsResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
+| `symbol/hierarchy` | `symbol` | backend | Page exact type hierarchy relationships | `selector`<br>`direction` | `workspaceRoot`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastHierarchyResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`RENAME_BY_SYMBOL_REQUEST`: `symbol`, `newName`<br>`RENAME_BY_OFFSET_REQUEST`: `filePath`, `offset`, `newName` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
 | `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type`<br>`CREATE_FILE_REQUEST`: `filePath`<br>`INSERT_AT_OFFSET_REQUEST`: `filePath`, `offset`<br>`REPLACE_RANGE_REQUEST`: `filePath`, `startOffset`, `endOffset` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
 | `symbol/add-file` | `symbol` | backend | Create a Kotlin file from a content file and validate the result | `filePath`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
@@ -335,21 +337,19 @@ Notes:
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
-| `symbol` | `string` | yes | no |  |
-| `fileHint` | `string` | no | yes |  |
-| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
-| `containingType` | `string` | no | yes |  |
+| `selector` | `object` | yes | no |  |
 | `includeDeclaration` | `boolean` | no | no |  |
+| `includeUsageSiteScope` | `boolean` | no | no |  |
 | `maxResults` | `integer` | no | no |  |
 | `pageToken` | `string` | no | yes |  |
 
 Response type: `KastReferencesResponse`.
-Result variants: `REFERENCES_SUCCESS`, `REFERENCES_FAILURE`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
 
 Notes:
 
-- The 'symbol' field takes simple names only.
-- Resolve ambiguous names first with 'kind', 'containingType', or 'fileHint'.
+- The selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.
+- Optional kind and containingType values are hard identity assertions.
 - maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
 - Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.
 - Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
@@ -357,27 +357,57 @@ Notes:
 </details>
 
 <details markdown="1">
-<summary><code>symbol/callers</code> - Expand an incoming or outgoing call hierarchy</summary>
+<summary><code>symbol/callers</code> - Page exact incoming or outgoing call relationships</summary>
 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
-| `symbol` | `string` | yes | no |  |
-| `fileHint` | `string` | no | yes |  |
-| `kind` | `string` | no | yes | `class`<br>`interface`<br>`object`<br>`function`<br>`property` |
-| `containingType` | `string` | no | yes |  |
-| `direction` | `string` | no | no | `incoming`<br>`outgoing` |
+| `selector` | `object` | yes | no |  |
+| `direction` | `string` | yes | no | `incoming`<br>`outgoing` |
 | `depth` | `integer` | no | no |  |
-| `maxTotalCalls` | `integer` | no | yes |  |
-| `maxChildrenPerNode` | `integer` | no | yes |  |
-| `timeoutMillis` | `integer` | no | yes |  |
+| `maxResults` | `integer` | no | no |  |
+| `pageToken` | `string` | no | yes |  |
 
 Response type: `KastCallersResponse`.
-Result variants: `CALLERS_SUCCESS`, `CALLERS_FAILURE`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
 
 Notes:
 
-- The 'symbol' field takes simple names only.
+- The selector consumes the canonical identity returned by exact symbol lookup.
+- direction is fixed by the public callers or callees command.
+- pageToken is an opaque backend-owned rth1 traversal handle.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/implementations</code> - Page exact implementation relationships</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `selector` | `object` | yes | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `pageToken` | `string` | no | yes |  |
+
+Response type: `KastImplementationsResponse`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
+
+</details>
+
+<details markdown="1">
+<summary><code>symbol/hierarchy</code> - Page exact type hierarchy relationships</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `selector` | `object` | yes | no |  |
+| `direction` | `string` | yes | no | `SUPERTYPES`<br>`SUBTYPES`<br>`BOTH` |
+| `depth` | `integer` | no | no |  |
+| `maxResults` | `integer` | no | no |  |
+| `pageToken` | `string` | no | yes |  |
+
+Response type: `KastHierarchyResponse`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
 
 </details>
 

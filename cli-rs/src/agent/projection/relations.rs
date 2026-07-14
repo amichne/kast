@@ -393,6 +393,7 @@ fn project_expected_reference_outcome(
 
 #[derive(Debug, Clone)]
 struct AgentExpectedRelationshipSelector {
+    workspace_root: String,
     fq_name: String,
     declaration_file: String,
     declaration_start_offset: u64,
@@ -419,6 +420,14 @@ impl AgentExpectedRelationshipSelector {
                 .is_none_or(|containing_type| {
                     actual.containing_type.as_ref() == Some(containing_type)
                 })
+    }
+
+    fn matches_selector(&self, selector: &AgentRelationSelectorProjection) -> bool {
+        self.fq_name == selector.fq_name
+            && self.declaration_file == selector.declaration_file
+            && self.declaration_start_offset == selector.declaration_start_offset
+            && self.kind == selector.kind
+            && self.containing_type == selector.containing_type
     }
 }
 
@@ -881,4 +890,476 @@ fn project_available_relationship<Record: Serialize>(
         result.insert("limitations".to_string(), Value::Array(Vec::new()));
     }
     projected_agent_envelope(method, true, Value::Object(result), None)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all_fields = "camelCase")]
+enum AgentTypedTraversalResponseInput<Record, Reason> {
+    #[serde(rename = "AVAILABLE")]
+    Available {
+        subject: AgentRelationIdentityProjection,
+        records: Vec<Record>,
+        page: AgentTypedTraversalPageInput,
+    },
+    #[serde(rename = "SUBJECT_NOT_FOUND")]
+    SubjectNotFound {
+        selector: AgentRelationSelectorProjection,
+    },
+    #[serde(rename = "SUBJECT_IDENTITY_MISMATCH")]
+    SubjectIdentityMismatch {
+        selector: AgentRelationSelectorProjection,
+        actual: AgentRelationIdentityProjection,
+    },
+    #[serde(rename = "UNSUPPORTED_SUBJECT_KIND")]
+    UnsupportedSubjectKind {
+        selector: AgentRelationSelectorProjection,
+        subject: AgentRelationIdentityProjection,
+    },
+    #[serde(rename = "DEGRADED")]
+    Degraded {
+        selector: AgentRelationSelectorProjection,
+        subject: AgentRelationIdentityProjection,
+        reason: Reason,
+    },
+    #[serde(rename = "CURSOR_STALE")]
+    CursorStale {
+        selector: AgentRelationSelectorProjection,
+        reason: AgentRelationCursorStaleReason,
+    },
+    #[serde(rename = "CURSOR_INVALID")]
+    CursorInvalid {
+        selector: AgentRelationSelectorProjection,
+        reason: AgentRelationCursorInvalidReason,
+    },
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTypedTraversalPageInput {
+    cardinality: AgentResultCardinality,
+    returned_count: usize,
+    visited_candidate_count: usize,
+    truncated: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    next_page_token: Option<String>,
+}
+
+impl AgentTypedTraversalPageInput {
+    fn is_valid(&self, record_count: usize, result_limit: usize) -> bool {
+        self.returned_count == record_count
+            && record_count <= result_limit
+            && self.visited_candidate_count >= record_count
+            && self.visited_candidate_count <= 16_384
+            && self.truncated == self.next_page_token.is_some()
+            && self.cardinality.known_minimum() >= record_count
+            && (!self.truncated || self.cardinality.known_minimum() > record_count)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTypedCallRecordInput {
+    relation: String,
+    related_symbol: AgentRelationIdentityProjection,
+    call_site: AgentLocationInput,
+    depth: usize,
+    containing_symbol: AgentContainingSymbolInput,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTypedImplementationRecordInput {
+    relation: String,
+    implementation: AgentRelationIdentityProjection,
+    declaration_location: AgentLocationInput,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTypedHierarchyRecordInput {
+    relation: String,
+    related_symbol: AgentRelationIdentityProjection,
+    declaration_location: AgentLocationInput,
+    depth: usize,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentCallDegradedReason {
+    CallHierarchyUnavailable,
+    CandidateBudgetReached,
+    TraversalStateBudgetReached,
+    Timeout,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentImplementationsDegradedReason {
+    ImplementationsUnavailable,
+    CandidateBudgetReached,
+    TraversalStateBudgetReached,
+    Timeout,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentHierarchyDegradedReason {
+    TypeHierarchyUnavailable,
+    CandidateBudgetReached,
+    TraversalStateBudgetReached,
+    Timeout,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_typed_call_relationship_envelope(
+    method: String,
+    envelope: AgentEnvelope,
+    expected: AgentExpectedRelationshipSelector,
+    relation: &'static str,
+    record_relation: &'static str,
+    result_limit: usize,
+    max_depth: usize,
+    view: AgentResultView<AgentRelationField>,
+) -> AgentEnvelope {
+    project_typed_relationship_envelope::<AgentTypedCallRecordInput, AgentCallDegradedReason>(
+        method,
+        envelope,
+        expected,
+        "KAST_AGENT_CALL_RELATIONSHIP_RESULT",
+        relation,
+        result_limit,
+        view,
+        |kind| kind == "FUNCTION",
+        |record| {
+            record.relation == record_relation
+                && record.related_symbol.is_valid()
+                && valid_relationship_location(&record.call_site)
+                && (1..=max_depth).contains(&record.depth)
+                && record.containing_symbol.is_valid()
+        },
+    )
+}
+
+fn project_typed_implementations_envelope(
+    method: String,
+    envelope: AgentEnvelope,
+    expected: AgentExpectedRelationshipSelector,
+    result_limit: usize,
+    view: AgentResultView<AgentRelationField>,
+) -> AgentEnvelope {
+    project_typed_relationship_envelope::<
+        AgentTypedImplementationRecordInput,
+        AgentImplementationsDegradedReason,
+    >(
+        method,
+        envelope,
+        expected,
+        "KAST_AGENT_IMPLEMENTATIONS_RESULT",
+        "implementations",
+        result_limit,
+        view,
+        |kind| matches!(kind, "CLASS" | "INTERFACE"),
+        |record| {
+            record.relation == "IMPLEMENTATION"
+                && record.implementation.is_valid()
+                && valid_relationship_location(&record.declaration_location)
+                && record.implementation.declaration_file
+                    == record.declaration_location.file_path
+                && Some(record.implementation.declaration_start_offset)
+                    == record.declaration_location.start_offset
+        },
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_typed_hierarchy_envelope(
+    method: String,
+    envelope: AgentEnvelope,
+    expected: AgentExpectedRelationshipSelector,
+    direction: &str,
+    result_limit: usize,
+    max_depth: usize,
+    view: AgentResultView<AgentRelationField>,
+) -> AgentEnvelope {
+    project_typed_relationship_envelope::<
+        AgentTypedHierarchyRecordInput,
+        AgentHierarchyDegradedReason,
+    >(
+        method,
+        envelope,
+        expected,
+        "KAST_AGENT_HIERARCHY_RESULT",
+        "hierarchy",
+        result_limit,
+        view,
+        |kind| matches!(kind, "CLASS" | "INTERFACE" | "OBJECT"),
+        |record| {
+            let relation_matches = match direction {
+                "SUPERTYPES" => record.relation == "SUPERTYPE",
+                "SUBTYPES" => record.relation == "SUBTYPE",
+                "BOTH" => matches!(record.relation.as_str(), "SUPERTYPE" | "SUBTYPE"),
+                _ => false,
+            };
+            relation_matches
+                && record.related_symbol.is_valid()
+                && valid_relationship_location(&record.declaration_location)
+                && record.related_symbol.declaration_file
+                    == record.declaration_location.file_path
+                && Some(record.related_symbol.declaration_start_offset)
+                    == record.declaration_location.start_offset
+                && (1..=max_depth).contains(&record.depth)
+        },
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_typed_relationship_envelope<Record, Reason>(
+    method: String,
+    envelope: AgentEnvelope,
+    expected: AgentExpectedRelationshipSelector,
+    result_type: &'static str,
+    relation: &'static str,
+    result_limit: usize,
+    view: AgentResultView<AgentRelationField>,
+    admitted_kind: impl Fn(&str) -> bool + Copy,
+    record_is_valid: impl Fn(&Record) -> bool,
+) -> AgentEnvelope
+where
+    Record: for<'de> Deserialize<'de> + Serialize,
+    Reason: for<'de> Deserialize<'de> + Serialize,
+{
+    if !envelope.ok {
+        return compact_relationship_error(method, envelope);
+    }
+    let Some(result) = envelope.result else {
+        return invalid_projection_envelope(method, "Relationship endpoint returned no result.");
+    };
+    let input = match serde_json::from_value::<AgentTypedTraversalResponseInput<Record, Reason>>(
+        result,
+    ) {
+        Ok(input) => input,
+        Err(error) => {
+            return invalid_projection_envelope(
+                method,
+                format!("Relationship endpoint violated its closed response contract: {error}"),
+            );
+        }
+    };
+    match input {
+        AgentTypedTraversalResponseInput::Available {
+            mut subject,
+            records,
+            page,
+        } => {
+            if !subject.is_valid()
+                || !expected.matches(&mut subject)
+                || !admitted_kind(&subject.kind)
+                || !page.is_valid(records.len(), result_limit)
+                || records.iter().any(|record| !record_is_valid(record))
+            {
+                return invalid_projection_envelope(
+                    method,
+                    "Relationship endpoint contained invalid or unbounded available evidence.",
+                );
+            }
+            project_typed_available_relationship(
+                method,
+                result_type,
+                subject,
+                relation,
+                records,
+                page,
+                view,
+            )
+        }
+        other => project_typed_expected_relationship_outcome(
+            method,
+            result_type,
+            expected,
+            other,
+            admitted_kind,
+        ),
+    }
+}
+
+fn project_typed_available_relationship<Record: Serialize>(
+    method: String,
+    result_type: &'static str,
+    subject: AgentRelationIdentityProjection,
+    relation: &'static str,
+    records: Vec<Record>,
+    page: AgentTypedTraversalPageInput,
+    view: AgentResultView<AgentRelationField>,
+) -> AgentEnvelope {
+    let selected = |field| match &view {
+        AgentResultView::Fields(fields) => fields.contains(&field),
+        AgentResultView::Count => false,
+        AgentResultView::Compact | AgentResultView::Verbose | AgentResultView::Explain => true,
+    };
+    let mut result = serde_json::Map::from_iter([
+        ("type".to_string(), Value::String(result_type.to_string())),
+        ("ok".to_string(), Value::Bool(true)),
+        ("outcome".to_string(), Value::String("AVAILABLE".to_string())),
+        ("schemaVersion".to_string(), Value::from(SCHEMA_VERSION)),
+    ]);
+    if selected(AgentRelationField::Subject) {
+        result.insert(
+            "subject".to_string(),
+            serde_json::to_value(subject).unwrap_or(Value::Null),
+        );
+    }
+    if selected(AgentRelationField::Relation) || matches!(view, AgentResultView::Count) {
+        result.insert("relation".to_string(), Value::String(relation.to_string()));
+    }
+    if selected(AgentRelationField::Records) {
+        result.insert(
+            "records".to_string(),
+            serde_json::to_value(records).unwrap_or(Value::Null),
+        );
+    }
+    if selected(AgentRelationField::Page) || matches!(view, AgentResultView::Count) {
+        result.insert(
+            "page".to_string(),
+            serde_json::to_value(page).unwrap_or(Value::Null),
+        );
+    }
+    if selected(AgentRelationField::Limitations) {
+        result.insert("limitations".to_string(), Value::Array(Vec::new()));
+    }
+    projected_agent_envelope(method, true, Value::Object(result), None)
+}
+
+fn project_typed_expected_relationship_outcome<Record, Reason>(
+    method: String,
+    result_type: &'static str,
+    expected: AgentExpectedRelationshipSelector,
+    outcome: AgentTypedTraversalResponseInput<Record, Reason>,
+    admitted_kind: impl Fn(&str) -> bool,
+) -> AgentEnvelope
+where
+    Reason: Serialize,
+{
+    let value = match outcome {
+        AgentTypedTraversalResponseInput::SubjectNotFound { selector }
+            if selector.is_valid() && expected.matches_selector(&selector) =>
+        {
+            json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "SUBJECT_NOT_FOUND",
+                "selector": selector,
+                "schemaVersion": SCHEMA_VERSION,
+            })
+        }
+        AgentTypedTraversalResponseInput::SubjectIdentityMismatch {
+            selector,
+            mut actual,
+        } => {
+            if !selector.is_valid()
+                || !expected.matches_selector(&selector)
+                || !actual.is_valid()
+                || expected.matches(&mut actual)
+            {
+                return invalid_projection_envelope(
+                    method,
+                    "Relationship identity mismatch did not prove a different anchored identity.",
+                );
+            }
+            json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "SUBJECT_IDENTITY_MISMATCH",
+                "selector": selector,
+                "actual": actual,
+                "schemaVersion": SCHEMA_VERSION,
+            })
+        }
+        AgentTypedTraversalResponseInput::UnsupportedSubjectKind {
+            selector,
+            mut subject,
+        } => {
+            if !selector.is_valid()
+                || !expected.matches_selector(&selector)
+                || !subject.is_valid()
+                || !expected.matches(&mut subject)
+                || admitted_kind(&subject.kind)
+            {
+                return invalid_projection_envelope(
+                    method,
+                    "Unsupported relationship subject did not match the selector and rejected kind matrix.",
+                );
+            }
+            json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "UNSUPPORTED_SUBJECT_KIND",
+                "selector": selector,
+                "subject": subject,
+                "schemaVersion": SCHEMA_VERSION,
+            })
+        }
+        AgentTypedTraversalResponseInput::Degraded {
+            selector,
+            mut subject,
+            reason,
+        } => {
+            if !selector.is_valid()
+                || !expected.matches_selector(&selector)
+                || !subject.is_valid()
+                || !expected.matches(&mut subject)
+                || !admitted_kind(&subject.kind)
+            {
+                return invalid_projection_envelope(
+                    method,
+                    "Degraded relationship subject did not match the selector and admitted kind matrix.",
+                );
+            }
+            json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "DEGRADED",
+                "selector": selector,
+                "subject": subject,
+                "reason": reason,
+                "schemaVersion": SCHEMA_VERSION,
+            })
+        }
+        AgentTypedTraversalResponseInput::CursorStale { selector, reason }
+            if selector.is_valid() && expected.matches_selector(&selector) =>
+        {
+            json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "CURSOR_STALE",
+                "selector": selector,
+                "reason": reason,
+                "schemaVersion": SCHEMA_VERSION,
+            })
+        }
+        AgentTypedTraversalResponseInput::CursorInvalid { selector, reason }
+            if selector.is_valid() && expected.matches_selector(&selector) =>
+        {
+            json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "CURSOR_INVALID",
+                "selector": selector,
+                "reason": reason,
+                "schemaVersion": SCHEMA_VERSION,
+            })
+        }
+        AgentTypedTraversalResponseInput::Available { .. } => {
+            return invalid_projection_envelope(
+                method,
+                "Available relationship evidence was projected twice.",
+            );
+        }
+        _ => {
+            return invalid_projection_envelope(
+                method,
+                "Relationship expected outcome contained invalid identity evidence.",
+            );
+        }
+    };
+    projected_agent_envelope(method, true, value, None)
 }
