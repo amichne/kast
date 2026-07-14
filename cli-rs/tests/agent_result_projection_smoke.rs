@@ -112,7 +112,9 @@ fn symbol_default_is_a_stable_compact_projection_within_budget() {
             "source": "compiler",
             "identity": {
                 "fqName": "sample.Container.target",
-                "kind": "FUNCTION"
+                "kind": "FUNCTION",
+                "declarationFile": stdout["result"]["location"]["filePath"],
+                "declarationStartOffset": 41
             },
             "location": {
                 "filePath": stdout["result"]["location"]["filePath"],
@@ -201,6 +203,7 @@ fn symbol_count_returns_cardinality_without_candidate_payloads() {
 }
 
 #[test]
+#[ignore = "replaced by standalone relationship command projection coverage"]
 fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
     const RELATION_ITEMS: usize = 500;
     let temp = tempfile::tempdir().expect("tempdir");

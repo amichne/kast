@@ -1,6 +1,6 @@
 mod support;
 
-use support::kast;
+use support::{kast, spawn_scripted_idea_backend};
 
 fn exact_selector() -> [&'static str; 6] {
     [
@@ -131,4 +131,124 @@ fn relationship_types_reject_invalid_values_before_runtime_io() {
             String::from_utf8_lossy(&output.stderr),
         );
     }
+}
+
+#[test]
+fn exact_symbol_returns_one_reusable_anchored_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket = temp.path().join("idea.sock");
+    let declaration_file = workspace.join("Service.kt");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &socket,
+        vec![(
+            "symbol/resolve",
+            serde_json::json!({
+                "type": "RESOLVE_SUCCESS",
+                "ok": true,
+                "source": "compiler",
+                "symbol": {
+                    "fqName": "sample.Service.run",
+                    "kind": "FUNCTION",
+                    "containingType": "sample.Service",
+                    "location": {
+                        "filePath": declaration_file,
+                        "startOffset": 42,
+                        "endOffset": 45,
+                        "startLine": 3,
+                        "startColumn": 5
+                    }
+                }
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "symbol",
+            "--query",
+            "sample.Service.run",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("exact symbol");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value = serde_json::from_slice(&output.stdout).expect("symbol json");
+    assert_eq!(
+        stdout["result"]["identity"],
+        serde_json::json!({
+            "fqName": "sample.Service.run",
+            "kind": "FUNCTION",
+            "declarationFile": declaration_file,
+            "declarationStartOffset": 42,
+            "containingType": "sample.Service"
+        })
+    );
+    let requests = backend.join().expect("scripted backend");
+    assert_eq!(requests[2]["method"], "symbol/resolve");
+}
+
+#[test]
+fn exact_symbol_does_not_publish_a_partial_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket = temp.path().join("idea.sock");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &socket,
+        vec![(
+            "symbol/resolve",
+            serde_json::json!({
+                "type": "RESOLVE_SUCCESS",
+                "ok": true,
+                "source": "compiler",
+                "symbol": {
+                    "fqName": "sample.Service.run",
+                    "kind": "FUNCTION",
+                    "location": {
+                        "filePath": workspace.join("Service.kt")
+                    }
+                }
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "symbol",
+            "--query",
+            "sample.Service.run",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("partial exact symbol");
+
+    assert!(output.status.success());
+    let stdout: serde_json::Value = serde_json::from_slice(&output.stdout).expect("symbol json");
+    assert_eq!(stdout["result"]["outcome"], "IDENTITY_ANCHOR_UNAVAILABLE");
+    assert!(stdout["result"]["identity"].is_null(), "{stdout}");
+    backend.join().expect("scripted backend");
 }
