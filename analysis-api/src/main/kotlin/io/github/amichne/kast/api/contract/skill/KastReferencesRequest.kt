@@ -5,11 +5,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class KastReferencesRequest(
     val workspaceRoot: String? = null,
-    val symbol: String,
-    val fileHint: String? = null,
-    val kind: WrapperNamedSymbolKind? = null,
-    val containingType: String? = null,
+    val selector: KastExactSymbolSelector,
     val includeDeclaration: Boolean = true,
+    val includeUsageSiteScope: Boolean = false,
     val maxResults: Int = 10,
     val pageToken: String? = null,
 )
