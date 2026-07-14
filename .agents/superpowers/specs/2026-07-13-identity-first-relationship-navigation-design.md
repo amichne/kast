@@ -16,9 +16,9 @@ operations. Implementations and type hierarchy exist only as hidden raw
 position methods. Impact accepts a fully-qualified symbol but has no public
 continuation input.
 
-Issue #337 makes the combined symbol result compact, adds real reference
+Landed issue #337 makes the combined symbol result compact, adds real reference
 paging to the backend, bounds call hierarchy work, and gives source impact a
-separate count plus bounded SQL fetch. Its current branch also establishes
+separate count plus bounded SQL fetch. It also establishes
 `ResultCardinality.EXACT|KNOWN_MINIMUM` and an opaque server-held reference
 cursor bound to normalized query, selected evidence source, semantic
 generation, provider position, and returned-before proof. #339 wraps that
@@ -26,7 +26,15 @@ handle without serializing any of those fields into Rust. #337 intentionally
 does not create standalone relationship commands, containing-symbol identity,
 deterministic continuation for every family, or typed degraded outcomes.
 
-The #337 exact symbol projection still keeps `fqName`/`kind` under `identity`
+The #338 stack is an integration prerequisite, not relationship evidence. It
+promotes the generic ownership-safe `ServerHeldContinuationStore` into
+`analysis-api`, establishes `RunningAnalysisServer` as the single backend close
+owner, adds the Rust projection/capability and generated-catalog layout, and
+locks `tiktoken-rs` 0.12 as a test-only dependency. #339 rebases after #355,
+#356, and #357 land, composes those foundations, and keeps workspace inventory
+out of semantic relationship resolution.
+
+The landed #337 exact symbol projection still keeps `fqName`/`kind` under `identity`
 while declaration file and offset live in a sibling location. #339 closes that
 composition gap: one reusable identity object carries the complete anchored
 selector, and tests consume the emitted object rather than copying hard-coded
@@ -248,29 +256,41 @@ migration cannot be bypassed by adapting occurrences back to bare locations.
 `KastScaffoldReferences.kt` so materially edited production code continues to
 meet the repository's one-top-level-type-per-file rule.
 
-`ServerHeldContinuationStore` is the one semantic-state owner. It lives
-in `backend-idea` and stores sealed reference/call/implementation/hierarchy
-state behind #337 `ReferencePageToken` or `RelationTraversalHandle` values.
-Each exact workspace runtime accepts at most 1,024 live handles, each handle
-expires after 15 minutes, and one state contains at most 16,384 candidate,
-frontier, visited, and provider-continuation entries. The store binds handle,
-relation family, normalized query fingerprint, selected subject, reference
-source where applicable, private returned-before count, and semantic
-generation. Lookup is typed as claimed retained state, retained-but-expired
-state, or absent. Because #337's UUID has no verifiable issuer epoch, absent is
+`RelationshipContinuationStore` is the one semantic relationship-state owner
+inside `backend-idea`. It adapts #338's generic `analysis-api`
+`ServerHeldContinuationStore` and stores sealed
+reference/call/implementation/hierarchy state behind #337
+`ReferencePageToken` or `RelationTraversalHandle` values. The sealed state
+extends `ContinuationOwnedState`, output extends `ContinuationProjection`, and
+the shared store alone owns single-use consume/reissue, TTL, capacity,
+disposal, and close. Relationship handles use the landed typed `ServerLimits`
+TTL/capacity (currently 60 seconds and 256 entries per typed store by default),
+and one state contains at most 16,384 candidate, frontier, visited, and
+provider-continuation entries. The adapter binds handle, relation family,
+normalized query fingerprint, selected subject, reference source where
+applicable, private returned-before count, and semantic generation. Because
+#337's UUID has no verifiable issuer epoch, absent is
 always cursor-invalid `UNKNOWN_HANDLE`: backend-A token after restart in fresh
 backend B, a never-issued random canonical UUID, consumed replay, and capacity
 eviction are intentionally indistinguishable and all perform zero provider
-work. Cursor-stale requires positive evidence from claimed state whose
-generation changed, or retained expiry observed before removal. Recognized
-family/query mismatches are cursor-invalid; malformed handle syntax fails
-request validation. Reaching the state-entry ceiling returns the owning
-family's typed state-budget reason.
+work. Cursor-stale requires positive evidence from consumed retained state
+whose generation changed, or the shared store's typed `ExpiredToken` result.
+The traversal handle's typed family prefix rejects wrong-family use before
+store/provider work; the shared store's terminal `QueryMismatch` maps to the
+family's invalid `QUERY_MISMATCH`. Malformed handle syntax fails request
+validation. Reaching the state-entry ceiling returns the owning family's typed
+state-budget reason.
 `AnalysisBackend` carries handles in its queries/results;
 `ObservedAnalysisBackend` overrides and delegates every changed method.
-`analysis-server` remains transport-only. The store retains #337's one-shot
-consumption rule: a successful typed claim removes the entry, so a consumed
-token cannot be replayed to repeat or fork provider work.
+`analysis-server` remains transport-only. The shared store retains #337's
+one-shot consumption rule: `Complete` disposes and `Reissue` atomically moves
+the same owned state behind a fresh handle. Expiry, eviction, mismatch,
+failure, terminal consumption, backend close, and server shutdown dispose the
+state exactly once. `RunningAnalysisServer` remains the single backend close
+owner. The backend invokes consume/reissue inside the relationship
+`timedReadAction`, so generation validation, provider work, state mutation, and
+next-token publication are atomic with respect to PSI writes. A consumed token
+cannot be replayed to repeat or fork provider work.
 
 INDEX references query production `symbol_references` by FQ name, canonical
 target path, and the selected non-null `target_offset`. Every emitted row must
@@ -455,7 +475,8 @@ it never returns an empty page that looks exhaustive. Each response family
 also owns its typed cursor-stale and cursor-invalid variants.
 
 The closed stale reasons are `GENERATION_CHANGED` and `EXPIRED`; `EXPIRED` is
-legal only from a typed retained-expired claim. The closed invalid reasons are
+legal only from the shared store's typed `ExpiredToken` result for a retained
+entry. The closed invalid reasons are
 `UNKNOWN_HANDLE`, `FAMILY_MISMATCH`, and `QUERY_MISMATCH`. A syntactically
 malformed handle does not enter these outcomes. This taxonomy deliberately
 makes restart-to-fresh-backend and random canonical UUID identical instead of
@@ -505,8 +526,8 @@ transport-only server boundary, backend-owned atomic continuation state,
 production index identity limitations, and Rust command/projection gates.
 Opaque server handles and the impact ASCII offset use existing `sha2`/`hex`
 support, so no runtime token codec is added. The exact compact-output gate does
-add `tiktoken-rs = "0.12"` under Rust dev-dependencies and the corresponding
-`Cargo.lock` entries; both files are intentional #339 changes.
+reuse #338's `tiktoken-rs = "0.12"` Rust dev-dependency and corresponding
+`Cargo.lock` entries; #339 does not create a dependency diff.
 
 ## Output budget
 
@@ -548,7 +569,7 @@ raw public dispatch, text search, or an unbounded backend request.
 | Identity composition | ADR 0016 exact success/fallback is superseded explicitly; one exact symbol `identity` object feeds every anchored command unchanged; same-file overload fixtures select by file/start offset; anchor-unavailable/not-found/non-null mismatch outcomes do not navigate or discover. |
 | Subject-kind admission | Every command-kind pair follows the closed matrix; unsupported pairs return `UNSUPPORTED_SUBJECT_KIND` with selector/verified subject and zero provider/index work. |
 | References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt` and fixtures consume occurrences; #337's opaque cursor round-trips without serialized source/counters; target path/offset INDEX reads isolate a forced overload; unsafe first-page INDEX falls back to IDEA while an INDEX-bound continuation never switches; deterministic pages do not overlap; continuation proves the plus-one known minimum; containing symbol and `usageSiteScope` are non-conflicting. |
-| Atomic backend state | #337 `ServerHeldContinuationStore` is the only semantic owner; generation check, provider work, and state commit occur in one read action; queued-write races reject stale state; backend-A token after restart-to-B and random UUID are identically absent/invalid with zero work, while retained generation mismatch is stale; `ObservedAnalysisBackend` delegates each handle-bearing method once; `analysis-server` owns no duplicate store. |
+| Atomic backend state | `backend-idea`'s relationship adapter is the only semantic owner and composes #338's generic `analysis-api` store; generation check, provider work, state mutation, and shared-store reissue occur in one read action; complete/reissue/disposal/backend-close semantics are proved; queued-write races reject stale state; backend-A token after restart-to-B and random UUID are identically absent/invalid with zero work, while retained generation mismatch is stale; `ObservedAnalysisBackend` delegates each handle-bearing method once; `analysis-server` owns no duplicate semantic store. |
 | Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; bounded incoming search preserves frontier/provider state; outgoing lexical DFS includes nested blocks/local initializers/lambdas, excludes nested named callable/type/accessor bodies, and resumes its pure child-index/reference stack without overlap; reverse-lexical related names prove provider-stable call-site ordering across pages; lambda-only callees and lambda page breaks remain visible; cap-plus-one and forbidden materializer tripwires prove bounded work. |
 | Implementations | Interfaces, abstract classes, and subclasses return typed implementation records; bounded `ClassInheritorsSearch.forEach` provider visits stay bounded; backend state resumes without overlap; stale/invalid handles and unavailable capability are distinct from an empty exhaustive result. |
 | Hierarchy | Supertypes/subtypes/both are exhaustive in Clap; depth, ordering, cycles, emitted limits, stateful frontiers, candidate visits, generation staleness, and degraded capability are typed. |

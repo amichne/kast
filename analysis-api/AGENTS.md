@@ -33,6 +33,12 @@ Keep this unit small, stable, and reusable across every runtime host.
   host-agnostic. Source, provider position, returned-before proof, query,
   subject, semantic generation, PSI, and traversal frontier are runtime state
   and must not enter this module's wire types.
+- Relationship state consumes the shared `continuation` package introduced by
+  #338. Domain state extends `ContinuationOwnedState`, callers receive only a
+  `ContinuationProjection`, and runtime adapters use the generic store's typed
+  single-use `Complete`/`Reissue` transition, explicit disposer, TTL/capacity,
+  and close lifecycle. Do not create a second generic continuation store in a
+  runtime module or return an owning state object from lease/consume APIs.
 - Each relationship response root owns its degraded-reason enum. Shared
   stringly or cross-family degradation codes are prohibited. A continuation
   page must prove `KNOWN_MINIMUM >= returnedBefore + returnedCount + 1`, even

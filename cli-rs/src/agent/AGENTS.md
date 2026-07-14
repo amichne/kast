@@ -57,5 +57,6 @@ Changes to this surface require
 `cli-rs/tests/agent_relationship_navigation_smoke.rs` plus the command-surface,
 result-projection, packaged-content, and generated-contract gates. Runtime
 token changes use existing dependencies. The exact 1,500 `cl100k_base` compact
-budget is executable through the reviewed `tiktoken-rs` test-only dependency;
-`Cargo.toml` and `Cargo.lock` are owned whenever that gate changes.
+budget reuses #338's reviewed `tiktoken-rs` 0.12 test-only dependency;
+relationship work does not rewrite `Cargo.toml` or `Cargo.lock` unless the
+landed dependency graph itself changes.
