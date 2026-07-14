@@ -1,6 +1,7 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
@@ -370,16 +371,102 @@ class AnalysisServerSocketTest {
             Thread.sleep(10)
         }
     }
+
+    @Test
+    fun `running server closes its backend exactly once`() {
+        val socketPath = tempDir.resolve("run").resolve("owned-backend.sock")
+        val backend = CountingCloseBackend(FakeAnalysisBackend.sample(tempDir))
+        val runningServer = AnalysisServer(
+            backend = backend,
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = tempDir.resolve("owned-backend-instances"),
+            ),
+        ).start()
+
+        runningServer.close()
+        runningServer.close()
+
+        assertEquals(1, backend.closeCount)
+    }
+
+    @Test
+    fun `running server completes later close phases after earlier failures`() {
+        val descriptorFile = tempDir.resolve("failure-instances").resolve("daemons.json")
+        val descriptor = ServerInstanceDescriptor(
+            workspaceRoot = tempDir.toString(),
+            backendName = "fake",
+            backendVersion = "test",
+            socketPath = tempDir.resolve("failure.sock").toString(),
+        )
+        val descriptorStore = DescriptorStore(descriptorFile.toString()).also { it.write(descriptor) }
+        val closeEvents = mutableListOf<String>()
+        val transportFailure = IllegalStateException("transport close failed")
+        val backend = RecordingCloseBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            closeEvents = closeEvents,
+            beforeClose = {
+                assertTrue(Files.readString(descriptorFile).contains(descriptor.socketPath))
+            },
+        )
+        val runningServer = RunningAnalysisServer(
+            server = RecordingLocalRpcServer(closeEvents, transportFailure),
+            dispatcher = RecordingCloseable(closeEvents, "dispatcher", transportFailure),
+            backend = backend,
+            descriptor = descriptor,
+            descriptorStore = descriptorStore,
+        )
+
+        val failure = org.junit.jupiter.api.assertThrows<IllegalStateException> {
+            runningServer.close()
+        }
+        runningServer.close()
+
+        assertEquals(transportFailure, failure)
+        assertTrue(failure.suppressed.isEmpty())
+        assertEquals(listOf("transport", "dispatcher", "backend"), closeEvents)
+        assertEquals(1, backend.closeCount)
+        assertFalse(
+            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(descriptor.socketPath),
+            "descriptor cleanup was skipped after an earlier close failure",
+        )
+    }
+    @Test
+    fun `failed start preserves caller backend ownership and releases provisional server`() {
+        val socketPath = tempDir.resolve("run").resolve("failed-start.sock")
+        val invalidDescriptorDirectory = tempDir.resolve("descriptor-file")
+        Files.writeString(invalidDescriptorDirectory, "not a directory")
+        val backend = CountingCloseBackend(FakeAnalysisBackend.sample(tempDir))
+
+        try {
+            org.junit.jupiter.api.assertThrows<Throwable> {
+                AnalysisServer(
+                    backend = backend,
+                    config = AnalysisServerConfig(
+                        transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                        descriptorDirectory = invalidDescriptorDirectory,
+                    ),
+                ).start()
+            }
+
+            assertEquals(0, backend.closeCount, "failed start transferred backend ownership")
+            assertFalse(socketPath.exists(), "failed start leaked its provisional transport")
+        } finally {
+            backend.close()
+            Files.deleteIfExists(socketPath)
+        }
+        assertEquals(1, backend.closeCount)
+    }
 }
 
 private class ClosingApplyBackend(
-    private val delegate: AnalysisBackend,
+    private val delegate: CloseableAnalysisBackend,
     private val applyStarted: CompletableDeferred<Unit>,
     private val applyStopped: CompletableDeferred<Unit>,
     private val descriptorFile: Path,
     private val descriptorIdentity: String,
     private val descriptorRetainedDuringStop: AtomicBoolean,
-) : AnalysisBackend by delegate {
+) : CloseableAnalysisBackend by delegate {
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
         applyStarted.complete(Unit)
         return try {
@@ -391,5 +478,56 @@ private class ClosingApplyBackend(
             )
             applyStopped.complete(Unit)
         }
+    }
+}
+
+private class CountingCloseBackend(
+    private val delegate: CloseableAnalysisBackend,
+) : CloseableAnalysisBackend by delegate {
+    var closeCount: Int = 0
+        private set
+
+    override fun close() {
+        closeCount += 1
+        delegate.close()
+    }
+}
+
+private class RecordingLocalRpcServer(
+    private val closeEvents: MutableList<String>,
+    private val closeFailure: Throwable? = null,
+) : LocalRpcServer {
+    override fun await() = Unit
+
+    override fun close() {
+        closeEvents += "transport"
+        closeFailure?.let { throw it }
+    }
+}
+
+private class RecordingCloseable(
+    private val closeEvents: MutableList<String>,
+    private val phase: String,
+    private val closeFailure: Throwable? = null,
+) : java.io.Closeable {
+    override fun close() {
+        closeEvents += phase
+        closeFailure?.let { throw it }
+    }
+}
+
+private class RecordingCloseBackend(
+    private val delegate: CloseableAnalysisBackend,
+    private val closeEvents: MutableList<String>,
+    private val beforeClose: () -> Unit = {},
+) : CloseableAnalysisBackend by delegate {
+    var closeCount: Int = 0
+        private set
+
+    override fun close() {
+        closeEvents += "backend"
+        beforeClose()
+        closeCount += 1
+        delegate.close()
     }
 }

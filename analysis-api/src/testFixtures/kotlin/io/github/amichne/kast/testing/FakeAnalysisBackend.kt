@@ -1,6 +1,6 @@
 package io.github.amichne.kast.testing
 
-import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.continuation.ContinuationAccessFailure
 import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
 import io.github.amichne.kast.api.continuation.ContinuationIssueResult
@@ -82,7 +82,7 @@ class FakeAnalysisBackend private constructor(
     private val typeHierarchySubtypeSymbol: Symbol,
     private val limits: ServerLimits,
     private val backendName: String,
-) : AnalysisBackend, AutoCloseable {
+) : CloseableAnalysisBackend {
     private val referenceContinuations =
         ServerHeldContinuationStore<ReferencePageToken, FakeReferenceIdentity, FakeReferenceContinuation>(
             capacity = limits.typedContinuationCapacity,

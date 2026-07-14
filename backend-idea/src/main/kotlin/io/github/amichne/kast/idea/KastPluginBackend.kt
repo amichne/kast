@@ -30,7 +30,7 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
-import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
@@ -137,7 +137,7 @@ internal class KastPluginBackend(
     private val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     private val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     private val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
-) : AnalysisBackend, AutoCloseable {
+) : CloseableAnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath

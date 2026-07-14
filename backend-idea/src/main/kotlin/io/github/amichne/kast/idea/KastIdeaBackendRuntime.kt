@@ -6,7 +6,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
-import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.server.AnalysisServer
@@ -17,24 +17,32 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 class RunningKastIdeaBackend internal constructor(
-    val backend: AnalysisBackend,
+    val backend: CloseableAnalysisBackend,
     val server: RunningAnalysisServer,
     private val projectIndexing: KastIdeaProjectIndexing,
-    private val backendResources: AutoCloseable,
     private val sourceIndexStore: SqliteSourceIndexStore,
 ) : AutoCloseable {
+    private val closed = AtomicBoolean(false)
+
     override fun close() {
+        if (!closed.compareAndSet(false, true)) {
+            return
+        }
+
         var firstFailure: Throwable? = null
         listOf<() -> Unit>(
             projectIndexing::cancel,
             server::close,
-            backendResources::close,
             sourceIndexStore::close,
-        ).forEach { close ->
+        ).forEach { closePhase ->
             try {
-                close()
+                closePhase()
             } catch (failure: Throwable) {
-                if (firstFailure == null) firstFailure = failure
+                if (firstFailure == null) {
+                    firstFailure = failure
+                } else {
+                    firstFailure.addSuppressed(failure)
+                }
             }
         }
         firstFailure?.let { failure -> throw failure }
@@ -88,47 +96,91 @@ object KastIdeaBackendRuntime {
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
-        val pluginBackend = KastPluginBackend(
-            project = project,
-            workspaceRoot = workspaceIdentity.workspaceRootPath,
-            limits = limits,
-            telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
-            backendName = backendName,
-            workspaceIdentity = workspaceIdentity,
-            referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
-        )
-        val backend = ObservedAnalysisBackend(
-            delegate = pluginBackend,
-            diagnostics = diagnostics,
-        )
-        val server = AnalysisServer(
-            backend = backend,
-            config = ideaAnalysisServerConfig(transport, limits, config),
-            lifecycleController = lifecycleController,
-        ).start()
-        KastStructuredTrace.event(
-            eventName = "idea.runtime.server_started",
-            project = project,
-            workspaceRoot = workspaceIdentity.workspaceRootPath,
-            fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
-            outcome = "completed",
-            detail = mapOf("transport" to transport.toString()) + workspaceIdentity.traceDetails(),
-        )
-        diagnostics.recordBackendStarted(transport)
-        val projectIndexing = KastIdeaProjectIndexing(
-            project = project,
-            workspaceIdentity = workspaceIdentity,
-            config = config,
-            diagnostics = diagnostics,
-            indexStore = sourceIndexStore,
-        ).also { it.start() }
-        return RunningKastIdeaBackend(
-            backend = backend,
-            server = server,
-            projectIndexing = projectIndexing,
-            backendResources = pluginBackend,
-            sourceIndexStore = sourceIndexStore,
-        )
+        var pluginBackend: KastPluginBackend? = null
+        val backend = try {
+            val startedPluginBackend = KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceIdentity.workspaceRootPath,
+                limits = limits,
+                telemetry = IdeaBackendTelemetry.fromConfig(workspaceRoot, config),
+                backendName = backendName,
+                workspaceIdentity = workspaceIdentity,
+                referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
+            )
+            pluginBackend = startedPluginBackend
+            ObservedAnalysisBackend(
+                delegate = startedPluginBackend,
+                diagnostics = diagnostics,
+            )
+        } catch (failure: Throwable) {
+            listOf<() -> Unit>(
+                { pluginBackend?.close() },
+                sourceIndexStore::close,
+            ).forEach { cleanupPhase ->
+                try {
+                    cleanupPhase()
+                } catch (cleanupFailure: Throwable) {
+                    failure.addSuppressed(cleanupFailure)
+                }
+            }
+            throw failure
+        }
+        val server = try {
+            AnalysisServer(
+                backend = backend,
+                config = ideaAnalysisServerConfig(transport, limits, config),
+                lifecycleController = lifecycleController,
+            ).start()
+        } catch (failure: Throwable) {
+            listOf<() -> Unit>(backend::close, sourceIndexStore::close).forEach { cleanupPhase ->
+                try {
+                    cleanupPhase()
+                } catch (cleanupFailure: Throwable) {
+                    failure.addSuppressed(cleanupFailure)
+                }
+            }
+            throw failure
+        }
+
+        var projectIndexing: KastIdeaProjectIndexing? = null
+        try {
+            KastStructuredTrace.event(
+                eventName = "idea.runtime.server_started",
+                project = project,
+                workspaceRoot = workspaceIdentity.workspaceRootPath,
+                fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
+                outcome = "completed",
+                detail = mapOf("transport" to transport.toString()) + workspaceIdentity.traceDetails(),
+            )
+            diagnostics.recordBackendStarted(transport)
+            val startedProjectIndexing = KastIdeaProjectIndexing(
+                project = project,
+                workspaceIdentity = workspaceIdentity,
+                config = config,
+                diagnostics = diagnostics,
+                indexStore = sourceIndexStore,
+            ).also { it.start() }
+            projectIndexing = startedProjectIndexing
+            return RunningKastIdeaBackend(
+                backend = backend,
+                server = server,
+                projectIndexing = startedProjectIndexing,
+                sourceIndexStore = sourceIndexStore,
+            )
+        } catch (failure: Throwable) {
+            listOf<() -> Unit>(
+                { projectIndexing?.cancel() },
+                server::close,
+                sourceIndexStore::close,
+            ).forEach { cleanupPhase ->
+                try {
+                    cleanupPhase()
+                } catch (cleanupFailure: Throwable) {
+                    failure.addSuppressed(cleanupFailure)
+                }
+            }
+            throw failure
+        }
     }
 }
 
