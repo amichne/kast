@@ -43,6 +43,10 @@ jobs:
           GRADLE_BUILD_ACTION_SKIP_RESTORE: ${{ runner.os == 'macOS' && 'dependencies transforms' || '' }}
         with:
           cache-cleanup: always
+          gradle-home-cache-excludes: |
+            ${{ runner.os == 'macOS' && 'caches/modules-*' || '' }}
+            ${{ runner.os == 'macOS' && 'caches/transforms-*' || '' }}
+            ${{ runner.os == 'macOS' && 'caches/*/transforms' || '' }}
 
       - name: Cache IntelliJ runtime distributions
         uses: actions/cache@v5
