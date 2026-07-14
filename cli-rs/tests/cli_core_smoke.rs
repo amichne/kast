@@ -5,7 +5,7 @@ use support::*;
 fn help_lists_command(stdout: &str, command: &str) -> bool {
     stdout
         .lines()
-        .any(|line| line.trim_start().starts_with(command))
+        .any(|line| line.split_whitespace().next() == Some(command))
 }
 
 #[test]
@@ -90,6 +90,11 @@ fn smoke_core_cli_commands() {
         "verify",
         "workspace-files",
         "symbol",
+        "references",
+        "callers",
+        "callees",
+        "implementations",
+        "hierarchy",
         "impact",
         "diagnostics",
         "rename",
@@ -122,7 +127,6 @@ fn smoke_core_cli_commands() {
         "runtime-status",
         "capabilities",
         "resolve",
-        "references",
         "raw-resolve",
         "raw-diagnostics",
         "metrics",

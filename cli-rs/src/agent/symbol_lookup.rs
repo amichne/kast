@@ -35,20 +35,6 @@ struct IndexedExactFileProof {
 }
 
 fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
-    let relation_budget = if args.references || args.callers.is_some() {
-        match AgentRelationResultBudget::try_from(args.limit) {
-            Ok(budget) => Some(budget),
-            Err(message) => {
-                return error_envelope(
-                    "agent/symbol".to_string(),
-                    None,
-                    agent_error("AGENT_USAGE", message),
-                );
-            }
-        }
-    } else {
-        None
-    };
     let detailed = args.view.detailed();
     let compiler_params = drop_nulls(json!({
         "symbol": args.query,
@@ -114,15 +100,6 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
     };
     match parsed {
         AgentCompilerResolveResponse::Resolved { symbol } => {
-            let relations = match relation_budget {
-                Some(budget) => {
-                    match compiler_symbol_relations(&args, &symbol.fq_name, budget, &session) {
-                        Ok(relations) => relations,
-                        Err(envelope) => return *envelope,
-                    }
-                }
-                None => Vec::new(),
-            };
             let symbol = serde_json::to_value(symbol).unwrap_or(Value::Null);
             symbol_lookup_envelope(
                 args.mode,
@@ -131,7 +108,7 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
                     source: AgentSymbolLookupSource::Compiler,
                     symbol,
                     resolution: result,
-                    relations,
+                    relations: Vec::new(),
                     compiler_fallback: None,
                 },
             )
@@ -169,16 +146,6 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_symbol_discovery(args: AgentSymbolArgs) -> AgentEnvelope {
-    if args.references || args.callers.is_some() {
-        return error_envelope(
-            "agent/symbol".to_string(),
-            None,
-            agent_error(
-                "AGENT_USAGE",
-                "--references and --callers require exact symbol mode",
-            ),
-        );
-    }
     let detailed = args.view.detailed();
     let request = json_rpc_request(
         "symbol/query",
@@ -222,11 +189,7 @@ fn indexed_exact_or_compiler_error(
     compiler_request: Value,
     error: AgentError,
 ) -> AgentEnvelope {
-    if !compiler_availability_allows_indexed_exact(&error)
-        || args.containing_type.is_some()
-        || args.references
-        || args.callers.is_some()
-    {
+    if !compiler_availability_allows_indexed_exact(&error) || args.containing_type.is_some() {
         return error_envelope("agent/symbol".to_string(), Some(compiler_request), error);
     }
     let fallback = AgentCompilerFallback {
@@ -333,85 +296,6 @@ fn successful_symbol_query_result(
             ),
         ))),
     }
-}
-
-fn compiler_symbol_relations(
-    args: &AgentSymbolArgs,
-    canonical_symbol: &str,
-    budget: AgentRelationResultBudget,
-    session: &runtime::RawRpcSession,
-) -> std::result::Result<Vec<AgentSymbolRelation>, Box<AgentEnvelope>> {
-    let mut requests = Vec::new();
-    let request_limit = budget.request_limit(symbol_result_view(&args.view).detailed());
-    if args.references {
-        requests.push((
-            "references",
-            "symbol/references",
-            drop_nulls(json!({
-                "symbol": canonical_symbol,
-                "kind": args.kind.map(|kind| kind.canonical()),
-                "fileHint": args.file_hint,
-                "containingType": args.containing_type,
-                "includeDeclaration": true,
-                "maxResults": request_limit,
-                "pageToken": args.reference_page_token,
-            })),
-        ));
-    }
-    if let Some(direction) = args.callers {
-        requests.push((
-            "callers",
-            "symbol/callers",
-            drop_nulls(json!({
-                "symbol": canonical_symbol,
-                "kind": args.kind.map(|kind| kind.canonical()),
-                "fileHint": args.file_hint,
-                "containingType": args.containing_type,
-                "direction": direction.canonical(),
-                "depth": args.caller_depth,
-                "maxTotalCalls": request_limit,
-                "maxChildrenPerNode": request_limit,
-            })),
-        ));
-    }
-    let mut relations = Vec::with_capacity(requests.len());
-    for (relation, method, params) in requests {
-        let request = json_rpc_request(method, params);
-        let envelope = execute_request_with_session(
-            AgentRequest {
-                method: method.to_string(),
-                request: request.clone(),
-                runtime: args.runtime.clone(),
-                full_response: true,
-                operation: AgentOperation::ReadOnly,
-            },
-            Some(session),
-        );
-        if !envelope.ok {
-            return Err(Box::new(error_envelope(
-                "agent/symbol".to_string(),
-                Some(request),
-                envelope.error.unwrap_or_else(|| {
-                    agent_error(
-                        "SYMBOL_RELATION_FAILED",
-                        format!("{relation} request failed without a typed error"),
-                    )
-                }),
-            )));
-        }
-        let Some(result) = envelope.result else {
-            return Err(Box::new(error_envelope(
-                "agent/symbol".to_string(),
-                Some(request),
-                agent_error(
-                    "SYMBOL_RELATION_FAILED",
-                    format!("{relation} request returned no result"),
-                ),
-            )));
-        };
-        relations.push(AgentSymbolRelation { relation, result });
-    }
-    Ok(relations)
 }
 
 fn symbol_query_filters(args: &AgentSymbolArgs) -> Value {

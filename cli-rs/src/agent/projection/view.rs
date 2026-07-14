@@ -32,7 +32,6 @@ enum AgentProjectionRequest {
     Passthrough,
     Symbol {
         view: AgentResultView<AgentSymbolField>,
-        relation_limit: usize,
     },
     Diagnostics {
         view: AgentResultView<AgentDiagnosticsField>,
@@ -53,9 +52,6 @@ impl AgentProjectionRequest {
             }
             AgentCommand::Symbol(args) => Self::Symbol {
                 view: symbol_result_view(&args.view),
-                relation_limit: AgentRelationResultBudget::try_from(args.limit)
-                    .map(AgentRelationResultBudget::projection_limit)
-                    .unwrap_or_default(),
             },
             AgentCommand::Diagnostics(args) => Self::Diagnostics {
                 view: diagnostics_result_view(&args.view),
@@ -82,7 +78,12 @@ impl AgentProjectionRequest {
                     Self::Mutation(mutation_result_view(&args.view))
                 }
             },
-            AgentCommand::Lsp(_)
+            AgentCommand::References(_)
+            | AgentCommand::Callers(_)
+            | AgentCommand::Callees(_)
+            | AgentCommand::Implementations(_)
+            | AgentCommand::Hierarchy(_)
+            | AgentCommand::Lsp(_)
             | AgentCommand::Tools(_)
             | AgentCommand::Call(_)
             | AgentCommand::Workflow(_) => Self::Passthrough,
@@ -91,10 +92,7 @@ impl AgentProjectionRequest {
 
     fn project(self, envelope: AgentEnvelope) -> AgentEnvelope {
         match self {
-            Self::Symbol {
-                view,
-                relation_limit,
-            } => project_symbol_envelope(envelope, view, relation_limit),
+            Self::Symbol { view } => project_symbol_envelope(envelope, view, 0),
             Self::Diagnostics { view, result_limit } => {
                 project_diagnostics_envelope(envelope, view, result_limit)
             }
