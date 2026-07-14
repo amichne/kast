@@ -35,37 +35,6 @@ pub(crate) trait BackendWorkspaceRpc {
     fn request(&mut self, request: Value) -> Result<Value, BackendRpcFailure>;
 }
 
-pub(crate) struct RawRpcWorkspaceBackend<'a> {
-    session: &'a crate::runtime::RawRpcSession,
-    workspace_root: PathBuf,
-}
-
-impl<'a> RawRpcWorkspaceBackend<'a> {
-    pub(crate) fn new(
-        session: &'a crate::runtime::RawRpcSession,
-        workspace_root: &WorkspaceRoot,
-    ) -> Self {
-        Self {
-            session,
-            workspace_root: workspace_root.as_path().to_path_buf(),
-        }
-    }
-}
-
-impl BackendWorkspaceRpc for RawRpcWorkspaceBackend<'_> {
-    fn request(&mut self, request: Value) -> Result<Value, BackendRpcFailure> {
-        let encoded = serde_json::to_string(&request)
-            .map_err(|error| BackendRpcFailure::InvalidResponse(error.to_string()))?;
-        let raw = crate::runtime::raw_request_passthrough_in_session(
-            encoded,
-            Some(self.workspace_root.clone()),
-            self.session,
-        )
-        .map_err(|error| BackendRpcFailure::Transport(error.to_string()))?;
-        decode_rpc_response(&raw)
-    }
-}
-
 fn decode_rpc_response(raw: &str) -> Result<Value, BackendRpcFailure> {
     let response: Value = serde_json::from_str(raw)
         .map_err(|error| BackendRpcFailure::InvalidResponse(error.to_string()))?;
@@ -753,18 +722,6 @@ fn increment(
 #[cfg(test)]
 mod rpc_error_tests {
     use super::*;
-
-    #[test]
-    fn raw_rpc_backend_constructor_preserves_the_session_lifetime() {
-        fn construct<'session>(
-            session: &'session crate::runtime::RawRpcSession,
-            root: &WorkspaceRoot,
-        ) -> RawRpcWorkspaceBackend<'session> {
-            RawRpcWorkspaceBackend::new(session, root)
-        }
-
-        let _constructor = construct;
-    }
 
     #[test]
     fn project_model_reason_is_decoded_from_the_typed_error_details_envelope() {

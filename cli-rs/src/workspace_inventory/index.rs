@@ -194,7 +194,7 @@ fn read_transaction(
             .metadata_present
             .then_some(WorkspaceEvidenceSource::PackageMetadata);
         if matches!(package, WorkspacePackageEvidence::InvalidReference(_)) {
-            incompatibilities.insert(SourceIndexIncompatibility::InvalidPackageMetadata);
+            incompatibilities.insert(SourceIndexIncompatibility::PackageMetadataReference);
             filter_partial = true;
             increment_limitation(
                 &mut limitations,
@@ -225,11 +225,11 @@ fn read_transaction(
         }
         if project_rows_invalid > 0 {
             projects.clear();
-            incompatibilities.insert(SourceIndexIncompatibility::InvalidGradleProjectIdentity);
+            incompatibilities.insert(SourceIndexIncompatibility::MalformedGradleProjectIdentity);
             filter_partial = true;
         }
         let source_set_evidence = if project_rows_invalid > 0 || source_set_rows_invalid > 0 {
-            incompatibilities.insert(SourceIndexIncompatibility::InvalidGradleSourceSetIdentity);
+            incompatibilities.insert(SourceIndexIncompatibility::MalformedGradleSourceSetIdentity);
             filter_partial = true;
             WorkspaceSourceSetEvidence::Unavailable
         } else if !source_sets.is_empty() {

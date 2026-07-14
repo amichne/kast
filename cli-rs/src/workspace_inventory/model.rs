@@ -482,13 +482,9 @@ pub(crate) enum WorkspaceFileKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum SourceIndexIncompatibility {
-    MissingPathPrefix,
-    InvalidPackageMetadata,
-    InvalidGradleProjectIdentity,
-    InvalidGradleSourceSetIdentity,
-    DanglingGradleSourceSetOwner,
-    OrphanGradleAssociation,
-    InvalidProgress,
+    PackageMetadataReference,
+    MalformedGradleProjectIdentity,
+    MalformedGradleSourceSetIdentity,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -866,10 +862,6 @@ impl WorkspaceLaneUnavailableReason {
     pub(crate) fn new(value: impl Into<String>) -> Self {
         Self(value.into())
     }
-
-    pub(crate) fn as_str(&self) -> &str {
-        &self.0
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1048,7 +1040,6 @@ impl WorkspaceInventoryFile {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum WorkspaceInventoryLimitationCode {
-    BackendCapabilityUnavailable,
     BackendMetadataUnavailable,
     BackendPageIncomplete,
     BackendWorkspaceInventoryStale,

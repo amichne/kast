@@ -95,23 +95,6 @@ fn read_workspace_index_returns_every_kotlin_source_without_a_public_cap() {
 }
 
 #[test]
-fn source_index_incompatibilities_preserve_each_fail_closed_reason() {
-    use super::model::SourceIndexIncompatibility;
-
-    let incompatibilities = BTreeSet::from([
-        SourceIndexIncompatibility::MissingPathPrefix,
-        SourceIndexIncompatibility::InvalidPackageMetadata,
-        SourceIndexIncompatibility::InvalidGradleProjectIdentity,
-        SourceIndexIncompatibility::InvalidGradleSourceSetIdentity,
-        SourceIndexIncompatibility::DanglingGradleSourceSetOwner,
-        SourceIndexIncompatibility::OrphanGradleAssociation,
-        SourceIndexIncompatibility::InvalidProgress,
-    ]);
-
-    assert_eq!(incompatibilities.len(), 7);
-}
-
-#[test]
 fn package_evidence_preserves_every_discriminated_schema_state() {
     let (_temp, root, fixture) = fixture();
     for (prefix, filename) in [
@@ -200,6 +183,23 @@ fn malformed_and_dangling_package_rows_never_become_partial_proof() {
     fixture.seed_progress("app", "COMPLETE", 4, 4);
 
     let snapshot = snapshot(&root);
+
+    for path in [
+        "src/p1/IllegalRoot.kt",
+        "src/p2/Dangling.kt",
+        "src/p3/Unknown.kt",
+        "src/p4/MissingReason.kt",
+    ] {
+        let WorkspaceFileIndexState::Incompatible(incompatibilities) =
+            file(&snapshot, path).index_state()
+        else {
+            panic!("malformed package evidence for {path} must remain incompatible");
+        };
+        assert_eq!(
+            incompatibilities,
+            &BTreeSet::from([super::model::SourceIndexIncompatibility::PackageMetadataReference,])
+        );
+    }
 
     assert!(matches!(
         file(&snapshot, "src/p1/IllegalRoot.kt").package(),
@@ -309,16 +309,101 @@ fn malformed_associations_discard_only_the_affected_proof_sets() {
 
     let snapshot = snapshot(&root);
     let file = file(&snapshot, "src/app/BrokenOwner.kt");
+    let WorkspaceFileIndexState::Incompatible(incompatibilities) = file.index_state() else {
+        panic!("malformed associations must remain incompatible");
+    };
 
     assert!(file.indexed_gradle_projects().is_empty());
     assert_eq!(file.source_sets(), &WorkspaceSourceSetEvidence::Unavailable);
-    assert!(matches!(
-        file.index_state(),
-        WorkspaceFileIndexState::Incompatible(_)
-    ));
+    assert_eq!(
+        incompatibilities,
+        &BTreeSet::from([
+            super::model::SourceIndexIncompatibility::MalformedGradleProjectIdentity,
+            super::model::SourceIndexIncompatibility::MalformedGradleSourceSetIdentity,
+        ])
+    );
     assert_eq!(
         snapshot.limitation_count(WorkspaceInventoryLimitationCode::SourceIndexIncompatible),
         2
+    );
+}
+
+#[test]
+fn manifest_without_a_path_prefix_is_excluded_as_global_partial_evidence() {
+    let (_temp, root, fixture) = fixture();
+    fixture.insert_manifest_file(7, "src/missing-prefix", "MissingPrefix.kt", true);
+    fixture.seed_progress("app", "COMPLETE", 1, 1);
+    fixture
+        .connection()
+        .execute("DELETE FROM path_prefixes WHERE prefix_id = 7", [])
+        .expect("remove path prefix");
+
+    let snapshot = snapshot(&root);
+
+    assert!(snapshot.files().is_empty());
+    assert_eq!(
+        snapshot.coverage().candidate_inventory(),
+        WorkspaceCoverageDimension::Partial
+    );
+    assert_eq!(
+        snapshot.limitation_count(WorkspaceInventoryLimitationCode::SourceIndexIncompatible),
+        1
+    );
+}
+
+#[test]
+fn association_without_a_manifest_owner_is_global_partial_evidence() {
+    let (_temp, root, fixture) = fixture();
+    insert_named_metadata(&fixture, 1, "Orphan.kt", 2, "sample.orphan", None);
+    fixture
+        .connection()
+        .execute(
+            "INSERT INTO file_gradle_projects(prefix_id, filename, build_root, project_path) VALUES (1, 'Orphan.kt', '.', ':app')",
+            [],
+        )
+        .expect("orphan project association");
+    fixture.seed_progress("app", "COMPLETE", 1, 1);
+
+    let snapshot = snapshot(&root);
+
+    assert!(snapshot.files().is_empty());
+    assert_eq!(
+        snapshot.coverage(),
+        WorkspaceMatchCoverage::from_dimensions(
+            WorkspaceCoverageDimension::Partial,
+            WorkspaceCoverageDimension::Partial,
+        )
+    );
+    assert_eq!(
+        snapshot.limitation_count(WorkspaceInventoryLimitationCode::SourceIndexIncompatible),
+        1
+    );
+}
+
+#[test]
+fn malformed_module_progress_is_global_partial_evidence() {
+    let (_temp, root, fixture) = fixture();
+    let connection = fixture.connection();
+    connection
+        .execute_batch("PRAGMA ignore_check_constraints=ON;")
+        .expect("malformed progress mode");
+    connection
+        .execute(
+            "INSERT INTO module_index_progress(module_name, phase2_status, indexed_file_count, total_file_count) VALUES ('app', 'UNKNOWN', 1, 1)",
+            [],
+        )
+        .expect("malformed module progress");
+
+    let snapshot = snapshot(&root);
+
+    assert!(!snapshot.stamp().is_exact());
+    assert_eq!(
+        snapshot.coverage().candidate_inventory(),
+        WorkspaceCoverageDimension::Partial
+    );
+    assert_eq!(
+        snapshot.limitation_count(WorkspaceInventoryLimitationCode::SourceIndexIncompatible),
+        1
     );
 }
 
@@ -1446,12 +1531,6 @@ fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
     );
     assert!(snapshot.limitations().is_empty());
     assert_eq!(
-        snapshot
-            .limitations()
-            .get(&WorkspaceInventoryLimitationCode::BackendCapabilityUnavailable),
-        None
-    );
-    assert_eq!(
         backend.requests.len(),
         4,
         "the after barrier validates without repaging"
@@ -2149,12 +2228,10 @@ impl super::collect::WorkspaceInventoryLaneReader for UnavailableFilesystemLaneR
 fn stable_filesystem_unavailability_retains_proven_backend_candidates_and_reason_identity() {
     let (_temp, root, _fixture, responses) = barrier_fixture();
     let mut digests = Vec::new();
-    for reason_text in ["permission-denied", "observer-closed"] {
+    for reason in ["permission-denied", "observer-closed"] {
         let mut backend = ScriptedWorkspaceBackend::new(responses.clone());
-        let reason = super::model::WorkspaceLaneUnavailableReason::new(reason_text);
-        assert_eq!(reason.as_str(), reason_text);
         let mut lanes = UnavailableFilesystemLaneReader {
-            reason,
+            reason: super::model::WorkspaceLaneUnavailableReason::new(reason),
             inner: super::collect::SystemWorkspaceLaneReader,
         };
 
