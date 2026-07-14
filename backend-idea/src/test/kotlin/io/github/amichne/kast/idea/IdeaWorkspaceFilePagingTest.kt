@@ -45,23 +45,22 @@ class IdeaWorkspaceFilePagingTest {
     }
 
     @Test
-    fun `consumed and cross-module page handles fail with typed page scope`() {
+    fun `cross-module mismatch consumes the page handle before it can be replayed`() {
         val paging = paging(MutableInventory(snapshot("Alpha.kt", "Beta.kt", "Gamma.kt")))
         try {
             val metadata = paging.query(metadataQuery().parsed())
             val first = paging.query(pageQuery(metadata.snapshotToken).parsed())
             val token = requireNotNull(first.modules.single().nextPageToken)
-            paging.query(pageQuery(metadata.snapshotToken, token).parsed())
 
-            val consumed = assertThrows(InvalidWorkspaceFileCursorException::class.java) {
-                paging.query(pageQuery(metadata.snapshotToken, token).parsed())
-            }
             val crossModule = assertThrows(InvalidWorkspaceFileCursorException::class.java) {
                 paging.query(pageQuery(metadata.snapshotToken, token, moduleName = "other").parsed())
             }
+            val consumed = assertThrows(InvalidWorkspaceFileCursorException::class.java) {
+                paging.query(pageQuery(metadata.snapshotToken, token).parsed())
+            }
 
-            assertEquals(InvalidWorkspaceFileCursorScope.PAGE_HANDLE, consumed.scope)
             assertEquals(InvalidWorkspaceFileCursorScope.PAGE_HANDLE, crossModule.scope)
+            assertEquals(InvalidWorkspaceFileCursorScope.PAGE_HANDLE, consumed.scope)
         } finally {
             paging.close()
         }
@@ -72,14 +71,15 @@ class IdeaWorkspaceFilePagingTest {
         val inventory = MutableInventory(snapshot("Alpha.kt", "Beta.kt"))
         val paging = paging(inventory)
         try {
-            val metadata = paging.query(metadataQuery().parsed())
+            val pageMetadata = paging.query(metadataQuery().parsed())
+            val validationMetadata = paging.query(metadataQuery().parsed())
             inventory.current = snapshot("Alpha.kt", "Replacement.kt")
 
             assertThrows(WorkspaceInventoryStaleException::class.java) {
-                paging.query(pageQuery(metadata.snapshotToken).parsed())
+                paging.query(pageQuery(pageMetadata.snapshotToken).parsed())
             }
-            assertThrows(InvalidWorkspaceFileCursorException::class.java) {
-                paging.query(validationQuery(metadata.snapshotToken).parsed())
+            assertThrows(WorkspaceInventoryStaleException::class.java) {
+                paging.query(validationQuery(validationMetadata.snapshotToken).parsed())
             }
         } finally {
             paging.close()

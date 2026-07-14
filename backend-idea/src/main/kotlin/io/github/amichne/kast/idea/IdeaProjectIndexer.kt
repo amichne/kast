@@ -57,7 +57,12 @@ internal class IdeaProjectIndexer(
         )
         val updates = environment.allFilePaths()
             .mapNotNull(scanner::scanFile)
-            .map(gradleProvenance::applyTo)
+            .map { update ->
+                gradleProvenance.applyTo(
+                    update = update,
+                    ownerModuleNames = ideaModuleOwnersForFile(update.path),
+                )
+            }
         val manifest = updates.associate { update ->
             update.path to lastModifiedMillis(update.path)
         }
@@ -196,6 +201,17 @@ internal class IdeaProjectIndexer(
             .sorted()
             .firstOrNull()
             ?: module.name
+    }
+
+    private fun ideaModuleOwnersForFile(filePath: String): Set<IdeaWorkspaceModuleIdentity> = runIdeaReadAction {
+        val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(Path.of(filePath))
+            ?: return@runIdeaReadAction emptySet()
+        ModuleManager.getInstance(project).modules
+            .asSequence()
+            .filter { module -> ModuleRootManager.getInstance(module).fileIndex.isInContent(virtualFile) }
+            .map { module -> IdeaWorkspaceModuleIdentity.of(module.name) }
+            .sorted()
+            .toCollection(linkedSetOf())
     }
 
     private fun legacySourceSetLabelForFile(path: String): String? {

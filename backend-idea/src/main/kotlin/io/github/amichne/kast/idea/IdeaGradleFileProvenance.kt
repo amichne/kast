@@ -12,14 +12,17 @@ import java.nio.file.Path
 internal class IdeaGradleFileProvenance private constructor(
     private val modules: List<IdeaGradleModuleProvenance>,
 ) {
-    fun applyTo(update: FileIndexUpdate): FileIndexUpdate {
+    fun applyTo(
+        update: FileIndexUpdate,
+        ownerModuleNames: Set<IdeaWorkspaceModuleIdentity>,
+    ): FileIndexUpdate {
         val file = Path.of(update.path).toAbsolutePath().normalize()
-        val projects = modules
-            .filter { module -> file.startsWith(module.projectDirectory) }
+        val ownerModules = modules
+            .filter { module -> module.ideaModuleIdentity in ownerModuleNames }
+        val projects = ownerModules
             .mapTo(linkedSetOf()) { module -> module.project }
-        val sourceSets = modules
+        val sourceSets = ownerModules
             .asSequence()
-            .filter { module -> module.project in projects }
             .flatMap { module ->
                 module.sourceSets.asSequence()
                     .filter { sourceSet -> sourceSet.sourceRoots.any(file::startsWith) }
@@ -51,8 +54,8 @@ internal class IdeaGradleFileProvenance private constructor(
                     )
                 }.getOrNull() ?: return@mapNotNull null
                 IdeaGradleModuleProvenance(
+                    ideaModuleIdentity = IdeaWorkspaceModuleIdentity.of(association.ideaModuleName()),
                     project = projectIdentity,
-                    projectDirectory = association.gradleProjectDirectory().toAbsolutePath().normalize(),
                     sourceSets = association.sourceSets().mapNotNull { sourceSet ->
                         val roots = sourceSet.sourceRoots()
                             .map(Path::toAbsolutePath)
@@ -78,9 +81,9 @@ internal class IdeaGradleFileProvenance private constructor(
                     .distinct()
                     .sortedWith(
                         compareBy(
+                            { module -> module.ideaModuleIdentity.value },
                             { module -> module.project.buildRoot.value },
                             { module -> module.project.projectPath.value },
-                            { module -> module.projectDirectory.toString() },
                         ),
                     ),
             )

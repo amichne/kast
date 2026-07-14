@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -10,69 +11,78 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteException
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteReason
 import java.nio.file.Path
 
 internal class IdeaProjectModelWorkspaceFileInventory(
-    private val project: Project,
-    private val workspaceIdentity: IdeaWorkspaceIdentity,
+    private val workspaceIdentity: WorkspaceIdentity,
+    private val projectModelAccess: IdeaWorkspaceFileProjectModelAccess,
 ) : IdeaWorkspaceFileInventory {
+    constructor(
+        project: Project,
+        workspaceIdentity: IdeaWorkspaceIdentity,
+    ) : this(
+        workspaceIdentity = workspaceIdentity.workspaceIdentity,
+        projectModelAccess = IdeaProjectModelAccess(project),
+    )
+
     override fun snapshot(kindDomain: WorkspaceFileKindDomain): IdeaWorkspaceFileInventorySnapshot {
-        if (DumbService.isDumb(project)) {
+        if (projectModelAccess.isIndexing) {
             throw WorkspaceProjectModelIncompleteException(
                 WorkspaceProjectModelIncompleteReason.RUNTIME_INDEXING,
             )
         }
-        return runIdeaReadAction {
-            readSnapshot(kindDomain)
-        }
-    }
-
-    private fun readSnapshot(kindDomain: WorkspaceFileKindDomain): IdeaWorkspaceFileInventorySnapshot {
-        val gradleModel = try {
-            IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+        val projectModel = try {
+            projectModelAccess.read()
+        } catch (failure: WorkspaceProjectModelIncompleteException) {
+            throw failure
         } catch (failure: RuntimeException) {
             throw WorkspaceProjectModelIncompleteException(
                 reason = WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
                 message = "Gradle project model is unavailable: ${failure.message ?: failure.javaClass.simpleName}",
             )
         }
-        val modules = ModuleManager.getInstance(project).modules
-            .sortedBy(Module::getName)
-        val evidenceByModule = modules.associate { module ->
-            val identity = IdeaWorkspaceModuleIdentity.of(module.name)
-            identity to ModuleEvidence.from(module, identity, ::canonicalContainedPath)
-        }
-        val linkedRoots = gradleModel.linkedBuildRoots()
+        return readSnapshot(kindDomain, projectModel)
+    }
+
+    private fun readSnapshot(
+        kindDomain: WorkspaceFileKindDomain,
+        projectModel: IdeaWorkspaceFileProjectModel,
+    ): IdeaWorkspaceFileInventorySnapshot {
+        val evidenceByModule = projectModel.modules
+            .sortedBy { module -> module.identity }
+            .associate { module ->
+                module.identity to ModuleEvidence.from(module, ::canonicalContainedPath)
+            }
+        val linkedRoots = projectModel.linkedBuildRoots
             .mapNotNull(::canonicalContainedPath)
             .distinct()
             .sorted()
-        if (workspaceIdentity.workspaceIdentity.gradleRoot != null && linkedRoots.isEmpty()) {
+        if (workspaceIdentity.gradleRoot != null && linkedRoots.isEmpty()) {
             throw WorkspaceProjectModelIncompleteException(
                 reason = WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
                 message = "Workspace has Gradle settings but IDEA has no linked Gradle project model",
             )
         }
-        val associations = gradleModel.moduleAssociations()
-            .filter { association -> canonicalContainedPath(association.linkedBuildRoot()) != null }
-        if (linkedRoots.isNotEmpty() && associations.isEmpty()) {
-            throw WorkspaceProjectModelIncompleteException(
-                WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
-            )
-        }
-        val rootModuleNamesByLinkedRoot = linkedRoots.associateWith { linkedRoot ->
+        val associations = projectModel.moduleAssociations
+            .mapNotNull { association ->
+                canonicalContainedPath(association.linkedBuildRoot)
+                    ?.let { linkedRoot -> association.copy(linkedBuildRoot = Path.of(linkedRoot)) }
+            }
+        val rootModuleIdentitiesByLinkedRoot = linkedRoots.associateWith { linkedRoot ->
             associations
                 .filter { association ->
-                    association.rootModule() && canonicalContainedPath(association.linkedBuildRoot()) == linkedRoot
-                }.map { association -> association.ideaModuleName() }
-                .filter(evidenceByModule.values.map { evidence -> evidence.identity.value }.toSet()::contains)
+                    association.rootModule && association.linkedBuildRoot.toString() == linkedRoot
+                }.map(IdeaWorkspaceFileProjectModel.GradleModuleAssociation::moduleIdentity)
+                .filter(evidenceByModule::containsKey)
                 .distinct()
                 .sorted()
         }
-        rootModuleNamesByLinkedRoot.forEach { (linkedRoot, rootModuleNames) ->
-            if (rootModuleNames.isEmpty()) {
+        rootModuleIdentitiesByLinkedRoot.forEach { (linkedRoot, rootModuleIdentities) ->
+            if (rootModuleIdentities.isEmpty()) {
                 throw WorkspaceProjectModelIncompleteException(
                     reason = WorkspaceProjectModelIncompleteReason.LINKED_ROOT_UNASSOCIATED,
                     message = "Linked Gradle root has no root-module association: $linkedRoot",
@@ -80,20 +90,24 @@ internal class IdeaProjectModelWorkspaceFileInventory(
             }
         }
 
-        kotlinCandidates(modules).forEach { file ->
-            evidenceByModule.values
-                .filter { evidence -> evidence.contains(file.path) }
-                .forEach { evidence -> evidence.add(file) }
+        projectModel.modules.forEach { module ->
+            val evidence = evidenceByModule[module.identity] ?: return@forEach
+            module.ownedFilePaths
+                .mapNotNull(::canonicalContainedPath)
+                .forEach(evidence::add)
         }
-        rootModuleNamesByLinkedRoot.forEach { (linkedRoot, rootModuleNames) ->
-            ROOT_GRADLE_SCRIPTS.forEach { scriptName ->
-                val script = LocalFileSystem.getInstance().findFileByNioFile(Path.of(linkedRoot).resolve(scriptName))
-                    ?.takeIf(VirtualFile::isValid)
-                    ?: return@forEach
-                rootModuleNames.forEach { moduleName ->
-                    evidenceByModule[IdeaWorkspaceModuleIdentity.of(moduleName)]?.add(script)
+        val rootGradleScriptPaths = projectModel.rootGradleScriptPaths
+            .mapNotNull(::canonicalContainedPath)
+            .toSet()
+        rootModuleIdentitiesByLinkedRoot.forEach { (linkedRoot, rootModuleIdentities) ->
+            ROOT_GRADLE_SCRIPTS
+                .map { scriptName -> Path.of(linkedRoot).resolve(scriptName).normalize().toString() }
+                .filter(rootGradleScriptPaths::contains)
+                .forEach { scriptPath ->
+                    rootModuleIdentities.forEach { moduleIdentity ->
+                        evidenceByModule.getValue(moduleIdentity).add(scriptPath)
+                    }
                 }
-            }
         }
 
         return IdeaWorkspaceFileInventorySnapshot.create(
@@ -102,33 +116,9 @@ internal class IdeaProjectModelWorkspaceFileInventory(
         )
     }
 
-    private fun kotlinCandidates(modules: List<Module>): List<VirtualFile> {
-        val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
-            ?: throw WorkspaceProjectModelIncompleteException(
-                reason = WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
-                message = "Kotlin file type is unavailable from the IDEA project model",
-            )
-        val projectFiles = FileTypeIndex.getFiles(kotlinFileType, GlobalSearchScope.projectScope(project))
-        val moduleFiles = modules.flatMap { module ->
-            FileTypeIndex.getFiles(kotlinFileType, GlobalSearchScope.moduleScope(module))
-        }
-        return (projectFiles + moduleFiles)
-            .asSequence()
-            .filter(VirtualFile::isValid)
-            .filterNot(VirtualFile::isDirectory)
-            .filter { file -> file.path.endsWith(".kt") || file.path.endsWith(".kts") }
-            .filter { file -> canonicalContainedPath(file.path) != null }
-            .distinctBy(VirtualFile::getPath)
-            .sortedBy(VirtualFile::getPath)
-            .toList()
-    }
-
-    private fun canonicalContainedPath(path: String): String? =
-        canonicalContainedPath(Path.of(path))
-
     private fun canonicalContainedPath(path: Path): String? {
         val normalized = path.toAbsolutePath().normalize()
-        return workspaceIdentity.workspaceIdentity
+        return workspaceIdentity
             .relativizeIfContained(normalized)
             ?.let { normalized.toString() }
     }
@@ -142,15 +132,10 @@ internal class IdeaProjectModelWorkspaceFileInventory(
         private val sourceFilePaths = linkedSetOf<String>()
         private val scriptFilePaths = linkedSetOf<String>()
 
-        fun contains(path: String): Boolean {
-            val candidate = Path.of(path).toAbsolutePath().normalize()
-            return contentRoots.any { root -> candidate.startsWith(Path.of(root)) }
-        }
-
-        fun add(file: VirtualFile) {
+        fun add(path: String) {
             when {
-                file.path.endsWith(".kts") -> scriptFilePaths += file.path
-                file.path.endsWith(".kt") -> sourceFilePaths += file.path
+                path.endsWith(".kts") -> scriptFilePaths += path
+                path.endsWith(".kt") -> sourceFilePaths += path
             }
         }
 
@@ -165,19 +150,80 @@ internal class IdeaProjectModelWorkspaceFileInventory(
 
         companion object {
             fun from(
-                module: Module,
-                identity: IdeaWorkspaceModuleIdentity,
-                canonicalContainedPath: (String) -> String?,
-            ): ModuleEvidence {
-                val roots = ModuleRootManager.getInstance(module)
-                return ModuleEvidence(
-                    identity = identity,
-                    sourceRoots = roots.sourceRoots.mapNotNull { root -> canonicalContainedPath(root.path) },
-                    contentRoots = roots.contentRoots.mapNotNull { root -> canonicalContainedPath(root.path) },
-                    dependencyModuleNames = roots.dependencies.map(Module::getName),
-                )
-            }
+                module: IdeaWorkspaceFileProjectModel.Module,
+                canonicalContainedPath: (Path) -> String?,
+            ): ModuleEvidence = ModuleEvidence(
+                identity = module.identity,
+                sourceRoots = module.sourceRoots.mapNotNull(canonicalContainedPath),
+                contentRoots = module.contentRoots.mapNotNull(canonicalContainedPath),
+                dependencyModuleNames = module.dependencyModuleNames.map(IdeaWorkspaceModuleIdentity::value),
+            )
         }
+    }
+
+    private class IdeaProjectModelAccess(
+        private val project: Project,
+    ) : IdeaWorkspaceFileProjectModelAccess {
+        override val isIndexing: Boolean
+            get() = DumbService.isDumb(project)
+
+        override fun read(): IdeaWorkspaceFileProjectModel = runIdeaReadAction {
+            val gradleModel = IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+            val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
+                ?: throw IllegalStateException("Kotlin file type is unavailable from the IDEA project model")
+            val modules = ModuleManager.getInstance(project).modules
+                .sortedBy(Module::getName)
+                .map { module -> moduleModel(module, kotlinFileType) }
+            val rootGradleScriptPaths = gradleModel.linkedBuildRoots()
+                .flatMap { linkedRoot ->
+                    ROOT_GRADLE_SCRIPTS.mapNotNull { scriptName ->
+                        LocalFileSystem.getInstance().findFileByNioFile(linkedRoot.resolve(scriptName))
+                            ?.takeIf(VirtualFile::isValid)
+                            ?.toNioPath()
+                    }
+                }.toSet()
+            IdeaWorkspaceFileProjectModel(
+                modules = modules,
+                linkedBuildRoots = gradleModel.linkedBuildRoots(),
+                moduleAssociations = gradleModel.moduleAssociations().map { association ->
+                    IdeaWorkspaceFileProjectModel.GradleModuleAssociation(
+                        moduleIdentity = IdeaWorkspaceModuleIdentity.of(association.ideaModuleName()),
+                        linkedBuildRoot = association.linkedBuildRoot(),
+                        rootModule = association.rootModule(),
+                    )
+                },
+                rootGradleScriptPaths = rootGradleScriptPaths,
+            )
+        }
+
+        private fun moduleModel(
+            module: Module,
+            kotlinFileType: FileType,
+        ): IdeaWorkspaceFileProjectModel.Module {
+            val roots = ModuleRootManager.getInstance(module)
+            return IdeaWorkspaceFileProjectModel.Module(
+                identity = IdeaWorkspaceModuleIdentity.of(module.name),
+                sourceRoots = roots.sourceRoots.map(VirtualFile::toNioPath),
+                contentRoots = roots.contentRoots.map(VirtualFile::toNioPath),
+                dependencyModuleNames = roots.dependencies.map { dependency ->
+                    IdeaWorkspaceModuleIdentity.of(dependency.name)
+                },
+                ownedFilePaths = kotlinCandidates(module, kotlinFileType),
+            )
+        }
+
+        private fun kotlinCandidates(
+            module: Module,
+            kotlinFileType: FileType,
+        ): List<Path> = FileTypeIndex.getFiles(kotlinFileType, GlobalSearchScope.moduleScope(module))
+            .asSequence()
+            .filter(VirtualFile::isValid)
+            .filterNot(VirtualFile::isDirectory)
+            .filter { file -> file.path.endsWith(".kt") || file.path.endsWith(".kts") }
+            .distinctBy(VirtualFile::getPath)
+            .sortedBy(VirtualFile::getPath)
+            .map(VirtualFile::toNioPath)
+            .toList()
     }
 
     private companion object {

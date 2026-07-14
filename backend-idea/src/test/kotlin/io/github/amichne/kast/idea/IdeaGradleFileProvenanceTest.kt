@@ -18,14 +18,36 @@ class IdeaGradleFileProvenanceTest {
         val file = "/workspace/shared/Shared.kt"
         val provenance = IdeaGradleFileProvenance.create(
             listOf(
-                module(rootApp, projectDirectory = "/workspace"),
-                module(includedApp, projectDirectory = "/workspace/shared"),
+                module("root-app", rootApp),
+                module("included-app", includedApp),
             ),
         )
 
-        val update = provenance.applyTo(update(file))
+        val update = provenance.applyTo(
+            update = update(file),
+            ownerModuleNames = setOf(moduleIdentity("root-app"), moduleIdentity("included-app")),
+        )
 
         assertEquals(setOf(rootApp, includedApp), update.gradleProjects)
+    }
+
+    @Test
+    fun `project directory ancestry cannot become model-proven ownership`() {
+        val rootApp = project(buildRoot = ".", projectPath = ":")
+        val includedApp = project(buildRoot = "included", projectPath = ":app")
+        val provenance = IdeaGradleFileProvenance.create(
+            listOf(
+                module("root", rootApp),
+                module("included-app", includedApp),
+            ),
+        )
+
+        val update = provenance.applyTo(
+            update = update("/workspace/included/app/src/main/kotlin/App.kt"),
+            ownerModuleNames = setOf(moduleIdentity("included-app")),
+        )
+
+        assertEquals(setOf(includedApp), update.gradleProjects)
     }
 
     @Test
@@ -38,15 +60,16 @@ class IdeaGradleFileProvenanceTest {
         val provenance = IdeaGradleFileProvenance.create(
             listOf(
                 IdeaGradleModuleProvenance(
+                    ideaModuleIdentity = moduleIdentity("app"),
                     project = app,
-                    projectDirectory = Path.of("/workspace/app"),
                     sourceSets = setOf(integrationTest),
                 ),
             ),
         )
 
-        val custom = provenance.applyTo(update("/workspace/app/quality/kotlin/Contract.kt"))
-        val conventionalButUnproven = provenance.applyTo(update("/workspace/app/src/main/kotlin/App.kt"))
+        val owners = setOf(moduleIdentity("app"))
+        val custom = provenance.applyTo(update("/workspace/app/quality/kotlin/Contract.kt"), owners)
+        val conventionalButUnproven = provenance.applyTo(update("/workspace/app/src/main/kotlin/App.kt"), owners)
 
         assertEquals(setOf("integrationTest"), custom.gradleSourceSets.map { it.sourceSet.value }.toSet())
         assertTrue(conventionalButUnproven.gradleSourceSets.isEmpty())
@@ -60,7 +83,10 @@ class IdeaGradleFileProvenanceTest {
             sourceSet = "main",
         )
 
-        val result = IdeaGradleFileProvenance.create(emptyList()).applyTo(update)
+        val result = IdeaGradleFileProvenance.create(emptyList()).applyTo(
+            update = update,
+            ownerModuleNames = setOf(moduleIdentity("app")),
+        )
 
         assertTrue(result.gradleProjects.isEmpty())
         assertTrue(result.gradleSourceSets.isEmpty())
@@ -69,13 +95,16 @@ class IdeaGradleFileProvenanceTest {
     }
 
     private fun module(
+        ideaModuleName: String,
         project: BuildQualifiedGradleProjectIdentity,
-        projectDirectory: String,
     ): IdeaGradleModuleProvenance = IdeaGradleModuleProvenance(
+        ideaModuleIdentity = moduleIdentity(ideaModuleName),
         project = project,
-        projectDirectory = Path.of(projectDirectory),
         sourceSets = emptySet(),
     )
+
+    private fun moduleIdentity(value: String): IdeaWorkspaceModuleIdentity =
+        IdeaWorkspaceModuleIdentity.of(value)
 
     private fun project(
         buildRoot: String,

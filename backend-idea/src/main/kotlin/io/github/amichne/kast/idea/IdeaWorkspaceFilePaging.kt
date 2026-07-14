@@ -77,13 +77,6 @@ internal class IdeaWorkspaceFilePaging(
             return result(snapshot, metadataModules(snapshot.inventory, requestedModule))
         }
         val moduleIdentity = IdeaWorkspaceModuleIdentity.of(requestedModule)
-        val module = snapshot.inventory.modules.singleOrNull { candidate -> candidate.identity == moduleIdentity }
-        if (module == null) {
-            query.pageToken?.let {
-                throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
-            }
-            return result(snapshot, emptyList())
-        }
         val pageSize = query.maxFilesPerModule ?: defaultPageSize
         val identity = IdeaWorkspaceFilePageIdentity(
             workspaceId = workspaceId,
@@ -92,11 +85,30 @@ internal class IdeaWorkspaceFilePaging(
             moduleIdentity = moduleIdentity,
             pageSize = pageSize,
         )
+        val module = snapshot.inventory.modules.singleOrNull { candidate -> candidate.identity == moduleIdentity }
+        if (module == null) {
+            query.pageToken?.let { token -> consumePageForMissingModule(token, identity) }
+            return result(snapshot, emptyList())
+        }
         val moduleFiles = module.filePaths(query.kindDomain)
         val page = query.pageToken?.let { token ->
             consumePage(token, identity, snapshot.inventory, module, moduleFiles)
         } ?: firstPage(identity, snapshot.inventory, module, moduleFiles)
         return result(snapshot, listOf(workspaceModule(module, moduleFiles.size, page)))
+    }
+
+    private fun consumePageForMissingModule(
+        token: WorkspaceFilePageToken,
+        identity: IdeaWorkspaceFilePageIdentity,
+    ): Nothing {
+        pages.consume(
+            token = token,
+            query = identity,
+            transition = ContinuationStateTransition {
+                throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
+            },
+        )
+        throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
     }
 
     private fun issueSnapshot(
