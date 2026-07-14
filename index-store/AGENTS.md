@@ -50,6 +50,13 @@ Keep this unit focused on storage concerns and schema continuity.
   store lock. Every committed transition that can change indexed declarations,
   references, manifests, or reconciliation state must advance the generation;
   consumers use it to reject stale continuation pages.
+- The production `declarations` key is `(fq_id, prefix_id, filename)` and writes
+  replace that row. It cannot prove uniqueness of same-FQ overloads in one
+  file. Never use an FQ declaration-row count as callable overload proof.
+- `symbol_references.targetPath` and `targetOffset` are optional evidence.
+  Exact indexed relationship reads require the selected canonical target path
+  and one non-null target offset; FQ-only or null/mixed target anchors must fail
+  closed or fall back before a continuation source is bound.
 
 ## Verification
 
@@ -71,3 +78,6 @@ Prove storage changes here before relying on higher-level runtime tests.
   `SqliteSourceIndexStoreTest` and the affected headless/indexer tests.
 - Final acceptance for the cross-module workspace discovery contract also runs
   `./gradlew test` and `./gradlew buildIdeaPlugin`.
+- Exact-reference and impact changes also require production-store overload,
+  null-offset, and target-anchor regression cases in
+  `SqliteSourceIndexStoreTest`.

@@ -25,6 +25,21 @@ Keep this unit small, stable, and reusable across every runtime host.
 - Keep materially edited public skill request and query models in matching
   files under `contract/skill`; direct sealed response variants stay with
   their sealed response root in its matching file.
+- Relationship contracts carry one complete `SymbolIdentity` anchor. Exact
+  success and indexed fallback require canonical declaration file and
+  non-negative start offset. Identity mismatch carries a non-null actual
+  identity; absence at the anchor is subject-not-found.
+- Keep #337 `ReferencePageToken` and traversal handles opaque and
+  host-agnostic. Source, provider position, returned-before proof, query,
+  subject, semantic generation, PSI, and traversal frontier are runtime state
+  and must not enter this module's wire types.
+- Each relationship response root owns its degraded-reason enum. Shared
+  stringly or cross-family degradation codes are prohibited. A continuation
+  page must prove `KNOWN_MINIMUM >= returnedBefore + returnedCount + 1`, even
+  though returned-before remains backend-private.
+- `ReferenceOccurrence` owns containing-symbol evidence. Keep
+  `KastScaffoldReferences` in its same-named file and never adapt occurrences
+  back to bare locations.
 - Keep edit application deterministic. Preserve conflict detection,
   non-overlapping range validation, and partial-apply reporting through any
   redesign.

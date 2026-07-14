@@ -21,7 +21,7 @@ typed `WorkspaceProjectModelIncompleteReason` variants. Missing model evidence
 must fail closed or remain explicitly unproven; it must not become an empty
 complete inventory or inferred proof.
 
-## Paging and ownership
+## Workspace paging and ownership
 
 `IdeaWorkspaceFilePaging` owns reusable snapshot leases and single-use module
 page state in the shared `analysis-api` continuation store. Opaque handles are
@@ -37,7 +37,44 @@ continue cleanup after individual failures, and preserve the runtime order:
 cancel indexing, close the running server/backend, then close the separately
 owned source-index store.
 
-## Focused verification
+## Relationship ownership
+
+`backend-idea` owns compiler/PSI execution and all semantic relationship
+continuation state for the IDEA runtime.
+
+- #337 `ServerHeldContinuationStore` is the only reference/call/type state
+  owner. Store pure canonical anchors, query/source/generation proof, bounded
+  candidate/frontier/visited/provider positions, and returned-before counts;
+  never retain PSI, smart pointers, or analysis-session objects.
+- Handle lookup, query/source validation, `PsiModificationTracker` generation
+  comparison, target resolution, provider work, and next-state commit happen in
+  one `timedReadAction`. `analysis-server` must not preflight generation or own
+  another store.
+- `ObservedAnalysisBackend` explicitly delegates every handle-bearing method
+  and records exactly one matching operation. Add delegation and queued-write
+  race tests whenever the backend contract changes.
+- Exact INDEX references query FQ name plus canonical target path and non-null
+  target offset. Unsafe first-page index evidence may fall back to IDEA; an
+  INDEX-bound continuation never switches sources.
+- Bounded IDEA reference/incoming-call discovery streams
+  `FileTypeIndex.processFiles` through cap plus one. Cap-plus-one stops
+  enumeration and returns a typed family budget outcome with no records, page
+  claim, or retained partial snapshot; at or below the cap, sort the complete
+  buffer and use `PsiReferenceScanner` in lexical offset order. Direct
+  inheritors use the same cap-plus-one rule around bounded
+  `ClassInheritorsSearch.search(...).forEach` and sort only complete admitted
+  canonical-anchor snapshots. Do not materialize
+  `FileTypeIndex.getFiles(...)`, call `ReferencesSearch.findAll`, or call
+  inheritor `findAll()`.
+
+## Verification
+
+Run `./gradlew :backend-idea:test` and the affected `:analysis-server:test`
+contract tests. Relationship changes also require cap/cap-plus-one provider
+tests, generation/write-race tests, `ObservedAnalysisBackend` delegation tests,
+and opaque continuation resume tests.
+
+Workspace inventory changes also require:
 
 - `./gradlew :backend-idea:test --tests '*IdeaWorkspaceFileInventoryTest*' --tests '*IdeaWorkspaceFilePagingTest*' --tests '*IdeaGradleFileProvenanceTest*' --no-daemon`
 - `./gradlew :backend-idea:test --tests '*KastPluginBackendContractTest*' --tests '*KastIdeaBackendRuntimeTest*' --no-daemon`

@@ -19,13 +19,12 @@ continuation input.
 Issue #337 makes the combined symbol result compact, adds real reference
 paging to the backend, bounds call hierarchy work, and gives source impact a
 separate count plus bounded SQL fetch. Its current branch also establishes
-`ResultCardinality.EXACT|KNOWN_MINIMUM` and a source-bound
-`ReferencePageCursor(source, evidenceOffset, returnedBefore)`. Those names are
-provisional until #337 lands, but their information is not: #339 must rebase
-and wrap the landed types without collapsing either cursor dimension. #337
-intentionally does not create standalone relationship commands,
-containing-symbol identity, deterministic continuation for every family, or
-typed degraded outcomes.
+`ResultCardinality.EXACT|KNOWN_MINIMUM` and an opaque server-held reference
+cursor bound to normalized query, selected evidence source, semantic
+generation, provider position, and returned-before proof. #339 wraps that
+handle without serializing any of those fields into Rust. #337 intentionally
+does not create standalone relationship commands, containing-symbol identity,
+deterministic continuation for every family, or typed degraded outcomes.
 
 The #337 exact symbol projection still keeps `fqName`/`kind` under `identity`
 while declaration file and offset live in a sibling location. #339 closes that
@@ -33,7 +32,9 @@ composition gap: one reusable identity object carries the complete anchored
 selector, and tests consume the emitted object rather than copying hard-coded
 fixture offsets. An indexed fallback that lacks a trustworthy declaration
 offset returns `IDENTITY_ANCHOR_UNAVAILABLE` instead of a partial `RESOLVED`
-identity.
+identity. This explicitly supersedes ADR 0016's exact-success payload and
+fallback eligibility: indexed exact may resolve only one hard-filtered
+candidate with one canonical file and one non-negative start offset.
 
 ## Considered approaches
 
@@ -119,10 +120,13 @@ relative spelling. A relation command resolves the
 anchor directly, verifies the identity, and never falls back to discovery. Its
 compact result begins at the relationship, not at the lookup request.
 
-Impact is honest about the current source-index key. When more than one
-declaration shares the selected FQ name, the index cannot isolate the anchored
-overload. The command returns `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE` instead
-of labeling FQ-wide aggregate edges as overload-specific impact.
+Impact is honest about the production source-index schema. The `declarations`
+primary key collapses same-FQ declarations in one file, so an FQ-row count
+cannot prove callable overload uniqueness. Functions and properties therefore
+return `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE`. Classes, interfaces, and
+objects proceed only after compiler position verification and an exact
+production row match on FQ name, canonical path, non-null declaration offset,
+and kind. No FQ-wide edge is labeled as evidence for one selected callable.
 
 The one-shot `symbol --references`, `--callers`, and `--caller-depth` flags are
 removed. This is a deliberate public-surface replacement, not a hidden alias:
@@ -161,17 +165,19 @@ Its `krp1` prefix carries the relation family, a SHA-256 fingerprint of the
 canonical root plus complete anchored selector, declaration-inclusion choice,
 direction, depth, and page limit, followed by one typed payload:
 
-- references encode #337 `INDEX|IDEA`, evidence offset, and returned-before
-  fields directly in canonical ASCII;
-- call, implementation, and hierarchy pages carry a server-issued
+- references carry only #337's opaque backend-issued `ReferencePageToken`;
+- call, implementation, and hierarchy pages carry a backend-issued
   `RelationTraversalHandle`; and
 - impact carries a validated SQLite offset.
 
-The handle is an opaque, versioned, URL-safe server identifier. Traversal
-frontiers are never serialized into the public token, so no base64 codec or new
-Rust dependency is needed. Decoding checks version, relation, fingerprint,
-payload tag, canonical numeric spelling, and the 10,000 stateless-offset
-ceiling before a runtime session or SQLite connection is opened.
+Both semantic handles are opaque backend identifiers. #337's
+`ReferencePageToken` keeps its canonical UUID syntax unchanged; the traversal
+handle owns its own URL-safe syntax. Only the enclosing Rust token is versioned.
+Reference source/counters/query/generation and traversal frontiers are never
+serialized into the public token, so no base64 codec or new Rust dependency is
+needed. Decoding checks the outer version, relation, fingerprint, payload tag,
+the applicable opaque-handle syntax, and the 10,000 impact-offset ceiling
+before a runtime session or SQLite connection is opened.
 
 The concrete Clap commands are:
 
@@ -191,25 +197,29 @@ evidence for the requested page only; they do not expand the result budget.
 ## Kotlin contract and backend flow
 
 The internal typed symbol methods remain the bridge from canonical identity to
-compiler position:
+compiler position, but semantic continuation is owned entirely by the runtime
+backend:
 
-1. Validate the skill request, anchored selector, positive limit, and typed
-   stateless cursor or traversal handle.
-2. Resolve the declaration file/start offset directly and compare canonical FQ
-   name, kind, and containing type with the selector.
-3. Return typed subject-not-found or identity-mismatch outcomes without
-   searching for or selecting another candidate.
-4. Check the required backend capability.
-5. Convert the compiler-owned declaration location to the raw backend query.
-6. For traversal families, load the query- and semantic-generation-bound state
-   behind the handle; reject stale or invalid state before provider work.
-7. Pass the family state and candidate-visit budget into the backend provider
-   before it materializes edges or inheritors.
-8. Atomically store the updated frontier, visited identities, provider
-   continuation, consumed evidence, and returned-before proof behind the next
-   handle.
-9. Drop the extra proof record and return typed page, visited-candidate, and
-   #337 cardinality evidence.
+1. Validate the skill request, anchored selector, positive limit, and opaque
+   reference or traversal handle at the transport boundary.
+2. Check the required backend capability and delegate the complete typed query;
+   `analysis-server` does not load continuation state or issue a preliminary
+   resolve call.
+3. Enter one backend `timedReadAction`, read the current
+   `PsiModificationTracker.modificationCount`, and load/validate any handle's
+   family, normalized query, selected source, subject, and generation.
+4. Resolve the declaration file/start offset directly in that read action and
+   compare canonical FQ name, kind, containing type, file, and offset. No
+   declaration returns subject-not-found; a different declaration returns
+   identity-mismatch with a non-null actual identity.
+5. Select the reference source or restore the bound provider state, then pass
+   the remaining candidate/state budget to the provider before it materializes
+   evidence.
+6. Atomically commit the next pure-data state with the same generation before
+   leaving the read action. Never retain PSI or an analysis-session object.
+7. Drop the extra proof record and return typed page, visited-candidate, and
+   #337 cardinality evidence. A next handle requires
+   `KNOWN_MINIMUM >= returnedBefore + returnedCount + 1`.
 
 `symbol/references` and `symbol/callers` are extended to this contract.
 `symbol/implementations` and `symbol/hierarchy` are added as internal typed
@@ -223,18 +233,36 @@ anchored selector or verified subject. The orchestrator resolves the supplied
 file/offset directly and does not call `resolveNamedSymbol`. The scaffold
 contract and backend contract fixtures consume `ReferenceOccurrence` so this
 migration cannot be bypassed by adapting occurrences back to bare locations.
+`KastScaffoldReferences` is extracted from `SkillContracts.kt` into
+`KastScaffoldReferences.kt` so materially edited production code continues to
+meet the repository's one-top-level-type-per-file rule.
 
-`RelationTraversalStateStore` is owned by `analysis-server`. Each exact
-workspace runtime accepts at most 1,024 live handles, each handle expires after
-15 minutes, and one state contains at most 16,384 frontier, visited, and
-provider-continuation entries. The backend reports a typed monotonic
-`SemanticWorkspaceGeneration`; IDEA derives it from compiler/PSI modification
-state. The store binds handle, relation family, normalized query fingerprint,
-and generation. Expiry, eviction, restart, or generation change returns
-`RELATION_CURSOR_STALE`; malformed handles and family/query mismatches return
-`RELATION_CURSOR_INVALID`. Reaching the state-entry ceiling terminates with the
-typed `TRAVERSAL_STATE_BUDGET_REACHED` limitation instead of allocating an
-unbounded continuation.
+`ServerHeldContinuationStore` is the one semantic-state owner. It lives
+in `backend-idea` and stores sealed reference/call/implementation/hierarchy
+state behind #337 `ReferencePageToken` or `RelationTraversalHandle` values.
+Each exact workspace runtime accepts at most 1,024 live handles, each handle
+expires after 15 minutes, and one state contains at most 16,384 candidate,
+frontier, visited, and provider-continuation entries. The store binds handle,
+relation family, normalized query fingerprint, selected subject, reference
+source where applicable, private returned-before count, and semantic
+generation. Expiry, eviction, restart, or generation change returns a
+family-typed cursor-stale outcome; malformed handles and family/query
+mismatches return a family-typed cursor-invalid outcome. Reaching the
+state-entry ceiling returns the owning family's typed state-budget reason.
+`AnalysisBackend` carries handles in its queries/results;
+`ObservedAnalysisBackend` overrides and delegates every changed method.
+`analysis-server` remains transport-only. The store retains #337's one-shot
+`take`: a consumed token cannot be replayed to repeat or fork provider work.
+
+INDEX references query production `symbol_references` by FQ name, canonical
+target path, and the selected non-null `target_offset`. Every emitted row must
+repeat the same exact target anchor. Null or conflicting target anchors return
+`INDEX_IDENTITY_UNAVAILABLE`; FQ-only rows are never filtered after the fact as
+if they were overload-safe. A first page may fall back to IDEA before a cursor
+exists. An INDEX-bound continuation may return `BOUND_SOURCE_UNAVAILABLE` but
+never switch to IDEA. Fixtures force two same-FQ target offsets, select the
+second, and cover exact INDEX, unsafe-INDEX-to-IDEA first-page fallback, and
+INDEX-continuation refusal to switch sources.
 
 The public reference requirement for containing symbols changes the shared
 reference result from bare locations to occurrences:
@@ -275,22 +303,37 @@ references implementation obtains both requested forms while it owns PSI for
 the bounded occurrence page. It does not create an N+1 Rust lookup loop or
 scan every relation item merely to populate compact output.
 
-Call hierarchy keeps its recursive full-fidelity result internally. The skill
-orchestrator flattens edges breadth-first into caller or callee records after
-the backend engine has sorted each child set by canonical identity and
-location. The emitted window is at most `limit + 1`, but backend work is
-bounded separately before materialization. `IdeaCallEdgeResolver` accepts the
-current family state and visit budget: incoming calls consume deterministic
-file/offset candidates, and outgoing calls consume lexical PSI offsets without
-first walking the whole declaration. `IdeaTypeEdgeResolver` pages canonical
-class-index candidate keys and must not call `findAll()`. Both return
-`visitedCandidateCount`, consumed evidence, a provider continuation, and
-exhaustiveness. The engine updates the server-owned breadth-first frontier and
-visited identities rather than trying to compress graph state into one numeric
-offset. Type hierarchy and implementation searches use those adapters. Cycle,
-timeout, max-depth, candidate-budget, state-budget, and backend-limit evidence
-survives as typed limitations, and tests instrument provider visits rather than
-observing only the final list size.
+Call hierarchy keeps its recursive full-fidelity result internally. The
+backend engine flattens edges breadth-first after sorting each bounded child
+set by canonical identity and location. The emitted window is at most
+`limit + 1`, but provider work is bounded before materialization. The concrete
+IDEA strategy is:
+
+- `IdeaBoundedReferenceProvider` streams paths with
+  `FileTypeIndex.processFiles`, admits at most the candidate/state cap plus one,
+  and stops. Cap-plus-one proves overflow and returns a family budget outcome
+  with no records or retained partial snapshot. At or below the cap it sorts
+  the complete bounded path buffer and scans each file with the existing
+  `PsiReferenceScanner` in lexical offset order. References and incoming calls
+  share this provider plan.
+- outgoing calls walk direct PSI children of the selected declaration in
+  lexical offset order and stop at the visit budget; and
+- `IdeaBoundedInheritorProvider` uses
+  `ClassInheritorsSearch.search(..., checkDeep = false).forEach`, stops at the
+  direct-inheritor cap plus one, and applies the same no-partial-page overflow
+  rule. At or below the cap it canonicalizes anchors in the same read action,
+  then sorts the complete admitted buffer.
+
+No provider calls `FileTypeIndex.getFiles(...).toList()`,
+`ReferencesSearch.findAll`, or inheritor `findAll()`. Crossing the cap returns a
+family-specific candidate-budget outcome instead of a partial deterministic
+page; no sorted prefix is observable. Both provider adapters return
+`visitedCandidateCount`, consumed evidence, next provider state, and
+exhaustiveness only for an admitted complete snapshot. The backend-owned engine
+updates the frontier and visited identities atomically. Tests tripwire the
+forbidden APIs, instrument visits, exercise cap and cap-plus-one inputs, assert
+overflow has no records/page claim/state, and force page breaks inside one
+file, frontier parent, and provider stream.
 
 ## Rust result model
 
@@ -315,68 +358,74 @@ specific relation kind, identity, declaration location, and hierarchy depth
 where applicable. These are Rust enum variants, not one struct full of
 optional fields.
 
-Impact reports an exact total only when the anchored subject is unique at the
-FQ-name granularity used by the index. References report exact cardinality only
-after exhaustive traversal or from an authoritative exact count covering the
-same source/query; bounded or partial IDEA work remains `KNOWN_MINIMUM`.
-Calls, implementations, and hierarchy likewise report `EXACT` only after
-exhaustion and otherwise report a known minimum at least as large as
+Impact reports an exact total only for a compiler-verified non-callable subject
+whose production declaration row matches FQ name, canonical path, non-null
+offset, and kind. Functions and properties degrade because the current primary
+key cannot prove same-file overload isolation. References report exact
+cardinality only after exhaustive exact-anchor INDEX or IDEA traversal;
+bounded work remains `KNOWN_MINIMUM`.
+Every semantic family reports `EXACT` only after exhaustion and otherwise
+reports a known minimum at least as large as private
 `returnedBefore + returnedCount + 1` when another record is proved. The
-projection rejects inconsistent returned counts, false exact totals,
-truncation without a token, a token without truncation, visited-candidate
-claims above the request budget, and relation items of the wrong family.
+backend page factory enforces that private cumulative invariant. Rust cannot
+reconstruct returned-before from the opaque handle; it rejects exposed count
+inconsistency, `KNOWN_MINIMUM < returnedCount + 1`, false exact totals,
+truncation without a token, a token without truncation, visited-candidate claims
+above the request budget, and relation items of the wrong family.
 
 ## Paging and impact
 
 The first request starts reference paging without a cursor, starts a new
 traversal state, or uses impact offset zero according to family. A successful
 non-final page emits the next query-bound token. Reusing a reference or impact
-token reconstructs its lossless typed payload. Reusing a traversal token asks
-the server to load the state behind its handle; the current command must match
-both the Rust fingerprint and stored query proof. A reference cursor pins
-`INDEX` or `IDEA`; if that source disappears, the command returns
-`REFERENCE_CURSOR_SOURCE_UNAVAILABLE` rather than restarting from another
-source.
+token passes its opaque handle or typed SQLite offset unchanged. Reusing a
+semantic handle asks the runtime backend to load state; the current command
+must match both the Rust fingerprint and backend-held query proof. A reference
+cursor privately pins `INDEX` or `IDEA`; if that source disappears, the command
+returns the references-family `BOUND_SOURCE_UNAVAILABLE` rather than restarting
+from another source.
 
-Issue #337 already gives references the provisional
-`ReferencePageCursor(source, evidenceOffset, returnedBefore)` and makes the
+Issue #337 already gives references an opaque server-held cursor and makes the
 SQLite impact query count separately and fetch only `limit + 1` rows. This
-issue wraps the landed reference cursor rather than replacing it. It extends
-the Rust metrics request with a validated impact offset and changes the impact
-row query to `LIMIT limit + 1 OFFSET offset`. The exact count query stays
-independent. Before opening the impact row query, Rust resolves the normalized
-declaration file/start offset through the compiler position endpoint and
-compares the complete returned identity. A separate exact SQL declaration
-count by FQ name determines whether the index can isolate the subject; it does
-not use a bounded name resolver. Three-overload tests select the third anchor,
-observe an exact FQ count of three, and prove no aggregate impact-row query is
-issued. Ordered rows use depth, source path, target FQ name, and edge kind, so
-two pages in an unchanged index have no overlap.
+issue wraps the landed reference handle without replacing or decoding it. It
+extends the Rust metrics request with a validated impact offset and changes the
+impact row query to `LIMIT limit + 1 OFFSET offset`. The exact impact-node count
+stays independent. Before opening the impact row query, Rust resolves the
+normalized declaration file/start offset through the compiler position
+endpoint and compares the complete returned identity. It then reads the
+production declaration row by FQ name, canonical file, and declaration offset.
+Functions and properties degrade without reading aggregate impact rows because
+the production primary key cannot prove same-file overload uniqueness. A
+production `SqliteSourceIndexStore` regression indexes three same-file
+overloads, selects the third compiler anchor, demonstrates that declaration-row
+counting cannot observe three, and proves no aggregate impact-row query is
+issued. Non-callable exact-row matches retain ordered depth/source/target/kind
+paging, so two pages in an unchanged index have no overlap.
 
 ## Error and degradation model
 
 Expected anchored relationship outcomes are `AVAILABLE`, `SUBJECT_NOT_FOUND`,
 and `SUBJECT_IDENTITY_MISMATCH`. `SUBJECT_AMBIGUOUS` remains confined to exact
 lookup and internal compatibility requests; it is not a public anchored
-relationship response. Capability or index absence is `DEGRADED`, with a
-closed typed limitation-code enum and the requested capability. A degraded
-result preserves the exact selector and verified subject; it never returns an
-empty page that looks exhaustive. `RELATION_CURSOR_STALE` and
-`RELATION_CURSOR_INVALID` are separate closed expected outcomes that preserve
-the selector and a typed reason.
+relationship response. Mismatch carries a non-null actual `SymbolIdentity`;
+absence at the anchor is not encoded as `actual = null`. Capability, provider,
+or index absence is `DEGRADED`, with a closed reason enum owned by that response
+family. A degraded result preserves the exact selector and verified subject;
+it never returns an empty page that looks exhaustive. Each response family
+also owns its typed cursor-stale and cursor-invalid variants.
 
-Only known availability conditions degrade:
+There is no cross-family `RelationDegradedCode`. References own
+`REFERENCES_UNAVAILABLE`, `INDEX_IDENTITY_UNAVAILABLE`,
+`BOUND_SOURCE_UNAVAILABLE`, and `CANDIDATE_BUDGET_REACHED`. Calls own call
+capability, candidate-budget, state-budget, and timeout reasons.
+Implementations and hierarchy own parallel enums with their own capability
+value. Impact alone owns `SOURCE_INDEX_UNAVAILABLE`,
+`IMPACT_INDEX_IDENTITY_UNAVAILABLE`, and
+`IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE`.
 
-- missing `FIND_REFERENCES` becomes `REFERENCES_UNAVAILABLE`;
-- missing `CALL_HIERARCHY` becomes `CALL_HIERARCHY_UNAVAILABLE`;
-- missing `IMPLEMENTATIONS` becomes `IMPLEMENTATIONS_UNAVAILABLE`;
-- missing `TYPE_HIERARCHY` becomes `TYPE_HIERARCHY_UNAVAILABLE`; and
-- an unavailable or incompatible source-index database becomes
-  `SOURCE_INDEX_UNAVAILABLE`.
-
-An unavailable SQLite reference index is not degraded when #337 can continue
-with IDEA reference search. A continuation cannot change its bound reference
-source. An anchored overload passed to FQ-keyed impact becomes
+An unavailable or exact-anchor-unsafe reference index is not degraded when a
+first page can choose IDEA. A continuation cannot change its backend-held
+reference source. A callable passed to FQ-keyed impact becomes the impact-only
 `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE`; no aggregate records are returned as
 if they belonged only to that overload.
 
@@ -404,10 +453,12 @@ Issue #342 will complete capability-to-command registration. #339 adds Clap
 callability tests for its own commands and leaves registry generalization to
 that issue, avoiding a second hand-maintained capability catalog.
 
-`cli-rs/src/agent/AGENTS.md` is updated with the new identity, relation,
-projection, token, and test owners. Reference/impact ASCII payloads and opaque
-server handles use existing `sha2`/`hex` support; this design adds no Rust token
-codec dependency and leaves `Cargo.toml`/`Cargo.lock` unchanged.
+Scoped `AGENTS.md` files record the host-agnostic handle model,
+transport-only server boundary, backend-owned atomic continuation state,
+production index identity limitations, and Rust command/projection gates.
+Opaque server handles and the impact ASCII offset use existing `sha2`/`hex`
+support; this design adds no Rust token codec dependency and leaves
+`Cargo.toml`/`Cargo.lock` unchanged.
 
 ## Output budget
 
@@ -431,7 +482,8 @@ The public guide and packaged skill include one executable sequence that:
    entry points without overload re-resolution;
 3. follows a returned page token without overlap; and
 4. passes the same identity to impact and demonstrates the typed overload
-   granularity degradation when the FQ name is not unique.
+   granularity degradation for a callable the production declaration key
+   cannot isolate.
 
 Smoke tests execute the sequence against a scripted backend and a real
 temporary SQLite source index. They assert that no step invokes discovery,
@@ -442,13 +494,14 @@ raw public dispatch, text search, or an unbounded backend request.
 | Area | Required proof |
 | --- | --- |
 | Clap surface | Five relation commands are public; required declaration file/offset pairs parse; old symbol relation flags and their `symbol_lookup.rs` execution path are removed; raw aliases fail; invalid depths, limits, directions, anchors, and tokens fail before execution. |
-| Identity composition | One exact symbol `identity` object feeds every anchored command unchanged; same-file overload fixtures select by file/start offset; not-found and identity-mismatch outcomes do not navigate or discover. |
-| References | Anchored `KastReferences*` contracts never call named resolution; scaffold and fixtures consume occurrences; the #337 `INDEX|IDEA` source/evidence/returned cursor round-trips losslessly; two deterministic pages do not overlap; `EXACT` versus `KNOWN_MINIMUM` remains truthful; declaration inclusion is explicit; containing symbol and `usageSiteScope` are non-conflicting; 500-reference compact output meets budget. |
-| Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; page boundaries within a parent/provider preserve frontier and visited identities; provider visits stay bounded; cycles, timeouts, state budgets, stale/invalid handles, truncation, containing symbols, and continuation remain visible. |
-| Implementations | Interfaces, abstract classes, and subclasses return typed implementation records; class-index provider visits stay bounded; server state resumes without overlap; stale/invalid handles and unavailable capability are distinct from an empty exhaustive result. |
+| Identity composition | ADR 0016 exact success/fallback is superseded explicitly; one exact symbol `identity` object feeds every anchored command unchanged; same-file overload fixtures select by file/start offset; anchor-unavailable/not-found/non-null mismatch outcomes do not navigate or discover. |
+| References | Anchored `KastReferences*` contracts never call named resolution; `KastScaffoldReferences.kt` and fixtures consume occurrences; #337's opaque cursor round-trips without serialized source/counters; target path/offset INDEX reads isolate a forced overload; unsafe first-page INDEX falls back to IDEA while an INDEX-bound continuation never switches; deterministic pages do not overlap; continuation proves the plus-one known minimum; containing symbol and `usageSiteScope` are non-conflicting. |
+| Atomic backend state | #337 `ServerHeldContinuationStore` is the only semantic owner; generation check, provider work, and state commit occur in one read action; queued-write races reject stale state; `ObservedAnalysisBackend` delegates each handle-bearing method once; `analysis-server` owns no duplicate store. |
+| Callers/callees | Incoming and outgoing commands cannot be confused; depth, emitted limit, state handle, and candidate-visit budget reach the backend; bounded `FileTypeIndex.processFiles` plus `PsiReferenceScanner` pages preserve frontier/provider state; cap-plus-one and forbidden materializer tripwires prove bounded work. |
+| Implementations | Interfaces, abstract classes, and subclasses return typed implementation records; bounded `ClassInheritorsSearch.forEach` provider visits stay bounded; backend state resumes without overlap; stale/invalid handles and unavailable capability are distinct from an empty exhaustive result. |
 | Hierarchy | Supertypes/subtypes/both are exhaustive in Clap; depth, ordering, cycles, emitted limits, stateful frontiers, candidate visits, generation staleness, and degraded capability are typed. |
-| Impact | Compiler position lookup verifies the anchor; an exact SQL FQ declaration count makes three overloads degrade without aggregate masquerading; unique subjects get exact total count plus `LIMIT limit + 1 OFFSET offset`; 503-node pages do not overlap; unavailable/incompatible index degrades without false empty success. |
-| Projection | Wrong-family records, inconsistent counts, omitted subjects/selectors, primitive failure codes, and invalid page claims fail closed; compact/fields/count/verbose/explain retain their closed contracts. |
+| Impact | Compiler position lookup verifies the anchor; production row path/offset/kind identity gates non-callable impact; a production-store same-file overload regression proves FQ row counts cannot authorize callable aggregate edges; exact subjects retain total count plus `LIMIT limit + 1 OFFSET offset`; unavailable/incompatible index degrades without false empty success. |
+| Projection | Wrong-family records or degraded reasons, nullable mismatch actual, exposed count inconsistency, omitted subjects/selectors, primitive failure codes, and invalid page claims fail closed; backend state tests separately enforce cumulative plus-one proof; compact/fields/count/verbose/explain retain their closed contracts. |
 | Contracts | Catalog, generated request schemas, OpenAPI, API docs, examples, and capability expectations regenerate from source owners. |
 | Guidance | Docs and packaged skill show identity reuse and semantic evidence consumption without text-search or raw-RPC fallback. |
 
@@ -457,8 +510,9 @@ raw public dispatch, text search, or an unbounded backend request.
 This issue does not add workspace file discovery, Gradle task/plugin graph
 navigation, a generic graph query language, unchecked public positions, an
 opaque server handle as subject identity, arbitrary field filters, or snapshot
-transactions across source edits. The bounded traversal handle represents only
-continuation state and becomes stale when semantic generation changes. The
-public declaration anchor remains compiler-returned identity evidence, not a
-user-selected raw RPC position. This issue does not generalize the complete
+transactions across source edits. The bounded reference/traversal handles
+represent only backend-owned continuation state and become stale when semantic
+generation changes. The public declaration anchor remains compiler-returned
+identity evidence, not a user-selected raw RPC position. This issue does not
+change the production source-index primary key or generalize the complete
 public capability registry owned by #342.
