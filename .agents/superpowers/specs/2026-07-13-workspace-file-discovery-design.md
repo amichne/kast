@@ -43,13 +43,16 @@ intentional Kotlin-source versus Gradle-DSL boundary. Gradle task, plugin, and
 relationship facts need a separate schema and completeness model in #340.
 `SourceIndexFilePolicy` therefore stays `.kt`-only.
 
-### Page one generation of project-model candidates and compose the `.kt` index
+### Page stable source generations and compose behind one barrier
 
 This is the chosen approach. The Kotlin backend gains deterministic per-module
-paging, opaque generation-bound cursors, and a project-model inventory that
-includes `.kt` and `.kts`. Rust exhausts one coherent workspace generation,
-unions physical paths while preserving all module owners, and joins only `.kt`
-candidates to the existing Kotlin source index. Scripts remain
+paging, shared server-held opaque cursors, and a project-model inventory that
+includes `.kt` and `.kts`. Rust exhausts one backend generation, reads the
+source index with its generation/progress/pending state, unions physical paths
+while preserving all module owners, and joins only `.kt` candidates to the
+existing Kotlin source index. A bounded cross-source barrier accepts the
+composition only when backend, index, filesystem, and Git stamps remain stable.
+Scripts remain
 `NOT_APPLICABLE` to that index and become the authoritative input set for
 #340's separate Gradle DSL index.
 
@@ -60,17 +63,22 @@ The implementation has three boundaries:
 1. `raw/workspace-files` snapshots compiler/project-model `.kt` and `.kts`
    candidates, then pages that exact generation deterministically by backend
    module.
-2. `workspace_inventory` exhausts backend pages and reads all exact-root `.kt`
-   index rows without applying public filters or limits.
+2. `workspace_inventory` exhausts backend pages, reads all exact-root `.kt`
+   index rows plus generation/progress/pending state, and proves a stable
+   backend/index/filesystem/Git barrier without applying public filters or
+   limits.
 3. `agent workspace-files` validates filters, applies them to one typed
-   snapshot, sorts deterministically, enforces the public limit, and projects
-   ADR 0020 result views.
+   snapshot, sorts deterministically, enforces the public limit, projects ADR
+   0020 result views, and registers a query-bound continuation when known
+   matches remain.
 
 The command performs ADR 0019 admission first and passes the admitted exact
 root and selected backend to one raw RPC session. It fetches module metadata
 and an opaque snapshot token, then echoes that token while paging every module.
 Only after the backend snapshot is complete or has typed failures does it read
-the exact-root SQLite snapshot and compose records.
+the exact-root SQLite snapshot and compose records. It then revalidates every
+mutable lane; one change restarts the entire attempt once, while a second change
+returns typed partial evidence and never `EXACT`.
 
 ## Typed raw paging
 
@@ -109,28 +117,45 @@ data class WorkspaceModule(
 )
 ```
 
-`snapshotToken` and `pageToken` are opaque server-owned values. Clients may
-store and echo them but never decode, construct, or advance them. A page token
-is legal only when `includeFiles=true`, a nonblank `snapshotToken`, and one
-nonblank `moduleName` are present. The decoded cursor binds the snapshot
-generation, exact module identity, and positive next offset. The Kotlin parse
-boundary validates only nonblank wire tokens and their legal field
-combinations; the backend owns cursor decoding and semantic validation. The
-server continues to enforce a positive `maxFilesPerModule` no greater than
-`maxResults`.
+`snapshotToken` and `pageToken` are random canonical handles into typed
+instances of the shared server-held `OpaqueContinuationStore`; they contain no
+client-decoded offset or generation. The typed store entry binds workspace
+generation, exact module, query identity, next offset, issued/expiry time, and
+cumulative returned evidence. Clients may store and echo handles but never
+decode, construct, or advance state. A page token is legal only when
+`includeFiles=true`, a nonblank snapshot token, and one nonblank module are
+present. A snapshot token with `includeFiles=false` and no module is also legal
+as final barrier validation.
+The Kotlin parse boundary validates canonical token shape and legal field
+combinations; lookup owns semantic validation. The server continues to enforce
+a positive `maxFilesPerModule` no greater than `maxResults`.
+
+The generic store mechanism is extracted from ADR 0020 reference/diagnostic
+paging rather than adding another cursor encoding. Token/state namespaces
+remain distinct by type. `ContinuationTtl` and `ContinuationCapacity`
+are positive typed `ServerLimits`; tests inject a clock and small capacity.
+Expired entries are removed before issue or lookup, capacity evicts the oldest
+expiring entry deterministically, page handles are consumed once, and snapshot
+leases survive until completion, invalidation, eviction, or expiry. Canonical
+UUID parsing, unguessable lookup, and exact query comparison make malformed,
+forged, unknown, expired, evicted, consumed, or query-mismatched handles fail as
+`INVALID_WORKSPACE_FILE_CURSOR` with typed `details.scope` of
+`SNAPSHOT_HANDLE` or `PAGE_HANDLE`, without exposing stored state. Snapshot-
+handle failure invalidates the whole backend attempt. Page-handle failure stays
+local only after the snapshot lease independently validates.
 
 The backend gathers the complete workspace candidate set in one IDEA read
 action, maps paths and roots through exact-root containment, deduplicates, and
 sorts a canonical representation containing module identities,
 source/content roots, dependencies, and candidate paths. It fingerprints that
-representation as the workspace generation returned by the opaque
-`snapshotToken`. Before serving an exact-module page, it recomputes the full
-inventory and rejects a generation mismatch as
-`STALE_WORKSPACE_INVENTORY`. It rejects malformed, out-of-range, or
-cross-module cursors as `INVALID_WORKSPACE_FILE_CURSOR`. Only a matching
-generation may be sliced at the cursor's offset. The result echoes the same
-snapshot token, returns the same `fileCount` on every page, and emits a next
-cursor exactly when more sorted paths remain.
+representation as the workspace generation stored behind the opaque
+`snapshotToken`. Before serving an exact-module page or final validation
+request, it recomputes the full inventory and rejects a generation mismatch as
+`STALE_WORKSPACE_INVENTORY`. It rejects missing state, out-of-range stored
+offsets, or query/module mismatch as `INVALID_WORKSPACE_FILE_CURSOR`. Only a
+matching leased generation may be sliced. The result echoes the same snapshot
+token, returns the same `fileCount` on every page, and emits a next handle
+exactly when more sorted paths remain.
 
 Both failures are typed `AnalysisException` subtypes carried by the existing
 JSON-RPC error envelope. `STALE_WORKSPACE_INVENTORY` uses conflict status 409
@@ -141,11 +166,13 @@ status 503, stable code `WORKSPACE_PROJECT_MODEL_INCOMPLETE`, and
 serialized in `details.reason` as `RUNTIME_INDEXING`,
 `PROJECT_MODEL_UNAVAILABLE`, or `LINKED_ROOT_UNASSOCIATED`.
 
-Rust still rejects repeated or non-advancing cursors, inconsistent counts,
-overlapping pages, or changed module identity. Equal-cardinality path
-replacement and module addition/removal are caught by the generation before
-these structural checks. On the first typed stale response, Rust discards the
-entire backend attempt and restarts once from fresh metadata. A second stale
+Rust treats tokens as opaque. Its defensive checks are limited to repeated
+handles, overlapping physical paths, and cumulative returned evidence that
+never exceeds and finally equals the module's declared count. It does not infer
+cursor advancement, generation, or module identity from handle bytes.
+Equal-cardinality path replacement and module addition/removal are caught by
+the server-held generation. On the first typed stale response, Rust discards
+the entire backend attempt and restarts once from fresh metadata. A second stale
 response is not retried: Rust discards that backend attempt, marks every module
 from the last metadata response partial, emits
 `BACKEND_WORKSPACE_INVENTORY_STALE`, and may compose index-only partial
@@ -158,8 +185,9 @@ backend attempt and records workspace-wide partial coverage; no candidate from
 that attempt survives. The reason maps one-to-one to
 `BACKEND_RUNTIME_INDEXING`, `BACKEND_PROJECT_MODEL_UNAVAILABLE`, or
 `BACKEND_LINKED_ROOT_UNASSOCIATED`. Generic transport or invalid-response
-failures remain local to the requested module when coherent earlier pages are
-still valid.
+failures remain local to the requested module when coherent earlier pages and
+the snapshot lease are still valid. Invalid snapshot lease or final-validation
+failure is workspace-wide and discards all backend pages from the attempt.
 
 `includeFiles=false` returns sorted module metadata and the snapshot token.
 The compatibility form `includeFiles=true` without an input snapshot token
@@ -207,8 +235,10 @@ linked root without any backend root-module association throws
 `PROJECT_MODEL_UNAVAILABLE`. A path outside the canonical workspace or linked
 root is rejected before it reaches paging.
 
-The fake backend implements the same generation/fingerprint and opaque-cursor
-contract. Contract tests cover root build/settings scripts, a build-logic
+The fake backend implements the same generation/fingerprint and server-held
+cursor contract. Contract tests cover expiry, deterministic capacity eviction,
+single-use, forged/unknown/query-mismatched handles, root build/settings
+scripts, a build-logic
 convention plugin, an ordinary `.kts`, included builds, multiple owners, two
 non-overlapping pages, equal-cardinality path replacement, module addition and
 removal, cross-module cursors, and invalid tokens.
@@ -238,10 +268,12 @@ LEFT JOIN fq_names AS packages
 ORDER BY prefixes.dir_path, manifest.filename
 ```
 
-The reader verifies the checked-in schema version and required tables. It
-decodes `__kast_abs__/` and `__kast_rel__/` through the existing path rules,
-rejects non-`.kt` and out-of-root rows with typed evidence, and distinguishes
-package states:
+The same read transaction also selects `schema_version.generation`, every
+`module_index_progress` row, and the count of unapplied `pending_updates`. The
+reader verifies the checked-in schema version and required tables. It decodes
+`__kast_abs__/` and `__kast_rel__/` through the existing path rules, rejects
+non-`.kt` and out-of-root rows with typed evidence, and distinguishes package
+states:
 
 ```rust
 pub(crate) enum WorkspacePackageEvidence {
@@ -258,6 +290,29 @@ without a joined row is `InvalidReference` and adds
 `PACKAGE_METADATA_INVALID`. This avoids using one null for four different
 facts.
 
+```rust
+pub(crate) struct SourceIndexSnapshotStamp {
+    generation: SourceIndexGeneration,
+    progress: BTreeMap<SourceIndexModule, SourceIndexModuleProgress>,
+    unapplied_updates: SourceIndexPendingCount,
+}
+
+pub(crate) enum SourceIndexModuleProgress {
+    Complete { indexed: SourceIndexFileCount, total: SourceIndexFileCount },
+    Pending { indexed: SourceIndexFileCount, total: SourceIndexFileCount },
+    Indexing { indexed: SourceIndexFileCount, total: SourceIndexFileCount },
+    Failed,
+}
+```
+
+The existing generation column becomes an enforced change token: every write
+transaction that mutates candidate tables, progress, or pending applied state
+increments it before commit. Candidate authority is complete only when every
+row in the nonempty progress set initialized for the current index run is
+`Complete`, indexed equals total, and unapplied updates are zero. An empty
+progress set, `Pending`, `Indexing`, `Failed`, count mismatch, or pending updates
+is typed partial coverage even when the row set is readable.
+
 ## Internal inventory model
 
 The collector exposes source completeness and ownership as types:
@@ -270,6 +325,7 @@ pub(crate) struct WorkspaceInventorySnapshot {
     pub(crate) backend_coverage: BackendWorkspaceCoverage,
     pub(crate) index_coverage: IndexWorkspaceCoverage,
     pub(crate) dirty_coverage: DirtyWorkspaceCoverage,
+    pub(crate) composition: WorkspaceCompositionEvidence,
     pub(crate) limitations: BTreeSet<WorkspaceInventoryLimitation>,
 }
 
@@ -318,10 +374,27 @@ pub(crate) enum WorkspaceInventoryLimitationCode {
     BackendLinkedRootUnassociated,
     SourceIndexUnavailable,
     SourceIndexIncompatible,
+    SourceIndexProgressIncomplete,
+    SourceIndexUpdatesPending,
     DirtyStateUnavailable,
+    CrossSourceCompositionUnstable,
+    PathContainmentUnprovable,
     PackageMetadataInvalid,
     ProjectModelOwnershipUnknown,
     OutsideWorkspaceExcluded,
+}
+
+pub(crate) struct WorkspaceCompositionEvidence {
+    backend_generation: BackendWorkspaceGeneration,
+    source_index: SourceIndexSnapshotStamp,
+    filesystem_fingerprint: WorkspaceFilesystemFingerprint,
+    git_fingerprint: Option<WorkspaceGitFingerprint>,
+    state: WorkspaceCompositionState,
+}
+
+pub(crate) enum WorkspaceCompositionState {
+    Coherent,
+    Partial { changed: BTreeSet<WorkspaceEvidenceLane> },
 }
 
 pub(crate) struct WorkspaceMatchCoverage {
@@ -353,10 +426,37 @@ reason.
 `WorkspaceFilePath` contains a proven workspace-relative path and canonical
 absolute counterpart. Its constructor rejects absolute relative input, parent
 traversal, empty filenames, and paths outside the exact root. Existing paths
-are canonicalized to prevent symlink escape. Missing `.kt` index paths remain
-lexical evidence only after lexical containment succeeds. Backend source and
-content roots receive the same proof before they can associate an index row
-with a module.
+are canonicalized to prevent symlink escape. For a missing leaf, it walks to
+the deepest existing ancestor, canonicalizes that ancestor against the
+canonical root, and appends only normalized nonexistent components after the
+proof succeeds. A missing path beneath an escaping symlink is rejected. A
+dangling symlink, permission failure, race, or absent canonicalizable ancestor
+becomes `PATH_CONTAINMENT_UNPROVABLE`, excludes that candidate, and makes
+candidate coverage partial. Backend source and content roots receive the same
+proof before they can associate an index row with a module.
+
+## Cross-source composition barrier
+
+One composition attempt records the backend snapshot lease, reads source-index
+rows and `SourceIndexSnapshotStamp` in one SQLite transaction, captures
+canonical existence/containment facts for exactly the candidate paths, and
+captures normalized Git status. It then validates the backend lease, re-reads
+the index stamp in a fresh transaction, repeats targeted filesystem facts, and
+repeats the Git fingerprint. No directory walk is introduced.
+
+Identical before/after stamps produce `Coherent`. Any changed lane discards the
+whole attempt and retries once. If the second attempt also moves, the result
+carries `CROSS_SOURCE_COMPOSITION_UNSTABLE`, marks candidate and affected
+filter coverage partial, suppresses public continuation, and cannot emit
+`EXACT`; cross-source drift and absence classifications become `UNKNOWN`.
+Stable incomplete source-index progress or pending updates do not spin: they
+produce `SOURCE_INDEX_PROGRESS_INCOMPLETE` or
+`SOURCE_INDEX_UPDATES_PENDING`, retain proven rows, and keep candidate coverage
+partial. Mutation fixtures change backend generation, source-index generation,
+progress/pending state, filesystem existence/symlink resolution, and Git status
+between barrier reads to prove one retry and the terminal partial state. The
+separate budgets permit at most two composition attempts, each with at most two
+backend-generation attempts; call-count tests enforce the four-attempt ceiling.
 
 The coarse file kind remains:
 
@@ -438,6 +538,7 @@ kast agent workspace-files \
   [--path-prefix <workspace-relative-prefix>] \
   [--glob <workspace-relative-glob>] \
   [--limit <1..=200>] \
+  [--page-token <opaque>] \
   [--fields path,module,source-set,kind,package,index,drift,dirty,evidence | --count] \
   [--verbose | --explain]
 ```
@@ -445,7 +546,31 @@ kast agent workspace-files \
 All filters use AND semantics before the default limit of 20. Module matches
 any backend or indexed module owner. Path prefix matches at a segment boundary;
 glob matches only normalized relative paths. Missing source-set/package
-evidence does not match those filters.
+evidence does not match those filters. `--page-token` conflicts with `--count`;
+all other result-affecting arguments must reproduce the original normalized
+query exactly.
+
+The public page token is not a raw module cursor. After a coherent composition,
+Rust registers typed `WorkspaceFilesPublicContinuationState` in the shared
+mechanism's dedicated public workspace-file store whenever another known
+matching path exists. The state binds
+the exact root, backend, normalized filters, view/field selection, limit,
+composition-stamp digest, last emitted relative path, and cumulative returned
+evidence. A resumed invocation consumes the handle, requires the identical
+normalized query, recollects a coherent snapshot, compares its stamp digest,
+then seeks strictly after the bound path. Query mismatch, malformed, forged, or
+unknown state is `INVALID_WORKSPACE_FILES_PAGE_TOKEN`; source movement is
+`STALE_WORKSPACE_FILES_PAGE`. Both are typed failures rather than page-one
+fallback.
+
+`INVALID_WORKSPACE_FILES_PAGE_TOKEN` is non-retryable status 400 and preserves
+only the stable code plus failure class, never stored state.
+`STALE_WORKSPACE_FILES_PAGE` is retryable conflict status 409 and tells the
+caller to begin a new unpaged query explicitly.
+
+Issue and consume use internal `raw/workspace-files-continuation` over the
+already admitted session. It stores query/stamp/seek/cumulative state only and
+does not enumerate candidates or become a public capability.
 
 The compact result uses one physical-file record:
 
@@ -476,7 +601,8 @@ The compact result uses one physical-file record:
       "candidateInventory": "COMPLETE",
       "filterEvidence": "COMPLETE"
     },
-    "limit": 20
+    "limit": 20,
+    "nextPageToken": null
   },
   "limitations": [],
   "schemaVersion": 3
@@ -514,15 +640,17 @@ the registry; #338 does not create a parallel catalog.
 The internal raw catalog has a separate, explicit source boundary:
 `cli-rs/resources/kast-skill/references/commands.json` is hand-authored and is
 updated with snapshot/page fields and current internal guidance. The release
-contract generator consumes that JSON to produce `commands.yaml`, request
-schemas, and request samples; it never generates the JSON source.
+contract generator also records the internal continuation issue/consume method.
+It consumes that JSON to produce `commands.yaml`, request schemas, and request
+samples; it never generates the JSON source.
 
 ## Exact-root and testing strategy
 
 The TDD sequence proves:
 
 1. Kotlin query parsing rejects illegal token combinations and blank tokens;
-2. opaque cursors reject malformed and cross-module use;
+2. the shared server-held store rejects malformed, forged, unknown, expired,
+   evicted, consumed, and query/cross-module-mismatched handles;
 3. equal-cardinality path replacement and module addition/removal return
    `STALE_WORKSPACE_INVENTORY`;
 4. Rust discards a stale attempt, restarts exactly once, and returns typed
@@ -544,7 +672,14 @@ The TDD sequence proves:
 15. unassociated roots, runtime indexing, unavailable project models, and
     metadata failures retain distinct typed limitations without stale backend
     candidates; and
-16. capability projection requires the real Clap route.
+16. capability projection requires the real Clap route;
+17. deepest-existing-ancestor containment admits a missing in-root leaf but
+    excludes escaping/dangling symlink and unprovable cases with typed evidence;
+18. source-index generation, progress, and pending state plus backend,
+    filesystem, and Git mutations exercise the single composition retry and
+    prove unstable/incomplete evidence never emits `EXACT`; and
+19. public continuation returns 500 filtered records as 200/200/100 without
+    overlap and rejects stale, forged/unknown, and filter-mismatched tokens.
 
 The exact-root regression lives in both
 `agent_workspace_files_smoke.rs` and `semantic_workspace_admission_smoke.rs`.
@@ -553,8 +688,11 @@ Full gates cover Kotlin, generated contracts, Rust, docs, and rendering.
 `analysis-api/AGENTS.md` records the wire and generated-contract boundary.
 `backend-idea/AGENTS.md` records project-model inventory, Gradle bridge, typed
 incompleteness, and paging gates. The new Rust inventory directory owns its own
-scoped guide. These guides change with their new source boundaries rather than
-leaving ownership only in this design.
+scoped guide. `cli-rs/AGENTS.md` and
+`cli-rs/resources/kast-skill/AGENTS.md` record the public command, continuation,
+catalog/package ownership, and mandatory package, LSP, and routing gates. These
+guides change with their new source boundaries rather than leaving ownership
+only in this design.
 
 ## Non-goals
 

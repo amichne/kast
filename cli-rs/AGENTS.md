@@ -11,13 +11,19 @@ resources.
 - `src/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
   setup, readiness, repair, status, and developer operations.
 - `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
-  `verify`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp`.
+  `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`, `rename`, and
+  `lsp`.
 - `src/runtime/` owns backend lifecycle inspection and mutation for IDEA and
   headless runtimes behind the same command dialect.
 - `src/install/` owns repository setup, managed guidance, machine install,
   repair, bundle activation, shell integration, and IDEA plugin installation.
 - `src/symbol_query/` and `src/metrics_database/` own operational source-index
   reads for the Rust CLI.
+- `src/workspace_inventory.rs` and `src/workspace_inventory/` own uncapped
+  exact-root `.kt` index reads, compiler/project-model candidate composition,
+  deepest-existing-ancestor path containment, source generation/progress/
+  pending evidence, the backend/index/filesystem/Git coherence barrier, and
+  typed limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
 - `resources/kast-skill/` owns the packaged `SKILL.md` and internal catalog
@@ -34,8 +40,16 @@ and validation gates live in
 
 - Keep command invariants in typed Rust structures. Clap, serde, and catalog
   schema validation own command parsing and structured data boundaries.
-- Agent-facing semantic workflows use typed `kast agent verify`, `symbol`,
-  `diagnostics`, `impact`, `rename`, and `lsp` commands.
+- Agent-facing semantic workflows use typed `kast agent verify`,
+  `workspace-files`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp`
+  commands.
+- Keep raw workspace paging handles and public workspace-file continuation
+  handles distinct and opaque. Public continuations bind every result-affecting
+  query field and the coherent multi-source composition stamp; invalid or stale
+  state must never restart at page one.
+- Do not assert `EXACT`, `INDEX_ONLY`, or clean filter evidence while a relevant
+  backend, source-index, filesystem, or Git lane is moving, incomplete, pending,
+  or unprovable. Retry the full composition only within its documented bound.
 - Captured or agent-run commands default to compact structured output. Public
   mutations are plan-first and gated: repair and rename require `--apply`;
   setup supports `--dry-run`; forceful replacement requires `--force`.
@@ -70,12 +84,15 @@ cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-feat
 cargo test --manifest-path cli-rs/Cargo.toml --locked
 ```
 
-For resource, package, or catalog changes, also run the relevant contracts:
+For any workspace-files, packaged guidance, resource, or catalog change, run
+all package, LSP, routing, generated-contract, and docs gates below:
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
+.github/scripts/test-kast-routing-evals.sh
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean
