@@ -42,6 +42,12 @@ val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
 }
 
+val kotlinPsiTestLibs: ConfigurableFileCollection = extractedIdeaFiles {
+    include("**/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar")
+    include("**/plugins/Kotlin/lib/kotlinc.kotlin-compiler-fe10.jar")
+    include("**/plugins/Kotlin/lib/kotlinc.kotlin-compiler-ir.jar")
+}
+
 val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
     include("**/plugins/java/lib/**/*.jar")
 }
@@ -57,6 +63,9 @@ dependencies {
     compileOnly(ideaLibs)
     compileOnly(kotlinPluginLibs)
     compileOnly(javaPluginLibs)
+    testImplementation(ideaLibs)
+    testImplementation(kotlinPsiTestLibs)
+    testImplementation(javaPluginLibs)
 }
 
 tasks.named("compileKotlin") {
