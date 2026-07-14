@@ -7,7 +7,12 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Projection>(
+class ServerHeldContinuationStore<
+    Token : Any,
+    Query : Any,
+    State : ContinuationOwnedState,
+    Projection : ContinuationProjection,
+>(
     private val capacity: ContinuationCapacity,
     private val timeToLive: ContinuationTtl,
     private val tokenIssuer: ContinuationTokenIssuer<Token>,
@@ -21,14 +26,16 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
     private var expiryTask: ScheduledFuture<*>? = null
     private var activeCallbacks = 0
     private var activeDisposals = 0
+    private var publicationInProgress = false
     private var closing = false
     private var closeCompleted = false
     private var closeFailure: Throwable? = null
 
     fun issue(query: Query, state: State): ContinuationIssueResult<Token> {
-        val decision = lock.withLock {
+        val preparation = lock.withLock {
+            awaitPublicationLocked()
             if (closing) {
-                IssueDecision.Rejected(
+                IssuePreparation.Rejected(
                     disposal = registerStateDisposalLocked(state),
                     failure = ContinuationAccessFailure.StoreClosed,
                 )
@@ -36,13 +43,13 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
                 val token = try {
                     tokenIssuer.issue()
                 } catch (failure: Throwable) {
-                    return@withLock IssueDecision.IssuerFailed(
+                    return@withLock IssuePreparation.IssuerFailed(
                         disposal = registerStateDisposalLocked(state),
                         failure = failure,
                     )
                 }
                 if (token in inFlightTokens) {
-                    return@withLock IssueDecision.Rejected(
+                    return@withLock IssuePreparation.Rejected(
                         disposal = registerStateDisposalLocked(state),
                         failure = ContinuationAccessFailure.TokenCollision,
                     )
@@ -50,27 +57,66 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
                 val nowNanos = clock.nowNanos()
                 val discarded = removeExpiredLocked(nowNanos).toMutableList()
                 entries.remove(token)?.let { replaced -> discarded += replaced.state }
-                entries[token] = Entry(query, state, nowNanos)
-                discarded += removeOverCapacityLocked(nowNanos)
+                discarded += removeForPublicationCapacityLocked(nowNanos)
                 scheduleNextExpiryLocked(nowNanos)
-                IssueDecision.Issued(token, registerDisposalLocked(discarded))
+                startPublicationLocked()
+                IssuePreparation.Prepared(
+                    token = token,
+                    entry = Entry(query, state, nowNanos),
+                    disposal = registerDisposalLocked(discarded),
+                )
             }
         }
-        return when (decision) {
-            is IssueDecision.Issued -> {
-                disposeRegistered(decision.disposal)
-                ContinuationIssueResult.Issued(decision.token)
+        return when (preparation) {
+            is IssuePreparation.Prepared -> completeIssuePublication(preparation)
+            is IssuePreparation.Rejected -> {
+                disposeRegistered(preparation.disposal)
+                ContinuationIssueResult.Rejected(preparation.failure)
             }
-            is IssueDecision.Rejected -> {
-                disposeRegistered(decision.disposal)
-                ContinuationIssueResult.Rejected(decision.failure)
-            }
-            is IssueDecision.IssuerFailed -> {
-                val disposeFailure = disposeRegisteredCapturingFailure(decision.disposal)
-                disposeFailure?.let(decision.failure::addSuppressed)
-                throw decision.failure
+            is IssuePreparation.IssuerFailed -> {
+                val disposeFailure = disposeRegisteredCapturingFailure(preparation.disposal)
+                disposeFailure?.let(preparation.failure::addSuppressed)
+                throw preparation.failure
             }
         }
+    }
+
+    private fun completeIssuePublication(
+        preparation: IssuePreparation.Prepared<Token, Query, State>,
+    ): ContinuationIssueResult<Token> {
+        val publicationFailure = disposeRegisteredCapturingFailure(preparation.disposal)
+        if (publicationFailure != null) {
+            rollbackIssuePublication(preparation.entry.state, publicationFailure)
+        }
+
+        val terminalDisposal = lock.withLock {
+            if (closing) {
+                registerStateDisposalLocked(preparation.entry.state).also {
+                    finishPublicationLocked()
+                }
+            } else {
+                entries[preparation.token] = preparation.entry
+                scheduleNextExpiryLocked(clock.nowNanos())
+                finishPublicationLocked()
+                null
+            }
+        }
+        if (terminalDisposal != null) {
+            disposeRegistered(terminalDisposal)
+            return ContinuationIssueResult.Rejected(ContinuationAccessFailure.StoreClosed)
+        }
+        return ContinuationIssueResult.Issued(preparation.token)
+    }
+
+    private fun rollbackIssuePublication(state: State, publicationFailure: Throwable): Nothing {
+        val rollbackDisposal = lock.withLock {
+            registerStateDisposalLocked(state).also {
+                scheduleNextExpiryLocked(clock.nowNanos())
+                finishPublicationLocked()
+            }
+        }
+        disposeRegisteredCapturingFailure(rollbackDisposal)?.let(publicationFailure::addSuppressed)
+        throw publicationFailure
     }
 
     fun lease(
@@ -89,14 +135,14 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
     fun consume(
         token: Token,
         query: Query,
-        projection: ContinuationStateProjection<State, ContinuationTransition<Projection, Query>>,
+        transition: ContinuationStateTransition<State, Projection, Query>,
     ): ContinuationConsumeResult<Token, Projection> = when (val claim = claim(token, query)) {
         is ClaimDecision.Rejected -> ContinuationConsumeResult.Rejected(claim.failure)
         is ClaimDecision.Discarded -> {
             disposeRegistered(claim.disposal)
             ContinuationConsumeResult.Rejected(claim.failure)
         }
-        is ClaimDecision.Claimed -> consumeClaim(claim.token, claim.entry.state, projection)
+        is ClaimDecision.Claimed -> consumeClaim(claim.token, claim.entry.state, transition)
     }
 
     fun invalidate(token: Token): ContinuationInvalidationResult {
@@ -143,6 +189,7 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
                 closing = true
                 expiryTask?.cancel(false)
                 expiryTask = null
+                callbacksDrained.signalAll()
                 entries.values.map(Entry<Query, State>::state).also { entries.clear() }
             }
         }
@@ -154,7 +201,7 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
         val retainedFailure = disposeAllCapturingFailure(retained)
         val failure = lock.withLock {
             recordCloseFailureLocked(retainedFailure)
-            while (activeCallbacks > 0 || activeDisposals > 0) {
+            while (activeCallbacks > 0 || activeDisposals > 0 || publicationInProgress) {
                 callbacksDrained.awaitUninterruptibly()
             }
             closeCompleted = true
@@ -202,6 +249,7 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
         }
 
         val retainDecision = lock.withLock {
+            awaitPublicationLocked()
             if (closing || elapsedNanos(entry.createdAtNanos) >= timeToLive.nanoseconds) {
                 LeaseRetention.Terminal
             } else {
@@ -226,10 +274,10 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
     private fun consumeClaim(
         token: Token,
         state: State,
-        projection: ContinuationStateProjection<State, ContinuationTransition<Projection, Query>>,
+        transition: ContinuationStateTransition<State, Projection, Query>,
     ): ContinuationConsumeResult<Token, Projection> {
-        val transition = try {
-            projection.project(state)
+        val result = try {
+            transition.transition(state)
         } catch (failure: Throwable) {
             val disposeFailure = disposeCapturingFailure(state)
             finishCallback(token, disposeFailure)
@@ -237,14 +285,14 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
             throw failure
         }
 
-        return when (transition) {
+        return when (result) {
             is ContinuationTransition.Complete -> {
                 val disposeFailure = disposeCapturingFailure(state)
                 finishCallback(token, disposeFailure)
                 disposeFailure?.let { throw it }
-                ContinuationConsumeResult.Completed(transition.output)
+                ContinuationConsumeResult.Completed(result.output)
             }
-            is ContinuationTransition.Reissue -> reissueClaim(token, state, transition)
+            is ContinuationTransition.Reissue -> reissueClaim(token, state, result)
         }
     }
 
@@ -253,55 +301,108 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
         state: State,
         transition: ContinuationTransition.Reissue<Projection, Query>,
     ): ContinuationConsumeResult<Token, Projection> {
-        val decision = lock.withLock {
+        val preparation = lock.withLock {
+            awaitPublicationLocked()
             if (closing) {
-                ReissueDecision.Terminal
+                ReissuePreparation.Terminal
             } else {
                 val token = try {
                     tokenIssuer.issue()
                 } catch (failure: Throwable) {
-                    return@withLock ReissueDecision.IssuerFailed(failure)
+                    return@withLock ReissuePreparation.IssuerFailed(failure)
                 }
                 if (token in inFlightTokens) {
-                    return@withLock ReissueDecision.Rejected(
+                    return@withLock ReissuePreparation.Rejected(
                         ContinuationAccessFailure.TokenCollision,
                     )
                 }
                 val nowNanos = clock.nowNanos()
                 val discarded = removeExpiredLocked(nowNanos).toMutableList()
                 entries.remove(token)?.let { replaced -> discarded += replaced.state }
-                finishCallbackLocked(claimedToken, null)
-                entries[token] = Entry(transition.nextQuery, state, nowNanos)
-                discarded += removeOverCapacityLocked(nowNanos)
+                discarded += removeForPublicationCapacityLocked(nowNanos)
                 scheduleNextExpiryLocked(nowNanos)
-                ReissueDecision.Reissued(token, registerDisposalLocked(discarded))
+                startPublicationLocked()
+                ReissuePreparation.Prepared(
+                    token = token,
+                    entry = Entry(transition.nextQuery, state, nowNanos),
+                    disposal = registerDisposalLocked(discarded),
+                )
             }
         }
-        return when (decision) {
-            ReissueDecision.Terminal -> {
+        return when (preparation) {
+            is ReissuePreparation.Prepared -> completeReissuePublication(
+                claimedToken,
+                transition.output,
+                preparation,
+            )
+            ReissuePreparation.Terminal -> {
                 val disposeFailure = disposeCapturingFailure(state)
                 finishCallback(claimedToken, disposeFailure)
                 disposeFailure?.let { throw it }
                 ContinuationConsumeResult.Rejected(ContinuationAccessFailure.StoreClosed)
             }
-            is ReissueDecision.Rejected -> {
+            is ReissuePreparation.Rejected -> {
                 val disposeFailure = disposeCapturingFailure(state)
                 finishCallback(claimedToken, disposeFailure)
                 disposeFailure?.let { throw it }
-                ContinuationConsumeResult.Rejected(decision.failure)
+                ContinuationConsumeResult.Rejected(preparation.failure)
             }
-            is ReissueDecision.IssuerFailed -> {
+            is ReissuePreparation.IssuerFailed -> {
                 val disposeFailure = disposeCapturingFailure(state)
                 finishCallback(claimedToken, disposeFailure)
-                disposeFailure?.let(decision.failure::addSuppressed)
-                throw decision.failure
-            }
-            is ReissueDecision.Reissued -> {
-                val disposeFailure = disposeRegisteredCapturingFailure(decision.disposal)
-                disposeFailure?.let { throw it }
-                ContinuationConsumeResult.Reissued(transition.output, decision.token)
+                disposeFailure?.let(preparation.failure::addSuppressed)
+                throw preparation.failure
             }
         }
+    }
+
+    private fun completeReissuePublication(
+        claimedToken: Token,
+        output: Projection,
+        preparation: ReissuePreparation.Prepared<Token, Query, State>,
+    ): ContinuationConsumeResult<Token, Projection> {
+        val publicationFailure = disposeRegisteredCapturingFailure(preparation.disposal)
+        if (publicationFailure != null) {
+            rollbackReissuePublication(claimedToken, preparation.entry.state, publicationFailure)
+        }
+
+        val terminalDisposal = lock.withLock {
+            if (closing) {
+                registerStateDisposalLocked(preparation.entry.state).also {
+                    finishPublicationLocked()
+                }
+            } else {
+                finishCallbackLocked(claimedToken, null)
+                entries[preparation.token] = preparation.entry
+                scheduleNextExpiryLocked(clock.nowNanos())
+                finishPublicationLocked()
+                null
+            }
+        }
+        if (terminalDisposal != null) {
+            val disposeFailure = disposeRegisteredCapturingFailure(terminalDisposal)
+            finishCallback(claimedToken, disposeFailure)
+            disposeFailure?.let { throw it }
+            return ContinuationConsumeResult.Rejected(ContinuationAccessFailure.StoreClosed)
+        }
+        return ContinuationConsumeResult.Reissued(output, preparation.token)
+    }
+
+    private fun rollbackReissuePublication(
+        claimedToken: Token,
+        state: State,
+        publicationFailure: Throwable,
+    ): Nothing {
+        val rollbackDisposal = lock.withLock {
+            registerStateDisposalLocked(state).also {
+                scheduleNextExpiryLocked(clock.nowNanos())
+                finishPublicationLocked()
+            }
+        }
+        val rollbackFailure = disposeRegisteredCapturingFailure(rollbackDisposal)
+        finishCallback(claimedToken, rollbackFailure)
+        rollbackFailure?.let(publicationFailure::addSuppressed)
+        throw publicationFailure
     }
 
     private fun finishCallback(token: Token, disposeFailure: Throwable?) {
@@ -317,6 +418,21 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
         signalOwnershipDrainedLocked()
     }
 
+    private fun awaitPublicationLocked() {
+        while (publicationInProgress && !closing) callbacksDrained.awaitUninterruptibly()
+    }
+
+    private fun startPublicationLocked() {
+        check(!publicationInProgress) { "Continuation publication was already in progress" }
+        publicationInProgress = true
+    }
+
+    private fun finishPublicationLocked() {
+        check(publicationInProgress) { "Continuation publication was not in progress" }
+        publicationInProgress = false
+        callbacksDrained.signalAll()
+    }
+
     private fun removeExpiredLocked(nowNanos: Long): List<State> = buildList {
         val iterator = entries.entries.iterator()
         while (iterator.hasNext()) {
@@ -330,12 +446,20 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
 
     private fun removeOverCapacityLocked(nowNanos: Long): List<State> = buildList {
         while (entries.size > capacity.value) {
-            val oldest = entries.entries.maxBy { (_, entry) ->
-                nowNanos - entry.createdAtNanos
-            }
-            entries.remove(oldest.key)
-            add(oldest.value.state)
+            add(removeOldestLocked(nowNanos))
         }
+    }
+
+    private fun removeForPublicationCapacityLocked(nowNanos: Long): List<State> = buildList {
+        while (entries.size >= capacity.value) {
+            add(removeOldestLocked(nowNanos))
+        }
+    }
+
+    private fun removeOldestLocked(nowNanos: Long): State {
+        val oldest = entries.entries.maxBy { (_, entry) -> nowNanos - entry.createdAtNanos }
+        entries.remove(oldest.key)
+        return oldest.value.state
     }
 
     private fun scheduleNextExpiryLocked(nowNanos: Long) {
@@ -399,7 +523,9 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
     }
 
     private fun signalOwnershipDrainedLocked() {
-        if (activeCallbacks == 0 && activeDisposals == 0) callbacksDrained.signalAll()
+        if (activeCallbacks == 0 && activeDisposals == 0 && !publicationInProgress) {
+            callbacksDrained.signalAll()
+        }
     }
 
     private fun disposeCapturingFailure(state: State): Throwable? = try {
@@ -439,21 +565,22 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
 
     private data class RegisteredDisposal<out State>(val states: List<State>)
 
-    private sealed interface IssueDecision<out Token, out State> {
-        data class Issued<Token, State>(
+    private sealed interface IssuePreparation<out Token, out Query, out State> {
+        data class Prepared<Token, Query, State>(
             val token: Token,
+            val entry: Entry<Query, State>,
             val disposal: RegisteredDisposal<State>?,
-        ) : IssueDecision<Token, State>
+        ) : IssuePreparation<Token, Query, State>
 
         data class Rejected<State>(
             val disposal: RegisteredDisposal<State>,
             val failure: ContinuationAccessFailure,
-        ) : IssueDecision<Nothing, State>
+        ) : IssuePreparation<Nothing, Nothing, State>
 
         data class IssuerFailed<State>(
             val disposal: RegisteredDisposal<State>,
             val failure: Throwable,
-        ) : IssueDecision<Nothing, State>
+        ) : IssuePreparation<Nothing, Nothing, State>
     }
 
     private sealed interface ClaimDecision<out Token, out Query, out State> {
@@ -480,19 +607,22 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
         ) : LeaseRetention<State>
     }
 
-    private sealed interface ReissueDecision<out Token, out State> {
-        data object Terminal : ReissueDecision<Nothing, Nothing>
+    private sealed interface ReissuePreparation<out Token, out Query, out State> {
+        data object Terminal : ReissuePreparation<Nothing, Nothing, Nothing>
 
-        data class Reissued<Token, State>(
+        data class Prepared<Token, Query, State>(
             val token: Token,
+            val entry: Entry<Query, State>,
             val disposal: RegisteredDisposal<State>?,
-        ) : ReissueDecision<Token, State>
+        ) : ReissuePreparation<Token, Query, State>
 
         data class Rejected(
             val failure: ContinuationAccessFailure,
-        ) : ReissueDecision<Nothing, Nothing>
+        ) : ReissuePreparation<Nothing, Nothing, Nothing>
 
-        data class IssuerFailed(val failure: Throwable) : ReissueDecision<Nothing, Nothing>
+        data class IssuerFailed(
+            val failure: Throwable,
+        ) : ReissuePreparation<Nothing, Nothing, Nothing>
     }
 
     private sealed interface InvalidationDecision<out State> {
@@ -506,7 +636,12 @@ class ServerHeldContinuationStore<Token : Any, Query : Any, State : Any, Project
         ) : InvalidationDecision<Nothing>
     }
 
-    private class PassiveExpiryTask<Token : Any, Query : Any, State : Any, Projection>(
+    private class PassiveExpiryTask<
+        Token : Any,
+        Query : Any,
+        State : ContinuationOwnedState,
+        Projection : ContinuationProjection,
+    >(
         store: ServerHeldContinuationStore<Token, Query, State, Projection>,
     ) : Runnable {
         private val store = WeakReference(store)

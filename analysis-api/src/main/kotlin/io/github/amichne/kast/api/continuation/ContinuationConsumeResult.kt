@@ -1,9 +1,11 @@
 package io.github.amichne.kast.api.continuation
 
-sealed interface ContinuationConsumeResult<out Token, out Projection> {
-    data class Completed<Projection>(val output: Projection) : ContinuationConsumeResult<Nothing, Projection>
+sealed interface ContinuationConsumeResult<out Token, out Projection : ContinuationProjection> {
+    data class Completed<Projection : ContinuationProjection>(
+        val output: Projection,
+    ) : ContinuationConsumeResult<Nothing, Projection>
 
-    data class Reissued<Token, Projection>(
+    data class Reissued<Token, Projection : ContinuationProjection>(
         val output: Projection,
         val token: Token,
     ) : ContinuationConsumeResult<Token, Projection>
