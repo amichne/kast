@@ -4,7 +4,10 @@
   "method": "raw/workspace-files",
   "params": {
     "includeFiles": true,
+    "kindDomain": "MIXED",
     "maxFilesPerModule": 25,
-    "moduleName": ":analysis-api"
+    "moduleName": ":analysis-api",
+    "pageToken": "example-pageToken",
+    "snapshotToken": "example-snapshotToken"
   }
 }

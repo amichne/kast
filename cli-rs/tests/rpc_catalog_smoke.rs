@@ -273,18 +273,23 @@ fn command_catalog_is_schema_backed_and_self_consistent() {
         );
         assert_request_shape(&command["request"]);
         if let Some(variants) = command.get("variants").and_then(Value::as_object) {
+            let discriminator = command
+                .get("variantDiscriminator")
+                .and_then(Value::as_str)
+                .unwrap_or("type");
             assert!(
                 command["request"]["fields"].get("value").is_none(),
                 "variant request {method} must not use an untyped value envelope"
             );
-            let type_enum: BTreeSet<_> = command["request"]["fields"]["type"]["enum"]
-                .as_array()
-                .expect("variant type enum")
-                .iter()
-                .map(|value| value.as_str().expect("variant name"))
-                .collect();
+            let discriminator_enum: BTreeSet<_> =
+                command["request"]["fields"][discriminator]["enum"]
+                    .as_array()
+                    .unwrap_or_else(|| panic!("variant {discriminator} enum"))
+                    .iter()
+                    .map(|value| value.as_str().expect("variant name"))
+                    .collect();
             let variant_names: BTreeSet<_> = variants.keys().map(String::as_str).collect();
-            assert_eq!(type_enum, variant_names);
+            assert_eq!(discriminator_enum, variant_names);
             for request in variants.values() {
                 assert_request_shape(request);
             }
@@ -388,25 +393,26 @@ fn symbol_query_catalog_samples_validate_against_shared_schema() {
 }
 
 #[test]
-fn workspace_files_tool_is_documented_as_secondary_and_bounded() {
+fn workspace_files_catalog_declares_generation_bound_server_paging() {
     let catalog = catalog();
     let workspace_files = &catalog["commands"]["raw/workspace-files"];
+    let fields = &workspace_files["request"]["fields"];
     let description = workspace_files["tool"]["description"]
         .as_str()
         .expect("workspace files tool description");
 
-    assert!(
-        description.contains("Secondary"),
-        "workspace files should be presented as secondary guidance: {description}"
+    assert_eq!(
+        fields["kindDomain"]["enum"],
+        serde_json::json!(["SOURCE_ONLY", "SCRIPT_ONLY", "MIXED"])
     );
+    assert!(fields.get("snapshotToken").is_some());
+    assert!(fields.get("pageToken").is_some());
+    assert!(!description.contains("Secondary"), "{description}");
     assert!(
-        description.contains("Prefer symbol/query"),
-        "workspace files should steer agents to symbol/query first: {description}"
+        !description.contains("Prefer symbol/query"),
+        "{description}"
     );
-    assert!(
-        description.contains("includeFiles=false"),
-        "workspace files should advertise the bounded default: {description}"
-    );
+    assert!(description.contains("generation-bound"), "{description}");
 
     let maximal: Value = serde_json::from_str(include_str!(
         "../resources/kast-skill/references/requests/raw/workspace-files/maximal.json"
@@ -421,6 +427,47 @@ fn workspace_files_tool_is_documented_as_secondary_and_bounded() {
         maximal["params"]["maxFilesPerModule"],
         Value::Number(25.into())
     );
+    assert!(maximal["params"]["snapshotToken"].is_string());
+    assert!(maximal["params"]["pageToken"].is_string());
+
+    let response: Value = serde_json::from_str(include_str!(
+        "../protocol/examples/workspaceFiles-response.json"
+    ))
+    .expect("workspace-files response example");
+    let module = &response["result"]["modules"][0];
+    assert!(response["result"]["snapshotToken"].is_string());
+    assert_eq!(module["returnedFileCount"], 1);
+    assert!(module["nextPageToken"].is_string());
+}
+
+#[test]
+fn workspace_files_continuation_catalog_declares_issue_and_consume_variants() {
+    let catalog = catalog();
+    let continuation = &catalog["commands"]["raw/workspace-files-continuation"];
+
+    assert_eq!(continuation["variantDiscriminator"], "action");
+    assert_eq!(
+        continuation["request"]["fields"]["action"]["enum"],
+        serde_json::json!(["ISSUE", "CONSUME"])
+    );
+    assert!(
+        continuation["variants"]["ISSUE"]["fields"]
+            .get("state")
+            .is_some()
+    );
+    assert!(
+        continuation["variants"]["CONSUME"]["fields"]
+            .get("pageToken")
+            .is_some()
+    );
+
+    for (variant, expected_action) in [("ISSUE", "ISSUE"), ("CONSUME", "CONSUME")] {
+        let sample = schema_value(&format!(
+            "resources/kast-skill/references/requests/raw/workspace-files-continuation/{variant}/minimal.json"
+        ));
+        assert_eq!(sample["params"]["action"], expected_action);
+        assert!(sample["params"].get("type").is_none());
+    }
 }
 
 #[test]

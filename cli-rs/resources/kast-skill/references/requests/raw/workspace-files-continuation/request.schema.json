@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/workspace-files-continuation"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "CONSUME",
+              "type": "string"
+            },
+            "identity": {
+              "additionalProperties": false,
+              "properties": {
+                "backendName": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "integer"
+                },
+                "normalizedQuery": {
+                  "type": "string"
+                },
+                "projection": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "workspaceRoot",
+                "backendName",
+                "normalizedQuery",
+                "projection",
+                "limit"
+              ],
+              "type": "object"
+            },
+            "pageToken": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "identity",
+            "pageToken"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "ISSUE",
+              "type": "string"
+            },
+            "identity": {
+              "additionalProperties": false,
+              "properties": {
+                "backendName": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "integer"
+                },
+                "normalizedQuery": {
+                  "type": "string"
+                },
+                "projection": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "workspaceRoot",
+                "backendName",
+                "normalizedQuery",
+                "projection",
+                "limit"
+              ],
+              "type": "object"
+            },
+            "state": {
+              "additionalProperties": false,
+              "properties": {
+                "compositionStampDigest": {
+                  "type": "string"
+                },
+                "cumulativeReturnedCount": {
+                  "type": "integer"
+                },
+                "identity": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "backendName": {
+                      "type": "string"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "normalizedQuery": {
+                      "type": "string"
+                    },
+                    "projection": {
+                      "type": "string"
+                    },
+                    "workspaceRoot": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "workspaceRoot",
+                    "backendName",
+                    "normalizedQuery",
+                    "projection",
+                    "limit"
+                  ],
+                  "type": "object"
+                },
+                "lastRelativePath": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "identity",
+                "compositionStampDigest",
+                "lastRelativePath",
+                "cumulativeReturnedCount"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "action",
+            "identity",
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/workspace-files-continuation JSON-RPC request",
+  "type": "object"
+}

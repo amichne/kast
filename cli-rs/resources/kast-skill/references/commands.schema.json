@@ -83,6 +83,10 @@
             "pattern": "^[A-Z][A-Z0-9_]*$"
           }
         },
+        "variantDiscriminator": {
+          "$ref": "#/$defs/fieldName",
+          "description": "Request field that discriminates variants. Defaults to type when omitted."
+        },
         "variants": {
           "type": "object",
           "additionalProperties": {

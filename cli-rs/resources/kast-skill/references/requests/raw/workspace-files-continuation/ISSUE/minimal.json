@@ -1,0 +1,27 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/workspace-files-continuation",
+  "params": {
+    "action": "ISSUE",
+    "identity": {
+      "backendName": "example-backendName",
+      "limit": 25,
+      "normalizedQuery": "example-normalizedQuery",
+      "projection": "example-projection",
+      "workspaceRoot": "/absolute/path/to/workspace"
+    },
+    "state": {
+      "compositionStampDigest": "example-compositionStampDigest",
+      "cumulativeReturnedCount": 1,
+      "identity": {
+        "backendName": "example-backendName",
+        "limit": 25,
+        "normalizedQuery": "example-normalizedQuery",
+        "projection": "example-projection",
+        "workspaceRoot": "/absolute/path/to/workspace"
+      },
+      "lastRelativePath": "example-lastRelativePath"
+    }
+  }
+}
