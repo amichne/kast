@@ -31,6 +31,15 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.Processor
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
+import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
+import io.github.amichne.kast.api.continuation.ContinuationIssueResult
+import io.github.amichne.kast.api.continuation.ContinuationOwnedState
+import io.github.amichne.kast.api.continuation.ContinuationProjection
+import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
+import io.github.amichne.kast.api.continuation.ContinuationStateTransition
+import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
+import io.github.amichne.kast.api.continuation.ContinuationTransition
+import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore as SharedContinuationStore
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
@@ -142,14 +151,33 @@ internal class KastPluginBackend(
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val sharedWorkspaceIdentity = workspaceIdentity.workspaceIdentity
-    private val continuationCapacity =
-        limits.maxConcurrentRequests.coerceIn(1, MAX_CONTINUATION_CONCURRENCY) * CONTINUATIONS_PER_REQUEST
-    private val referenceContinuations = ServerHeldContinuationStore<ReferencePageToken, ReferenceContinuationState>(
-        maxEntries = continuationCapacity,
-        onDiscard = ReferenceContinuationState::close,
+    private val referenceContinuations = SharedContinuationStore<
+        ReferencePageToken,
+        ReferenceQueryIdentity,
+        ReferenceContinuationState,
+        ReferenceContinuationProjection,
+    >(
+        capacity = limits.typedContinuationCapacity,
+        timeToLive = limits.typedContinuationTtl,
+        tokenIssuer = ContinuationTokenIssuer(ReferencePageToken::random),
+        stateDisposer = ContinuationStateDisposer(ReferenceContinuationState::close),
     )
-    private val diagnosticContinuations =
-        ServerHeldContinuationStore<DiagnosticPageToken, DiagnosticContinuationState>(continuationCapacity)
+    private val diagnosticContinuations = SharedContinuationStore<
+        DiagnosticPageToken,
+        DiagnosticQueryIdentity,
+        DiagnosticContinuationState,
+        DiagnosticContinuationProjection,
+    >(
+        capacity = limits.typedContinuationCapacity,
+        timeToLive = limits.typedContinuationTtl,
+        tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
+        stateDisposer = ContinuationStateDisposer { },
+    )
+    private val workspaceFilePaging = IdeaWorkspaceFilePaging(
+        workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
+        inventory = IdeaProjectModelWorkspaceFileInventory(project, workspaceIdentity),
+        limits = limits,
+    )
     private val ideaReadAccess = object : ReadAccessScope {
         override fun <T> run(action: () -> T): T =
             ApplicationManager.getApplication().runReadAction<T> { action() }
@@ -274,48 +302,61 @@ internal class KastPluginBackend(
     override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.REFERENCES, "kast.idea.findReferences") { span ->
             val identity = ReferenceQueryIdentity.from(query)
-            val continuation = query.pageToken?.let { token ->
-                when (val claim = referenceContinuations.claim(token)) {
-                    is ContinuationClaim.Claimed -> claim.value
-                    ContinuationClaim.Absent, ContinuationClaim.Expired -> throw ConflictException(
-                        message = "The reference page token is unknown, expired, or already consumed",
+            val pageToken = query.pageToken
+            val (projection, nextPageToken) = if (pageToken != null) {
+                val token = pageToken
+                when (val consumed = referenceContinuations.consume(
+                    token = token,
+                    query = identity,
+                    transition = ContinuationStateTransition { state ->
+                        val page = referenceContinuationPage(query, state, span)
+                        page.outcome.nextPosition?.let { nextPosition ->
+                            state.advanceTo(page.knownCount, nextPosition)
+                            ContinuationTransition.Reissue(page, identity)
+                        } ?: ContinuationTransition.Complete(page)
+                    },
+                )) {
+                    is ContinuationConsumeResult.Completed -> consumed.output to null
+                    is ContinuationConsumeResult.Reissued -> consumed.output to consumed.token
+                    is ContinuationConsumeResult.Rejected -> throw ConflictException(
+                        message = "The reference page token is unknown, expired, consumed, or belongs to another query",
                         details = mapOf("pageToken" to token.value),
                     )
                 }
-            }
-            if (continuation != null && continuation.query != identity) {
-                continuation.close()
-                throw ConflictException(
-                    message = "The reference page token belongs to a different query",
-                    details = mapOf("pageToken" to requireNotNull(query.pageToken).value),
-                )
-            }
-            val plan = continuation?.plan ?: referenceSearchPlan(query, span)
-            val returnedBefore = continuation?.returnedBefore ?: 0
-            val outcome = when (val position = continuation?.position) {
-                null -> indexedReferenceSearch(query, plan, null, span)
-                    ?: ideaReferenceSearch(query, plan, null, span)
-                is ReferenceContinuationPosition.Index -> indexedReferenceSearch(query, plan, position, span)
-                    ?: error("Indexed continuation must return an indexed outcome or throw a typed conflict")
-                is ReferenceContinuationPosition.Idea -> ideaReferenceSearch(query, plan, position, span)
-            }
-            val knownCount = Math.addExact(returnedBefore, outcome.references.size)
-            val cardinality = if (outcome.hasMoreEvidence || !outcome.completion.exhaustive) {
-                ResultCardinality.KnownMinimum(knownCount)
             } else {
-                ResultCardinality.Exact(knownCount)
+                val plan = referenceSearchPlan(query, span)
+                val outcome = indexedReferenceSearch(query, plan, null, span)
+                    ?: ideaReferenceSearch(query, plan, null, span)
+                val knownCount = outcome.references.size
+                val page = ReferenceContinuationProjection(plan, outcome, knownCount)
+                val token = outcome.nextPosition?.let { nextPosition ->
+                    when (val issued = referenceContinuations.issue(
+                        query = identity,
+                        state = ReferenceContinuationState(
+                            plan = plan,
+                            returnedBefore = knownCount,
+                            position = nextPosition,
+                        ),
+                    )) {
+                        is ContinuationIssueResult.Issued -> issued.token
+                        is ContinuationIssueResult.Rejected -> throw ConflictException(
+                            "Reference continuation store is unavailable",
+                        )
+                    }
+                }
+                page to token
             }
-            val page = outcome.nextPosition?.let { nextPosition ->
-                val nextPageToken = ReferencePageToken.random()
-                referenceContinuations.put(nextPageToken, ReferenceContinuationState(
-                    query = identity,
-                    plan = plan,
-                    returnedBefore = knownCount,
-                    position = nextPosition,
-                ))
+            val plan = projection.plan
+            val outcome = projection.outcome
+            val cardinality = if (outcome.hasMoreEvidence || !outcome.completion.exhaustive) {
+                ResultCardinality.KnownMinimum(projection.knownCount)
+            } else {
+                ResultCardinality.Exact(projection.knownCount)
+            }
+            val page = nextPageToken?.let { token ->
                 PageInfo(
                     truncated = true,
-                    nextPageToken = nextPageToken.value,
+                    nextPageToken = token.value,
                 )
             }
 
@@ -345,6 +386,23 @@ internal class KastPluginBackend(
                 ),
             )
         }
+    }
+
+    private fun referenceContinuationPage(
+        query: ParsedReferencesQuery,
+        continuation: ReferenceContinuationState,
+        span: IdeaTelemetrySpan,
+    ): ReferenceContinuationProjection {
+        val outcome = when (val position = continuation.position) {
+            is ReferenceContinuationPosition.Index -> indexedReferenceSearch(query, continuation.plan, position, span)
+                ?: error("Indexed continuation must return an indexed outcome or throw a typed conflict")
+            is ReferenceContinuationPosition.Idea -> ideaReferenceSearch(query, continuation.plan, position, span)
+        }
+        return ReferenceContinuationProjection(
+            plan = continuation.plan,
+            outcome = outcome,
+            knownCount = Math.addExact(continuation.returnedBefore, outcome.references.size),
+        )
     }
 
     private suspend fun referenceSearchPlan(
@@ -998,61 +1056,25 @@ internal class KastPluginBackend(
     }
 
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult = withContext(readDispatcher) {
-        val fileLimit = query.maxFilesPerModule?.value ?: limits.maxResults
         telemetry.inSpan(
             IdeaTelemetryScope.WORKSPACE_FILES,
             "kast.idea.workspaceFiles",
             attributes = mapOf(
                 "kast.workspaceFiles.moduleName" to query.moduleName?.value,
                 "kast.workspaceFiles.includeFiles" to query.includeFiles,
-                "kast.workspaceFiles.maxFilesPerModule" to fileLimit,
+                "kast.workspaceFiles.maxFilesPerModule" to query.maxFilesPerModule?.value,
+                "kast.workspaceFiles.kindDomain" to query.kindDomain.name,
+                "kast.workspaceFiles.hasSnapshotToken" to (query.snapshotToken != null),
+                "kast.workspaceFiles.hasPageToken" to (query.pageToken != null),
             ),
         ) { span ->
-            val allModules = timedReadAction(telemetry, IdeaTelemetryScope.WORKSPACE_FILES, "kast.idea.workspaceFiles.listModules") {
-                ModuleManager.getInstance(project).modules.toList()
-            }
-            val targetModules = if (query.moduleName?.value != null) {
-                allModules.filter { timedReadAction(telemetry, IdeaTelemetryScope.WORKSPACE_FILES, "kast.idea.workspaceFiles.filterModule") { it.name } == query.moduleName?.value }
-            } else {
-                allModules
-            }
-            val modules = targetModules.map { module ->
-                timedReadAction(telemetry, IdeaTelemetryScope.WORKSPACE_FILES, "kast.idea.workspaceFiles.module") {
-                val rootManager = ModuleRootManager.getInstance(module)
-                val sourceRoots = rootManager.sourceRoots
-                    .map { it.path }
-                    .filter(::isWorkspaceFile)
-                val depNames = rootManager.dependencies.map { it.name }
-                val moduleScope = GlobalSearchScope.moduleScope(module)
-                val kotlinFiles = kotlinFileType()?.let { fileType ->
-                    FileTypeIndex.getFiles(fileType, moduleScope)
-                } ?: emptyList()
-                val filteredPaths = mutableListOf<String>()
-                var fileCount = 0
-                kotlinFiles.forEach { file ->
-                    val path = file.path
-                    if (isWorkspaceFile(path)) {
-                        fileCount += 1
-                        if (query.includeFiles && filteredPaths.size < fileLimit) {
-                            filteredPaths += path
-                        }
-                    }
-                }
-                WorkspaceModule(
-                    name = module.name,
-                    sourceRoots = sourceRoots,
-                    dependencyModuleNames = depNames,
-                    files = filteredPaths.sorted(),
-                    filesTruncated = query.includeFiles && fileCount > filteredPaths.size,
-                    fileCount = fileCount,
-                )
-            }
-            }
+            val result = workspaceFilePaging.query(query)
+            val modules = result.modules
             span.setAttribute("kast.workspaceFiles.moduleCount", modules.size)
             span.setAttribute("kast.workspaceFiles.totalFileCount", modules.sumOf { it.fileCount })
             span.setAttribute("kast.workspaceFiles.returnedFileCount", modules.sumOf { it.files.size })
             span.setAttribute("kast.workspaceFiles.truncatedModuleCount", modules.count { it.filesTruncated })
-            WorkspaceFilesResult(modules = modules)
+            result
         }
     }
 
@@ -1070,72 +1092,107 @@ internal class KastPluginBackend(
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.DIAGNOSTICS, "kast.idea.diagnostics") {
             val identity = DiagnosticQueryIdentity.from(query)
-            val continuation = query.pageToken?.let { token ->
-                when (val claim = diagnosticContinuations.claim(token)) {
-                    is ContinuationClaim.Claimed -> claim.value
-                    ContinuationClaim.Absent, ContinuationClaim.Expired -> throw ConflictException(
-                        message = "The diagnostic page token is unknown, expired, or already consumed",
+            val pageToken = query.pageToken
+            val (projection, nextPageToken) = if (pageToken != null) {
+                val token = pageToken
+                when (val consumed = diagnosticContinuations.consume(
+                    token = token,
+                    query = identity,
+                    transition = ContinuationStateTransition { state ->
+                        val currentGeneration = runIdeaReadAction {
+                            readEpochObserver.entered(IdeaReadEpochKind.DIAGNOSTICS)
+                            psiGeneration()
+                        }
+                        if (state.generation != currentGeneration) {
+                            throw ConflictException(
+                                message = "Kotlin PSI changed after the preceding diagnostic page",
+                                details = mapOf("pageToken" to token.value),
+                            )
+                        }
+                        val page = DiagnosticContinuationProjection(
+                            snapshot = state.snapshot,
+                            pageOffset = state.nextOffset,
+                        )
+                        val nextOffset = diagnosticNextOffset(
+                            state.snapshot,
+                            state.nextOffset,
+                            query.maxResults.value,
+                        )
+                        if (nextOffset < state.snapshot.diagnostics.size) {
+                            state.advanceTo(nextOffset)
+                            ContinuationTransition.Reissue(page, identity)
+                        } else {
+                            ContinuationTransition.Complete(page)
+                        }
+                    },
+                )) {
+                    is ContinuationConsumeResult.Completed -> consumed.output to null
+                    is ContinuationConsumeResult.Reissued -> consumed.output to consumed.token.value
+                    is ContinuationConsumeResult.Rejected -> throw ConflictException(
+                        message = "The diagnostic page token is unknown, expired, consumed, or belongs to another query",
                         details = mapOf("pageToken" to token.value),
                     )
                 }
-            }
-            if (continuation != null && continuation.query != identity) {
-                throw ConflictException(
-                    message = "The diagnostic page token belongs to a different query",
-                    details = mapOf("pageToken" to requireNotNull(query.pageToken).value),
-                )
-            }
-            val epoch = timedReadAction(
-                telemetry,
-                IdeaTelemetryScope.DIAGNOSTICS,
-                "kast.idea.diagnostics.snapshot",
-            ) {
-                val currentGeneration = psiGeneration()
-                readEpochObserver.entered(IdeaReadEpochKind.DIAGNOSTICS)
-                if (continuation != null && continuation.generation != currentGeneration) {
-                    throw ConflictException(
-                        message = "Kotlin PSI changed after the preceding diagnostic page",
-                        details = mapOf("pageToken" to requireNotNull(query.pageToken).value),
-                    )
-                }
-                val snapshot = continuation?.snapshot ?: run {
-                    val fileAnalyses = query.filePaths.value.map(::analyzeDiagnosticsFileInReadEpoch)
-                    DiagnosticSnapshot(
-                        diagnostics = fileAnalyses
-                            .flatMap(DiagnosticsFileAnalysis::diagnostics)
-                            .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" })),
-                        fileStatuses = fileAnalyses.map(DiagnosticsFileAnalysis::status),
-                    )
-                }
-                DiagnosticReadEpoch(generation = currentGeneration, snapshot = snapshot)
-            }
-            val snapshot = epoch.snapshot
-            val pageOffset = continuation?.nextOffset ?: 0
-            require(pageOffset <= snapshot.diagnostics.size) {
-                "Server-held diagnostic continuation offset exceeded exact cardinality"
-            }
-            val nextOffset = Math.addExact(pageOffset, minOf(query.maxResults.value, snapshot.diagnostics.size - pageOffset))
-            val nextPageToken = if (nextOffset < snapshot.diagnostics.size) {
-                val token = DiagnosticPageToken.random()
-                diagnosticContinuations.put(token, DiagnosticContinuationState(
-                    query = identity,
-                    generation = epoch.generation,
-                    snapshot = snapshot,
-                    nextOffset = nextOffset,
-                ))
-                token.value
             } else {
-                null
+                val epoch = timedReadAction(
+                    telemetry,
+                    IdeaTelemetryScope.DIAGNOSTICS,
+                    "kast.idea.diagnostics.snapshot",
+                ) {
+                    val currentGeneration = psiGeneration()
+                    readEpochObserver.entered(IdeaReadEpochKind.DIAGNOSTICS)
+                    val fileAnalyses = query.filePaths.value.map(::analyzeDiagnosticsFileInReadEpoch)
+                    DiagnosticReadEpoch(
+                        generation = currentGeneration,
+                        snapshot = DiagnosticSnapshot(
+                            diagnostics = fileAnalyses
+                                .flatMap(DiagnosticsFileAnalysis::diagnostics)
+                                .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" })),
+                            fileStatuses = fileAnalyses.map(DiagnosticsFileAnalysis::status),
+                        ),
+                    )
+                }
+                val projection = DiagnosticContinuationProjection(epoch.snapshot, pageOffset = 0)
+                val nextOffset = diagnosticNextOffset(epoch.snapshot, 0, query.maxResults.value)
+                val nextToken = if (nextOffset < epoch.snapshot.diagnostics.size) {
+                    when (val issued = diagnosticContinuations.issue(
+                        query = identity,
+                        state = DiagnosticContinuationState(
+                            generation = epoch.generation,
+                            snapshot = epoch.snapshot,
+                            nextOffset = nextOffset,
+                        ),
+                    )) {
+                        is ContinuationIssueResult.Issued -> issued.token.value
+                        is ContinuationIssueResult.Rejected -> throw ConflictException(
+                            "Diagnostic continuation store is unavailable",
+                        )
+                    }
+                } else {
+                    null
+                }
+                projection to nextToken
             }
 
             DiagnosticsResult.paged(
-                diagnostics = snapshot.diagnostics,
-                fileStatuses = snapshot.fileStatuses,
-                pageOffset = pageOffset,
+                diagnostics = projection.snapshot.diagnostics,
+                fileStatuses = projection.snapshot.fileStatuses,
+                pageOffset = projection.pageOffset,
                 maxResults = query.maxResults.value,
                 nextPageToken = nextPageToken,
             )
         }
+    }
+
+    private fun diagnosticNextOffset(
+        snapshot: DiagnosticSnapshot,
+        pageOffset: Int,
+        maxResults: Int,
+    ): Int {
+        if (pageOffset !in 0..snapshot.diagnostics.size) {
+            throw ConflictException("Server-held diagnostic continuation offset exceeded exact cardinality")
+        }
+        return Math.addExact(pageOffset, minOf(maxResults, snapshot.diagnostics.size - pageOffset))
     }
 
     private fun analyzeDiagnosticsFileInReadEpoch(filePath: NormalizedPath): DiagnosticsFileAnalysis {
@@ -1720,22 +1777,39 @@ internal class KastPluginBackend(
         }
     }
 
-    private data class DiagnosticContinuationState(
-        val query: DiagnosticQueryIdentity,
+    private class DiagnosticContinuationState(
         val generation: Long,
         val snapshot: DiagnosticSnapshot,
-        val nextOffset: Int,
-    )
+        nextOffset: Int,
+    ) : ContinuationOwnedState() {
+        var nextOffset: Int = nextOffset
+            private set
+
+        fun advanceTo(offset: Int) {
+            require(offset > nextOffset) { "Diagnostic continuation offset must advance" }
+            nextOffset = offset
+        }
+    }
+
+    private data class DiagnosticContinuationProjection(
+        val snapshot: DiagnosticSnapshot,
+        val pageOffset: Int,
+    ) : ContinuationProjection()
 
     override fun close() {
-        referenceContinuations.closeAll()
-        diagnosticContinuations.closeAll()
+        val failures = listOf(
+            runCatching(referenceContinuations::close).exceptionOrNull(),
+            runCatching(diagnosticContinuations::close).exceptionOrNull(),
+            runCatching(workspaceFilePaging::close).exceptionOrNull(),
+        ).filterNotNull()
+        failures.firstOrNull()?.let { first ->
+            failures.drop(1).forEach(first::addSuppressed)
+            throw first
+        }
     }
 
     companion object {
         private val BACKEND_VERSION = readBackendVersion()
-        private const val CONTINUATIONS_PER_REQUEST = 64
-        private const val MAX_CONTINUATION_CONCURRENCY = 1_024
 
         private fun readBackendVersion(): String =
             KastPluginBackend::class.java
@@ -1799,16 +1873,32 @@ private data class ReferenceQueryIdentity(
     }
 }
 
-private data class ReferenceContinuationState(
-    val query: ReferenceQueryIdentity,
+private class ReferenceContinuationState(
     val plan: ReferenceSearchPlan,
-    val returnedBefore: Int,
-    val position: ReferenceContinuationPosition,
-) {
+    returnedBefore: Int,
+    position: ReferenceContinuationPosition,
+) : ContinuationOwnedState() {
+    var returnedBefore: Int = returnedBefore
+        private set
+    var position: ReferenceContinuationPosition = position
+        private set
+
+    fun advanceTo(returnedBefore: Int, position: ReferenceContinuationPosition) {
+        require(returnedBefore >= this.returnedBefore) { "Reference continuation cardinality must not regress" }
+        this.returnedBefore = returnedBefore
+        this.position = position
+    }
+
     fun close() {
         (position as? ReferenceContinuationPosition.Idea)?.traversal?.close()
     }
 }
+
+private data class ReferenceContinuationProjection(
+    val plan: ReferenceSearchPlan,
+    val outcome: ReferenceSearchOutcome,
+    val knownCount: Int,
+) : ContinuationProjection()
 
 private sealed interface ReferenceContinuationPosition {
     data class Index(
