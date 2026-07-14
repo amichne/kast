@@ -1,16 +1,19 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteException
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteReason
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 
 class IdeaProjectModelWorkspaceFileInventoryTest {
     @TempDir
@@ -114,6 +117,30 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
 
         assertEquals(WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE, failure.reason)
         assertEquals(1, access.readCount)
+    }
+
+    @Test
+    fun `IDEA cancellation escapes project model failure mapping`() {
+        val cancellation = ProcessCanceledException()
+        val access = FakeProjectModelAccess(failure = cancellation)
+
+        val thrown = assertThrows(ProcessCanceledException::class.java) {
+            inventory(access).snapshot(WorkspaceFileKindDomain.MIXED)
+        }
+
+        assertSame(cancellation, thrown)
+    }
+
+    @Test
+    fun `task cancellation escapes project model failure mapping`() {
+        val cancellation = CancellationException("cancelled")
+        val access = FakeProjectModelAccess(failure = cancellation)
+
+        val thrown = assertThrows(CancellationException::class.java) {
+            inventory(access).snapshot(WorkspaceFileKindDomain.MIXED)
+        }
+
+        assertSame(cancellation, thrown)
     }
 
     @Test

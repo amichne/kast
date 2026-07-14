@@ -4,6 +4,7 @@ import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
@@ -16,6 +17,7 @@ import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteException
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteReason
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 
 internal class IdeaProjectModelWorkspaceFileInventory(
     private val workspaceIdentity: WorkspaceIdentity,
@@ -37,6 +39,10 @@ internal class IdeaProjectModelWorkspaceFileInventory(
         }
         val projectModel = try {
             projectModelAccess.read()
+        } catch (failure: ProcessCanceledException) {
+            throw failure
+        } catch (failure: CancellationException) {
+            throw failure
         } catch (failure: WorkspaceProjectModelIncompleteException) {
             throw failure
         } catch (failure: RuntimeException) {
