@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
 
-use super::backend::{BackendWorkspaceRpc, collect_backend_inventory};
+use super::backend::{
+    BackendWorkspaceRpc, collect_backend_inventory, revalidate_backend_inventory,
+};
 use super::barrier::collect_with_single_retry;
 use super::dirty::read_dirty_workspace;
 use super::model::{
@@ -100,7 +102,7 @@ fn collect_attempt(inputs: &mut WorkspaceInventoryInputs<'_>) -> CollectedAttemp
         .dirty_evidence_relevant
         .then(|| inputs.lanes.read_dirty_workspace(&inputs.root));
 
-    let backend_stamp = backend_lane_stamp(&backend);
+    let backend_before_stamp = backend_lane_stamp(&backend);
     let index_before_evidence = index_lane_evidence(index_before.as_ref());
     let dirty_before_evidence = dirty_lane_evidence(dirty_before.as_ref());
     let snapshot = compose_snapshot(
@@ -119,20 +121,25 @@ fn collect_attempt(inputs: &mut WorkspaceInventoryInputs<'_>) -> CollectedAttemp
     let dirty_after = inputs
         .dirty_evidence_relevant
         .then(|| inputs.lanes.read_dirty_workspace(&inputs.root));
+    let backend_after_stamp =
+        revalidate_backend_inventory(&inputs.root, inputs.kind_domain, &backend, inputs.backend);
 
     CollectedAttempt {
         snapshot,
         before: CompositionLaneStamps {
             backend: relevant_lane(
                 WorkspaceLanePurpose::CandidateInventory,
-                backend_stamp.clone(),
+                backend_before_stamp,
             ),
             index: index_before_evidence,
             filesystem: relevant_lane(WorkspaceLanePurpose::CandidateAndFilter, filesystem_before),
             dirty: dirty_before_evidence,
         },
         after: CompositionLaneStamps {
-            backend: relevant_lane(WorkspaceLanePurpose::CandidateInventory, backend_stamp),
+            backend: relevant_lane(
+                WorkspaceLanePurpose::CandidateInventory,
+                backend_after_stamp,
+            ),
             index: index_lane_evidence(index_after.as_ref()),
             filesystem: relevant_lane(WorkspaceLanePurpose::CandidateAndFilter, filesystem_after),
             dirty: dirty_lane_evidence(dirty_after.as_ref()),
@@ -413,7 +420,7 @@ fn every_containing_owner_complete(
                 .source_roots()
                 .iter()
                 .chain(module.content_roots())
-                .any(|root| path.as_path().starts_with(root))
+                .any(|root| path.as_path().starts_with(root.as_path()))
         })
         .collect();
     !owners.is_empty()

@@ -477,13 +477,32 @@ fn missing_database_is_a_typed_unavailable_read() {
 
 #[test]
 fn persisted_semantic_package_names_allow_keywords_without_reparsing_source_syntax() {
-    for accepted in ["when", "sample.when", "Ⅻvalue", "²value", "sample/semantic"] {
+    for accepted in [
+        "when",
+        "sample.when",
+        "Ⅻvalue",
+        "²value",
+        "sample.non-identifier",
+        "sample.`non-identifier`",
+    ] {
         let parsed = super::model::KotlinPackageFqName::parse_persisted(accepted.to_string())
             .unwrap_or_else(|| panic!("semantic package name `{accepted}`"));
         assert_eq!(parsed.as_str(), accepted);
     }
     for rejected in [
-        "", " sample", "sample ", ".sample", "sample.", "a..b", "a\nb",
+        "",
+        " sample",
+        "sample ",
+        ".sample",
+        "sample.",
+        "a..b",
+        "a\nb",
+        "sample/semantic",
+        "sample\\semantic",
+        "sample[semantic]",
+        "sample:semantic",
+        "sample.`semantic",
+        "sample.semantic`",
     ] {
         assert!(
             super::model::KotlinPackageFqName::parse_persisted(rejected.to_string()).is_none(),
@@ -757,6 +776,40 @@ fn overlapping_or_short_module_pages_are_partial_and_never_publish_their_candida
 }
 
 #[test]
+fn empty_nonterminal_module_page_fails_closed_without_following_unbounded_tokens() {
+    let temp = tempfile::tempdir().expect("workspace");
+    let root = WorkspaceRoot::try_from(temp.path()).expect("root");
+    let mut backend = ScriptedWorkspaceBackend::new(vec![
+        backend_result("snapshot", vec![backend_module("module", 2, &[], None)]),
+        backend_result(
+            "snapshot",
+            vec![backend_module("module", 2, &[], Some("unique-empty-page"))],
+        ),
+        backend_result("snapshot", vec![]),
+    ]);
+
+    let inventory = super::backend::collect_backend_inventory(
+        &root,
+        WorkspaceRequestedKindDomain::SourceOnly,
+        &mut backend,
+    );
+
+    assert_eq!(
+        backend.requests.len(),
+        3,
+        "the next opaque token is not followed"
+    );
+    assert_eq!(inventory.coverage(), BackendWorkspaceCoverage::Partial);
+    assert!(inventory.files().is_empty());
+    assert_eq!(
+        inventory
+            .limitations()
+            .get(&WorkspaceInventoryLimitationCode::BackendPageIncomplete),
+        Some(&1)
+    );
+}
+
+#[test]
 fn generic_page_failure_is_local_to_the_requested_module() {
     let temp = tempfile::tempdir().expect("workspace");
     let root = WorkspaceRoot::try_from(temp.path()).expect("root");
@@ -1010,7 +1063,11 @@ fn module_fingerprint_retains_sorted_content_roots_and_dependencies() {
     assert_ne!(first.stamp(), second.stamp());
     let module = first.modules().values().next().expect("module");
     assert_eq!(
-        module.content_roots().iter().collect::<Vec<_>>(),
+        module
+            .content_roots()
+            .iter()
+            .map(|root| root.as_path())
+            .collect::<Vec<_>>(),
         [Path::new("content-a")]
     );
     assert_eq!(
@@ -1020,6 +1077,70 @@ fn module_fingerprint_retains_sorted_content_roots_and_dependencies() {
             .map(|name| name.as_str())
             .collect::<Vec<_>>(),
         ["dependency"]
+    );
+}
+
+#[test]
+fn backend_composition_stamp_ignores_opaque_lease_tokens_but_tracks_candidates() {
+    let temp = tempfile::tempdir().expect("workspace");
+    let root = WorkspaceRoot::try_from(temp.path()).expect("root");
+    let collect = |token: &str, file: &str| {
+        let mut backend = ScriptedWorkspaceBackend::new(vec![
+            backend_result(token, vec![backend_module("module", 1, &[], None)]),
+            backend_result(token, vec![backend_module("module", 1, &[file], None)]),
+            backend_result(token, vec![]),
+        ]);
+        super::backend::collect_backend_inventory(
+            &root,
+            WorkspaceRequestedKindDomain::SourceOnly,
+            &mut backend,
+        )
+    };
+
+    let first = collect("lease-a", "src/A.kt");
+    let same_evidence_new_lease = collect("lease-b", "src/A.kt");
+    let changed_candidate = collect("lease-c", "src/B.kt");
+
+    assert_eq!(first.stamp(), same_evidence_new_lease.stamp());
+    assert_ne!(first.stamp(), changed_candidate.stamp());
+}
+
+#[test]
+fn workspace_root_is_a_valid_typed_module_content_root() {
+    let temp = tempfile::tempdir().expect("workspace");
+    let root = WorkspaceRoot::try_from(temp.path()).expect("root");
+    let workspace_root = root.as_path().display().to_string();
+    let mut backend = ScriptedWorkspaceBackend::new(vec![
+        backend_result(
+            "snapshot",
+            vec![backend_module_with_ownership(
+                "module",
+                0,
+                &[],
+                None,
+                &[],
+                &[&workspace_root],
+                &[],
+            )],
+        ),
+        backend_result("snapshot", vec![]),
+    ]);
+
+    let inventory = super::backend::collect_backend_inventory(
+        &root,
+        WorkspaceRequestedKindDomain::SourceOnly,
+        &mut backend,
+    );
+
+    assert_eq!(inventory.coverage(), BackendWorkspaceCoverage::Complete);
+    let module = inventory.modules().values().next().expect("module");
+    assert_eq!(
+        module
+            .content_roots()
+            .iter()
+            .map(|content_root| content_root.as_path())
+            .collect::<Vec<_>>(),
+        [Path::new("")]
     );
 }
 
@@ -1190,6 +1311,15 @@ fn complete_backend_responses(
     responses
 }
 
+fn repeat_backend_responses(
+    responses: &[Result<serde_json::Value, super::backend::BackendRpcFailure>],
+    repetitions: usize,
+) -> Vec<Result<serde_json::Value, super::backend::BackendRpcFailure>> {
+    (0..repetitions)
+        .flat_map(|_| responses.iter().cloned())
+        .collect()
+}
+
 #[test]
 fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
     let (_temp, root, fixture) = fixture();
@@ -1215,13 +1345,15 @@ fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
         "src/main/kotlin/sample/Missing.kt",
         "build.gradle.kts",
     ];
-    let mut backend = ScriptedWorkspaceBackend::new(complete_backend_responses(
+    let mut responses = complete_backend_responses(
         "snapshot",
         "module",
         &["src/main/kotlin/sample"],
         &[],
         &files,
-    ));
+    );
+    responses.push(backend_result("snapshot", vec![]));
+    let mut backend = ScriptedWorkspaceBackend::new(responses);
     let mut lanes = super::collect::SystemWorkspaceLaneReader;
 
     let snapshot =
@@ -1269,6 +1401,11 @@ fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
         snapshot.coverage().candidate_inventory(),
         WorkspaceCoverageDimension::Complete
     );
+    assert_eq!(
+        backend.requests.len(),
+        4,
+        "the after barrier validates without repaging"
+    );
 }
 
 #[test]
@@ -1278,7 +1415,7 @@ fn partial_possible_owner_makes_index_only_drift_unknown() {
     insert_named_metadata(&fixture, 1, "IndexOnly.kt", 1, "sample", None);
     fixture.insert_project_evidence(1, "IndexOnly.kt", ".", ":app", "main");
     fixture.seed_progress("app", "COMPLETE", 1, 1);
-    let mut backend = ScriptedWorkspaceBackend::new(vec![
+    let mut responses = vec![
         backend_result(
             "snapshot",
             vec![
@@ -1306,7 +1443,9 @@ fn partial_possible_owner_makes_index_only_drift_unknown() {
             "partial owner page".to_string(),
         )),
         backend_result("snapshot", vec![]),
-    ]);
+    ];
+    responses.push(backend_result("snapshot", vec![]));
+    let mut backend = ScriptedWorkspaceBackend::new(responses);
     let mut lanes = super::collect::SystemWorkspaceLaneReader;
 
     let snapshot =
@@ -1336,6 +1475,8 @@ fn workspace_wide_stale_with_zero_modules_never_claims_index_only() {
     let mut backend = ScriptedWorkspaceBackend::new(vec![
         backend_api_failure("STALE_WORKSPACE_INVENTORY", None),
         backend_api_failure("STALE_WORKSPACE_INVENTORY", None),
+        backend_api_failure("STALE_WORKSPACE_INVENTORY", None),
+        backend_api_failure("STALE_WORKSPACE_INVENTORY", None),
     ]);
     let mut lanes = super::collect::SystemWorkspaceLaneReader;
 
@@ -1349,7 +1490,7 @@ fn workspace_wide_stale_with_zero_modules_never_claims_index_only() {
         })
         .expect("composition");
 
-    assert_eq!(backend.requests.len(), 2);
+    assert_eq!(backend.requests.len(), 4);
     assert_eq!(snapshot.files()[0].drift(), WorkspaceFileDrift::Unknown);
     assert_eq!(
         snapshot.backend_coverage(),
@@ -1429,14 +1570,107 @@ fn barrier_fixture() -> (
     insert_named_metadata(&fixture, 1, "Stable.kt", 1, "sample", None);
     fixture.insert_project_evidence(1, "Stable.kt", ".", ":app", "main");
     fixture.seed_progress("app", "COMPLETE", 1, 1);
-    let responses = complete_backend_responses(
+    let mut responses = complete_backend_responses(
         "snapshot",
         "module",
         &["src/main/kotlin/sample"],
         &[],
         &["src/main/kotlin/sample/Stable.kt"],
     );
+    responses.push(backend_result("snapshot", vec![]));
     (temp, root, fixture, responses)
+}
+
+fn empty_available_backend(
+    token: &str,
+    module_name: &str,
+) -> Vec<Result<serde_json::Value, super::backend::BackendRpcFailure>> {
+    vec![
+        backend_result(token, vec![backend_module(module_name, 0, &[], None)]),
+        backend_result(token, vec![]),
+    ]
+}
+
+fn unavailable_backend(
+    reason: &str,
+) -> Result<serde_json::Value, super::backend::BackendRpcFailure> {
+    Err(super::backend::BackendRpcFailure::Transport(
+        reason.to_string(),
+    ))
+}
+
+#[test]
+fn backend_barrier_retries_availability_transitions_and_marks_second_movement_unstable() {
+    let temp = tempfile::tempdir().expect("workspace");
+    let root = WorkspaceRoot::try_from(temp.path()).expect("root");
+
+    let mut becomes_unavailable = empty_available_backend("lease-a", "module");
+    becomes_unavailable.extend([
+        unavailable_backend("offline"),
+        unavailable_backend("offline"),
+        unavailable_backend("offline"),
+    ]);
+    let mut backend = ScriptedWorkspaceBackend::new(becomes_unavailable);
+    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let unavailable =
+        super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
+            root: root.clone(),
+            kind_domain: WorkspaceRequestedKindDomain::ScriptOnly,
+            dirty_evidence_relevant: false,
+            backend: &mut backend,
+            lanes: &mut lanes,
+        })
+        .expect("unavailable composition");
+    assert_eq!(backend.requests.len(), 5);
+    assert_eq!(
+        unavailable.backend_coverage(),
+        BackendWorkspaceCoverage::Unavailable
+    );
+    assert!(unavailable.continuation_allowed());
+
+    let mut becomes_available = vec![unavailable_backend("offline")];
+    becomes_available.extend(empty_available_backend("lease-b", "module"));
+    becomes_available.extend(empty_available_backend("lease-c", "module"));
+    becomes_available.push(backend_result("lease-c", vec![]));
+    let mut backend = ScriptedWorkspaceBackend::new(becomes_available);
+    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let available =
+        super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
+            root: root.clone(),
+            kind_domain: WorkspaceRequestedKindDomain::ScriptOnly,
+            dirty_evidence_relevant: false,
+            backend: &mut backend,
+            lanes: &mut lanes,
+        })
+        .expect("available composition");
+    assert_eq!(backend.requests.len(), 6);
+    assert_eq!(
+        available.backend_coverage(),
+        BackendWorkspaceCoverage::Complete
+    );
+    assert!(available.continuation_allowed());
+
+    let mut moves_twice = empty_available_backend("lease-e", "module-a");
+    moves_twice.push(backend_api_failure("STALE_WORKSPACE_INVENTORY", None));
+    moves_twice.extend(empty_available_backend("lease-f", "module-b"));
+    moves_twice.push(backend_api_failure("STALE_WORKSPACE_INVENTORY", None));
+    let mut backend = ScriptedWorkspaceBackend::new(moves_twice);
+    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let unstable =
+        super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
+            root,
+            kind_domain: WorkspaceRequestedKindDomain::ScriptOnly,
+            dirty_evidence_relevant: false,
+            backend: &mut backend,
+            lanes: &mut lanes,
+        })
+        .expect("unstable composition");
+    assert_eq!(backend.requests.len(), 6);
+    assert!(!unstable.continuation_allowed());
+    assert_eq!(
+        unstable.limitation_count(WorkspaceInventoryLimitationCode::CrossSourceCompositionUnstable),
+        1
+    );
 }
 
 #[test]
@@ -1466,7 +1700,7 @@ fn source_index_generation_movement_retries_the_whole_composition_once() {
         .expect("composition");
 
     assert_eq!(lanes.index_reads, 4);
-    assert_eq!(backend.requests.len(), 6);
+    assert_eq!(backend.requests.len(), 8);
     assert!(snapshot.continuation_allowed());
     assert_eq!(snapshot.files()[0].drift(), WorkspaceFileDrift::InSync);
     assert_eq!(
@@ -1502,7 +1736,7 @@ fn second_source_index_movement_returns_typed_unstable_partial_evidence() {
         .expect("composition");
 
     assert_eq!(lanes.index_reads, 4);
-    assert_eq!(backend.requests.len(), 6);
+    assert_eq!(backend.requests.len(), 8);
     assert!(!snapshot.continuation_allowed());
     assert_eq!(snapshot.files()[0].drift(), WorkspaceFileDrift::Unknown);
     assert_eq!(
@@ -1553,7 +1787,7 @@ fn stable_incomplete_progress_and_pending_updates_do_not_spin() {
             .expect("composition");
 
         assert_eq!(lanes.index_reads, 4);
-        assert_eq!(backend.requests.len(), 6);
+        assert_eq!(backend.requests.len(), 8);
         assert_eq!(snapshot.limitation_count(limitation), 1);
         assert_eq!(
             snapshot.coverage().candidate_inventory(),
@@ -1733,13 +1967,9 @@ fn kind_relevance_skips_the_source_index_for_script_only_and_keeps_mixed_coverag
             2,
         ),
     ] {
-        let mut backend = ScriptedWorkspaceBackend::new(complete_backend_responses(
-            "snapshot",
-            "module",
-            &[],
-            &[],
-            &files,
-        ));
+        let mut responses = complete_backend_responses("snapshot", "module", &[], &[], &files);
+        responses.push(backend_result("snapshot", vec![]));
+        let mut backend = ScriptedWorkspaceBackend::new(responses);
         let mut lanes = CountingSystemLaneReader::new();
 
         let snapshot =
@@ -1826,7 +2056,7 @@ fn filesystem_existence_movement_discards_the_attempt_and_retries_once() {
         .expect("composition");
 
     assert_eq!(lanes.filesystem_reads, 4);
-    assert_eq!(backend.requests.len(), 6);
+    assert_eq!(backend.requests.len(), 8);
     assert_eq!(
         snapshot.files()[0].drift(),
         WorkspaceFileDrift::MissingOnDisk
@@ -1975,13 +2205,13 @@ fn git_movement_is_barrier_relevant_only_when_dirty_evidence_is_requested() {
         .expect("dirty-irrelevant composition");
 
     assert_eq!(relevant_lanes.dirty_reads, 4);
-    assert_eq!(relevant_backend.requests.len(), 6);
+    assert_eq!(relevant_backend.requests.len(), 8);
     assert_eq!(
         relevant.files()[0].dirty_state(),
         WorkspaceFileDirtyState::Dirty
     );
     assert_eq!(irrelevant_lanes.dirty_reads, 0);
-    assert_eq!(irrelevant_backend.requests.len(), 3);
+    assert_eq!(irrelevant_backend.requests.len(), 4);
     assert_eq!(
         irrelevant.files()[0].dirty_state(),
         WorkspaceFileDirtyState::NotApplicable

@@ -8,7 +8,8 @@ use thiserror::Error;
 use super::model::{
     BackendModuleCoverage, BackendModuleInventory, BackendModuleName, BackendWorkspaceCoverage,
     BackendWorkspaceInventory, BackendWorkspacePageToken, BackendWorkspaceSnapshotToken,
-    WorkspaceFilePath, WorkspaceInventoryLimitationCode, WorkspaceRequestedKindDomain,
+    WorkspaceContainedRoot, WorkspaceFilePath, WorkspaceInventoryLimitationCode,
+    WorkspaceLaneStamp, WorkspaceLaneUnavailableReason, WorkspaceRequestedKindDomain,
     WorkspaceRoot,
 };
 
@@ -83,8 +84,8 @@ fn decode_rpc_response(raw: &str) -> Result<Value, BackendRpcFailure> {
             .unwrap_or("JSON-RPC request failed")
             .to_string();
         let reason = data
+            .and_then(|value| value.get("details"))
             .and_then(|value| value.get("reason"))
-            .or_else(|| error.get("reason"))
             .and_then(Value::as_str)
             .map(str::to_string);
         return Err(BackendRpcFailure::Api {
@@ -127,9 +128,9 @@ struct WorkspaceModuleResponse {
 struct MetadataModule {
     name: BackendModuleName,
     raw_source_roots: Vec<PathBuf>,
-    source_roots: BTreeSet<PathBuf>,
+    source_roots: BTreeSet<WorkspaceContainedRoot>,
     raw_content_roots: Vec<PathBuf>,
-    content_roots: BTreeSet<PathBuf>,
+    content_roots: BTreeSet<WorkspaceContainedRoot>,
     dependency_module_names: BTreeSet<BackendModuleName>,
     file_count: usize,
     containment_complete: bool,
@@ -170,6 +171,46 @@ pub(super) fn collect_backend_inventory(
         Ok(inventory) => inventory,
         Err(failure) => failure_inventory(failure),
     }
+}
+
+pub(super) fn revalidate_backend_inventory(
+    root: &WorkspaceRoot,
+    kind_domain: WorkspaceRequestedKindDomain,
+    before: &BackendWorkspaceInventory,
+    rpc: &mut dyn BackendWorkspaceRpc,
+) -> WorkspaceLaneStamp<super::model::BackendWorkspaceStamp> {
+    if let Some(snapshot) = before.snapshot_token() {
+        return match validate_snapshot(kind_domain, snapshot, rpc) {
+            Ok(()) => before.stamp().map_or_else(
+                || {
+                    WorkspaceLaneStamp::Unavailable(WorkspaceLaneUnavailableReason::new(
+                        "BACKEND_LEASE_STAMP_UNAVAILABLE",
+                    ))
+                },
+                WorkspaceLaneStamp::Available,
+            ),
+            Err(failure) => WorkspaceLaneStamp::Unavailable(WorkspaceLaneUnavailableReason::new(
+                format!("BACKEND_LEASE_REVALIDATION:{failure:?}"),
+            )),
+        };
+    }
+
+    backend_inventory_barrier_stamp(&collect_backend_inventory(root, kind_domain, rpc))
+}
+
+fn backend_inventory_barrier_stamp(
+    inventory: &BackendWorkspaceInventory,
+) -> WorkspaceLaneStamp<super::model::BackendWorkspaceStamp> {
+    inventory.stamp().map_or_else(
+        || {
+            WorkspaceLaneStamp::Unavailable(WorkspaceLaneUnavailableReason::new(format!(
+                "BACKEND_{:?}:{:?}",
+                inventory.coverage(),
+                inventory.limitations()
+            )))
+        },
+        WorkspaceLaneStamp::Available,
+    )
 }
 
 fn collect_attempt(
@@ -401,6 +442,11 @@ fn exhaust_module(
                 })
             })
             .transpose()?;
+        if token.is_some() && page.returned_file_count == 0 {
+            return Err(BackendRpcFailure::InvalidResponse(
+                "nonterminal workspace module pages must make progress".to_string(),
+            ));
+        }
         if token.is_none() {
             break;
         }
@@ -595,12 +641,15 @@ fn prove_containment(root: &Path, relative: &Path) -> Result<(), String> {
         .ok_or_else(|| "deepest existing ancestor resolves outside the workspace".to_string())
 }
 
-fn normalize_roots(root: &Path, raw_roots: Vec<PathBuf>) -> (BTreeSet<PathBuf>, bool) {
+fn normalize_roots(
+    root: &Path,
+    raw_roots: Vec<PathBuf>,
+) -> (BTreeSet<WorkspaceContainedRoot>, bool) {
     let mut contained = true;
     let roots = raw_roots
         .into_iter()
-        .filter_map(|raw| match contained_workspace_path(root, &raw) {
-            Ok(path) => Some(path.as_path().to_path_buf()),
+        .filter_map(|raw| match contained_workspace_root(root, &raw) {
+            Ok(path) => Some(path),
             Err(_) => {
                 contained = false;
                 None
@@ -608,6 +657,35 @@ fn normalize_roots(root: &Path, raw_roots: Vec<PathBuf>) -> (BTreeSet<PathBuf>, 
         })
         .collect();
     (roots, contained)
+}
+
+fn contained_workspace_root(
+    root: &Path,
+    path: &Path,
+) -> Result<WorkspaceContainedRoot, BackendRpcFailure> {
+    let relative = if path.is_absolute() {
+        path.strip_prefix(root)
+            .map_err(|_| BackendRpcFailure::Containment {
+                path: path.to_path_buf(),
+                reason: "absolute root is outside the admitted workspace".to_string(),
+            })?
+            .to_path_buf()
+    } else {
+        path.to_path_buf()
+    };
+    let relative = WorkspaceContainedRoot::from_relative_path(relative).ok_or_else(|| {
+        BackendRpcFailure::Containment {
+            path: path.to_path_buf(),
+            reason: "root is not normalized workspace-relative".to_string(),
+        }
+    })?;
+    prove_containment(root, relative.as_path()).map_err(|reason| {
+        BackendRpcFailure::Containment {
+            path: path.to_path_buf(),
+            reason,
+        }
+    })?;
+    Ok(relative)
 }
 
 fn page_metadata_matches(
@@ -670,4 +748,61 @@ fn increment(
         .entry(code)
         .and_modify(|count| *count += 1)
         .or_insert(1);
+}
+
+#[cfg(test)]
+mod rpc_error_tests {
+    use super::*;
+
+    #[test]
+    fn project_model_reason_is_decoded_from_the_typed_error_details_envelope() {
+        for (reason, expected) in [
+            (
+                "RUNTIME_INDEXING",
+                WorkspaceInventoryLimitationCode::RuntimeIndexing,
+            ),
+            (
+                "LINKED_ROOT_UNASSOCIATED",
+                WorkspaceInventoryLimitationCode::LinkedRootUnassociated,
+            ),
+        ] {
+            let raw = serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "error": {
+                    "code": -32000,
+                    "message": "Project model incomplete",
+                    "data": {
+                        "code": "WORKSPACE_PROJECT_MODEL_INCOMPLETE",
+                        "message": "Project model incomplete",
+                        "details": {"reason": reason}
+                    }
+                }
+            })
+            .to_string();
+            let failure = decode_rpc_response(&raw).expect_err("typed RPC error");
+
+            assert_eq!(project_model_limitation(&failure), expected, "{failure:?}");
+        }
+
+        let misplaced = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {
+                "code": -32000,
+                "message": "Project model incomplete",
+                "data": {
+                    "code": "WORKSPACE_PROJECT_MODEL_INCOMPLETE",
+                    "message": "Project model incomplete",
+                    "reason": "RUNTIME_INDEXING"
+                }
+            }
+        })
+        .to_string();
+        let failure = decode_rpc_response(&misplaced).expect_err("typed RPC error");
+        assert_eq!(
+            project_model_limitation(&failure),
+            WorkspaceInventoryLimitationCode::ProjectModelUnavailable
+        );
+    }
 }

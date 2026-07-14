@@ -64,6 +64,24 @@ impl WorkspaceFilePath {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct WorkspaceContainedRoot(PathBuf);
+
+impl WorkspaceContainedRoot {
+    pub(super) fn from_relative_path(path: PathBuf) -> Option<Self> {
+        if path.as_os_str().is_empty() || path == Path::new(".") {
+            return Some(Self(PathBuf::new()));
+        }
+        path.components()
+            .all(|component| matches!(component, Component::Normal(_)))
+            .then_some(Self(path))
+    }
+
+    pub(crate) fn as_path(&self) -> &Path {
+        &self.0
+    }
+}
+
 impl fmt::Display for WorkspaceFilePath {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.display().fmt(formatter)
@@ -230,19 +248,45 @@ pub(crate) struct KotlinPackageFqName(String);
 
 impl KotlinPackageFqName {
     pub(super) fn parse_persisted(value: String) -> Option<Self> {
-        if value.is_empty()
-            || value.trim() != value
-            || value.chars().any(char::is_control)
-            || value.split('.').any(str::is_empty)
-        {
-            return None;
-        }
-        Some(Self(value))
+        canonical_persisted_package_name(&value).then_some(Self(value))
     }
 
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
+}
+
+fn canonical_persisted_package_name(value: &str) -> bool {
+    if value.is_empty() || value.trim() != value {
+        return false;
+    }
+    let mut segment_length = 0usize;
+    let mut in_backticks = false;
+    let mut closed_backticks = false;
+    for character in value.chars() {
+        match character {
+            '`' if segment_length == 0 && !in_backticks && !closed_backticks => {
+                in_backticks = true;
+            }
+            '`' if in_backticks && segment_length > 0 => {
+                in_backticks = false;
+                closed_backticks = true;
+            }
+            '`' => return false,
+            '.' if !in_backticks && segment_length > 0 => {
+                segment_length = 0;
+                closed_backticks = false;
+            }
+            '.' => return false,
+            '/' | '\\' | '[' | ']' | ':' => return false,
+            character if character.is_control() => return false,
+            character if closed_backticks || (!in_backticks && character.is_whitespace()) => {
+                return false;
+            }
+            _ => segment_length += 1,
+        }
+    }
+    segment_length > 0 && !in_backticks
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -662,8 +706,8 @@ pub(crate) enum BackendModuleCoverage {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BackendModuleInventory {
     name: BackendModuleName,
-    source_roots: BTreeSet<PathBuf>,
-    content_roots: BTreeSet<PathBuf>,
+    source_roots: BTreeSet<WorkspaceContainedRoot>,
+    content_roots: BTreeSet<WorkspaceContainedRoot>,
     dependency_module_names: BTreeSet<BackendModuleName>,
     declared_file_count: usize,
     coverage: BackendModuleCoverage,
@@ -672,8 +716,8 @@ pub(crate) struct BackendModuleInventory {
 impl BackendModuleInventory {
     pub(super) fn new(
         name: BackendModuleName,
-        source_roots: BTreeSet<PathBuf>,
-        content_roots: BTreeSet<PathBuf>,
+        source_roots: BTreeSet<WorkspaceContainedRoot>,
+        content_roots: BTreeSet<WorkspaceContainedRoot>,
         dependency_module_names: BTreeSet<BackendModuleName>,
         declared_file_count: usize,
         coverage: BackendModuleCoverage,
@@ -692,11 +736,11 @@ impl BackendModuleInventory {
         &self.name
     }
 
-    pub(crate) fn source_roots(&self) -> &BTreeSet<PathBuf> {
+    pub(crate) fn source_roots(&self) -> &BTreeSet<WorkspaceContainedRoot> {
         &self.source_roots
     }
 
-    pub(crate) fn content_roots(&self) -> &BTreeSet<PathBuf> {
+    pub(crate) fn content_roots(&self) -> &BTreeSet<WorkspaceContainedRoot> {
         &self.content_roots
     }
 
@@ -715,10 +759,11 @@ impl BackendModuleInventory {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BackendModuleLeaseFingerprint {
-    source_roots: BTreeSet<PathBuf>,
-    content_roots: BTreeSet<PathBuf>,
+    source_roots: BTreeSet<WorkspaceContainedRoot>,
+    content_roots: BTreeSet<WorkspaceContainedRoot>,
     dependency_module_names: BTreeSet<BackendModuleName>,
     declared_file_count: usize,
+    coverage: BackendModuleCoverage,
 }
 
 impl BackendModuleLeaseFingerprint {
@@ -728,24 +773,25 @@ impl BackendModuleLeaseFingerprint {
             content_roots: module.content_roots.clone(),
             dependency_module_names: module.dependency_module_names.clone(),
             declared_file_count: module.declared_file_count,
+            coverage: module.coverage,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BackendWorkspaceStamp {
-    snapshot_token: BackendWorkspaceSnapshotToken,
+    files: BTreeMap<WorkspaceFilePath, BTreeSet<BackendModuleName>>,
     modules: BTreeMap<BackendModuleName, BackendModuleLeaseFingerprint>,
+    coverage: BackendWorkspaceCoverage,
+    limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
 }
 
 impl BackendWorkspaceStamp {
-    fn from_inventory(
-        snapshot_token: BackendWorkspaceSnapshotToken,
-        modules: &BTreeMap<BackendModuleName, BackendModuleInventory>,
-    ) -> Self {
+    fn from_inventory(inventory: &BackendWorkspaceInventory) -> Self {
         Self {
-            snapshot_token,
-            modules: modules
+            files: inventory.files.clone(),
+            modules: inventory
+                .modules
                 .iter()
                 .map(|(name, module)| {
                     (
@@ -754,6 +800,8 @@ impl BackendWorkspaceStamp {
                     )
                 })
                 .collect(),
+            coverage: inventory.coverage,
+            limitations: inventory.limitations.clone(),
         }
     }
 }
@@ -802,8 +850,8 @@ impl BackendWorkspaceInventory {
 
     pub(crate) fn stamp(&self) -> Option<BackendWorkspaceStamp> {
         self.snapshot_token
-            .clone()
-            .map(|token| BackendWorkspaceStamp::from_inventory(token, &self.modules))
+            .as_ref()
+            .map(|_| BackendWorkspaceStamp::from_inventory(self))
     }
 
     pub(crate) fn limitations(&self) -> &BTreeMap<WorkspaceInventoryLimitationCode, usize> {
