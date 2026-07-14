@@ -20,8 +20,11 @@ kast agent workspace-files --workspace-root "$PWD"
 ```
 
 The default compact page contains at most 20 compiler/project-model or Kotlin
-source-index candidates. Narrow the inventory before paging. Filters combine
-with AND semantics:
+source-index candidates. It groups consecutive, globally path-sorted files that
+share identical typed evidence; each file path remains explicit at
+`files[group].paths[i].filePath` and
+`files[group].paths[i].relativePath`. Narrow the inventory before paging.
+Filters combine with AND semantics:
 
 ```console
 kast agent workspace-files \
@@ -65,7 +68,8 @@ not applicable: unrelated `.kt` indexing progress does not reduce a
 script-only result, while mixed results keep source and script coverage
 separate.
 
-Use the selected record without translating its path dialect:
+Use `files[group].paths[i].filePath` without translating its path dialect. For
+a flat per-file projection, add `--fields path` to the discovery command:
 
 ```console
 kast agent diagnostics \

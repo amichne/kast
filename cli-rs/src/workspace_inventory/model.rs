@@ -1071,27 +1071,31 @@ pub(crate) struct WorkspaceInventorySnapshot {
     composition_digest: String,
 }
 
+pub(super) struct WorkspaceInventorySnapshotInputs {
+    pub(super) files: Vec<WorkspaceInventoryFile>,
+    pub(super) backend_coverage: BackendWorkspaceCoverage,
+    pub(super) backend_modules: BTreeMap<BackendModuleName, BackendModuleInventory>,
+    pub(super) coverage: WorkspaceMatchCoverage,
+    pub(super) kind_coverage: WorkspaceKindMatchCoverage,
+    pub(super) limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
+    pub(super) continuation_allowed: bool,
+    pub(super) composition_digest: String,
+}
+
 impl WorkspaceInventorySnapshot {
-    pub(super) fn new(
-        mut files: Vec<WorkspaceInventoryFile>,
-        backend_coverage: BackendWorkspaceCoverage,
-        backend_modules: BTreeMap<BackendModuleName, BackendModuleInventory>,
-        coverage: WorkspaceMatchCoverage,
-        kind_coverage: WorkspaceKindMatchCoverage,
-        limitations: BTreeMap<WorkspaceInventoryLimitationCode, usize>,
-        continuation_allowed: bool,
-        composition_digest: String,
-    ) -> Self {
-        files.sort_by(|left, right| left.path.cmp(&right.path));
+    pub(super) fn new(mut inputs: WorkspaceInventorySnapshotInputs) -> Self {
+        inputs
+            .files
+            .sort_by(|left, right| left.path.cmp(&right.path));
         Self {
-            files,
-            backend_coverage,
-            backend_modules,
-            coverage,
-            kind_coverage,
-            limitations,
-            continuation_allowed,
-            composition_digest,
+            files: inputs.files,
+            backend_coverage: inputs.backend_coverage,
+            backend_modules: inputs.backend_modules,
+            coverage: inputs.coverage,
+            kind_coverage: inputs.kind_coverage,
+            limitations: inputs.limitations,
+            continuation_allowed: inputs.continuation_allowed,
+            composition_digest: inputs.composition_digest,
         }
     }
 

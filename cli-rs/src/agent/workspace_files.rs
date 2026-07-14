@@ -50,12 +50,12 @@ struct WorkspaceFilesNextAction {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct WorkspaceFilesCompactResult {
+struct WorkspaceFilesResult {
     #[serde(rename = "type")]
     result_type: &'static str,
     ok: bool,
     workspace_root: String,
-    files: Vec<WorkspaceFileCompactRecord>,
+    files: WorkspaceFilesResultFiles,
     cardinality: AgentResultCardinality,
     returned_count: usize,
     truncated: bool,
@@ -72,6 +72,13 @@ struct WorkspaceFilesCompactResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     composition_digest: Option<String>,
     schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+enum WorkspaceFilesResultFiles {
+    Compact(Vec<WorkspaceFileCompactGroup>),
+    Detailed(Vec<WorkspaceFileDetailedRecord>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,7 +113,7 @@ enum WorkspaceFilesContinuationResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct WorkspaceFileCompactRecord {
+struct WorkspaceFileDetailedRecord {
     file_path: String,
     relative_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -126,12 +133,40 @@ struct WorkspaceFileCompactRecord {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct WorkspaceFileCompactGroup {
+    #[serde(flatten)]
+    evidence: WorkspaceFileCompactEvidence,
+    paths: Vec<WorkspaceFileCompactPath>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceFileCompactPath {
+    file_path: String,
+    relative_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceFileCompactEvidence {
+    backend_modules: Vec<String>,
+    indexed_gradle_projects: Vec<WorkspaceFilesGradleProject>,
+    source_sets: WorkspaceFilesSourceSetEvidence,
+    kind: WorkspaceFilesKind,
+    package: WorkspaceFilesPackageEvidence,
+    source_index: WorkspaceFilesIndexState,
+    drift: WorkspaceFilesDrift,
+    dirty: WorkspaceFilesDirty,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct WorkspaceFilesGradleProject {
     build_root: String,
     project_path: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE", rename_all_fields = "camelCase")]
 enum WorkspaceFilesSourceSetEvidence {
     Proven { source_sets: Vec<WorkspaceFilesGradleSourceSet> },
@@ -139,7 +174,7 @@ enum WorkspaceFilesSourceSetEvidence {
     Unavailable,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct WorkspaceFilesGradleSourceSet {
     build_root: String,
@@ -147,7 +182,7 @@ struct WorkspaceFilesGradleSourceSet {
     source_set_name: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE", rename_all_fields = "camelCase")]
 enum WorkspaceFilesPackageEvidence {
     ProvenRoot,
@@ -157,15 +192,15 @@ enum WorkspaceFilesPackageEvidence {
     InvalidReference,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum WorkspaceFilesKind {
     KotlinSource,
     KotlinScript,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE", rename_all_fields = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum WorkspaceFilesIndexState {
     Indexed,
     NotIndexed,
@@ -173,7 +208,7 @@ enum WorkspaceFilesIndexState {
     NotApplicable,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum WorkspaceFilesDrift {
     None,
@@ -184,7 +219,7 @@ enum WorkspaceFilesDrift {
     NotApplicable,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum WorkspaceFilesDirty {
     Clean,
@@ -382,10 +417,14 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         },
         None => 0,
     };
-    let returned = matching
+    let returned_matches = matching
         .iter()
         .skip(start)
         .take(usize::from(args.limit.get()))
+        .copied()
+        .collect::<Vec<_>>();
+    let detailed_files = returned_matches
+        .iter()
         .map(|file| {
             project_workspace_file(
                 admission.workspace_root.as_path(),
@@ -395,13 +434,13 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             )
         })
         .collect::<Vec<_>>();
-    let returned_count = returned.len();
+    let returned_count = detailed_files.len();
     let has_more_known_matches = start.saturating_add(returned_count) < matching.len();
     let next_page_token = if !args.view.count
         && has_more_known_matches
         && snapshot.continuation_allowed()
     {
-        let Some(last_relative_path) = returned.last().map(|file| file.relative_path.clone()) else {
+        let Some(last_relative_path) = returned_matches.last().map(|file| file.path().to_string()) else {
             return invalid_projection_envelope(
                 "agent/workspace-files".to_string(),
                 "workspace-file continuation page omitted its final path",
@@ -422,11 +461,19 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     } else {
         None
     };
-    let result = WorkspaceFilesCompactResult {
+    let result = WorkspaceFilesResult {
         result_type: "KAST_AGENT_WORKSPACE_FILES_RESULT",
         ok: true,
         workspace_root: admission.workspace_root.display().to_string(),
-        files: returned,
+        files: if workspace_files_view_name(&args.view) == "compact" {
+            WorkspaceFilesResultFiles::Compact(project_workspace_file_groups(
+                admission.workspace_root.as_path(),
+                &returned_matches,
+                index_evidence_complete,
+            ))
+        } else {
+            WorkspaceFilesResultFiles::Detailed(detailed_files)
+        },
         cardinality,
         returned_count,
         truncated: !exact || has_more_known_matches,
@@ -870,7 +917,7 @@ fn project_workspace_file(
     file: &WorkspaceInventoryFile,
     index_evidence_complete: bool,
     view: &AgentWorkspaceFilesViewArgs,
-) -> WorkspaceFileCompactRecord {
+) -> WorkspaceFileDetailedRecord {
     let detailed = view.verbose || view.explain;
     let module_selected = detailed
         || view
@@ -887,40 +934,110 @@ fn project_workspace_file(
             .fields
             .iter()
             .any(|field| matches!(field, AgentWorkspaceFilesField::Evidence));
-    WorkspaceFileCompactRecord {
+    let evidence = project_workspace_file_evidence(file, index_evidence_complete);
+    WorkspaceFileDetailedRecord {
         file_path: root.join(file.path().as_path()).display().to_string(),
         relative_path: file.path().to_string(),
-        backend_modules: module_selected.then(|| {
-            file.backend_modules()
+        backend_modules: module_selected.then(|| evidence.backend_modules.clone()),
+        indexed_gradle_projects: module_selected
+            .then(|| evidence.indexed_gradle_projects.clone()),
+        source_sets: source_set_selected.then(|| evidence.source_sets.clone()),
+        kind: evidence.kind,
+        package: evidence.package,
+        source_index: evidence.source_index,
+        drift: evidence.drift,
+        dirty: evidence.dirty,
+        evidence: evidence_selected.then(|| {
+            file.evidence()
                 .iter()
-                .map(|module| module.as_str().to_string())
-                .collect()
-        }),
-        indexed_gradle_projects: module_selected.then(|| {
-            file.indexed_gradle_projects()
-                .iter()
-                .map(|project| WorkspaceFilesGradleProject {
-                    build_root: workspace_files_build_root(project.build_root().as_path()),
-                    project_path: project.project_path().as_str().to_string(),
+                .map(|source| match source {
+                    WorkspaceEvidenceSource::Manifest => WorkspaceFilesEvidenceSource::Manifest,
+                    WorkspaceEvidenceSource::PackageMetadata => {
+                        WorkspaceFilesEvidenceSource::PackageMetadata
+                    }
+                    WorkspaceEvidenceSource::GradleProjectModel => {
+                        WorkspaceFilesEvidenceSource::GradleProjectModel
+                    }
                 })
                 .collect()
         }),
-        source_sets: source_set_selected.then(|| match file.source_sets() {
-            WorkspaceSourceSetEvidence::Proven(source_sets) => WorkspaceFilesSourceSetEvidence::Proven {
-                source_sets: source_sets
-                    .iter()
-                    .map(|source_set| WorkspaceFilesGradleSourceSet {
-                        build_root: workspace_files_build_root(source_set.project().build_root().as_path()),
-                        project_path: source_set.project().project_path().as_str().to_string(),
-                        source_set_name: source_set.source_set_name().as_str().to_string(),
-                    })
-                    .collect(),
-            },
-            WorkspaceSourceSetEvidence::Unproven(labels) => WorkspaceFilesSourceSetEvidence::Unproven {
-                labels: labels.iter().map(|label| label.as_str().to_string()).collect(),
-            },
+    }
+}
+
+fn project_workspace_file_groups(
+    root: &Path,
+    files: &[&WorkspaceInventoryFile],
+    index_evidence_complete: bool,
+) -> Vec<WorkspaceFileCompactGroup> {
+    let mut groups: Vec<WorkspaceFileCompactGroup> = Vec::new();
+    for file in files {
+        let evidence = project_workspace_file_evidence(file, index_evidence_complete);
+        let path = WorkspaceFileCompactPath {
+            file_path: root.join(file.path().as_path()).display().to_string(),
+            relative_path: file.path().to_string(),
+        };
+        if let Some(group) = groups
+            .last_mut()
+            .filter(|group| group.evidence == evidence)
+        {
+            group.paths.push(path);
+        } else {
+            groups.push(WorkspaceFileCompactGroup {
+                evidence,
+                paths: vec![path],
+            });
+        }
+    }
+    groups
+}
+
+fn project_workspace_file_evidence(
+    file: &WorkspaceInventoryFile,
+    index_evidence_complete: bool,
+) -> WorkspaceFileCompactEvidence {
+    WorkspaceFileCompactEvidence {
+        backend_modules: file
+            .backend_modules()
+            .iter()
+            .map(|module| module.as_str().to_string())
+            .collect(),
+        indexed_gradle_projects: file
+            .indexed_gradle_projects()
+            .iter()
+            .map(|project| WorkspaceFilesGradleProject {
+                build_root: workspace_files_build_root(project.build_root().as_path()),
+                project_path: project.project_path().as_str().to_string(),
+            })
+            .collect(),
+        source_sets: match file.source_sets() {
+            WorkspaceSourceSetEvidence::Proven(source_sets) => {
+                WorkspaceFilesSourceSetEvidence::Proven {
+                    source_sets: source_sets
+                        .iter()
+                        .map(|source_set| WorkspaceFilesGradleSourceSet {
+                            build_root: workspace_files_build_root(
+                                source_set.project().build_root().as_path(),
+                            ),
+                            project_path: source_set
+                                .project()
+                                .project_path()
+                                .as_str()
+                                .to_string(),
+                            source_set_name: source_set.source_set_name().as_str().to_string(),
+                        })
+                        .collect(),
+                }
+            }
+            WorkspaceSourceSetEvidence::Unproven(labels) => {
+                WorkspaceFilesSourceSetEvidence::Unproven {
+                    labels: labels
+                        .iter()
+                        .map(|label| label.as_str().to_string())
+                        .collect(),
+                }
+            }
             WorkspaceSourceSetEvidence::Unavailable => WorkspaceFilesSourceSetEvidence::Unavailable,
-        }),
+        },
         kind: match file.kind() {
             WorkspaceFileKind::Source => WorkspaceFilesKind::KotlinSource,
             WorkspaceFileKind::Script => WorkspaceFilesKind::KotlinScript,
@@ -961,20 +1078,6 @@ fn project_workspace_file(
             WorkspaceFileDirtyState::Unknown => WorkspaceFilesDirty::Unknown,
             WorkspaceFileDirtyState::NotApplicable => WorkspaceFilesDirty::NotApplicable,
         },
-        evidence: evidence_selected.then(|| {
-            file.evidence()
-                .iter()
-                .map(|source| match source {
-                    WorkspaceEvidenceSource::Manifest => WorkspaceFilesEvidenceSource::Manifest,
-                    WorkspaceEvidenceSource::PackageMetadata => {
-                        WorkspaceFilesEvidenceSource::PackageMetadata
-                    }
-                    WorkspaceEvidenceSource::GradleProjectModel => {
-                        WorkspaceFilesEvidenceSource::GradleProjectModel
-                    }
-                })
-                .collect()
-        }),
     }
 }
 
