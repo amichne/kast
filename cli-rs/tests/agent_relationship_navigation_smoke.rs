@@ -610,6 +610,87 @@ fn references_fail_closed_on_an_unknown_response_variant() {
 }
 
 #[test]
+fn references_fail_closed_on_malformed_expected_outcome_evidence() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let selector = serde_json::json!({
+        "fqName": "sample.Service",
+        "declarationFile": declaration_file,
+        "declarationStartOffset": 15,
+        "kind": "CLASS"
+    });
+    let malformed = [
+        serde_json::json!({
+            "type": "SUBJECT_NOT_FOUND",
+            "selector": {
+                "fqName": "",
+                "declarationFile": declaration_file,
+                "declarationStartOffset": 15
+            }
+        }),
+        serde_json::json!({
+            "type": "SUBJECT_IDENTITY_MISMATCH",
+            "selector": selector,
+            "actual": {
+                "fqName": "sample.Service",
+                "kind": "",
+                "declarationFile": declaration_file,
+                "declarationStartOffset": 15
+            }
+        }),
+        serde_json::json!({
+            "type": "DEGRADED",
+            "selector": selector,
+            "subject": {
+                "fqName": "sample.Service",
+                "kind": "CLASS",
+                "declarationFile": "",
+                "declarationStartOffset": 15
+            },
+            "reason": "REFERENCES_UNAVAILABLE"
+        }),
+    ];
+
+    for (index, response) in malformed.into_iter().enumerate() {
+        let socket = temp.path().join(format!("idea-malformed-{index}.sock"));
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &socket,
+            vec![("symbol/references", response)],
+        );
+        let output = kast(&home, &config)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "references",
+                "--symbol",
+                "sample.Service",
+                "--declaration-file",
+                declaration_file.to_str().expect("declaration file"),
+                "--declaration-start-offset",
+                "15",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("malformed expected references outcome");
+        assert_eq!(output.status.code(), Some(1));
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("malformed references json");
+        assert_eq!(stdout["error"]["code"], "AGENT_RESULT_INVALID");
+        backend.join().expect("scripted backend");
+    }
+}
+
+#[test]
 fn compact_references_bound_high_cardinality_output() {
     const TOTAL_REFERENCES: usize = 500;
     let temp = tempfile::tempdir().expect("tempdir");
