@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
+import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.protocol.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -222,6 +223,37 @@ class ParsedModelsTest {
                 includeUsageSiteScope = true,
             ).parsed().includeUsageSiteScope,
         )
+    }
+
+    @Test
+    fun `exact symbol selector parsed owns the complete trusted anchor`() {
+        val parsed = KastExactSymbolSelector(
+            fqName = "sample.Controller.handle",
+            declarationFile = "/workspace/src/Controller.kt",
+            declarationStartOffset = 10,
+            kind = SymbolKind.FUNCTION,
+            containingType = "sample.Controller",
+        ).parsed()
+
+        assertEquals(NonBlankString("sample.Controller.handle"), parsed.fqName)
+        assertEquals("/workspace/src/Controller.kt", parsed.declarationFile.value)
+        assertEquals(NonNegativeInt(10), parsed.declarationStartOffset)
+        assertEquals(SymbolKind.FUNCTION, parsed.kind)
+        assertEquals(NonBlankString("sample.Controller"), parsed.containingType)
+
+        listOf(
+            KastExactSymbolSelector(" ", "/workspace/src/Controller.kt", 10),
+            KastExactSymbolSelector("sample.Controller", "relative.kt", 10),
+            KastExactSymbolSelector("sample.Controller", "/workspace/src/Controller.kt", -1),
+            KastExactSymbolSelector(
+                "sample.Controller",
+                "/workspace/src/Controller.kt",
+                10,
+                containingType = " ",
+            ),
+        ).forEach { selector ->
+            assertThrows<ValidationException> { selector.parsed() }
+        }
     }
 
     @Test
