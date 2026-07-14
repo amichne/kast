@@ -3,10 +3,17 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
+import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.GradleProjectPath
+import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
+import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
+import io.github.amichne.kast.indexstore.api.index.IndexedPackageUnprovenReason
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.index.SourceIndexSnapshot
 import io.github.amichne.kast.indexstore.api.index.SourceIndexWriter
+import io.github.amichne.kast.indexstore.api.index.WorkspaceRelativeGradleBuildRoot
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
@@ -59,49 +66,67 @@ class SqliteSourceIndexStore private constructor(
     @Volatile
     private var cachedConnection: Connection? = null
 
+    @Volatile
+    private var validatedSchemaConnection: Connection? = null
+
     fun dbExists(): Boolean = Files.isRegularFile(dbPath)
 
-    private fun connection(): Connection {
+    private fun connection(requireCurrentSchema: Boolean = true): Connection {
         cachedConnection?.let { conn ->
-            if (!conn.isClosed && Files.isRegularFile(dbPath)) return conn
+            if (!conn.isClosed && Files.isRegularFile(dbPath)) {
+                if (!requireCurrentSchema || validatedSchemaConnection === conn) return conn
+            }
         }
         synchronized(connectionLock) {
             cachedConnection?.let { conn ->
-                if (!conn.isClosed && Files.isRegularFile(dbPath)) return conn
+                if (!conn.isClosed && Files.isRegularFile(dbPath)) {
+                    if (requireCurrentSchema && validatedSchemaConnection !== conn) {
+                        validateCurrentSchema(conn)
+                        validatedSchemaConnection = conn
+                    }
+                    return conn
+                }
                 // DB file was deleted (e.g. by CacheManager.invalidateAll()) while
                 // the connection was still open. Close the orphaned connection so
                 // the next call creates a fresh file.
                 runCatching { conn.close() }
                 cachedConnection = null
+                validatedSchemaConnection = null
             }
             Files.createDirectories(dbPath.parent)
             SqliteJdbcDriverBootstrap.ensureRegistered()
             val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
-            conn.createStatement().use { stmt ->
-                stmt.execute("PRAGMA journal_mode=WAL")
-                stmt.execute("PRAGMA synchronous=NORMAL")
-                stmt.execute("PRAGMA busy_timeout=5000")
-                stmt.execute("PRAGMA cache_size=-64000")
-                stmt.execute("PRAGMA mmap_size=268435456")
-                stmt.execute("PRAGMA temp_store=MEMORY")
-                stmt.execute("PRAGMA wal_autocheckpoint=1000")
-                stmt.execute("PRAGMA foreign_keys=ON")
-            }
-            cachedConnection = conn
-            if (readSchemaVersion(conn) == null) {
-                conn.autoCommit = false
-                try {
+            try {
+                conn.createStatement().use { stmt ->
+                    stmt.execute("PRAGMA journal_mode=WAL")
+                    stmt.execute("PRAGMA synchronous=NORMAL")
+                    stmt.execute("PRAGMA busy_timeout=5000")
+                    stmt.execute("PRAGMA cache_size=-64000")
+                    stmt.execute("PRAGMA mmap_size=268435456")
+                    stmt.execute("PRAGMA temp_store=MEMORY")
+                    stmt.execute("PRAGMA wal_autocheckpoint=1000")
+                    stmt.execute("PRAGMA foreign_keys=ON")
+                }
+                if (readSchemaVersion(conn) == null) {
+                    conn.autoCommit = false
                     createAllTables(conn)
                     conn.commit()
-                } catch (e: Exception) {
-                    runCatching { conn.rollback() }
-                    throw e
-                } finally {
                     conn.autoCommit = true
                 }
-                loadInterningTables(conn)
+                if (requireCurrentSchema) {
+                    validateCurrentSchema(conn)
+                    loadInterningTables(conn)
+                }
+                cachedConnection = conn
+                validatedSchemaConnection = conn.takeIf { requireCurrentSchema }
+                return conn
+            } catch (e: Exception) {
+                if (!conn.autoCommit) runCatching { conn.rollback() }
+                runCatching { conn.close() }
+                throw e
+            } finally {
+                if (!conn.isClosed) conn.autoCommit = true
             }
-            return conn
         }
     }
 
@@ -110,6 +135,7 @@ class SqliteSourceIndexStore private constructor(
             cachedConnection?.let { conn ->
                 runCatching { conn.close() }
                 cachedConnection = null
+                validatedSchemaConnection = null
             }
         }
     }
@@ -122,9 +148,11 @@ class SqliteSourceIndexStore private constructor(
      */
     fun ensureSchema(): Boolean {
         synchronized(writeLock) {
-            val conn = connection()
+            val conn = connection(requireCurrentSchema = false)
             val version = readSchemaVersion(conn)
             if (version == SOURCE_INDEX_SCHEMA_VERSION) {
+                validateCurrentSchema(conn)
+                validatedSchemaConnection = conn
                 loadInterningTables(conn)
                 return true
             }
@@ -135,6 +163,8 @@ class SqliteSourceIndexStore private constructor(
                 createAllTables(conn)
                 writeGenerationInTransaction(conn, SourceIndexGeneration(Math.addExact(previousGeneration.value, 1L)))
                 conn.commit()
+                validateCurrentSchema(conn)
+                validatedSchemaConnection = conn
             } catch (e: Exception) {
                 conn.rollback()
                 throw e
@@ -152,6 +182,140 @@ class SqliteSourceIndexStore private constructor(
         }
     } catch (_: Exception) {
         null
+    }
+
+    private fun validateCurrentSchema(conn: Connection) {
+        val version = readSchemaVersion(conn)
+        check(version == SOURCE_INDEX_SCHEMA_VERSION) {
+            "Source index schema version $version cannot be read as version $SOURCE_INDEX_SCHEMA_VERSION"
+        }
+        val requiredColumns = mapOf(
+            "file_metadata" to mapOf(
+                "prefix_id" to true,
+                "filename" to true,
+                "package_fq_id" to false,
+                "package_state" to true,
+                "package_unproven_reason" to false,
+                "module_path" to false,
+                "source_set" to false,
+            ),
+            "file_gradle_projects" to mapOf(
+                "prefix_id" to true,
+                "filename" to true,
+                "build_root" to true,
+                "project_path" to true,
+            ),
+            "file_gradle_source_sets" to mapOf(
+                "prefix_id" to true,
+                "filename" to true,
+                "build_root" to true,
+                "project_path" to true,
+                "source_set_name" to true,
+            ),
+        )
+        requiredColumns.forEach { (tableName, columns) ->
+            val actualColumns = conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("PRAGMA table_info('$tableName')")
+                buildMap {
+                    while (rs.next()) put(rs.getString("name"), rs.getInt("notnull") == 1)
+                }
+            }
+            check(actualColumns.isNotEmpty()) {
+                "Source index schema $SOURCE_INDEX_SCHEMA_VERSION is missing required table $tableName"
+            }
+            columns.forEach { (columnName, mustBeNonNull) ->
+                val actualNonNull = actualColumns[columnName]
+                check(actualNonNull != null) {
+                    "Source index schema $SOURCE_INDEX_SCHEMA_VERSION is missing required column $tableName.$columnName"
+                }
+                check(!mustBeNonNull || actualNonNull) {
+                    "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires $tableName.$columnName to be non-null"
+                }
+            }
+        }
+        val requiredPrimaryKeys = mapOf(
+            "file_metadata" to listOf("prefix_id", "filename"),
+            "file_gradle_projects" to listOf("prefix_id", "filename", "build_root", "project_path"),
+            "file_gradle_source_sets" to listOf(
+                "prefix_id",
+                "filename",
+                "build_root",
+                "project_path",
+                "source_set_name",
+            ),
+        )
+        requiredPrimaryKeys.forEach { (tableName, requiredPrimaryKey) ->
+            val actualPrimaryKey = conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("PRAGMA table_info('$tableName')")
+                buildList {
+                    while (rs.next()) {
+                        val position = rs.getInt("pk")
+                        if (position > 0) add(position to rs.getString("name"))
+                    }
+                }.sortedBy { (position, _) -> position }.map { (_, columnName) -> columnName }
+            }
+            check(actualPrimaryKey == requiredPrimaryKey) {
+                "Source index schema $SOURCE_INDEX_SCHEMA_VERSION has invalid primary key for $tableName"
+            }
+        }
+        val metadataTableSql = conn.prepareStatement(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'file_metadata'",
+        ).use { stmt ->
+            val rs = stmt.executeQuery()
+            check(rs.next()) { "Source index schema is missing file_metadata" }
+            checkNotNull(rs.getString(1)) { "Source index schema has no file_metadata definition" }
+        }.uppercase().filterNot(Char::isWhitespace)
+        val requiredConstraintFragments = listOf(
+            "PACKAGE_STATEIN('PROVEN_ROOT','PROVEN_NAMED','UNPROVEN')",
+            "PACKAGE_STATE='PROVEN_ROOT'ANDPACKAGE_FQ_IDISNULLANDPACKAGE_UNPROVEN_REASONISNULL",
+            "PACKAGE_STATE='PROVEN_NAMED'ANDPACKAGE_FQ_IDISNOTNULLANDPACKAGE_UNPROVEN_REASONISNULL",
+            "PACKAGE_STATE='UNPROVEN'ANDPACKAGE_FQ_IDISNULLANDPACKAGE_UNPROVEN_REASONIN(" +
+                "'NOT_SCANNED','SEMANTIC_ANALYSIS_UNAVAILABLE','SEMANTIC_ANALYSIS_FAILED','LEGACY_TEXT_ONLY')",
+        )
+        requiredConstraintFragments.forEach { fragment ->
+            check(fragment in metadataTableSql) {
+                "Source index schema $SOURCE_INDEX_SCHEMA_VERSION lacks required package provenance constraints"
+            }
+        }
+        val requiredForeignKeys = mapOf(
+            "file_metadata" to setOf("fq_names|NO ACTION|package_fq_id->fq_id"),
+            "file_gradle_projects" to setOf(
+                "file_metadata|CASCADE|prefix_id->prefix_id,filename->filename",
+            ),
+            "file_gradle_source_sets" to setOf(
+                "file_gradle_projects|CASCADE|" +
+                    "prefix_id->prefix_id,filename->filename,build_root->build_root,project_path->project_path",
+            ),
+        )
+        requiredForeignKeys.forEach { (tableName, required) ->
+            val actual = foreignKeySignatures(conn, tableName)
+            check(actual.containsAll(required)) {
+                "Source index schema $SOURCE_INDEX_SCHEMA_VERSION has invalid foreign keys for $tableName"
+            }
+        }
+    }
+
+    private fun foreignKeySignatures(conn: Connection, tableName: String): Set<String> {
+        val columnsById = mutableMapOf<Int, MutableList<Triple<Int, String, String>>>()
+        val targetTableById = mutableMapOf<Int, String>()
+        val onDeleteById = mutableMapOf<Int, String>()
+        conn.createStatement().use { stmt ->
+            val rs = stmt.executeQuery("PRAGMA foreign_key_list('$tableName')")
+            while (rs.next()) {
+                val id = rs.getInt("id")
+                columnsById.getOrPut(id) { mutableListOf() }.add(
+                    Triple(rs.getInt("seq"), rs.getString("from"), rs.getString("to")),
+                )
+                targetTableById[id] = rs.getString("table")
+                onDeleteById[id] = rs.getString("on_delete")
+            }
+        }
+        return columnsById.mapTo(mutableSetOf()) { (id, columns) ->
+            val mappings = columns.sortedBy { (position, _, _) -> position }.joinToString(",") { (_, from, to) ->
+                "$from->$to"
+            }
+            "${targetTableById.getValue(id)}|${onDeleteById.getValue(id)}|$mappings"
+        }
     }
 
     private fun dropAllTables(conn: Connection) {
@@ -175,6 +339,8 @@ class SqliteSourceIndexStore private constructor(
         stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
         stmt.execute("DROP TABLE IF EXISTS file_imports")
         stmt.execute("DROP TABLE IF EXISTS identifier_paths")
+        stmt.execute("DROP TABLE IF EXISTS file_gradle_source_sets")
+        stmt.execute("DROP TABLE IF EXISTS file_gradle_projects")
         stmt.execute("DROP TABLE IF EXISTS file_metadata")
         stmt.execute("DROP TABLE IF EXISTS file_manifest")
         stmt.execute("DROP TABLE IF EXISTS fq_names")
@@ -264,9 +430,51 @@ class SqliteSourceIndexStore private constructor(
                 prefix_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
                 package_fq_id INTEGER,
+                package_state TEXT NOT NULL CHECK(package_state IN ('PROVEN_ROOT','PROVEN_NAMED','UNPROVEN')),
+                package_unproven_reason TEXT,
                 module_path TEXT,
                 source_set TEXT,
-                PRIMARY KEY (prefix_id, filename)
+                PRIMARY KEY (prefix_id, filename),
+                CHECK(
+                    (package_state = 'PROVEN_ROOT' AND package_fq_id IS NULL AND package_unproven_reason IS NULL)
+                    OR (package_state = 'PROVEN_NAMED' AND package_fq_id IS NOT NULL AND package_unproven_reason IS NULL)
+                    OR (
+                        package_state = 'UNPROVEN'
+                        AND package_fq_id IS NULL
+                        AND package_unproven_reason IN (
+                            'NOT_SCANNED',
+                            'SEMANTIC_ANALYSIS_UNAVAILABLE',
+                            'SEMANTIC_ANALYSIS_FAILED',
+                            'LEGACY_TEXT_ONLY'
+                        )
+                    )
+                ),
+                FOREIGN KEY(package_fq_id) REFERENCES fq_names(fq_id)
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS file_gradle_projects (
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                build_root TEXT NOT NULL,
+                project_path TEXT NOT NULL,
+                PRIMARY KEY (prefix_id, filename, build_root, project_path),
+                FOREIGN KEY(prefix_id, filename) REFERENCES file_metadata(prefix_id, filename) ON DELETE CASCADE
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS file_gradle_source_sets (
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                build_root TEXT NOT NULL,
+                project_path TEXT NOT NULL,
+                source_set_name TEXT NOT NULL,
+                PRIMARY KEY (prefix_id, filename, build_root, project_path, source_set_name),
+                FOREIGN KEY(prefix_id, filename, build_root, project_path)
+                    REFERENCES file_gradle_projects(prefix_id, filename, build_root, project_path)
+                    ON DELETE CASCADE
             )""",
         )
 
@@ -368,6 +576,11 @@ class SqliteSourceIndexStore private constructor(
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_source_set ON file_metadata(source_set)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_module_path_source_set ON file_metadata(module_path, source_set)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_metadata_package ON file_metadata(package_fq_id)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_gradle_projects_project ON file_gradle_projects(build_root, project_path)")
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_file_gradle_source_sets_identity " +
+                "ON file_gradle_source_sets(build_root, project_path, source_set_name)",
+        )
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_imports_fq ON file_imports(fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_file_wildcard_imports_fq ON file_wildcard_imports(fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_symref_target ON symbol_references(target_fq_id)")
@@ -396,7 +609,7 @@ class SqliteSourceIndexStore private constructor(
                 internPathsInTransaction(conn, eligibleUpdates.map { it.path } + eligibleManifest.keys)
                 internFqNamesInTransaction(conn, eligibleUpdates.flatMapTo(mutableSetOf()) { update ->
                     buildList {
-                        update.packageName?.let(::add)
+                        packageFqName(update)?.let(::add)
                         addAll(update.imports)
                         addAll(update.wildcardImports)
                     }
@@ -405,6 +618,8 @@ class SqliteSourceIndexStore private constructor(
                     stmt.execute("DELETE FROM file_wildcard_imports")
                     stmt.execute("DELETE FROM file_imports")
                     stmt.execute("DELETE FROM identifier_paths")
+                    stmt.execute("DELETE FROM file_gradle_source_sets")
+                    stmt.execute("DELETE FROM file_gradle_projects")
                     stmt.execute("DELETE FROM file_metadata")
                     stmt.execute("DELETE FROM file_manifest")
                 }
@@ -515,6 +730,95 @@ class SqliteSourceIndexStore private constructor(
                 importsByPath = importsByPath,
                 wildcardImportPackagesByPath = wildcardImportPackagesByPath,
             )
+        }
+    }
+
+    fun gradleProjectsForFile(path: String): Set<BuildQualifiedGradleProjectIdentity> {
+        synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            val (prefixId, filename) = pathCodec.encodeIfInterned(path) ?: return emptySet()
+            return conn.prepareStatement(
+                """SELECT build_root, project_path
+                   FROM file_gradle_projects
+                   WHERE prefix_id = ? AND filename = ?
+                   ORDER BY build_root, project_path""",
+            ).use { stmt ->
+                stmt.setInt(1, prefixId)
+                stmt.setString(2, filename)
+                val rs = stmt.executeQuery()
+                buildSet {
+                    while (rs.next()) {
+                        add(
+                            BuildQualifiedGradleProjectIdentity(
+                                buildRoot = WorkspaceRelativeGradleBuildRoot.parse(rs.getString("build_root")),
+                                projectPath = GradleProjectPath.parse(rs.getString("project_path")),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun gradleSourceSetsForFile(path: String): Set<BuildQualifiedGradleSourceSetIdentity> {
+        synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            val (prefixId, filename) = pathCodec.encodeIfInterned(path) ?: return emptySet()
+            return conn.prepareStatement(
+                """SELECT source_sets.build_root, source_sets.project_path, source_sets.source_set_name,
+                          projects.build_root AS owner_build_root
+                   FROM file_gradle_source_sets source_sets
+                   LEFT JOIN file_gradle_projects projects
+                     ON projects.prefix_id = source_sets.prefix_id
+                    AND projects.filename = source_sets.filename
+                    AND projects.build_root = source_sets.build_root
+                    AND projects.project_path = source_sets.project_path
+                   WHERE source_sets.prefix_id = ? AND source_sets.filename = ?
+                   ORDER BY source_sets.build_root, source_sets.project_path, source_sets.source_set_name""",
+            ).use { stmt ->
+                stmt.setInt(1, prefixId)
+                stmt.setString(2, filename)
+                val rs = stmt.executeQuery()
+                buildSet {
+                    while (rs.next()) {
+                        check(rs.getString("owner_build_root") != null) {
+                            "Gradle source-set provenance has no matching build-qualified project owner"
+                        }
+                        add(
+                            BuildQualifiedGradleSourceSetIdentity(
+                                project = BuildQualifiedGradleProjectIdentity(
+                                    buildRoot = WorkspaceRelativeGradleBuildRoot.parse(rs.getString("build_root")),
+                                    projectPath = GradleProjectPath.parse(rs.getString("project_path")),
+                                ),
+                                sourceSet = GradleSourceSetName.parse(rs.getString("source_set_name")),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun packageEvidenceForFile(path: String): IndexedPackageEvidence? {
+        synchronized(writeLock) {
+            val conn = connection()
+            loadInterningTables(conn)
+            val (prefixId, filename) = pathCodec.encodeIfInterned(path) ?: return null
+            return conn.prepareStatement(
+                """SELECT metadata.package_state, metadata.package_unproven_reason,
+                          metadata.package_fq_id, packages.fq_name
+                   FROM file_metadata metadata
+                   LEFT JOIN fq_names packages ON packages.fq_id = metadata.package_fq_id
+                   WHERE metadata.prefix_id = ? AND metadata.filename = ?""",
+            ).use { stmt ->
+                stmt.setInt(1, prefixId)
+                stmt.setString(2, filename)
+                val rs = stmt.executeQuery()
+                if (!rs.next()) return@use null
+                decodePackageEvidence(rs)
+            }
         }
     }
 
@@ -1373,24 +1677,47 @@ class SqliteSourceIndexStore private constructor(
                 stmt.executeBatch()
             }
         }
-        update.packageName?.let { fqCodec.getOrCreate(conn, it) }
+        val packageFqName = packageFqName(update)
+        packageFqName?.let { fqCodec.getOrCreate(conn, it) }
         fqCodec.batchEnsure(conn, update.imports + update.wildcardImports)
+        val packageState: String
+        val packageUnprovenReason: String?
+        when (val packageEvidence = update.packageEvidence) {
+            IndexedPackageEvidence.ProvenRoot -> {
+                packageState = "PROVEN_ROOT"
+                packageUnprovenReason = null
+            }
+
+            is IndexedPackageEvidence.ProvenNamed -> {
+                packageState = "PROVEN_NAMED"
+                packageUnprovenReason = null
+            }
+
+            is IndexedPackageEvidence.Unproven -> {
+                packageState = "UNPROVEN"
+                packageUnprovenReason = packageEvidence.reason.name
+            }
+        }
         conn.prepareStatement(
             """INSERT OR REPLACE INTO file_metadata
-               (prefix_id, filename, package_fq_id, module_path, source_set)
-               VALUES (?, ?, ?, ?, ?)""",
+               (prefix_id, filename, package_fq_id, package_state, package_unproven_reason, module_path, source_set)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
         ).use { stmt ->
             stmt.setInt(1, prefixId)
             stmt.setString(2, filename)
-            update.packageName
+            packageFqName
                 ?.let(fqCodec::idFor)
                 ?.let { stmt.setInt(3, it) }
             ?: stmt.setNull(3, java.sql.Types.INTEGER)
-            stmt.setString(4, update.modulePath)
-            stmt.setString(5, update.sourceSet)
+            stmt.setString(4, packageState)
+            stmt.setString(5, packageUnprovenReason)
+            stmt.setString(6, update.modulePath)
+            stmt.setString(7, update.sourceSet)
 
             stmt.executeUpdate()
         }
+        insertGradleProjectsInTransaction(conn, prefixId, filename, update.gradleProjects)
+        insertGradleSourceSetsInTransaction(conn, prefixId, filename, update.gradleSourceSets)
         insertFileFqNamesInTransaction(conn, tableName = "file_imports", prefixId, filename, update.imports)
         insertFileFqNamesInTransaction(
             conn,
@@ -1477,9 +1804,99 @@ class SqliteSourceIndexStore private constructor(
     }
 
     private fun fqNamesFor(update: FileIndexUpdate): Set<String> = buildSet {
-        update.packageName?.let(::add)
+        packageFqName(update)?.let(::add)
         addAll(update.imports)
         addAll(update.wildcardImports)
+    }
+
+    private fun packageFqName(update: FileIndexUpdate): String? =
+        (update.packageEvidence as? IndexedPackageEvidence.ProvenNamed)?.canonicalName?.value
+
+    private fun insertGradleProjectsInTransaction(
+        conn: Connection,
+        prefixId: Int,
+        filename: String,
+        projects: Set<BuildQualifiedGradleProjectIdentity>,
+    ) {
+        if (projects.isEmpty()) return
+        conn.prepareStatement(
+            """INSERT INTO file_gradle_projects
+               (prefix_id, filename, build_root, project_path)
+               VALUES (?, ?, ?, ?)""",
+        ).use { stmt ->
+            projects
+                .sortedWith(compareBy({ it.buildRoot.value }, { it.projectPath.value }))
+                .forEach { project ->
+                    stmt.setInt(1, prefixId)
+                    stmt.setString(2, filename)
+                    stmt.setString(3, project.buildRoot.value)
+                    stmt.setString(4, project.projectPath.value)
+                    stmt.addBatch()
+                }
+            stmt.executeBatch()
+        }
+    }
+
+    private fun insertGradleSourceSetsInTransaction(
+        conn: Connection,
+        prefixId: Int,
+        filename: String,
+        sourceSets: Set<BuildQualifiedGradleSourceSetIdentity>,
+    ) {
+        if (sourceSets.isEmpty()) return
+        conn.prepareStatement(
+            """INSERT INTO file_gradle_source_sets
+               (prefix_id, filename, build_root, project_path, source_set_name)
+               VALUES (?, ?, ?, ?, ?)""",
+        ).use { stmt ->
+            sourceSets
+                .sortedWith(
+                    compareBy(
+                        { it.project.buildRoot.value },
+                        { it.project.projectPath.value },
+                        { it.sourceSet.value },
+                    ),
+                ).forEach { sourceSet ->
+                    stmt.setInt(1, prefixId)
+                    stmt.setString(2, filename)
+                    stmt.setString(3, sourceSet.project.buildRoot.value)
+                    stmt.setString(4, sourceSet.project.projectPath.value)
+                    stmt.setString(5, sourceSet.sourceSet.value)
+                    stmt.addBatch()
+                }
+            stmt.executeBatch()
+        }
+    }
+
+    private fun decodePackageEvidence(rs: java.sql.ResultSet): IndexedPackageEvidence {
+        val state = checkNotNull(rs.getString("package_state")) { "Package provenance state is missing" }
+        val reason = rs.getString("package_unproven_reason")
+        val packageFqId = rs.getNullableInt(rs.findColumn("package_fq_id"))
+        val packageName = rs.getString("fq_name")
+        return when (state) {
+            "PROVEN_ROOT" -> {
+                check(packageFqId == null && packageName == null && reason == null) {
+                    "Root package provenance contains named or unproven evidence"
+                }
+                IndexedPackageEvidence.ProvenRoot
+            }
+
+            "PROVEN_NAMED" -> {
+                check(packageFqId != null && packageName != null && reason == null) {
+                    "Named package provenance contains a dangling or inconsistent package reference"
+                }
+                IndexedPackageEvidence.ProvenNamed(IndexedPackageEvidence.CanonicalName.parse(packageName))
+            }
+
+            "UNPROVEN" -> {
+                check(packageFqId == null && packageName == null && reason != null) {
+                    "Unproven package provenance contains named or missing reason evidence"
+                }
+                IndexedPackageEvidence.Unproven(IndexedPackageUnprovenReason.valueOf(reason))
+            }
+
+            else -> error("Unknown package provenance state: $state")
+        }
     }
 
     private fun loadInterningTables(conn: Connection) {
@@ -1540,6 +1957,8 @@ class SqliteSourceIndexStore private constructor(
         for (table in listOf(
             "declarations",
             "identifier_paths",
+            "file_gradle_source_sets",
+            "file_gradle_projects",
             "file_metadata",
             "file_imports",
             "file_wildcard_imports",
@@ -1813,6 +2232,8 @@ class SqliteSourceIndexStore private constructor(
             for (table in listOf(
                 "declarations",
                 "identifier_paths",
+                "file_gradle_source_sets",
+                "file_gradle_projects",
                 "file_metadata",
                 "file_imports",
                 "file_wildcard_imports",

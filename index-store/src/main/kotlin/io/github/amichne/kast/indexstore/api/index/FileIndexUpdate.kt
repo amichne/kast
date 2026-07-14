@@ -11,4 +11,15 @@ data class FileIndexUpdate(
     val sourceSet: String?,
     val imports: Set<String>,
     val wildcardImports: Set<String>,
-)
+    val gradleProjects: Set<BuildQualifiedGradleProjectIdentity> = emptySet(),
+    val gradleSourceSets: Set<BuildQualifiedGradleSourceSetIdentity> = emptySet(),
+    val packageEvidence: IndexedPackageEvidence = IndexedPackageEvidence.Unproven(
+        IndexedPackageUnprovenReason.NOT_SCANNED,
+    ),
+) {
+    init {
+        require(gradleSourceSets.all { sourceSet -> sourceSet.project in gradleProjects }) {
+            "Every Gradle source-set identity must retain its build-qualified project owner"
+        }
+    }
+}
