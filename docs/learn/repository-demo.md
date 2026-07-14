@@ -87,7 +87,7 @@ commands.
 Use the recap as a handoff from exploration to repeatable automation:
 
 ```console
-kast agent symbol --query com.example.OrderService --references --workspace-root "$PWD"
-kast agent impact --symbol com.example.OrderService --workspace-root "$PWD"
+kast agent references --symbol com.example.OrderService --declaration-file "$PWD/src/main/kotlin/com/example/OrderService.kt" --declaration-start-offset 42 --kind class --workspace-root "$PWD"
+kast agent impact --symbol com.example.OrderService --declaration-file "$PWD/src/main/kotlin/com/example/OrderService.kt" --declaration-start-offset 42 --kind class --workspace-root "$PWD"
 kast agent diagnostics --file-path "$PWD/src/main/kotlin/App.kt" --workspace-root "$PWD"
 ```

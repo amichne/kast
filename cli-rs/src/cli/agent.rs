@@ -1012,6 +1012,67 @@ impl std::str::FromStr for AgentRelationPageToken {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentImpactPageToken(String);
+
+impl AgentImpactPageToken {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::str::FromStr for AgentImpactPageToken {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.len() > 256
+            || !value.is_ascii()
+            || value.chars().any(char::is_control)
+            || !value.starts_with("kip1.")
+        {
+            return Err("impact page token is malformed".to_string());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AgentImpactDepth(std::num::NonZeroU8);
+
+impl AgentImpactDepth {
+    pub(crate) fn get(self) -> u8 {
+        self.0.get()
+    }
+}
+
+impl Default for AgentImpactDepth {
+    fn default() -> Self {
+        Self(std::num::NonZeroU8::new(3).expect("impact default depth is positive"))
+    }
+}
+
+impl std::fmt::Display for AgentImpactDepth {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl std::str::FromStr for AgentImpactDepth {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let value = value
+            .parse::<u8>()
+            .map_err(|_| "impact depth must be an integer from 1 through 8".to_string())?;
+        if !(1..=8).contains(&value) {
+            return Err("impact depth must be from 1 through 8".to_string());
+        }
+        Ok(Self(std::num::NonZeroU8::new(value).ok_or_else(|| {
+            "impact depth must be greater than 0".to_string()
+        })?))
+    }
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AgentHierarchyDirection {
@@ -1032,14 +1093,17 @@ pub enum AgentSymbolMode {
 pub struct AgentImpactArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
-    /// Fully-qualified symbol name.
-    #[arg(long)]
-    pub symbol: String,
-    #[arg(long, default_value_t = 3)]
-    pub depth: u32,
+    #[command(flatten)]
+    pub selector: AgentExactSymbolSelectorArgs,
+    /// Maximum source-impact traversal depth.
+    #[arg(long, default_value_t)]
+    pub depth: AgentImpactDepth,
     /// Maximum source-index impact nodes to return.
-    #[arg(long, default_value_t = 10, value_parser = clap::value_parser!(u32).range(1..=500))]
-    pub limit: u32,
+    #[arg(long, default_value_t)]
+    pub limit: AgentRelationLimit,
+    /// Opaque query-bound token from the preceding impact page.
+    #[arg(long)]
+    pub page_token: Option<AgentImpactPageToken>,
     #[command(flatten)]
     pub view: AgentImpactViewArgs,
 }

@@ -285,23 +285,16 @@ compiler is unavailable and the source index can prove the exact constraints.
 Not-found and ambiguous outcomes never trigger fuzzy search.
 
 `--mode discovery` is the explicit fuzzy surface. It reports `DISCOVERED` with
-`source: fuzzy`; `--references` and `--callers` are unavailable in that mode.
-Relation requests run only after compiler resolution and use the returned
-canonical fully-qualified name. `--limit` bounds detailed reference evidence
-and caller traversal output. Compact mode caps requested and emitted records at
-four for each requested
-relationship kind and reports an `EXACT` or `KNOWN_MINIMUM` cardinality,
-`returnedCount`, `truncated`, and a reference `nextPageToken` when more results
-exist. Continue references with `--reference-page-token <token>`. Tokens are
-opaque, one-use handles for bounded server-held traversal. They bind the
-workspace, resolved query and options, INDEX or IDEA evidence source, and source
-generation, so readiness or PSI changes cannot reinterpret an offset. Unknown,
-replayed, mismatched, evicted, and stale tokens fail with a typed conflict;
-accepted pages remain deterministic and non-overlapping. Caller and type
-hierarchy resolvers may still enumerate the underlying compiler search before
-the hierarchy engine applies its typed cap. The public caller result is bounded,
-but it does not claim bounded resolver enumeration; pre-materialization resolver
-budgets are tracked separately by issue #339.
+`source: fuzzy`. Relationship navigation is a separate exact surface:
+`references`, `callers`, `callees`, `implementations`, and `hierarchy` each
+require the resolved `fqName`, `declarationFile`, and
+`declarationStartOffset`; optional `kind` and `containingType` assertions remain
+part of that selector. Compact pages default to four records and report an
+`EXACT` or `KNOWN_MINIMUM` cardinality, `returnedCount`, `truncated`, and
+`nextPageToken`. Repeat the same selector, direction/depth, and limit with
+`--page-token <token>` to continue. Tokens are opaque and query-bound; replay,
+mismatch, eviction, and semantic-generation movement return distinct typed
+outcomes instead of restarting at page one.
 
 ## Diagnostics
 
@@ -318,12 +311,17 @@ mismatched, evicted, or stale tokens fail with a typed conflict.
 
 ## Impact
 
-`kast agent impact --symbol <fq-name>` queries source-index change impact with a
-typed `--depth` and `--limit`. The default compact request fetches at most four
-impact nodes while SQLite counts the full set separately. The compact result
-reports the exact executed query, bounded nodes, confidence evidence, and whether the full node set was
-truncated. Use `--fields query,confidence` for metadata without nodes or
-`--count` for cardinality only.
+`kast agent impact` accepts the same exact selector as relationship navigation,
+plus `--depth <1..8>`, `--limit <1..200>`, and `--page-token`. The default
+compact page contains at most four nodes. SQLite verifies one exact production
+declaration row before reading aggregate impact data, counts the full result
+separately, and orders pages by depth, source path, target identity, and edge
+kind. Its stateless token carries only a query-bound offset up to 10,000.
+Functions and properties return `IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE`
+because the production index key cannot isolate same-file overloads; Kast does
+not mislabel FQ-name aggregate rows as one callable's impact. Use
+`--fields query,confidence` for metadata without nodes or `--count` for
+cardinality only.
 
 ??? info "Command names for agent authors"
     The current typed agent commands are:
@@ -353,7 +351,13 @@ truncated. Use `--fields query,confidence` for metadata without nodes or
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent symbol --query OrderService --explain --workspace-root "$PWD"
-    kast agent impact --symbol com.example.OrderService --count --workspace-root "$PWD"
+    kast agent impact \
+      --symbol com.example.OrderService \
+      --declaration-file src/main/kotlin/com/example/OrderService.kt \
+      --declaration-start-offset 42 \
+      --kind class \
+      --count \
+      --workspace-root "$PWD"
     kast agent diagnostics \
       --file-path src/main/kotlin/App.kt \
       --workspace-root "$PWD"

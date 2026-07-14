@@ -7,7 +7,8 @@ use crate::cli::{
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::metrics_database::{
-    BoundedMetricsResult, DirectMetricsError, DirectResult, FileFilter, MetricsDatabase,
+    AgentImpactPageOffset, BoundedMetricsResult, DirectMetricsError, DirectResult, FileFilter,
+    ImpactSubjectIdentity, MetricsDatabase,
 };
 use crate::output;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,8 @@ pub(crate) struct MetricsRequest {
     limit: usize,
     symbol: Option<String>,
     depth: usize,
+    impact_subject: Option<ImpactSubjectIdentity>,
+    impact_offset: AgentImpactPageOffset,
     filter: FileFilter,
 }
 
@@ -34,6 +37,10 @@ struct MetricsQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     symbol: Option<String>,
     depth: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subject: Option<ImpactSubjectIdentity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     file_glob: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -52,6 +59,8 @@ struct MetricsResponse {
     returned_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     truncated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_offset: Option<usize>,
     log_file: String,
     schema_version: u32,
 }
@@ -66,6 +75,8 @@ struct MetricsRpcParams {
     depth: Option<usize>,
     file_glob: Option<String>,
     folder_filter: Option<String>,
+    subject: Option<ImpactSubjectIdentity>,
+    offset: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -82,6 +93,8 @@ struct MetricsRpcResponse {
     returned_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     truncated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_offset: Option<usize>,
     log_file: String,
     schema_version: u32,
 }
@@ -100,6 +113,7 @@ struct DirectMetricsQueryResult {
     total_count: Option<usize>,
     returned_count: Option<usize>,
     truncated: Option<bool>,
+    next_offset: Option<AgentImpactPageOffset>,
 }
 
 impl DirectMetricsQueryResult {
@@ -109,6 +123,7 @@ impl DirectMetricsQueryResult {
             total_count: None,
             returned_count: None,
             truncated: None,
+            next_offset: None,
         }
     }
 
@@ -118,6 +133,7 @@ impl DirectMetricsQueryResult {
             total_count: Some(result.total_count),
             returned_count: Some(result.returned_count),
             truncated: Some(result.truncated),
+            next_offset: result.next_offset,
         }
     }
 }
@@ -132,13 +148,17 @@ fn query_direct(request: &MetricsRequest) -> DirectResult<DirectMetricsQueryResu
             .fan_out(request.limit)
             .map(DirectMetricsQueryResult::unbounded),
         "deadCode" => db.dead_code().map(DirectMetricsQueryResult::unbounded),
-        "impact" => db
-            .impact(
+        "impact" => match &request.impact_subject {
+            Some(subject) => {
+                db.impact_page(subject, request.depth, request.limit, request.impact_offset)
+            }
+            None => db.impact(
                 request.symbol.as_deref().unwrap_or_default(),
                 request.depth,
                 request.limit,
-            )
-            .map(DirectMetricsQueryResult::bounded),
+            ),
+        }
+        .map(DirectMetricsQueryResult::bounded),
         "coupling" => db.coupling().map(DirectMetricsQueryResult::unbounded),
         "search" => db
             .search(request.symbol.as_deref().unwrap_or_default(), request.limit)
@@ -202,6 +222,7 @@ pub(crate) fn try_handle_raw_rpc(
             total_count: result.total_count,
             returned_count: result.returned_count,
             truncated: result.truncated,
+            next_offset: result.next_offset.map(AgentImpactPageOffset::get),
             log_file: String::new(),
             schema_version: SCHEMA_VERSION,
         })?,
@@ -210,6 +231,7 @@ pub(crate) fn try_handle_raw_rpc(
             json!({
                 "type": "METRICS_FAILURE",
                 "ok": false,
+                "code": error.code,
                 "stage": "query",
                 "message": error.message,
                 "query": request.query(),
@@ -243,6 +265,7 @@ fn print_metrics_response(
         total_count: result.total_count,
         returned_count: result.returned_count,
         truncated: result.truncated,
+        next_offset: result.next_offset.map(AgentImpactPageOffset::get),
         log_file: String::new(),
         schema_version: SCHEMA_VERSION,
     })?;
@@ -452,6 +475,8 @@ impl MetricsRequest {
             limit,
             symbol,
             depth,
+            impact_subject: None,
+            impact_offset: AgentImpactPageOffset::first(),
             filter: FileFilter::new(None, None)?,
         })
     }
@@ -477,6 +502,28 @@ impl MetricsRequest {
         let workspace_root =
             config::resolve_workspace_root(params.workspace_root.or(workspace_root_arg))?;
         let database = config::workspace_database_path(&workspace_root)?;
+        let impact_offset = AgentImpactPageOffset::try_from(params.offset.unwrap_or_default())
+            .map_err(|message| CliError::new("IMPACT_PAGE_TOKEN_INVALID", message))?;
+        if metric != "impact" && (params.subject.is_some() || params.offset.is_some()) {
+            return Err(CliError::new(
+                "METRICS_REQUEST_INVALID",
+                "subject and offset are valid only for impact metrics",
+            ));
+        }
+        if metric == "impact" && params.offset.is_some() && params.subject.is_none() {
+            return Err(CliError::new(
+                "METRICS_REQUEST_INVALID",
+                "an impact offset requires an exact impact subject",
+            ));
+        }
+        if let Some(subject) = params.subject.as_ref()
+            && (!subject.is_valid() || params.symbol.as_deref() != Some(subject.fq_name()))
+        {
+            return Err(CliError::new(
+                "METRICS_REQUEST_INVALID",
+                "the impact subject must be complete and match the query symbol",
+            ));
+        }
         Ok(Self {
             workspace_root,
             database,
@@ -484,6 +531,8 @@ impl MetricsRequest {
             limit: params.limit.unwrap_or(50),
             symbol: params.symbol,
             depth: params.depth.unwrap_or(3),
+            impact_subject: params.subject,
+            impact_offset,
             filter: FileFilter::new(params.file_glob, params.folder_filter)?,
         })
     }
@@ -495,6 +544,8 @@ impl MetricsRequest {
             limit: self.limit,
             symbol: self.symbol.clone(),
             depth: self.depth,
+            subject: self.impact_subject.clone(),
+            offset: (self.metric == "impact").then_some(self.impact_offset.get()),
             file_glob: self.filter.file_glob().map(str::to_string),
             folder_filter: self.filter.folder_filter().map(str::to_string),
         }
@@ -528,6 +579,8 @@ impl MetricsRequest {
             limit,
             symbol,
             depth,
+            impact_subject: None,
+            impact_offset: AgentImpactPageOffset::first(),
             filter: FileFilter::new(None, None)?,
         })
     }

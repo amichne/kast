@@ -46,10 +46,10 @@ Use compiler identity and typed selectors instead of offsets:
 | --- | --- |
 | symbol lookup | `kast agent symbol --query EventBean --workspace-root "$PWD"` |
 | fuzzy symbol discovery | `kast agent symbol --query event --mode discovery --workspace-root "$PWD"` |
-| references | `kast agent symbol --query EventBean --references --workspace-root "$PWD"` |
-| callers | `kast agent symbol --query process --callers incoming --workspace-root "$PWD"` |
+| references | `kast agent references --symbol com.example.EventBean --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 42 --kind class --workspace-root "$PWD"` |
+| callers | `kast agent callers --symbol com.example.EventBean.process --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 96 --kind function --workspace-root "$PWD"` |
 | diagnostics | `kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root "$PWD"` |
-| source-index impact | `kast agent impact --symbol com.example.EventBean --workspace-root "$PWD"` |
+| source-index impact | `kast agent impact --symbol com.example.EventBean --declaration-file src/main/kotlin/com/example/EventBean.kt --declaration-start-offset 42 --kind class --workspace-root "$PWD"` |
 | rename plan | `kast agent rename --symbol com.example.EventBean --new-name DomainEvent --workspace-root "$PWD"` |
 | rename apply | `kast agent rename --symbol com.example.EventBean --new-name DomainEvent --apply --workspace-root "$PWD"` |
 

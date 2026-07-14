@@ -108,6 +108,104 @@ mod tests {
     }
 
     #[test]
+    fn anchored_impact_pages_503_nodes_without_overlap() {
+        let fixture = seed_fixture();
+        seed_high_cardinality_impact(&fixture, 500);
+        let request = fixture.request("impact", Some("lib.Popular"), 4, 3);
+        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
+            .expect("open metrics db");
+        let subject = ImpactSubjectIdentity::new(
+            "lib.Popular".to_string(),
+            fixture.workspace.join("lib/Popular.kt"),
+            1,
+            ImpactSubjectKind::Class,
+        );
+
+        let first = db
+            .impact_page(&subject, 3, 4, AgentImpactPageOffset::first())
+            .expect("first impact page");
+        let second = db
+            .impact_page(
+                &subject,
+                3,
+                4,
+                first.next_offset.expect("first continuation offset"),
+            )
+            .expect("second impact page");
+        let first_paths = first
+            .results
+            .as_array()
+            .expect("first nodes")
+            .iter()
+            .map(|node| node["sourcePath"].as_str().expect("first path"))
+            .collect::<std::collections::BTreeSet<_>>();
+        let second_paths = second
+            .results
+            .as_array()
+            .expect("second nodes")
+            .iter()
+            .map(|node| node["sourcePath"].as_str().expect("second path"))
+            .collect::<std::collections::BTreeSet<_>>();
+
+        assert_eq!(first.total_count, 503);
+        assert_eq!(second.total_count, 503);
+        assert_eq!(first.returned_count, 4);
+        assert_eq!(second.returned_count, 4);
+        assert!(first.truncated);
+        assert!(second.truncated);
+        assert!(first_paths.is_disjoint(&second_paths));
+    }
+
+    #[test]
+    fn anchored_impact_rejects_unprovable_index_identity_before_impact_rows() {
+        let fixture = seed_fixture();
+        let request = fixture.request("impact", Some("lib.Popular"), 4, 3);
+        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
+            .expect("open metrics db");
+        let missing = ImpactSubjectIdentity::new(
+            "lib.Popular".to_string(),
+            fixture.workspace.join("lib/Popular.kt"),
+            99,
+            ImpactSubjectKind::Class,
+        );
+
+        let error = db
+            .impact_page(&missing, 3, 4, AgentImpactPageOffset::first())
+            .expect_err("mismatched declaration offset")
+            .into_cli_error();
+
+        assert_eq!(error.code, "IMPACT_INDEX_IDENTITY_UNAVAILABLE");
+    }
+
+    #[test]
+    fn anchored_callable_impact_degrades_after_exact_index_identity() {
+        let fixture = seed_fixture();
+        Connection::open(&fixture.database)
+            .expect("sqlite")
+            .execute(
+                "UPDATE declarations SET kind = 'FUNCTION' WHERE fq_id = 7",
+                [],
+            )
+            .expect("callable declaration");
+        let request = fixture.request("impact", Some("lib.Popular"), 4, 3);
+        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
+            .expect("open metrics db");
+        let subject = ImpactSubjectIdentity::new(
+            "lib.Popular".to_string(),
+            fixture.workspace.join("lib/Popular.kt"),
+            1,
+            ImpactSubjectKind::Function,
+        );
+
+        let error = db
+            .impact_page(&subject, 3, 4, AgentImpactPageOffset::first())
+            .expect_err("callable impact must degrade")
+            .into_cli_error();
+
+        assert_eq!(error.code, "IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE");
+    }
+
+    #[test]
     fn impact_count_and_nodes_share_snapshot_during_concurrent_commit() {
         let fixture = seed_fixture();
         let journal = Connection::open(&fixture.database)

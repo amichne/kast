@@ -31,6 +31,8 @@ enum DemoChapter {
 struct DemoCandidate {
     kind: DemoCandidateKind,
     fq_name: String,
+    symbol_kind: Option<String>,
+    declaration_offset: Option<i64>,
     title: String,
     evidence_count: i64,
     file: Option<String>,
@@ -113,6 +115,8 @@ fn run_public_without_index(request: DemoRequest, output_format: OutputFormat) -
     let candidate = DemoCandidate {
         kind: DemoCandidateKind::SelectedSymbol,
         fq_name: symbol.to_string(),
+        symbol_kind: None,
+        declaration_offset: None,
         title: format!("Inspect compiler evidence for {symbol}"),
         evidence_count: 0,
         file: None,
@@ -135,9 +139,7 @@ fn run_public_without_index(request: DemoRequest, output_format: OutputFormat) -
         chapters: backend_only_chapters(),
         warnings,
         help: vec![
-            format!(
-                "kast agent symbol --query {symbol} --references --workspace-root <repo>"
-            ),
+            format!("kast agent symbol --query {symbol} --workspace-root <repo>"),
             "Build the source index to unlock ranked impact and semantic-difference stories."
                 .to_string(),
         ],
@@ -205,14 +207,8 @@ fn public_demo_snapshot(
         .first()
         .map(|candidate| {
             vec![
-                format!(
-                    "kast agent impact --symbol {} --workspace-root <repo>",
-                    candidate.fq_name
-                ),
-                format!(
-                    "kast agent symbol --query {} --references --workspace-root <repo>",
-                    candidate.fq_name
-                ),
+                demo_relationship_command(candidate, "impact"),
+                demo_relationship_command(candidate, "references"),
             ]
         })
         .unwrap_or_else(|| {
@@ -473,9 +469,30 @@ fn demo_candidate(kind: DemoCandidateKind, hit: SymbolHit, evidence_count: i64) 
         kind,
         title,
         fq_name: hit.fq_name,
+        symbol_kind: hit.kind,
+        declaration_offset: hit.declaration_offset,
         evidence_count,
         file: hit.path,
         module: hit.module_path,
+    }
+}
+
+fn demo_relationship_command(candidate: &DemoCandidate, command: &str) -> String {
+    match (
+        candidate.file.as_deref(),
+        candidate.declaration_offset,
+        candidate.symbol_kind.as_deref(),
+    ) {
+        (Some(file), Some(offset), Some(kind)) if offset >= 0 => format!(
+            "kast agent {command} --symbol {} --declaration-file {} --declaration-start-offset {offset} --kind {} --workspace-root <repo>",
+            candidate.fq_name,
+            file,
+            kind.to_ascii_lowercase(),
+        ),
+        _ => format!(
+            "kast agent symbol --query {} --workspace-root <repo>",
+            candidate.fq_name
+        ),
     }
 }
 

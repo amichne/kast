@@ -288,10 +288,7 @@ fn public_available_chapter_lines(
                         )),
                         Line::from(""),
                         Line::from(Span::styled(
-                            format!(
-                                "kast agent symbol --query {} --references --workspace-root <repo>",
-                                candidate.fq_name
-                            ),
+                            demo_relationship_command(candidate, "references"),
                             Style::default().fg(theme.compiler),
                         )),
                     ];
@@ -326,14 +323,8 @@ fn public_available_chapter_lines(
         DemoChapter::SemanticDifference => {
             "Press e to compare lexical candidates with indexed Kotlin identities.".to_string()
         }
-        DemoChapter::Relationships => format!(
-            "kast agent symbol --query {} --references --workspace-root <repo>",
-            candidate.fq_name
-        ),
-        DemoChapter::Impact => format!(
-            "kast agent impact --symbol {} --workspace-root <repo>",
-            candidate.fq_name
-        ),
+        DemoChapter::Relationships => demo_relationship_command(candidate, "references"),
+        DemoChapter::Impact => demo_relationship_command(candidate, "impact"),
         DemoChapter::Safety => format!(
             "kast agent rename --symbol {} --new-name <name> --workspace-root <repo>",
             candidate.fq_name

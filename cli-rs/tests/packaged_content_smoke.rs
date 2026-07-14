@@ -350,6 +350,11 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
                         || name.starts_with("kast status")
                         || name.starts_with("kast agent verify")
                         || name.starts_with("kast agent symbol")
+                        || name.starts_with("kast agent references")
+                        || name.starts_with("kast agent callers")
+                        || name.starts_with("kast agent callees")
+                        || name.starts_with("kast agent implementations")
+                        || name.starts_with("kast agent hierarchy")
                         || name.starts_with("kast agent diagnostics")
                         || name.starts_with("kast agent impact")
                         || name.starts_with("kast agent rename");
@@ -389,10 +394,10 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
         "kast agent verify",
         "kast agent symbol --query",
         "kast agent symbol --query --file-hint",
-        "kast agent symbol --query --references",
-        "kast agent symbol --query --callers incoming",
+        "kast agent references --symbol --declaration-file --declaration-start-offset",
+        "kast agent callers --symbol --declaration-file --declaration-start-offset",
         "kast agent diagnostics --file-path",
-        "kast agent impact --symbol",
+        "kast agent impact --symbol --declaration-file --declaration-start-offset",
         "kast agent rename --symbol --new-name",
     ] {
         assert!(

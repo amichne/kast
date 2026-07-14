@@ -9,6 +9,8 @@ struct AgentImpactMetricsProjectionInput {
     total_count: usize,
     returned_count: usize,
     truncated: bool,
+    #[serde(default)]
+    next_page_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -19,6 +21,17 @@ struct AgentImpactMetricsQueryInput {
     symbol: Option<String>,
     depth: usize,
     limit: usize,
+    subject: AgentImpactSubjectProjection,
+    offset: usize,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentImpactSubjectProjection {
+    fq_name: String,
+    declaration_file: String,
+    declaration_start_offset: u64,
+    kind: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -48,6 +61,8 @@ struct AgentImpactQueryProjection {
     symbol: String,
     depth: usize,
     limit: usize,
+    subject: AgentImpactSubjectProjection,
+    offset: usize,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -73,6 +88,7 @@ struct AgentImpactProjection {
     cardinality: AgentImpactCardinalityProjection,
     nodes: Vec<AgentImpactNodeProjection>,
     confidence: AgentImpactConfidenceProjection,
+    next_page_token: Option<String>,
 }
 
 impl TryFrom<AgentImpactMetricsProjectionInput> for AgentImpactProjection {
@@ -95,14 +111,20 @@ impl TryFrom<AgentImpactMetricsProjectionInput> for AgentImpactProjection {
             .symbol
             .filter(|symbol| !symbol.trim().is_empty())
             .ok_or_else(|| "impact metrics query omitted its symbol".to_string())?;
+        if symbol != input.query.subject.fq_name {
+            return Err("impact metrics subject disagreed with its query symbol".to_string());
+        }
         if input.returned_count != input.results.len() {
             return Err("impact returnedCount disagreed with its result nodes".to_string());
         }
-        if input.total_count < input.returned_count {
-            return Err("impact totalCount was smaller than returnedCount".to_string());
+        let returned_through = input.query.offset.saturating_add(input.returned_count);
+        if input.total_count < returned_through {
+            return Err("impact totalCount was smaller than its page position".to_string());
         }
-        if input.truncated != (input.total_count > input.returned_count) {
-            return Err("impact truncation disagreed with its cardinality".to_string());
+        if input.truncated != input.next_page_token.is_some()
+            || input.truncated != (input.total_count > returned_through)
+        {
+            return Err("impact continuation disagreed with its cardinality".to_string());
         }
         let mut levels = BTreeMap::new();
         let mut semantic_bases = BTreeMap::new();
@@ -122,6 +144,8 @@ impl TryFrom<AgentImpactMetricsProjectionInput> for AgentImpactProjection {
                 symbol,
                 depth: input.query.depth,
                 limit: input.query.limit,
+                subject: input.query.subject,
+                offset: input.query.offset,
             },
             cardinality: AgentImpactCardinalityProjection {
                 total_count: input.total_count,
@@ -134,6 +158,7 @@ impl TryFrom<AgentImpactMetricsProjectionInput> for AgentImpactProjection {
                 semantic_bases: semantic_bases.into_keys().collect(),
                 minimum_index_completeness,
             },
+            next_page_token: input.next_page_token,
         })
     }
 }
@@ -144,12 +169,15 @@ struct AgentImpactCompactResult {
     #[serde(rename = "type")]
     result_type: &'static str,
     ok: bool,
+    outcome: &'static str,
     query: AgentImpactQueryProjection,
     total_count: usize,
     returned_count: usize,
     truncated: bool,
     nodes: Vec<AgentImpactNodeProjection>,
     confidence: AgentImpactConfidenceProjection,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_page_token: Option<String>,
     schema_version: u32,
 }
 
@@ -187,6 +215,15 @@ fn project_impact_envelope(
     view: AgentResultView<AgentImpactField>,
 ) -> AgentEnvelope {
     if view.detailed() {
+        return envelope;
+    }
+    if envelope
+        .result
+        .as_ref()
+        .and_then(|result| result.get("type"))
+        .and_then(Value::as_str)
+        == Some("KAST_AGENT_IMPACT_RESULT")
+    {
         return envelope;
     }
     let Some(result) = envelope.result.clone() else {
@@ -233,12 +270,14 @@ fn project_impact_envelope(
             AgentImpactCompactResult {
                 result_type: "KAST_AGENT_IMPACT_RESULT",
                 ok: true,
+                outcome: "AVAILABLE",
                 query: projection.query,
                 total_count: projection.cardinality.total_count,
                 returned_count: projection.cardinality.returned_count,
                 truncated: projection.cardinality.truncated,
                 nodes: projection.nodes,
                 confidence: projection.confidence,
+                next_page_token: projection.next_page_token,
                 schema_version: SCHEMA_VERSION,
             },
         ),

@@ -110,11 +110,11 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent symbol --query --references"
+          "name": "kast agent references --symbol --declaration-file --declaration-start-offset"
         },
         {
           "kind": "command",
-          "name": "kast agent symbol --query --callers incoming"
+          "name": "kast agent callers --symbol --declaration-file --declaration-start-offset"
         }
       ],
       "forbiddenActions": [
@@ -127,8 +127,8 @@
       ],
       "recoveryExpectation": "If the name is ambiguous, add typed symbol filters such as --kind, --file-hint, or --containing-type before references and callers.",
       "verificationEvidence": [
-        "SKILL.md routes references through kast agent symbol --query <name> --references.",
-        "SKILL.md routes caller expansion through kast agent symbol --query <name> --callers incoming|outgoing."
+        "SKILL.md routes references through the complete resolved selector.",
+        "SKILL.md routes caller expansion through the complete resolved selector."
       ],
       "notes": "This case protects relationship navigation through symbol commands instead of text."
     },
@@ -156,7 +156,7 @@
         },
         {
           "kind": "command",
-          "name": "kast agent impact --symbol"
+          "name": "kast agent impact --symbol --declaration-file --declaration-start-offset"
         }
       ],
       "forbiddenActions": [
@@ -169,7 +169,7 @@
       ],
       "recoveryExpectation": "If impact data is unavailable, report the readiness issue and run the documented Kast repair path before using another source.",
       "verificationEvidence": [
-        "SKILL.md lists kast agent impact --symbol as the source-index impact view.",
+        "SKILL.md requires the complete resolved selector for source-index impact.",
         "ADR 0005 defines agent impact as the public source-index impact command for one resolved symbol."
       ],
       "notes": "This case verifies source-index access is public through typed Kast commands without exposing storage internals."
@@ -241,11 +241,11 @@
       "allowedActions": [
         {
           "kind": "command",
-          "name": "kast agent symbol --query --references"
+          "name": "kast agent references --symbol --declaration-file --declaration-start-offset"
         },
         {
           "kind": "command",
-          "name": "kast agent impact --symbol"
+          "name": "kast agent impact --symbol --declaration-file --declaration-start-offset"
         },
         {
           "kind": "command",

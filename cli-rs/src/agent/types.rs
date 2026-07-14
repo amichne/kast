@@ -25,41 +25,8 @@ pub struct AgentError {
     pub details: BTreeMap<String, Value>,
 }
 
-const AGENT_MAX_IMPACT_RESULTS: u32 = 500;
-const AGENT_MAX_COMPACT_IMPACT_NODES: u32 = 4;
 const AGENT_MAX_DIAGNOSTIC_RESULTS: u32 = 500;
 const AGENT_MAX_COMPACT_DIAGNOSTICS: usize = 8;
-
-#[derive(Debug, Clone, Copy)]
-struct AgentImpactResultBudget(std::num::NonZeroU16);
-
-impl TryFrom<u32> for AgentImpactResultBudget {
-    type Error = String;
-
-    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
-        if value > AGENT_MAX_IMPACT_RESULTS {
-            return Err(format!(
-                "impact result limit must be at most {AGENT_MAX_IMPACT_RESULTS}"
-            ));
-        }
-        let value = u16::try_from(value)
-            .map_err(|_| "impact result limit exceeded its typed range".to_string())?;
-        let value = std::num::NonZeroU16::new(value)
-            .ok_or_else(|| "impact result limit must be greater than 0".to_string())?;
-        Ok(Self(value))
-    }
-}
-
-impl AgentImpactResultBudget {
-    fn request_limit(self, detailed: bool) -> u32 {
-        let requested = u32::from(self.0.get());
-        if detailed {
-            requested
-        } else {
-            requested.min(AGENT_MAX_COMPACT_IMPACT_NODES)
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 struct AgentDiagnosticsResultBudget(std::num::NonZeroU16);

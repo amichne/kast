@@ -6,18 +6,19 @@ use crate::cli::{
     AgentAddFileArgs, AgentCalleesArgs, AgentCallersArgs, AgentCommand, AgentDiagnosticsArgs,
     AgentDiagnosticsField, AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs,
     AgentHierarchyArgs, AgentHierarchyDirection, AgentImpactArgs, AgentImpactField,
-    AgentImpactViewArgs, AgentImplementationsArgs, AgentMutationApplyArgs, AgentMutationField,
-    AgentMutationViewArgs, AgentOperationArgs, AgentOperationCommand, AgentOperationSelectorArgs,
-    AgentReferencesArgs, AgentRelationField, AgentRelationPageToken, AgentRelationViewArgs,
-    AgentRenameArgs, AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
-    AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField, AgentSymbolMode,
-    AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
+    AgentImpactPageToken, AgentImpactViewArgs, AgentImplementationsArgs, AgentMutationApplyArgs,
+    AgentMutationField, AgentMutationViewArgs, AgentOperationArgs, AgentOperationCommand,
+    AgentOperationSelectorArgs, AgentReferencesArgs, AgentRelationField, AgentRelationPageToken,
+    AgentRelationViewArgs, AgentRenameArgs, AgentReplaceDeclarationArgs, AgentRuntimeArgs,
+    AgentScopedMutationArgs, AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField,
+    AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
     AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
     CanonicalSymbolName, WorkspaceDirtyFilter, WorkspaceDriftFilter, WorkspaceFileKindFilter,
     WorkspaceFilesPublicPageToken, WorkspaceModuleSelector, WorkspacePackageSelector,
     WorkspaceRelativeGlob, WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
 };
 use crate::error::{CliError, Result};
+use crate::metrics_database::ImpactSubjectKind;
 use crate::workspace_inventory::backend::{
     BackendRpcFailure, BackendWorkspaceRpc, RawRpcWorkspaceBackend,
 };

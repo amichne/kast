@@ -9,16 +9,22 @@ trap 'rm -rf "$KAST_TMP"' EXIT
 KAST_RESULT="$KAST_TMP/stdout.json"
 KAST_STDERR="$KAST_TMP/stderr.txt"
 
-kast --output json agent symbol --query EventBean --references \
+kast --output json agent references --symbol com.example.EventBean \
+  --declaration-file src/main/kotlin/com/example/EventBean.kt \
+  --declaration-start-offset 42 --kind class \
   --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 
-kast --output json agent symbol --query process --callers incoming \
+kast --output json agent callers --symbol com.example.EventBean.process \
+  --declaration-file src/main/kotlin/com/example/EventBean.kt \
+  --declaration-start-offset 96 --kind function \
   --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 kast --output json agent diagnostics --file-path src/main/kotlin/App.kt \
   --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 kast --output json agent impact --symbol com.example.EventBean \
+  --declaration-file src/main/kotlin/com/example/EventBean.kt \
+  --declaration-start-offset 42 --kind class \
   --workspace-root "$PWD" --depth 3 >"$KAST_RESULT" 2>"$KAST_STDERR"
 
 kast --output json agent rename --symbol com.example.EventBean --new-name DomainEvent \

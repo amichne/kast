@@ -136,11 +136,11 @@
       "expectedActions": [
         {
           "kind": "command",
-          "name": "kast agent symbol --query --references"
+          "name": "kast agent references --symbol --declaration-file --declaration-start-offset"
         },
         {
           "kind": "command",
-          "name": "kast agent symbol --query --callers incoming"
+          "name": "kast agent callers --symbol --declaration-file --declaration-start-offset"
         }
       ],
       "forbiddenActions": [
@@ -150,15 +150,17 @@
         "unresolved name matching"
       ],
       "goldFacts": [
-        "The continuation must use typed symbol references or callers flags.",
+        "The continuation must use standalone typed references or callers commands with the complete resolved selector.",
         "The action must preserve the resolved symbol identity.",
         "Text matching is not an acceptable replacement."
       ],
       "answerScoring": {
         "requiredTerms": [
           "EventBean",
-          "--references",
-          "--callers incoming"
+          "agent references",
+          "agent callers",
+          "--declaration-file",
+          "--declaration-start-offset"
         ],
         "forbiddenTerms": [
           "grep",

@@ -2,6 +2,289 @@ const AGENT_RELATION_TOKEN_VERSION: &str = "krp1";
 const AGENT_REFERENCE_RELATION: &str = "references";
 const AGENT_REFERENCE_PAYLOAD_TAG: &str = "reference";
 const AGENT_TRAVERSAL_PAYLOAD_TAG: &str = "traversal";
+const AGENT_IMPACT_TOKEN_VERSION: &str = "kip1";
+const AGENT_IMPACT_MAX_OFFSET: usize = 10_000;
+
+#[derive(Debug, Deserialize)]
+struct AgentRawImpactResolveResult {
+    #[serde(default)]
+    symbol: Option<AgentRawImpactSubject>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRawImpactSubject {
+    fq_name: String,
+    kind: String,
+    location: AgentLocationInput,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    containing_type: Option<String>,
+}
+
+fn execute_identity_first_impact(args: AgentImpactArgs) -> AgentEnvelope {
+    let (declaration_file, expected) =
+        match normalize_relationship_selector("agent/impact", &args.runtime, &args.selector) {
+            Ok(value) => value,
+            Err(envelope) => return *envelope,
+        };
+    let detailed = impact_result_view(&args.view).detailed();
+    let limit = if detailed {
+        args.limit.get()
+    } else {
+        args.limit.get().min(4)
+    };
+    let fingerprint = impact_query_fingerprint(&expected, args.depth.get(), limit);
+    let offset = match args.page_token.as_ref() {
+        Some(token) => match decode_impact_page_token(token, &fingerprint) {
+            Ok(offset) => offset,
+            Err(error) => return error_envelope("agent/impact".to_string(), None, error),
+        },
+        None => 0,
+    };
+    let selector = drop_nulls(json!({
+        "fqName": expected.fq_name,
+        "declarationFile": declaration_file,
+        "declarationStartOffset": expected.declaration_start_offset,
+        "kind": expected.kind,
+        "containingType": expected.containing_type,
+    }));
+    let resolve_request = json_rpc_request(
+        "raw/resolve",
+        json!({
+            "position": {
+                "filePath": declaration_file,
+                "offset": expected.declaration_start_offset,
+            }
+        }),
+    );
+    let resolved = execute_request(AgentRequest {
+        method: "raw/resolve".to_string(),
+        request: resolve_request.clone(),
+        runtime: args.runtime.clone(),
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    if !resolved.ok {
+        return error_envelope(
+            "agent/impact".to_string(),
+            Some(resolve_request),
+            resolved.error.unwrap_or_else(|| {
+                agent_error(
+                    "IMPACT_SUBJECT_RESOLUTION_FAILED",
+                    "Compiler position resolution failed without a typed error.",
+                )
+            }),
+        );
+    }
+    let Some(resolve_result) = resolved.result else {
+        return invalid_projection_envelope(
+            "agent/impact".to_string(),
+            "Compiler position resolution returned no result.",
+        );
+    };
+    let parsed = match serde_json::from_value::<AgentRawImpactResolveResult>(resolve_result) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            return invalid_projection_envelope(
+                "agent/impact".to_string(),
+                format!("Compiler position resolution violated its contract: {error}"),
+            );
+        }
+    };
+    let Some(mut subject) = parsed.symbol else {
+        return impact_outcome_envelope(selector, None, "SUBJECT_NOT_FOUND", None);
+    };
+    let Some(start_offset) = subject.location.start_offset else {
+        return impact_outcome_envelope(
+            selector,
+            Some(subject),
+            "SUBJECT_IDENTITY_MISMATCH",
+            None,
+        );
+    };
+    let mut actual = AgentRelationIdentityProjection {
+        fq_name: subject.fq_name.clone(),
+        kind: subject.kind.to_ascii_uppercase(),
+        declaration_file: subject.location.file_path.clone(),
+        declaration_start_offset: start_offset,
+        containing_type: subject.containing_type.clone(),
+    };
+    if !actual.is_valid() || !expected.matches(&mut actual) {
+        return impact_outcome_envelope(
+            selector,
+            Some(subject),
+            "SUBJECT_IDENTITY_MISMATCH",
+            None,
+        );
+    }
+    subject.location.file_path.clone_from(&actual.declaration_file);
+    subject.kind.clone_from(&actual.kind);
+    let Some(kind) = impact_subject_kind(&actual.kind) else {
+        return impact_outcome_envelope(
+            selector,
+            Some(subject),
+            "UNSUPPORTED_SUBJECT_KIND",
+            None,
+        );
+    };
+    let mut envelope = execute_agent_steps(
+        "agent/impact",
+        args.runtime,
+        vec![AgentPublicStep::new(
+            "impact",
+            "database/metrics",
+            json!({
+                "metric": "impact",
+                "symbol": actual.fq_name,
+                "depth": args.depth.get(),
+                "limit": limit,
+                "offset": offset,
+                "subject": {
+                    "fqName": actual.fq_name,
+                    "declarationFile": actual.declaration_file,
+                    "declarationStartOffset": actual.declaration_start_offset,
+                    "kind": kind,
+                }
+            }),
+            false,
+        )],
+    );
+    if let Some(code) = impact_metrics_failure_code(&envelope)
+        && matches!(
+            code,
+            "IMPACT_INDEX_IDENTITY_UNAVAILABLE" | "IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE"
+        )
+    {
+        return impact_outcome_envelope(selector, Some(subject), "DEGRADED", Some(code));
+    }
+    wrap_impact_page_token(&mut envelope, &fingerprint);
+    envelope
+}
+
+fn impact_subject_kind(kind: &str) -> Option<ImpactSubjectKind> {
+    match kind {
+        "CLASS" => Some(ImpactSubjectKind::Class),
+        "INTERFACE" => Some(ImpactSubjectKind::Interface),
+        "OBJECT" => Some(ImpactSubjectKind::Object),
+        "FUNCTION" => Some(ImpactSubjectKind::Function),
+        "PROPERTY" => Some(ImpactSubjectKind::Property),
+        _ => None,
+    }
+}
+
+fn impact_query_fingerprint(
+    selector: &AgentExpectedRelationshipSelector,
+    depth: u8,
+    limit: u8,
+) -> String {
+    let proof = [
+        selector.workspace_root.clone(),
+        "impact".to_string(),
+        selector.fq_name.clone(),
+        selector.declaration_file.clone(),
+        selector.declaration_start_offset.to_string(),
+        selector.kind.clone().unwrap_or_default(),
+        selector.containing_type.clone().unwrap_or_default(),
+        depth.to_string(),
+        limit.to_string(),
+    ]
+    .join("\n");
+    crate::manifest::sha256_bytes(proof.as_bytes())[..24].to_string()
+}
+
+fn decode_impact_page_token(
+    token: &AgentImpactPageToken,
+    expected_fingerprint: &str,
+) -> std::result::Result<usize, AgentError> {
+    let fields = token.as_str().split('.').collect::<Vec<_>>();
+    if fields.len() != 3
+        || fields[0] != AGENT_IMPACT_TOKEN_VERSION
+        || fields[1].len() != 24
+        || !fields[1]
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(agent_error(
+            "IMPACT_PAGE_TOKEN_INVALID",
+            "The impact page token has an invalid version, fingerprint, or offset.",
+        ));
+    }
+    if fields[1] != expected_fingerprint {
+        return Err(agent_error(
+            "IMPACT_PAGE_TOKEN_MISMATCH",
+            "The impact page token was issued for a different workspace or query.",
+        ));
+    }
+    let offset = fields[2].parse::<usize>().map_err(|_| {
+        agent_error(
+            "IMPACT_PAGE_TOKEN_INVALID",
+            "The impact page token offset is invalid.",
+        )
+    })?;
+    if offset > AGENT_IMPACT_MAX_OFFSET {
+        return Err(agent_error(
+            "IMPACT_PAGE_TOKEN_INVALID",
+            "The impact page token offset exceeds the supported ceiling.",
+        ));
+    }
+    Ok(offset)
+}
+
+fn impact_metrics_failure_code(envelope: &AgentEnvelope) -> Option<&str> {
+    envelope
+        .result
+        .as_ref()?
+        .get("steps")?
+        .as_array()?
+        .first()?
+        .get("result")?
+        .get("code")?
+        .as_str()
+}
+
+fn wrap_impact_page_token(envelope: &mut AgentEnvelope, fingerprint: &str) {
+    let Some(metrics) = envelope
+        .result
+        .as_mut()
+        .and_then(Value::as_object_mut)
+        .and_then(|command| command.get_mut("steps"))
+        .and_then(Value::as_array_mut)
+        .and_then(|steps| steps.first_mut())
+        .and_then(|step| step.get_mut("result"))
+        .and_then(Value::as_object_mut)
+    else {
+        return;
+    };
+    let next_offset = metrics.remove("nextOffset").and_then(|value| value.as_u64());
+    if let Some(next_offset) = next_offset {
+        metrics.insert(
+            "nextPageToken".to_string(),
+            Value::String(format!(
+                "{AGENT_IMPACT_TOKEN_VERSION}.{fingerprint}.{next_offset}"
+            )),
+        );
+    }
+}
+
+fn impact_outcome_envelope(
+    selector: Value,
+    verified_subject: Option<AgentRawImpactSubject>,
+    outcome: &'static str,
+    reason: Option<&str>,
+) -> AgentEnvelope {
+    result_envelope(
+        "agent/impact".to_string(),
+        drop_nulls(json!({
+            "type": "KAST_AGENT_IMPACT_RESULT",
+            "ok": true,
+            "outcome": outcome,
+            "selector": selector,
+            "verifiedSubject": verified_subject,
+            "reason": reason,
+            "schemaVersion": SCHEMA_VERSION,
+        })),
+    )
+}
 
 fn execute_agent_callers(args: AgentCallersArgs) -> AgentEnvelope {
     execute_agent_call_relationship(
