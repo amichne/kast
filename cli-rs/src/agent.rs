@@ -10,6 +10,10 @@ use crate::cli::{
     AgentReplaceDeclarationArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
     AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField, AgentSymbolMode,
     AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
+    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
+    WorkspaceDirtyFilter, WorkspaceDriftFilter, WorkspaceFileKindFilter,
+    WorkspaceFilesPublicPageToken, WorkspaceModuleSelector, WorkspacePackageSelector,
+    WorkspaceRelativeGlob, WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
 };
 use crate::error::{CliError, Result};
 use crate::{output, runtime, validate};
@@ -20,6 +24,7 @@ use std::path::{Component, Path, PathBuf};
 
 include!("agent/types.rs");
 include!("agent/path.rs");
+include!("agent/workspace_files.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");
 include!("agent/envelope.rs");

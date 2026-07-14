@@ -8,12 +8,7 @@ enum AgentResultView<Field> {
 }
 
 impl<Field: Clone> AgentResultView<Field> {
-    fn from_parts(
-        verbose: bool,
-        explain: bool,
-        fields: &[Field],
-        count: bool,
-    ) -> Self {
+    fn from_parts(verbose: bool, explain: bool, fields: &[Field], count: bool) -> Self {
         if verbose {
             Self::Verbose
         } else if explain {
@@ -46,12 +41,16 @@ enum AgentProjectionRequest {
     Impact(AgentResultView<AgentImpactField>),
     Mutation(AgentResultView<AgentMutationField>),
     Verify(AgentResultView<AgentVerifyField>),
+    WorkspaceFiles(AgentResultView<AgentWorkspaceFilesField>),
 }
 
 impl AgentProjectionRequest {
     fn for_command(command: &AgentCommand) -> Self {
         match command {
             AgentCommand::Verify(args) => Self::Verify(verify_result_view(&args.view)),
+            AgentCommand::WorkspaceFiles(args) => {
+                Self::WorkspaceFiles(workspace_files_result_view(&args.view))
+            }
             AgentCommand::Symbol(args) => Self::Symbol {
                 view: symbol_result_view(&args.view),
                 relation_limit: AgentRelationResultBudget::try_from(args.limit)
@@ -102,12 +101,19 @@ impl AgentProjectionRequest {
             Self::Impact(view) => project_impact_envelope(envelope, view),
             Self::Mutation(view) => project_mutation_envelope(envelope, view),
             Self::Verify(view) => project_verify_envelope(envelope, view),
+            Self::WorkspaceFiles(_view) => envelope,
             Self::Passthrough => envelope,
         }
     }
 }
 
 fn verify_result_view(view: &AgentVerifyViewArgs) -> AgentResultView<AgentVerifyField> {
+    AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
+}
+
+fn workspace_files_result_view(
+    view: &AgentWorkspaceFilesViewArgs,
+) -> AgentResultView<AgentWorkspaceFilesField> {
     AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
 }
 

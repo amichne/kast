@@ -22,6 +22,13 @@ Keep this unit focused on transport concerns around the backend interface.
   be idempotent; never rely on a cast to infer backend ownership. Runtime-owned
   resources outside the backend contract, such as the IDEA source-index store,
   remain with their runtime orchestrator and close only after this server owner.
+- `WorkspaceFilesContinuationService` owns the internal
+  `raw/workspace-files-continuation` issue/consume store. It may hold only the
+  typed public continuation state supplied by the admitted Rust session; it
+  never enumerates candidates or decodes state from the opaque token. Bind
+  consume to the exact query identity, consume mismatches terminally, apply the
+  configured TTL/capacity policy, and drain the store when the dispatcher
+  closes.
 - PSI logic, workspace discovery, and CLI parsing stay in their runtime host
   and Rust CLI owners.
 
@@ -32,6 +39,9 @@ Prove transport changes with server tests first, then broaden if needed.
 - Run `./gradlew :analysis-server:test`.
 - For continuation/backend lifetime changes, prove multi-page state remains
   open through reissue and closes exactly once on terminal/error/shutdown races.
+- For public workspace-file continuation routing, run
+  `WorkspaceFilesContinuationServiceTest` and
+  `AnalysisServerContinuationConfigTest` before the full server suite.
 - If you change descriptor or socket lifecycle, make sure the socket transport
   tests still pass, starting with
   `./gradlew :analysis-server:test --tests io.github.amichne.kast.server.AnalysisServerSocketTest`.

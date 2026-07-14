@@ -56,6 +56,11 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         "{skill}"
     );
     assert!(
+        skill.contains("`kast agent workspace-files --workspace-root \"$PWD\"`")
+            && skill.contains("Then pass its `filePath`"),
+        "packaged guidance must route file discovery into direct semantic composition: {skill}"
+    );
+    assert!(
         skill.contains("exact lookup is the default") && skill.contains("--mode discovery"),
         "packaged guidance must separate exact lookup from fuzzy discovery: {skill}"
     );
@@ -115,6 +120,43 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         skill.lines().count() <= 70,
         "installed skill should stay thin: {} lines",
         skill.lines().count()
+    );
+}
+
+#[test]
+fn packaged_workspace_file_guidance_teaches_only_the_public_typed_route() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let sources = [
+        "resources/kast-skill/SKILL.md",
+        "resources/kast-skill/references/quickstart.md",
+    ];
+    let guidance = sources
+        .iter()
+        .map(|source| {
+            let path = root.join(source);
+            std::fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    for expected in [
+        "--kind source|script",
+        "--module backend:<name>|gradle:<build-root>#<project-path>",
+        "--package root|named:<fq-name>",
+        "--page-token '<nextPageToken>'",
+        "KNOWN_MINIMUM",
+        "`.kts` files are not read from the Kotlin source index",
+    ] {
+        assert!(
+            guidance.contains(expected),
+            "packaged guidance should contain {expected}: {guidance}"
+        );
+    }
+    assert!(
+        !guidance.contains("kast agent call raw/workspace-files")
+            && !guidance.contains("kast agent raw-workspace-files"),
+        "packaged guidance must not promote internal raw workspace paging: {guidance}"
     );
 }
 

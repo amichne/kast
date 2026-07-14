@@ -48,11 +48,21 @@ internal class IdeaProjectIndexer(
 
     fun indexSourceIdentifiers(): Collection<String> {
         store.ensureSchema()
+        val gradleProvenance = runIdeaReadAction {
+            IdeaGradleFileProvenance.fromProject(project, workspaceIdentityForIdea())
+        }
         val scanner = PsiSourceIndexScanner(
             environment = environment,
             moduleNameForFile = ::moduleNameForFile,
         )
-        val updates = environment.allFilePaths().mapNotNull(scanner::scanFile)
+        val updates = environment.allFilePaths()
+            .mapNotNull(scanner::scanFile)
+            .map { update ->
+                gradleProvenance.applyTo(
+                    update = update,
+                    ownerModuleNames = ideaModuleOwnersForFile(update.path),
+                )
+            }
         val manifest = updates.associate { update ->
             update.path to lastModifiedMillis(update.path)
         }
@@ -174,7 +184,7 @@ internal class IdeaProjectIndexer(
     private fun moduleNameForFile(psiFile: PsiFile): String? = runIdeaReadAction {
         val virtualFile = psiFile.virtualFile
         val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return@runIdeaReadAction null
-        val sourceSet = sourceSetForFile(virtualFile.path)
+        val sourceSet = legacySourceSetLabelForFile(virtualFile.path)
         indexedModuleNameForFilePath(
             ideaModuleName = module.name,
             filePath = virtualFile.path,
@@ -187,13 +197,24 @@ internal class IdeaProjectIndexer(
         val rootManager = ModuleRootManager.getInstance(module)
         return rootManager.sourceRoots
             .asSequence()
-            .mapNotNull { root -> gradleProjectPathForFile(root.path, workspaceRoot) }
+            .mapNotNull { root -> legacyGradleProjectPathForFile(root.path, workspaceRoot) }
             .sorted()
             .firstOrNull()
             ?: module.name
     }
 
-    private fun sourceSetForFile(path: String): String? {
+    private fun ideaModuleOwnersForFile(filePath: String): Set<IdeaWorkspaceModuleIdentity> = runIdeaReadAction {
+        val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(Path.of(filePath))
+            ?: return@runIdeaReadAction emptySet()
+        ModuleManager.getInstance(project).modules
+            .asSequence()
+            .filter { module -> ModuleRootManager.getInstance(module).fileIndex.isInContent(virtualFile) }
+            .map { module -> IdeaWorkspaceModuleIdentity.of(module.name) }
+            .sorted()
+            .toCollection(linkedSetOf())
+    }
+
+    private fun legacySourceSetLabelForFile(path: String): String? {
         val normalizedPath = path.replace('\\', '/')
         return when {
             "/src/main/" in normalizedPath -> "main"
@@ -210,6 +231,11 @@ internal class IdeaProjectIndexer(
         val path = Path.of(filePath)
         return if (Files.isRegularFile(path)) Files.getLastModifiedTime(path).toMillis() else 0L
     }
+
+    private fun workspaceIdentityForIdea(): IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(
+        project = project,
+        workspaceRoot = workspaceRoot,
+    )
 }
 
 internal fun indexedModuleNameForFilePath(
@@ -218,11 +244,11 @@ internal fun indexedModuleNameForFilePath(
     workspaceRoot: Path,
     sourceSet: String?,
 ): String {
-    val modulePath = gradleProjectPathForFile(filePath, workspaceRoot) ?: ideaModuleName
+    val modulePath = legacyGradleProjectPathForFile(filePath, workspaceRoot) ?: ideaModuleName
     return if (sourceSet == null) modulePath else "$modulePath[$sourceSet]"
 }
 
-private fun gradleProjectPathForFile(
+private fun legacyGradleProjectPathForFile(
     filePath: String,
     workspaceRoot: Path,
 ): String? {

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `39`.
+Catalog version: `dev`. Methods: `40`.
 
 #### Method families
 
@@ -55,7 +55,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit`<br>`mutation/status`<br>`mutation/cancel` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
-| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
 #### Composition building blocks
@@ -115,7 +115,8 @@ uses a discriminated response envelope.
 | `raw/file-outline` | `raw` | backend | Get a hierarchical symbol outline for a file | `filePath` | none | `FileOutlineResult` | single result |
 | `raw/workspace-symbol` | `raw` | backend | Search the workspace for symbols by name pattern | `pattern` | `kind`<br>`maxResults`<br>`regex`<br>`includeDeclarationScope` | `WorkspaceSymbolResult` | single result |
 | `raw/workspace-search` | `raw` | backend | Search workspace file contents by text or regex | `pattern` | `regex`<br>`maxResults`<br>`fileGlob`<br>`caseSensitive` | `WorkspaceSearchResult` | single result |
-| `raw/workspace-files` | `raw` | backend | List workspace modules and optional file paths | none | `moduleName`<br>`includeFiles`<br>`maxFilesPerModule` | `WorkspaceFilesResult` | single result |
+| `raw/workspace-files` | `raw` | backend | List generation-bound workspace modules and Kotlin file pages | none | `kindDomain`<br>`moduleName`<br>`includeFiles`<br>`maxFilesPerModule`<br>`snapshotToken`<br>`pageToken` | `WorkspaceFilesResult` | single result |
+| `raw/workspace-files-continuation` | `raw` | backend | Issue or consume server-held public workspace-file continuation state | `action` | none | `WorkspaceFilesContinuationResult` | `ISSUED`<br>`CONSUMED` |
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
@@ -638,15 +639,43 @@ Response type: `WorkspaceSearchResult`.
 </details>
 
 <details markdown="1">
-<summary><code>raw/workspace-files</code> - List workspace modules and optional file paths</summary>
+<summary><code>raw/workspace-files</code> - List generation-bound workspace modules and Kotlin file pages</summary>
 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
+| `kindDomain` | `string` | no | no | `SOURCE_ONLY`<br>`SCRIPT_ONLY`<br>`MIXED` |
 | `moduleName` | `string` | no | yes |  |
 | `includeFiles` | `boolean` | no | no |  |
 | `maxFilesPerModule` | `integer` | no | yes |  |
+| `snapshotToken` | `string` | no | yes |  |
+| `pageToken` | `string` | no | yes |  |
 
 Response type: `WorkspaceFilesResult`.
+
+Notes:
+
+- A metadata request captures a server-held generation-bound inventory and returns its opaque reusable snapshotToken.
+- File pages echo kindDomain and snapshotToken, require one exact moduleName and a positive server-bounded maxFilesPerModule, and pass the preceding nextPageToken as pageToken.
+- Each module page reports returnedFileCount equal to files.size; nextPageToken is non-null exactly when filesTruncated is true and another page remains.
+- Unknown, replayed, mismatched, evicted, or stale snapshot and page handles fail instead of restarting enumeration.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/workspace-files-continuation</code> - Issue or consume server-held public workspace-file continuation state</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `action` | `string` | yes | no | `ISSUE`<br>`CONSUME` |
+
+Response type: `WorkspaceFilesContinuationResult`.
+Result variants: `ISSUED`, `CONSUMED`.
+
+Notes:
+
+- This internal method is not a backend capability or public agent command.
+- ISSUE stores the supplied typed state and returns an opaque canonical random pageToken; CONSUME atomically claims a single-use handle and returns only a non-owning state projection.
+- The exact workspace root, backend, normalized query, projection, and limit must match when consuming a handle.
 
 </details>
 

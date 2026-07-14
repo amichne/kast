@@ -1,6 +1,7 @@
 {
     "method": "raw/workspace-files",
     "params": {
+        "kindDomain": "MIXED",
         "includeFiles": false
     },
     "id": 1,

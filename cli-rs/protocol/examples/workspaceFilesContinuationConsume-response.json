@@ -1,0 +1,19 @@
+{
+    "result": {
+        "type": "CONSUMED",
+        "state": {
+            "identity": {
+                "workspaceRoot": "/workspace",
+                "backendName": "fake",
+                "normalizedQuery": "kind=mixed;module=*;package=*;sourceSet=*",
+                "projection": "compact:path,evidence",
+                "limit": 1
+            },
+            "compositionStampDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+            "lastRelativePath": "src/Sample.kt",
+            "cumulativeReturnedCount": 1
+        }
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

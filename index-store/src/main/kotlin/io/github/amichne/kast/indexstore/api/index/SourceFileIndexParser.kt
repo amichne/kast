@@ -32,5 +32,6 @@ fun parseSourceFileIndex(
         sourceSet = sourceSet,
         imports = imports,
         wildcardImports = wildcardImports,
+        packageEvidence = IndexedPackageEvidence.Unproven(IndexedPackageUnprovenReason.LEGACY_TEXT_ONLY),
     )
 }

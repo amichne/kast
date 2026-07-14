@@ -6,12 +6,17 @@
                 "sourceRoots": [
                     "/workspace/src"
                 ],
+                "contentRoots": [
+                    "/workspace"
+                ],
                 "dependencyModuleNames": [],
                 "files": [],
+                "returnedFileCount": 0,
                 "filesTruncated": false,
                 "fileCount": 2
             }
         ],
+        "snapshotToken": "00000000-0000-4000-8000-000000000002",
         "schemaVersion": 3
     },
     "id": 1,

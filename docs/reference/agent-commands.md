@@ -17,6 +17,7 @@ names.
 | Agent need | Kast capability | Why it matters |
 | --- | --- | --- |
 | Confirm semantic readiness | Backend verification | Avoids acting on stale IDE or headless state |
+| Discover owned Kotlin files | Workspace file discovery | Composes compiler/project-model and source-index evidence without recursive search |
 | Find the declaration behind a name | Symbol identity | Distinguishes real Kotlin declarations from matching text |
 | Understand usage | References, callers, and impact | Gives bounded semantic evidence before changing code |
 | Check a touched file | Diagnostics | Confirms the backend sees the same source state |
@@ -64,6 +65,129 @@ candidate by operating system or backend name. When exactly one backend kind
 is ready, automatic selection uses it even when it differs from the host
 fallback.
 
+## Workspace File Discovery
+
+`kast agent workspace-files` returns Kotlin source and script paths owned by
+the exact admitted semantic workspace. Its candidate authorities are the
+compiler/project model and the exact-root `.kt` source index. Targeted
+filesystem and Git reads annotate those candidates; neither recursive
+filesystem discovery nor Git listing adds candidates.
+
+The command first exhausts the internal generation-bound backend pages and
+reads one generation/progress/pending-aware source-index snapshot. It accepts
+the composition only after the kind-relevant backend, index, targeted
+filesystem, and requested Git lanes reproduce the same discriminated
+`AVAILABLE(stamp)` or `UNAVAILABLE(reason)` state. A relevant change retries
+the composition once. A second change returns typed partial evidence. Raw
+snapshot and module-page handles remain server-held implementation details and
+are not a public command surface.
+
+### Arguments
+
+| Argument | Contract |
+| --- | --- |
+| `--workspace-root <path>` | Uses this exact normalized workspace root; when omitted, the current directory supplies the root. Another checkout or worktree is never substituted |
+| `--backend idea|headless` | Selects one admitted runtime when automatic selection is ambiguous |
+| `--module backend:<name>` | Matches an exact backend module owner |
+| `--module gradle:<build-root>#<project-path>` | Matches a model-proven indexed Gradle owner; the build root is workspace-relative and the project path is absolute, such as `gradle:included/tools#:app` |
+| `--source-set <name>` | Matches an exact model-proven, build-qualified Gradle source-set name |
+| `--kind source|script` | Selects `.kt` sources or `.kts` scripts; omitting it selects both |
+| `--package root` | Matches only `PROVEN_ROOT` package evidence |
+| `--package named:<fq-name>` | Matches one exact compiler/PSI-proven canonical Kotlin package |
+| `--dirty clean|dirty|unknown` | Matches the typed Git state |
+| `--drift none|filesystem-only|index-only|missing-on-disk|not-applicable|unknown` | Matches the cross-source classification |
+| `--path-prefix <path>` | Matches one normalized workspace-relative prefix; absolute and parent-traversing values fail |
+| `--glob <glob>` | Matches one bounded workspace-relative glob; regex-prefixed patterns fail |
+| `--limit <1..200>` | Bounds the page; defaults to 20 |
+| `--page-token <token>` | Consumes the opaque, one-use token from the identical normalized query; conflicts with `--count` |
+
+All filters are conjunctive and run before the public limit. Results sort by
+normalized workspace-relative path and ownership sets sort by typed identity.
+
+### Compact result
+
+The compact result contains the exact `workspaceRoot`, bounded `files`, a
+discriminated `EXACT` or `KNOWN_MINIMUM` `cardinality`, `returnedCount`,
+`truncated`, optional `nextPageToken`, separate candidate-inventory and
+filter-evidence `coverage`, typed `limitations`, and a schema version. Compact
+output is budgeted below 120 lines and 1,500 estimated tokens for the standard
+high-cardinality fixture.
+
+Each file contains:
+
+- absolute `filePath` and workspace-relative `relativePath`;
+- every sorted backend owner and build-qualified indexed Gradle owner;
+- `KOTLIN_SOURCE` or `KOTLIN_SCRIPT`;
+- discriminated model-proven or unproven source-set evidence;
+- `PROVEN_NAMED`, `PROVEN_ROOT`, `UNPROVEN`, `UNAVAILABLE`, or
+  `INVALID_REFERENCE` package evidence;
+- `INDEXED`, `NOT_INDEXED`, `NOT_APPLICABLE`, or `UNKNOWN` source-index state;
+- `NONE`, `FILESYSTEM_ONLY`, `INDEX_ONLY`, `MISSING_ON_DISK`,
+  `NOT_APPLICABLE`, or `UNKNOWN` drift;
+- typed clean, dirty, unknown, or not-applicable Git state; and
+- evidence sources when the selected projection requests them.
+
+Candidate coverage is complete only when every authority relevant to the
+selected kind could add no path. Filter coverage is complete only when every
+requested predicate is known for every candidate. `EXACT` requires both;
+otherwise `KNOWN_MINIMUM` counts only proved matches. `truncated` is true when
+an exact total exceeds the page or unseen matches remain possible. A public
+token appears only when another currently known matching record exists.
+Stable partial compositions may page known records without claiming exactness.
+Unstable evidence suppresses continuation.
+
+`.kts` candidates come from the compiler/project model and are
+`NOT_APPLICABLE` to the Kotlin source index. Therefore unrelated `.kt` index
+progress cannot reduce script-only exactness. Mixed output tracks source and
+script coverage separately before computing the overall result. Gradle
+declaration semantics remain a separate Gradle DSL index surface.
+
+### Result views
+
+`--fields` accepts `path,module,source-set,kind,package,index,drift,dirty,evidence`
+and keeps the common result metadata. `--count` removes file payloads and
+returns typed overall and grouped cardinalities. `--verbose` preserves the
+complete validated workspace-file evidence. `--explain` adds the normalized
+query and classification/coverage evidence. These four view choices are
+mutually exclusive.
+
+### Public continuation failures
+
+`nextPageToken` is bound to the exact root, backend, normalized filters,
+selected view or fields, limit, composition digest, last emitted relative
+path, and cumulative returned evidence. Reproduce the identical normalized
+query to consume it.
+
+`INVALID_WORKSPACE_FILES_PAGE_TOKEN` is a non-retryable status-400 failure for
+a malformed, forged, unknown, replayed, or query-mismatched handle.
+`STALE_WORKSPACE_FILES_PAGE` is a retryable status-409 failure when any bound
+lane changes stamp, availability, or unavailable reason. Neither failure
+silently restarts at page one; issue a new unpaged query.
+
+### Drift and source-index states
+
+| File evidence | Public drift | Source-index state |
+| --- | --- | --- |
+| `.kt` in backend and index, present on disk | `NONE` | `INDEXED` |
+| `.kt` in backend only, present on disk | `FILESYSTEM_ONLY` | `NOT_INDEXED` |
+| `.kt` in index only, present on disk, with complete possible-owner backend coverage | `INDEX_ONLY` | `INDEXED` |
+| `.kt` in index only with incomplete possible-owner coverage | `UNKNOWN` | `INDEXED` |
+| Candidate missing on disk | `MISSING_ON_DISK` | Independently proved state |
+| `.kt` with unavailable index evidence | `UNKNOWN` | `UNKNOWN` |
+| `.kts` present through complete backend evidence | `NOT_APPLICABLE` | `NOT_APPLICABLE` |
+
+Distinct limitations preserve backend absence, runtime indexing, unavailable
+project models, unassociated linked roots, repeated inventory staleness,
+source-index incompatibility or unavailability, incomplete progress, pending
+updates, Git unavailability, composition instability, unprovable containment,
+invalid package references, and excluded out-of-root paths. When no relevant
+candidate authority is usable, the command fails with
+`WORKSPACE_FILE_DISCOVERY_UNAVAILABLE` instead of returning a false empty
+success.
+
+`filePath` is the direct input for `kast agent diagnostics --file-path <path>`
+and for `kast agent symbol --query <name> --file-hint <path>`.
+
 ## Workspace-relative file paths
 
 When a command supplies explicit `--workspace-root`, Kotlin target arguments
@@ -96,6 +220,7 @@ aggregates with `--count`:
 | Command family | `--fields` values | `--count` retains |
 | --- | --- | --- |
 | `verify` | `health,runtime,capabilities` | check and capability counts |
+| `workspace-files` | `path,module,source-set,kind,package,index,drift,dirty,evidence` | overall and grouped typed cardinalities without file payloads |
 | `symbol` | `identity,location,mode,outcome,source,ambiguity,relationships` | result, candidate, and exact-or-known-minimum relationship cardinality |
 | `impact` | `query,summary,nodes,confidence` | total, returned, and truncated node counts |
 | `diagnostics` | `analysis,diagnostics,severity-counts` | analyzed/skipped, exact severity counts, and cardinality |
@@ -197,6 +322,7 @@ truncated. Use `--fields query,confidence` for metadata without nodes or
     The current typed agent commands are:
 
     - `kast agent verify`
+    - `kast agent workspace-files`
     - `kast agent symbol`
     - `kast agent impact`
     - `kast agent diagnostics`
@@ -216,6 +342,7 @@ truncated. Use `--fields query,confidence` for metadata without nodes or
 
     ```console
     kast agent verify --workspace-root "$PWD"
+    kast agent workspace-files --kind source --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
     kast agent symbol --query OrderService --explain --workspace-root "$PWD"

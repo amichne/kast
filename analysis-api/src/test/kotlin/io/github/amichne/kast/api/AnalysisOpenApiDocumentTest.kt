@@ -1,6 +1,14 @@
 package io.github.amichne.kast.api.docs
 
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
+import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
@@ -33,6 +41,7 @@ class AnalysisOpenApiDocumentTest {
             "raw/file-outline",
             "raw/workspace-symbol",
             "raw/workspace-files",
+            "raw/workspace-files-continuation",
             "raw/implementations",
             "raw/code-actions",
             "raw/completions",
@@ -118,6 +127,118 @@ class AnalysisOpenApiDocumentTest {
     }
 
     @Test
+    fun `workspace file continuation is internal and not capability gated`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val lines = yaml.lines()
+        val path = "/rpc/raw/workspace-files-continuation"
+        val pathIndex = lines.indexOfFirst { it.contains(path) }
+
+        assertTrue(pathIndex >= 0, "Internal continuation path $path not found")
+
+        val nextPathIndex = lines.drop(pathIndex + 1)
+            .indexOfFirst { it.trimStart().startsWith("\"/rpc/") }
+            .let { if (it == -1) lines.size else pathIndex + 1 + it }
+        val sectionLines = lines.subList(pathIndex, nextPathIndex)
+
+        assertTrue(
+            sectionLines.none { it.contains("x-kast-required-capability") },
+            "Internal workspace-file continuation must not advertise a backend capability",
+        )
+        assertTrue(sectionLines.any { it.contains("WorkspaceFilesContinuationQuery") })
+        assertTrue(sectionLines.any { it.contains("WorkspaceFilesContinuationResult") })
+    }
+
+    @Test
+    fun `workspace file continuation schemas preserve disjoint wire variants`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val request = yaml.componentSchema("WorkspaceFilesContinuationQuery")
+        val issue = yaml.componentSchema("WorkspaceFilesContinuationQuery.Issue")
+        val consume = yaml.componentSchema("WorkspaceFilesContinuationQuery.Consume")
+        val result = yaml.componentSchema("WorkspaceFilesContinuationResult")
+        val issued = yaml.componentSchema("WorkspaceFilesContinuationResult.Issued")
+        val consumed = yaml.componentSchema("WorkspaceFilesContinuationResult.Consumed")
+
+        assertTrue(request.contains("oneOf:"))
+        assertTrue(request.contains("propertyName: action"))
+        assertTrue(request.contains("ISSUE: \"#/components/schemas/WorkspaceFilesContinuationQuery.Issue\""))
+        assertTrue(request.contains("CONSUME: \"#/components/schemas/WorkspaceFilesContinuationQuery.Consume\""))
+        assertTrue(issue.contains("const: ISSUE"))
+        assertTrue(issue.contains("- state"))
+        assertFalse(issue.contains("pageToken:"))
+        assertTrue(consume.contains("const: CONSUME"))
+        assertTrue(consume.contains("- pageToken"))
+        assertFalse(consume.contains("state:"))
+
+        assertTrue(result.contains("oneOf:"))
+        assertTrue(result.contains("propertyName: type"))
+        assertTrue(result.contains("ISSUED: \"#/components/schemas/WorkspaceFilesContinuationResult.Issued\""))
+        assertTrue(result.contains("CONSUMED: \"#/components/schemas/WorkspaceFilesContinuationResult.Consumed\""))
+        assertTrue(issued.contains("const: ISSUED"))
+        assertTrue(issued.contains("- pageToken"))
+        assertTrue(consumed.contains("const: CONSUMED"))
+        assertTrue(consumed.contains("- state"))
+    }
+
+    @Test
+    fun `workspace file continuation inline schemas match scalar wire values and constraints`() {
+        val identity = WorkspaceFilesPublicContinuationIdentity(
+            workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse("/workspace"),
+            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("idea"),
+            normalizedQuery = WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.parse("kind=source"),
+            projection = WorkspaceFilesPublicContinuationIdentity.Projection.parse("compact:path"),
+            limit = WorkspaceFilesPublicContinuationIdentity.Limit.of(20),
+        )
+        val state = WorkspaceFilesPublicContinuationState(
+            identity = identity,
+            compositionStampDigest =
+                WorkspaceFilesPublicContinuationState.CompositionStampDigest.parse("a".repeat(64)),
+            lastRelativePath = WorkspaceFilesPublicContinuationState.LastRelativePath.parse("src/App.kt"),
+            cumulativeReturnedCount = WorkspaceFilesPublicContinuationState.CumulativeReturnedCount.of(20),
+        )
+        val identityWire = Json.encodeToJsonElement(
+            WorkspaceFilesPublicContinuationIdentity.serializer(),
+            identity,
+        ).jsonObject
+        val stateWire = Json.encodeToJsonElement(
+            WorkspaceFilesPublicContinuationState.serializer(),
+            state,
+        ).jsonObject
+        val tokenWire = Json.encodeToJsonElement(
+            WorkspaceFilesPublicPageToken.serializer(),
+            WorkspaceFilesPublicPageToken.parse("00000000-0000-4000-8000-000000000001"),
+        )
+
+        identityWire.values.forEach { value -> assertTrue(value is JsonPrimitive) }
+        stateWire.scalar("compositionStampDigest")
+        stateWire.scalar("lastRelativePath")
+        stateWire.scalar("cumulativeReturnedCount")
+        assertTrue(tokenWire is JsonPrimitive)
+
+        val yaml = OpenApiDocument.renderYaml()
+        assertScalarSchema(yaml, "WorkspaceRoot", "string")
+        assertScalarSchema(yaml, "BackendName", "string")
+        assertScalarSchema(yaml, "NormalizedQuery", "string")
+        assertScalarSchema(yaml, "Projection", "string")
+        assertScalarSchema(yaml, "Limit", "integer", "minimum: 1", "maximum: 200")
+        assertScalarSchema(
+            yaml,
+            "CompositionStampDigest",
+            "string",
+            "pattern: \"^[0-9a-f]{64}\$\"",
+        )
+        assertScalarSchema(yaml, "LastRelativePath", "string", "minLength: 1", "pattern:")
+        val pathPatternLine = yaml.componentSchema("LastRelativePath").lineSequence()
+            .single { line -> "pattern:" in line }
+        assertEquals(
+            6,
+            pathPatternLine.substringBefore("u0000").takeLastWhile { character -> character == '\\' }.length,
+            "YAML must preserve the regex escapes for a literal backslash and the control-character range",
+        )
+        assertScalarSchema(yaml, "CumulativeReturnedCount", "integer", "minimum: 0")
+        assertScalarSchema(yaml, "WorkspaceFilesPublicPageToken", "string", "format: uuid", "pattern:")
+    }
+
+    @Test
     fun `all schema refs resolve to defined components`() {
         val yaml = OpenApiDocument.renderYaml()
         val refRegex = Regex("""#/components/schemas/([A-Za-z0-9_.]+)""")
@@ -152,4 +273,30 @@ class AnalysisOpenApiDocumentTest {
     private fun repoRoot(): Path =
         generateSequence(Path.of("").toAbsolutePath()) { current -> current.parent }
             .first { candidate -> Files.isDirectory(candidate.resolve("docs")) }
+
+    private fun String.componentSchema(name: String): String {
+        val start = "    $name:"
+        val afterStart = substringAfter(start, missingDelimiterValue = "")
+        require(afterStart.isNotEmpty()) { "OpenAPI component $name was not found" }
+        val nextComponent = Regex("\\n {4}[A-Za-z0-9_.]+:").find(afterStart)?.range?.first
+        return nextComponent?.let { index -> afterStart.substring(0, index) } ?: afterStart
+    }
+
+    private fun JsonObject.scalar(name: String) {
+        assertTrue(getValue(name) is JsonPrimitive, "$name must serialize as a scalar")
+    }
+
+    private fun assertScalarSchema(
+        yaml: String,
+        name: String,
+        type: String,
+        vararg expectedConstraints: String,
+    ) {
+        val schema = yaml.componentSchema(name)
+        assertTrue(schema.contains("type: $type"), "$name must be a $type schema")
+        assertFalse(schema.contains("properties:"), "$name must not expose an inline value wrapper")
+        expectedConstraints.forEach { constraint ->
+            assertTrue(schema.contains(constraint), "$name must include $constraint")
+        }
+    }
 }

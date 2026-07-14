@@ -1,0 +1,16 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/workspace-files-continuation",
+  "params": {
+    "action": "CONSUME",
+    "identity": {
+      "backendName": "example-backendName",
+      "limit": 25,
+      "normalizedQuery": "example-normalizedQuery",
+      "projection": "example-projection",
+      "workspaceRoot": "/absolute/path/to/workspace"
+    },
+    "pageToken": "example-pageToken"
+  }
+}

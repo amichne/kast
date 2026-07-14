@@ -6,7 +6,6 @@ import io.github.amichne.kast.api.contract.result.CallHierarchyStats
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
-import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
 
 import kotlinx.serialization.SerialName
@@ -131,14 +130,6 @@ data class KastScaffoldRequest(
     val targetSymbol: String? = null,
     val mode: WrapperScaffoldMode = WrapperScaffoldMode.IMPLEMENT,
     val kind: WrapperNamedSymbolKind? = null,
-)
-
-@Serializable
-data class KastWorkspaceFilesRequest(
-    val workspaceRoot: String? = null,
-    val moduleName: String? = null,
-    val includeFiles: Boolean = false,
-    val maxFilesPerModule: Int? = null,
 )
 
 @Serializable
@@ -574,14 +565,6 @@ data class KastScaffoldQuery(
 )
 
 @Serializable
-data class KastWorkspaceFilesQuery(
-    val workspaceRoot: String,
-    val moduleName: String? = null,
-    val includeFiles: Boolean = false,
-    val maxFilesPerModule: Int? = null,
-)
-
-@Serializable
 data class KastWorkspaceSearchQuery(
     val workspaceRoot: String,
     val pattern: String,
@@ -800,31 +783,6 @@ data class KastScaffoldFailureResponse(
     val error: ApiErrorResponse? = null,
     val errorText: String? = null,
 ) : KastScaffoldResponse
-
-@Serializable
-sealed interface KastWorkspaceFilesResponse
-
-@Serializable
-@SerialName("WORKSPACE_FILES_SUCCESS")
-data class KastWorkspaceFilesSuccessResponse(
-    val ok: Boolean = true,
-    val query: KastWorkspaceFilesQuery,
-    val modules: List<WorkspaceModule>,
-    val schemaVersion: Int,
-    val logFile: String,
-) : KastWorkspaceFilesResponse
-
-@Serializable
-@SerialName("WORKSPACE_FILES_FAILURE")
-data class KastWorkspaceFilesFailureResponse(
-    val ok: Boolean = false,
-    val stage: String,
-    val message: String,
-    val query: KastWorkspaceFilesQuery,
-    val logFile: String,
-    val error: ApiErrorResponse? = null,
-    val errorText: String? = null,
-) : KastWorkspaceFilesResponse
 
 @Serializable
 sealed interface KastFileOutlineResponse

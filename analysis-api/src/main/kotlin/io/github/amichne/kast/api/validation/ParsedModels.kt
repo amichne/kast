@@ -139,12 +139,6 @@ data class ParsedWorkspaceSearchQuery(
     val caseSensitive: Boolean,
 ) : BoundedQuery
 
-data class ParsedWorkspaceFilesQuery(
-    val moduleName: NonBlankString?,
-    val includeFiles: Boolean,
-    val maxFilesPerModule: PositiveInt?,
-)
-
 data class ParsedImplementationsQuery(
     override val position: ParsedFilePosition,
     override val maxResults: PositiveInt,
@@ -325,9 +319,12 @@ fun WorkspaceSearchQuery.parsed(): ParsedWorkspaceSearchQuery = validationBounda
 
 fun WorkspaceFilesQuery.parsed(): ParsedWorkspaceFilesQuery = validationBoundary {
     ParsedWorkspaceFilesQuery(
+        kindDomain = kindDomain,
         moduleName = moduleName?.let(::NonBlankString),
         includeFiles = includeFiles,
         maxFilesPerModule = maxFilesPerModule?.let(::PositiveInt),
+        snapshotToken = snapshotToken?.let(WorkspaceFileSnapshotToken::parse),
+        pageToken = pageToken?.let(WorkspaceFilePageToken::parse),
     )
 }
 

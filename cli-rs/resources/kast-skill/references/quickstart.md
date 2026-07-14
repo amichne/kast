@@ -29,6 +29,7 @@ request `--verbose` or `--explain` only when detailed evidence is required.
 
 ```console
 kast agent verify --workspace-root "$PWD"
+kast agent workspace-files --workspace-root "$PWD"
 kast agent symbol --query EventBean --workspace-root "$PWD" --references
 kast agent symbol --query process --workspace-root "$PWD" --callers incoming
 kast --output json agent symbol --query EventBean --workspace-root "$PWD" --fields identity,location
@@ -40,6 +41,37 @@ kast agent impact --workspace-root "$PWD" --symbol com.example.EventBean
 kast --output json agent impact --workspace-root "$PWD" --symbol com.example.EventBean --fields query,confidence
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent
 kast agent rename --workspace-root "$PWD" --symbol com.example.EventBean --new-name DomainEvent --apply --idempotency-key rename-event-bean
+```
+
+Use `workspace-files` before generic search when you need a Kotlin path. Its
+filters are conjunctive: `--kind source|script`,
+`--module backend:<name>|gradle:<build-root>#<project-path>`,
+`--source-set <name>`, `--package root|named:<fq-name>`,
+`--dirty clean|dirty|unknown`,
+`--drift none|filesystem-only|index-only|missing-on-disk|not-applicable|unknown`,
+`--path-prefix <relative-path>`, and `--glob <relative-glob>`. The default
+`--limit` is 20 and the accepted range is 1 through 200.
+
+When the result contains `nextPageToken`, reproduce the same normalized query
+and consume the opaque, one-use handle:
+
+```console
+kast agent workspace-files --workspace-root "$PWD" --kind source --limit 20 --page-token '<nextPageToken>'
+```
+
+An `EXACT` cardinality proves both candidate and requested-filter coverage;
+`KNOWN_MINIMUM` reports only proved matches and retains typed limitations.
+Stable partial evidence may page known matches, but an invalid token fails with
+`INVALID_WORKSPACE_FILES_PAGE_TOKEN` and changed bound evidence fails with
+`STALE_WORKSPACE_FILES_PAGE`; neither silently restarts at page one. `.kts` files are not read from the Kotlin source index, so unrelated `.kt` indexing
+progress cannot make a script-only query partial.
+
+Each record's `filePath` is accepted directly by diagnostics and symbol file
+hints:
+
+```console
+kast agent diagnostics --workspace-root "$PWD" --file-path '<filePath>'
+kast agent symbol --workspace-root "$PWD" --query EventBean --file-hint '<filePath>'
 ```
 
 Diagnostic continuation tokens are opaque and one-use. A continuation reuses

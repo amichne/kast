@@ -44,6 +44,7 @@
       "raw/workspace-symbol",
       "raw/workspace-search",
       "raw/workspace-files",
+      "raw/workspace-files-continuation",
       "raw/implementations",
       "raw/code-actions",
       "raw/completions"
@@ -2072,10 +2073,20 @@
     "raw/workspace-files": {
       "method": "raw/workspace-files",
       "category": "raw",
-      "summary": "List workspace modules and optional file paths",
+      "summary": "List generation-bound workspace modules and Kotlin file pages",
       "dataSource": "backend",
       "request": {
         "fields": {
+          "kindDomain": {
+            "type": "string",
+            "optional": true,
+            "enum": [
+              "SOURCE_ONLY",
+              "SCRIPT_ONLY",
+              "MIXED"
+            ],
+            "description": "Closed source-only, script-only, or mixed Kotlin file domain fingerprinted by the workspace snapshot."
+          },
           "moduleName": {
             "type": "string",
             "optional": true,
@@ -2089,14 +2100,185 @@
             "type": "integer",
             "optional": true,
             "nullable": true
+          },
+          "snapshotToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "description": "Opaque reusable generation-bound workspace snapshot handle returned by the metadata request."
+          },
+          "pageToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "description": "Opaque single-use exact-module page handle returned as nextPageToken by the preceding page."
           }
         }
       },
       "responseType": "WorkspaceFilesResult",
+      "notes": [
+        "A metadata request captures a server-held generation-bound inventory and returns its opaque reusable snapshotToken.",
+        "File pages echo kindDomain and snapshotToken, require one exact moduleName and a positive server-bounded maxFilesPerModule, and pass the preceding nextPageToken as pageToken.",
+        "Each module page reports returnedFileCount equal to files.size; nextPageToken is non-null exactly when filesTruncated is true and another page remains.",
+        "Unknown, replayed, mismatched, evicted, or stale snapshot and page handles fail instead of restarting enumeration."
+      ],
       "tool": {
         "name": "kast_workspace_files",
-        "description": "Secondary workspace inspection tool for Kotlin modules and optional source files. Prefer symbol/query, raw/workspace-symbol, or raw/workspace-search with tight filters first. Use includeFiles=false for the bounded module summary; when file paths are required, pass moduleName and a small maxFilesPerModule."
+        "description": "Enumerate compiler/project-model Kotlin modules and generation-bound source or script file pages. Capture snapshotToken from the module inventory, then request exact-module pages with kindDomain and snapshotToken until nextPageToken is absent."
       }
+    },
+    "raw/workspace-files-continuation": {
+      "method": "raw/workspace-files-continuation",
+      "category": "raw",
+      "summary": "Issue or consume server-held public workspace-file continuation state",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "ISSUE",
+              "CONSUME"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "variantDiscriminator": "action",
+      "variants": {
+        "ISSUE": {
+          "fields": {
+            "identity": {
+              "type": "object",
+              "fields": {
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "backendName": {
+                  "type": "string"
+                },
+                "normalizedQuery": {
+                  "type": "string"
+                },
+                "projection": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "workspaceRoot",
+                "backendName",
+                "normalizedQuery",
+                "projection",
+                "limit"
+              ]
+            },
+            "state": {
+              "type": "object",
+              "fields": {
+                "identity": {
+                  "type": "object",
+                  "fields": {
+                    "workspaceRoot": {
+                      "type": "string"
+                    },
+                    "backendName": {
+                      "type": "string"
+                    },
+                    "normalizedQuery": {
+                      "type": "string"
+                    },
+                    "projection": {
+                      "type": "string"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "workspaceRoot",
+                    "backendName",
+                    "normalizedQuery",
+                    "projection",
+                    "limit"
+                  ]
+                },
+                "compositionStampDigest": {
+                  "type": "string"
+                },
+                "lastRelativePath": {
+                  "type": "string"
+                },
+                "cumulativeReturnedCount": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "identity",
+                "compositionStampDigest",
+                "lastRelativePath",
+                "cumulativeReturnedCount"
+              ]
+            }
+          },
+          "required": [
+            "identity",
+            "state"
+          ]
+        },
+        "CONSUME": {
+          "fields": {
+            "identity": {
+              "type": "object",
+              "fields": {
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "backendName": {
+                  "type": "string"
+                },
+                "normalizedQuery": {
+                  "type": "string"
+                },
+                "projection": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "workspaceRoot",
+                "backendName",
+                "normalizedQuery",
+                "projection",
+                "limit"
+              ]
+            },
+            "pageToken": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "identity",
+            "pageToken"
+          ]
+        }
+      },
+      "responseType": "WorkspaceFilesContinuationResult",
+      "responseVariants": [
+        "ISSUED",
+        "CONSUMED"
+      ],
+      "notes": [
+        "This internal method is not a backend capability or public agent command.",
+        "ISSUE stores the supplied typed state and returns an opaque canonical random pageToken; CONSUME atomically claims a single-use handle and returns only a non-owning state projection.",
+        "The exact workspace root, backend, normalized query, projection, and limit must match when consuming a handle."
+      ]
     },
     "raw/implementations": {
       "method": "raw/implementations",

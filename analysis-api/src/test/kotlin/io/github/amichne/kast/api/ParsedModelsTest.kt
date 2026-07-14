@@ -121,6 +121,93 @@ class ParsedModelsTest {
     }
 
     @Test
+    fun `WorkspaceFilesQuery parsed accepts canonical opaque paging handles`() {
+        val snapshotToken = "00000000-0000-0000-0000-000000000338"
+        val pageToken = "00000000-0000-0000-0000-000000000339"
+
+        val parsed = WorkspaceFilesQuery(
+            moduleName = "main",
+            includeFiles = true,
+            maxFilesPerModule = 2,
+            snapshotToken = snapshotToken,
+            pageToken = pageToken,
+        ).parsed()
+
+        assertEquals(snapshotToken, parsed.snapshotToken?.value)
+        assertEquals(pageToken, parsed.pageToken?.value)
+    }
+
+    @Test
+    fun `WorkspaceFilesQuery parsed rejects a page handle without its snapshot handle`() {
+        assertThrows<ValidationException> {
+            WorkspaceFilesQuery(
+                moduleName = "main",
+                includeFiles = true,
+                maxFilesPerModule = 2,
+                pageToken = "00000000-0000-0000-0000-000000000339",
+            ).parsed()
+        }
+    }
+
+    @Test
+    fun `WorkspaceFilesQuery parsed accepts only exact-module paging or workspace validation handles`() {
+        val snapshotToken = "00000000-0000-0000-0000-000000000338"
+        val pageToken = "00000000-0000-0000-0000-000000000339"
+
+        WorkspaceFilesQuery(
+            includeFiles = false,
+            snapshotToken = snapshotToken,
+        ).parsed()
+
+        val illegalQueries = listOf(
+            WorkspaceFilesQuery(includeFiles = true, snapshotToken = snapshotToken),
+            WorkspaceFilesQuery(moduleName = "main", includeFiles = false, snapshotToken = snapshotToken),
+            WorkspaceFilesQuery(includeFiles = false, snapshotToken = snapshotToken, pageToken = pageToken),
+        )
+        illegalQueries.forEach { query ->
+            assertThrows<ValidationException> { query.parsed() }
+        }
+    }
+
+    @Test
+    fun `WorkspaceFilesQuery parsed rejects noncanonical workspace handles`() {
+        val canonicalSnapshot = "123e4567-e89b-12d3-a456-426614174000"
+        val invalidHandles = listOf("", "not-a-handle", canonicalSnapshot.uppercase())
+
+        invalidHandles.forEach { invalidHandle ->
+            assertThrows<ValidationException> {
+                WorkspaceFilesQuery(
+                    moduleName = "main",
+                    includeFiles = true,
+                    maxFilesPerModule = 2,
+                    snapshotToken = invalidHandle,
+                ).parsed()
+            }
+            assertThrows<ValidationException> {
+                WorkspaceFilesQuery(
+                    moduleName = "main",
+                    includeFiles = true,
+                    maxFilesPerModule = 2,
+                    snapshotToken = canonicalSnapshot,
+                    pageToken = invalidHandle,
+                ).parsed()
+            }
+        }
+    }
+
+    @Test
+    fun `WorkspaceFilesQuery parsed preserves the closed file kind domain`() {
+        assertEquals(WorkspaceFileKindDomain.MIXED, WorkspaceFilesQuery().parsed().kindDomain)
+
+        WorkspaceFileKindDomain.entries.forEach { kindDomain ->
+            assertEquals(
+                kindDomain,
+                WorkspaceFilesQuery(kindDomain = kindDomain).parsed().kindDomain,
+            )
+        }
+    }
+
+    @Test
     fun `ReferencesQuery parsed keeps usage site scope opt in`() {
         val position = FilePosition("/workspace/src/Main.kt", 3)
 

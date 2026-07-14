@@ -261,10 +261,30 @@ object OperationDocRegistry {
             description = "Lists workspace modules and optionally source files. Use this " +
                 "as a secondary scope check after bounded symbol or text queries.",
             behavioralNotes = listOf(
-                "Leave `includeFiles` false for the bounded module summary.",
-                "When file paths are required, filter by `moduleName` and set a small `maxFilesPerModule`.",
+                "The first request captures a generation-bound inventory snapshot and returns its opaque reusable `snapshotToken`.",
+                "File pages require that snapshot token and an exact module name. Each opaque `nextPageToken` is single-use and bound to the snapshot, file-kind domain, module, and page size.",
+                "Unknown, replayed, mismatched, evicted, or stale snapshot and page handles fail instead of restarting enumeration.",
             ),
-            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
+            errorCodes = listOf(
+                "CAPABILITY_NOT_SUPPORTED",
+                "INVALID_WORKSPACE_FILE_CURSOR",
+                "STALE_WORKSPACE_INVENTORY",
+            ),
+        ),
+        OperationDoc(
+            operationId = "workspaceFilesContinuation",
+            jsonRpcMethod = "raw/workspace-files-continuation",
+            summary = "Issue or consume public workspace-file continuation state",
+            tag = "read",
+            requestSchema = "WorkspaceFilesContinuationQuery",
+            responseSchema = "WorkspaceFilesContinuationResult",
+            description = "Internal bridge used by the public workspace-files command to keep coherent composition state server-side between result pages.",
+            behavioralNotes = listOf(
+                "This internal method is not a backend capability and is not a public command surface.",
+                "ISSUE stores the supplied typed state and returns a canonical random UUID handle; CONSUME is single-use and returns only a non-owning projection.",
+                "The exact workspace root, backend, normalized query, projection, and limit must match when consuming a handle.",
+            ),
+            errorCodes = listOf("VALIDATION_ERROR", "INVALID_WORKSPACE_FILES_PAGE_TOKEN"),
         ),
         OperationDoc(
             operationId = "implementations",

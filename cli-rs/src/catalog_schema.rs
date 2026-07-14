@@ -56,12 +56,14 @@ pub fn request_schema_for_command(method: &str, command: &Value) -> Result<Value
 fn params_schema(command: &Value, method: &str) -> Result<Value> {
     match command.get("variants").and_then(Value::as_object) {
         Some(variants) if !variants.is_empty() => {
+            let discriminator = variant_discriminator(command, method)?;
             let mut schemas = Vec::with_capacity(variants.len());
             let mut sorted_variants = variants.iter().collect::<Vec<_>>();
             sorted_variants.sort_by_key(|(name, _)| *name);
             for (variant_name, variant_request) in sorted_variants {
                 schemas.push(variant_schema(
                     command,
+                    &discriminator,
                     variant_name,
                     variant_request,
                     method,
@@ -75,35 +77,40 @@ fn params_schema(command: &Value, method: &str) -> Result<Value> {
 
 fn variant_schema(
     command: &Value,
+    discriminator: &str,
     variant_name: &str,
     variant_request: &Value,
     method: &str,
 ) -> Result<Value> {
     let request = value_at(command, "request", method)?;
     let request_fields = object_at(request, "fields", method)?;
-    let type_field = request_fields.get("type").ok_or_else(|| {
+    let discriminator_field = request_fields.get(discriminator).ok_or_else(|| {
         CliError::new(
             "RPC_CATALOG_INVALID",
-            format!("Variant method `{method}` must define request.fields.type."),
+            format!("Variant method `{method}` must define request.fields.{discriminator}."),
         )
     })?;
+    let mut discriminator_schema =
+        field_schema(discriminator_field, &format!("{method}.{discriminator}"))?;
+    let discriminator_schema_object = discriminator_schema.as_object_mut().ok_or_else(|| {
+        CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!("Variant discriminator schema for `{method}` must be an object."),
+        )
+    })?;
+    discriminator_schema_object.remove("enum");
+    discriminator_schema_object
+        .insert("const".to_string(), Value::String(variant_name.to_string()));
     let mut properties = Map::new();
-    let mut type_schema = field_schema(type_field, &format!("{method}.type"))?;
-    let type_schema_object = type_schema.as_object_mut().ok_or_else(|| {
-        CliError::new(
-            "RPC_CATALOG_INVALID",
-            format!("Variant type schema for `{method}` must be an object."),
-        )
-    })?;
-    type_schema_object.remove("enum");
-    type_schema_object.insert("const".to_string(), Value::String(variant_name.to_string()));
-    properties.insert("type".to_string(), type_schema);
+    properties.insert(discriminator.to_string(), discriminator_schema);
 
     for (field_name, field) in object_at(variant_request, "fields", variant_name)? {
-        if field_name == "type" {
+        if field_name == discriminator {
             return Err(CliError::new(
                 "RPC_CATALOG_INVALID",
-                format!("Variant `{variant_name}` for `{method}` must not redeclare `type`."),
+                format!(
+                    "Variant `{variant_name}` for `{method}` must not redeclare `{discriminator}`."
+                ),
             ));
         }
         properties.insert(
@@ -112,9 +119,9 @@ fn variant_schema(
         );
     }
 
-    let mut required = vec![Value::String("type".to_string())];
+    let mut required = vec![Value::String(discriminator.to_string())];
     for field_name in request_required(variant_request)? {
-        if field_name != "type" {
+        if field_name != discriminator {
             required.push(Value::String(field_name));
         }
     }
@@ -125,6 +132,76 @@ fn variant_schema(
         "required": required,
         "additionalProperties": false,
     }))
+}
+
+pub(crate) fn variant_discriminator(command: &Value, method: &str) -> Result<String> {
+    let discriminator = match command.get("variantDiscriminator") {
+        None => "type",
+        Some(value) => value.as_str().filter(|name| !name.is_empty()).ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!(
+                    "Variant method `{method}` must declare variantDiscriminator as a non-empty string."
+                ),
+            )
+        })?,
+    };
+    let request = value_at(command, "request", method)?;
+    let request_fields = object_at(request, "fields", method)?;
+    let field = request_fields.get(discriminator).ok_or_else(|| {
+        CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!("Variant method `{method}` must define request.fields.{discriminator}."),
+        )
+    })?;
+    if field.get("type").and_then(Value::as_str) != Some("string") {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant discriminator `{method}.request.fields.{discriminator}` must have type string."
+            ),
+        ));
+    }
+    let enum_values = field.get("enum").and_then(Value::as_array).ok_or_else(|| {
+        CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant discriminator `{method}.request.fields.{discriminator}` must define an enum."
+            ),
+        )
+    })?;
+    let variants = command
+        .get("variants")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Variant method `{method}` must define variants."),
+            )
+        })?;
+    let enum_names = enum_values
+        .iter()
+        .map(|value| value.as_str())
+        .collect::<Option<std::collections::BTreeSet<_>>>()
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!(
+                    "Variant discriminator `{method}.request.fields.{discriminator}.enum` must contain only strings."
+                ),
+            )
+        })?;
+    let variant_names = variants.keys().map(String::as_str).collect();
+    if enum_names != variant_names {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant discriminator `{method}.request.fields.{discriminator}.enum` must name every variant exactly once."
+            ),
+        ));
+    }
+
+    Ok(discriminator.to_string())
 }
 
 fn request_object_schema(request: &Value, context: &str) -> Result<Value> {
@@ -405,6 +482,126 @@ mod tests {
         });
         assert!(validator.validate(&valid).is_ok());
         assert!(validator.validate(&invalid).is_err());
+    }
+
+    #[test]
+    fn variants_can_declare_an_action_discriminator() {
+        let catalog = json!({
+            "commands": {
+                "raw/workspace-files-continuation": {
+                    "variantDiscriminator": "action",
+                    "request": {
+                        "fields": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["ISSUE", "CONSUME"]
+                            }
+                        },
+                        "required": ["action"]
+                    },
+                    "variants": {
+                        "ISSUE": {
+                            "fields": {
+                                "state": { "type": "object" }
+                            },
+                            "required": ["state"]
+                        },
+                        "CONSUME": {
+                            "fields": {
+                                "pageToken": { "type": "string" }
+                            },
+                            "required": ["pageToken"]
+                        }
+                    }
+                }
+            }
+        });
+        let schema = request_schema(&catalog, "raw/workspace-files-continuation")
+            .expect("action-discriminated schema");
+        let validator = jsonschema::validator_for(&schema).expect("schema compiles");
+        let valid = json!({
+            "jsonrpc": "2.0",
+            "method": "raw/workspace-files-continuation",
+            "params": {
+                "action": "CONSUME",
+                "pageToken": "00000000-0000-4000-8000-000000000338"
+            },
+            "id": 1,
+        });
+        let invalid = json!({
+            "jsonrpc": "2.0",
+            "method": "raw/workspace-files-continuation",
+            "params": {
+                "type": "CONSUME",
+                "pageToken": "00000000-0000-4000-8000-000000000338"
+            },
+            "id": 1,
+        });
+
+        assert!(validator.validate(&valid).is_ok());
+        assert!(validator.validate(&invalid).is_err());
+    }
+
+    #[test]
+    fn explicit_variant_discriminator_must_name_a_declared_field() {
+        let catalog = json!({
+            "commands": {
+                "raw/workspace-files-continuation": {
+                    "variantDiscriminator": "action",
+                    "request": {
+                        "fields": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["ISSUE"]
+                            }
+                        }
+                    },
+                    "variants": {
+                        "ISSUE": {
+                            "fields": {}
+                        }
+                    }
+                }
+            }
+        });
+
+        let error = request_schema(&catalog, "raw/workspace-files-continuation")
+            .expect_err("missing action field must fail");
+
+        assert_eq!(error.code, "RPC_CATALOG_INVALID");
+        assert!(error.message.contains("request.fields.action"));
+    }
+
+    #[test]
+    fn explicit_variant_discriminator_must_be_a_non_empty_string() {
+        for malformed in [json!(""), json!(7)] {
+            let catalog = json!({
+                "commands": {
+                    "raw/workspace-files-continuation": {
+                        "variantDiscriminator": malformed,
+                        "request": {
+                            "fields": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": ["ISSUE"]
+                                }
+                            }
+                        },
+                        "variants": {
+                            "ISSUE": {
+                                "fields": {}
+                            }
+                        }
+                    }
+                }
+            });
+
+            let error = request_schema(&catalog, "raw/workspace-files-continuation")
+                .expect_err("malformed discriminator must fail");
+
+            assert_eq!(error.code, "RPC_CATALOG_INVALID");
+            assert!(error.message.contains("non-empty string"));
+        }
     }
 
     #[test]

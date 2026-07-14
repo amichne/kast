@@ -307,7 +307,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxResults": 100,
                         "requestTimeoutMillis": 30000,
                         "maxConcurrentRequests": 4,
-                        "perFileScanBudgetMillis": 5000
+                        "perFileScanBudgetMillis": 5000,
+                        "continuationTtlMillis": 60000,
+                        "continuationCapacity": 256
                     },
                     "schemaVersion": 3
                 },
@@ -320,7 +322,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        12 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
+        13 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
     ??? example "raw/resolve — Resolve the symbol at a file position"
 
@@ -1207,14 +1209,18 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
+            | `#!kotlin kindDomain: WorkspaceFileKindDomain` :material-information-outline:{ title="Default: MIXED" } | Closed file-kind domain fingerprinted by workspace inventory paging. |
             | `#!kotlin moduleName: String?` | Filter to a single module by name. Omit to list all modules. |
             | `#!kotlin includeFiles: Boolean` :material-information-outline:{ title="Default: false" } | When true, includes individual file paths for each module. |
             | `#!kotlin maxFilesPerModule: Int?` :material-information-outline:{ title="Default: null" } | Maximum file paths to return per module when includeFiles is true. Omit to use the server maxResults limit. |
+            | `#!kotlin snapshotToken: String?` | Opaque workspace inventory snapshot handle returned by a metadata request. |
+            | `#!kotlin pageToken: String?` | Opaque single-use module page handle returned by the preceding page. |
         === "Output: WorkspaceFilesResult"
 
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
+            | `#!kotlin snapshotToken: String` | Opaque reusable handle identifying the coherent workspace inventory snapshot. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
@@ -1228,6 +1234,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "method": "raw/workspace-files",
                 "params": {
+                    "kindDomain": "MIXED",
                     "includeFiles": false
                 },
                 "id": 1,
@@ -1245,12 +1252,17 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "sourceRoots": [
                                 "/workspace/src"
                             ],
+                            "contentRoots": [
+                                "/workspace"
+                            ],
                             "dependencyModuleNames": [],
                             "files": [],
+                            "returnedFileCount": 0,
                             "filesTruncated": false,
                             "fileCount": 2
                         }
                     ],
+                    "snapshotToken": "00000000-0000-4000-8000-000000000002",
                     "schemaVersion": 3
                 },
                 "id": 1,
@@ -1259,10 +1271,86 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
         !!! note "Behavioral notes"
 
-            - Leave `includeFiles` false for the bounded module summary.
-            - When file paths are required, filter by `moduleName` and set a small `maxFilesPerModule`.
+            - The first request captures a generation-bound inventory snapshot and returns its opaque reusable `snapshotToken`.
+            - File pages require that snapshot token and an exact module name. Each opaque `nextPageToken` is single-use and bound to the snapshot, file-kind domain, module, and page size.
+            - Unknown, replayed, mismatched, evicted, or stale snapshot and page handles fail instead of restarting enumeration.
 
-        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
+        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`, `INVALID_WORKSPACE_FILE_CURSOR`, `STALE_WORKSPACE_INVENTORY`
+
+    ??? example "raw/workspace-files-continuation — Issue or consume public workspace-file continuation state"
+
+        Internal bridge used by the public workspace-files command to keep coherent composition state server-side between result pages.
+
+        === "Input: WorkspaceFilesContinuationQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin action: WorkspaceFilesContinuationAction` | Whether this internal request issues a new handle or consumes an existing handle. |
+            | `#!kotlin identity: WorkspaceFilesPublicContinuationIdentity` | Exact workspace, backend, normalized query, projection, and limit bound to the handle. |
+            | `#!kotlin state: WorkspaceFilesPublicContinuationState?` | Server-owned continuation state supplied only when issuing a handle. |
+            | `#!kotlin pageToken: String?` | Opaque single-use public continuation handle supplied only when consuming a handle. |
+        === "Output: WorkspaceFilesContinuationResult"
+
+            | Variant |
+            |---------|
+            | `Issued` |
+            | `Consumed` |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/workspace-files-continuation
+            Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/workspace-files-continuation",
+                "params": {
+                    "action": "ISSUE",
+                    "identity": {
+                        "workspaceRoot": "/workspace",
+                        "backendName": "fake",
+                        "normalizedQuery": "kind=mixed;module=*;package=*;sourceSet=*",
+                        "projection": "compact:path,evidence",
+                        "limit": 1
+                    },
+                    "state": {
+                        "identity": {
+                            "workspaceRoot": "/workspace",
+                            "backendName": "fake",
+                            "normalizedQuery": "kind=mixed;module=*;package=*;sourceSet=*",
+                            "projection": "compact:path,evidence",
+                            "limit": 1
+                        },
+                        "compositionStampDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+                        "lastRelativePath": "src/Sample.kt",
+                        "cumulativeReturnedCount": 1
+                    }
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "type": "ISSUED",
+                    "pageToken": "00000000-0000-4000-8000-000000000003"
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        !!! note "Behavioral notes"
+
+            - This internal method is not a backend capability and is not a public command surface.
+            - ISSUE stores the supplied typed state and returns a canonical random UUID handle; CONSUME is single-use and returns only a non-owning projection.
+            - The exact workspace root, backend, normalized query, projection, and limit must match when consuming a handle.
+
+        **Error codes** &nbsp;·&nbsp; `VALIDATION_ERROR`, `INVALID_WORKSPACE_FILES_PAGE_TOKEN`
 
     ??? example "raw/implementations — Find concrete implementations and subclasses for a declaration"
 

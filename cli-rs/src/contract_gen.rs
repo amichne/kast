@@ -108,27 +108,11 @@ pub fn generated_files_from_catalog(
         let variants = command.get("variants").and_then(Value::as_object);
         match variants {
             Some(variants) if !variants.is_empty() => {
-                let type_enum = command["request"]["fields"]["type"]
-                    .get("enum")
-                    .and_then(Value::as_array)
-                    .ok_or_else(|| {
-                        CliError::new(
-                            "RPC_CATALOG_INVALID",
-                            format!("Variant command `{method}` must define a type enum."),
-                        )
-                    })?;
+                let discriminator = catalog_schema::variant_discriminator(command, method)?;
                 for (variant_name, variant_request) in variants {
-                    if !type_enum.iter().any(|value| value == variant_name) {
-                        return Err(CliError::new(
-                            "RPC_CATALOG_INVALID",
-                            format!(
-                                "{method} variant {variant_name} is missing from the type enum."
-                            ),
-                        ));
-                    }
                     for kind in SampleKind::ALL {
                         let mut params = Map::new();
-                        params.insert("type".to_string(), Value::String(variant_name.clone()));
+                        params.insert(discriminator.clone(), Value::String(variant_name.clone()));
                         let sample = sample_request(variant_request, kind.maximal())?;
                         for (name, value) in sample {
                             params.insert(name, value);
@@ -659,6 +643,69 @@ mod tests {
             "{minimal}"
         );
         assert!(minimal.contains("\"anchor\": \"body-end\""), "{minimal}");
+    }
+
+    #[test]
+    fn generated_variant_samples_use_the_declared_action_discriminator() {
+        let catalog = json!({
+            "commands": {
+                "raw/workspace-files-continuation": {
+                    "method": "raw/workspace-files-continuation",
+                    "category": "raw",
+                    "variantDiscriminator": "action",
+                    "request": {
+                        "fields": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["ISSUE", "CONSUME"]
+                            }
+                        },
+                        "required": ["action"]
+                    },
+                    "variants": {
+                        "ISSUE": {
+                            "fields": {
+                                "state": { "type": "object" }
+                            },
+                            "required": ["state"]
+                        },
+                        "CONSUME": {
+                            "fields": {
+                                "pageToken": { "type": "string" }
+                            },
+                            "required": ["pageToken"]
+                        }
+                    }
+                }
+            }
+        });
+        let files = generated_files_from_catalog(
+            &catalog,
+            Path::new("/tmp/commands.yaml"),
+            Path::new("/tmp/requests"),
+        )
+        .expect("generated files");
+        let issued: Value = serde_json::from_str(
+            files
+                .get(Path::new(
+                    "/tmp/requests/raw/workspace-files-continuation/ISSUE/minimal.json",
+                ))
+                .expect("ISSUE sample"),
+        )
+        .expect("ISSUE JSON");
+        let consumed: Value = serde_json::from_str(
+            files
+                .get(Path::new(
+                    "/tmp/requests/raw/workspace-files-continuation/CONSUME/minimal.json",
+                ))
+                .expect("CONSUME sample"),
+        )
+        .expect("CONSUME JSON");
+
+        assert_eq!(issued["params"]["action"], "ISSUE");
+        assert_eq!(consumed["params"]["action"], "CONSUME");
+        assert!(issued["params"].get("type").is_none());
+        assert!(consumed["params"].get("type").is_none());
     }
 
     #[test]

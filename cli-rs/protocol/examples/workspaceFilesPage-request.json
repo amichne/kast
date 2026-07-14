@@ -1,0 +1,12 @@
+{
+    "method": "raw/workspace-files",
+    "params": {
+        "kindDomain": "MIXED",
+        "moduleName": "fake-module",
+        "includeFiles": true,
+        "maxFilesPerModule": 1,
+        "snapshotToken": "00000000-0000-4000-8000-000000000002"
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

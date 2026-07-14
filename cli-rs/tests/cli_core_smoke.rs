@@ -85,7 +85,15 @@ fn smoke_core_cli_commands() {
         .expect("agent help");
     assert!(agent_help.status.success());
     let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
-    for command in ["lsp", "verify", "symbol", "impact", "diagnostics", "rename"] {
+    for command in [
+        "lsp",
+        "verify",
+        "workspace-files",
+        "symbol",
+        "impact",
+        "diagnostics",
+        "rename",
+    ] {
         assert!(
             help_lists_command(&agent_help_stdout, command),
             "agent help should show {command}: {agent_help_stdout}"
@@ -117,7 +125,6 @@ fn smoke_core_cli_commands() {
         "references",
         "raw-resolve",
         "raw-diagnostics",
-        "workspace-files",
         "metrics",
     ] {
         let alias_help = kast(&home, &config_home)

@@ -35,6 +35,9 @@ import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationAction
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
@@ -61,6 +64,9 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResult
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationProjection
+import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
@@ -232,6 +238,22 @@ object OpenApiDocument {
         registry.register("WorkspaceSearchResult", WorkspaceSearchResult.serializer())
         registry.register("WorkspaceFilesQuery", WorkspaceFilesQuery.serializer())
         registry.register("WorkspaceFilesResult", WorkspaceFilesResult.serializer())
+        registry.register("WorkspaceFilesContinuationAction", WorkspaceFilesContinuationAction.serializer())
+        registry.register("WorkspaceFilesContinuationQuery", WorkspaceFilesContinuationQuery.serializer())
+        registry.registerSynthetic(
+            "WorkspaceFilesContinuationQuery.Issue",
+            WorkspaceFilesContinuationQuery.serializer(),
+        )
+        registry.registerSynthetic(
+            "WorkspaceFilesContinuationQuery.Consume",
+            WorkspaceFilesContinuationQuery.serializer(),
+        )
+        registry.register("WorkspaceFilesPublicContinuationIdentity", WorkspaceFilesPublicContinuationIdentity.serializer())
+        registry.register("WorkspaceFilesPublicContinuationState", WorkspaceFilesPublicContinuationState.serializer())
+        registry.register("WorkspaceFilesPublicContinuationProjection", WorkspaceFilesPublicContinuationProjection.serializer())
+        registry.register("WorkspaceFilesContinuationResult", WorkspaceFilesContinuationResult.serializer())
+        registry.register("WorkspaceFilesContinuationResult.Issued", WorkspaceFilesContinuationResult.Issued.serializer())
+        registry.register("WorkspaceFilesContinuationResult.Consumed", WorkspaceFilesContinuationResult.Consumed.serializer())
         registry.register("ImplementationsQuery", ImplementationsQuery.serializer())
         registry.register("ImplementationsResult", ImplementationsResult.serializer())
         registry.register("CodeActionsQuery", CodeActionsQuery.serializer())
@@ -372,6 +394,13 @@ object OpenApiDocument {
             responseSchema = "WorkspaceFilesResult",
             capability = "WORKSPACE_FILES",
         ),
+        "/rpc/raw/workspace-files-continuation" to internalReadMethod(
+            operationId = "workspaceFilesContinuation",
+            summary = "Issue or consume server-held public workspace-file continuation state",
+            method = "raw/workspace-files-continuation",
+            requestSchema = "WorkspaceFilesContinuationQuery",
+            responseSchema = "WorkspaceFilesContinuationResult",
+        ),
         "/rpc/raw/implementations" to readMethod(
             operationId = "implementations",
             summary = "Find concrete implementations and subclasses for a declaration",
@@ -496,6 +525,40 @@ object OpenApiDocument {
         ),
     )
 
+    private fun internalReadMethod(
+        operationId: String,
+        summary: String,
+        method: String,
+        requestSchema: String,
+        responseSchema: String,
+    ): Map<String, Any?> = linkedMapOf(
+        "post" to linkedMapOf(
+            "operationId" to operationId,
+            "summary" to summary,
+            "tags" to listOf("read"),
+            "x-jsonrpc-method" to method,
+            "requestBody" to linkedMapOf(
+                "required" to true,
+                "content" to linkedMapOf(
+                    "application/json" to linkedMapOf(
+                        "schema" to ref(requestSchema),
+                    ),
+                ),
+            ),
+            "responses" to linkedMapOf(
+                "200" to linkedMapOf(
+                    "description" to "JSON-RPC success result",
+                    "content" to linkedMapOf(
+                        "application/json" to linkedMapOf(
+                            "schema" to ref(responseSchema),
+                        ),
+                    ),
+                ),
+                "default" to errorResponse(),
+            ),
+        ),
+    )
+
     private fun mutationMethod(
         operationId: String,
         summary: String,
@@ -562,6 +625,14 @@ internal class SchemaRegistry {
         schemas[name] = schemaFor(serializer.descriptor, rootName = name)
     }
 
+    fun registerSynthetic(
+        name: String,
+        serializer: KSerializer<*>,
+    ) {
+        if (schemas.containsKey(name)) return
+        schemas[name] = schemaFor(serializer.descriptor, rootName = name)
+    }
+
     private fun schemaFor(
         descriptor: SerialDescriptor,
         rootName: String? = null,
@@ -569,7 +640,9 @@ internal class SchemaRegistry {
     ): Map<String, Any?> {
         manualUnionSchema(rootName ?: simpleName(descriptor.serialName))?.let { return it }
 
-        val schema = when (descriptor.kind) {
+        val schema = if (descriptor.isInline) {
+            inlineValueSchema(descriptor, rootName ?: simpleName(descriptor.serialName))
+        } else when (descriptor.kind) {
             is PrimitiveKind -> primitiveSchema(descriptor.kind as PrimitiveKind)
             StructureKind.CLASS, StructureKind.OBJECT -> objectSchema(descriptor)
             StructureKind.LIST -> linkedMapOf(
@@ -651,6 +724,7 @@ internal class SchemaRegistry {
     private fun manualUnionSchema(componentName: String): Map<String, Any?>? =
         when (componentName) {
             "FileOperation" -> discriminatedUnion(
+                "type",
                 "CREATE_FILE" to "FileOperation.CreateFile",
                 "DELETE_FILE" to "FileOperation.DeleteFile",
             )
@@ -663,6 +737,7 @@ internal class SchemaRegistry {
                 discriminatorValue = "DELETE_FILE",
             )
             "ResultCardinality" -> discriminatedUnion(
+                "type",
                 "EXACT" to "EXACT",
                 "KNOWN_MINIMUM" to "KNOWN_MINIMUM",
             )
@@ -674,8 +749,51 @@ internal class SchemaRegistry {
                 ResultCardinality.KnownMinimum.serializer(),
                 discriminatorValue = "KNOWN_MINIMUM",
             )
+            "WorkspaceFilesContinuationQuery" -> discriminatedUnion(
+                "action",
+                "ISSUE" to "WorkspaceFilesContinuationQuery.Issue",
+                "CONSUME" to "WorkspaceFilesContinuationQuery.Consume",
+            )
+            "WorkspaceFilesContinuationQuery.Issue" -> continuationQueryVariant(
+                action = "ISSUE",
+                payloadName = "state",
+                payloadSchema = refSchema("WorkspaceFilesPublicContinuationState"),
+            )
+            "WorkspaceFilesContinuationQuery.Consume" -> continuationQueryVariant(
+                action = "CONSUME",
+                payloadName = "pageToken",
+                payloadSchema = refSchema("WorkspaceFilesPublicPageToken"),
+            )
+            "WorkspaceFilesContinuationResult" -> discriminatedUnion(
+                "type",
+                "ISSUED" to "WorkspaceFilesContinuationResult.Issued",
+                "CONSUMED" to "WorkspaceFilesContinuationResult.Consumed",
+            )
+            "WorkspaceFilesContinuationResult.Issued" -> subtypeWithDiscriminator(
+                WorkspaceFilesContinuationResult.Issued.serializer(),
+                discriminatorValue = "ISSUED",
+            )
+            "WorkspaceFilesContinuationResult.Consumed" -> subtypeWithDiscriminator(
+                WorkspaceFilesContinuationResult.Consumed.serializer(),
+                discriminatorValue = "CONSUMED",
+            )
             else -> null
         }
+
+    private fun continuationQueryVariant(
+        action: String,
+        payloadName: String,
+        payloadSchema: Map<String, Any?>,
+    ): Map<String, Any?> = linkedMapOf(
+        "type" to "object",
+        "properties" to linkedMapOf(
+            "action" to linkedMapOf("type" to "string", "const" to action),
+            "identity" to refSchema("WorkspaceFilesPublicContinuationIdentity"),
+            payloadName to payloadSchema,
+        ),
+        "additionalProperties" to false,
+        "required" to listOf("action", "identity", payloadName),
+    )
 
     private fun subtypeWithDiscriminator(
         serializer: KSerializer<*>,
@@ -696,7 +814,10 @@ internal class SchemaRegistry {
         return base
     }
 
-    private fun discriminatedUnion(vararg mappingEntries: Pair<String, String>): Map<String, Any?> {
+    private fun discriminatedUnion(
+        propertyName: String,
+        vararg mappingEntries: Pair<String, String>,
+    ): Map<String, Any?> {
         val mapping = linkedMapOf<String, String>()
         val refs = mutableListOf<Any?>()
         mappingEntries.forEach { (value, component) ->
@@ -706,11 +827,49 @@ internal class SchemaRegistry {
         return linkedMapOf(
             "oneOf" to refs,
             "discriminator" to linkedMapOf(
-                "propertyName" to "type",
+                "propertyName" to propertyName,
                 "mapping" to mapping,
             ),
         )
     }
+
+    private fun inlineValueSchema(
+        descriptor: SerialDescriptor,
+        componentName: String,
+    ): Map<String, Any?> {
+        val valueDescriptor = descriptor.getElementDescriptor(0)
+        val schema = LinkedHashMap(primitiveSchema(valueDescriptor.kind as PrimitiveKind))
+        when (componentName) {
+            "WorkspaceRoot", "BackendName", "NormalizedQuery", "Projection" -> schema["minLength"] = 1
+            "Limit" -> {
+                schema["minimum"] = 1
+                schema["maximum"] = 200
+            }
+            "CompositionStampDigest" -> {
+                schema["minLength"] = 64
+                schema["maxLength"] = 64
+                schema["pattern"] = "^[0-9a-f]{64}$"
+            }
+            "LastRelativePath" -> {
+                schema["minLength"] = 1
+                schema["pattern"] =
+                    "^(?!/)(?![A-Za-z]:)(?![.]{1,2}(?:/|$))(?!.*(?:/)[.]{1,2}(?:/|$))" +
+                    "(?!.*//)[^\\\\\\u0000-\\u001F\\u007F-\\u009F]+$"
+            }
+            "CumulativeReturnedCount" -> schema["minimum"] = 0
+            "WorkspaceFilesPublicPageToken" -> {
+                schema["format"] = "uuid"
+                schema["minLength"] = 36
+                schema["maxLength"] = 36
+                schema["pattern"] =
+                    "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+        }
+        return schema
+    }
+
+    private fun refSchema(componentName: String): Map<String, Any?> =
+        linkedMapOf("\$ref" to "#/components/schemas/$componentName")
 
     private fun primitiveSchema(kind: PrimitiveKind): Map<String, Any?> =
         when (kind) {
@@ -835,7 +994,8 @@ private fun renderScalar(value: Any?): String = when (value) {
         value.isEmpty() -> "\"\""
         value.startsWith("#") || value.contains(": ") || value.contains("\"") ||
         value == "true" || value == "false" || value == "null" ||
-        value.contains("{") || value.contains("}") -> "\"${value.replace("\"", "\\\"")}\""
+        value.contains("{") || value.contains("}") ->
+            "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
         else -> value
     }
     else -> value.toString()

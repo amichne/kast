@@ -24,6 +24,8 @@ mod source_index_schema;
 mod symbol_query;
 mod symbol_query_filters;
 mod validate;
+#[cfg(test)]
+mod workspace_inventory;
 
 use clap::{CommandFactory, Parser};
 use cli::{Cli, Command, GenerateCommand, OutputFormat, ShellKind};

@@ -33,6 +33,14 @@
         "includeFiles": {
           "type": "boolean"
         },
+        "kindDomain": {
+          "enum": [
+            "SOURCE_ONLY",
+            "SCRIPT_ONLY",
+            "MIXED"
+          ],
+          "type": "string"
+        },
         "maxFilesPerModule": {
           "type": [
             "integer",
@@ -40,6 +48,18 @@
           ]
         },
         "moduleName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pageToken": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "snapshotToken": {
           "type": [
             "string",
             "null"

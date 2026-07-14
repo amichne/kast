@@ -1,6 +1,6 @@
-package io.github.amichne.kast.idea
+package io.github.amichne.kast.api.continuation
 
-internal fun interface ContinuationClock {
+fun interface ContinuationClock {
     fun nowNanos(): Long
 
     companion object {

@@ -1,6 +1,6 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.api.contract.AnalysisBackend
+import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.HealthResponse
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
@@ -40,9 +40,9 @@ import io.github.amichne.kast.api.validation.ParsedWorkspaceSearchQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceSymbolQuery
 
 internal class ObservedAnalysisBackend(
-    private val delegate: AnalysisBackend,
+    private val delegate: CloseableAnalysisBackend,
     private val diagnostics: KastDiagnosticsService,
-) : AnalysisBackend {
+) : CloseableAnalysisBackend {
     override suspend fun capabilities(): BackendCapabilities = observe(KastBackendOperation.CAPABILITIES) {
         delegate.capabilities().also(diagnostics::recordCapabilities)
     }
@@ -107,6 +107,10 @@ internal class ObservedAnalysisBackend(
 
     override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult =
         observe(KastBackendOperation.COMPLETIONS) { delegate.completions(query) }
+
+    override fun close() {
+        delegate.close()
+    }
 
     private suspend inline fun <T> observe(
         operation: KastBackendOperation,

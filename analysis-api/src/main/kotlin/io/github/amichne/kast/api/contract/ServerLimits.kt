@@ -2,9 +2,12 @@
 
 package io.github.amichne.kast.api.contract
 
+import io.github.amichne.kast.api.continuation.ContinuationCapacity
+import io.github.amichne.kast.api.continuation.ContinuationTtl
 import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.*
 
+import java.time.Duration
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -17,4 +20,22 @@ data class ServerLimits(
     val maxConcurrentRequests: Int,
     @DocField(description = "Maximum time in milliseconds to spend walking a single candidate file during reference search. Files whose PSI walk exceeds this budget are skipped.")
     val perFileScanBudgetMillis: Long = 5_000,
-)
+    @DocField(
+        description = "Fixed lifetime in milliseconds from issuance before a server-held continuation expires.",
+        defaultValue = "60000",
+    )
+    val continuationTtlMillis: Long = 60_000,
+    @DocField(description = "Maximum server-held continuations retained by one typed store.", defaultValue = "256")
+    val continuationCapacity: Int = 256,
+) {
+    val typedContinuationTtl: ContinuationTtl
+        get() = ContinuationTtl.of(Duration.ofMillis(continuationTtlMillis))
+
+    val typedContinuationCapacity: ContinuationCapacity
+        get() = ContinuationCapacity.of(continuationCapacity)
+
+    init {
+        require(continuationTtlMillis > 0) { "Continuation time to live must be positive" }
+        require(continuationCapacity > 0) { "Continuation capacity must be positive" }
+    }
+}

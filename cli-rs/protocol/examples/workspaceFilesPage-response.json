@@ -1,0 +1,27 @@
+{
+    "result": {
+        "modules": [
+            {
+                "name": "fake-module",
+                "sourceRoots": [
+                    "/workspace/src"
+                ],
+                "contentRoots": [
+                    "/workspace"
+                ],
+                "dependencyModuleNames": [],
+                "files": [
+                    "/workspace/src/Sample.kt"
+                ],
+                "returnedFileCount": 1,
+                "nextPageToken": "00000000-0000-4000-8000-000000000001",
+                "filesTruncated": true,
+                "fileCount": 2
+            }
+        ],
+        "snapshotToken": "00000000-0000-4000-8000-000000000002",
+        "schemaVersion": 3
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}
