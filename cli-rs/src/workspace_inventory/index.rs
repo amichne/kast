@@ -20,6 +20,9 @@ use super::model::{
 
 type FileKey = (i64, String);
 
+const ABSOLUTE_PATH_PREFIX: &str = "__kast_abs__/";
+const RELATIVE_ESCAPE_PREFIX: &str = "__kast_rel__/";
+
 const REQUIRED_TABLE_COLUMNS: &[(&str, &[&str])] = &[
     ("schema_version", &["version", "generation"]),
     ("path_prefixes", &["prefix_id", "dir_path"]),
@@ -379,6 +382,18 @@ fn read_module_progress(
 fn read_pending_count(
     transaction: &Transaction<'_>,
 ) -> Result<SourceIndexPendingCount, ReadDatabaseError> {
+    let invalid_count = transaction
+        .query_row(
+            "SELECT COUNT(*) FROM pending_updates WHERE applied IS NULL OR typeof(applied) <> 'integer' OR applied NOT IN (0, 1)",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map_err(incompatible_sql)?;
+    if invalid_count > 0 {
+        return Err(ReadDatabaseError::Incompatible(format!(
+            "pending_updates contains {invalid_count} invalid applied states"
+        )));
+    }
     let count = transaction
         .query_row(
             "SELECT COUNT(*) FROM pending_updates WHERE applied = 0",
@@ -566,13 +581,19 @@ fn decode_package(row: &ManifestRow) -> (WorkspacePackageEvidence, bool) {
 }
 
 fn relative_manifest_path(dir_path: &str, filename: &str) -> Option<WorkspaceFilePath> {
-    if dir_path.contains('\\') || filename.contains(['/', '\\']) {
+    if dir_path.starts_with(ABSOLUTE_PATH_PREFIX) {
         return None;
     }
-    let path = if dir_path.is_empty() {
+    let relative_dir = dir_path
+        .strip_prefix(RELATIVE_ESCAPE_PREFIX)
+        .unwrap_or(dir_path);
+    if relative_dir.contains('\\') || filename.contains(['/', '\\']) {
+        return None;
+    }
+    let path = if relative_dir.is_empty() {
         PathBuf::from(filename)
     } else {
-        PathBuf::from(dir_path).join(filename)
+        PathBuf::from(relative_dir).join(filename)
     };
     WorkspaceFilePath::from_relative_path(path)
 }
@@ -663,6 +684,10 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
         }
     }
     verify_primary_key(transaction, "file_metadata", &["prefix_id", "filename"])?;
+    verify_primary_key(transaction, "path_prefixes", &["prefix_id"])?;
+    verify_primary_key(transaction, "fq_names", &["fq_id"])?;
+    verify_primary_key(transaction, "file_manifest", &["prefix_id", "filename"])?;
+    verify_primary_key(transaction, "module_index_progress", &["module_name"])?;
     verify_primary_key(
         transaction,
         "file_gradle_projects",
@@ -679,6 +704,20 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
             "source_set_name",
         ],
     )?;
+    verify_not_null(transaction, "schema_version", &["version", "generation"])?;
+    verify_not_null(transaction, "path_prefixes", &["dir_path"])?;
+    verify_not_null(transaction, "fq_names", &["fq_name"])?;
+    verify_not_null(
+        transaction,
+        "file_manifest",
+        &["prefix_id", "filename", "last_modified_millis"],
+    )?;
+    verify_not_null(
+        transaction,
+        "module_index_progress",
+        &["phase2_status", "indexed_file_count", "total_file_count"],
+    )?;
+    verify_not_null(transaction, "pending_updates", &["applied"])?;
     verify_not_null(
         transaction,
         "file_metadata",
@@ -726,7 +765,10 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
         ],
         "CASCADE",
     )?;
+    verify_unique_key(transaction, "path_prefixes", &["dir_path"])?;
+    verify_unique_key(transaction, "fq_names", &["fq_name"])?;
     verify_package_checks(transaction)?;
+    verify_progress_checks(transaction)?;
     Ok(())
 }
 
@@ -790,6 +832,52 @@ fn verify_not_null(
     Ok(())
 }
 
+fn verify_unique_key(
+    transaction: &Transaction<'_>,
+    table: &str,
+    expected: &[&str],
+) -> Result<(), ReadDatabaseError> {
+    let mut statement = transaction
+        .prepare(&format!("PRAGMA index_list({table})"))
+        .map_err(incompatible_sql)?;
+    let indexes = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)? != 0,
+                row.get::<_, i64>(4)? != 0,
+            ))
+        })
+        .map_err(incompatible_sql)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(incompatible_sql)?;
+    for (index, unique, partial) in indexes {
+        if !unique || partial {
+            continue;
+        }
+        let quoted_index = index.replace('\'', "''");
+        let mut index_statement = transaction
+            .prepare(&format!("PRAGMA index_info('{quoted_index}')"))
+            .map_err(incompatible_sql)?;
+        let columns = index_statement
+            .query_map([], |row| row.get::<_, String>(2))
+            .map_err(incompatible_sql)?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(incompatible_sql)?;
+        if columns
+            .iter()
+            .map(String::as_str)
+            .eq(expected.iter().copied())
+        {
+            return Ok(());
+        }
+    }
+    Err(ReadDatabaseError::Incompatible(format!(
+        "source-index table `{table}` lacks the required unique key ({})",
+        expected.join(", ")
+    )))
+}
+
 fn verify_foreign_key(
     transaction: &Transaction<'_>,
     table: &str,
@@ -839,22 +927,7 @@ fn verify_foreign_key(
 }
 
 fn verify_package_checks(transaction: &Transaction<'_>) -> Result<(), ReadDatabaseError> {
-    let sql = transaction
-        .query_row(
-            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'file_metadata'",
-            [],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(incompatible_sql)?
-        .ok_or_else(|| {
-            ReadDatabaseError::Incompatible("file_metadata DDL is unavailable".to_string())
-        })?;
-    let normalized: String = sql
-        .chars()
-        .filter(|character| !character.is_whitespace())
-        .flat_map(char::to_uppercase)
-        .collect();
+    let normalized = normalized_table_sql(transaction, "file_metadata")?;
     let required_tokens = [
         "PROVEN_ROOT",
         "PROVEN_NAMED",
@@ -880,6 +953,36 @@ fn verify_package_checks(transaction: &Transaction<'_>) -> Result<(), ReadDataba
         ));
     }
     Ok(())
+}
+
+fn verify_progress_checks(transaction: &Transaction<'_>) -> Result<(), ReadDatabaseError> {
+    let normalized = normalized_table_sql(transaction, "module_index_progress")?;
+    if !normalized.contains("PHASE2_STATUSIN('PENDING','INDEXING','COMPLETE','FAILED')") {
+        return Err(ReadDatabaseError::Incompatible(
+            "module_index_progress status CHECK contract is incomplete".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn normalized_table_sql(
+    transaction: &Transaction<'_>,
+    table: &str,
+) -> Result<String, ReadDatabaseError> {
+    let sql = transaction
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+            [table],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(incompatible_sql)?
+        .ok_or_else(|| ReadDatabaseError::Incompatible(format!("{table} DDL is unavailable")))?;
+    Ok(sql
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .flat_map(char::to_uppercase)
+        .collect())
 }
 
 fn coverage_dimension(partial: bool) -> WorkspaceCoverageDimension {
@@ -972,6 +1075,10 @@ struct AssociationRows {
     source_sets: BTreeMap<FileKey, BTreeSet<BuildQualifiedGradleSourceSetIdentity>>,
     invalid_source_sets: BTreeMap<FileKey, usize>,
 }
+
+#[cfg(test)]
+#[path = "index_regressions.rs"]
+mod index_regressions;
 
 impl AssociationRows {
     fn remove_orphan_rows(&mut self, manifest_keys: &BTreeSet<FileKey>) -> usize {
