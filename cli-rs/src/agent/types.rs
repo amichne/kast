@@ -706,6 +706,12 @@ enum AgentSymbolLookupOutcome {
         #[serde(skip_serializing_if = "Option::is_none")]
         compiler_fallback: Option<AgentCompilerFallback>,
     },
+    IdentityAnchorUnavailable {
+        source: AgentSymbolLookupSource,
+        query: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        compiler_fallback: Option<AgentCompilerFallback>,
+    },
     NotFound {
         source: AgentSymbolLookupSource,
         query: String,
@@ -767,4 +773,24 @@ struct AgentCompilerSymbolIdentity {
     fq_name: String,
     #[serde(flatten)]
     fields: BTreeMap<String, Value>,
+}
+
+impl AgentCompilerSymbolIdentity {
+    fn has_complete_anchor(&self) -> bool {
+        let location = self.fields.get("location").and_then(Value::as_object);
+        !self.fq_name.trim().is_empty()
+            && self
+                .fields
+                .get("kind")
+                .and_then(Value::as_str)
+                .is_some_and(|kind| !kind.trim().is_empty())
+            && location
+                .and_then(|location| location.get("filePath"))
+                .and_then(Value::as_str)
+                .is_some_and(|path| !path.trim().is_empty())
+            && location
+                .and_then(|location| location.get("startOffset"))
+                .and_then(Value::as_u64)
+                .is_some()
+    }
 }

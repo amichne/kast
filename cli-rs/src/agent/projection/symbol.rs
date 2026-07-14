@@ -17,6 +17,10 @@ enum AgentSymbolOutcomeProjectionInput {
         #[serde(default)]
         relations: Vec<AgentSymbolRelationProjectionInput>,
     },
+    IdentityAnchorUnavailable {
+        source: String,
+        query: String,
+    },
     NotFound {
         source: String,
         query: String,
@@ -105,7 +109,13 @@ struct AgentSymbolEvidenceInput {
     #[serde(default)]
     kind: Option<String>,
     #[serde(default)]
+    containing_type: Option<String>,
+    #[serde(default)]
     location: Option<AgentLocationInput>,
+    #[serde(default)]
+    file: Option<AgentIndexedFileInput>,
+    #[serde(default)]
+    declaration_offset: Option<u64>,
     #[serde(default)]
     declaration: Option<AgentIndexedDeclarationInput>,
 }
@@ -154,6 +164,12 @@ struct AgentSymbolIdentityProjection {
     fq_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    declaration_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    declaration_start_offset: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    containing_type: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -169,17 +185,47 @@ impl TryFrom<Value> for AgentSymbolEvidenceProjection {
         let input = serde_json::from_value::<AgentSymbolEvidenceInput>(value)
             .map_err(|error| error.to_string())?;
         match (input.fq_name, input.declaration) {
-            (Some(fq_name), _) => Ok(Self {
-                identity: AgentSymbolIdentityProjection {
-                    fq_name,
-                    kind: input.kind,
-                },
-                location: input.location,
-            }),
+            (Some(fq_name), _) => {
+                let declaration_file = input
+                    .location
+                    .as_ref()
+                    .map(|location| location.file_path.clone())
+                    .or_else(|| input.file.as_ref().map(|file| file.path.clone()));
+                let declaration_start_offset = input
+                    .location
+                    .as_ref()
+                    .and_then(|location| location.start_offset)
+                    .or(input.declaration_offset);
+                let location = input.location.or_else(|| {
+                    declaration_file
+                        .as_ref()
+                        .map(|file_path| AgentLocationInput {
+                            file_path: file_path.clone(),
+                            start_offset: declaration_start_offset,
+                            end_offset: None,
+                            start_line: None,
+                            start_column: None,
+                            preview: None,
+                        })
+                });
+                Ok(Self {
+                    identity: AgentSymbolIdentityProjection {
+                        fq_name,
+                        kind: input.kind,
+                        declaration_file,
+                        declaration_start_offset,
+                        containing_type: input.containing_type,
+                    },
+                    location,
+                })
+            }
             (None, Some(declaration)) => Ok(Self {
                 identity: AgentSymbolIdentityProjection {
                     fq_name: declaration.fq_name,
                     kind: Some(declaration.kind),
+                    declaration_file: Some(declaration.file.path.clone()),
+                    declaration_start_offset: declaration.declaration_offset,
+                    containing_type: input.containing_type,
                 },
                 location: Some(AgentLocationInput {
                     file_path: declaration.file.path,
@@ -260,6 +306,12 @@ impl AgentSymbolProjection {
                 relations,
             } => {
                 let symbol = AgentSymbolEvidenceProjection::try_from(symbol)?;
+                if symbol.identity.declaration_file.is_none()
+                    || symbol.identity.declaration_start_offset.is_none()
+                    || symbol.identity.kind.is_none()
+                {
+                    return Err("resolved symbol omitted its reusable declaration anchor".to_string());
+                }
                 Ok(Self {
                     mode,
                     outcome: "RESOLVED",
@@ -275,6 +327,19 @@ impl AgentSymbolProjection {
                             AgentRelationshipProjection::try_from_input(relation, relation_limit)
                         })
                         .collect::<std::result::Result<Vec<_>, _>>()?,
+                })
+            }
+            AgentSymbolOutcomeProjectionInput::IdentityAnchorUnavailable { source, query } => {
+                Ok(Self {
+                    mode,
+                    outcome: "IDENTITY_ANCHOR_UNAVAILABLE",
+                    ambiguous: false,
+                    source,
+                    query: Some(query),
+                    identity: None,
+                    location: None,
+                    candidates: Vec::new(),
+                    relationships: Vec::new(),
                 })
             }
             AgentSymbolOutcomeProjectionInput::NotFound { source, query } => Ok(Self {

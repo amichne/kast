@@ -99,7 +99,7 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
         }
     };
     match parsed {
-        AgentCompilerResolveResponse::Resolved { symbol } => {
+        AgentCompilerResolveResponse::Resolved { symbol } if symbol.has_complete_anchor() => {
             let symbol = serde_json::to_value(symbol).unwrap_or(Value::Null);
             symbol_lookup_envelope(
                 args.mode,
@@ -113,6 +113,15 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
                 },
             )
         }
+        AgentCompilerResolveResponse::Resolved { .. } => symbol_lookup_envelope(
+            args.mode,
+            compiler_request,
+            AgentSymbolLookupOutcome::IdentityAnchorUnavailable {
+                source: AgentSymbolLookupSource::Compiler,
+                query: args.query,
+                compiler_fallback: None,
+            },
+        ),
         AgentCompilerResolveResponse::NotFound => symbol_lookup_envelope(
             args.mode,
             compiler_request,
@@ -230,11 +239,16 @@ fn indexed_exact_or_compiler_error(
             query: args.query.clone(),
             compiler_fallback: Some(fallback),
         },
-        [symbol] => AgentSymbolLookupOutcome::Resolved {
+        [symbol] if symbol_has_complete_anchor(symbol) => AgentSymbolLookupOutcome::Resolved {
             source: AgentSymbolLookupSource::IndexedExact,
             symbol: symbol.clone(),
             resolution: result,
             relations: Vec::new(),
+            compiler_fallback: Some(fallback),
+        },
+        [_] => AgentSymbolLookupOutcome::IdentityAnchorUnavailable {
+            source: AgentSymbolLookupSource::IndexedExact,
+            query: args.query.clone(),
             compiler_fallback: Some(fallback),
         },
         _ => AgentSymbolLookupOutcome::Ambiguous {
@@ -245,6 +259,42 @@ fn indexed_exact_or_compiler_error(
         },
     };
     symbol_lookup_envelope(args.mode, request, outcome)
+}
+
+fn symbol_has_complete_anchor(symbol: &Value) -> bool {
+    let direct_location = symbol.get("location");
+    let declaration = symbol.get("declaration");
+    let fq_name = symbol
+        .get("fqName")
+        .or_else(|| declaration.and_then(|value| value.get("fqName")))
+        .and_then(Value::as_str);
+    let kind = symbol
+        .get("kind")
+        .or_else(|| declaration.and_then(|value| value.get("kind")))
+        .and_then(Value::as_str);
+    let file_path = direct_location
+        .and_then(|value| value.get("filePath"))
+        .or_else(|| {
+            symbol
+                .get("file")
+                .and_then(|value| value.get("path"))
+        })
+        .or_else(|| {
+            declaration
+                .and_then(|value| value.get("file"))
+                .and_then(|value| value.get("path"))
+        })
+        .and_then(Value::as_str);
+    let start_offset = direct_location
+        .and_then(|value| value.get("startOffset"))
+        .or_else(|| symbol.get("declarationOffset"))
+        .or_else(|| declaration.and_then(|value| value.get("declarationOffset")))
+        .and_then(Value::as_u64);
+
+    fq_name.is_some_and(|value| !value.trim().is_empty())
+        && kind.is_some_and(|value| !value.trim().is_empty())
+        && file_path.is_some_and(|value| !value.trim().is_empty())
+        && start_offset.is_some()
 }
 
 fn successful_symbol_query_result(
