@@ -4,7 +4,12 @@ import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.continuation.ContinuationAccessFailure
 import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
 import io.github.amichne.kast.api.continuation.ContinuationIssueResult
+import io.github.amichne.kast.api.continuation.ContinuationLeaseResult
+import io.github.amichne.kast.api.continuation.ContinuationOwnedState
+import io.github.amichne.kast.api.continuation.ContinuationProjection
 import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
+import io.github.amichne.kast.api.continuation.ContinuationStateProjection
+import io.github.amichne.kast.api.continuation.ContinuationStateTransition
 import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ContinuationTransition
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore
@@ -32,9 +37,12 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorException
+import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorScope
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.protocol.ValidationException
+import io.github.amichne.kast.api.protocol.WorkspaceInventoryStaleException
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.ParameterInfo
@@ -63,6 +71,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import java.nio.file.Files
 import java.nio.file.FileSystems
 import java.nio.file.Path
@@ -84,23 +93,60 @@ class FakeAnalysisBackend private constructor(
     private val backendName: String,
 ) : CloseableAnalysisBackend {
     private val referenceContinuations =
-        ServerHeldContinuationStore<ReferencePageToken, FakeReferenceIdentity, FakeReferenceContinuation>(
+        ServerHeldContinuationStore<
+            ReferencePageToken,
+            FakeReferenceIdentity,
+            FakeReferenceContinuation,
+            FakeReferencePage,
+        >(
             capacity = limits.typedContinuationCapacity,
             timeToLive = limits.typedContinuationTtl,
             tokenIssuer = ContinuationTokenIssuer(ReferencePageToken::random),
             stateDisposer = ContinuationStateDisposer { },
         )
     private val diagnosticContinuations =
-        ServerHeldContinuationStore<DiagnosticPageToken, FakeDiagnosticIdentity, FakeDiagnosticContinuation>(
+        ServerHeldContinuationStore<
+            DiagnosticPageToken,
+            FakeDiagnosticIdentity,
+            FakeDiagnosticContinuation,
+            FakeDiagnosticPage,
+        >(
             capacity = limits.typedContinuationCapacity,
             timeToLive = limits.typedContinuationTtl,
             tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
+            stateDisposer = ContinuationStateDisposer { },
+        )
+    private val workspaceSnapshots =
+        ServerHeldContinuationStore<
+            WorkspaceFileSnapshotToken,
+            FakeWorkspaceSnapshotIdentity,
+            FakeWorkspaceSnapshotState,
+            FakeWorkspaceInventory,
+        >(
+            capacity = limits.typedContinuationCapacity,
+            timeToLive = limits.typedContinuationTtl,
+            tokenIssuer = ContinuationTokenIssuer(WorkspaceFileSnapshotToken::random),
+            stateDisposer = ContinuationStateDisposer { },
+        )
+    private val workspacePages =
+        ServerHeldContinuationStore<
+            WorkspaceFilePageToken,
+            FakeWorkspacePageIdentity,
+            FakeWorkspacePageState,
+            FakeWorkspacePage,
+        >(
+            capacity = limits.typedContinuationCapacity,
+            timeToLive = limits.typedContinuationTtl,
+            tokenIssuer = ContinuationTokenIssuer(WorkspaceFilePageToken::random),
             stateDisposer = ContinuationStateDisposer { },
         )
     private val availableFiles: MutableSet<String> = buildSet {
         addAll(symbolAnchors.map(Location::filePath))
         addAll(diagnosticsByFile.keys)
         addAll(typeHierarchyAnchors.map(Location::filePath))
+        Files.walk(workspaceRoot).use { paths ->
+            paths.filter(Files::isRegularFile).map(Path::toString).forEach(::add)
+        }
     }.toMutableSet()
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
@@ -628,28 +674,49 @@ class FakeAnalysisBackend private constructor(
     }
 
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult {
-        val allFiles = availableFiles.filter { it.endsWith(".kt") }.sorted()
-        val fileLimit = query.maxFilesPerModule?.value ?: allFiles.size
-        val files = if (query.includeFiles) {
-            allFiles.take(fileLimit)
+        val suppliedSnapshotToken = query.snapshotToken
+        val snapshot = if (suppliedSnapshotToken == null) {
+            val inventory = workspaceInventory(query.kindDomain)
+            val token = issueWorkspaceSnapshot(query.kindDomain, inventory)
+            FakeWorkspaceSnapshot(token, inventory)
         } else {
-            emptyList()
+            FakeWorkspaceSnapshot(
+                token = suppliedSnapshotToken,
+                inventory = leaseWorkspaceSnapshot(suppliedSnapshotToken, query.kindDomain),
+            )
         }
-        val module = WorkspaceModule(
-            name = "fake-module",
-            sourceRoots = listOf(workspaceRoot.resolve("src").toString()),
-            dependencyModuleNames = emptyList(),
-            files = files,
-            filesTruncated = query.includeFiles && allFiles.size > files.size,
-            fileCount = allFiles.size,
+
+        val requestedModule = query.moduleName?.value
+        if (!query.includeFiles) {
+            return workspaceFilesResult(
+                snapshot = snapshot,
+                modules = workspaceMetadataModules(snapshot.inventory, requestedModule),
+            )
+        }
+        if (requestedModule != null && requestedModule != FAKE_MODULE_NAME) {
+            query.pageToken?.let {
+                throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
+            }
+            return workspaceFilesResult(snapshot, emptyList())
+        }
+
+        val pageSize = query.maxFilesPerModule?.value ?: snapshot.inventory.files.size.coerceAtLeast(1)
+        val identity = FakeWorkspacePageIdentity(
+            snapshotToken = snapshot.token,
+            kindDomain = query.kindDomain,
+            moduleName = requestedModule,
+            pageSize = pageSize,
         )
-        val requestedModuleName = query.moduleName?.value
-        val modules = if (requestedModuleName == null || requestedModuleName == "fake-module") {
-            listOf(module)
+        val pageToken = query.pageToken
+        val page = if (pageToken == null) {
+            firstWorkspacePage(snapshot.inventory, identity)
         } else {
-            emptyList()
+            consumeWorkspacePage(pageToken, identity, snapshot.inventory)
         }
-        return WorkspaceFilesResult(modules = modules)
+        return workspaceFilesResult(
+            snapshot = snapshot,
+            modules = listOf(workspaceModule(snapshot.inventory, page)),
+        )
     }
 
     override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult {
@@ -687,16 +754,135 @@ class FakeAnalysisBackend private constructor(
     }
 
     override fun close() {
-        val referenceFailure = runCatching(referenceContinuations::close).exceptionOrNull()
-        val diagnosticFailure = runCatching(diagnosticContinuations::close).exceptionOrNull()
-        when {
-            referenceFailure != null -> {
-                diagnosticFailure?.let(referenceFailure::addSuppressed)
-                throw referenceFailure
-            }
-            diagnosticFailure != null -> throw diagnosticFailure
+        val failures = listOf(
+            referenceContinuations,
+            diagnosticContinuations,
+            workspaceSnapshots,
+            workspacePages,
+        ).mapNotNull { store -> runCatching(store::close).exceptionOrNull() }
+        failures.firstOrNull()?.let { firstFailure ->
+            failures.drop(1).forEach(firstFailure::addSuppressed)
+            throw firstFailure
         }
     }
+
+    private fun workspaceInventory(kindDomain: WorkspaceFileKindDomain): FakeWorkspaceInventory =
+        FakeWorkspaceInventory(
+            files = availableFiles
+                .asSequence()
+                .filter { filePath -> kindDomain.admits(filePath) }
+                .sorted()
+                .toList(),
+        )
+
+    private fun issueWorkspaceSnapshot(
+        kindDomain: WorkspaceFileKindDomain,
+        inventory: FakeWorkspaceInventory,
+    ): WorkspaceFileSnapshotToken = when (val issued = workspaceSnapshots.issue(
+        query = FakeWorkspaceSnapshotIdentity(kindDomain),
+        state = FakeWorkspaceSnapshotState(inventory),
+    )) {
+        is ContinuationIssueResult.Issued -> issued.token
+        is ContinuationIssueResult.Rejected ->
+            throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.SNAPSHOT_HANDLE)
+    }
+
+    private fun leaseWorkspaceSnapshot(
+        token: WorkspaceFileSnapshotToken,
+        kindDomain: WorkspaceFileKindDomain,
+    ): FakeWorkspaceInventory = when (val leased = workspaceSnapshots.lease(
+        token = token,
+        query = FakeWorkspaceSnapshotIdentity(kindDomain),
+        projection = ContinuationStateProjection { state ->
+            val current = workspaceInventory(kindDomain)
+            if (current != state.inventory) throw WorkspaceInventoryStaleException()
+            state.inventory
+        },
+    )) {
+        is ContinuationLeaseResult.Granted -> leased.output
+        is ContinuationLeaseResult.Rejected ->
+            throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.SNAPSHOT_HANDLE)
+    }
+
+    private fun firstWorkspacePage(
+        inventory: FakeWorkspaceInventory,
+        identity: FakeWorkspacePageIdentity,
+    ): FakeWorkspacePage {
+        val page = FakeWorkspacePage.from(inventory, offset = 0, pageSize = identity.pageSize)
+        val nextPageToken = if (page.hasMore) {
+            issueWorkspacePage(
+                identity = identity,
+                state = FakeWorkspacePageState(inventory, page.nextOffset),
+            ).value
+        } else {
+            null
+        }
+        return page.copy(nextPageToken = nextPageToken)
+    }
+
+    private fun issueWorkspacePage(
+        identity: FakeWorkspacePageIdentity,
+        state: FakeWorkspacePageState,
+    ): WorkspaceFilePageToken = when (val issued = workspacePages.issue(identity, state)) {
+        is ContinuationIssueResult.Issued -> issued.token
+        is ContinuationIssueResult.Rejected ->
+            throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
+    }
+
+    private fun consumeWorkspacePage(
+        token: WorkspaceFilePageToken,
+        identity: FakeWorkspacePageIdentity,
+        inventory: FakeWorkspaceInventory,
+    ): FakeWorkspacePage = when (val consumed = workspacePages.consume(
+        token = token,
+        query = identity,
+        transition = ContinuationStateTransition { state ->
+            if (state.inventory != inventory) throw WorkspaceInventoryStaleException()
+            val page = FakeWorkspacePage.from(state.inventory, state.nextOffset, identity.pageSize)
+            if (page.hasMore) {
+                state.nextOffset = page.nextOffset
+                ContinuationTransition.Reissue(page, identity)
+            } else {
+                ContinuationTransition.Complete(page)
+            }
+        },
+    )) {
+        is ContinuationConsumeResult.Completed -> consumed.output
+        is ContinuationConsumeResult.Reissued -> consumed.output.copy(nextPageToken = consumed.token.value)
+        is ContinuationConsumeResult.Rejected ->
+            throw InvalidWorkspaceFileCursorException(InvalidWorkspaceFileCursorScope.PAGE_HANDLE)
+    }
+
+    private fun workspaceMetadataModules(
+        inventory: FakeWorkspaceInventory,
+        requestedModule: String?,
+    ): List<WorkspaceModule> = if (requestedModule == null || requestedModule == FAKE_MODULE_NAME) {
+        listOf(workspaceModule(inventory, FakeWorkspacePage.empty()))
+    } else {
+        emptyList()
+    }
+
+    private fun workspaceModule(
+        inventory: FakeWorkspaceInventory,
+        page: FakeWorkspacePage,
+    ): WorkspaceModule = WorkspaceModule(
+        name = FAKE_MODULE_NAME,
+        sourceRoots = listOf(workspaceRoot.resolve("src").toString()),
+        contentRoots = listOf(workspaceRoot.toString()),
+        dependencyModuleNames = emptyList(),
+        files = page.files,
+        nextPageToken = page.nextPageToken,
+        filesTruncated = page.hasMore,
+        fileCount = inventory.files.size,
+    )
+
+    private fun workspaceFilesResult(
+        snapshot: FakeWorkspaceSnapshot,
+        modules: List<WorkspaceModule>,
+    ): WorkspaceFilesResult = WorkspaceFilesResult(
+        modules = modules,
+        snapshotToken = snapshot.token.value,
+    )
 
     private fun requireAnchor(position: ParsedFilePosition) {
         requireKnownFile(position.filePath.value)
@@ -815,6 +1001,76 @@ class FakeAnalysisBackend private constructor(
         maxResults = query.maxResults.value,
     )
 
+    private fun WorkspaceFileKindDomain.admits(filePath: String): Boolean = when (this) {
+        WorkspaceFileKindDomain.SOURCE_ONLY -> filePath.endsWith(".kt")
+        WorkspaceFileKindDomain.SCRIPT_ONLY -> filePath.endsWith(".kts")
+        WorkspaceFileKindDomain.MIXED -> filePath.endsWith(".kt") || filePath.endsWith(".kts")
+    }
+
+    private data class FakeWorkspaceSnapshotIdentity(
+        val kindDomain: WorkspaceFileKindDomain,
+    )
+
+    private data class FakeWorkspaceSnapshotState(
+        val inventory: FakeWorkspaceInventory,
+    ) : ContinuationOwnedState()
+
+    private data class FakeWorkspaceSnapshot(
+        val token: WorkspaceFileSnapshotToken,
+        val inventory: FakeWorkspaceInventory,
+    )
+
+    private data class FakeWorkspaceInventory(
+        val files: List<String>,
+    ) : ContinuationProjection() {
+        init {
+            require(files == files.distinct().sorted()) {
+                "Fake workspace inventory must be sorted and deduplicated"
+            }
+        }
+    }
+
+    private data class FakeWorkspacePageIdentity(
+        val snapshotToken: WorkspaceFileSnapshotToken,
+        val kindDomain: WorkspaceFileKindDomain,
+        val moduleName: String?,
+        val pageSize: Int,
+    )
+
+    private data class FakeWorkspacePageState(
+        val inventory: FakeWorkspaceInventory,
+        var nextOffset: Int,
+    ) : ContinuationOwnedState()
+
+    private data class FakeWorkspacePage(
+        val files: List<String>,
+        val nextOffset: Int,
+        val hasMore: Boolean,
+        val nextPageToken: String? = null,
+    ) : ContinuationProjection() {
+        companion object {
+            fun empty(): FakeWorkspacePage = FakeWorkspacePage(
+                files = emptyList(),
+                nextOffset = 0,
+                hasMore = false,
+            )
+
+            fun from(
+                inventory: FakeWorkspaceInventory,
+                offset: Int,
+                pageSize: Int,
+            ): FakeWorkspacePage {
+                val files = inventory.files.drop(offset).take(pageSize)
+                val nextOffset = Math.addExact(offset, files.size)
+                return FakeWorkspacePage(
+                    files = files,
+                    nextOffset = nextOffset,
+                    hasMore = nextOffset < inventory.files.size,
+                )
+            }
+        }
+    }
+
     private fun fakeReferencePage(
         allReferences: List<Location>,
         pageStart: Int,
@@ -870,13 +1126,13 @@ class FakeAnalysisBackend private constructor(
 
     private data class FakeReferenceContinuation(
         var offset: Int,
-    )
+    ) : ContinuationOwnedState()
 
     private data class FakeReferencePage(
         val references: List<Location>,
         val nextOffset: Int,
         val hasMore: Boolean,
-    ) {
+    ) : ContinuationProjection() {
         fun toResult(
             declaration: Symbol?,
             totalCount: Int,
@@ -905,7 +1161,7 @@ class FakeAnalysisBackend private constructor(
         val diagnostics: List<Diagnostic>,
         val fileStatuses: List<FileAnalysisStatus>,
         var offset: Int,
-    ) {
+    ) : ContinuationOwnedState() {
         fun page(maxResults: Int): FakeDiagnosticPage = FakeDiagnosticPage(
             diagnostics = diagnostics,
             fileStatuses = fileStatuses,
@@ -919,7 +1175,7 @@ class FakeAnalysisBackend private constructor(
         val fileStatuses: List<FileAnalysisStatus>,
         val pageOffset: Int,
         val maxResults: Int,
-    ) {
+    ) : ContinuationProjection() {
         val nextOffset: Int = Math.addExact(
             pageOffset,
             minOf(maxResults, diagnostics.size - pageOffset),
@@ -936,6 +1192,8 @@ class FakeAnalysisBackend private constructor(
     }
 
     companion object {
+        private const val FAKE_MODULE_NAME = "fake-module"
+
         fun sample(
             workspaceRoot: Path,
             limits: ServerLimits = ServerLimits(

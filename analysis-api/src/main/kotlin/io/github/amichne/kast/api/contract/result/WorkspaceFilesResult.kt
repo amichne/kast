@@ -12,6 +12,14 @@ import kotlinx.serialization.Serializable
 data class WorkspaceFilesResult(
     @DocField(description = "List of workspace modules visible to the daemon.")
     val modules: List<WorkspaceModule>,
+    @DocField(description = "Opaque reusable handle identifying the coherent workspace inventory snapshot.")
+    val snapshotToken: String,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-)
+) {
+    init {
+        require(snapshotToken.isNotBlank()) {
+            "Workspace file snapshot handle must be nonblank"
+        }
+    }
+}
