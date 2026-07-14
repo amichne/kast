@@ -466,6 +466,12 @@ class AnalysisDispatcherTest {
                 return delegate.findReferences(query)
             }
         }
+        val selector = KastExactSymbolSelector(
+            fqName = fixture.symbolFqName,
+            declarationFile = fixture.declarationLocation.filePath,
+            declarationStartOffset = fixture.declarationLocation.startOffset,
+            kind = SymbolKind.FUNCTION,
+        )
 
         val firstResult = dispatchSuccessWithBackend<KastReferencesResponse>(
             backend = backend,
@@ -474,14 +480,13 @@ class AnalysisDispatcherTest {
                 KastReferencesRequest.serializer(),
                 KastReferencesRequest(
                     workspaceRoot = tempDir.toString(),
-                    symbol = fixture.symbolFqName,
+                    selector = selector,
                     maxResults = 1,
                 ),
             ),
         )
 
-        val firstPage = assertInstanceOf(KastReferencesSuccessResponse::class.java, firstResult)
-        assertEquals(1, firstPage.query.maxResults)
+        val firstPage = assertInstanceOf(KastReferencesAvailableResponse::class.java, firstResult)
         assertEquals(ResultCardinality.Exact(2), firstPage.cardinality)
         assertEquals(1, firstPage.references.size)
         assertTrue(checkNotNull(firstPage.page).truncated)
@@ -494,14 +499,14 @@ class AnalysisDispatcherTest {
                 KastReferencesRequest.serializer(),
                 KastReferencesRequest(
                     workspaceRoot = tempDir.toString(),
-                    symbol = fixture.symbolFqName,
+                    selector = selector,
                     maxResults = 1,
                     pageToken = checkNotNull(firstPage.page?.nextPageToken),
                 ),
             ),
         )
 
-        val secondPage = assertInstanceOf(KastReferencesSuccessResponse::class.java, secondResult)
+        val secondPage = assertInstanceOf(KastReferencesAvailableResponse::class.java, secondResult)
         assertEquals(ResultCardinality.Exact(2), secondPage.cardinality)
         assertEquals(1, secondPage.references.size)
         assertEquals(null, secondPage.page)
@@ -514,12 +519,44 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `symbol references rejects a selector that does not match the anchored declaration`() {
+        val fixture = AnalysisBackendContractFixture.create(tempDir)
+        val result = dispatchSuccessWithBackend<KastReferencesResponse>(
+            backend = FakeAnalysisBackend.contractFixture(fixture),
+            method = "symbol/references",
+            params = json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = KastExactSymbolSelector(
+                        fqName = "sample.notGreet",
+                        declarationFile = fixture.declarationLocation.filePath,
+                        declarationStartOffset = fixture.declarationLocation.startOffset,
+                        kind = SymbolKind.FUNCTION,
+                    ),
+                ),
+            ),
+        )
+
+        val mismatch = assertInstanceOf(KastReferencesSubjectIdentityMismatchResponse::class.java, result)
+        assertEquals(fixture.symbolFqName, mismatch.actual.fqName)
+    }
+
+    @Test
     fun `symbol references rejects non positive max results`() {
         val response = dispatchRaw(
             method = "symbol/references",
             params = json.encodeToJsonElement(
                 KastReferencesRequest.serializer(),
-                KastReferencesRequest(symbol = "greet", maxResults = 0),
+                KastReferencesRequest(
+                    selector = KastExactSymbolSelector(
+                        fqName = "sample.greet",
+                        declarationFile = tempDir.resolve("Greeter.kt").toString(),
+                        declarationStartOffset = 0,
+                        kind = SymbolKind.FUNCTION,
+                    ),
+                    maxResults = 0,
+                ),
             ),
         )
 

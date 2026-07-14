@@ -218,6 +218,7 @@ fun ReferencesQuery.parsed(): ParsedReferencesQuery = validationBoundary {
         includeUsageSiteScope = includeUsageSiteScope,
         maxResults = PositiveInt(maxResults),
         pageToken = pageToken?.let(ReferencePageToken::parse),
+        selector = selector,
     )
 }
 

@@ -2,6 +2,8 @@ package io.github.amichne.kast.indexstore
 
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
@@ -781,6 +783,69 @@ class SqliteSourceIndexStoreTest {
                 (0 until 8).map { index -> "/src/Caller${index.toString().padStart(3, '0')}.kt" },
                 first.page.references.map { it.sourcePath } + second.page.references.map { it.sourcePath },
             )
+        }
+    }
+
+    @Test
+    fun `exact reference pages isolate declarations that share an fq name`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.upsertSymbolReference(
+                sourcePath = "/src/FirstCaller.kt",
+                sourceOffset = 1,
+                targetFqName = "lib.overloaded",
+                targetPath = "/src/Target.kt",
+                targetOffset = 10,
+            )
+            store.upsertSymbolReference(
+                sourcePath = "/src/SecondCaller.kt",
+                sourceOffset = 2,
+                targetFqName = "lib.overloaded",
+                targetPath = "/src/Target.kt",
+                targetOffset = 40,
+            )
+
+            val page = store.generatedReferencePageToExactSymbol(
+                target = ExactReferenceTarget(
+                    fqName = "lib.overloaded",
+                    declarationFile = NormalizedPath.parse("/src/Target.kt"),
+                    declarationStartOffset = NonNegativeInt(40),
+                ),
+                offset = NonNegativeInt(0),
+                maxResults = PositiveInt(10),
+            )
+
+            assertEquals(listOf("/src/SecondCaller.kt"), page.page.references.map { it.sourcePath })
+            assertTrue(page.page.references.all { it.targetOffset == 40 })
+        }
+    }
+
+    @Test
+    fun `exact reference pages reject rows without declaration identity`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.upsertSymbolReference(
+                sourcePath = "/src/LegacyCaller.kt",
+                sourceOffset = 1,
+                targetFqName = "lib.Target",
+                targetPath = null,
+                targetOffset = null,
+            )
+
+            val page = store.generatedReferencePageToExactSymbol(
+                target = ExactReferenceTarget(
+                    fqName = "lib.Target",
+                    declarationFile = NormalizedPath.parse("/src/Target.kt"),
+                    declarationStartOffset = NonNegativeInt(10),
+                ),
+                offset = NonNegativeInt(0),
+                maxResults = PositiveInt(10),
+            )
+
+            assertFalse(page.exactIdentityAvailable)
+            assertTrue(page.page.references.isEmpty())
         }
     }
 

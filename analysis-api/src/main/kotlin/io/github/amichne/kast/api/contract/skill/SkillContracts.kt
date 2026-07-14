@@ -3,6 +3,7 @@ package io.github.amichne.kast.api.contract.skill
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
@@ -633,7 +634,7 @@ data class KastCandidate(
 
 @Serializable
 data class KastScaffoldReferences(
-    val locations: List<Location>,
+    val locations: List<ReferenceOccurrence>,
     val count: Int,
     val searchScope: SearchScope? = null,
     val declaration: Symbol? = null,
