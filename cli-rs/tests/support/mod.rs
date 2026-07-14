@@ -225,7 +225,14 @@ pub(crate) fn spawn_scripted_idea_backend(
                     "backendName": "idea",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": server_workspace.display().to_string(),
-                    "readCapabilities": ["symbol/resolve", "symbol/references", "symbol/callers"],
+                    "readCapabilities": [
+                        "symbol/resolve",
+                        "symbol/references",
+                        "symbol/callers",
+                        "raw/call-hierarchy",
+                        "raw/implementations",
+                        "raw/type-hierarchy"
+                    ],
                     "mutationCapabilities": [],
                     "limits": {
                         "requestTimeoutMillis": 60000,

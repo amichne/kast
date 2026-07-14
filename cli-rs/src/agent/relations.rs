@@ -2,6 +2,239 @@ const AGENT_RELATION_TOKEN_VERSION: &str = "krp1";
 const AGENT_REFERENCE_RELATION: &str = "references";
 const AGENT_REFERENCE_PAYLOAD_TAG: &str = "reference";
 
+fn execute_agent_callers(args: AgentCallersArgs) -> AgentEnvelope {
+    execute_agent_call_relationship(
+        "agent/callers",
+        "callers",
+        "CALLER",
+        "INCOMING",
+        args.runtime,
+        args.selector,
+        args.depth.get(),
+        args.limit.get(),
+        args.page_token,
+        args.view,
+    )
+}
+
+fn execute_agent_callees(args: AgentCalleesArgs) -> AgentEnvelope {
+    execute_agent_call_relationship(
+        "agent/callees",
+        "callees",
+        "CALLEE",
+        "OUTGOING",
+        args.runtime,
+        args.selector,
+        args.depth.get(),
+        args.limit.get(),
+        args.page_token,
+        args.view,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_agent_call_relationship(
+    public_method: &str,
+    relation: &'static str,
+    record_relation: &'static str,
+    direction: &'static str,
+    runtime: AgentRuntimeArgs,
+    selector: AgentExactSymbolSelectorArgs,
+    depth: u8,
+    limit: u8,
+    page_token: Option<AgentRelationPageToken>,
+    view: AgentRelationViewArgs,
+) -> AgentEnvelope {
+    if page_token.is_some() {
+        return relationship_continuation_unavailable(public_method);
+    }
+    let (declaration_file, expected) = match normalize_relationship_selector(
+        public_method,
+        &runtime,
+        &selector,
+    ) {
+        Ok(value) => value,
+        Err(envelope) => return *envelope,
+    };
+    let request = json_rpc_request(
+        "raw/call-hierarchy",
+        json!({
+            "position": {
+                "filePath": declaration_file,
+                "offset": selector.declaration_start_offset.get(),
+            },
+            "direction": direction,
+            "depth": depth,
+            "maxTotalCalls": limit,
+            "maxChildrenPerNode": limit,
+        }),
+    );
+    let envelope = execute_request(AgentRequest {
+        method: "raw/call-hierarchy".to_string(),
+        request,
+        runtime,
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    project_raw_call_relationship_envelope(
+        public_method.to_string(),
+        envelope,
+        expected,
+        relation,
+        record_relation,
+        direction,
+        usize::from(limit),
+        usize::from(depth),
+        AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count),
+    )
+}
+
+fn execute_agent_implementations(args: AgentImplementationsArgs) -> AgentEnvelope {
+    if args.page_token.is_some() {
+        return relationship_continuation_unavailable("agent/implementations");
+    }
+    let (declaration_file, expected) = match normalize_relationship_selector(
+        "agent/implementations",
+        &args.runtime,
+        &args.selector,
+    ) {
+        Ok(value) => value,
+        Err(envelope) => return *envelope,
+    };
+    let request = json_rpc_request(
+        "raw/implementations",
+        json!({
+            "position": {
+                "filePath": declaration_file,
+                "offset": args.selector.declaration_start_offset.get(),
+            },
+            "maxResults": args.limit.get(),
+        }),
+    );
+    let envelope = execute_request(AgentRequest {
+        method: "raw/implementations".to_string(),
+        request,
+        runtime: args.runtime,
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    project_raw_implementations_envelope(
+        "agent/implementations".to_string(),
+        envelope,
+        expected,
+        usize::from(args.limit.get()),
+        AgentResultView::from_parts(
+            args.view.verbose,
+            args.view.explain,
+            &args.view.fields,
+            args.view.count,
+        ),
+    )
+}
+
+fn execute_agent_hierarchy(args: AgentHierarchyArgs) -> AgentEnvelope {
+    if args.page_token.is_some() {
+        return relationship_continuation_unavailable("agent/hierarchy");
+    }
+    let direction = match args.direction {
+        AgentHierarchyDirection::Supertypes => "SUPERTYPES",
+        AgentHierarchyDirection::Subtypes => "SUBTYPES",
+        AgentHierarchyDirection::Both => "BOTH",
+    };
+    let record_relation = match args.direction {
+        AgentHierarchyDirection::Supertypes => "SUPERTYPE",
+        AgentHierarchyDirection::Subtypes => "SUBTYPE",
+        AgentHierarchyDirection::Both => {
+            return error_envelope(
+                "agent/hierarchy".to_string(),
+                None,
+                agent_error(
+                    "RELATIONSHIP_DIRECTION_UNAVAILABLE",
+                    "The bounded compiler engine cannot preserve edge direction for a combined hierarchy request.",
+                ),
+            );
+        }
+    };
+    let (declaration_file, expected) = match normalize_relationship_selector(
+        "agent/hierarchy",
+        &args.runtime,
+        &args.selector,
+    ) {
+        Ok(value) => value,
+        Err(envelope) => return *envelope,
+    };
+    let request = json_rpc_request(
+        "raw/type-hierarchy",
+        json!({
+            "position": {
+                "filePath": declaration_file,
+                "offset": args.selector.declaration_start_offset.get(),
+            },
+            "direction": direction,
+            "depth": args.depth.get(),
+            "maxResults": args.limit.get(),
+        }),
+    );
+    let envelope = execute_request(AgentRequest {
+        method: "raw/type-hierarchy".to_string(),
+        request,
+        runtime: args.runtime,
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    project_raw_hierarchy_envelope(
+        "agent/hierarchy".to_string(),
+        envelope,
+        expected,
+        record_relation,
+        usize::from(args.limit.get()),
+        usize::from(args.depth.get()),
+        AgentResultView::from_parts(
+            args.view.verbose,
+            args.view.explain,
+            &args.view.fields,
+            args.view.count,
+        ),
+    )
+}
+
+fn normalize_relationship_selector(
+    public_method: &str,
+    runtime: &AgentRuntimeArgs,
+    selector: &AgentExactSymbolSelectorArgs,
+) -> std::result::Result<(String, AgentExpectedRelationshipSelector), Box<AgentEnvelope>> {
+    let normalizer = AgentFilePathNormalizer::from_runtime(runtime)
+        .map_err(|error| Box::new(error_envelope(public_method.to_string(), None, error)))?;
+    let declaration_file = normalizer
+        .normalize(selector.declaration_file.as_str())
+        .map_err(|error| Box::new(error_envelope(public_method.to_string(), None, error)))?
+        .into_rpc_path();
+    let expected = AgentExpectedRelationshipSelector {
+        fq_name: selector.symbol.as_str().to_string(),
+        declaration_file: declaration_file.clone(),
+        declaration_start_offset: u64::from(selector.declaration_start_offset.get()),
+        kind: selector
+            .kind
+            .map(|kind| kind.canonical().to_ascii_uppercase()),
+        containing_type: selector
+            .containing_type
+            .as_ref()
+            .map(|value| value.as_str().to_string()),
+    };
+    Ok((declaration_file, expected))
+}
+
+fn relationship_continuation_unavailable(method: &str) -> AgentEnvelope {
+    error_envelope(
+        method.to_string(),
+        None,
+        agent_error(
+            "RELATION_PAGE_TOKEN_INVALID",
+            "This compiler relationship engine did not issue a resumable page token.",
+        ),
+    )
+}
+
 fn execute_agent_references(args: AgentReferencesArgs) -> AgentEnvelope {
     let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
         Ok(normalizer) => normalizer,

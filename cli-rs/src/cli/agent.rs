@@ -954,6 +954,12 @@ impl std::str::FromStr for AgentRelationLimit {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AgentRelationDepth(std::num::NonZeroU8);
 
+impl AgentRelationDepth {
+    pub(crate) fn get(self) -> u8 {
+        self.0.get()
+    }
+}
+
 impl Default for AgentRelationDepth {
     fn default() -> Self {
         Self(std::num::NonZeroU8::new(1).expect("relationship default depth is positive"))
