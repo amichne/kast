@@ -4,11 +4,23 @@ import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileKind
+import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
+import io.github.amichne.kast.api.contract.compatibility.PluginImplementationVersion
+import io.github.amichne.kast.api.contract.compatibility.ProtocolRevision
+import io.github.amichne.kast.api.contract.compatibility.RuntimeBackendKind
+import io.github.amichne.kast.api.contract.compatibility.RuntimeCompatibilityFacts
+import io.github.amichne.kast.api.contract.compatibility.RuntimeIdentity
+import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
+import io.github.amichne.kast.api.contract.compatibility.WorkspaceMetadataRevision
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 object KastProjectOpenProfileAutoInit {
     fun execute(
@@ -165,7 +177,7 @@ sealed class ProjectOpenProfileAutoInitResult {
 }
 
 object PluginWorkspaceBootstrap {
-    private const val SCHEMA_VERSION = 1
+    private val SCHEMA_VERSION = WorkspaceMetadataRevision.CURRENT.value
     private const val REQUIRED_SKILL_RELATIVE = ".agents/skills/kast/SKILL.md"
     private const val METADATA_RELATIVE = ".kast/setup/workspace.json"
     private const val KAST_MANAGED_FENCE_START = "<kast>"
@@ -414,6 +426,20 @@ object PluginWorkspaceBootstrap {
         val artifacts = requiredArtifacts.joinToString(",\n") { artifact ->
             "    ${jsonString(artifact)}"
         }
+        val compatibility = Json.encodeToString(
+            RuntimeCompatibilityFacts(
+                pluginVersion = PluginImplementationVersion(request.pluginVersion.value),
+                cliVersion = CliImplementationVersion(request.pluginVersion.value),
+                protocolRevision = ProtocolRevision.CURRENT,
+                workspaceMetadataRevision = WorkspaceMetadataRevision.CURRENT,
+                readCapabilities = ReadCapability.entries.toSet(),
+                mutationCapabilities = MutationCapability.entries.toSet(),
+                runtimeIdentity = RuntimeIdentity(
+                    implementationVersion = RuntimeImplementationVersion(request.pluginVersion.value),
+                    backendKind = RuntimeBackendKind.IDEA,
+                ),
+            ),
+        )
         return """
         |{
         |  "schemaVersion": $SCHEMA_VERSION,
@@ -424,6 +450,7 @@ object PluginWorkspaceBootstrap {
         |  "cliBinary": ${jsonString(request.cliBinary.toString())},
         |  "backend": "idea",
         |  "socketPath": ${jsonString(defaultSocketPath(request.workspaceRoot).toString())},
+        |  "compatibility": $compatibility,
         |  "requiredArtifacts": [
         |$artifacts
         |  ]

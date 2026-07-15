@@ -85,6 +85,7 @@ jobs:
         run: >
           .github/scripts/materialize-jetbrains-plugin-repository-pages.sh
           --source packaging/jetbrains/plugin-repository.json
+          --compatibility-source packaging/jetbrains/runtime-compatibility.json
           --output-directory site/jetbrains
           --published-release
           --allow-unconfigured

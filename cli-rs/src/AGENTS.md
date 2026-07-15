@@ -12,3 +12,9 @@ use names tied to the typed contract they expose.
 
 Keep visibility and ownership boundaries explicit so the compiler forces every
 caller through the modeled contract.
+
+`self_mgmt.rs` owns strict deserialization and internal consistency checks for
+revisioned exact-root workspace compatibility metadata. Keep preparation and
+admission separate: metadata schema/revision/capability parsing may fail closed,
+but active runtime admission remains the existing exact implementation-version
+equality until the dedicated negotiation cutover.

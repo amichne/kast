@@ -22,6 +22,13 @@ than producing an unsigned artifact.
 
 ## Workspace inventory authority
 
+`KastProjectOpenProfileAutoInit` owns revisioned exact-root workspace metadata.
+It serializes the shared `analysis-api` compatibility facts for the plugin,
+CLI, protocol, metadata, capability, and IDEA runtime identity alongside the
+existing fields. This slice is preparation only: do not make those facts a
+second active admission rule before ADR 0023's negotiation cutover. The current
+exact-version admission remains authoritative until that later change.
+
 `IdeaProjectModelWorkspaceFileInventory` owns complete raw `.kt` and `.kts`
 candidate discovery for the IDEA host. Collect candidates through
 `FileTypeIndex`, IDEA module source/content scopes, and the linked Gradle model;
@@ -107,6 +114,10 @@ contract tests. Relationship changes also require state-cap rejection,
 generation validation, `ObservedAnalysisBackend` delegation, opaque
 continuation resume, absent-versus-stale classification, deterministic
 no-overlap paging, and the complete subject-kind zero-work matrix.
+
+Exact-root compatibility metadata changes also require
+`.github/scripts/test-runtime-compatibility-contract.sh` and the focused
+`KastProjectOpenProfileAutoInitTest`.
 
 Workspace inventory changes also require:
 

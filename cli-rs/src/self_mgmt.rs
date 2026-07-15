@@ -8,8 +8,12 @@ use crate::manifest;
 #[cfg(target_os = "macos")]
 use serde::Deserialize;
 use serde::Serialize;
+#[cfg(target_os = "macos")]
+use std::collections::BTreeSet;
 use std::env;
 use std::fs;
+#[cfg(target_os = "macos")]
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
 pub use crate::manifest::{
@@ -21,7 +25,7 @@ const MANAGED_RESOURCE_HISTORY_LIMIT: usize = 5;
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
 #[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 1;
+const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 2;
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
 #[cfg(target_os = "macos")]
@@ -453,7 +457,7 @@ fn apply_macos_plugin_workspace_check(
 
 #[cfg(target_os = "macos")]
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct MacosPluginWorkspaceMetadata {
     schema_version: u32,
     prepared_by: String,
@@ -463,7 +467,87 @@ struct MacosPluginWorkspaceMetadata {
     cli_binary: PathBuf,
     backend: String,
     socket_path: PathBuf,
+    compatibility: MacosPluginWorkspaceCompatibility,
     required_artifacts: Vec<PathBuf>,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MacosPluginWorkspaceCompatibility {
+    plugin_version: String,
+    cli_version: String,
+    protocol_revision: ProtocolRevision,
+    workspace_metadata_revision: WorkspaceMetadataRevision,
+    read_capabilities: Vec<WorkspaceReadCapability>,
+    mutation_capabilities: Vec<WorkspaceMutationCapability>,
+    runtime_identity: WorkspaceRuntimeIdentity,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(transparent)]
+struct ProtocolRevision(NonZeroU32);
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(transparent)]
+struct WorkspaceMetadataRevision(NonZeroU32);
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum WorkspaceReadCapability {
+    ResolveSymbol,
+    FindReferences,
+    CallHierarchy,
+    TypeHierarchy,
+    SemanticInsertionPoint,
+    Diagnostics,
+    FileOutline,
+    WorkspaceSymbolSearch,
+    WorkspaceSearch,
+    WorkspaceFiles,
+    Implementations,
+    CodeActions,
+    Completions,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum WorkspaceMutationCapability {
+    Rename,
+    ApplyEdits,
+    FileOperations,
+    OptimizeImports,
+    RefreshWorkspace,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct WorkspaceRuntimeIdentity {
+    implementation_version: String,
+    backend_kind: WorkspaceRuntimeBackendKind,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum WorkspaceRuntimeBackendKind {
+    Idea,
+    Headless,
+}
+
+#[cfg(target_os = "macos")]
+impl WorkspaceRuntimeBackendKind {
+    fn metadata_name(self) -> &'static str {
+        match self {
+            Self::Idea => "idea",
+            Self::Headless => "headless",
+        }
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -512,6 +596,7 @@ fn validate_macos_plugin_workspace_metadata(
             metadata_path.display()
         )));
     }
+    validate_prepared_compatibility_metadata(metadata_path, &metadata)?;
     let current_version = cli::version();
     if metadata.plugin_version != current_version || metadata.cli_version != current_version {
         return Err(macos_plugin_workspace_error(format!(
@@ -546,6 +631,69 @@ fn validate_macos_plugin_workspace_metadata(
     }
     validate_macos_plugin_cli_binary(&metadata.cli_binary)?;
     validate_macos_plugin_required_artifacts(workspace_root, &metadata.required_artifacts)
+}
+
+#[cfg(target_os = "macos")]
+fn validate_prepared_compatibility_metadata(
+    metadata_path: &Path,
+    metadata: &MacosPluginWorkspaceMetadata,
+) -> Result<()> {
+    let facts = &metadata.compatibility;
+    if facts.workspace_metadata_revision.0.get() != metadata.schema_version {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace compatibility metadata revision {} does not match schemaVersion {} at {}",
+            facts.workspace_metadata_revision.0,
+            metadata.schema_version,
+            metadata_path.display(),
+        )));
+    }
+    if facts.plugin_version != metadata.plugin_version || facts.cli_version != metadata.cli_version
+    {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace compatibility versions do not match their legacy admission fields at {}",
+            metadata_path.display(),
+        )));
+    }
+    if facts
+        .runtime_identity
+        .implementation_version
+        .chars()
+        .any(char::is_whitespace)
+        || facts.runtime_identity.implementation_version.is_empty()
+    {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace runtime identity has an invalid implementation version at {}",
+            metadata_path.display(),
+        )));
+    }
+    if facts.runtime_identity.backend_kind.metadata_name() != metadata.backend {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace runtime identity backend does not match metadata backend at {}",
+            metadata_path.display(),
+        )));
+    }
+    if facts
+        .read_capabilities
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>()
+        .len()
+        != facts.read_capabilities.len()
+        || facts
+            .mutation_capabilities
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .len()
+            != facts.mutation_capabilities.len()
+    {
+        return Err(macos_plugin_workspace_error(format!(
+            "macOS Kast workspace compatibility capabilities contain duplicates at {}",
+            metadata_path.display(),
+        )));
+    }
+    let _advertised_protocol_revision = facts.protocol_revision.0;
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
@@ -982,6 +1130,20 @@ mod tests {
                 cli_binary: env::current_exe().expect("current exe"),
                 backend: MACOS_PLUGIN_WORKSPACE_BACKEND.to_string(),
                 socket_path,
+                compatibility: MacosPluginWorkspaceCompatibility {
+                    plugin_version: cli::version().to_string(),
+                    cli_version: cli::version().to_string(),
+                    protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("revision")),
+                    workspace_metadata_revision: WorkspaceMetadataRevision(
+                        NonZeroU32::new(MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION).expect("revision"),
+                    ),
+                    read_capabilities: vec![WorkspaceReadCapability::Diagnostics],
+                    mutation_capabilities: vec![WorkspaceMutationCapability::Rename],
+                    runtime_identity: WorkspaceRuntimeIdentity {
+                        implementation_version: cli::version().to_string(),
+                        backend_kind: WorkspaceRuntimeBackendKind::Idea,
+                    },
+                },
                 required_artifacts: vec![
                     PathBuf::from(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
                     PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE),

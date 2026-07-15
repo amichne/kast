@@ -97,6 +97,10 @@ write_provenance \
   "runtime-manifest" \
   "kast-runtime-manifest.json"
 write_provenance \
+  "${scratch_dir}/provenance-runtime-compatibility/dist/build-provenance-runtime-compatibility.json" \
+  "runtime-compatibility" \
+  "kast-runtime-compatibility.json"
+write_provenance \
   "${scratch_dir}/provenance-ubuntu-debian-headless/dist/build-provenance-ubuntu-debian-headless.json" \
   "ubuntu-debian-headless-x86_64" \
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
@@ -114,6 +118,7 @@ output="${scratch_dir}/dist/build-provenance.json"
   "${scratch_dir}/provenance-idea" \
   "${scratch_dir}/provenance-openapi" \
   "${scratch_dir}/provenance-runtime-manifest" \
+  "${scratch_dir}/provenance-runtime-compatibility" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 python3 - "$output" <<'PY'
@@ -132,6 +137,7 @@ expected = [
     "headless-linux-x64",
     "idea",
     "openapi",
+    "runtime-compatibility",
     "runtime-manifest",
     "ubuntu-debian-headless-x86_64",
 ]
@@ -151,10 +157,11 @@ PY
   "${scratch_dir}/provenance-idea" \
   "${scratch_dir}/provenance-openapi" \
   "${scratch_dir}/provenance-runtime-manifest" \
+  "${scratch_dir}/provenance-runtime-compatibility" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 rm "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json"
-if "$assembler" --output "$output" --tag "$tag" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-gradle-ro-cache" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-openapi" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-ubuntu-debian-headless" \
+if "$assembler" --output "$output" --tag "$tag" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-gradle-ro-cache" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-openapi" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-runtime-compatibility" "${scratch_dir}/provenance-ubuntu-debian-headless" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing idea provenance"
 fi

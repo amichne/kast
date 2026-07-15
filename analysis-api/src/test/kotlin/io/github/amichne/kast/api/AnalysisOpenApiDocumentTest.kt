@@ -180,6 +180,43 @@ class AnalysisOpenApiDocumentTest {
     }
 
     @Test
+    fun `runtime compatibility schemas preserve typed revisions and disjoint outcomes`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val facts = yaml.componentSchema("RuntimeCompatibilityFacts")
+        val capability = yaml.componentSchema("RuntimeCapability")
+        val requirement = yaml.componentSchema("RuntimeCompatibilityUpdateRequirement")
+        val unsupportedProtocol = yaml.componentSchema(
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
+        )
+        val outcome = yaml.componentSchema("RuntimeCompatibilityOutcome")
+
+        assertTrue(facts.contains("ProtocolRevision"))
+        assertTrue(facts.contains("WorkspaceMetadataRevision"))
+        assertTrue(facts.contains("RuntimeIdentity"))
+        assertTrue(facts.contains("uniqueItems: true"))
+        assertTrue(yaml.componentSchema("ProtocolRevision").contains("minimum: 1"))
+        assertTrue(yaml.componentSchema("WorkspaceMetadataRevision").contains("minimum: 1"))
+        assertTrue(yaml.componentSchema("PluginImplementationVersion").contains("minLength: 1"))
+        assertTrue(yaml.componentSchema("PluginImplementationVersion").contains("pattern: ^\\S+${'$'}"))
+
+        assertTrue(capability.contains("oneOf:"))
+        assertTrue(capability.contains("propertyName: type"))
+        assertTrue(capability.contains("READ: \"#/components/schemas/RuntimeCapability.Read\""))
+        assertTrue(capability.contains("MUTATION: \"#/components/schemas/RuntimeCapability.Mutation\""))
+
+        assertTrue(requirement.contains("oneOf:"))
+        assertTrue(requirement.contains("UNSUPPORTED_PROTOCOL_REVISION"))
+        assertTrue(requirement.contains("UNSUPPORTED_WORKSPACE_METADATA_REVISION"))
+        assertTrue(requirement.contains("MISSING_REQUIRED_CAPABILITY"))
+        assertTrue(unsupportedProtocol.contains("minItems: 1"))
+
+        assertTrue(outcome.contains("oneOf:"))
+        assertTrue(outcome.contains("COMPATIBLE: \"#/components/schemas/RuntimeCompatibilityOutcome.Compatible\""))
+        assertTrue(outcome.contains("UPDATE_REQUIRED"))
+        assertTrue(outcome.contains("MISSING_CAPABILITY"))
+    }
+
+    @Test
     fun `workspace file continuation inline schemas match scalar wire values and constraints`() {
         val identity = WorkspaceFilesPublicContinuationIdentity(
             workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse("/workspace"),

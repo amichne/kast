@@ -818,10 +818,12 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/ReadCapability"
+          uniqueItems: true
         mutationCapabilities:
           type: array
           items:
             "$ref": "#/components/schemas/MutationCapability"
+          uniqueItems: true
         limits:
           "$ref": "#/components/schemas/ServerLimits"
         schemaVersion:
@@ -1159,6 +1161,278 @@ components:
         - sourceRoots
         - dependencyModuleNames
         - fileCount
+    ProtocolRevision:
+      type: integer
+      format: int32
+      minimum: 1
+    WorkspaceMetadataRevision:
+      type: integer
+      format: int32
+      minimum: 1
+    PluginImplementationVersion:
+      type: string
+      minLength: 1
+      pattern: ^\S+$
+    CliImplementationVersion:
+      type: string
+      minLength: 1
+      pattern: ^\S+$
+    RuntimeImplementationVersion:
+      type: string
+      minLength: 1
+      pattern: ^\S+$
+    RuntimeBackendKind:
+      type: string
+      enum:
+        - IDEA
+        - HEADLESS
+    RuntimeCapability:
+      oneOf:
+        - "$ref": "#/components/schemas/RuntimeCapability.Read"
+        - "$ref": "#/components/schemas/RuntimeCapability.Mutation"
+      discriminator:
+        propertyName: type
+        mapping:
+          READ: "#/components/schemas/RuntimeCapability.Read"
+          MUTATION: "#/components/schemas/RuntimeCapability.Mutation"
+    RuntimeCapability.Read:
+      type: object
+      properties:
+        type:
+          type: string
+          const: READ
+        capability:
+          "$ref": "#/components/schemas/ReadCapability"
+      additionalProperties: false
+      required:
+        - type
+        - capability
+    RuntimeCapability.Mutation:
+      type: object
+      properties:
+        type:
+          type: string
+          const: MUTATION
+        capability:
+          "$ref": "#/components/schemas/MutationCapability"
+      additionalProperties: false
+      required:
+        - type
+        - capability
+    RuntimeIdentity:
+      type: object
+      properties:
+        implementationVersion:
+          "$ref": "#/components/schemas/RuntimeImplementationVersion"
+        backendKind:
+          "$ref": "#/components/schemas/RuntimeBackendKind"
+      additionalProperties: false
+      required:
+        - implementationVersion
+        - backendKind
+    RuntimeCompatibilityFacts:
+      type: object
+      properties:
+        pluginVersion:
+          "$ref": "#/components/schemas/PluginImplementationVersion"
+        cliVersion:
+          "$ref": "#/components/schemas/CliImplementationVersion"
+        protocolRevision:
+          "$ref": "#/components/schemas/ProtocolRevision"
+        workspaceMetadataRevision:
+          "$ref": "#/components/schemas/WorkspaceMetadataRevision"
+        readCapabilities:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReadCapability"
+          uniqueItems: true
+        mutationCapabilities:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MutationCapability"
+          uniqueItems: true
+        runtimeIdentity:
+          "$ref": "#/components/schemas/RuntimeIdentity"
+      additionalProperties: false
+      required:
+        - pluginVersion
+        - cliVersion
+        - protocolRevision
+        - workspaceMetadataRevision
+        - readCapabilities
+        - mutationCapabilities
+        - runtimeIdentity
+    SupportedRuntimeCompatibilityPair:
+      type: object
+      properties:
+        facts:
+          "$ref": "#/components/schemas/RuntimeCompatibilityFacts"
+        requiredCapabilities:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RuntimeCapability"
+          uniqueItems: true
+      additionalProperties: false
+      required:
+        - facts
+        - requiredCapabilities
+    RuntimeCompatibilityMatrix:
+      type: object
+      properties:
+        supportedPairs:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SupportedRuntimeCompatibilityPair"
+          uniqueItems: true
+      additionalProperties: false
+      required:
+        - supportedPairs
+    RuntimeCompatibilityUpdateRequirement:
+      oneOf:
+        - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability"
+      discriminator:
+        propertyName: type
+        mapping:
+          UNSUPPORTED_RELEASE_PAIR: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair"
+          UNSUPPORTED_PROTOCOL_REVISION: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision"
+          UNSUPPORTED_WORKSPACE_METADATA_REVISION: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision"
+          UNSUPPORTED_RUNTIME_IDENTITY: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity"
+          MISSING_REQUIRED_CAPABILITY: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability"
+    RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UNSUPPORTED_RELEASE_PAIR
+        pluginVersion:
+          "$ref": "#/components/schemas/PluginImplementationVersion"
+        cliVersion:
+          "$ref": "#/components/schemas/CliImplementationVersion"
+      additionalProperties: false
+      required:
+        - type
+        - pluginVersion
+        - cliVersion
+    RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UNSUPPORTED_PROTOCOL_REVISION
+        actual:
+          "$ref": "#/components/schemas/ProtocolRevision"
+        supported:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ProtocolRevision"
+          uniqueItems: true
+          minItems: 1
+      additionalProperties: false
+      required:
+        - type
+        - actual
+        - supported
+    RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UNSUPPORTED_WORKSPACE_METADATA_REVISION
+        actual:
+          "$ref": "#/components/schemas/WorkspaceMetadataRevision"
+        supported:
+          type: array
+          items:
+            "$ref": "#/components/schemas/WorkspaceMetadataRevision"
+          uniqueItems: true
+          minItems: 1
+      additionalProperties: false
+      required:
+        - type
+        - actual
+        - supported
+    RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UNSUPPORTED_RUNTIME_IDENTITY
+        actual:
+          "$ref": "#/components/schemas/RuntimeIdentity"
+        supported:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RuntimeIdentity"
+          uniqueItems: true
+          minItems: 1
+      additionalProperties: false
+      required:
+        - type
+        - actual
+        - supported
+    RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability:
+      type: object
+      properties:
+        type:
+          type: string
+          const: MISSING_REQUIRED_CAPABILITY
+        capability:
+          "$ref": "#/components/schemas/RuntimeCapability"
+      additionalProperties: false
+      required:
+        - type
+        - capability
+    RuntimeCompatibilityOutcome:
+      oneOf:
+        - "$ref": "#/components/schemas/RuntimeCompatibilityOutcome.Compatible"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityOutcome.UpdateRequired"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityOutcome.MissingCapability"
+      discriminator:
+        propertyName: type
+        mapping:
+          COMPATIBLE: "#/components/schemas/RuntimeCompatibilityOutcome.Compatible"
+          UPDATE_REQUIRED: "#/components/schemas/RuntimeCompatibilityOutcome.UpdateRequired"
+          MISSING_CAPABILITY: "#/components/schemas/RuntimeCompatibilityOutcome.MissingCapability"
+    RuntimeCompatibilityOutcome.Compatible:
+      type: object
+      properties:
+        type:
+          type: string
+          const: COMPATIBLE
+        facts:
+          "$ref": "#/components/schemas/RuntimeCompatibilityFacts"
+      additionalProperties: false
+      required:
+        - type
+        - facts
+    RuntimeCompatibilityOutcome.UpdateRequired:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UPDATE_REQUIRED
+        requirement:
+          "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement"
+      additionalProperties: false
+      required:
+        - type
+        - requirement
+    RuntimeCompatibilityOutcome.MissingCapability:
+      type: object
+      properties:
+        type:
+          type: string
+          const: MISSING_CAPABILITY
+        capability:
+          "$ref": "#/components/schemas/RuntimeCapability"
+      additionalProperties: false
+      required:
+        - type
+        - capability
     SymbolQuery:
       type: object
       properties:

@@ -137,10 +137,6 @@ source = {
         "releaseAssetUrlTemplate": (
             "https://github.com/amichne/kast/releases/download/{tag}/kast-idea-{tag}.zip"
         ),
-        "ideaBuildRange": {
-            "sinceBuild": "253",
-            "untilBuild": None,
-        },
     },
     "signing": {
         "activeSignerSha256": signer,
@@ -201,10 +197,6 @@ bad_url["repository"]["releaseAssetUrlTemplate"] = (
     "http://github.com/amichne/kast/releases/download/{tag}/kast-idea-{tag}.zip"
 )
 dump("bad-url.json", bad_url)
-
-bad_range = deepcopy(source)
-bad_range["repository"]["ideaBuildRange"]["sinceBuild"] = "252"
-dump("bad-range.json", bad_range)
 
 bad_rotation = deepcopy(source)
 bad_rotation["signing"]["rotation"] = {
@@ -396,13 +388,6 @@ expect_failure invalid-plugin-version \
     --output-directory "${scratch_dir}/bad-plugin-version-output"
 expect_failure invalid-url \
   "$renderer" validate-source --source "${scratch_dir}/bad-url.json" --require-configured
-expect_failure invalid-build-range \
-  "$renderer" render \
-    --source "${scratch_dir}/bad-range.json" \
-    --plugin-zip "${scratch_dir}/kast-idea-v1.2.3.zip" \
-    --provenance "${scratch_dir}/provenance.json" \
-    "${verification_args[@]}" \
-    --output-directory "${scratch_dir}/bad-range-output"
 expect_failure invalid-rotation-state \
   "$renderer" validate-source --source "${scratch_dir}/bad-rotation.json" --require-configured
 expect_failure invalid-schema \

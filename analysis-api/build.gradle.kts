@@ -22,11 +22,21 @@ dependencies {
 val workspaceFilesContinuationSamples = rootProject.layout.projectDirectory.dir(
     "cli-rs/resources/kast-skill/references/requests/raw/workspace-files-continuation",
 )
+val runtimeCompatibilitySource = rootProject.layout.projectDirectory.file(
+    "packaging/jetbrains/runtime-compatibility.json",
+)
 
 tasks.named<Test>("test") {
     inputs.dir(workspaceFilesContinuationSamples)
         .withPropertyName("workspaceFilesContinuationSamples")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(runtimeCompatibilitySource)
+        .withPropertyName("runtimeCompatibilitySource")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty(
+        "kast.runtimeCompatibilitySource",
+        runtimeCompatibilitySource.asFile.absolutePath,
+    )
 }
 
 tasks.register<JavaExec>("generateOpenApiSpec") {

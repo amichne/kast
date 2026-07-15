@@ -13,6 +13,13 @@ Keep this unit small, stable, and reusable across every runtime host.
   `AnalysisTransport`, JSON-RPC wire models, descriptor discovery helpers,
   `ServerLaunchOptions`, shared error types, capability enums,
   `ServerInstanceDescriptor`, and edit-plan validation semantics.
+- Own the host-agnostic runtime compatibility vocabulary under
+  `contract/compatibility`: positive protocol and exact-root metadata
+  revisions, implementation and runtime identities, capability advertisements,
+  explicit supported pairs, and closed compatible/update-required/
+  missing-capability outcomes. Optional capability absence may disable only
+  that operation; revision, required-capability, and identity mismatches fail
+  closed as typed update requirements.
 - Keep shared startup helpers quiet for callers. `KastConfig.load`,
   descriptor discovery, and similar shared entry points report through typed
   results because CLI JSON commands and IDEA startup use these APIs inside
@@ -82,6 +89,10 @@ Keep this unit small, stable, and reusable across every runtime host.
 Validate the contract locally before you rely on downstream failures.
 
 - Run `./gradlew :analysis-api:test` for local changes.
+- Runtime compatibility changes also require
+  `.github/scripts/test-runtime-compatibility-contract.sh`; regenerate the
+  checked-in OpenAPI components through
+  `./gradlew :analysis-api:generateOpenApiSpec`.
 - If you change public models, capabilities, or descriptor schema, also run
   `./gradlew :analysis-server:test`.
 - For public workspace-file continuation changes, start with

@@ -15,6 +15,7 @@ REQUIRED_PLATFORMS = {
     "idea",
     "openapi",
     "runtime-manifest",
+    "runtime-compatibility",
     "ubuntu-debian-headless-x86_64",
 }
 OPTIONAL_PLATFORMS: set[str] = set()
