@@ -8,34 +8,28 @@ use crate::bundle::{
 };
 use crate::cli;
 use crate::cli::{
-    ActivateBundleArgs, IdeaPluginInstallArgs, InstallArgs, InstallCommand, InstallRepairArgs,
-    ResourceInstallArgs, ShellInstallArgs, ShellKind,
+    ActivateBundleArgs, InstallArgs, InstallCommand, InstallRepairArgs, ResourceInstallArgs,
+    ShellInstallArgs, ShellKind,
 };
 use crate::config;
 use crate::error::{CliError, Result};
+use crate::manifest::current_timestamp;
 use crate::manifest::{
     self, ManagedRepoResource, ManagedResourceChecksumRegion, ManagedResourceKind,
     ManagedResourceOutputChecksum,
 };
 use crate::self_mgmt;
 use flate2::read::GzDecoder;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
-use std::io::{self, IsTerminal};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command as ProcessCommand, Output, Stdio};
-use std::thread;
-use std::time::Duration;
+use std::process::{Command as ProcessCommand, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const KAST_FORMULA_NAME: &str = "kast";
-const KAST_PLUGIN_CASK_NAME: &str = "kast-plugin";
-const DEFAULT_KAST_TAP: &str = "amichne/kast";
 const RESOURCE_MARKER: &str = ".kast-version";
 const SHELL_BLOCK_START: &str = "# >>> kast shell integration >>>";
 const SHELL_BLOCK_END: &str = "# <<< kast shell integration <<<";
@@ -47,9 +41,9 @@ const ATTRIBUTE_KAST_MANAGED_FENCE_START: &str =
 const LEGACY_KAST_MANAGED_FENCE_START: &str = "<!-- BEGIN KAST MANAGED -->";
 const LEGACY_KAST_MANAGED_FENCE_END: &str = "<!-- END KAST MANAGED -->";
 
-include!("install/reporting.rs");
 include!("install/types.rs");
 include!("install/macos_homebrew_receipt.rs");
+include!("install/legacy_idea_plugin_cleanup.rs");
 include!("install/dispatch.rs");
 include!("install/bundle_entrypoint.rs");
 include!("install/agent_guidance.rs");
@@ -59,10 +53,24 @@ include!("install/bundle_install.rs");
 include!("install/bundle_helpers.rs");
 include!("install/repair.rs");
 include!("install/resource_installs.rs");
-include!("install/idea_plugin_entrypoint.rs");
 include!("install/shell.rs");
-include!("install/jetbrains_profiles.rs");
 include!("install/embedded_resources.rs");
-include!("install/homebrew_idea_plugin.rs");
 include!("install/resource_targets.rs");
+
+fn command_error(code: &'static str, message: &str, args: &[String], output: &Output) -> CliError {
+    let mut error = CliError::new(
+        code,
+        format!(
+            "{message}: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ),
+    );
+    error.details.insert("command".to_string(), args.join(" "));
+    error.details.insert(
+        "exitCode".to_string(),
+        output.status.code().unwrap_or(-1).to_string(),
+    );
+    error
+}
+
 include!("install/tests.rs");

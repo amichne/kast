@@ -76,7 +76,6 @@ pub struct IdeaLaunchConfig {
     pub enabled: bool,
     pub command: PathBuf,
     pub wait_timeout_millis: NonZeroU64,
-    pub require_installed_plugin: bool,
 }
 
 impl IdeaLaunchConfig {
@@ -84,7 +83,6 @@ impl IdeaLaunchConfig {
         !self.enabled
             && self.command.as_path() == Path::new("idea")
             && self.wait_timeout_millis.get() == 90_000
-            && self.require_installed_plugin
     }
 }
 
@@ -94,7 +92,6 @@ impl Default for IdeaLaunchConfig {
             enabled: false,
             command: PathBuf::from("idea"),
             wait_timeout_millis: NonZeroU64::new(90_000).expect("default IDEA launch timeout"),
-            require_installed_plugin: true,
         }
     }
 }
@@ -111,7 +108,7 @@ pub struct ProjectOpenConfig {
 impl ProjectOpenConfig {
     fn is_default(&self) -> bool {
         self.profile_auto_init
-            && self.profile == ProjectOpenProfile::CopilotLsp
+            && self.profile == ProjectOpenProfile::JetbrainsPlugin
             && self.auto_exclude_git
             && self.gradle_load_enabled
     }
@@ -121,7 +118,7 @@ impl Default for ProjectOpenConfig {
     fn default() -> Self {
         Self {
             profile_auto_init: true,
-            profile: ProjectOpenProfile::CopilotLsp,
+            profile: ProjectOpenProfile::JetbrainsPlugin,
             auto_exclude_git: true,
             gradle_load_enabled: true,
         }
@@ -131,7 +128,7 @@ impl Default for ProjectOpenConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProjectOpenProfile {
-    CopilotLsp,
+    JetbrainsPlugin,
 }
 
 #[derive(Debug, Clone, Serialize)]

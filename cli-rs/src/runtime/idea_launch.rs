@@ -1,6 +1,4 @@
 trait IdeaBackendLaunchOps {
-    fn plugin_installed(&self) -> Result<bool>;
-
     fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()>;
 
     fn wait_for_servable(
@@ -14,10 +12,6 @@ trait IdeaBackendLaunchOps {
 struct SystemIdeaBackendLaunchOps;
 
 impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
-    fn plugin_installed(&self) -> Result<bool> {
-        install::kast_idea_plugin_installed()
-    }
-
     fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
         let launch_error = match Command::new(command).arg(workspace_root).spawn() {
             Ok(_) => return Ok(()),
@@ -65,17 +59,13 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
 
 #[cfg(target_os = "macos")]
 fn launch_default_jetbrains_app(workspace_root: &Path) -> bool {
-    let Ok(Some(app_name)) = install::latest_jetbrains_ide_app_name() else {
-        return false;
-    };
-    let output = Command::new("open")
-        .args(["-g", "-a", &app_name])
-        .arg(workspace_root)
-        .output();
-    let Ok(output) = output else {
-        return false;
-    };
-    output.status.success()
+    ["IntelliJ IDEA", "Android Studio"].into_iter().any(|app_name| {
+        Command::new("open")
+            .args(["-g", "-a", app_name])
+            .arg(workspace_root)
+            .output()
+            .is_ok_and(|output| output.status.success())
+    })
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -108,20 +98,6 @@ fn maybe_launch_idea_backend(
             "IDEA_LAUNCH_CONFIG_INVALID",
             "runtime.ideaLaunch.command must not be empty.",
         ));
-    }
-    if launch_config.require_installed_plugin && !ops.plugin_installed()? {
-        let install_command = "kast developer machine plugin".to_string();
-        let mut error = CliError::new(
-            "IDEA_PLUGIN_NOT_INSTALLED",
-            format!(
-                "Cannot launch IDEA for {} because no JetBrains profile with the Kast plugin was found. Install it with: {install_command}",
-                workspace_root.display()
-            ),
-        );
-        error
-            .details
-            .insert("installCommand".to_string(), install_command);
-        return Err(error);
     }
     ops.launch(&launch_config.command, workspace_root)?;
     ops.wait_for_servable(

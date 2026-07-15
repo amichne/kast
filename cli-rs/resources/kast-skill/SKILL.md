@@ -58,7 +58,7 @@ readiness evidence, or backend state is part of the task.
 - `kast repair --for agent|kotlin|release|machine --workspace-root "$PWD"` is plan-only repair.
 - Add `--apply` to `kast repair` only after the repair plan or readiness output asks for install-state mutation.
 - `kast agent verify --workspace-root "$PWD"` proves backend health, runtime status, and capabilities for semantic work.
-- On macOS, the IntelliJ plugin prepares workspace guidance and metadata; run `kast developer machine plugin` only to repair Homebrew-managed IDE plugin links.
+- On macOS, Homebrew owns only the CLI and JetBrains owns plugin installation and updates. If metadata is stale, update as needed, reopen the exact project, and refresh it.
 - `kast developer runtime status --workspace-root "$PWD"` reports daemon lifecycle only.
 
 Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`, `kast rpc`,

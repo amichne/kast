@@ -143,9 +143,6 @@ impl KastConfig {
                 if let Some(value) = idea_launch.wait_timeout_millis {
                     self.runtime.idea_launch.wait_timeout_millis = value;
                 }
-                if let Some(value) = idea_launch.require_installed_plugin {
-                    self.runtime.idea_launch.require_installed_plugin = value;
-                }
             }
         }
         if let Some(project_open) = partial.project_open {

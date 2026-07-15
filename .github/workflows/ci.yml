@@ -47,6 +47,19 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-macos-installer-contract.sh
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install docs dependencies for authority gate
+        run: pip install -r requirements-docs.txt
+
+      - name: Test CLI and plugin authority cutover contract
+        shell: bash
+        run: ./.github/scripts/test-cli-plugin-authority-cutover-contract.sh
+
       - name: Test Kast routing evals
         shell: bash
         run: ./.github/scripts/test-kast-routing-evals.sh

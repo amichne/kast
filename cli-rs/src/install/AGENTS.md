@@ -3,12 +3,10 @@
 This directory owns CLI machine install, repair, bundle activation, shell
 integration, and managed resource installation. Under
 `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`,
-JetBrains and the IDE own IDEA plugin trust, installation, and updates. The
-remaining plugin-install code here is a migration/deletion target; do not add
-new plugin installation or repair behavior.
+JetBrains and the IDE own IDEA plugin trust, installation, and updates. No
+forward plugin installer or profile-link authority belongs in this module.
 
 Each part file must own one install contract:
-- `reporting.rs` owns install progress reporting.
 - `types.rs` owns serializable install result and plan types.
 - `dispatch.rs` owns top-level install command dispatch.
 - `bundle_entrypoint.rs` owns the public activation gateway.
@@ -22,12 +20,10 @@ Each part file must own one install contract:
 - `resource_installs.rs` owns the packaged skill install gateway.
 - `shell.rs` owns shell profile integration.
 - `embedded_resources.rs` owns packaged resource copying and checksums.
-- `homebrew_idea_plugin.rs` and `jetbrains_profiles.rs` contain legacy IDE
-  plugin flows to remove during ADR 0023's authority cutover; they are not
-  forward owners.
 - `macos_homebrew_receipt.rs` owns the trusted macOS CLI machine-install
-  receipt. Plugin version, cask, profile-link, and compatibility fields are
-  migration targets rather than forward receipt authority.
+  receipt and the repair-only exact schema-1 recognizer.
+- `legacy_idea_plugin_cleanup.rs` owns the 0.13.0-only proof for unlinking
+  exactly recognized legacy Homebrew plugin symlinks without replacement.
 - `resource_targets.rs` owns default resource target discovery.
 
 Packaged resources, manifests, and generated outputs match the current
@@ -38,10 +34,10 @@ receipt makes Homebrew authoritative for the CLI machine install. Do not
 restore `install.json`, global config, or ambient `PATH` as competing CLI binary
 authorities. Do not converge the plugin cask, write an IDE profile, mutate
 custom repositories, enroll a certificate, or use exact CLI/plugin version
-equality as compatibility proof. The ADR 0023 cutover may retire only exactly
-recognized Kast-owned legacy plugin links and receipt fields. Repair must not
+equality as compatibility proof. Repair may retire only exactly recognized
+Kast-owned legacy plugin links and receipt fields. Repair must not
 use `sudo` or delete unknown state.
 
-Run the installer contract, Homebrew formula contract, focused plugin and
+Run the installer contract, Homebrew formula contract, authority-cutover and
 repair smoke tests, and `:backend-idea:test` when this boundary changes. Run
 full Rust formatting, clippy, and tests when shared install code moves.

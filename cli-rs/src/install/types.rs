@@ -71,30 +71,6 @@ pub struct GitExcludeResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallIdeaPluginResult {
-    pub cask_token: String,
-    pub plugin_version: String,
-    pub download_cache: String,
-    pub downloaded_bytes: u64,
-    pub brew_action: String,
-    pub brew_command: Vec<String>,
-    pub brew_prefix: String,
-    pub formula_prefix: String,
-    pub cli_path: String,
-    pub homebrew_receipt: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub jetbrains_config_root: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub plugin_directories: Vec<String>,
-    pub dry_run: bool,
-    pub developer_defaults: self_mgmt::DeveloperMachineDefaultsResult,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub warnings: Vec<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct InstallShellResult {
     pub shell: String,
     pub command_name: String,
@@ -136,7 +112,6 @@ pub struct InstallRepairResult {
 pub enum InstallResult {
     ActivateBundle(ActivateBundleResult),
     AgentGuidance(AgentGuidanceSetupResult),
-    IdeaPlugin(InstallIdeaPluginResult),
     Shell(InstallShellResult),
 }
 

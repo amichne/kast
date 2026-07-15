@@ -18,6 +18,8 @@ fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResul
     };
     let mut config_backed_up = false;
 
+    repair_macos_homebrew_cli_authority(&args, &mut result, &backup_root)?;
+
     if !config_path.is_file() {
         push_repair_action(
             &mut result,
@@ -44,7 +46,7 @@ fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResul
         &mut config_backed_up,
     )?;
     repair_install_shell_sources(&args, &mut result, &backup_root)?;
-    repair_install_jetbrains_profiles(&args, &mut result, &backup_root)?;
+    repair_recognized_legacy_idea_plugin_links(&args, &mut result, &backup_root)?;
 
     Ok(result)
 }
@@ -158,7 +160,22 @@ fn repair_install_config_state(
     let Some(mut install) = self_mgmt::read_global_install_state()? else {
         return Ok(());
     };
-    if macos_homebrew_authority_is_active()? {
+    let homebrew_authority_active = match macos_homebrew_authority_is_active() {
+        Ok(active) => active,
+        Err(error)
+            if !args.apply
+                && default_macos_homebrew_receipt_path().is_file()
+                && exact_legacy_macos_homebrew_receipt(
+                    &default_macos_homebrew_receipt_path(),
+                )?
+                .is_some() =>
+        {
+            let _recognized_legacy_error = error;
+            true
+        }
+        Err(error) => return Err(error),
+    };
+    if homebrew_authority_active {
         repair_legacy_macos_install_identity(args, &install, result, backup_root)?;
         return Ok(());
     }
@@ -453,58 +470,145 @@ fn repair_install_shell_sources(
     Ok(())
 }
 
-fn repair_install_jetbrains_profiles(
+fn repair_macos_homebrew_cli_authority(
     args: &InstallRepairArgs,
     result: &mut InstallRepairResult,
     backup_root: &Path,
 ) -> Result<()> {
-    let Some(expected_plugin_target) = expected_homebrew_plugin_target(result)? else {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (args, result, backup_root);
         return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let receipt_path = default_macos_homebrew_receipt_path();
+        let replacement = if receipt_path.is_file() {
+            if let Ok(receipt) = read_macos_homebrew_receipt_at(&receipt_path) {
+                validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
+                return Ok(());
+            }
+            exact_legacy_macos_homebrew_receipt(&receipt_path)?.ok_or_else(|| {
+                CliError::new(
+                    "MACOS_HOMEBREW_RECEIPT_INVALID",
+                    format!(
+                        "Refusing to migrate unrecognized Homebrew receipt state at {}; reinstall the Kast formula, remove the invalid receipt manually if appropriate, and rerun repair",
+                        receipt_path.display()
+                    ),
+                )
+            })?
+        } else {
+            let Some(discovered) = discover_running_homebrew_receipt()? else {
+                return Ok(());
+            };
+            discovered
+        };
+        push_repair_action(
+            result,
+            "establish-homebrew-cli-receipt",
+            &receipt_path,
+            "Back up recognized legacy state and write the CLI-only Homebrew authority receipt.",
+            Some("kast repair --for machine --apply".to_string()),
+        );
+        if args.apply {
+            backup_existing_path(&receipt_path, backup_root, result)?;
+            write_macos_homebrew_receipt_at(&receipt_path, &replacement)?;
+        }
+        Ok(())
+    }
+}
+
+fn repair_recognized_legacy_idea_plugin_links(
+    args: &InstallRepairArgs,
+    result: &mut InstallRepairResult,
+    backup_root: &Path,
+) -> Result<()> {
+    let receipt = match read_macos_homebrew_receipt() {
+        Ok(Some(receipt)) => receipt,
+        Ok(None) => return Ok(()),
+        Err(error) if !args.apply => {
+            exact_legacy_macos_homebrew_receipt(&default_macos_homebrew_receipt_path())?
+                .ok_or(error)?
+        }
+        Err(error) => return Err(error),
     };
     let jetbrains_config_root = args
         .jetbrains_config_root
         .clone()
         .map(config::normalize)
-        .unwrap_or_else(default_jetbrains_config_root);
-    let mut stale_links = Vec::new();
-    for plugin_dir in jetbrains_plugin_dirs(&jetbrains_config_root)? {
-        let plugin_link = plugin_dir.join("kast");
-        match classify_homebrew_plugin_profile_path(&expected_plugin_target, &plugin_link) {
-            HomebrewPluginProfilePath::Missing | HomebrewPluginProfilePath::Active => {}
-            HomebrewPluginProfilePath::ManagedStale { .. } => {
-                push_repair_action(
-                    result,
-                    "refresh-idea-plugin-link",
-                    &plugin_link,
-                    &format!(
-                        "Back up and relink a stale Homebrew-managed IDEA or Android Studio profile plugin to {}.",
-                        expected_plugin_target.display()
-                    ),
-                    Some("kast developer machine plugin".to_string()),
-                );
-                stale_links.push(plugin_link);
-            }
-            HomebrewPluginProfilePath::Unmanaged { current_target } => {
-                let existing_path = current_target.map_or_else(
-                    || plugin_link.display().to_string(),
-                    |target| format!("{} -> {}", plugin_link.display(), target.display()),
-                );
-                result.warnings.push(format!(
-                    "Preserved unmanaged JetBrains plugin path {existing_path}; Kast repair only replaces Homebrew-managed plugin links"
-                ));
-            }
-        }
+        .unwrap_or_else(|| {
+            config::home_dir().join("Library/Application Support/JetBrains")
+        });
+    let owned_links = owned_legacy_idea_plugin_links(
+        &jetbrains_config_root,
+        &receipt.cli.formula_prefix,
+    )?;
+    for owned in &owned_links {
+        push_repair_action(
+            result,
+            "remove-legacy-idea-plugin-link",
+            &owned.path,
+            &format!(
+                "Back up and remove the recognized legacy Homebrew plugin link to {}; JetBrains now owns plugin installation and updates.",
+                owned.target.display()
+            ),
+            Some("Install the signed plugin through JetBrains, then reopen this exact project.".to_string()),
+        );
     }
-    if args.apply && !stale_links.is_empty() {
-        require_jetbrains_ides_closed()?;
-        for plugin_link in stale_links {
-            backup_existing_path(&plugin_link, backup_root, result)?;
-            remove_existing_path(&plugin_link)?;
-            if let Some(parent) = plugin_link.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            create_plugin_link(&expected_plugin_target, &plugin_link, &mut result.warnings)?;
+    if args.apply && !owned_links.is_empty() {
+        apply_owned_legacy_idea_plugin_cleanup(
+            owned_links,
+            backup_root,
+            result,
+            require_jetbrains_ides_closed_for_legacy_cleanup,
+        )?;
+    }
+    Ok(())
+}
+
+fn apply_owned_legacy_idea_plugin_cleanup(
+    owned_links: Vec<OwnedLegacySymlink>,
+    backup_root: &Path,
+    result: &mut InstallRepairResult,
+    require_ides_closed: impl FnOnce() -> Result<()>,
+) -> Result<()> {
+    if owned_links.is_empty() {
+        return Ok(());
+    }
+    require_ides_closed()?;
+    fs::create_dir_all(backup_root)?;
+    for owned in owned_links {
+        let backup_path = backup_root.join(format!(
+            "{:03}-{}",
+            result.backups.len() + 1,
+            backup_label(&owned.path),
+        ));
+        if path_exists_or_symlink(&backup_path) {
+            return Err(CliError::new(
+                "LEGACY_IDEA_PLUGIN_CLEANUP_CONFLICT",
+                format!(
+                    "Refusing to replace existing cleanup backup {}; leave plugin state unchanged and remove that conflict manually if appropriate",
+                    backup_path.display(),
+                ),
+            ));
         }
+        fs::rename(&owned.path, &backup_path)?;
+        let remains_exact_owned_link = fs::symlink_metadata(&backup_path)
+            .is_ok_and(|metadata| metadata.file_type().is_symlink())
+            && fs::read_link(&backup_path).is_ok_and(|target| target == owned.target);
+        if !remains_exact_owned_link {
+            if !path_exists_or_symlink(&owned.path) {
+                fs::rename(&backup_path, &owned.path)?;
+            }
+            return Err(CliError::new(
+                "LEGACY_IDEA_PLUGIN_CLEANUP_STATE_CHANGED",
+                format!(
+                    "Refusing to remove {} because it changed after cleanup selection; the observed state was preserved",
+                    owned.path.display(),
+                ),
+            ));
+        }
+        result.backups.push(backup_path.display().to_string());
     }
     Ok(())
 }
@@ -629,21 +733,6 @@ fn path_exists_or_symlink(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
 }
 
-pub(crate) fn kast_idea_plugin_installed() -> Result<bool> {
-    let jetbrains_config_root = env::var_os("KAST_JETBRAINS_CONFIG_ROOT")
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-        .map(config::normalize)
-        .unwrap_or_else(default_jetbrains_config_root);
-    kast_idea_plugin_installed_under(&jetbrains_config_root)
-}
-
-pub(crate) fn kast_idea_plugin_installed_under(jetbrains_config_root: &Path) -> Result<bool> {
-    Ok(jetbrains_plugin_dirs(jetbrains_config_root)?
-        .into_iter()
-        .any(|plugin_dir| path_exists_or_symlink(&plugin_dir.join("kast"))))
-}
-
 fn managed_install_path(install_root: &Path, value: &str) -> PathBuf {
     let path = Path::new(value);
     if path.is_absolute() {
@@ -685,76 +774,6 @@ fn resolve_command_bin_dir(command_name: &str) -> Result<Option<PathBuf>> {
     Ok(command_path
         .map(PathBuf::from)
         .and_then(|path| path.parent().map(Path::to_path_buf)))
-}
-
-fn expected_homebrew_plugin_target(result: &mut InstallRepairResult) -> Result<Option<PathBuf>> {
-    expected_homebrew_plugin_target_with_warnings(&mut result.warnings)
-}
-
-fn expected_homebrew_plugin_target_with_warnings(
-    warnings: &mut Vec<String>,
-) -> Result<Option<PathBuf>> {
-    let brew_prefix = match homebrew_prefix(&["--prefix"]) {
-        Ok(value) => value,
-        Err(error) => {
-            warnings.push(format!(
-                "Could not resolve Homebrew prefix; skipping JetBrains plugin link repair: {}",
-                error.message
-            ));
-            return Ok(None);
-        }
-    };
-    let formula_tap = homebrew_formula_tap().unwrap_or_else(|error| {
-        warnings.push(format!(
-            "Could not resolve the Homebrew tap for kast; using {DEFAULT_KAST_TAP}: {}",
-            error.message
-        ));
-        DEFAULT_KAST_TAP.to_string()
-    });
-    let cask_token = format!("{formula_tap}/{KAST_PLUGIN_CASK_NAME}");
-    let cask_name = cask_name(&cask_token);
-    expected_homebrew_plugin_target_for_cask(&cask_name, &brew_prefix, warnings)
-}
-
-fn expected_homebrew_plugin_target_for_cask(
-    cask_name: &str,
-    brew_prefix: &Path,
-    warnings: &mut Vec<String>,
-) -> Result<Option<PathBuf>> {
-    let Some(version) = homebrew_cask_version(cask_name)? else {
-        warnings.push(format!(
-            "Homebrew cask {cask_name} is not installed; skipping JetBrains plugin link repair"
-        ));
-        return Ok(None);
-    };
-    let target = brew_prefix
-        .join("Caskroom")
-        .join(cask_name)
-        .join(version)
-        .join("backend-idea");
-    if !target.is_dir() {
-        warnings.push(format!(
-            "Homebrew cask {cask_name} does not contain the expected Kast plugin directory at {}; skipping JetBrains plugin link repair",
-            target.display()
-        ));
-        return Ok(None);
-    }
-    Ok(Some(target))
-}
-
-#[cfg(unix)]
-fn create_plugin_link(source: &Path, target: &Path, _warnings: &mut Vec<String>) -> Result<()> {
-    std::os::unix::fs::symlink(source, target)?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn create_plugin_link(_source: &Path, target: &Path, warnings: &mut Vec<String>) -> Result<()> {
-    warnings.push(format!(
-        "Cannot create JetBrains plugin symlink on this platform; left {} unchanged",
-        target.display()
-    ));
-    Ok(())
 }
 
 fn backup_timestamp() -> String {

@@ -16,11 +16,10 @@ the repository agent assets:
 - `.agents/skills/kast/SKILL.md`
 - one managed `<kast>...</kast>` guidance region in the selected repo context file
 
-For IDEA plugin install or repair, use the typed machine command:
-
-```console
-kast developer machine plugin
-```
+Install the signed plugin with JetBrains **Install Plugin from Disk**, enroll
+the published certificate and custom plugin repository in the IDE, and let
+JetBrains own subsequent updates. `kast repair --for machine --apply` repairs
+only the CLI receipt and recognized one-release legacy state.
 
 Setup does not install Copilot packages, portable Markdown instruction
 packages, session hooks, generated catalog copies, or workflow helper assets.

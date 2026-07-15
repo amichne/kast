@@ -25,9 +25,9 @@ than producing an unsigned artifact.
 `KastProjectOpenProfileAutoInit` owns revisioned exact-root workspace metadata.
 It serializes the shared `analysis-api` compatibility facts for the plugin,
 CLI, protocol, metadata, capability, and IDEA runtime identity alongside the
-existing fields. This slice is preparation only: do not make those facts a
-second active admission rule before ADR 0023's negotiation cutover. The current
-exact-version admission remains authoritative until that later change.
+existing fields. The CLI version comes from the strict CLI-only Homebrew
+receipt; the plugin and runtime versions come from the signed plugin. Do not
+reintroduce duplicate top-level versions or exact plugin/CLI equality.
 
 `IdeaProjectModelWorkspaceFileInventory` owns complete raw `.kt` and `.kts`
 candidate discovery for the IDEA host. Collect candidates through

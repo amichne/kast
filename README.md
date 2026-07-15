@@ -10,22 +10,18 @@ are real, or whether a planned edit is safe to apply.
 
 ## Install
 
-For a macOS developer machine, run the installer first.
-Then open your project in IntelliJ IDEA or Android Studio. If either editor is
-already running, the installer identifies its process and can close it after
-explicit confirmation. Kast handles the CLI, matching plugin, and agent-facing
-project guidance from there.
+For a macOS developer machine, install the CLI first. Then install the signed
+plugin ZIP through JetBrains and open your project in IntelliJ IDEA or Android Studio.
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer defaults to the public `amichne/kast` Homebrew tap. It explains
-the planned machine changes before mutating anything and stops if a JetBrains
-IDE is still running. Homebrew owns the macOS CLI and matching plugin; Kast
-records and uses the exact formula binary instead of trusting ambient `PATH`.
-Open the IDE after an install or update, then open the project you want agents
-to work in.
+The installer defaults to the public `amichne/kast` Homebrew tap and establishes
+the fail-closed CLI receipt. Homebrew owns only the macOS CLI. JetBrains owns
+plugin installation and updates; certificate trust and custom repository
+enrollment are explicit IDE actions. Reopen the exact project after either side
+updates so the plugin refreshes compatibility metadata.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
@@ -82,7 +78,7 @@ Kast has two runtime modes behind the same command surface:
 
 | Runtime mode | Best when | Install path |
 | --- | --- | --- |
-| **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew developer distribution |
+| **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew CLI plus JetBrains-installed signed plugin |
 | **Headless CLI + backend** | A CI runner, server, or hosted Linux image needs its own runtime | Linux headless bundle |
 
 Repository agent guidance can use either runtime because agents call the same

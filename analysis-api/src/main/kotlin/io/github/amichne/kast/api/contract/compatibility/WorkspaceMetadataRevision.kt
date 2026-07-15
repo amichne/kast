@@ -14,6 +14,6 @@ value class WorkspaceMetadataRevision(
     }
 
     companion object {
-        val CURRENT = WorkspaceMetadataRevision(2)
+        val CURRENT = WorkspaceMetadataRevision(3)
     }
 }

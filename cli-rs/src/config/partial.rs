@@ -35,7 +35,6 @@ struct PartialIdeaLaunch {
     enabled: Option<bool>,
     command: Option<PathBuf>,
     wait_timeout_millis: Option<NonZeroU64>,
-    require_installed_plugin: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

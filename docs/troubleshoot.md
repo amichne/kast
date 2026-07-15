@@ -14,14 +14,15 @@ sequence when needed.
 
 | Symptom | Likely cause | Next action |
 | --- | --- | --- |
-| Kast does not appear available after install | Machine install or plugin refresh did not complete | Close IntelliJ IDEA and Android Studio, then rerun the installer |
+| Kast CLI does not appear after install | Homebrew formula or CLI receipt repair did not complete | Rerun the installer, then run `kast ready --for machine` |
+| Kast plugin does not appear | The signed ZIP was not installed or the custom repository is not enrolled | Use **Install Plugin from Disk** or update the repository settings in JetBrains |
 | `~/.local/bin/kast` runs instead of Homebrew Kast | An older managed local shim precedes Homebrew on `PATH` | Run read-only machine readiness and use its cleanup command only when one is offered |
-| Install or update says a JetBrains IDE is running | IntelliJ IDEA or Android Studio still has a live process | Enter `y` to close the reported PID, or exit and run the printed `kill -TERM` command; do not use `sudo` |
+| Repair asks for the IDE to close | A recognized legacy Homebrew plugin symlink is ready for bounded removal | Close the affected IDE window and rerun `kast repair --for machine --apply` |
 | The agent cannot use Kast in a macOS project | The project has not been opened with the Kast plugin active | Open the project in the IDE and let the plugin prepare it |
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNPREPARED` in a worktree or temporary checkout | That exact root has no admitted IDEA or headless semantic state | Prepare that exact root with the JetBrains plugin, or use an already installed supported headless distribution |
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNSUPPORTED` | The selected root is not a Kotlin Gradle workspace | Select the root containing `settings.gradle(.kts)` or `build.gradle(.kts)` |
 | `agent verify` reports `SEMANTIC_BACKEND_AMBIGUOUS` | IDEA and headless are both ready for the exact root | Rerun with `--backend=idea` or `--backend=headless` after checking the candidate evidence |
-| An applied command reports `SEMANTIC_MUTATION_AUTHORITY_REQUIRED` | The read-only headless route was selected without exact-root plugin preparation on macOS | Open that exact root with the Homebrew-coupled plugin, verify it, then rerun the applied command |
+| An applied command reports `SEMANTIC_MUTATION_AUTHORITY_REQUIRED` | The read-only headless route was selected without exact-root plugin preparation on macOS | Open that exact root with the JetBrains-installed plugin, verify it, then rerun the applied command |
 | Hosted Linux agent cannot answer semantic questions | Headless bundle or backend is not active | Check the image/bootstrap flow and runtime state |
 | Symbol lookup returns an unexpected target | The query is too broad | Narrow by kind, file, or containing type before editing |
 | Diagnostics disagree with the file on disk | Backend source state may be stale | Refresh or restart the runtime before retrying |
@@ -37,7 +38,7 @@ It also preserves `daemons.json` exactly; use an explicit lifecycle command if
 stale runtime state should be pruned.
 
 On macOS, open the exact checkout root in IntelliJ IDEA or Android Studio with
-the Homebrew-coupled Kast plugin enabled. After the plugin has prepared that
+the signed JetBrains-installed Kast plugin enabled. After the plugin has prepared that
 root, rerun verification and the read-only semantic commands against the same
 absolute path.
 

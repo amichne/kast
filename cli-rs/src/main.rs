@@ -271,8 +271,9 @@ fn context_command_hints() -> Vec<ContextCommandHint> {
     {
         vec![
             ContextCommandHint {
-                command: "kast developer machine plugin".to_string(),
-                purpose: "Install or repair the Homebrew-managed IntelliJ plugin.".to_string(),
+                command: "kast repair --for machine --apply".to_string(),
+                purpose: "Repair the CLI-only Homebrew receipt and recognized legacy state."
+                    .to_string(),
             },
             ContextCommandHint {
                 command: "kast agent verify --workspace-root <repo>".to_string(),
@@ -405,13 +406,14 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         .as_deref()
         .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
         .transpose()?;
-    if apply && !install::macos_homebrew_authority_is_active()? {
-        manifest::install_current_executable()?;
-    }
-    let repair = install::repair_install_state(cli::InstallRepairArgs {
+    let repair_args = cli::InstallRepairArgs {
         apply,
         jetbrains_config_root,
-    })?;
+    };
+    if apply && !install::macos_homebrew_repair_authority_is_provable()? {
+        manifest::install_current_executable()?;
+    }
+    let repair = install::repair_install_state(repair_args)?;
     let ready = self_mgmt::doctor(false, target, workspace_root.as_deref())?;
     let ok = ready.ok;
     let result = RepairCommandResult {
@@ -502,11 +504,11 @@ fn macos_plugin_bootstrap_required(
 ) -> Result<i32> {
     removed_operator_command(
         method,
-        "macOS workspace setup is owned by the Homebrew-distributed IntelliJ plugin. The CLI does not install runtime, resource, or skill-only workspace state on macOS.",
+        "macOS workspace setup is owned by the JetBrains-installed signed plugin. The CLI does not install runtime, plugin, resource, or skill-only workspace state on macOS.",
         &[
             "brew install amichne/kast/kast",
-            "kast developer machine plugin",
-            "Open the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled",
+            "Install the signed plugin with JetBrains Install Plugin from Disk",
+            "Open the workspace in IntelliJ IDEA or Android Studio with the signed Kast plugin enabled",
             "kast agent verify --workspace-root <repo>",
         ],
         output_format,
@@ -641,9 +643,6 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
 
 fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
-        cli::MachineCommand::Plugin(args) => {
-            run_install(cli::InstallCommand::Plugin(args), output_format)
-        }
         cli::MachineCommand::Defaults(args) => {
             let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
             if output_format.is_structured() {
@@ -739,22 +738,13 @@ fn run_install(command: cli::InstallCommand, output_format: OutputFormat) -> Res
         }
         command => command,
     };
-    let mut reporter = install_reporter(output_format);
-    let result = install::install(cli::InstallArgs { command }, reporter.as_mut())?;
+    let result = install::install(cli::InstallArgs { command })?;
     if output_format.is_structured() {
         output::print_structured(&result, output_format)?;
     } else {
         output::print_install_result(&result)?;
     }
     Ok(0)
-}
-
-fn install_reporter(output_format: OutputFormat) -> Box<dyn install::InstallReporter> {
-    if output_format == OutputFormat::Human {
-        Box::new(install::HumanInstallReporter::new())
-    } else {
-        Box::new(install::NoopInstallReporter)
-    }
 }
 
 fn contract_paths(args: &cli::GenerateContractArgs) -> contract_gen::ContractPaths {

@@ -19,8 +19,6 @@ pub enum InstallCommand {
     /// Activate a portable Kast install bundle from its bundled manifest.
     #[command(name = "activate-bundle")]
     ActivateBundle(ActivateBundleArgs),
-    /// Install the Homebrew-managed IDEA plugin cask and link JetBrains profiles.
-    Plugin(IdeaPluginInstallArgs),
     /// Install shell PATH and completion integration.
     Shell(ShellInstallArgs),
     /// Print shell completion scripts.
@@ -65,25 +63,6 @@ pub struct CompletionArgs {
     /// Command name to embed in completion output. Defaults to kast.
     #[arg(long)]
     pub command_name: Option<String>,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct IdeaPluginInstallArgs {
-    /// JetBrains config root containing IDE profile directories when linking profiles.
-    #[arg(long)]
-    pub jetbrains_config_root: Option<PathBuf>,
-    /// Link the Homebrew cask into local JetBrains IDE profiles.
-    #[arg(long, hide = true)]
-    pub link_jetbrains_profiles: bool,
-    /// Override the cask token. Defaults to <kast formula tap>/kast-plugin.
-    #[arg(long)]
-    pub cask_token: Option<String>,
-    /// Replace or refetch the plugin artifact when the installer supports it.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Print the planned Homebrew command without running it.
-    #[arg(long)]
-    pub dry_run: bool,
 }
 
 #[derive(Debug, Args, Clone)]

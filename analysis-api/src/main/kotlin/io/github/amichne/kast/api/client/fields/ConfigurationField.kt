@@ -38,7 +38,6 @@ sealed class ConfigurationField<T> {
             IdeaLaunchEnabled(false),
             IdeaLaunchCommand("idea"),
             IdeaLaunchWaitTimeoutMillis(90_000L),
-            IdeaLaunchRequireInstalledPlugin(true),
             ProjectOpenProfileAutoInit(true),
             ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
             ProjectOpenAutoExcludeGit(true),

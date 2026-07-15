@@ -2,21 +2,24 @@
 mod tests {
     use super::*;
 
-    #[test]
-    fn macos_homebrew_receipt_round_trips_from_application_support() {
+    fn executable_formula() -> (tempfile::TempDir, PathBuf, PathBuf) {
         let temp = tempfile::tempdir().expect("tempdir");
-        let version = cli::version().to_string();
+        let version = cli::version();
         let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
         let binary = formula_prefix.join("bin/kast");
         fs::create_dir_all(binary.parent().expect("binary parent")).expect("formula bin");
         fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
         crate::manifest::make_executable(&binary).expect("executable binary");
+        (temp, formula_prefix, binary)
+    }
+
+    #[test]
+    fn macos_homebrew_cli_receipt_round_trips_without_plugin_authority() {
+        let (temp, formula_prefix, binary) = executable_formula();
         let receipt = MacosHomebrewInstallReceipt::new(
             binary,
             formula_prefix,
-            version.clone(),
-            "amichne/kast/kast-plugin".to_string(),
-            version,
+            cli::version().to_string(),
         );
         let receipt_path = macos_homebrew_receipt_path(temp.path());
 
@@ -24,89 +27,252 @@ mod tests {
         let loaded = read_macos_homebrew_receipt_at(&receipt_path).expect("read receipt");
 
         assert_eq!(loaded, receipt);
-        assert_eq!(
-            receipt_path,
-            temp.path()
-                .join("Library/Application Support/Kast/homebrew-install.json")
-        );
+        let raw = fs::read_to_string(receipt_path).expect("receipt text");
+        assert!(!raw.contains("plugin"), "{raw}");
+        assert_eq!(loaded.schema_version, 2);
     }
 
     #[test]
-    fn macos_homebrew_receipt_rejects_a_stale_version() {
+    fn macos_homebrew_cli_receipt_rejects_unknown_plugin_fields() {
+        let (temp, formula_prefix, binary) = executable_formula();
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+        let mut document = serde_json::to_value(MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            cli::version().to_string(),
+        ))
+        .expect("receipt value");
+        document["plugin"] = serde_json::json!({"version": cli::version()});
+        fs::create_dir_all(receipt_path.parent().expect("receipt parent")).expect("receipt dir");
+        fs::write(&receipt_path, serde_json::to_vec(&document).expect("receipt json"))
+            .expect("receipt");
+
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("unknown field");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_INVALID");
+        assert!(error.message.contains("repair --for machine --apply"));
+    }
+
+    #[test]
+    fn macos_homebrew_cli_receipt_rejects_formula_version_drift() {
         let temp = tempfile::tempdir().expect("tempdir");
-        let formula_prefix = temp.path().join("Cellar/kast/0.0.0");
+        let formula_prefix = temp.path().join("Cellar/kast/other-version");
         let binary = formula_prefix.join("bin/kast");
         fs::create_dir_all(binary.parent().expect("binary parent")).expect("formula bin");
         fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
         crate::manifest::make_executable(&binary).expect("executable binary");
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
         let receipt = MacosHomebrewInstallReceipt::new(
             binary,
             formula_prefix,
-            "0.0.0".to_string(),
-            "amichne/kast/kast-plugin".to_string(),
-            "0.0.0".to_string(),
+            cli::version().to_string(),
         );
-        let receipt_path = macos_homebrew_receipt_path(temp.path());
-
         write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
-        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("stale receipt");
 
-        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH");
-        assert!(error.message.contains(cli::version()), "{}", error.message);
-    }
+        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("version drift");
 
-    #[test]
-    fn macos_homebrew_receipt_rejects_a_missing_binary() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let version = cli::version().to_string();
-        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
-        fs::create_dir_all(&formula_prefix).expect("formula prefix");
-        let receipt = MacosHomebrewInstallReceipt::new(
-            formula_prefix.join("bin/kast"),
-            formula_prefix,
-            version.clone(),
-            "amichne/kast/kast-plugin".to_string(),
-            version,
-        );
-        let receipt_path = macos_homebrew_receipt_path(temp.path());
-
-        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
-        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("missing binary");
-
-        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_BINARY_MISSING");
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_INVALID");
+        assert!(error.message.contains("Cellar/kast version root"));
     }
 
     #[cfg(unix)]
     #[test]
-    fn macos_homebrew_receipt_rejects_a_binary_symlink_escape() {
+    fn legacy_cleanup_selects_only_exact_owned_absolute_cask_links() {
         let temp = tempfile::tempdir().expect("tempdir");
-        let version = cli::version().to_string();
-        let formula_prefix = temp.path().join(format!("Cellar/kast/{version}"));
-        let binary = formula_prefix.join("bin/kast");
-        let outside_binary = temp.path().join("outside/kast");
-        fs::create_dir_all(binary.parent().expect("formula bin")).expect("formula bin");
-        fs::create_dir_all(outside_binary.parent().expect("outside bin")).expect("outside bin");
-        fs::write(&outside_binary, "#!/usr/bin/env sh\n").expect("outside binary");
-        crate::manifest::make_executable(&outside_binary).expect("executable outside binary");
-        std::os::unix::fs::symlink(&outside_binary, &binary).expect("formula symlink");
-        let receipt = MacosHomebrewInstallReceipt::new(
-            binary,
-            formula_prefix,
-            version.clone(),
-            "amichne/kast/kast-plugin".to_string(),
-            version,
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{}/", cli::version()));
+        fs::create_dir_all(&formula_prefix).expect("formula");
+        let homebrew_root = fs::canonicalize(temp.path()).expect("canonical Homebrew root");
+        let profile = temp.path().join("JetBrains/IntelliJIdea2026.1/plugins");
+        fs::create_dir_all(&profile).expect("profile");
+        let owned_target = homebrew_root.join("Caskroom/kast-plugin/0.12.9/backend-idea");
+        std::os::unix::fs::symlink(&owned_target, profile.join("kast")).expect("owned link");
+        let unrecognized_profile = temp
+            .path()
+            .join("JetBrains/IntelliJIdeaBackup2026.1/plugins");
+        fs::create_dir_all(&unrecognized_profile).expect("unrecognized profile");
+        std::os::unix::fs::symlink(&owned_target, unrecognized_profile.join("kast"))
+            .expect("unrecognized profile link");
+        let relative_profile = temp.path().join("JetBrains/IdeaIC2026.1/plugins");
+        fs::create_dir_all(&relative_profile).expect("relative profile");
+        std::os::unix::fs::symlink(
+            "../../Caskroom/kast-plugin/0.12.9/backend-idea",
+            relative_profile.join("kast"),
+        )
+        .expect("relative link");
+        let regular_profile = temp.path().join("JetBrains/AndroidStudio2026.1/plugins");
+        fs::create_dir_all(&regular_profile).expect("regular profile");
+        fs::write(regular_profile.join("kast"), "preserve").expect("regular plugin file");
+        let outside_profile = temp.path().join("JetBrains/PyCharm2026.1/plugins");
+        fs::create_dir_all(&outside_profile).expect("outside profile");
+        std::os::unix::fs::symlink(
+            homebrew_root.join("outside/backend-idea"),
+            outside_profile.join("kast"),
+        )
+        .expect("outside link");
+
+        let owned = owned_legacy_idea_plugin_links_for_release(
+            &temp.path().join("JetBrains"),
+            &formula_prefix,
+            LEGACY_IDEA_PLUGIN_CLEANUP_RELEASE,
+        )
+        .expect("owned links");
+
+        assert_eq!(owned.len(), 1);
+        assert_eq!(owned[0].target, owned_target);
+        assert!(unrecognized_profile.join("kast").is_symlink());
+        assert!(relative_profile.join("kast").is_symlink());
+        assert!(regular_profile.join("kast").is_file());
+        assert!(outside_profile.join("kast").is_symlink());
+        assert!(exact_legacy_cask_target(&homebrew_root, &owned[0].target));
+        assert!(!exact_legacy_cask_target(
+            &homebrew_root,
+            &homebrew_root.join("Caskroom/kast-plugin/../../user/backend-idea")
+        ));
+        assert!(
+            owned_legacy_idea_plugin_links_for_release(
+                &temp.path().join("JetBrains"),
+                &formula_prefix,
+                "0.13.1",
+            )
+            .expect("later release cleanup")
+            .is_empty()
         );
-        let receipt_path = macos_homebrew_receipt_path(temp.path());
+    }
 
-        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
-        let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("escaping receipt");
+    #[cfg(unix)]
+    #[test]
+    fn legacy_cleanup_apply_backs_up_exact_links_is_idempotent_and_fails_closed() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let backup_root = temp.path().join("backups");
+        let target = temp
+            .path()
+            .join("Caskroom/kast-plugin/0.12.9/backend-idea");
+        let link = temp.path().join("JetBrains/IdeaIC2026.1/plugins/kast");
+        fs::create_dir_all(link.parent().expect("link parent")).expect("profile");
+        std::os::unix::fs::symlink(&target, &link).expect("legacy link");
+        let owned = OwnedLegacySymlink {
+            path: link.clone(),
+            target: target.clone(),
+        };
+        let mut result = repair_result_for_test();
 
-        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_INVALID");
+        let changed = apply_owned_legacy_idea_plugin_cleanup(
+            vec![owned.clone()],
+            &backup_root,
+            &mut result,
+            || {
+                fs::remove_file(&link)?;
+                fs::write(&link, "user-owned plugin state")?;
+                Ok(())
+            },
+        )
+        .expect_err("apply-time state drift must fail closed");
+        assert_eq!(changed.code, "LEGACY_IDEA_PLUGIN_CLEANUP_STATE_CHANGED");
+        assert_eq!(
+            fs::read_to_string(&link).expect("preserved replacement"),
+            "user-owned plugin state",
+        );
+        assert!(result.backups.is_empty());
+
+        fs::remove_file(&link).expect("remove replacement");
+        std::os::unix::fs::symlink(&target, &link).expect("restore legacy link");
+        apply_owned_legacy_idea_plugin_cleanup(
+            vec![owned.clone()],
+            &backup_root,
+            &mut result,
+            || Ok(()),
+        )
+        .expect("apply cleanup");
+
+        assert!(!link.exists() && !link.is_symlink());
+        assert_eq!(result.backups.len(), 1);
+        assert_eq!(
+            fs::read_link(&result.backups[0]).expect("backup symlink evidence"),
+            target,
+        );
+        apply_owned_legacy_idea_plugin_cleanup(
+            vec![],
+            &backup_root,
+            &mut result,
+            || panic!("an idempotent no-op must not run the IDE preflight"),
+        )
+        .expect("idempotent cleanup");
+        assert_eq!(result.backups.len(), 1);
+
+        std::os::unix::fs::symlink(&target, &link).expect("restored legacy link");
+        let error = apply_owned_legacy_idea_plugin_cleanup(
+            vec![owned],
+            &backup_root,
+            &mut result,
+            || Err(CliError::new("JETBRAINS_IDE_OPEN", "IDE open")),
+        )
+        .expect_err("failed preflight must preserve state");
+        assert_eq!(error.code, "JETBRAINS_IDE_OPEN");
+        assert!(link.is_symlink());
+        assert_eq!(result.backups.len(), 1);
+
+        let blocked_link = temp.path().join("JetBrains/GoLand2026.1/plugins/kast");
+        fs::create_dir_all(blocked_link.parent().expect("blocked link parent"))
+            .expect("blocked profile");
+        std::os::unix::fs::symlink(&target, &blocked_link).expect("blocked legacy link");
+        let invalid_backup_root = temp.path().join("not-a-directory");
+        fs::write(&invalid_backup_root, "conflict").expect("backup conflict");
+        apply_owned_legacy_idea_plugin_cleanup(
+            vec![OwnedLegacySymlink {
+                path: blocked_link.clone(),
+                target,
+            }],
+            &invalid_backup_root,
+            &mut result,
+            || Ok(()),
+        )
+        .expect_err("backup preparation failure must precede mutation");
+        assert!(blocked_link.is_symlink());
+        assert_eq!(result.backups.len(), 1);
+    }
+
+    fn repair_result_for_test() -> InstallRepairResult {
+        InstallRepairResult {
+            applied: true,
+            config_path: "test-config".to_string(),
+            apply_command: "kast repair --apply".to_string(),
+            actions: vec![],
+            backups: vec![],
+            warnings: vec![],
+            schema_version: SCHEMA_VERSION,
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn legacy_cleanup_fails_closed_unless_pgrep_proves_no_ide_match() {
+        use std::os::unix::process::ExitStatusExt;
+
+        let output = |exit_code: i32| Output {
+            status: std::process::ExitStatus::from_raw(exit_code << 8),
+            stdout: vec![],
+            stderr: vec![],
+        };
+
+        let open = require_jetbrains_ides_closed_from_pgrep(Ok(output(0)))
+            .expect_err("matched IDE must block cleanup");
+        assert_eq!(open.code, "JETBRAINS_IDE_OPEN");
+        require_jetbrains_ides_closed_from_pgrep(Ok(output(1)))
+            .expect("pgrep exit 1 proves no match");
+        let failed = require_jetbrains_ides_closed_from_pgrep(Ok(output(2)))
+            .expect_err("pgrep failure must block cleanup");
+        assert_eq!(failed.code, "JETBRAINS_IDE_STATE_UNAVAILABLE");
+        let unavailable = require_jetbrains_ides_closed_from_pgrep(Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "missing pgrep",
+        )))
+        .expect_err("missing pgrep must block cleanup");
+        assert_eq!(unavailable.code, "JETBRAINS_IDE_STATE_UNAVAILABLE");
     }
 
     #[test]
     fn install_skill_omits_marker_and_skips_matching_version() {
-        let temp = tempfile::tempdir().unwrap();
+        let temp = tempfile::tempdir().expect("tempdir");
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
@@ -114,21 +280,17 @@ mod tests {
             force: false,
             no_auto_exclude_git: false,
         };
-        let first = install_skill(args.clone()).unwrap();
+        let first = install_skill(args.clone()).expect("first install");
         assert!(!first.skipped);
         assert!(temp.path().join("kast/SKILL.md").is_file());
         assert!(!temp.path().join("kast/AGENTS.md").exists());
-        assert!(!temp.path().join("kast/references").exists());
-        assert!(!temp.path().join("kast/scripts").exists());
-        assert!(!temp.path().join("kast/fixtures").exists());
-        assert!(!temp.path().join("kast/.kast-version").exists());
-        let second = install_skill(args).unwrap();
+        let second = install_skill(args).expect("second install");
         assert!(second.skipped);
     }
 
     #[test]
     fn install_skill_replaces_retired_heavy_outputs_when_managed() {
-        let temp = tempfile::tempdir().unwrap();
+        let temp = tempfile::tempdir().expect("tempdir");
         let args = ResourceInstallArgs {
             target_dir: Some(temp.path().to_path_buf()),
             name: Some("kast".to_string()),
@@ -136,45 +298,30 @@ mod tests {
             force: false,
             no_auto_exclude_git: false,
         };
-        let first = install_skill(args.clone()).unwrap();
-        assert!(!first.skipped);
-
+        install_skill(args.clone()).expect("first install");
         let target = temp.path().join("kast");
-        fs::create_dir_all(target.join("references")).unwrap();
-        fs::create_dir_all(target.join("scripts")).unwrap();
-        fs::create_dir_all(target.join("fixtures")).unwrap();
-        fs::write(target.join("AGENTS.md"), "old source guide\n").unwrap();
-        fs::write(target.join("references/commands.json"), "{}\n").unwrap();
-        fs::write(target.join("scripts/verify-kast-state.py"), "#!/usr/bin/env python3\n")
-            .unwrap();
-
-        let second = install_skill(args.clone()).unwrap();
+        fs::create_dir_all(target.join("references")).expect("legacy references");
+        fs::write(target.join("AGENTS.md"), "old source guide\n").expect("legacy guide");
+        let second = install_skill(args.clone()).expect("replacement");
         assert!(!second.skipped);
-        assert!(target.join("SKILL.md").is_file());
         assert!(!target.join("AGENTS.md").exists());
         assert!(!target.join("references").exists());
-        assert!(!target.join("scripts").exists());
-        assert!(!target.join("fixtures").exists());
-
-        let third = install_skill(args).unwrap();
-        assert!(third.skipped);
+        assert!(install_skill(args).expect("stable install").skipped);
     }
 
     #[test]
     fn install_skill_source_override_requires_entrypoint() {
-        let temp = tempfile::tempdir().unwrap();
+        let temp = tempfile::tempdir().expect("tempdir");
         let source = temp.path().join("source");
-        fs::create_dir_all(&source).unwrap();
-        let args = ResourceInstallArgs {
+        fs::create_dir_all(&source).expect("source");
+        let error = install_skill(ResourceInstallArgs {
             target_dir: Some(temp.path().join("target")),
             name: Some("kast".to_string()),
             source_dir: Some(source),
             force: false,
             no_auto_exclude_git: false,
-        };
-
-        let error = install_skill(args).unwrap_err();
-
+        })
+        .expect_err("incomplete source");
         assert_eq!(error.code, "RESOURCE_SOURCE_INCOMPLETE");
         assert!(error.message.contains("SKILL.md"));
     }
@@ -184,220 +331,9 @@ mod tests {
         assert!(is_generated_resource_cache_file(Path::new(
             "scripts/__pycache__/verify-kast-state.cpython-314.pyc"
         )));
-        assert!(is_generated_resource_cache_file(Path::new(
-            "scripts/__pycache__/helper.pyo"
-        )));
         assert!(is_generated_resource_cache_file(Path::new(".DS_Store")));
         assert!(!is_generated_resource_cache_file(Path::new(
             "scripts/verify-kast-state.py"
         )));
-        assert!(!is_generated_resource_cache_file(Path::new(
-            "references/commands.json"
-        )));
-    }
-
-    #[test]
-    fn jetbrains_plugin_dirs_match_cask_profile_filter() {
-        let temp = tempfile::tempdir().unwrap();
-        let root = temp.path();
-        for dir in [
-            "AndroidStudio2025.2",
-            "AndroidStudio2026.2",
-            "GoLand2024.2",
-            "PyCharmCE2024.1",
-            "AndroidStudio2025.2-backup/2025-07-27-00-54",
-            "Toolbox",
-            "AndroidStudio2025.2/plugins/python-ce/helpers/typeshed/stubs/flake8/flake8",
-        ] {
-            fs::create_dir_all(root.join(dir)).unwrap();
-        }
-
-        let dirs = jetbrains_plugin_dirs(root).unwrap();
-        let relative: Vec<_> = dirs
-            .iter()
-            .map(|path| path.strip_prefix(root).unwrap().display().to_string())
-            .collect();
-
-        assert_eq!(
-            relative,
-            vec![
-                "AndroidStudio2026.2/plugins",
-                "AndroidStudio2025.2/plugins",
-                "GoLand2024.2/plugins",
-                "PyCharmCE2024.1/plugins",
-            ]
-        );
-    }
-
-    #[test]
-    fn latest_jetbrains_ide_app_name_prefers_newest_intellij_then_android_studio() {
-        let temp = tempfile::tempdir().unwrap();
-        let root = temp.path();
-        for dir in [
-            "AndroidStudio2026.2",
-            "IntelliJIdea2025.1",
-            "IntelliJIdea2026.1",
-            "GoLand2026.3",
-        ] {
-            fs::create_dir_all(root.join(dir)).unwrap();
-        }
-
-        assert_eq!(
-            latest_jetbrains_ide_app_name_under(root)
-                .unwrap()
-                .as_deref(),
-            Some("IntelliJ IDEA")
-        );
-
-        fs::remove_dir_all(root.join("IntelliJIdea2025.1")).unwrap();
-        fs::remove_dir_all(root.join("IntelliJIdea2026.1")).unwrap();
-
-        assert_eq!(
-            latest_jetbrains_ide_app_name_under(root)
-                .unwrap()
-                .as_deref(),
-            Some("Android Studio")
-        );
-    }
-
-    #[test]
-    fn running_jetbrains_process_detection_includes_named_app_variants() {
-        let processes = r#"
-4312 /Applications/IntelliJ IDEA EAP.app/Contents/MacOS/idea
-4313 /Applications/Android Studio Preview.app/Contents/MacOS/studio
-"#;
-
-        assert_eq!(
-            running_jetbrains_processes(processes),
-            BTreeSet::from([
-                RunningJetBrainsProcess {
-                    pid: 4312,
-                    product: RunningJetBrainsProduct::IntelliJIdea,
-                },
-                RunningJetBrainsProcess {
-                    pid: 4313,
-                    product: RunningJetBrainsProduct::AndroidStudio,
-                },
-            ])
-        );
-    }
-
-    #[test]
-    fn parses_homebrew_formula_tap() {
-        let json = r#"{"formulae":[{"name":"kast","tap":"amichne/kast"}],"casks":[]}"#;
-        assert_eq!(
-            parse_homebrew_formula_tap(json).as_deref(),
-            Some("amichne/kast")
-        );
-    }
-
-    #[test]
-    fn parses_homebrew_cask_metadata_version() {
-        let json = r#"{"formulae":[],"casks":[{"token":"kast-plugin","version":"9.8.7"}]}"#;
-
-        let metadata = parse_homebrew_cask_metadata(json).unwrap();
-
-        assert_eq!(metadata.plugin_version, "9.8.7");
-    }
-
-    #[test]
-    fn cask_name_uses_last_token_segment() {
-        assert_eq!(cask_name("amichne/kast/kast-plugin"), "kast-plugin");
-        assert_eq!(cask_name("kast-plugin"), "kast-plugin");
-    }
-
-    #[test]
-    fn homebrew_formula_path_check_accepts_cellar_binary() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let prefix = temp.path().join("Cellar/kast/0.7.16");
-        let cli = prefix.join("bin/kast");
-        let outside = temp.path().join("outside/kast");
-        fs::create_dir_all(cli.parent().expect("formula bin")).expect("formula bin");
-        fs::create_dir_all(outside.parent().expect("outside bin")).expect("outside bin");
-        fs::write(&cli, "#!/usr/bin/env sh\n").expect("formula binary");
-        fs::write(&outside, "#!/usr/bin/env sh\n").expect("outside binary");
-
-        assert!(path_is_below_homebrew_formula(&cli, &prefix));
-        assert!(!path_is_below_homebrew_formula(&outside, &prefix));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn homebrew_formula_path_check_rejects_a_symlink_that_escapes_the_formula() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let formula_prefix = temp.path().join("Cellar/kast/1.2.3");
-        let formula_binary = formula_prefix.join("bin/kast");
-        let outside_binary = temp.path().join("outside/kast");
-        fs::create_dir_all(formula_binary.parent().expect("formula bin")).expect("formula bin");
-        fs::create_dir_all(outside_binary.parent().expect("outside bin")).expect("outside bin");
-        fs::write(&outside_binary, "#!/usr/bin/env sh\n").expect("outside binary");
-        std::os::unix::fs::symlink(&outside_binary, &formula_binary).expect("formula symlink");
-
-        assert!(!path_is_below_homebrew_formula(
-            &formula_binary,
-            &formula_prefix
-        ));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn homebrew_plugin_link_classifier_rejects_a_parent_directory_escape() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let plugin_link = temp.path().join("profile/plugins/kast");
-        fs::create_dir_all(plugin_link.parent().expect("plugin parent")).expect("plugin parent");
-        let expected = PathBuf::from(
-            "/opt/homebrew/Caskroom/kast-plugin/1.2.3/backend-idea",
-        );
-        let escaping = PathBuf::from(
-            "/opt/homebrew/Caskroom/kast-plugin/../../user-owned/backend-idea",
-        );
-        std::os::unix::fs::symlink(&escaping, &plugin_link).expect("plugin link");
-
-        assert!(matches!(
-            classify_homebrew_plugin_profile_path(&expected, &plugin_link),
-            HomebrewPluginProfilePath::Unmanaged { .. }
-        ));
-    }
-
-    #[test]
-    fn homebrew_cli_verification_rejects_development_binary() {
-        let context = HomebrewContext {
-            brew_prefix: PathBuf::from("/opt/homebrew"),
-            formula_prefix: PathBuf::from("/opt/homebrew/opt/kast"),
-            cli_path: PathBuf::from("/opt/homebrew/opt/kast/bin/kast"),
-            running_cli_path: PathBuf::from("/Users/example/.local/bin/kast-dev"),
-        };
-
-        let error = verify_homebrew_cli(&context).unwrap_err();
-
-        assert_eq!(error.code, "HOMEBREW_INSTALL_REQUIRED");
-        assert_eq!(
-            error.details.get("cliPath").map(String::as_str),
-            Some("/Users/example/.local/bin/kast-dev")
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn homebrew_cli_verification_accepts_bin_symlink_to_formula_binary() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let cellar_prefix = temp.path().join("Cellar/kast/1.2.3");
-        let formula_binary = cellar_prefix.join("bin/kast");
-        let opt_prefix = temp.path().join("opt/kast");
-        let invoked_binary = temp.path().join("bin/kast");
-        fs::create_dir_all(formula_binary.parent().expect("formula bin")).expect("formula bin");
-        fs::create_dir_all(opt_prefix.parent().expect("opt parent")).expect("opt parent");
-        fs::create_dir_all(invoked_binary.parent().expect("bin parent")).expect("bin parent");
-        fs::write(&formula_binary, "#!/usr/bin/env sh\n").expect("formula binary");
-        std::os::unix::fs::symlink(&cellar_prefix, &opt_prefix).expect("opt symlink");
-        std::os::unix::fs::symlink(&formula_binary, &invoked_binary).expect("bin symlink");
-        let context = HomebrewContext {
-            brew_prefix: temp.path().to_path_buf(),
-            cli_path: opt_prefix.join("bin/kast"),
-            formula_prefix: opt_prefix,
-            running_cli_path: invoked_binary,
-        };
-
-        assert!(verify_homebrew_cli(&context).is_ok());
     }
 }

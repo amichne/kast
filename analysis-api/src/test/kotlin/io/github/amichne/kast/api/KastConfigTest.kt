@@ -67,7 +67,6 @@ class KastConfigTest {
         assertEquals(false, config.runtime.ideaLaunch.enabled.value)
         assertEquals("idea", config.runtime.ideaLaunch.command.value)
         assertEquals(90_000L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
-        assertEquals(true, config.runtime.ideaLaunch.requireInstalledPlugin.value)
     }
 
     @Test
@@ -89,9 +88,9 @@ class KastConfigTest {
 
     @Test
     fun `legacy copilot project open profile remains a compatibility alias`() {
-        val profile = ProjectOpenProfile(ProjectOpenProfile.COPILOT_LSP)
+        val profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN)
 
-        assertEquals(ProjectOpenProfile.COPILOT_LSP, profile.value)
+        assertEquals(ProjectOpenProfile.JETBRAINS_PLUGIN, profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, profile.kind)
         assertEquals(ConfigurationDefault(ProjectOpenProfile.JETBRAINS_PLUGIN), profile.default)
     }
@@ -176,7 +175,6 @@ class KastConfigTest {
             "runtime.ideaLaunch" to "enabled",
             "runtime.ideaLaunch" to "command",
             "runtime.ideaLaunch" to "waitTimeoutMillis",
-            "runtime.ideaLaunch" to "requireInstalledPlugin",
             "projectOpen" to "profileAutoInit",
             "projectOpen" to "profile",
             "projectOpen" to "autoExcludeGit",
@@ -311,7 +309,7 @@ class KastConfigTest {
 
                 [project-open]
                 profile-auto-init = true
-                profile = "copilot-lsp"
+                profile = "jetbrains-plugin"
                 auto-exclude-git = false
                 gradle-load-enabled = false
 
@@ -339,9 +337,8 @@ class KastConfigTest {
         assertEquals(true, config.runtime.ideaLaunch.enabled.value)
         assertEquals("/Applications/IntelliJ IDEA.app/Contents/MacOS/idea", config.runtime.ideaLaunch.command.value)
         assertEquals(12_345L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
-        assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
         assertEquals(true, config.projectOpen.profileAutoInit.value)
-        assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals("jetbrains-plugin", config.projectOpen.profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
@@ -410,7 +407,7 @@ class KastConfigTest {
 
                 [projectOpen]
                 profileAutoInit = true
-                profile = "copilot-lsp"
+                profile = "jetbrains-plugin"
                 autoExcludeGit = false
                 gradleLoadEnabled = false
 
@@ -531,13 +528,12 @@ class KastConfigTest {
                     "ideaLaunch": {
                       "enabled": true,
                       "command": "/usr/local/bin/idea",
-                      "waitTimeoutMillis": 45678,
-                      "requireInstalledPlugin": false
+                      "waitTimeoutMillis": 45678
                     }
                   },
                   "projectOpen": {
                     "profileAutoInit": true,
-                    "profile": "copilot-lsp",
+                    "profile": "jetbrains-plugin",
                     "autoExcludeGit": false,
                     "gradleLoadEnabled": false
                   },
@@ -607,9 +603,8 @@ class KastConfigTest {
         assertEquals(true, config.runtime.ideaLaunch.enabled.value)
         assertEquals("/usr/local/bin/idea", config.runtime.ideaLaunch.command.value)
         assertEquals(45_678L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
-        assertEquals(false, config.runtime.ideaLaunch.requireInstalledPlugin.value)
         assertEquals(true, config.projectOpen.profileAutoInit.value)
-        assertEquals("copilot-lsp", config.projectOpen.profile.value)
+        assertEquals("jetbrains-plugin", config.projectOpen.profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
         assertEquals(false, config.projectOpen.autoExcludeGit.value)
         assertEquals(false, config.projectOpen.gradleLoadEnabled.value)

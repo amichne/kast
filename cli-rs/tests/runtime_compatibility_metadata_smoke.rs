@@ -5,103 +5,131 @@ mod macos {
     use super::support::*;
 
     #[test]
-    fn revisioned_metadata_parses_negotiation_facts_without_replacing_active_admission() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let home = temp.path().join("home");
-        let config_home = temp.path().join("config");
-        let workspace = temp.path().join("workspace");
-        std::fs::create_dir_all(&home).expect("home");
-        std::fs::create_dir_all(&config_home).expect("config home");
-        std::fs::create_dir_all(&workspace).expect("workspace");
-        write_macos_plugin_workspace_metadata(&workspace);
-
-        let valid = status(&home, &config_home, &workspace);
+    fn authored_runtime_pair_is_active_admission_and_optional_absence_is_local() {
+        let fixture = Fixture::new();
+        let authored = fixture.status();
         assert!(
-            valid.status.success(),
-            "valid revisioned metadata should parse: stdout={}, stderr={}",
-            String::from_utf8_lossy(&valid.stdout),
-            String::from_utf8_lossy(&valid.stderr),
+            authored.status.success(),
+            "authored pair should be compatible: stdout={}, stderr={}",
+            String::from_utf8_lossy(&authored.stdout),
+            String::from_utf8_lossy(&authored.stderr),
         );
 
-        let metadata_path = workspace.join(".kast/setup/workspace.json");
-        let mut metadata = read_metadata(&metadata_path);
-        metadata["compatibility"]["protocolRevision"] = serde_json::json!(999);
-        metadata["compatibility"]["mutationCapabilities"] = serde_json::json!([]);
-        write_metadata(&metadata_path, &metadata);
+        let mut metadata = fixture.metadata();
+        let read = metadata["compatibility"]["readCapabilities"]
+            .as_array_mut()
+            .expect("read capabilities");
+        read.retain(|capability| capability != "CALL_HIERARCHY");
+        fixture.write(&metadata);
 
-        let prepared_skew = status(&home, &config_home, &workspace);
+        let optional_absent = fixture.status();
         assert!(
-            prepared_skew.status.success(),
-            "inactive preparation must not create a second admission rule: stdout={}, stderr={}",
-            String::from_utf8_lossy(&prepared_skew.stdout),
-            String::from_utf8_lossy(&prepared_skew.stderr),
+            optional_absent.status.success(),
+            "missing optional capability must not reject unrelated readiness: {}",
+            String::from_utf8_lossy(&optional_absent.stdout),
         );
     }
 
     #[test]
-    fn malformed_revision_and_unknown_capability_fail_closed_at_the_metadata_boundary() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let home = temp.path().join("home");
-        let config_home = temp.path().join("config");
-        let workspace = temp.path().join("workspace");
-        std::fs::create_dir_all(&home).expect("home");
-        std::fs::create_dir_all(&config_home).expect("config home");
-        std::fs::create_dir_all(&workspace).expect("workspace");
-        write_macos_plugin_workspace_metadata(&workspace);
+    fn unsupported_protocol_and_missing_required_capability_fail_closed() {
+        let fixture = Fixture::new();
+        let original = fixture.metadata();
 
-        let metadata_path = workspace.join(".kast/setup/workspace.json");
-        let original = read_metadata(&metadata_path);
+        let mut unsupported_protocol = original.clone();
+        unsupported_protocol["compatibility"]["protocolRevision"] = serde_json::json!(999);
+        fixture.write(&unsupported_protocol);
+        assert_update_required(fixture.status());
 
-        let mut zero_revision = original.clone();
-        zero_revision["compatibility"]["workspaceMetadataRevision"] = serde_json::json!(0);
-        write_metadata(&metadata_path, &zero_revision);
-        assert_metadata_rejected(status(&home, &config_home, &workspace));
-
-        let mut unknown_capability = original;
-        unknown_capability["compatibility"]["readCapabilities"] =
-            serde_json::json!(["UNKNOWN_CAPABILITY"]);
-        write_metadata(&metadata_path, &unknown_capability);
-        assert_metadata_rejected(status(&home, &config_home, &workspace));
-
-        let mut invalid_runtime_version = read_metadata(&metadata_path);
-        invalid_runtime_version["compatibility"]["readCapabilities"] =
-            serde_json::json!(["DIAGNOSTICS"]);
-        invalid_runtime_version["compatibility"]["runtimeIdentity"]["implementationVersion"] =
-            serde_json::json!("invalid runtime version");
-        write_metadata(&metadata_path, &invalid_runtime_version);
-        assert_metadata_rejected(status(&home, &config_home, &workspace));
+        let mut missing_required = original;
+        let mutations = missing_required["compatibility"]["mutationCapabilities"]
+            .as_array_mut()
+            .expect("mutation capabilities");
+        mutations.retain(|capability| capability != "RENAME");
+        fixture.write(&missing_required);
+        assert_update_required(fixture.status());
     }
 
-    fn status(home: &Path, config_home: &Path, workspace: &Path) -> std::process::Output {
-        kast(home, config_home)
-            .args([
-                "--output",
-                "json",
-                "status",
-                "--workspace-root",
-                workspace.to_str().expect("workspace path"),
-            ])
-            .output()
-            .expect("status")
+    #[test]
+    fn unsupported_version_pair_and_old_metadata_revision_require_refresh() {
+        let fixture = Fixture::new();
+        let original = fixture.metadata();
+
+        let mut unsupported_pair = original.clone();
+        unsupported_pair["compatibility"]["pluginVersion"] = serde_json::json!("0.12.9");
+        unsupported_pair["compatibility"]["runtimeIdentity"]["implementationVersion"] =
+            serde_json::json!("0.12.9");
+        fixture.write(&unsupported_pair);
+        assert_update_required(fixture.status());
+
+        let mut old = original;
+        old["schemaVersion"] = serde_json::json!(2);
+        old["pluginVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
+        old["cliVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
+        old["compatibility"]["workspaceMetadataRevision"] = serde_json::json!(2);
+        fixture.write(&old);
+        assert_update_required(fixture.status());
     }
 
-    fn read_metadata(path: &Path) -> serde_json::Value {
-        serde_json::from_slice(&std::fs::read(path).expect("metadata bytes"))
-            .expect("metadata JSON")
+    struct Fixture {
+        _temp: tempfile::TempDir,
+        home: PathBuf,
+        config_home: PathBuf,
+        workspace: PathBuf,
     }
 
-    fn write_metadata(path: &Path, metadata: &serde_json::Value) {
-        std::fs::write(
-            path,
-            serde_json::to_vec_pretty(metadata).expect("metadata JSON"),
-        )
-        .expect("metadata file");
+    impl Fixture {
+        fn new() -> Self {
+            let temp = tempfile::tempdir().expect("tempdir");
+            let home = temp.path().join("home");
+            let config_home = temp.path().join("config");
+            let workspace = temp.path().join("workspace");
+            std::fs::create_dir_all(&home).expect("home");
+            std::fs::create_dir_all(&config_home).expect("config home");
+            std::fs::create_dir_all(&workspace).expect("workspace");
+            write_macos_plugin_workspace_metadata(&workspace);
+            Self {
+                _temp: temp,
+                home,
+                config_home,
+                workspace,
+            }
+        }
+
+        fn metadata_path(&self) -> PathBuf {
+            self.workspace.join(".kast/setup/workspace.json")
+        }
+
+        fn metadata(&self) -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(self.metadata_path()).expect("metadata bytes"))
+                .expect("metadata JSON")
+        }
+
+        fn write(&self, metadata: &serde_json::Value) {
+            std::fs::write(
+                self.metadata_path(),
+                serde_json::to_vec_pretty(metadata).expect("metadata JSON"),
+            )
+            .expect("metadata file");
+        }
+
+        fn status(&self) -> std::process::Output {
+            kast(&self.home, &self.config_home)
+                .args([
+                    "--output",
+                    "json",
+                    "status",
+                    "--workspace-root",
+                    self.workspace.to_str().expect("workspace path"),
+                ])
+                .output()
+                .expect("status")
+        }
     }
 
-    fn assert_metadata_rejected(output: std::process::Output) {
+    fn assert_update_required(output: std::process::Output) {
         assert!(
             !output.status.success(),
-            "malformed metadata must fail closed"
+            "unsupported metadata must fail closed"
         );
         let payload: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("status error JSON");
@@ -109,5 +137,9 @@ mod macos {
             payload["code"], "MACOS_PLUGIN_WORKSPACE_REQUIRED",
             "{payload:#}"
         );
+        let message = payload["message"].as_str().expect("error message");
+        assert!(message.contains("update"), "{message}");
+        assert!(message.contains("reopen"), "{message}");
+        assert!(message.contains("refresh"), "{message}");
     }
 }

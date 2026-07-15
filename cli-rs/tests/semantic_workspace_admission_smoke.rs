@@ -533,7 +533,7 @@ fn agent_verify_never_runs_configured_idea_launch_command() {
     std::fs::write(
         config_home.join("config.toml"),
         format!(
-            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\nrequireInstalledPlugin = false\n",
+            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\n",
             launch_command.display()
         ),
     )
@@ -594,7 +594,7 @@ fn reuse_only_verify_preserves_dead_descriptor_bytes_without_launching() {
     std::fs::write(
         config_home.join("config.toml"),
         format!(
-            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\nrequireInstalledPlugin = false\n",
+            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\n",
             launch_command.display()
         ),
     )

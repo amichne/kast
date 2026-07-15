@@ -3,7 +3,6 @@
 class Kast < Formula
   ARTIFACT_VERSION = "0.7.29"
   DEFAULT_ARTIFACT_ROOT = "https://github.com/amichne"
-  PLUGIN_CASK = "amichne/kast/kast-plugin"
 
   def self.artifact_root
     ENV.fetch("HOMEBREW_KAST_ARTIFACT_ROOT", DEFAULT_ARTIFACT_ROOT).chomp("/")
@@ -40,14 +39,14 @@ class Kast < Formula
 
   def caveats
     <<~EOS
-      This formula installs the Kast CLI without changing your IDE profiles.
-      To install or repair the version-matched #{PLUGIN_CASK} plugin:
+      Homebrew owns only the Kast CLI. Establish or repair its fail-closed receipt with:
+        #{opt_bin}/kast repair --for machine --apply
 
-        1. Close IntelliJ IDEA and Android Studio.
-        2. Run:
-           #{opt_bin}/kast developer machine plugin
+      Install the signed Kast plugin ZIP with JetBrains "Install Plugin from Disk",
+      enroll the published certificate and custom plugin repository in the IDE,
+      then reopen the exact project. JetBrains owns subsequent plugin updates.
 
-      The recommended installer performs both steps for you:
+      The recommended installer configures the CLI authority:
         curl -fsSL https://kast.dev/install.sh | bash
     EOS
   end

@@ -1,88 +1,32 @@
-# homebrew-kast
+# Kast Homebrew tap
 
-Homebrew tap for the macOS developer distribution of
-[Kast](https://github.com/amichne/kast).
-
-## Install
-
-Install directly from the tap:
-
-```bash
-brew install amichne/kast/kast
-```
-
-The `kast` formula installs only the CLI, so Homebrew never mutates JetBrains
-profiles under its temporary `post_install` home. The recommended Kast
-installer owns the full developer setup and converges the version-matched IDEA
-plugin once in your real user environment. If you install the formula directly,
-close IntelliJ IDEA and Android Studio, then run:
-
-```bash
-$(brew --prefix kast)/bin/kast developer machine plugin
-```
-
-Homebrew will add the tap automatically. To add the tap first and then install
-by short token:
+Homebrew is the sole installation and update authority for the Kast CLI on
+macOS. It does not install, link, repair, or inspect the IntelliJ plugin.
 
 ```bash
 brew tap amichne/kast
-brew install kast
-```
-
-`kast` installs the macOS Rust CLI asset from `amichne/kast`.
-`kast-plugin` installs the IDEA plugin bundle from `amichne/kast` as a cask and
-links it into every local JetBrains IDE profile it can find. Restart each IDE
-after installation or upgrade so the IDE reloads its plugins.
-
-Repair or refresh the cask directly when local profile links need to be rebuilt:
-
-```bash
-brew reinstall --cask amichne/kast/kast-plugin
-```
-
-If your JetBrains config directory is somewhere else, point the cask at it:
-
-```bash
-KAST_JETBRAINS_CONFIG_ROOT="$HOME/Library/Application Support/JetBrains" brew reinstall --cask kast-plugin
-```
-
-The Homebrew distribution is the macOS developer path. It does not install the
-Linux headless runtime or a Homebrew-managed JDK; use the Linux headless
-tarball when you explicitly need headless operation.
-
-## Enterprise mirrors
-
-The package files default to GitHub release assets, but the release host is
-resolved at install time. To use the same tap against an internal Artifactory mirror,
-mirror the release tree under one root and set:
-
-```bash
-export HOMEBREW_KAST_ARTIFACT_ROOT="https://artifactory.example.com/artifactory/kast-releases"
 brew install amichne/kast/kast
+kast repair --for machine --apply
 ```
 
-The shared mirror root must expose the same repository-shaped paths:
+The repair command writes the fail-closed CLI-only receipt and, for the 0.13.0
+cutover release only, can remove exactly recognized legacy Homebrew plugin
+symlinks. It never creates an IDE profile or plugin link.
 
-```text
-${HOMEBREW_KAST_ARTIFACT_ROOT}/kast/releases/download/v0.7.29/kast-v0.7.29-macos-arm64.zip
-${HOMEBREW_KAST_ARTIFACT_ROOT}/kast/releases/download/v0.7.29/kast-idea-v0.7.29.zip
-```
+Install the signed plugin ZIP with JetBrains **Install Plugin from Disk**. Add
+the published signing certificate and custom plugin repository in the IDE,
+then reopen the exact project. JetBrains owns subsequent plugin updates.
 
-If your enterprise artifact layout separates the CLI and plugin roots, set the
-component-specific roots instead:
+## Release mirrors
+
+The formula defaults to the monorepo `amichne/kast` release workflow. An
+enterprise mirror may override the CLI artifact root without changing the
+formula:
 
 ```bash
-export HOMEBREW_KAST_CLI_RELEASE_ROOT="https://artifactory.example.com/artifactory/kast-cli"
-export HOMEBREW_KAST_PLUGIN_RELEASE_ROOT="https://artifactory.example.com/artifactory/kast-plugin"
+export HOMEBREW_KAST_CLI_RELEASE_ROOT="https://artifactory.example.com/kast/releases/download"
+curl -LO "$HOMEBREW_KAST_CLI_RELEASE_ROOT/v0.7.29/kast-v0.7.29-macos-arm64.zip"
 ```
 
-Those roots should point at the directory that contains each `vX.Y.Z` release
-directory. Checksums remain pinned in the tap, so mirrored artifacts must be
-byte-for-byte copies of the published release assets.
-
-The tap tracks the current published release in `release-state.json`. The
-Homebrew package files and release state are rendered atomically by the
-monorepo `amichne/kast` release workflow after the Rust CLI and IDEA plugin
-assets are published from the same tag. A single shared version is used for all
-components; the renderer rejects partial component updates so `kast` and
-`kast-plugin` cannot drift.
+The signed IDEA ZIP, update feed, checksums, and provenance remain release
+assets, but they are not Homebrew packages.

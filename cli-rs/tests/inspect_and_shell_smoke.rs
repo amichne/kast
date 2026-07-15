@@ -361,7 +361,6 @@ fn developer_machine_defaults_configures_idea_plugin_backend() {
     assert_eq!(stdout["defaultBackend"], "idea");
     assert_eq!(stdout["ideaLaunchEnabled"], true);
     assert_eq!(stdout["ideaLaunchCommand"], "idea");
-    assert_eq!(stdout["requireInstalledPlugin"], true);
     assert_eq!(stdout["applied"], true);
 
     let config = std::fs::read_to_string(config_home.join("config.toml")).expect("config");
@@ -369,7 +368,6 @@ fn developer_machine_defaults_configures_idea_plugin_backend() {
     assert!(config.contains("[runtime.ideaLaunch]"), "{config}");
     assert!(config.contains("enabled = true"), "{config}");
     assert!(config.contains("command = \"idea\""), "{config}");
-    assert!(config.contains("requireInstalledPlugin = true"), "{config}");
 
     let up = kast(&home, &config_home)
         .args([
@@ -480,7 +478,7 @@ fn help_topic_dumps_selected_command_help() {
     std::fs::create_dir_all(&home).expect("home");
 
     let help = kast(&home, &config_home)
-        .args(["help", "developer", "machine", "plugin"])
+        .args(["help", "developer", "machine", "shell"])
         .output()
         .expect("help topic");
 
@@ -492,11 +490,11 @@ fn help_topic_dumps_selected_command_help() {
     );
     let stdout = String::from_utf8_lossy(&help.stdout);
     assert!(
-        stdout.contains("Homebrew-managed IDEA plugin"),
+        stdout.contains("Install shell PATH and completion integration"),
         "selected help should include the command description: {stdout}"
     );
     assert!(
-        stdout.contains("--jetbrains-config-root"),
+        stdout.contains("--source-file"),
         "selected help should include the command flags: {stdout}"
     );
     assert!(

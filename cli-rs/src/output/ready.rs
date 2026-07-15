@@ -61,12 +61,6 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
             compact_path_for_output(&receipt.cli.binary.display().to_string()),
             receipt.cli.version
         );
-        mdln!(
-            document,
-            "- Plugin: `{}` (`{}`)",
-            receipt.plugin.cask_token,
-            receipt.plugin.version
-        );
     }
     if let Some(shadow) = &result.legacy_shadow {
         mdln!(document);

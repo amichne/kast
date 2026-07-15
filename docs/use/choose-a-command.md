@@ -14,7 +14,7 @@ use typed command families when they need semantic evidence.
 
 | Reader job | Start with | Why |
 | --- | --- | --- |
-| Install on a macOS developer machine | Install | Installs the CLI and matching JetBrains plugin |
+| Install on a macOS developer machine | Install | Installs the CLI through Homebrew; install the signed plugin separately through JetBrains |
 | Prepare Linux CI or hosted agents | Headless install | Installs the self-contained CLI and backend bundle |
 | Understand what an agent will do | Agent commands | Explains the typed semantic capabilities |
 | Inspect Kotlin safely | Semantic inspection | Resolves identity before relying on usage evidence |

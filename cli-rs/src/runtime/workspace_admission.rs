@@ -369,7 +369,7 @@ fn mutation_authority_rejection(
             next_actions: vec![SemanticWorkspaceNextAction {
                 kind: SemanticWorkspaceNextActionKind::PrepareIdeaWorkspace,
                 command: format!(
-                    "Open `{exact_root}` in IntelliJ IDEA or Android Studio with the Homebrew-coupled Kast plugin enabled, then rerun the applied command against that exact root."
+                    "Open `{exact_root}` in IntelliJ IDEA or Android Studio with the signed JetBrains-installed Kast plugin enabled, then rerun the applied command against that exact root."
                 ),
                 mutates_global_install_authority: false,
             }],
@@ -404,7 +404,7 @@ fn unprepared_workspace_rejection(
                 SemanticWorkspaceNextAction {
                     kind: SemanticWorkspaceNextActionKind::PrepareIdeaWorkspace,
                     command: format!(
-                        "Open `{exact_root}` in IntelliJ IDEA or Android Studio with the Homebrew-coupled Kast plugin enabled, then run `kast agent verify --workspace-root '{exact_root}' --backend=idea`."
+                        "Open `{exact_root}` in IntelliJ IDEA or Android Studio with the signed JetBrains-installed Kast plugin enabled, then run `kast agent verify --workspace-root '{exact_root}' --backend=idea`."
                     ),
                     mutates_global_install_authority: false,
                 },

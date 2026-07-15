@@ -23,8 +23,8 @@ typed `kast` command surface.
 
     ---
 
-    Install the Homebrew binary and matching JetBrains plugin, then open your
-    project.
+    Install the Homebrew CLI and the signed plugin through JetBrains, then open
+    your project.
 
     [:octicons-arrow-right-24: macOS install](install/macos.md)
 
@@ -73,7 +73,7 @@ compiler-backed operations when they need evidence.
 
 ```mermaid
 flowchart LR
-    distribution["Distribution<br/>binary, plugin, bundle"]
+    distribution["Distribution<br/>CLI, signed plugin, bundle"]
     setup["Workspace setup<br/>skill, guidance, metadata"]
     runtime["Runtime backend<br/>IDEA or headless"]
     commands["Typed commands<br/>kast agent ..."]

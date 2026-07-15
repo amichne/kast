@@ -59,7 +59,7 @@ class KastSettingsConfigurableTest {
 
             [projectOpen]
             profileAutoInit = false
-            profile = "copilot-lsp"
+            profile = "jetbrains-plugin"
             autoExcludeGit = true
             gradleLoadEnabled = true
 
@@ -106,7 +106,7 @@ class KastSettingsConfigurableTest {
             runtimeDefaultBackend = "idea"
             backendsIdeaEnabled = false
             projectOpenProfileAutoInit = true
-            projectOpenProfile = "copilot-lsp"
+            projectOpenProfile = "jetbrains-plugin"
             projectOpenAutoExcludeGit = false
             projectOpenGradleLoadEnabled = false
         }
@@ -114,7 +114,7 @@ class KastSettingsConfigurableTest {
 
         assertEquals("idea", override.runtime?.defaultBackend?.value)
         assertEquals(true, override.projectOpen?.profileAutoInit?.value)
-        assertEquals("copilot-lsp", override.projectOpen?.profile?.value)
+        assertEquals("jetbrains-plugin", override.projectOpen?.profile?.value)
         assertEquals(false, override.projectOpen?.autoExcludeGit?.value)
         assertEquals(false, override.projectOpen?.gradleLoadEnabled?.value)
         assertEquals(false, override.backends?.idea?.enabled?.value)

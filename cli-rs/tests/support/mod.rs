@@ -9,11 +9,25 @@ pub(crate) use std::process::Command;
 pub(crate) use std::{io::BufRead, io::BufReader, io::Write, os::unix::net::UnixListener, thread};
 
 pub(crate) fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
+    kast_at(Path::new(env!("CARGO_BIN_EXE_kast")), home, config_home)
+}
+
+pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command {
+    let mut command = Command::new(binary);
     command
         .env("HOME", home)
         .env("KAST_CONFIG_HOME", config_home);
     command
+}
+
+pub(crate) fn write_homebrew_kast_for_test(root: &Path) -> PathBuf {
+    let binary = root
+        .join("Cellar/kast")
+        .join(env!("CARGO_PKG_VERSION"))
+        .join("bin/kast");
+    std::fs::create_dir_all(binary.parent().expect("Homebrew bin")).expect("Homebrew formula");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &binary).expect("Homebrew Kast binary");
+    binary
 }
 
 pub(crate) fn default_install_root(home: &Path) -> PathBuf {
@@ -38,15 +52,11 @@ pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Pa
     std::fs::write(
         &receipt,
         serde_json::to_vec_pretty(&serde_json::json!({
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "authority": "macos-homebrew",
             "cli": {
                 "binary": cli_binary.display().to_string(),
-                "formulaPrefix": cli_binary.parent().expect("formula prefix").display().to_string(),
-                "version": env!("CARGO_PKG_VERSION")
-            },
-            "plugin": {
-                "caskToken": "amichne/kast/kast-plugin",
+                "formulaPrefix": cli_binary.parent().expect("formula bin").parent().expect("formula prefix").display().to_string(),
                 "version": env!("CARGO_PKG_VERSION")
             },
             "updatedAt": "unix:1"
@@ -126,10 +136,8 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
         std::fs::write(
             metadata,
             serde_json::to_string_pretty(&serde_json::json!({
-                "schemaVersion": 2,
+                "schemaVersion": 3,
                 "preparedBy": "kast-intellij-plugin",
-                "pluginVersion": env!("CARGO_PKG_VERSION"),
-                "cliVersion": env!("CARGO_PKG_VERSION"),
                 "workspaceRoot": workspace.display().to_string(),
                 "cliBinary": env!("CARGO_BIN_EXE_kast"),
                 "backend": "idea",
@@ -138,7 +146,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
                     "pluginVersion": env!("CARGO_PKG_VERSION"),
                     "cliVersion": env!("CARGO_PKG_VERSION"),
                     "protocolRevision": 1,
-                    "workspaceMetadataRevision": 2,
+                    "workspaceMetadataRevision": 3,
                     "readCapabilities": [
                         "RESOLVE_SYMBOL",
                         "FIND_REFERENCES",
@@ -370,112 +378,6 @@ pub(crate) fn path_report_entry<'a>(
         .iter()
         .find(|entry| entry["key"] == key)
         .unwrap_or_else(|| panic!("missing path report entry {key}: {report:#?}"))
-}
-
-pub(crate) fn write_fake_brew(bin_dir: &Path, running_cli_dir: &Path) -> PathBuf {
-    let brew = bin_dir.join("brew");
-    let ps = bin_dir.join("ps");
-    let brew_prefix = bin_dir.parent().expect("fake brew root").join("homebrew");
-    let formula_prefix = running_cli_dir.parent().expect("fake formula prefix");
-    let formula_cli = formula_prefix.join("bin/kast");
-    std::fs::create_dir_all(
-        brew_prefix
-            .join("Caskroom/kast-plugin")
-            .join(env!("CARGO_PKG_VERSION"))
-            .join("backend-idea"),
-    )
-    .expect("fake Homebrew plugin target");
-    if !formula_cli.exists() {
-        match std::os::unix::fs::symlink(
-            running_cli_dir,
-            formula_cli.parent().expect("formula bin"),
-        ) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(error) => panic!("fake Homebrew formula bin: {error}"),
-        }
-    }
-    std::fs::create_dir_all(bin_dir).expect("brew bin");
-    std::fs::write(
-        &brew,
-        format!(
-            r#"#!/bin/sh
-set -eu
-state_file="${{HOME:-/tmp}}/.fake-brew-kast-plugin-version"
-plugin_version="${{KAST_FAKE_BREW_PLUGIN_VERSION:-{}}}"
-if [ "$1" = "--prefix" ] && [ "$#" -eq 1 ]; then
-  printf '%s\n' "{}"
-elif [ "$1" = "--prefix" ] && [ "$2" = "kast" ]; then
-  printf '%s\n' "{}"
-elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "kast" ]; then
-  printf '%s\n' '{{"formulae":[{{"name":"kast","tap":"amichne/kast"}}],"casks":[]}}'
-elif [ "$1" = "info" ] && [ "$2" = "--json=v2" ] && [ "$3" = "--cask" ]; then
-  printf '%s\n' "{{\"formulae\":[],\"casks\":[{{\"token\":\"kast-plugin\",\"full_token\":\"amichne/kast/kast-plugin\",\"version\":\"${{plugin_version}}\"}}]}}"
-elif [ "$1" = "fetch" ] && [ "$2" = "--cask" ]; then
-  cache="${{HOME:-/tmp}}/000--kast-plugin.zip"
-  printf 'fake plugin zip\n' > "$cache"
-  printf 'fake brew fetched kast plugin\n' >&2
-elif [ "$1" = "--cache" ] && [ "$2" = "--cask" ]; then
-  printf '%s\n' "${{HOME:-/tmp}}/000--kast-plugin.zip"
-elif [ "$1" = "install" ] && [ "$2" = "--cask" ]; then
-  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-${{plugin_version}}}}" > "$state_file"
-  printf 'fake brew installed kast plugin\n' >&2
-elif [ "$1" = "reinstall" ] && [ "$2" = "--cask" ]; then
-  printf '%s\n' "${{KAST_FAKE_BREW_INSTALL_VERSION:-${{plugin_version}}}}" > "$state_file"
-  printf 'fake brew reinstalled kast plugin\n' >&2
-elif [ "$1" = "list" ] && [ "$2" = "--cask" ]; then
-  if [ "${{KAST_FAKE_BREW_CASK_VERSION:-}}" != "" ]; then
-    printf 'kast-plugin %s\n' "$KAST_FAKE_BREW_CASK_VERSION"
-  elif [ -f "$state_file" ]; then
-    read -r installed_version < "$state_file"
-    printf 'kast-plugin %s\n' "$installed_version"
-  else
-    exit 1
-  fi
-else
-  printf 'unexpected brew args:' >&2
-  printf ' %s' "$@" >&2
-  printf '\n' >&2
-  exit 64
-fi
-"#,
-            env!("CARGO_PKG_VERSION"),
-            brew_prefix.display(),
-            formula_prefix.display()
-        ),
-    )
-    .expect("brew script");
-    std::fs::write(
-        &ps,
-        r#"#!/bin/sh
-set -eu
-case "${KAST_FAKE_PS_JETBRAINS:-}" in
-  "Installer Shell")
-    if [ "$*" = "-axo args" ]; then
-      printf '%s\n' '/bin/bash -c process_args="$(ps -axo args)"; [[ "$process_args" == *"/IntelliJ IDEA"*".app/Contents/MacOS/idea"* ]]'
-    else
-      printf '%s\n' '4311 /bin/bash'
-    fi
-    ;;
-  "IntelliJ IDEA") printf '%s\n' '4312 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea' ;;
-  "Android Studio") printf '%s\n' '4313 /Applications/Android Studio.app/Contents/MacOS/studio' ;;
-  *) printf '%s\n' 'COMMAND' ;;
-esac
-"#,
-    )
-    .expect("ps script");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        for executable in [&brew, &ps] {
-            let mut permissions = std::fs::metadata(executable)
-                .expect("fake executable metadata")
-                .permissions();
-            permissions.set_mode(0o755);
-            std::fs::set_permissions(executable, permissions).expect("fake executable mode");
-        }
-    }
-    brew_prefix
 }
 
 pub(crate) fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
