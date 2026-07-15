@@ -1,10 +1,16 @@
 # Metrics Database Instructions
 
-This directory owns direct SQLite metrics queries over the source-index cache.
+This directory contains direct SQLite metrics queries over the source-index
+cache that must migrate behind typed backend APIs under
+`.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`.
+Do not add new direct queries, public results, or consumers here. Until its
+follow-on migration lands, changes are limited to correctness fixes required
+to preserve the existing surface or to remove it.
 
 Keep query controls and result models separate from SQL execution and helper
-serialization. Public functions should return typed direct metrics results or
-typed direct metrics errors.
+serialization. Existing functions return typed direct metrics results or typed
+direct metrics errors. New typed metrics contracts belong in `analysis-api` and
+are served by the active backend through `analysis-server`.
 
 Presentation belongs in `output` or the calling command.
 

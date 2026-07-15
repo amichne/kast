@@ -1,7 +1,10 @@
 # Index store agent guide
 
-`index-store` owns the SQLite-backed source index, workspace cache persistence,
-and headless/indexer hydration APIs shared across kast runtimes.
+`index-store` owns the backend-private SQLite source index, workspace cache
+persistence, and headless/indexer hydration APIs shared across Kast runtimes.
+Under `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`,
+the database is not a public or cross-process compatibility surface. New CLI
+and agent reads must use typed `analysis-api`/`analysis-server` operations.
 
 ## Ownership
 
@@ -43,9 +46,11 @@ Keep this unit focused on storage concerns and schema continuity.
   crosses into this module. CLI process management and JSON-RPC transport code
   live in their CLI and server owners.
 - Treat schema resets, additive migrations, and cache hydration changes as
-  contract-sensitive. Operational source-index reads belong in the Rust CLI;
-  Kotlin reads SQLite for headless hydration or targeted indexer/cache
-  behavior.
+  contract-sensitive. Operational source-index reads belong to the active
+  backend and are exposed through typed server operations. Existing direct Rust
+  readers are migration targets; do not add new cross-process SQLite reads.
+  Backend-hosted Kotlin may read SQLite for semantic operations, headless
+  hydration, or targeted indexer/cache behavior.
 - Return paged index evidence and its generation atomically under the same
   store lock. Every committed transition that can change indexed declarations,
   references, manifests, or reconciliation state must advance the generation;
