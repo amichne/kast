@@ -478,7 +478,7 @@ fn repair_macos_homebrew_cli_authority(
     #[cfg(not(target_os = "macos"))]
     {
         let _ = (args, result, backup_root);
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "macos")]
     {
