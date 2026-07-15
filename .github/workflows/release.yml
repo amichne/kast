@@ -42,6 +42,31 @@ jobs:
     name: Preflight stable release automation
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate enrolled IDEA plugin repository identity
+        run: >
+          .github/scripts/render-jetbrains-plugin-repository.py
+          validate-source
+          --source packaging/jetbrains/plugin-repository.json
+          --require-configured
+
+      - name: Require immutable GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$GH_TOKEN" ]] || {
+            echo "::error::RELEASE_GITHUB_TOKEN with repository Administration read access is required."
+            exit 1
+          }
+          immutable_releases="$(gh api repos/amichne/kast/immutable-releases --jq '.enabled')"
+          [[ "$immutable_releases" == "true" ]] || {
+            echo "::error::GitHub Release immutability must be enabled before creating a release."
+            exit 1
+          }
+
       - name: Classify release
         id: classify
         env:
@@ -78,8 +103,6 @@ jobs:
           IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
           IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}
           IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}
-          IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}
-          IDEA_PLUGIN_ROTATION_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_ROTATION_SIGNER_SHA256 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -87,29 +110,13 @@ jobs:
           for name in \
             IDEA_PLUGIN_CERTIFICATE_CHAIN \
             IDEA_PLUGIN_PRIVATE_KEY \
-            IDEA_PLUGIN_PRIVATE_KEY_PASSWORD \
-            IDEA_PLUGIN_SIGNER_SHA256
+            IDEA_PLUGIN_PRIVATE_KEY_PASSWORD
           do
             [[ -n "${!name:-}" ]] || missing+=("$name")
           done
           if [[ "${#missing[@]}" -gt 0 ]]; then
             printf '::error::Missing required IDEA plugin signing inputs: %s\n' "${missing[*]}"
             exit 1
-          fi
-          fingerprint_pattern='^[0-9a-f]{64}$'
-          [[ "$IDEA_PLUGIN_SIGNER_SHA256" =~ $fingerprint_pattern ]] || {
-            echo "::error::IDEA_PLUGIN_SIGNER_SHA256 must be 64 lowercase hexadecimal characters."
-            exit 1
-          }
-          if [[ -n "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" ]]; then
-            [[ "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" =~ $fingerprint_pattern ]] || {
-              echo "::error::IDEA_PLUGIN_ROTATION_SIGNER_SHA256 must be 64 lowercase hexadecimal characters."
-              exit 1
-            }
-            [[ "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" != "$IDEA_PLUGIN_SIGNER_SHA256" ]] || {
-              echo "::error::The rotation signer must differ from the primary enrolled signer."
-              exit 1
-            }
           fi
 
   bump-version:
@@ -721,8 +728,6 @@ jobs:
       - name: Stage and upload immutable signed IDEA plugin asset
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-          IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}
-          IDEA_PLUGIN_ROTATION_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_ROTATION_SIGNER_SHA256 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -749,10 +754,21 @@ jobs:
           source_zip="${source_zips[0]}"
           mkdir -p dist
           cp "$source_zip" "dist/${asset_name}"
-          signer_args=(--expected-signer-sha256 "$IDEA_PLUGIN_SIGNER_SHA256")
-          if [[ -n "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" ]]; then
-            signer_args+=(--expected-signer-sha256 "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256")
-          fi
+          cp "$signature_verifier_jar" dist/marketplace-zip-signer-cli.jar
+          mapfile -t enrolled_signers < <(
+            .github/scripts/render-jetbrains-plugin-repository.py \
+              enrolled-signers \
+              --source packaging/jetbrains/plugin-repository.json \
+              --require-configured
+          )
+          [[ "${#enrolled_signers[@]}" -gt 0 ]] || {
+            echo "No enrolled IDEA plugin signers were provided by the typed repository source" >&2
+            exit 1
+          }
+          signer_args=()
+          for signer in "${enrolled_signers[@]}"; do
+            signer_args+=(--expected-signer-sha256 "$signer")
+          done
           scripts/verify-idea-plugin-artifact.py record \
             --plugin-zip "dist/${asset_name}" \
             --certificate-chain "${{ steps.idea-signing-certificate.outputs.path }}" \
@@ -780,11 +796,24 @@ jobs:
             --artifact-path "dist/${asset_name}" \
             --producer-job build-idea-plugin \
             --build-command-id release-idea-plugin-build
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-idea-signature-verifier.json \
+            --git-sha "$release_sha" \
+            --source-ref "refs/tags/${tag}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-idea-signature-verifier \
+            --artifact-name marketplace-zip-signer-cli.jar \
+            --artifact-path dist/marketplace-zip-signer-cli.jar \
+            --producer-job build-idea-plugin \
+            --build-command-id stage-idea-plugin-signature-verifier
           scripts/verify-ci-artifact-ledger.py verify \
             --ledger dist/build-ledger-idea.json \
+            --ledger dist/build-ledger-idea-signature-verifier.json \
             --git-sha "$release_sha" \
             --require-kind release-idea \
-            --artifact "release-idea=dist/${asset_name}"
+            --require-kind release-idea-signature-verifier \
+            --artifact "release-idea=dist/${asset_name}" \
+            --artifact release-idea-signature-verifier=dist/marketplace-zip-signer-cli.jar
           .github/scripts/upload-immutable-release-asset.sh \
             --tag "$tag" \
             --asset "dist/${asset_name}"
@@ -1247,6 +1276,7 @@ jobs:
             --ledger provenance-cli/build-ledger-cli-macos-x64.json \
             --ledger provenance-cli/build-ledger-cli-macos-arm64.json \
             --ledger provenance-idea/build-ledger-idea.json \
+            --ledger provenance-idea/build-ledger-idea-signature-verifier.json \
             --ledger provenance-linux-headless/build-ledger-ubuntu-debian-headless.json \
             --ledger provenance-linux-headless/build-ledger-headless-linux-x64.json \
             --ledger provenance-linux-headless/build-ledger-runtime-manifest.json \
@@ -1258,6 +1288,7 @@ jobs:
             --require-kind release-cli-macos-x64 \
             --require-kind release-cli-macos-arm64 \
             --require-kind release-idea \
+            --require-kind release-idea-signature-verifier \
             --require-kind release-ubuntu-debian-headless-x86_64 \
             --require-kind release-headless-linux-x64 \
             --require-kind release-runtime-manifest \
@@ -1268,6 +1299,7 @@ jobs:
             --artifact "release-cli-macos-x64=provenance-cli/kast-${tag}-macos-x64.zip" \
             --artifact "release-cli-macos-arm64=provenance-cli/kast-${tag}-macos-arm64.zip" \
             --artifact "release-idea=provenance-idea/kast-idea-${tag}.zip" \
+            --artifact release-idea-signature-verifier=provenance-idea/marketplace-zip-signer-cli.jar \
             --artifact "release-ubuntu-debian-headless-x86_64=provenance-linux-headless/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
             --artifact "release-headless-linux-x64=provenance-linux-headless/kast-headless-linux-x64.tar.zst" \
             --artifact "release-runtime-manifest=provenance-linux-headless/kast-runtime-manifest.json" \
@@ -1440,12 +1472,117 @@ jobs:
           git -C homebrew-tap commit -m "kast ${tag}"
           git -C homebrew-tap push
 
+  build-jetbrains-plugin-repository-pages:
+    name: Build JetBrains plugin repository documentation
+    needs:
+      - prepare-release
+      - publish-release
+    if: always() && needs.prepare-release.result == 'success' && needs.publish-release.result == 'success' && !contains(needs.prepare-release.outputs.release_tag, '-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - run: pip install -r requirements-docs.txt
+      - run: ./.github/scripts/test-docs-navigation-contract.sh
+      - run: ./.github/scripts/test-docs-content-contract.sh
+      - run: zensical build --clean
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: jetbrains-repository-site-${{ github.run_id }}
+          path: site
+          if-no-files-found: error
+
+  deploy-jetbrains-plugin-repository-pages:
+    name: Deploy finalized JetBrains plugin repository Pages
+    needs:
+      - prepare-release
+      - build-jetbrains-plugin-repository-pages
+    if: always() && needs.prepare-release.result == 'success' && needs.build-jetbrains-plugin-repository-pages.result == 'success'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: jetbrains-repository-site-${{ github.run_id }}
+          path: site
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: idea-plugin-${{ github.run_id }}
+          path: idea-verification
+
+      - uses: actions/configure-pages@v6
+
+      - name: Materialize IDEA plugin signing certificate
+        id: idea-repository-certificate
+        env:
+          IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          certificate_path="${RUNNER_TEMP}/kast-idea-plugin-signing-chain.crt"
+          umask 077
+          printf '%s\n' "$IDEA_PLUGIN_CERTIFICATE_CHAIN" > "$certificate_path"
+          openssl x509 -in "$certificate_path" -noout
+          printf 'path=%s\n' "$certificate_path" >> "$GITHUB_OUTPUT"
+
+      - name: Verify finalized plugin asset and render repository feed
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_sha="$(git rev-parse HEAD)"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger idea-verification/build-ledger-idea-signature-verifier.json \
+            --git-sha "$release_sha" \
+            --require-kind release-idea-signature-verifier \
+            --artifact release-idea-signature-verifier=idea-verification/marketplace-zip-signer-cli.jar
+          .github/scripts/materialize-jetbrains-plugin-repository-pages.sh \
+            --source packaging/jetbrains/plugin-repository.json \
+            --output-directory site/jetbrains \
+            --tag "${{ needs.prepare-release.outputs.release_tag }}" \
+            --certificate-chain "${{ steps.idea-repository-certificate.outputs.path }}" \
+            --signature-verifier-jar idea-verification/marketplace-zip-signer-cli.jar
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - uses: actions/deploy-pages@v5
+        id: deployment
+
   verify-release-state:
     name: Verify published release state
     needs:
       - prepare-release
       - publish-maven-central
       - publish-release
+      - deploy-jetbrains-plugin-repository-pages
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -1461,6 +1598,11 @@ jobs:
           set -euo pipefail
           if [[ "${{ needs.publish-release.result }}" != "success" ]]; then
             echo "::error::Publish release finished with result ${{ needs.publish-release.result }}."
+            exit 1
+          fi
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          if [[ "$tag" != *-* && "${{ needs.deploy-jetbrains-plugin-repository-pages.result }}" != "success" ]]; then
+            echo "::error::JetBrains repository Pages deployment finished with result ${{ needs.deploy-jetbrains-plugin-repository-pages.result }}."
             exit 1
           fi
           echo "Maven Central job result: ${{ needs.publish-maven-central.result }}"

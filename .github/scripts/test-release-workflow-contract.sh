@@ -122,6 +122,9 @@ release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
 idea_plugin_artifact_verifier="${repo_root}/scripts/verify-idea-plugin-artifact.py"
 immutable_release_asset_uploader="${repo_root}/.github/scripts/upload-immutable-release-asset.sh"
 idea_plugin_signing_contract="${repo_root}/.github/scripts/test-idea-plugin-signing-contract.sh"
+idea_plugin_repository_contract="${repo_root}/.github/scripts/test-jetbrains-plugin-repository-contract.sh"
+idea_plugin_repository_source="${repo_root}/packaging/jetbrains/plugin-repository.json"
+idea_plugin_repository_renderer="${repo_root}/.github/scripts/render-jetbrains-plugin-repository.py"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
 maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
 ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-docker.sh"
@@ -156,6 +159,9 @@ for path in \
   "$idea_plugin_artifact_verifier" \
   "$immutable_release_asset_uploader" \
   "$idea_plugin_signing_contract" \
+  "$idea_plugin_repository_contract" \
+  "$idea_plugin_repository_source" \
+  "$idea_plugin_repository_renderer" \
   "$release_state_verifier" \
   "$maven_central_verifier" \
   "$ubuntu_debian_validator" \
@@ -366,13 +372,21 @@ require_block_contains "$release_workflow" "  release-preflight:" "  bump-versio
 require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}' "Release preflight must require the IDEA signing key"
 # shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
 require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}' "Release preflight must require the IDEA signing password"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" "render-jetbrains-plugin-repository.py" "Release preflight must validate the typed signer owner"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" "--require-configured" "Release preflight must reject an unconfigured signer"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" "repos/amichne/kast/immutable-releases" "Release preflight must reject disabled GitHub Release immutability before tag creation"
 # shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
-require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}' "Release preflight must require the enrolled signer fingerprint"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}' "Immutability preflight must require the admin-capable release token"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
+require_block_not_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}' "Release preflight must not duplicate signer authority in a repository variable"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:verifyPlugin" "Release must verify IDEA compatibility"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:signPlugin" "Release must sign the IDEA plugin"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:verifyPluginSignature" "Release must verify the IDEA plugin signature"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:stageIdeaPluginSignatureVerifier" "Release must stage the JetBrains verifier used for the published bytes"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "scripts/verify-idea-plugin-artifact.py record" "Release must record signer-bound IDEA provenance"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "enrolled-signers" "Release must consume signer identities from the typed repository source"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "packaging/jetbrains/plugin-repository.json" "Release must use the checked-in signer owner"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "release-idea-signature-verifier" "Release must receipt the Marketplace verifier consumed by Pages"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ".github/scripts/upload-immutable-release-asset.sh" "Release must upload the IDEA plugin immutably"
 # shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" 'tag_sha="$(git rev-list -n1 "$tag")"' "Release must resolve the checked-out tag target"
@@ -401,6 +415,10 @@ require_contains "$publishing_conventions" "publishTarget != PublishTarget.Githu
 require_contains "$release_workflow" "needs.validate-jvm.result == 'success'" "Release publication must require local JVM and Maven validation"
 require_contains "$release_workflow" "needs.build-openapi-spec.result == 'success'" "Release publication must require the OpenAPI artifact"
 require_contains "$release_workflow" "needs.publish-release.result" "Final release verification must read the publish-release result"
+require_contains "$release_workflow" "needs.deploy-jetbrains-plugin-repository-pages.result" "Final release verification must read the stable Pages deployment result"
+require_contains "$ci_workflow" "Test JetBrains plugin repository contract" "CI must execute the feed-to-asset consistency gate"
+require_contains "$idea_plugin_repository_source" '"state": "unconfigured"' "Repository source must fail closed until production signer enrollment"
+require_contains "$idea_plugin_repository_renderer" "combined release provenance builds must be ordered" "Repository renderer must reject nondeterministic provenance ordering"
 require_contains "$release_workflow" "Publish release finished with result" "Final release verification must fail when publication did not complete"
 require_not_contains "$release_workflow" "publish-setup-kast-action:" "Kast releases must not publish the separate kast-action tag"
 require_not_contains "$release_workflow" 'action_tag="v1"' "Kast releases must not own the stable setup action tag"

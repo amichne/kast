@@ -7,7 +7,11 @@ on:
       - ".github/scripts/render-rpc-contract-summary.py"
       - ".github/scripts/test-docs-navigation-contract.sh"
       - ".github/scripts/test-docs-content-contract.sh"
+      - ".github/scripts/materialize-jetbrains-plugin-repository-pages.sh"
+      - ".github/scripts/render-jetbrains-plugin-repository.py"
+      - ".github/scripts/test-jetbrains-plugin-repository-contract.sh"
       - "docs/**"
+      - "packaging/jetbrains/**"
       - "cli-rs/protocol/**"
       - "cli-rs/resources/kast-skill/references/commands.json"
       - "requirements-docs.txt"
@@ -20,7 +24,11 @@ on:
       - ".github/scripts/render-rpc-contract-summary.py"
       - ".github/scripts/test-docs-navigation-contract.sh"
       - ".github/scripts/test-docs-content-contract.sh"
+      - ".github/scripts/materialize-jetbrains-plugin-repository-pages.sh"
+      - ".github/scripts/render-jetbrains-plugin-repository.py"
+      - ".github/scripts/test-jetbrains-plugin-repository-contract.sh"
       - "docs/**"
+      - "packaging/jetbrains/**"
       - "cli-rs/protocol/**"
       - "cli-rs/resources/kast-skill/references/commands.json"
       - "requirements-docs.txt"
@@ -40,7 +48,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/configure-pages@v6
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
@@ -51,17 +58,39 @@ jobs:
       - run: ./.github/scripts/test-docs-navigation-contract.sh
       - run: ./.github/scripts/test-docs-content-contract.sh
       - run: zensical build --clean
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
+          name: documentation-site-${{ github.run_id }}
           path: site
+          if-no-files-found: error
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          name: documentation-site-${{ github.run_id }}
+          path: site
+      - uses: actions/configure-pages@v6
+      - name: Preserve the validated published JetBrains plugin repository
+        run: >
+          .github/scripts/materialize-jetbrains-plugin-repository-pages.sh
+          --source packaging/jetbrains/plugin-repository.json
+          --output-directory site/jetbrains
+          --published-release
+          --allow-unconfigured
+          --allow-unpublished
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
       - uses: actions/deploy-pages@v5
         id: deployment
