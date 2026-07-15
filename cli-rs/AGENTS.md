@@ -34,9 +34,11 @@ resources.
 - `protocol/` contains generated protocol artifacts for release and
   integration consumers.
 
-The current public product surface, workflows, AXI contract, source ownership,
-and validation gates live in
-`.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
+The broader public product surface, workflows, and AXI contract live in
+`.agents/adr/0006-forward-system-definition-and-audit-scope.md`. IDEA plugin
+distribution, runtime compatibility, index privacy, lifecycle, and semantic
+cockpit authority live in
+`.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`.
 
 ## Edit rules
 
