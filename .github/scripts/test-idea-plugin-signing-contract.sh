@@ -170,6 +170,8 @@ idea_build_file="${repo_root}/backend-idea/build.gradle.kts"
 uploader="${repo_root}/.github/scripts/upload-immutable-release-asset.sh"
 artifact_verifier="${repo_root}/scripts/verify-idea-plugin-artifact.py"
 release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
+repository_source="${repo_root}/packaging/jetbrains/plugin-repository.json"
+repository_renderer="${repo_root}/.github/scripts/render-jetbrains-plugin-repository.py"
 
 for path in \
   "$release_workflow" \
@@ -177,13 +179,16 @@ for path in \
   "$idea_build_file" \
   "$uploader" \
   "$artifact_verifier" \
-  "$release_asset_verifier"
+  "$release_asset_verifier" \
+  "$repository_source" \
+  "$repository_renderer"
 do
   [[ -f "$path" ]] || die "Required IDEA plugin signing file is missing: $path"
 done
 
 [[ -x "$uploader" ]] || die "Immutable release uploader is not executable: $uploader"
 [[ -x "$artifact_verifier" ]] || die "IDEA plugin artifact verifier is not executable: $artifact_verifier"
+[[ -x "$repository_renderer" ]] || die "JetBrains repository renderer is not executable: $repository_renderer"
 
 require_contains "$idea_build_file" 'providers.environmentVariable("PRIVATE_KEY")' "IDEA signing must read the private key from the environment"
 require_contains "$idea_build_file" 'providers.environmentVariable("PRIVATE_KEY_PASSWORD")' "IDEA signing must read the private-key password from the environment"
@@ -196,13 +201,21 @@ require_block_contains "$release_workflow" "  release-preflight:" "  bump-versio
 require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}' "Release preflight must require the signing key"
 # shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
 require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}' "Release preflight must require the signing password"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" "render-jetbrains-plugin-repository.py" "Release preflight must validate the typed signer owner"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" "--require-configured" "Release preflight must reject an unconfigured signer"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" "repos/amichne/kast/immutable-releases" "Release preflight must reject disabled GitHub Release immutability before tag creation"
 # shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
-require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}' "Release preflight must require the enrolled signer fingerprint"
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}' "Immutability preflight must require the admin-capable release token"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
+require_block_not_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}' "Release preflight must not duplicate signer authority in a repository variable"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:verifyPlugin" "Release must run JetBrains compatibility verification"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:signPlugin" "Release must sign the IDEA plugin"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:verifyPluginSignature" "Release must verify the IDEA plugin signature"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:stageIdeaPluginSignatureVerifier" "Release must stage the JetBrains verifier used for the published bytes"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "scripts/verify-idea-plugin-artifact.py record" "Release must record signer-bound provenance"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "enrolled-signers" "Release verification must consume signer identities from the typed repository source"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "packaging/jetbrains/plugin-repository.json" "Release verification must use the checked-in signer owner"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "release-idea-signature-verifier" "Release must receipt the Marketplace verifier consumed by Pages"
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ".github/scripts/upload-immutable-release-asset.sh" "Release must use the immutable uploader"
 # shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
 require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" 'tag_sha="$(git rev-list -n1 "$tag")"' "Release must resolve the checked-out tag target"
@@ -218,6 +231,10 @@ require_block_not_contains "$release_workflow" "  build-idea-plugin:" "  build-h
 ! grep -Fq -- "--clobber" "$release_workflow" \
   || die "Release workflow must not contain any mutable asset upload"
 require_contains "$ci_workflow" "Test IDEA plugin signing and immutability contract" "CI must execute the signing contract gate"
+require_contains "$ci_workflow" "Test JetBrains plugin repository contract" "CI must execute the feed-to-asset contract gate"
+require_contains "$repository_source" '"activeSignerSha256": null' "Repository source must not invent a production signer"
+require_contains "$repository_source" '"state": "unconfigured"' "Repository source must fail closed until signer enrollment"
+require_contains "$repository_renderer" "rotation signer must differ" "Repository renderer must reject invalid rotation overlap"
 require_contains "$release_asset_verifier" 'signerCertificateSha256' "Downloaded release verification must require signer identity"
 require_contains "$release_asset_verifier" 'signatureVerified' "Downloaded release verification must require signature evidence"
 require_contains "$release_asset_verifier" 'pluginId' "Downloaded release verification must require plugin identity"
@@ -323,6 +340,30 @@ GITHUB_ACTOR=contract-test \
   --release-sha "$release_sha" \
   --provenance "$provenance" \
   --expected-signer-sha256 "$fingerprint_a"
+
+configured_repository_source="${scratch_dir}/plugin-repository.json"
+python3 - "$repository_source" "$configured_repository_source" "$fingerprint_a" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+
+source = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+source["signing"] = {
+    "activeSignerSha256": sys.argv[3],
+    "rotation": {"state": "stable", "nextSignerSha256": None},
+}
+Path(sys.argv[2]).write_text(json.dumps(source, indent=2) + "\n", encoding="utf-8")
+PY
+"$repository_renderer" render \
+  --source "$configured_repository_source" \
+  --plugin-zip "$signed_release_archive" \
+  --provenance "$provenance" \
+  --certificate-chain "${scratch_dir}/signer-a/chain.crt" \
+  --signature-verifier-jar "$signature_verifier_jar" \
+  --output-directory "${scratch_dir}/signed-repository"
+[[ -f "${scratch_dir}/signed-repository/updatePlugins.xml" ]] \
+  || die "Cryptographically verified signed plugin did not render a repository feed"
 
 unsigned_archive="${scratch_dir}/kast-idea-v0.0.0-unsigned.zip"
 cp "${repo_root}/backend-idea/build/distributions/backend-idea-${version}.zip" "$unsigned_archive"

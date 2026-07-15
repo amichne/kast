@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "repository": {
+    "feedUrl": "https://kast.michne.com/jetbrains/updatePlugins.xml",
+    "pluginId": "io.github.amichne.kast",
+    "releaseAssetUrlTemplate": "https://github.com/amichne/kast/releases/download/{tag}/kast-idea-{tag}.zip",
+    "ideaBuildRange": {
+      "sinceBuild": "253",
+      "untilBuild": null
+    }
+  },
+  "signing": {
+    "activeSignerSha256": null,
+    "rotation": {
+      "state": "unconfigured",
+      "nextSignerSha256": null
+    }
+  }
+}

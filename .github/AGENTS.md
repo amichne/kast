@@ -23,6 +23,17 @@ For release workflow changes, run `.github/scripts/test-release-workflow-contrac
 For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
 
+The signed JetBrains repository source lives at
+`packaging/jetbrains/plugin-repository.json`. The authored renderer and GitHub
+Release adapter live in `.github/scripts/`; release and docs workflows may
+publish only their verified generated Pages output. A stable release may
+advance the feed only after GitHub proves the release immutable and the
+downloaded ZIP passes signer-bound cryptographic verification. A docs deploy
+may only preserve the already-published feed. Both flows must materialize,
+upload, and deploy under the shared `github-pages` concurrency lock. Never
+hand-author `updatePlugins.xml` or `plugin-repository-manifest.json`, and never
+derive the enrolled signer from a secret or mutable release variable.
+
 Publishable CI artifacts are single-producer per commit. Producer jobs must
 write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
 built, and downstream packaging or publication jobs must verify that receipt
@@ -58,6 +69,14 @@ For terminal commands and executable examples, run:
 
 ```console
 .github/scripts/test-terminal-command-contract.sh
+```
+
+For signed JetBrains repository or Pages publication changes, run:
+
+```console
+.github/scripts/test-jetbrains-plugin-repository-contract.sh
+.github/scripts/test-idea-plugin-signing-contract.sh
+.github/scripts/test-release-workflow-contract.sh
 ```
 
 For plugin-eval metric pack changes, run the script that owns the changed pack,

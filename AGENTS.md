@@ -38,8 +38,9 @@ The release tag owns the only production IDEA plugin build. The
 verification, sign exactly one ZIP with protected inputs, verify the signature
 against the file-backed enrolled certificate, and record signer-bound
 provenance before upload. Private keys and passwords remain GitHub secrets;
-certificate fingerprints are explicit repository variables and never derive
-from a shared release version.
+certificate fingerprints are owned by
+`packaging/jetbrains/plugin-repository.json` and never derive from a secret,
+mutable repository variable, or shared release version.
 
 `.github/scripts/upload-immutable-release-asset.sh` owns release-asset replay:
 every asset uploads once, then proves byte identity or fails. Release workflows
