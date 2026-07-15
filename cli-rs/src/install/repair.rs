@@ -484,19 +484,24 @@ fn repair_macos_homebrew_cli_authority(
     {
         let receipt_path = default_macos_homebrew_receipt_path();
         let replacement = if receipt_path.is_file() {
-            if let Ok(receipt) = read_macos_homebrew_receipt_at(&receipt_path) {
-                validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
-                return Ok(());
+            match classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)? {
+                ExistingMacosHomebrewReceiptForRepair::Current(receipt) => {
+                    validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
+                    return Ok(());
+                }
+                ExistingMacosHomebrewReceiptForRepair::StaleSchema2 => {
+                    discover_running_homebrew_receipt()?.ok_or_else(|| {
+                        CliError::new(
+                            "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH",
+                            format!(
+                                "Recognized a stale schema-2 Homebrew CLI receipt at {}, but the running Kast executable is not provably the current Homebrew formula; the receipt was preserved unchanged",
+                                receipt_path.display(),
+                            ),
+                        )
+                    })?
+                }
+                ExistingMacosHomebrewReceiptForRepair::LegacySchema1(receipt) => receipt,
             }
-            exact_legacy_macos_homebrew_receipt(&receipt_path)?.ok_or_else(|| {
-                CliError::new(
-                    "MACOS_HOMEBREW_RECEIPT_INVALID",
-                    format!(
-                        "Refusing to migrate unrecognized Homebrew receipt state at {}; reinstall the Kast formula, remove the invalid receipt manually if appropriate, and rerun repair",
-                        receipt_path.display()
-                    ),
-                )
-            })?
         } else {
             let Some(discovered) = discover_running_homebrew_receipt()? else {
                 return Ok(());
@@ -507,7 +512,7 @@ fn repair_macos_homebrew_cli_authority(
             result,
             "establish-homebrew-cli-receipt",
             &receipt_path,
-            "Back up recognized legacy state and write the CLI-only Homebrew authority receipt.",
+            "Back up recognized legacy or stale receipt state and write the current CLI-only Homebrew authority receipt.",
             Some("kast repair --for machine --apply".to_string()),
         );
         if args.apply {

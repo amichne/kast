@@ -40,6 +40,13 @@ struct LegacyPluginFields {
     version: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ExistingMacosHomebrewReceiptForRepair {
+    Current(MacosHomebrewInstallReceipt),
+    StaleSchema2,
+    LegacySchema1(MacosHomebrewInstallReceipt),
+}
+
 impl MacosHomebrewInstallReceipt {
     fn new(cli_binary: PathBuf, formula_prefix: PathBuf, cli_version: String) -> Self {
         Self {
@@ -225,6 +232,77 @@ fn validate_running_macos_homebrew_receipt(
         ));
     }
     Ok(receipt)
+}
+
+fn classify_existing_macos_homebrew_receipt_for_repair(
+    path: &Path,
+) -> Result<ExistingMacosHomebrewReceiptForRepair> {
+    if let Ok(receipt) = read_macos_homebrew_receipt_at(path) {
+        return Ok(ExistingMacosHomebrewReceiptForRepair::Current(receipt));
+    }
+    if exact_stale_schema_2_macos_homebrew_receipt(path)? {
+        return Ok(ExistingMacosHomebrewReceiptForRepair::StaleSchema2);
+    }
+    if let Some(receipt) = exact_legacy_macos_homebrew_receipt(path)? {
+        return Ok(ExistingMacosHomebrewReceiptForRepair::LegacySchema1(
+            receipt,
+        ));
+    }
+    Err(CliError::new(
+        "MACOS_HOMEBREW_RECEIPT_INVALID",
+        format!(
+            "Homebrew receipt at {} is not current schema 2, an exact stale schema-2 CLI receipt, or the exact recognized schema-1 joint receipt; it was preserved unchanged",
+            path.display(),
+        ),
+    ))
+}
+
+fn exact_stale_schema_2_macos_homebrew_receipt(path: &Path) -> Result<bool> {
+    let raw = fs::read(path)?;
+    let Ok(receipt) = serde_json::from_slice::<MacosHomebrewInstallReceipt>(&raw) else {
+        return Ok(false);
+    };
+    Ok(receipt.schema_version == MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION
+        && receipt.cli.version != cli::version()
+        && !receipt.cli.version.trim().is_empty()
+        && !receipt.updated_at.trim().is_empty()
+        && path_is_normalized_absolute(&receipt.cli.binary)
+        && path_is_normalized_absolute(&receipt.cli.formula_prefix)
+        && path_is_lexically_below(&receipt.cli.binary, &receipt.cli.formula_prefix)
+        && is_lexical_kast_homebrew_formula_prefix(
+            &receipt.cli.formula_prefix,
+            &receipt.cli.version,
+        ))
+}
+
+fn path_is_normalized_absolute(path: &Path) -> bool {
+    path.is_absolute()
+        && path
+            .components()
+            .all(|component| !matches!(component, Component::CurDir | Component::ParentDir))
+}
+
+fn path_is_lexically_below(path: &Path, parent: &Path) -> bool {
+    path.strip_prefix(parent)
+        .is_ok_and(|relative| !relative.as_os_str().is_empty())
+}
+
+fn is_lexical_kast_homebrew_formula_prefix(
+    formula_prefix: &Path,
+    expected_version: &str,
+) -> bool {
+    let Some(version) = formula_prefix.file_name() else {
+        return false;
+    };
+    let Some(formula) = formula_prefix.parent() else {
+        return false;
+    };
+    let Some(cellar) = formula.parent() else {
+        return false;
+    };
+    version == expected_version
+        && formula.file_name().is_some_and(|name| name == "kast")
+        && cellar.file_name().is_some_and(|name| name == "Cellar")
 }
 
 fn exact_legacy_macos_homebrew_receipt(

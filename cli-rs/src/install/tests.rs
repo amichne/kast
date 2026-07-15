@@ -75,6 +75,56 @@ mod tests {
         assert!(error.message.contains("Cellar/kast version root"));
     }
 
+    #[test]
+    fn repair_classifies_an_exact_stale_schema_2_receipt_for_homebrew_upgrade() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let stale_version = "0.12.9";
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{stale_version}"));
+        let binary = formula_prefix.join("bin/kast");
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            stale_version.to_string(),
+        );
+        write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write stale receipt");
+
+        let state = classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)
+            .expect("classify stale receipt");
+
+        assert!(matches!(
+            state,
+            ExistingMacosHomebrewReceiptForRepair::StaleSchema2
+        ));
+    }
+
+    #[test]
+    fn repair_rejects_ambiguous_stale_schema_2_receipt_state() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let stale_version = "0.12.9";
+        let formula_prefix = temp.path().join(format!("Cellar/kast/{stale_version}"));
+        let receipt_path = macos_homebrew_receipt_path(temp.path());
+        let mut document = serde_json::to_value(MacosHomebrewInstallReceipt::new(
+            formula_prefix.join("../outside/kast"),
+            formula_prefix,
+            stale_version.to_string(),
+        ))
+        .expect("receipt value");
+        document["plugin"] = serde_json::json!({"version": stale_version});
+        fs::create_dir_all(receipt_path.parent().expect("receipt parent")).expect("receipt dir");
+        fs::write(
+            &receipt_path,
+            serde_json::to_vec(&document).expect("receipt json"),
+        )
+        .expect("receipt");
+
+        let error = classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)
+            .expect_err("ambiguous stale receipt must be preserved");
+
+        assert_eq!(error.code, "MACOS_HOMEBREW_RECEIPT_INVALID");
+        assert!(error.message.contains("preserved unchanged"));
+    }
+
     #[cfg(unix)]
     #[test]
     fn legacy_cleanup_selects_only_exact_owned_absolute_cask_links() {

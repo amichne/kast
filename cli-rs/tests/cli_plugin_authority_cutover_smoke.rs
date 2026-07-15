@@ -89,3 +89,77 @@ fn repair_migrates_exact_joint_receipt_once_to_cli_only_schema_2() {
         "second repair must not remigrate the receipt: {payload}",
     );
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn repair_refreshes_exact_stale_schema_2_receipt_after_homebrew_upgrade() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    let binary = write_homebrew_kast_for_test(temp.path());
+    let formula_prefix = binary
+        .parent()
+        .expect("formula bin")
+        .parent()
+        .expect("formula prefix");
+    let receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
+    std::fs::create_dir_all(receipt.parent().expect("receipt parent")).expect("receipt dir");
+    let stale_version = "0.12.9";
+    let stale_prefix = temp.path().join(format!("Cellar/kast/{stale_version}"));
+    std::fs::write(
+        &receipt,
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "schemaVersion": 2,
+            "authority": "macos-homebrew",
+            "cli": {
+                "binary": stale_prefix.join("bin/kast").display().to_string(),
+                "formulaPrefix": stale_prefix.display().to_string(),
+                "version": stale_version,
+            },
+            "updatedAt": "unix:1",
+        }))
+        .expect("stale receipt"),
+    )
+    .expect("receipt");
+    let fake_bin = temp.path().join("fake-bin");
+    std::fs::create_dir_all(&fake_bin).expect("fake bin");
+    let brew = fake_bin.join("brew");
+    std::fs::write(
+        &brew,
+        "#!/bin/sh\n[ \"$1\" = \"--prefix\" ] && [ \"$2\" = \"kast\" ] || exit 1\nprintf '%s\\n' \"$KAST_TEST_HOMEBREW_PREFIX\"\n",
+    )
+    .expect("fake brew");
+    std::fs::set_permissions(&brew, std::fs::Permissions::from_mode(0o755)).expect("brew mode");
+    let path = std::env::join_paths(std::iter::once(fake_bin).chain(std::env::split_paths(
+        &std::env::var_os("PATH").unwrap_or_default(),
+    )))
+    .expect("PATH");
+
+    let output = kast_at(&binary, &home, &config_home)
+        .args(["--output", "json", "repair", "--for", "machine", "--apply"])
+        .env("PATH", path)
+        .env("KAST_TEST_HOMEBREW_PREFIX", formula_prefix)
+        .output()
+        .expect("repair after upgrade");
+
+    assert!(
+        output.status.success(),
+        "receipt refresh should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let refreshed: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&receipt).expect("refreshed receipt"))
+            .expect("refreshed JSON");
+    assert_eq!(refreshed["schemaVersion"], 2);
+    assert_eq!(refreshed["cli"]["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(refreshed["cli"]["binary"], binary.display().to_string());
+    assert_eq!(
+        refreshed["cli"]["formulaPrefix"],
+        formula_prefix.display().to_string()
+    );
+    assert!(refreshed.get("plugin").is_none(), "{refreshed}");
+}
