@@ -1,5 +1,7 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{self, BackendName, DaemonStartArgs, RuntimeArgs};
+#[cfg(target_os = "macos")]
+use crate::cli;
+use crate::cli::{BackendName, DaemonStartArgs, RuntimeArgs};
 use crate::config::{self, KastConfig, PathResolutionReport};
 use crate::daemon;
 use crate::error::{CliError, Result};
@@ -7,8 +9,10 @@ use crate::rpc;
 use crate::self_mgmt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+#[cfg(target_os = "macos")]
 use std::collections::BTreeSet;
 use std::fs;
+#[cfg(target_os = "macos")]
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::process::Command;

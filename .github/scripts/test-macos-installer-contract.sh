@@ -142,7 +142,7 @@ installer="${repo_root}/install.sh"
 if grep -Fq -- "sudo" "$installer"; then
   die "installer must not invoke or recommend sudo"
 fi
-if rg -n "developer machine plugin|brew .*--cask|ps -axo|kill -TERM|KAST_JETBRAINS_CONFIG_ROOT" "$installer"; then
+if grep -En "developer machine plugin|brew .*--cask|ps -axo|kill -TERM|KAST_JETBRAINS_CONFIG_ROOT" "$installer"; then
   die "installer retains forbidden IDE mutation authority"
 fi
 
