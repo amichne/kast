@@ -31,6 +31,26 @@ source ownership, generated outputs, or validation gates, update the nearest
 scoped `AGENTS.md` in the same change. Agent-only ADRs stay under
 `.agents/adr/`; published docs navigation is owned by the docs source.
 
+## Signed IDEA Plugin Release Authority
+
+The release tag owns the only production IDEA plugin build. The
+`build-idea-plugin` release job must run JetBrains structure and compatibility
+verification, sign exactly one ZIP with protected inputs, verify the signature
+against the file-backed enrolled certificate, and record signer-bound
+provenance before upload. Private keys and passwords remain GitHub secrets;
+certificate fingerprints are explicit repository variables and never derive
+from a shared release version.
+
+`.github/scripts/upload-immutable-release-asset.sh` owns plugin-asset replay:
+upload once, then prove byte identity or fail. It must never use `--clobber`.
+`scripts/verify-idea-plugin-artifact.py`, the release provenance assembler, and
+`scripts/verify-release-assets.sh` own the plugin ID, digest, signer, signature,
+and verification-task evidence. Run
+`.github/scripts/test-idea-plugin-signing-contract.sh`,
+`.github/scripts/test-release-workflow-contract.sh`,
+`.github/scripts/test-release-provenance-assembler.sh`, and
+`.github/scripts/test-release-asset-verifier.sh` after changing this boundary.
+
 ## Build, Test, and Development Commands
 
 - `./gradlew test` runs the Kotlin/JVM test suite.
