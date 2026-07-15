@@ -19,10 +19,11 @@ nearest guide when editing inside a scoped directory.
 ## Decision Records & Source Of Truth
 
 Use durable agent-only ADRs for product and agent-surface decisions.
-`.agents/adr/0006-forward-system-definition-and-audit-scope.md` owns the
-current public product surface, system boundaries, supported workflows, AXI
-contract, extension points, audit assertions, validation gates, and future
-change rule.
+`.agents/adr/0006-forward-system-definition-and-audit-scope.md` owns the broader
+public product surface, system boundaries, supported workflows, AXI contract,
+and audit scope. `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`
+supersedes it for IDEA plugin distribution, runtime compatibility, index
+privacy, lifecycle, and semantic cockpit contracts.
 
 When a change expands or contracts the public product surface, add a
 superseding ADR before rewriting docs or generated assets. When a change alters
