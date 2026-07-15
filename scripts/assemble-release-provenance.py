@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
         description="Assemble release build provenance from downloaded artifact directories."
     )
     parser.add_argument("--output", required=True, help="Path to write combined build-provenance.json")
+    parser.add_argument("--tag", required=True, help="Release tag that every tag-bound entry must prove")
     parser.add_argument("roots", nargs="+", help="Downloaded artifact roots to scan recursively")
     return parser.parse_args()
 
@@ -57,7 +58,7 @@ def stable_values(values: set[object]) -> list[object]:
     return sorted(values, key=lambda value: str(value))
 
 
-def validate(entries: list[dict]) -> None:
+def validate(entries: list[dict], *, release_tag: str) -> None:
     seen_platforms = [entry.get("platformId") for entry in entries]
     platform_set = set(seen_platforms)
     missing_provenance = REQUIRED_PLATFORMS - platform_set
@@ -92,12 +93,36 @@ def validate(entries: list[dict]) -> None:
             or asset_digest == "sha256:"
         ):
             fail(f"provenance entry for {platform} has no SHA-256 assetDigest")
+        if platform == "idea":
+            if entry.get("pluginId") != "io.github.amichne.kast":
+                fail("IDEA provenance must name pluginId io.github.amichne.kast")
+            signer = entry.get("signerCertificateSha256")
+            if not isinstance(signer, str) or len(signer) != 64 or any(
+                character not in "0123456789abcdef" for character in signer
+            ):
+                fail("IDEA provenance signerCertificateSha256 must be lowercase SHA-256")
+            if entry.get("signatureVerified") is not True:
+                fail("IDEA provenance signatureVerified must be true")
+            if entry.get("ref") != f"refs/tags/{release_tag}":
+                fail(f"IDEA provenance ref must be refs/tags/{release_tag}")
+            release_sha = entry.get("sha")
+            if not isinstance(release_sha, str) or len(release_sha) != 40 or any(
+                character not in "0123456789abcdef" for character in release_sha
+            ):
+                fail("IDEA provenance sha must be a full lowercase Git commit SHA")
+            if entry.get("verificationTasks") != [
+                ":backend-idea:verifyPluginStructure",
+                ":backend-idea:verifyPluginXmlPresent",
+                ":backend-idea:verifyPlugin",
+                ":backend-idea:verifyPluginSignature",
+            ]:
+                fail("IDEA provenance must carry the complete signed compatibility gate")
 
 
 def main() -> None:
     args = parse_args()
     entries = load_entries(args.roots)
-    validate(entries)
+    validate(entries, release_tag=args.tag)
     entries.sort(key=lambda item: item["platformId"])
 
     output = Path(args.output)

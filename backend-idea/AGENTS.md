@@ -1,5 +1,25 @@
 # IDEA Backend Guidelines
 
+## Signed distribution boundary
+
+`backend-idea/build.gradle.kts` owns the JetBrains signing task wiring. The
+certificate chain is a file-backed Gradle property so signature verification
+uses the same public certificate without exposing it on a command line. The
+private key and password come only from `PRIVATE_KEY` and
+`PRIVATE_KEY_PASSWORD`; do not add checked-in credentials, fallback keys, or
+logging of signing inputs.
+
+`verifyPluginSignature` must consume `signPlugin.signedArchiveFile` through its
+typed task provider. `stageIdeaPluginSignatureVerifier` exports the same
+Gradle-resolved Marketplace ZIP Signer CLI so the staged release bytes are
+verified again against the enrolled certificate before provenance is written.
+Release builds also run `verifyPluginStructure`, `verifyPluginXmlPresent`, and
+`verifyPlugin`, and must prove checked-out `HEAD` equals the peeled release-tag
+target before recording signer-bound provenance. Exercise the real
+ephemeral-key path with `.github/scripts/test-idea-plugin-signing-contract.sh`;
+missing or unenrolled production credentials fail in release preflight rather
+than producing an unsigned artifact.
+
 ## Workspace inventory authority
 
 `IdeaProjectModelWorkspaceFileInventory` owns complete raw `.kt` and `.kts`

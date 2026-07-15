@@ -134,8 +134,7 @@ entries = [
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
     ("idea", f"kast-idea-{tag}.zip"),
 ]
-payload = {
-    "builds": [
+builds = [
         {
             "platformId": platform,
             "assetName": asset,
@@ -143,8 +142,23 @@ payload = {
         }
         for platform, asset in entries
         if (release_dir / asset).is_file()
-    ]
-}
+]
+for entry in builds:
+    if entry["platformId"] == "idea":
+        entry.update({
+            "pluginId": "io.github.amichne.kast",
+            "signerCertificateSha256": "a" * 64,
+            "signatureVerified": True,
+            "sha": "0123456789abcdef0123456789abcdef01234567",
+            "ref": f"refs/tags/{tag}",
+            "verificationTasks": [
+                ":backend-idea:verifyPluginStructure",
+                ":backend-idea:verifyPluginXmlPresent",
+                ":backend-idea:verifyPlugin",
+                ":backend-idea:verifyPluginSignature",
+            ],
+        })
+payload = {"builds": builds}
 (release_dir / "build-provenance.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 }
@@ -240,6 +254,26 @@ if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch
   die "missing provenance unexpectedly verified"
 fi
 grep -Fq "missing provenance" "${scratch_dir}/provenance.err" || die "missing provenance failure did not mention missing provenance"
+
+write_expected_assets
+write_sha256sums "$release_dir" "${assets[@]}"
+write_provenance
+python3 - "${release_dir}/build-provenance.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+payload = json.loads(path.read_text(encoding="utf-8"))
+idea = next(entry for entry in payload["builds"] if entry.get("platformId") == "idea")
+idea["signatureVerified"] = False
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/signature.err"; then
+  die "unsigned IDEA provenance unexpectedly verified"
+fi
+grep -Fq "signatureVerified" "${scratch_dir}/signature.err" \
+  || die "unsigned IDEA provenance failure did not mention signature verification"
 
 write_expected_assets
 python3 - "${release_dir}/kast-runtime-manifest.json" <<'PY'

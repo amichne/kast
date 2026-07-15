@@ -108,6 +108,27 @@ unexpected_provenance = sorted(set(by_platform) - set(supported))
 if unexpected_provenance:
     fail(f"unexpected provenance for {unexpected_provenance}")
 
+idea_provenance = by_platform["idea"]
+if idea_provenance.get("pluginId") != "io.github.amichne.kast":
+    fail("IDEA plugin provenance pluginId must be io.github.amichne.kast")
+signer_fingerprint = idea_provenance.get("signerCertificateSha256")
+if not isinstance(signer_fingerprint, str) or re.fullmatch(r"[0-9a-f]{64}", signer_fingerprint) is None:
+    fail("IDEA plugin provenance signerCertificateSha256 must be lowercase SHA-256")
+if idea_provenance.get("signatureVerified") is not True:
+    fail("IDEA plugin provenance signatureVerified must be true")
+if idea_provenance.get("ref") != f"refs/tags/{tag}":
+    fail(f"IDEA plugin provenance ref must be refs/tags/{tag}")
+release_sha = idea_provenance.get("sha")
+if not isinstance(release_sha, str) or re.fullmatch(r"[0-9a-f]{40}", release_sha) is None:
+    fail("IDEA plugin provenance sha must be a full lowercase Git commit SHA")
+if idea_provenance.get("verificationTasks") != [
+    ":backend-idea:verifyPluginStructure",
+    ":backend-idea:verifyPluginXmlPresent",
+    ":backend-idea:verifyPlugin",
+    ":backend-idea:verifyPluginSignature",
+]:
+    fail("IDEA plugin provenance must carry the complete signed compatibility gate")
+
 expected_assets = set()
 for platform_id, entry in by_platform.items():
     asset_name = supported[platform_id]

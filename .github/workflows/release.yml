@@ -73,6 +73,45 @@ jobs:
             exit 1
           fi
 
+      - name: Require IDEA plugin signing credentials and enrolled identity
+        env:
+          IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
+          IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}
+          IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}
+          IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}
+          IDEA_PLUGIN_ROTATION_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_ROTATION_SIGNER_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            IDEA_PLUGIN_CERTIFICATE_CHAIN \
+            IDEA_PLUGIN_PRIVATE_KEY \
+            IDEA_PLUGIN_PRIVATE_KEY_PASSWORD \
+            IDEA_PLUGIN_SIGNER_SHA256
+          do
+            [[ -n "${!name:-}" ]] || missing+=("$name")
+          done
+          if [[ "${#missing[@]}" -gt 0 ]]; then
+            printf '::error::Missing required IDEA plugin signing inputs: %s\n' "${missing[*]}"
+            exit 1
+          fi
+          fingerprint_pattern='^[0-9a-f]{64}$'
+          [[ "$IDEA_PLUGIN_SIGNER_SHA256" =~ $fingerprint_pattern ]] || {
+            echo "::error::IDEA_PLUGIN_SIGNER_SHA256 must be 64 lowercase hexadecimal characters."
+            exit 1
+          }
+          if [[ -n "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" ]]; then
+            [[ "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" =~ $fingerprint_pattern ]] || {
+              echo "::error::IDEA_PLUGIN_ROTATION_SIGNER_SHA256 must be 64 lowercase hexadecimal characters."
+              exit 1
+            }
+            [[ "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" != "$IDEA_PLUGIN_SIGNER_SHA256" ]] || {
+              echo "::error::The rotation signer must differ from the primary enrolled signer."
+              exit 1
+            }
+          fi
+
   bump-version:
     name: Bump version (${{ inputs.release_type }})
     needs: [release-preflight]
@@ -318,7 +357,9 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind release-openapi \
             --artifact release-openapi=dist/openapi.yaml
-          gh release upload "$tag" dist/openapi.yaml --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset dist/openapi.yaml
 
       - name: Upload OpenAPI workflow artifact
         if: always()
@@ -586,7 +627,9 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind "release-cli-${{ matrix.asset_id }}" \
             --artifact "release-cli-${{ matrix.asset_id }}=dist/kast-${tag}-${{ matrix.asset_id }}.zip"
-          gh release upload "$tag" "dist/kast-${tag}-${{ matrix.asset_id }}.zip" --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset "dist/kast-${tag}-${{ matrix.asset_id }}.zip"
 
       - name: Upload CLI build artifact
         if: always()
@@ -639,48 +682,97 @@ jobs:
           restore-keys: |
             release-idea-plugin-inputs-${{ runner.os }}-
 
-      - name: Build IDEA plugin
+      - name: Build and verify IDEA plugin
         run: >
           ./scripts/ci-gradle-retry.sh
           ./gradlew
           :backend-idea:buildPlugin
           :backend-idea:verifyPluginStructure
           :backend-idea:verifyPluginXmlPresent
+          :backend-idea:verifyPlugin
           -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
-      - name: Upload IDEA plugin asset
+      - name: Materialize IDEA plugin signing certificate
+        id: idea-signing-certificate
+        env:
+          IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          certificate_path="${RUNNER_TEMP}/kast-idea-plugin-signing-chain.crt"
+          umask 077
+          printf '%s\n' "$IDEA_PLUGIN_CERTIFICATE_CHAIN" > "$certificate_path"
+          openssl x509 -in "$certificate_path" -noout
+          printf 'path=%s\n' "$certificate_path" >> "$GITHUB_OUTPUT"
+
+      - name: Sign and verify IDEA plugin
+        env:
+          PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}
+        run: >
+          ./scripts/ci-gradle-retry.sh
+          ./gradlew
+          :backend-idea:signPlugin
+          :backend-idea:verifyPluginSignature
+          :backend-idea:stageIdeaPluginSignatureVerifier
+          -Pkast.idea.signing.certificateChainFile="${{ steps.idea-signing-certificate.outputs.path }}"
+          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
+
+      - name: Stage and upload immutable signed IDEA plugin asset
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+          IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}
+          IDEA_PLUGIN_ROTATION_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_ROTATION_SIGNER_SHA256 }}
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
+          release_sha="$(git rev-parse HEAD)"
+          tag_sha="$(git rev-list -n1 "$tag")"
+          [[ "$release_sha" == "$tag_sha" ]] || {
+            echo "Checked-out HEAD ${release_sha} does not match ${tag} target ${tag_sha}" >&2
+            exit 1
+          }
           asset_name="kast-idea-${tag}.zip"
-          source_zip="$(find backend-idea/build/distributions -maxdepth 1 -name '*.zip' -print -quit)"
-          [[ -n "$source_zip" ]] || { echo "No IDEA plugin zip found" >&2; exit 1; }
+          signature_verifier_jar="backend-idea/build/idea-plugin-signature-verifier/marketplace-zip-signer-cli.jar"
+          [[ -f "$signature_verifier_jar" ]] || {
+            echo "Marketplace ZIP Signer CLI was not staged: ${signature_verifier_jar}" >&2
+            exit 1
+          }
+          mapfile -t source_zips < <(
+            find backend-idea/build/distributions -maxdepth 1 -name '*-signed.zip' -print | sort
+          )
+          [[ "${#source_zips[@]}" -eq 1 ]] || {
+            echo "Expected exactly one signed IDEA plugin zip, found ${#source_zips[@]}" >&2
+            exit 1
+          }
+          source_zip="${source_zips[0]}"
           mkdir -p dist
           cp "$source_zip" "dist/${asset_name}"
-          python3 - "dist/${asset_name}" "dist/build-provenance-idea.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "idea",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
+          signer_args=(--expected-signer-sha256 "$IDEA_PLUGIN_SIGNER_SHA256")
+          if [[ -n "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256" ]]; then
+            signer_args+=(--expected-signer-sha256 "$IDEA_PLUGIN_ROTATION_SIGNER_SHA256")
+          fi
+          scripts/verify-idea-plugin-artifact.py record \
+            --plugin-zip "dist/${asset_name}" \
+            --certificate-chain "${{ steps.idea-signing-certificate.outputs.path }}" \
+            --signature-verifier-jar "$signature_verifier_jar" \
+            --release-tag "$tag" \
+            --release-sha "$release_sha" \
+            --output dist/build-provenance-idea.json \
+            --asset-name "$asset_name" \
+            "${signer_args[@]}"
+          scripts/verify-idea-plugin-artifact.py verify \
+            --plugin-zip "dist/${asset_name}" \
+            --certificate-chain "${{ steps.idea-signing-certificate.outputs.path }}" \
+            --signature-verifier-jar "$signature_verifier_jar" \
+            --release-tag "$tag" \
+            --release-sha "$release_sha" \
+            --provenance dist/build-provenance-idea.json \
+            "${signer_args[@]}"
           scripts/verify-ci-artifact-ledger.py record \
             --output dist/build-ledger-idea.json \
-            --git-sha "$GITHUB_SHA" \
+            --git-sha "$release_sha" \
             --source-ref "refs/tags/${tag}" \
             --workflow-run-id "$GITHUB_RUN_ID" \
             --artifact-kind release-idea \
@@ -690,10 +782,12 @@ jobs:
             --build-command-id release-idea-plugin-build
           scripts/verify-ci-artifact-ledger.py verify \
             --ledger dist/build-ledger-idea.json \
-            --git-sha "$GITHUB_SHA" \
+            --git-sha "$release_sha" \
             --require-kind release-idea \
             --artifact "release-idea=dist/${asset_name}"
-          gh release upload "$tag" "dist/${asset_name}" --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset "dist/${asset_name}"
 
       - name: Upload plugin artifact
         if: always()
@@ -701,7 +795,7 @@ jobs:
         with:
           name: idea-plugin-${{ github.run_id }}
           path: dist/
-          if-no-files-found: warn
+          if-no-files-found: error
 
   build-headless-backend:
     name: Build headless backend
@@ -1077,13 +1171,17 @@ jobs:
             --artifact release-headless-linux-x64=dist/kast-headless-linux-x64.tar.zst \
             --artifact release-runtime-manifest=dist/kast-runtime-manifest.json \
             --artifact release-gradle-ro-cache=dist/gradle-ro-dep-cache.tar.zst
-          gh release upload "$tag" \
+          for asset in \
             "$bundle_asset" \
             "${bundle_asset}.sha256" \
             dist/kast-headless-linux-x64.tar.zst \
             dist/kast-headless-linux-x64.sha256 \
-            dist/kast-runtime-manifest.json \
-            --clobber
+            dist/kast-runtime-manifest.json
+          do
+            .github/scripts/upload-immutable-release-asset.sh \
+              --tag "$tag" \
+              --asset "$asset"
+          done
 
       - name: Upload Linux headless tarball artifact
         if: always()
@@ -1188,10 +1286,11 @@ jobs:
           [[ -f "$cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${cache_asset}" >&2; exit 1; }
           [[ -f "$cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${cache_sidecar}" >&2; exit 1; }
           (cd provenance-linux-headless && sha256sum -c gradle-ro-dep-cache.sha256)
-          gh release upload "$tag" \
-            "$cache_asset" \
-            "$cache_sidecar" \
-            --clobber
+          for asset in "$cache_asset" "$cache_sidecar"; do
+            .github/scripts/upload-immutable-release-asset.sh \
+              --tag "$tag" \
+              --asset "$asset"
+          done
 
       - name: Assemble combined provenance
         shell: bash
@@ -1199,6 +1298,7 @@ jobs:
           set -euo pipefail
           python3 scripts/assemble-release-provenance.py \
             --output dist/build-provenance.json \
+            --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             provenance-cli \
             provenance-linux-headless \
             provenance-idea \
@@ -1211,7 +1311,9 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          gh release upload "$tag" dist/build-provenance.json --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset dist/build-provenance.json
 
       - name: Generate and upload SHA256SUMS
         env:
@@ -1257,7 +1359,9 @@ jobs:
           (cd release-assets && sha256sum "${expected_assets[@]}") > SHA256SUMS
           cp SHA256SUMS release-assets/SHA256SUMS
           ./scripts/verify-release-assets.sh --release-dir release-assets --tag "$tag"
-          gh release upload "$tag" SHA256SUMS --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset SHA256SUMS
 
       - name: Publish draft release with provenance annotation
         env:

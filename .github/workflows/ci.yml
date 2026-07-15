@@ -600,5 +600,9 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      - name: Test IDEA plugin signing and immutability contract
+        shell: bash
+        run: ./.github/scripts/test-idea-plugin-signing-contract.sh
+
       - name: Run IDEA plugin performance baselines
         run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-idea:test -PincludeTags=performance

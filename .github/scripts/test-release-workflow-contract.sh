@@ -119,6 +119,9 @@ homebrew_test="${repo_root}/packaging/homebrew/scripts/test-formulas.py"
 release_provenance_assembler="${repo_root}/scripts/assemble-release-provenance.py"
 ci_artifact_ledger_verifier="${repo_root}/scripts/verify-ci-artifact-ledger.py"
 release_asset_verifier="${repo_root}/scripts/verify-release-assets.sh"
+idea_plugin_artifact_verifier="${repo_root}/scripts/verify-idea-plugin-artifact.py"
+immutable_release_asset_uploader="${repo_root}/.github/scripts/upload-immutable-release-asset.sh"
+idea_plugin_signing_contract="${repo_root}/.github/scripts/test-idea-plugin-signing-contract.sh"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
 maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
 ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-docker.sh"
@@ -150,6 +153,9 @@ for path in \
   "$release_provenance_assembler" \
   "$ci_artifact_ledger_verifier" \
   "$release_asset_verifier" \
+  "$idea_plugin_artifact_verifier" \
+  "$immutable_release_asset_uploader" \
+  "$idea_plugin_signing_contract" \
   "$release_state_verifier" \
   "$maven_central_verifier" \
   "$ubuntu_debian_validator" \
@@ -195,6 +201,10 @@ require_contains "${repo_root}/analysis-server/build.gradle.kts" 'artifactId.set
 require_contains "${repo_root}/index-store/build.gradle.kts" 'artifactId.set("kast-index-store")' "index-store must publish the public Maven artifact"
 require_not_contains "${repo_root}/backend-headless/build.gradle.kts" "kastPublishing" "Headless backend must remain release-asset-only"
 require_not_contains "${repo_root}/backend-idea/build.gradle.kts" "kastPublishing" "IDEA plugin must remain release-asset-only"
+require_contains "${repo_root}/backend-idea/build.gradle.kts" 'providers.environmentVariable("PRIVATE_KEY")' "IDEA plugin signing must read the private key only from the environment"
+require_contains "${repo_root}/backend-idea/build.gradle.kts" 'providers.environmentVariable("PRIVATE_KEY_PASSWORD")' "IDEA plugin signing must read the private-key password only from the environment"
+require_contains "${repo_root}/backend-idea/build.gradle.kts" 'kast.idea.signing.certificateChainFile' "IDEA plugin signing must use a file-backed public certificate chain"
+require_contains "${repo_root}/backend-idea/build.gradle.kts" 'inputArchiveFile.set(signIdeaPlugin.flatMap { it.signedArchiveFile })' "Signature verification must consume the sign task output provider"
 require_not_contains "${repo_root}/backend-headless/build.gradle.kts" "reinstall with kast.sh" "Headless launcher hints must not point at retired kast.sh install behavior"
 
 require_contains "$ci_workflow" "Maven publication metadata" "CI must validate Maven publication metadata"
@@ -206,6 +216,7 @@ require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publicatio
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test Kast Copilot plugin package" "CI runtime contracts must reuse the terminal build for the Copilot package contract"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Smoke Ubuntu/Debian bundle contract" "CI runtime contracts must own the Ubuntu/Debian bundle smoke"
 require_contains "$ci_workflow" "Test CI artifact ledger" "CI must test artifact ledger recording and verification"
+require_contains "$ci_workflow" "Test IDEA plugin signing and immutability contract" "CI must execute the signed immutable plugin gate"
 require_contains "$ci_workflow" "ci-artifact-ledger-maven-publication" "CI must upload the Maven publication validation ledger"
 require_contains "$ci_workflow" "ci-artifact-ledger-rust-cli-linux-x64" "CI must upload the Rust CLI build ledger"
 require_contains "$ci_build_and_test_workflow" 'ci-artifact-ledger-headless-${{ inputs.runner }}' "CI must upload headless backend build ledgers"
@@ -349,6 +360,34 @@ require_contains "$release_workflow" "scripts/verify-release-state.sh" "Release 
 require_contains "$release_workflow" "scripts/verify-maven-central.sh" "Release must verify Maven Central coordinates"
 require_contains "$release_workflow" "./scripts/ci-gradle-retry.sh" "Release Gradle steps must use retry helper for transient repository failures"
 require_contains "$release_workflow" "Free disk for IDEA plugin build" "Release IDEA plugin build must free unused runner SDKs before downloading IDEs"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}' "Release preflight must require the IDEA signing certificate"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}' "Release preflight must require the IDEA signing key"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}' "Release preflight must require the IDEA signing password"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  release-preflight:" "  bump-version:" 'IDEA_PLUGIN_SIGNER_SHA256: ${{ vars.IDEA_PLUGIN_SIGNER_SHA256 }}' "Release preflight must require the enrolled signer fingerprint"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:verifyPlugin" "Release must verify IDEA compatibility"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:signPlugin" "Release must sign the IDEA plugin"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:verifyPluginSignature" "Release must verify the IDEA plugin signature"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ":backend-idea:stageIdeaPluginSignatureVerifier" "Release must stage the JetBrains verifier used for the published bytes"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "scripts/verify-idea-plugin-artifact.py record" "Release must record signer-bound IDEA provenance"
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" ".github/scripts/upload-immutable-release-asset.sh" "Release must upload the IDEA plugin immutably"
+# shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" 'tag_sha="$(git rev-list -n1 "$tag")"' "Release must resolve the checked-out tag target"
+# shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" '--signature-verifier-jar "$signature_verifier_jar"' "Published-byte verification must execute the staged JetBrains verifier"
+# shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" '--release-tag "$tag"' "IDEA provenance must use the prepared release tag"
+# shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
+require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" '--release-sha "$release_sha"' "IDEA provenance must use the checked-out release commit"
+require_block_order "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "      - name: Build and verify IDEA plugin" "      - name: Sign and verify IDEA plugin" "Release must verify plugin structure and compatibility before signing"
+require_block_order "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "      - name: Sign and verify IDEA plugin" "      - name: Stage and upload immutable signed IDEA plugin asset" "Release must verify the signature before publishing the plugin"
+require_block_not_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "--clobber" "Release must never replace the signed IDEA plugin asset"
+require_not_contains "$release_workflow" 'gh release upload "$tag" dist/build-provenance.json --clobber' "Release must never replace combined provenance"
+require_not_contains "$release_workflow" 'gh release upload "$tag" SHA256SUMS --clobber' "Release must never replace release checksums"
+require_not_contains "$release_workflow" "--clobber" "Release must never replace any existing release asset"
 require_contains "$release_workflow" "Free disk for headless backend release" "Release headless backend build must free unused runner SDKs before copying IntelliJ runtimes"
 require_contains "$release_workflow" "~/.gradle/kast/shared-idea-distributions" "Release must cache the actual shared IntelliJ extraction directory"
 require_contains "$release_workflow" "~/.gradle/kast/backend-idea-distributions" "Release must cache the actual IDEA backend extraction directory"
