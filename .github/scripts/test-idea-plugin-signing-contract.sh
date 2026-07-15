@@ -215,6 +215,8 @@ require_block_contains "$release_workflow" "  build-idea-plugin:" "  build-headl
 require_block_order "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "      - name: Build and verify IDEA plugin" "      - name: Sign and verify IDEA plugin" "Release must verify plugin structure and compatibility before signing"
 require_block_order "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "      - name: Sign and verify IDEA plugin" "      - name: Stage and upload immutable signed IDEA plugin asset" "Release must verify the signature before publishing the plugin"
 require_block_not_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "--clobber" "IDEA plugin release assets must never be overwritten"
+! grep -Fq -- "--clobber" "$release_workflow" \
+  || die "Release workflow must not contain any mutable asset upload"
 require_contains "$ci_workflow" "Test IDEA plugin signing and immutability contract" "CI must execute the signing contract gate"
 require_contains "$release_asset_verifier" 'signerCertificateSha256' "Downloaded release verification must require signer identity"
 require_contains "$release_asset_verifier" 'signatureVerified' "Downloaded release verification must require signature evidence"

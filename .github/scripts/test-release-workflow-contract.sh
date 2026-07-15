@@ -387,6 +387,7 @@ require_block_order "$release_workflow" "  build-idea-plugin:" "  build-headless
 require_block_not_contains "$release_workflow" "  build-idea-plugin:" "  build-headless-backend:" "--clobber" "Release must never replace the signed IDEA plugin asset"
 require_not_contains "$release_workflow" 'gh release upload "$tag" dist/build-provenance.json --clobber' "Release must never replace combined provenance"
 require_not_contains "$release_workflow" 'gh release upload "$tag" SHA256SUMS --clobber' "Release must never replace release checksums"
+require_not_contains "$release_workflow" "--clobber" "Release must never replace any existing release asset"
 require_contains "$release_workflow" "Free disk for headless backend release" "Release headless backend build must free unused runner SDKs before copying IntelliJ runtimes"
 require_contains "$release_workflow" "~/.gradle/kast/shared-idea-distributions" "Release must cache the actual shared IntelliJ extraction directory"
 require_contains "$release_workflow" "~/.gradle/kast/backend-idea-distributions" "Release must cache the actual IDEA backend extraction directory"

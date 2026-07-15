@@ -357,7 +357,9 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind release-openapi \
             --artifact release-openapi=dist/openapi.yaml
-          gh release upload "$tag" dist/openapi.yaml --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset dist/openapi.yaml
 
       - name: Upload OpenAPI workflow artifact
         if: always()
@@ -625,7 +627,9 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind "release-cli-${{ matrix.asset_id }}" \
             --artifact "release-cli-${{ matrix.asset_id }}=dist/kast-${tag}-${{ matrix.asset_id }}.zip"
-          gh release upload "$tag" "dist/kast-${tag}-${{ matrix.asset_id }}.zip" --clobber
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset "dist/kast-${tag}-${{ matrix.asset_id }}.zip"
 
       - name: Upload CLI build artifact
         if: always()
@@ -1167,13 +1171,17 @@ jobs:
             --artifact release-headless-linux-x64=dist/kast-headless-linux-x64.tar.zst \
             --artifact release-runtime-manifest=dist/kast-runtime-manifest.json \
             --artifact release-gradle-ro-cache=dist/gradle-ro-dep-cache.tar.zst
-          gh release upload "$tag" \
+          for asset in \
             "$bundle_asset" \
             "${bundle_asset}.sha256" \
             dist/kast-headless-linux-x64.tar.zst \
             dist/kast-headless-linux-x64.sha256 \
-            dist/kast-runtime-manifest.json \
-            --clobber
+            dist/kast-runtime-manifest.json
+          do
+            .github/scripts/upload-immutable-release-asset.sh \
+              --tag "$tag" \
+              --asset "$asset"
+          done
 
       - name: Upload Linux headless tarball artifact
         if: always()
@@ -1278,10 +1286,11 @@ jobs:
           [[ -f "$cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${cache_asset}" >&2; exit 1; }
           [[ -f "$cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${cache_sidecar}" >&2; exit 1; }
           (cd provenance-linux-headless && sha256sum -c gradle-ro-dep-cache.sha256)
-          gh release upload "$tag" \
-            "$cache_asset" \
-            "$cache_sidecar" \
-            --clobber
+          for asset in "$cache_asset" "$cache_sidecar"; do
+            .github/scripts/upload-immutable-release-asset.sh \
+              --tag "$tag" \
+              --asset "$asset"
+          done
 
       - name: Assemble combined provenance
         shell: bash

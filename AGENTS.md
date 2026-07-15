@@ -41,8 +41,9 @@ provenance before upload. Private keys and passwords remain GitHub secrets;
 certificate fingerprints are explicit repository variables and never derive
 from a shared release version.
 
-`.github/scripts/upload-immutable-release-asset.sh` owns plugin-asset replay:
-upload once, then prove byte identity or fail. It must never use `--clobber`.
+`.github/scripts/upload-immutable-release-asset.sh` owns release-asset replay:
+every asset uploads once, then proves byte identity or fails. Release workflows
+must never use `--clobber`.
 `scripts/verify-idea-plugin-artifact.py`, the release provenance assembler, and
 `scripts/verify-release-assets.sh` own the plugin ID, digest, signer, signature,
 and verification-task evidence. Run
