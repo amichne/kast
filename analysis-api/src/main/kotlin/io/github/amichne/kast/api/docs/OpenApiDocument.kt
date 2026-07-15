@@ -22,6 +22,7 @@ import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.TextEdit
+import io.github.amichne.kast.api.contract.compatibility.*
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
@@ -204,6 +205,55 @@ object OpenApiDocument {
         registry.register("FileHash", FileHash.serializer())
         registry.register("OutlineSymbol", OutlineSymbol.serializer())
         registry.register("WorkspaceModule", WorkspaceModule.serializer())
+
+        // Runtime compatibility negotiation vocabulary
+        registry.register("ProtocolRevision", ProtocolRevision.serializer())
+        registry.register("WorkspaceMetadataRevision", WorkspaceMetadataRevision.serializer())
+        registry.register("PluginImplementationVersion", PluginImplementationVersion.serializer())
+        registry.register("CliImplementationVersion", CliImplementationVersion.serializer())
+        registry.register("RuntimeImplementationVersion", RuntimeImplementationVersion.serializer())
+        registry.register("RuntimeBackendKind", RuntimeBackendKind.serializer())
+        registry.register("RuntimeCapability", RuntimeCapability.serializer())
+        registry.register("RuntimeCapability.Read", RuntimeCapability.Read.serializer())
+        registry.register("RuntimeCapability.Mutation", RuntimeCapability.Mutation.serializer())
+        registry.register("RuntimeIdentity", RuntimeIdentity.serializer())
+        registry.register("RuntimeCompatibilityFacts", RuntimeCompatibilityFacts.serializer())
+        registry.register("SupportedRuntimeCompatibilityPair", SupportedRuntimeCompatibilityPair.serializer())
+        registry.register("RuntimeCompatibilityMatrix", RuntimeCompatibilityMatrix.serializer())
+        registry.register(
+            "RuntimeCompatibilityUpdateRequirement",
+            RuntimeCompatibilityUpdateRequirement.serializer(),
+        )
+        registry.register(
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair",
+            RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
+        )
+        registry.register(
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
+            RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
+        )
+        registry.register(
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision",
+            RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision.serializer(),
+        )
+        registry.register(
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity",
+            RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity.serializer(),
+        )
+        registry.register(
+            "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability",
+            RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability.serializer(),
+        )
+        registry.register("RuntimeCompatibilityOutcome", RuntimeCompatibilityOutcome.serializer())
+        registry.register("RuntimeCompatibilityOutcome.Compatible", RuntimeCompatibilityOutcome.Compatible.serializer())
+        registry.register(
+            "RuntimeCompatibilityOutcome.UpdateRequired",
+            RuntimeCompatibilityOutcome.UpdateRequired.serializer(),
+        )
+        registry.register(
+            "RuntimeCompatibilityOutcome.MissingCapability",
+            RuntimeCompatibilityOutcome.MissingCapability.serializer(),
+        )
 
         // Read queries & results
         registry.register("SymbolQuery", SymbolQuery.serializer())
@@ -645,10 +695,7 @@ internal class SchemaRegistry {
         } else when (descriptor.kind) {
             is PrimitiveKind -> primitiveSchema(descriptor.kind as PrimitiveKind)
             StructureKind.CLASS, StructureKind.OBJECT -> objectSchema(descriptor)
-            StructureKind.LIST -> linkedMapOf(
-                "type" to "array",
-                "items" to inlineSchema(descriptor.getElementDescriptor(0)),
-            )
+            StructureKind.LIST -> collectionSchema(descriptor)
             StructureKind.MAP -> linkedMapOf(
                 "type" to "object",
                 "additionalProperties" to inlineSchema(descriptor.getElementDescriptor(1)),
@@ -683,6 +730,16 @@ internal class SchemaRegistry {
             "additionalProperties" to false,
         ).also { if (required.isNotEmpty()) it["required"] = required }
     }
+
+    private fun collectionSchema(descriptor: SerialDescriptor): Map<String, Any?> =
+        linkedMapOf<String, Any?>(
+            "type" to "array",
+            "items" to inlineSchema(descriptor.getElementDescriptor(0)),
+        ).also { schema ->
+            if (descriptor.serialName.endsWith("HashSet") || descriptor.serialName.endsWith(".Set")) {
+                schema["uniqueItems"] = true
+            }
+        }
 
     private fun inlineSchema(descriptor: SerialDescriptor): Any =
         when (descriptor.kind) {
@@ -777,6 +834,73 @@ internal class SchemaRegistry {
                 WorkspaceFilesContinuationResult.Consumed.serializer(),
                 discriminatorValue = "CONSUMED",
             )
+            "RuntimeCapability" -> discriminatedUnion(
+                "type",
+                "READ" to "RuntimeCapability.Read",
+                "MUTATION" to "RuntimeCapability.Mutation",
+            )
+            "RuntimeCapability.Read" -> subtypeWithDiscriminator(
+                RuntimeCapability.Read.serializer(),
+                discriminatorValue = "READ",
+            )
+            "RuntimeCapability.Mutation" -> subtypeWithDiscriminator(
+                RuntimeCapability.Mutation.serializer(),
+                discriminatorValue = "MUTATION",
+            )
+            "RuntimeCompatibilityUpdateRequirement" -> discriminatedUnion(
+                "type",
+                "UNSUPPORTED_RELEASE_PAIR" to
+                    "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair",
+                "UNSUPPORTED_PROTOCOL_REVISION" to
+                    "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
+                "UNSUPPORTED_WORKSPACE_METADATA_REVISION" to
+                    "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision",
+                "UNSUPPORTED_RUNTIME_IDENTITY" to
+                    "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity",
+                "MISSING_REQUIRED_CAPABILITY" to
+                    "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability",
+            )
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
+                discriminatorValue = "UNSUPPORTED_RELEASE_PAIR",
+            )
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
+                discriminatorValue = "UNSUPPORTED_PROTOCOL_REVISION",
+                nonEmptyCollections = setOf("supported"),
+            )
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision.serializer(),
+                discriminatorValue = "UNSUPPORTED_WORKSPACE_METADATA_REVISION",
+                nonEmptyCollections = setOf("supported"),
+            )
+            "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity.serializer(),
+                discriminatorValue = "UNSUPPORTED_RUNTIME_IDENTITY",
+                nonEmptyCollections = setOf("supported"),
+            )
+            "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability.serializer(),
+                discriminatorValue = "MISSING_REQUIRED_CAPABILITY",
+            )
+            "RuntimeCompatibilityOutcome" -> discriminatedUnion(
+                "type",
+                "COMPATIBLE" to "RuntimeCompatibilityOutcome.Compatible",
+                "UPDATE_REQUIRED" to "RuntimeCompatibilityOutcome.UpdateRequired",
+                "MISSING_CAPABILITY" to "RuntimeCompatibilityOutcome.MissingCapability",
+            )
+            "RuntimeCompatibilityOutcome.Compatible" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityOutcome.Compatible.serializer(),
+                discriminatorValue = "COMPATIBLE",
+            )
+            "RuntimeCompatibilityOutcome.UpdateRequired" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityOutcome.UpdateRequired.serializer(),
+                discriminatorValue = "UPDATE_REQUIRED",
+            )
+            "RuntimeCompatibilityOutcome.MissingCapability" -> subtypeWithDiscriminator(
+                RuntimeCompatibilityOutcome.MissingCapability.serializer(),
+                discriminatorValue = "MISSING_CAPABILITY",
+            )
             else -> null
         }
 
@@ -798,6 +922,7 @@ internal class SchemaRegistry {
     private fun subtypeWithDiscriminator(
         serializer: KSerializer<*>,
         discriminatorValue: String,
+        nonEmptyCollections: Set<String> = emptySet(),
     ): Map<String, Any?> {
         val base = objectSchema(serializer.descriptor) as LinkedHashMap<String, Any?>
 
@@ -806,6 +931,12 @@ internal class SchemaRegistry {
         val typeProperty = linkedMapOf<String, Any?>("type" to "string", "const" to discriminatorValue)
         val withType = linkedMapOf<String, Any?>("type" to typeProperty)
         withType.putAll(props)
+        nonEmptyCollections.forEach { field ->
+            @Suppress("UNCHECKED_CAST")
+            val collection = withType[field] as? LinkedHashMap<String, Any?>
+                ?: error("Non-empty collection field is not an array schema: $field")
+            collection["minItems"] = 1
+        }
         base["properties"] = withType
         @Suppress("UNCHECKED_CAST")
         val required = (base["required"] as? MutableList<String>) ?: mutableListOf()
@@ -840,6 +971,11 @@ internal class SchemaRegistry {
         val valueDescriptor = descriptor.getElementDescriptor(0)
         val schema = LinkedHashMap(primitiveSchema(valueDescriptor.kind as PrimitiveKind))
         when (componentName) {
+            "ProtocolRevision", "WorkspaceMetadataRevision" -> schema["minimum"] = 1
+            "PluginImplementationVersion", "CliImplementationVersion", "RuntimeImplementationVersion" -> {
+                schema["minLength"] = 1
+                schema["pattern"] = "^\\S+$"
+            }
             "WorkspaceRoot", "BackendName", "NormalizedQuery", "Projection" -> schema["minLength"] = 1
             "Limit" -> {
                 schema["minimum"] = 1

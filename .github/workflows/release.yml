@@ -49,6 +49,7 @@ jobs:
           .github/scripts/render-jetbrains-plugin-repository.py
           validate-source
           --source packaging/jetbrains/plugin-repository.json
+          --compatibility-source packaging/jetbrains/runtime-compatibility.json
           --require-configured
 
       - name: Require immutable GitHub Releases
@@ -373,6 +374,93 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: openapi-spec-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: error
+
+  build-runtime-compatibility-manifest:
+    name: Build runtime compatibility manifest
+    needs:
+      - prepare-release
+      - validate-jvm
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Render runtime compatibility manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          .github/scripts/render-runtime-compatibility.py validate-source \
+            --source packaging/jetbrains/runtime-compatibility.json
+          .github/scripts/render-runtime-compatibility.py render \
+            --source packaging/jetbrains/runtime-compatibility.json \
+            --release-tag "${{ needs.prepare-release.outputs.release_tag }}" \
+            --release-sha "$GITHUB_SHA" \
+            --output dist/kast-runtime-compatibility.json
+
+      - name: Generate runtime compatibility provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "dist/kast-runtime-compatibility.json" "dist/build-provenance-runtime-compatibility.json" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          asset = Path(sys.argv[1])
+          payload = {
+              "runId": os.environ["GITHUB_RUN_ID"],
+              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "actor": os.environ["GITHUB_ACTOR"],
+              "platformId": "runtime-compatibility",
+              "assetName": asset.name,
+              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
+          }
+          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/build-ledger-runtime-compatibility.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind release-runtime-compatibility \
+            --artifact-name kast-runtime-compatibility.json \
+            --artifact-path dist/kast-runtime-compatibility.json \
+            --producer-job build-runtime-compatibility-manifest \
+            --build-command-id release-render-runtime-compatibility
+
+      - name: Upload runtime compatibility release asset
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger dist/build-ledger-runtime-compatibility.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind release-runtime-compatibility \
+            --artifact release-runtime-compatibility=dist/kast-runtime-compatibility.json
+          .github/scripts/upload-immutable-release-asset.sh \
+            --tag "$tag" \
+            --asset dist/kast-runtime-compatibility.json
+
+      - name: Upload runtime compatibility workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: runtime-compatibility-${{ github.run_id }}
           path: dist/
           if-no-files-found: error
 
@@ -759,6 +847,7 @@ jobs:
             .github/scripts/render-jetbrains-plugin-repository.py \
               enrolled-signers \
               --source packaging/jetbrains/plugin-repository.json \
+              --compatibility-source packaging/jetbrains/runtime-compatibility.json \
               --require-configured
           )
           [[ "${#enrolled_signers[@]}" -gt 0 ]] || {
@@ -1226,11 +1315,12 @@ jobs:
       - prepare-release
       - validate-jvm
       - build-openapi-spec
+      - build-runtime-compatibility-manifest
       - build-cli
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-runtime-compatibility-manifest.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1265,6 +1355,13 @@ jobs:
           pattern: openapi-spec-*
           merge-multiple: true
 
+      - name: Download runtime compatibility provenance
+        uses: actions/download-artifact@v7
+        with:
+          path: provenance-runtime-compatibility
+          pattern: runtime-compatibility-*
+          merge-multiple: true
+
       - name: Verify release build ledgers
         shell: bash
         run: |
@@ -1282,6 +1379,7 @@ jobs:
             --ledger provenance-linux-headless/build-ledger-runtime-manifest.json \
             --ledger provenance-linux-headless/build-ledger-gradle-ro-cache.json \
             --ledger provenance-openapi/build-ledger-openapi.json \
+            --ledger provenance-runtime-compatibility/build-ledger-runtime-compatibility.json \
             --git-sha "$GITHUB_SHA" \
             --require-kind release-cli-linux-x64 \
             --require-kind release-cli-linux-arm64 \
@@ -1294,6 +1392,7 @@ jobs:
             --require-kind release-runtime-manifest \
             --require-kind release-gradle-ro-cache \
             --require-kind release-openapi \
+            --require-kind release-runtime-compatibility \
             --artifact "release-cli-linux-x64=provenance-cli/kast-${tag}-linux-x64.zip" \
             --artifact "release-cli-linux-arm64=provenance-cli/kast-${tag}-linux-arm64.zip" \
             --artifact "release-cli-macos-x64=provenance-cli/kast-${tag}-macos-x64.zip" \
@@ -1304,7 +1403,8 @@ jobs:
             --artifact "release-headless-linux-x64=provenance-linux-headless/kast-headless-linux-x64.tar.zst" \
             --artifact "release-runtime-manifest=provenance-linux-headless/kast-runtime-manifest.json" \
             --artifact "release-gradle-ro-cache=provenance-linux-headless/gradle-ro-dep-cache.tar.zst" \
-            --artifact "release-openapi=provenance-openapi/openapi.yaml"
+            --artifact "release-openapi=provenance-openapi/openapi.yaml" \
+            --artifact "release-runtime-compatibility=provenance-runtime-compatibility/kast-runtime-compatibility.json"
 
       - name: Upload Gradle read-only cache release asset
         env:
@@ -1334,7 +1434,8 @@ jobs:
             provenance-cli \
             provenance-linux-headless \
             provenance-idea \
-            provenance-openapi
+            provenance-openapi \
+            provenance-runtime-compatibility
 
       - name: Upload combined provenance
         env:
@@ -1362,6 +1463,7 @@ jobs:
           gh release download "$tag" --dir release-assets --pattern '*.sha256' || true
           gh release download "$tag" --dir release-assets --pattern 'openapi.yaml'
           gh release download "$tag" --dir release-assets --pattern 'kast-runtime-manifest.json'
+          gh release download "$tag" --dir release-assets --pattern 'kast-runtime-compatibility.json'
           gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
           mapfile -t expected_assets < <(python3 - release-assets/build-provenance.json <<'PY'
           import json
@@ -1564,6 +1666,7 @@ jobs:
             --artifact release-idea-signature-verifier=idea-verification/marketplace-zip-signer-cli.jar
           .github/scripts/materialize-jetbrains-plugin-repository-pages.sh \
             --source packaging/jetbrains/plugin-repository.json \
+            --compatibility-source packaging/jetbrains/runtime-compatibility.json \
             --output-directory site/jetbrains \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             --certificate-chain "${{ steps.idea-repository-certificate.outputs.path }}" \

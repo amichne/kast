@@ -8,6 +8,11 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
 import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -84,6 +89,20 @@ class KastProjectOpenProfileAutoInitTest {
         val metadata = Files.readString(installed.metadataPath)
         assertTrue(metadata.contains("\"preparedBy\": \"kast-intellij-plugin\""), metadata)
         assertTrue(metadata.contains("\"cliBinary\": \"${binary.toString().jsonEscaped()}\""), metadata)
+        val metadataObject = Json.parseToJsonElement(metadata).jsonObject
+        assertEquals(2, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
+        val compatibility = metadataObject.getValue("compatibility").jsonObject
+        assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
+        assertEquals(2, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
+        assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
+        assertTrue(
+            compatibility.getValue("readCapabilities").jsonArray
+                .any { capability -> capability.jsonPrimitive.content == "DIAGNOSTICS" },
+        )
+        assertTrue(
+            compatibility.getValue("mutationCapabilities").jsonArray
+                .any { capability -> capability.jsonPrimitive.content == "RENAME" },
+        )
     }
 
     @Test

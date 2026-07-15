@@ -126,7 +126,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
         std::fs::write(
             metadata,
             serde_json::to_string_pretty(&serde_json::json!({
-                "schemaVersion": 1,
+                "schemaVersion": 2,
                 "preparedBy": "kast-intellij-plugin",
                 "pluginVersion": env!("CARGO_PKG_VERSION"),
                 "cliVersion": env!("CARGO_PKG_VERSION"),
@@ -134,6 +134,38 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
                 "cliBinary": env!("CARGO_BIN_EXE_kast"),
                 "backend": "idea",
                 "socketPath": default_socket_path_for_test(&workspace).display().to_string(),
+                "compatibility": {
+                    "pluginVersion": env!("CARGO_PKG_VERSION"),
+                    "cliVersion": env!("CARGO_PKG_VERSION"),
+                    "protocolRevision": 1,
+                    "workspaceMetadataRevision": 2,
+                    "readCapabilities": [
+                        "RESOLVE_SYMBOL",
+                        "FIND_REFERENCES",
+                        "CALL_HIERARCHY",
+                        "TYPE_HIERARCHY",
+                        "SEMANTIC_INSERTION_POINT",
+                        "DIAGNOSTICS",
+                        "FILE_OUTLINE",
+                        "WORKSPACE_SYMBOL_SEARCH",
+                        "WORKSPACE_SEARCH",
+                        "WORKSPACE_FILES",
+                        "IMPLEMENTATIONS",
+                        "CODE_ACTIONS",
+                        "COMPLETIONS"
+                    ],
+                    "mutationCapabilities": [
+                        "RENAME",
+                        "APPLY_EDITS",
+                        "FILE_OPERATIONS",
+                        "OPTIMIZE_IMPORTS",
+                        "REFRESH_WORKSPACE"
+                    ],
+                    "runtimeIdentity": {
+                        "implementationVersion": env!("CARGO_PKG_VERSION"),
+                        "backendKind": "IDEA"
+                    }
+                },
                 "requiredArtifacts": [
                     ".agents/skills/kast/SKILL.md",
                     ".kast/setup/workspace.json"

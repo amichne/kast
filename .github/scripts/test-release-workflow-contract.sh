@@ -125,6 +125,9 @@ idea_plugin_signing_contract="${repo_root}/.github/scripts/test-idea-plugin-sign
 idea_plugin_repository_contract="${repo_root}/.github/scripts/test-jetbrains-plugin-repository-contract.sh"
 idea_plugin_repository_source="${repo_root}/packaging/jetbrains/plugin-repository.json"
 idea_plugin_repository_renderer="${repo_root}/.github/scripts/render-jetbrains-plugin-repository.py"
+runtime_compatibility_contract="${repo_root}/.github/scripts/test-runtime-compatibility-contract.sh"
+runtime_compatibility_source="${repo_root}/packaging/jetbrains/runtime-compatibility.json"
+runtime_compatibility_renderer="${repo_root}/.github/scripts/render-runtime-compatibility.py"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
 maven_central_verifier="${repo_root}/scripts/verify-maven-central.sh"
 ubuntu_debian_validator="${repo_root}/scripts/validate-ubuntu-debian-bundle-in-docker.sh"
@@ -162,6 +165,9 @@ for path in \
   "$idea_plugin_repository_contract" \
   "$idea_plugin_repository_source" \
   "$idea_plugin_repository_renderer" \
+  "$runtime_compatibility_contract" \
+  "$runtime_compatibility_source" \
+  "$runtime_compatibility_renderer" \
   "$release_state_verifier" \
   "$maven_central_verifier" \
   "$ubuntu_debian_validator" \
@@ -217,6 +223,8 @@ require_contains "$ci_workflow" "Maven publication metadata" "CI must validate M
 require_contains "$ci_workflow" 'group: ci-${{ github.event.pull_request.number || github.ref }}' "CI must cancel superseded branch or PR validation runs"
 require_contains "$ci_workflow" "runtime-contracts:" "CI must isolate runtime command and bundle contracts from the static preflight"
 require_contains "$ci_workflow" "Runtime command and bundle contracts" "CI must retain runtime command and bundle contract coverage"
+require_contains "$ci_workflow" "Runtime compatibility matrix" "CI must execute the typed runtime compatibility gate"
+require_contains "$ci_workflow" "test-runtime-compatibility-contract.sh" "CI must call the dedicated runtime compatibility gate"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "    needs: workflow-contracts" "CI runtime contracts must wait for the static workflow preflight"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test terminal command contract" "CI runtime contracts must own the terminal command contract"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test Kast Copilot plugin package" "CI runtime contracts must reuse the terminal build for the Copilot package contract"
@@ -333,6 +341,11 @@ require_contains "$release_workflow" "Validate JVM and Maven publications" "Rele
 require_contains "$release_workflow" "release-artifact-ledger-maven-publication" "Release must pass Maven validation by ledger artifact"
 require_contains "$release_workflow" "Verify release Maven validation ledger" "Release Maven publication must verify the validation ledger before publishing"
 require_contains "$release_workflow" "Build OpenAPI spec" "Release must build the generated OpenAPI artifact"
+require_contains "$release_workflow" "Build runtime compatibility manifest" "Release must build the generated runtime compatibility manifest"
+require_contains "$release_workflow" "render-runtime-compatibility.py" "Release must render compatibility from its typed source"
+require_contains "$release_workflow" "dist/kast-runtime-compatibility.json" "Release must publish the runtime compatibility manifest"
+require_contains "$release_workflow" "build-provenance-runtime-compatibility.json" "Release must produce runtime compatibility provenance"
+require_contains "$release_workflow" "build-ledger-runtime-compatibility.json" "Release must ledger the runtime compatibility manifest"
 require_contains "$release_workflow" "stageOpenApiSpec" "Release must stage OpenAPI from the generated protocol source"
 require_contains "$release_workflow" "dist/openapi.yaml" "Release must publish the OpenAPI YAML asset"
 require_contains "$release_workflow" "build-provenance-openapi.json" "Release must produce OpenAPI provenance"
@@ -414,6 +427,7 @@ require_order "$release_workflow" "Free disk for headless backend release" "Cach
 require_contains "$publishing_conventions" "publishTarget != PublishTarget.Github" "Publishing convention must not require Maven signatures for GitHub Packages"
 require_contains "$release_workflow" "needs.validate-jvm.result == 'success'" "Release publication must require local JVM and Maven validation"
 require_contains "$release_workflow" "needs.build-openapi-spec.result == 'success'" "Release publication must require the OpenAPI artifact"
+require_contains "$release_workflow" "needs.build-runtime-compatibility-manifest.result == 'success'" "Release publication must require the compatibility manifest"
 require_contains "$release_workflow" "needs.publish-release.result" "Final release verification must read the publish-release result"
 require_contains "$release_workflow" "needs.deploy-jetbrains-plugin-repository-pages.result" "Final release verification must read the stable Pages deployment result"
 require_contains "$ci_workflow" "Test JetBrains plugin repository contract" "CI must execute the feed-to-asset consistency gate"
@@ -450,6 +464,7 @@ require_contains "$release_workflow" "kast-headless-linux-x64.tar.zst" "Default 
 require_contains "$release_workflow" "kast-headless-linux-x64.sha256" "Default release must publish the headless runtime checksum"
 require_contains "$release_workflow" "(cd dist && sha256sum -c kast-headless-linux-x64.sha256)" "Release workflow must verify runtime sidecars from the artifact directory"
 require_contains "$release_workflow" "kast-runtime-manifest.json" "Default release must publish the runtime manifest sidecar"
+require_contains "$release_workflow" "kast-runtime-compatibility.json" "Default release must publish the runtime compatibility manifest"
 require_contains "$release_workflow" "openapi.yaml" "Default release must publish the generated OpenAPI YAML"
 require_contains "$release_workflow" "gradle-ro-dep-cache.tar.zst" "Default release must publish the Gradle read-only cache tarball"
 require_contains "$release_workflow" "gradle-ro-dep-cache.sha256" "Default release must publish the Gradle read-only cache checksum"
@@ -457,6 +472,7 @@ require_contains "$release_workflow" "scripts/validate-ubuntu-debian-bundle-in-d
 require_contains "$release_workflow" "provenance-linux-headless" "Default release provenance must include the Linux headless tarball"
 require_contains "$release_workflow" "headless-linux-x64" "Default release provenance must include the headless runtime tarball"
 require_contains "$release_workflow" "runtime-manifest" "Default release provenance must include the runtime manifest sidecar"
+require_contains "$release_workflow" "runtime-compatibility" "Default release provenance must include the compatibility manifest"
 require_contains "$release_workflow" "gradle-ro-cache" "Default release provenance must include the Gradle read-only cache"
 require_contains "$release_workflow" "release-ubuntu-debian-headless-x86_64" "Default release ledgers must include the Linux headless tarball"
 require_contains "$release_workflow" "release-headless-linux-x64" "Default release ledgers must include the headless runtime tarball"
@@ -481,6 +497,7 @@ require_contains "$release_provenance_assembler" '"cli-macos-arm64"' "Release pr
 require_contains "$release_provenance_assembler" '"gradle-ro-cache"' "Release provenance must include the Gradle read-only cache"
 require_contains "$release_provenance_assembler" '"headless-linux-x64"' "Release provenance must include the headless runtime tarball"
 require_contains "$release_provenance_assembler" '"runtime-manifest"' "Release provenance must include the runtime manifest"
+require_contains "$release_provenance_assembler" '"runtime-compatibility"' "Release provenance must include the compatibility manifest"
 require_contains "$release_provenance_assembler" '"ubuntu-debian-headless-x86_64"' "Release provenance must include the Linux headless tarball"
 require_not_contains "$release_provenance_assembler" '"headless"' "Release provenance must not include a standalone headless backend asset"
 require_contains "$ci_artifact_ledger_verifier" "schemaVersion" "CI artifact ledger verifier must enforce schema versions"
@@ -493,6 +510,8 @@ require_contains "$release_asset_verifier" 'kast-{tag}-macos-arm64.zip' "Release
 require_contains "$release_asset_verifier" 'gradle-ro-dep-cache.tar.zst' "Release verifier must require the Gradle read-only cache tarball"
 require_contains "$release_asset_verifier" 'kast-headless-linux-x64.tar.zst' "Release verifier must require the headless runtime tarball"
 require_contains "$release_asset_verifier" 'kast-runtime-manifest.json' "Release verifier must require the runtime manifest"
+require_contains "$release_asset_verifier" 'kast-runtime-compatibility.json' "Release verifier must require the runtime compatibility manifest"
+require_contains "$release_asset_verifier" 'validate-manifest' "Release verifier must apply the shared strict runtime compatibility schema"
 require_contains "$release_asset_verifier" 'openapi.yaml' "Release verifier must require the OpenAPI artifact"
 require_contains "$release_asset_verifier" 'kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz' "Release verifier must require the Linux headless tarball"
 require_not_contains "$release_asset_verifier" 'kast-headless-{tag}.zip' "Release verifier must not accept a standalone headless backend asset"

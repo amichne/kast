@@ -23,6 +23,12 @@ IDEA_PLATFORM_ID = "idea"
 RELEASE_ASSET_URL_TEMPLATE = (
     "https://github.com/amichne/kast/releases/download/{tag}/kast-idea-{tag}.zip"
 )
+DEFAULT_COMPATIBILITY_SOURCE = (
+    Path(__file__).resolve().parents[2]
+    / "packaging"
+    / "jetbrains"
+    / "runtime-compatibility.json"
+)
 RELEASE_TAG_PATTERN = re.compile(r"v[0-9A-Za-z][0-9A-Za-z._-]*")
 VERSION_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]*")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
@@ -218,13 +224,16 @@ class RepositoryPolicy:
     idea_build_range: IdeaBuildRange
 
     @classmethod
-    def parse(cls, raw: object) -> "RepositoryPolicy":
+    def parse(
+        cls,
+        raw: object,
+        *,
+        idea_build_range: IdeaBuildRange,
+    ) -> "RepositoryPolicy":
         payload = require_object(
             raw,
             field="repository",
-            keys=frozenset(
-                ("feedUrl", "pluginId", "releaseAssetUrlTemplate", "ideaBuildRange")
-            ),
+            keys=frozenset(("feedUrl", "pluginId", "releaseAssetUrlTemplate")),
         )
         feed_url = payload["feedUrl"]
         plugin_id = payload["pluginId"]
@@ -269,10 +278,7 @@ class RepositoryPolicy:
             feed_url=feed_url,
             plugin_id=plugin_id,
             asset_url_template=asset_template,
-            idea_build_range=IdeaBuildRange.parse(
-                payload["ideaBuildRange"],
-                field="repository.ideaBuildRange",
-            ),
+            idea_build_range=idea_build_range,
         )
 
     def asset_url(self, tag: str) -> str:
@@ -303,7 +309,7 @@ class RepositorySource:
     signing: SigningPolicy
 
     @classmethod
-    def load(cls, path: Path) -> "RepositorySource":
+    def load(cls, path: Path, *, compatibility_path: Path) -> "RepositorySource":
         payload = require_object(
             read_json(path, description="JetBrains repository source"),
             field="JetBrains repository source",
@@ -312,9 +318,29 @@ class RepositorySource:
         if payload["schemaVersion"] != SCHEMA_VERSION:
             fail(f"JetBrains repository source schemaVersion must be {SCHEMA_VERSION}")
         return cls(
-            repository=RepositoryPolicy.parse(payload["repository"]),
+            repository=RepositoryPolicy.parse(
+                payload["repository"],
+                idea_build_range=load_compatibility_idea_build_range(compatibility_path),
+            ),
             signing=SigningPolicy.parse(payload["signing"]),
         )
+
+
+def load_compatibility_idea_build_range(path: Path) -> IdeaBuildRange:
+    payload = require_object(
+        read_json(path, description="runtime compatibility source"),
+        field="runtime compatibility source",
+        keys=frozenset(("schemaVersion", "ideaBuildRange", "supportedPairs")),
+    )
+    if payload["schemaVersion"] != SCHEMA_VERSION:
+        fail(f"runtime compatibility source schemaVersion must be {SCHEMA_VERSION}")
+    pairs = payload["supportedPairs"]
+    if not isinstance(pairs, list) or not pairs:
+        fail("runtime compatibility source supportedPairs must be a non-empty array")
+    return IdeaBuildRange.parse(
+        payload["ideaBuildRange"],
+        field="runtime compatibility source ideaBuildRange",
+    )
 
 
 def manifest_url(source: RepositorySource) -> str:
@@ -703,17 +729,17 @@ def write_output(
 
 
 def validate_source_command(args: argparse.Namespace) -> None:
-    source = RepositorySource.load(Path(args.source))
+    source = repository_source(args)
     source.signing.enrolled_signers(require_configured=args.require_configured)
     print(f"Validated JetBrains repository source ({source.signing.state})")
 
 
 def signing_state_command(args: argparse.Namespace) -> None:
-    print(RepositorySource.load(Path(args.source)).signing.state)
+    print(repository_source(args).signing.state)
 
 
 def enrolled_signers_command(args: argparse.Namespace) -> None:
-    source = RepositorySource.load(Path(args.source))
+    source = repository_source(args)
     for signer in source.signing.enrolled_signers(
         require_configured=args.require_configured
     ):
@@ -721,20 +747,20 @@ def enrolled_signers_command(args: argparse.Namespace) -> None:
 
 
 def asset_name_command(args: argparse.Namespace) -> None:
-    source = RepositorySource.load(Path(args.source))
+    source = repository_source(args)
     print(source.repository.asset_name(args.tag))
 
 
 def manifest_url_command(args: argparse.Namespace) -> None:
-    print(manifest_url(RepositorySource.load(Path(args.source))))
+    print(manifest_url(repository_source(args)))
 
 
 def feed_url_command(args: argparse.Namespace) -> None:
-    print(feed_url(RepositorySource.load(Path(args.source))))
+    print(feed_url(repository_source(args)))
 
 
 def published_release_tag_command(args: argparse.Namespace) -> None:
-    source = RepositorySource.load(Path(args.source))
+    source = repository_source(args)
     print(published_release_tag(source=source, manifest_path=Path(args.manifest)))
 
 
@@ -743,7 +769,7 @@ def provenance_release_sha_command(args: argparse.Namespace) -> None:
 
 
 def verify_published_command(args: argparse.Namespace) -> None:
-    source = RepositorySource.load(Path(args.source))
+    source = repository_source(args)
     print(
         verify_published_repository(
             source=source,
@@ -754,7 +780,7 @@ def verify_published_command(args: argparse.Namespace) -> None:
 
 
 def render_command(args: argparse.Namespace) -> None:
-    source = RepositorySource.load(Path(args.source))
+    source = repository_source(args)
     provenance = IdeaProvenance.load(Path(args.provenance))
     plugin_zip = Path(args.plugin_zip)
     verify_finalized_signature(
@@ -776,6 +802,17 @@ def render_command(args: argparse.Namespace) -> None:
 
 def add_source_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--source", required=True)
+    parser.add_argument(
+        "--compatibility-source",
+        default=str(DEFAULT_COMPATIBILITY_SOURCE),
+    )
+
+
+def repository_source(args: argparse.Namespace) -> RepositorySource:
+    return RepositorySource.load(
+        Path(args.source),
+        compatibility_path=Path(args.compatibility_source),
+    )
 
 
 def parse_args() -> argparse.Namespace:

@@ -106,6 +106,29 @@ jobs:
         shell: bash
         run: ./scripts/smoke-ubuntu-debian-bundle.sh
 
+  runtime-compatibility-contract:
+    name: Runtime compatibility matrix
+    runs-on: macos-latest
+    needs: workflow-contracts
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test runtime compatibility contract
+        shell: bash
+        run: ./.github/scripts/test-runtime-compatibility-contract.sh
+
   maven-publication-contract:
     name: Maven publication metadata
     runs-on: ubuntu-latest

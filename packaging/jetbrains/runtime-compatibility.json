@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "ideaBuildRange": {
+    "sinceBuild": "253",
+    "untilBuild": null
+  },
+  "supportedPairs": [
+    {
+      "relation": "same-release",
+      "pluginVersion": "{releaseVersion}",
+      "cliVersion": "{releaseVersion}",
+      "protocolRevision": 1,
+      "workspaceMetadataRevision": 2,
+      "runtime": {
+        "implementationVersion": "{releaseVersion}",
+        "backendKind": "IDEA"
+      },
+      "requiredCapabilities": [
+        {
+          "kind": "READ",
+          "name": "DIAGNOSTICS"
+        },
+        {
+          "kind": "READ",
+          "name": "RESOLVE_SYMBOL"
+        },
+        {
+          "kind": "READ",
+          "name": "WORKSPACE_FILES"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "APPLY_EDITS"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "REFRESH_WORKSPACE"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "RENAME"
+        }
+      ],
+      "optionalCapabilities": [
+        {
+          "kind": "READ",
+          "name": "CALL_HIERARCHY"
+        },
+        {
+          "kind": "READ",
+          "name": "CODE_ACTIONS"
+        },
+        {
+          "kind": "READ",
+          "name": "COMPLETIONS"
+        },
+        {
+          "kind": "READ",
+          "name": "FILE_OUTLINE"
+        },
+        {
+          "kind": "READ",
+          "name": "FIND_REFERENCES"
+        },
+        {
+          "kind": "READ",
+          "name": "IMPLEMENTATIONS"
+        },
+        {
+          "kind": "READ",
+          "name": "SEMANTIC_INSERTION_POINT"
+        },
+        {
+          "kind": "READ",
+          "name": "TYPE_HIERARCHY"
+        },
+        {
+          "kind": "READ",
+          "name": "WORKSPACE_SEARCH"
+        },
+        {
+          "kind": "READ",
+          "name": "WORKSPACE_SYMBOL_SEARCH"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "FILE_OPERATIONS"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "OPTIMIZE_IMPORTS"
+        }
+      ],
+      "evidence": [
+        ".github/scripts/test-runtime-compatibility-contract.sh",
+        "analysis-api/src/test/kotlin/io/github/amichne/kast/api/contract/compatibility/RuntimeCompatibilityMatrixTest.kt",
+        "cli-rs/tests/runtime_compatibility_metadata_smoke.rs"
+      ]
+    }
+  ]
+}

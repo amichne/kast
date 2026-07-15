@@ -10,6 +10,7 @@ usage() {
   cat >&2 <<'USAGE'
 Usage: materialize-jetbrains-plugin-repository-pages.sh \
   --source <plugin-repository.json> \
+  [--compatibility-source <runtime-compatibility.json>] \
   --output-directory <site/jetbrains> \
   (--tag <vX.Y.Z> | --latest-stable | --published-release) \
   [--allow-unconfigured] [--allow-unpublished] \
@@ -30,6 +31,7 @@ resolve_repo_root() {
 repo_root="$(resolve_repo_root)"
 renderer="${repo_root}/.github/scripts/render-jetbrains-plugin-repository.py"
 source_file=""
+compatibility_source="${repo_root}/packaging/jetbrains/runtime-compatibility.json"
 output_directory=""
 tag=""
 latest_stable=false
@@ -47,6 +49,11 @@ while [[ $# -gt 0 ]]; do
     --source)
       [[ $# -ge 2 ]] || usage
       source_file="$2"
+      shift 2
+      ;;
+    --compatibility-source)
+      [[ $# -ge 2 ]] || usage
+      compatibility_source="$2"
       shift 2
       ;;
     --output-directory)
@@ -107,6 +114,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$source_file" ]] || usage
+[[ -f "$compatibility_source" ]] || die "Runtime compatibility source does not exist: $compatibility_source"
 [[ -n "$output_directory" ]] || usage
 mode_count=0
 [[ -n "$tag" ]] && mode_count=$((mode_count + 1))
@@ -120,8 +128,9 @@ if [[ "$allow_unpublished" == true && "$published_release" != true ]]; then
 fi
 [[ -x "$renderer" ]] || die "JetBrains repository renderer is not executable: $renderer"
 
-"$renderer" validate-source --source "$source_file"
-signing_state="$("$renderer" signing-state --source "$source_file")"
+source_args=(--source "$source_file" --compatibility-source "$compatibility_source")
+"$renderer" validate-source "${source_args[@]}"
+signing_state="$("$renderer" signing-state "${source_args[@]}")"
 if [[ "$signing_state" == "unconfigured" ]]; then
   if [[ "$allow_unconfigured" == true ]]; then
     rm -rf -- "$output_directory"
@@ -130,7 +139,7 @@ if [[ "$signing_state" == "unconfigured" ]]; then
   fi
   die "JetBrains repository publication requires a configured production signer"
 fi
-"$renderer" validate-source --source "$source_file" --require-configured
+"$renderer" validate-source "${source_args[@]}" --require-configured
 
 scratch_dir="$(mktemp -d)"
 trap 'rm -rf "$scratch_dir"' EXIT
@@ -138,8 +147,8 @@ if [[ "$published_release" == true ]]; then
   command -v "$curl_bin" >/dev/null 2>&1 || die "curl is required: $curl_bin"
   published_manifest="${scratch_dir}/published-plugin-repository-manifest.json"
   published_xml="${scratch_dir}/published-updatePlugins.xml"
-  published_manifest_url="$("$renderer" manifest-url --source "$source_file")"
-  published_feed_url="$("$renderer" feed-url --source "$source_file")"
+  published_manifest_url="$("$renderer" manifest-url "${source_args[@]}")"
+  published_feed_url="$("$renderer" feed-url "${source_args[@]}")"
   set +e
   http_status="$($curl_bin \
     --silent \
@@ -172,7 +181,7 @@ if [[ "$published_release" == true ]]; then
   [[ "$xml_http_status" == "200" ]] \
     || die "Published JetBrains repository XML returned HTTP ${xml_http_status}"
   tag="$("$renderer" verify-published \
-    --source "$source_file" \
+    "${source_args[@]}" \
     --manifest "$published_manifest" \
     --xml "$published_xml")"
   rm -rf -- "$output_directory"
@@ -216,7 +225,7 @@ immutable="$($gh_bin api "repos/amichne/kast/releases/tags/${tag}" --jq '.immuta
   || die "GitHub Release is not immutable: ${tag}; enable repository release immutability before publishing"
 "$gh_bin" release verify "$tag" --repo amichne/kast >/dev/null
 
-asset_name="$("$renderer" asset-name --source "$source_file" --tag "$tag")"
+asset_name="$("$renderer" asset-name "${source_args[@]}" --tag "$tag")"
 "$gh_bin" release download "$tag" --dir "$scratch_dir" --pattern "$asset_name"
 "$gh_bin" release download "$tag" --dir "$scratch_dir" --pattern build-provenance.json
 [[ -f "${scratch_dir}/${asset_name}" ]] || die "Finalized plugin asset was not downloaded: $asset_name"
@@ -229,7 +238,7 @@ tag_sha="$($gh_bin api "repos/amichne/kast/commits/${tag}" --jq '.sha')"
 
 rm -rf -- "$output_directory"
 "$renderer" render \
-  --source "$source_file" \
+  "${source_args[@]}" \
   --plugin-zip "${scratch_dir}/${asset_name}" \
   --provenance "${scratch_dir}/build-provenance.json" \
   --certificate-chain "$certificate_chain" \

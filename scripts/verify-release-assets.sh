@@ -44,6 +44,14 @@ done
 [[ -f "${release_dir}/SHA256SUMS" ]] || die "SHA256SUMS not found in $release_dir"
 [[ -f "${release_dir}/build-provenance.json" ]] || die "build-provenance.json not found in $release_dir"
 
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+compatibility_renderer="${repo_root}/.github/scripts/render-runtime-compatibility.py"
+[[ -x "$compatibility_renderer" ]] \
+  || die "Runtime compatibility renderer is missing or not executable: $compatibility_renderer"
+"$compatibility_renderer" validate-manifest \
+  --manifest "${release_dir}/kast-runtime-compatibility.json" \
+  --release-tag "$tag"
+
 python3 - "$release_dir" "$tag" <<'PY'
 import hashlib
 import json
@@ -64,6 +72,7 @@ required = {
     "idea": f"kast-idea-{tag}.zip",
     "openapi": "openapi.yaml",
     "runtime-manifest": "kast-runtime-manifest.json",
+    "runtime-compatibility": "kast-runtime-compatibility.json",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
 optional = {}
@@ -79,7 +88,7 @@ actual_assets = {
         path.name.endswith(".zip")
         or path.name.endswith(".tar.gz")
         or path.name.endswith(".tar.zst")
-        or path.name == "kast-runtime-manifest.json"
+        or path.name in ("kast-runtime-manifest.json", "kast-runtime-compatibility.json")
         or path.name == "openapi.yaml"
     )
     and not path.name.endswith(".tar.gz.sha256")
@@ -251,6 +260,12 @@ if not isinstance(manifest["artifactSha256"], str) or not re.fullmatch(r"[0-9a-f
 runtime_asset = "kast-headless-linux-x64.tar.zst"
 if manifest["artifactSha256"] != sha_entries.get(runtime_asset):
     fail("runtime manifest artifactSha256 must match kast-headless-linux-x64.tar.zst")
+
+compatibility = json.loads(
+    (release_dir / "kast-runtime-compatibility.json").read_text(encoding="utf-8")
+)
+if compatibility["releaseSha"] != release_sha:
+    fail("runtime compatibility manifest releaseSha must match signed IDEA provenance")
 
 print(f"Verified Kast release assets for {tag} in {release_dir}")
 PY

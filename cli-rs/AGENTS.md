@@ -28,6 +28,12 @@ resources.
   limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
+- `src/self_mgmt.rs` parses revisioned exact-root compatibility facts strictly
+  before applying the current exact CLI/plugin/running-version admission rule.
+  Unknown fields, unknown capabilities, zero revisions, and inconsistent
+  duplicated identity fields fail closed. Until ADR 0023's negotiation
+  cutover, parsed protocol or capability differences must not become a second
+  admission rule or a compatibility fallback.
 - `resources/kast-skill/` owns the packaged `SKILL.md` and internal catalog
   source material used by release checks and generated artifacts.
 - `resources/plugin/` owns package source material used by release validation.
@@ -95,6 +101,9 @@ cockpit authority live in
   them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
   `protocol/`; regenerate them through the Gradle docs generators.
+- Runtime compatibility release truth lives in
+  `../packaging/jetbrains/runtime-compatibility.json`; the Rust metadata parser
+  consumes exact-root facts but does not own supported-pair policy.
 
 ## Verify
 
@@ -105,6 +114,7 @@ contracts move:
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo test --manifest-path cli-rs/Cargo.toml --locked
+.github/scripts/test-runtime-compatibility-contract.sh
 ```
 
 For any workspace-files, packaged guidance, resource, or catalog change, run

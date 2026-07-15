@@ -24,8 +24,10 @@ For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
 
 The signed JetBrains repository source lives at
-`packaging/jetbrains/plugin-repository.json`. The authored renderer and GitHub
-Release adapter live in `.github/scripts/`; release and docs workflows may
+`packaging/jetbrains/plugin-repository.json`. Runtime pair and IDEA build-range
+truth lives separately at `packaging/jetbrains/runtime-compatibility.json`.
+The authored renderers and GitHub Release adapters live in `.github/scripts/`;
+release and docs workflows may
 publish only their verified generated Pages output. A stable release may
 advance the feed only after GitHub proves the release immutable and the
 downloaded ZIP passes signer-bound cryptographic verification. A docs deploy
@@ -33,6 +35,14 @@ may only preserve the already-published feed. Both flows must materialize,
 upload, and deploy under the shared `github-pages` concurrency lock. Never
 hand-author `updatePlugins.xml` or `plugin-repository-manifest.json`, and never
 derive the enrolled signer from a secret or mutable release variable.
+
+The release workflow renders `kast-runtime-compatibility.json` from the
+authored matrix using the exact release tag and commit, records a dedicated CI
+artifact ledger and provenance entry, and uploads it immutably. Release
+verification must validate that asset's source-owned IDEA range, positive
+revisions, capability arrays, and same-release IDEA row. Run the dedicated
+runtime compatibility contract whenever source, rendering, metadata parsing,
+release wiring, or this ownership boundary changes.
 
 Publishable CI artifacts are single-producer per commit. Producer jobs must
 write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
@@ -75,6 +85,7 @@ For signed JetBrains repository or Pages publication changes, run:
 
 ```console
 .github/scripts/test-jetbrains-plugin-repository-contract.sh
+.github/scripts/test-runtime-compatibility-contract.sh
 .github/scripts/test-idea-plugin-signing-contract.sh
 .github/scripts/test-release-workflow-contract.sh
 ```
