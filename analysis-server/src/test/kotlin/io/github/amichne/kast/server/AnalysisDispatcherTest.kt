@@ -376,6 +376,96 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `selector handles reuse functions and types across relationship families`() {
+        val function = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val type = lookupSymbol("sample.Service", SymbolKind.CLASS, "Service.kt")
+        val relationships = RecordingPagedRelationshipsBackend(
+            ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(function, type),
+            ),
+        )
+        var resolveCalls = 0
+        val backend = object : AnalysisBackend by relationships {
+            override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+                resolveCalls += 1
+                return relationships.resolveSymbol(query)
+            }
+        }
+        val functionHandle = assertInstanceOf(
+            SelectorHandleAuthority.IssueResult.Issued::class.java,
+            backend.selectorHandles.issue(
+                selector = function.exactSelector(),
+                allowedFamilies = setOf(
+                    SelectorOperationFamily.CALLERS,
+                    SelectorOperationFamily.CALLEES,
+                ),
+            ),
+        ).handle.value
+        val typeHandle = assertInstanceOf(
+            SelectorHandleAuthority.IssueResult.Issued::class.java,
+            backend.selectorHandles.issue(
+                selector = type.exactSelector(),
+                allowedFamilies = setOf(
+                    SelectorOperationFamily.IMPLEMENTATIONS,
+                    SelectorOperationFamily.HIERARCHY,
+                ),
+            ),
+        ).handle.value
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = backend,
+            config = AnalysisServerConfig(),
+        )
+
+        fun dispatchRelationship(
+            method: String,
+            selectorHandle: String,
+            extraParams: Map<String, JsonElement> = emptyMap(),
+        ) {
+            val params = mapOf(
+                "workspaceRoot" to JsonPrimitive(tempDir.toString()),
+                "selectorHandle" to JsonPrimitive(selectorHandle),
+            ) + extraParams
+            val raw = runBlocking {
+                dispatcher.dispatch(
+                    JsonRpcRequest(
+                        id = JsonPrimitive(method),
+                        method = method,
+                        params = JsonObject(params),
+                    ),
+                )
+            }
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+            assertEquals("AVAILABLE", (success.result.jsonObject["type"] as JsonPrimitive).content)
+        }
+
+        dispatchRelationship(
+            method = "symbol/callers",
+            selectorHandle = functionHandle,
+            extraParams = mapOf("direction" to JsonPrimitive("incoming")),
+        )
+        dispatchRelationship(
+            method = "symbol/callers",
+            selectorHandle = functionHandle,
+            extraParams = mapOf("direction" to JsonPrimitive("outgoing")),
+        )
+        dispatchRelationship(
+            method = "symbol/implementations",
+            selectorHandle = typeHandle,
+        )
+        dispatchRelationship(
+            method = "symbol/hierarchy",
+            selectorHandle = typeHandle,
+            extraParams = mapOf("direction" to JsonPrimitive("BOTH")),
+        )
+
+        assertEquals(0, resolveCalls)
+        assertEquals(2, relationships.callRelationCalls)
+        assertEquals(1, relationships.implementationRelationCalls)
+        assertEquals(1, relationships.hierarchyRelationCalls)
+    }
+
+    @Test
     fun `call relationship missing capability degrades without entering traversal`() {
         val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
         val backend = RecordingPagedRelationshipsBackend(
