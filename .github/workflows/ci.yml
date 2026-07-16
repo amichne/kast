@@ -28,8 +28,19 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
       - name: Install Rust for command-surface contracts
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache local-authority Rust builds
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: cli-rs -> target
+          cache-bin: "false"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test release workflow contract
         shell: bash
