@@ -28,7 +28,6 @@ import io.github.amichne.kast.api.validation.*
 
 interface AnalysisBackend {
     val selectorHandles: SelectorHandleAuthority
-        get() = SelectorHandleAuthority.Unsupported
 
     suspend fun capabilities(): BackendCapabilities
 

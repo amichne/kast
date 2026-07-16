@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
 import io.github.amichne.kast.api.validation.ParsedReferencesQuery
@@ -106,6 +107,7 @@ class DynamicTimeoutScalingTest {
  * timeout-sensitivity tests without depending on [FakeAnalysisBackend] setup.
  */
 private class SlowHealthBackend(private val delayMs: Long) : AnalysisBackend {
+    override val selectorHandles: SelectorHandleAuthority = SelectorHandleAuthority.Unsupported
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = "slow-test-backend",
