@@ -882,6 +882,10 @@ fn shell_single_quote(value: &str) -> String {
     value.replace('\'', "'\"'\"'")
 }
 
+fn shell_single_quoted_path(path: &Path) -> String {
+    format!("'{}'", shell_single_quote(&path.display().to_string()))
+}
+
 fn render_local_skill(source_skill: &Path, entrypoint: &Path) -> Result<String> {
     let bytes = fs::read(source_skill).map_err(|error| {
         CliError::new(
@@ -902,7 +906,8 @@ fn render_local_skill(source_skill: &Path, entrypoint: &Path) -> Result<String> 
         "- Add `--apply` to `kast repair` only after the repair plan or readiness output asks for install-state mutation.",
         "- Do not apply ordinary install repair through local-development authority; rerun the source checkout's `./gradlew refreshDevelopmentLocal` task instead.",
     );
-    let rendered = source.replace("`kast", &format!("`{}", entrypoint.display()));
+    let entrypoint = shell_single_quoted_path(entrypoint);
+    let rendered = source.replace("`kast", &format!("`{entrypoint}"));
     let authority_guidance = if rendered.contains("Do not apply ordinary install repair") {
         String::new()
     } else {
@@ -911,27 +916,28 @@ fn render_local_skill(source_skill: &Path, entrypoint: &Path) -> Result<String> 
     };
     Ok(format!(
         "{rendered}{authority_guidance}\n\n## Local-development backend startup\n\nBefore the reuse-only verification command, start the exact receipt-owned headless backend with `{} developer runtime up --workspace-root \"$PWD\" --backend=headless`. Then run `{} agent verify --workspace-root \"$PWD\" --backend=headless`.\n",
-        entrypoint.display(),
-        entrypoint.display(),
+        entrypoint,
+        entrypoint,
     ))
 }
 
 fn render_local_guidance(skill: &Path, entrypoint: &Path, source: &SourceSnapshot) -> String {
+    let entrypoint = shell_single_quoted_path(entrypoint);
     format!(
         "<kast files=\"*.kt, *.kts\" type=\"instructions\" replaceTools=\"grep,search,write\">\n## Kast local-development routing\nUse `{}` before Kotlin or Gradle semantic work.\nStart the receipt-owned `{} developer runtime up --workspace-root \"$PWD\" --backend=headless` for this exact root, then run `{} agent verify --workspace-root \"$PWD\" --backend=headless` before semantic work.\nUse typed commands such as `{} agent symbol --query <name>`, `{} agent diagnostics --file-path <path>`, and `{} agent rename --symbol <fq-name> --new-name <name> --apply`.\nPrepared source commit: {}\nPrepared source SHA-256: {}\n</kast>\n",
         skill.display(),
-        entrypoint.display(),
-        entrypoint.display(),
-        entrypoint.display(),
-        entrypoint.display(),
-        entrypoint.display(),
+        entrypoint,
+        entrypoint,
+        entrypoint,
+        entrypoint,
+        entrypoint,
         source.git_commit.as_str(),
         source.source_tree_sha256.as_str(),
     )
 }
 
 fn validate_rendered_command_lockstep(rendered: &str, entrypoint: &Path) -> Result<()> {
-    let entrypoint = entrypoint.display().to_string();
+    let entrypoint = shell_single_quoted_path(entrypoint);
     for line in rendered.lines() {
         for (index, code) in line.split('`').enumerate() {
             if index % 2 == 0 {

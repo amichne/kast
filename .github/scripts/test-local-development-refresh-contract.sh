@@ -80,6 +80,29 @@ grep -Fxq '/.kotlin/' "${repo_root}/.gitignore" \
 git -C "$repo_root" check-ignore --quiet -- '.kotlin/sessions/kast-contract.salive' \
   || die 'Kotlin compiler session files must be excluded from source snapshots'
 
+source_bound_cli_task="$(
+  sed -n \
+    '/^abstract class BuildSourceBoundCliTask/,/^}/p' \
+    "${repo_root}/build.gradle.kts"
+)"
+grep -Fq 'abstract val targetDirectory: DirectoryProperty' <<<"$source_bound_cli_task" \
+  || die 'the source-bound CLI rebuild must own a typed Cargo target directory'
+grep -Fq '"--target-dir",' <<<"$source_bound_cli_task" \
+  || die 'the source-bound CLI rebuild must override ambient Cargo target configuration'
+grep -Fq 'targetDirectory.get().asFile.absolutePath' <<<"$source_bound_cli_task" \
+  || die 'the source-bound CLI rebuild must write to its declared target directory'
+source_bound_cli_registration="$(
+  sed -n \
+    '/^val rebuildLocalDevelopmentCli:/,/^}/p' \
+    "${repo_root}/build.gradle.kts"
+)"
+grep -Fq 'targetDirectory.set(cliLocalDevelopmentTargetDirectory)' \
+  <<<"$source_bound_cli_registration" \
+  || die 'the source-bound CLI rebuild target must match the attested release binary'
+grep -Fq 'cliLocalDevelopmentTargetDirectory.file("release/kast")' \
+  "${repo_root}/build.gradle.kts" \
+  || die 'the attested release binary must derive from the source-bound Cargo target directory'
+
 snapshot_file="${tmp_root}/source-snapshot.json"
 snapshot_json="$(
   cargo run \

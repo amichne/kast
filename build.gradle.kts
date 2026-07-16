@@ -178,6 +178,9 @@ abstract class BuildSourceBoundCliTask @Inject constructor(
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val cargoManifest: RegularFileProperty
 
+    @get:OutputDirectory
+    abstract val targetDirectory: DirectoryProperty
+
     @TaskAction
     fun build() {
         val snapshot = sourceSnapshotFile.get().asFile.readText()
@@ -197,6 +200,8 @@ abstract class BuildSourceBoundCliTask @Inject constructor(
                 cargoManifest.get().asFile.absolutePath,
                 "--locked",
                 "--release",
+                "--target-dir",
+                targetDirectory.get().asFile.absolutePath,
             )
         }.assertNormalExitValue()
     }
@@ -444,7 +449,9 @@ fun resolveCargoExecutable(): String {
 val cliDebugBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
 val cliLocalDevelopmentBootstrapBinary: RegularFile =
     layout.projectDirectory.file("cli-rs/target/local-bootstrap/release/kast")
-val cliLocalDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/release/kast")
+val cliLocalDevelopmentTargetDirectory: Directory = layout.projectDirectory.dir("cli-rs/target")
+val cliLocalDevelopmentBinary: RegularFile =
+    cliLocalDevelopmentTargetDirectory.file("release/kast")
 val resolvedCargoExecutable = resolveCargoExecutable()
 val kastDevBinary = kastBinDirectory.absoluteFile.normalize().resolve("kast-dev")
 
@@ -515,6 +522,7 @@ val rebuildLocalDevelopmentCli: TaskProvider<BuildSourceBoundCliTask> by tasks.r
     cargoExecutable.set(resolvedCargoExecutable)
     implementationVersion.set(project.version.toString())
     cargoManifest.set(layout.projectDirectory.file("cli-rs/Cargo.toml"))
+    targetDirectory.set(cliLocalDevelopmentTargetDirectory)
 }
 
 subprojects {

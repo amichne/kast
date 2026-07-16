@@ -176,8 +176,8 @@ mod refresh_tests {
         LocalDevelopmentRefreshRequest, LocalDevelopmentRemoveRequest,
         LocalDevelopmentRollbackRequest, LocalRefreshPhase, LocalRemovalPhase, SourceSnapshot,
         refresh_local_development, refresh_local_development_with_observer,
-        remove_local_development, remove_local_development_with_observer,
-        rollback_local_development, validate_backend_distribution,
+        remove_local_development, remove_local_development_with_observer, render_local_guidance,
+        render_local_skill, rollback_local_development, validate_backend_distribution,
         validate_rendered_command_lockstep, validate_rendered_command_path,
         with_local_authority_lock, with_local_runtime_start_lock_after_validation,
     };
@@ -188,6 +188,44 @@ mod refresh_tests {
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
+
+    #[test]
+    fn rendered_local_commands_shell_quote_entrypoints() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let source_skill = fixture.path().join("SKILL.md");
+        fs::write(
+            &source_skill,
+            "---\nname: kast\ndescription: fixture\n---\nRun `kast agent verify --workspace-root \"$PWD\"`.\n",
+        )
+        .expect("source skill");
+        let entrypoint = fixture
+            .path()
+            .join("agent's local authority/bin/kast-dev");
+        let quoted_entrypoint = format!(
+            "'{}'",
+            entrypoint.display().to_string().replace('\'', "'\"'\"'")
+        );
+        let snapshot = SourceSnapshot::capture(repository.path()).expect("source snapshot");
+
+        let rendered_skill =
+            render_local_skill(&source_skill, &entrypoint).expect("rendered skill");
+        let rendered_guidance =
+            render_local_guidance(&source_skill, &entrypoint, &snapshot);
+
+        assert!(
+            rendered_skill.contains(&format!("`{quoted_entrypoint} agent verify")),
+            "rendered skill command must shell-quote the entrypoint: {rendered_skill}",
+        );
+        assert!(
+            rendered_guidance.contains(&format!("`{quoted_entrypoint} developer runtime up")),
+            "rendered guidance command must shell-quote the entrypoint: {rendered_guidance}",
+        );
+        validate_rendered_command_lockstep(&rendered_skill, &entrypoint)
+            .expect("quoted skill commands remain in lockstep");
+        validate_rendered_command_lockstep(&rendered_guidance, &entrypoint)
+            .expect("quoted guidance commands remain in lockstep");
+    }
 
     #[test]
     fn refresh_activates_one_complete_generation_without_touching_release_state() {
@@ -246,13 +284,21 @@ mod refresh_tests {
             "local entrypoint must isolate Kotlin workspace data by generation"
         );
         let canonical_prefix = fs::canonicalize(&prefix).expect("canonical local prefix");
+        let quoted_entrypoint = format!(
+            "'{}'",
+            canonical_prefix
+                .join("bin/kast-dev")
+                .display()
+                .to_string()
+                .replace('\'', "'\"'\"'")
+        );
         let start_command = format!(
             "{} developer runtime up --workspace-root \"$PWD\" --backend=headless",
-            canonical_prefix.join("bin/kast-dev").display(),
+            quoted_entrypoint,
         );
         let verify_command = format!(
             "{} agent verify --workspace-root \"$PWD\" --backend=headless",
-            canonical_prefix.join("bin/kast-dev").display(),
+            quoted_entrypoint,
         );
         for installed_resource in [
             prefix.join("current/lib/skills/kast/SKILL.md"),
@@ -516,7 +562,7 @@ mod refresh_tests {
     fn command_lockstep_checks_positive_invocations_on_a_mixed_negative_guidance_line() {
         let entrypoint = Path::new("/tmp/kast-dev");
         let error = validate_rendered_command_lockstep(
-            "Do not teach `/tmp/kast-dev agent tools`; instead run `/tmp/kast-dev agent imaginary --bad`.",
+            "Do not teach `'/tmp/kast-dev' agent tools`; instead run `'/tmp/kast-dev' agent imaginary --bad`.",
             entrypoint,
         )
         .expect_err("positive stale invocation must not inherit the negative exemption");
@@ -527,7 +573,7 @@ mod refresh_tests {
     #[test]
     fn command_lockstep_accepts_only_the_closed_negative_command_references() {
         validate_rendered_command_lockstep(
-            "Do not teach `/tmp/kast-dev agent tools`, `/tmp/kast-dev agent call`, `/tmp/kast-dev agent workflow`, or `/tmp/kast-dev rpc`.",
+            "Do not teach `'/tmp/kast-dev' agent tools`, `'/tmp/kast-dev' agent call`, `'/tmp/kast-dev' agent workflow`, or `'/tmp/kast-dev' rpc`.",
             Path::new("/tmp/kast-dev"),
         )
         .expect("closed negative references");

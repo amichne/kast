@@ -236,11 +236,16 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
     );
     let local_skill = std::fs::read_to_string(prefix.join("current/lib/skills/kast/SKILL.md"))
         .expect("local skill");
+    let quoted_entrypoint = format!(
+        "'{}'",
+        canonical_prefix
+            .join("bin/kast-dev")
+            .display()
+            .to_string()
+            .replace('\'', "'\"'\"'")
+    );
     assert!(
-        local_skill.contains(&format!(
-            "`{} agent",
-            canonical_prefix.join("bin/kast-dev").display()
-        )),
+        local_skill.contains(&format!("`{quoted_entrypoint} agent")),
         "local skill must route every command through the receipt-owned entrypoint"
     );
     assert!(
