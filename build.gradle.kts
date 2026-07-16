@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream
 import java.util.zip.ZipInputStream
 import java.security.MessageDigest
 import javax.inject.Inject
@@ -10,7 +11,16 @@ plugins {
 }
 
 @DisableCachingByDefault(because = "Installs into a mutable local JetBrains profile")
-abstract class InstallDevelopmentIdeaPluginTask : DefaultTask() {
+abstract class InstallDevelopmentIdeaPluginTask @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    private data class JetBrainsProfileCandidate(
+        val profileDirectory: File,
+        val year: Int,
+        val minor: Int,
+        val patch: Int,
+    )
+
     init {
         outputs.upToDateWhen { false }
     }
@@ -18,8 +28,19 @@ abstract class InstallDevelopmentIdeaPluginTask : DefaultTask() {
     @get:InputFile
     abstract val pluginArchive: RegularFileProperty
 
-    @get:Internal
-    abstract val pluginsDirectory: DirectoryProperty
+    @get:Input
+    @get:Optional
+    abstract val configuredPluginsDirectory: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val configuredProfile: Property<String>
+
+    @get:Input
+    abstract val jetBrainsConfigRootPath: Property<String>
+
+    @get:Input
+    abstract val projectDirectoryPath: Property<String>
 
     @get:Input
     abstract val replacedPluginDirectoryNames: ListProperty<String>
@@ -31,7 +52,7 @@ abstract class InstallDevelopmentIdeaPluginTask : DefaultTask() {
             throw GradleException("Development IDEA plugin archive was not built: ${archive.absolutePath}")
         }
 
-        val targetRoot = pluginsDirectory.get().asFile
+        val targetRoot = resolvePluginsDirectory()
         targetRoot.mkdirs()
         replacedPluginDirectoryNames.get().forEach { name ->
             targetRoot.resolve(name).deleteRecursively()
@@ -57,6 +78,85 @@ abstract class InstallDevelopmentIdeaPluginTask : DefaultTask() {
         }
 
         logger.lifecycle("Installed development IDEA plugin at {}", targetRoot.resolve("backend-idea"))
+    }
+
+    private fun resolvePluginsDirectory(): File {
+        configuredPluginsDirectory.orNull
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.let { return resolveProjectPath(it) }
+
+        val configRoot = File(jetBrainsConfigRootPath.get()).absoluteFile.normalize()
+        configuredProfile.orNull
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.let { raw ->
+                val profile = resolveProfile(raw, configRoot).absoluteFile.normalize()
+                return if (profile.name == "plugins") profile else profile.resolve("plugins")
+            }
+
+        runningProfile(configRoot)
+            ?.let { return it.resolve("plugins").absoluteFile.normalize() }
+
+        val profile = newestProfile(configRoot)
+            ?: throw GradleException(
+                "No IntelliJIdea profile was found under ${configRoot.absolutePath}. " +
+                    "Pass -PkastDevJetBrainsProfile=<profile> or " +
+                    "-PkastDevJetBrainsPluginsDir=<plugins-dir>."
+            )
+        return profile.resolve("plugins").absoluteFile.normalize()
+    }
+
+    private fun resolveProjectPath(raw: String): File {
+        val candidate = File(raw)
+        return (if (candidate.isAbsolute) candidate else File(projectDirectoryPath.get()).resolve(raw))
+            .absoluteFile
+            .normalize()
+    }
+
+    private fun resolveProfile(raw: String, configRoot: File): File =
+        if (File(raw).isAbsolute || raw.contains('/') || raw.contains('\\')) {
+            resolveProjectPath(raw)
+        } else {
+            configRoot.resolve(raw)
+        }
+
+    private fun runningProfile(configRoot: File): File? {
+        val processArgs = ByteArrayOutputStream()
+        execOperations.exec {
+            commandLine("ps", "-axo", "args")
+            isIgnoreExitValue = true
+            standardOutput = processArgs
+        }
+        return Regex("""/JetBrains/(IntelliJIdea\d{4}\.\d+(?:\.\d+)?)""")
+            .findAll(processArgs.toString(Charsets.UTF_8))
+            .map { match -> configRoot.resolve(match.groupValues[1]).absoluteFile.normalize() }
+            .firstOrNull(File::isDirectory)
+    }
+
+    private fun newestProfile(configRoot: File): File? =
+        configRoot
+            .listFiles()
+            ?.asSequence()
+            ?.filter(File::isDirectory)
+            ?.mapNotNull(::parseProfile)
+            ?.maxWithOrNull(
+                compareBy<JetBrainsProfileCandidate> { it.year }
+                    .thenBy { it.minor }
+                    .thenBy { it.patch }
+                    .thenBy { it.profileDirectory.name }
+            )
+            ?.profileDirectory
+
+    private fun parseProfile(profileDirectory: File): JetBrainsProfileCandidate? {
+        val version = profileDirectory.name.removePrefix("IntelliJIdea")
+        if (version == profileDirectory.name || version.isBlank()) return null
+        val parts = version.split(".")
+        if (parts.size !in 2..3) return null
+        val year = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val minor = parts.getOrNull(1)?.toIntOrNull() ?: return null
+        val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+        return JetBrainsProfileCandidate(profileDirectory, year, minor, patch)
     }
 }
 
@@ -305,13 +405,6 @@ tasks.register<Copy>("stageOpenApiSpec") {
     into(layout.projectDirectory.dir("dist"))
 }
 
-data class JetBrainsProfileCandidate(
-    val profileDirectory: File,
-    val year: Int,
-    val minor: Int,
-    val patch: Int,
-)
-
 val kastHomeDirectory: File = providers.environmentVariable("HOME")
     .orNull
     ?.let(::file)
@@ -537,9 +630,8 @@ val attestDevelopmentBackend: TaskProvider<Exec> by tasks.registering(Exec::clas
 
 tasks.register<Copy>("installDevelopmentCli") {
     group = "distribution"
-    description = "Builds and installs the debug Rust CLI as kast and kast-dev in the configured local Kast bin directory."
+    description = "Builds and installs the debug Rust CLI as kast-dev without replacing ordinary kast authority."
     dependsOn(buildDevelopmentCli)
-    from(cliDebugBinary)
     from(cliDebugBinary) {
         rename("kast", "kast-dev")
     }
@@ -602,93 +694,6 @@ val configureDevelopmentMachineDefaults: TaskProvider<Exec> by tasks.registering
     )
 }
 
-fun parseIntellijIdeaProfile(profileDirectory: File): JetBrainsProfileCandidate? {
-    val version = profileDirectory.name.removePrefix("IntelliJIdea")
-    if (version == profileDirectory.name || version.isBlank()) return null
-    val parts = version.split(".")
-    if (parts.size !in 2..3) return null
-    val year = parts.getOrNull(0)?.toIntOrNull() ?: return null
-    val minor = parts.getOrNull(1)?.toIntOrNull() ?: return null
-    val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
-    return JetBrainsProfileCandidate(profileDirectory, year, minor, patch)
-}
-
-fun newestIntellijIdeaProfile(configRoot: File): File? =
-    configRoot
-        .listFiles()
-        ?.asSequence()
-        ?.filter(File::isDirectory)
-        ?.mapNotNull(::parseIntellijIdeaProfile)
-        ?.maxWithOrNull(
-            compareBy<JetBrainsProfileCandidate> { it.year }
-                .thenBy { it.minor }
-                .thenBy { it.patch }
-                .thenBy { it.profileDirectory.name }
-        )
-        ?.profileDirectory
-
-fun runningIntellijIdeaProfile(configRoot: File): File? {
-    val processArgs = providers.exec {
-        commandLine("ps", "-axo", "args")
-        isIgnoreExitValue = true
-    }.standardOutput.asText.orNull.orEmpty()
-    return Regex("""/JetBrains/(IntelliJIdea\d{4}\.\d+(?:\.\d+)?)""")
-        .findAll(processArgs)
-        .map { match -> configRoot.resolve(match.groupValues[1]).absoluteFile.normalize() }
-        .firstOrNull(File::isDirectory)
-}
-
-fun jetBrainsConfigRoot(): File =
-    providers.gradleProperty("kastDevJetBrainsConfigRoot")
-        .orNull
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?.let(::file)
-    ?: kastHomeDirectory.resolve("Library/Application Support/JetBrains")
-
-fun resolveJetBrainsProfile(
-    raw: String,
-    configRoot: File,
-): File {
-    val candidate = File(raw)
-    return if (candidate.isAbsolute || raw.contains('/') || raw.contains('\\')) {
-        file(raw)
-    } else {
-        configRoot.resolve(raw)
-    }
-}
-
-fun resolveDevelopmentJetBrainsPluginsDir(): File {
-    providers.gradleProperty("kastDevJetBrainsPluginsDir")
-        .orNull
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?.let { return file(it).absoluteFile.normalize() }
-
-    val configRoot = jetBrainsConfigRoot()
-    providers.gradleProperty("kastDevJetBrainsProfile")
-        .orNull
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?.let { raw ->
-            val profile = resolveJetBrainsProfile(raw, configRoot).absoluteFile.normalize()
-            return if (profile.name == "plugins") profile else profile.resolve("plugins")
-        }
-
-    runningIntellijIdeaProfile(configRoot)
-        ?.let { return it.resolve("plugins").absoluteFile.normalize() }
-
-    val profile = newestIntellijIdeaProfile(configRoot)
-                  ?: throw GradleException(
-                      "No IntelliJIdea profile was found under ${configRoot.absolutePath}. " +
-                      "Pass -PkastDevJetBrainsProfile=<profile> or -PkastDevJetBrainsPluginsDir=<plugins-dir>."
-                  )
-    return profile.resolve("plugins").absoluteFile.normalize()
-}
-
-val developmentJetBrainsPluginsDir: Provider<File> = providers.provider {
-    resolveDevelopmentJetBrainsPluginsDir()
-}
 val ideaPluginArchive = layout.projectDirectory
     .file("backend-idea/build/distributions/backend-idea-${version}.zip")
 val developmentIdeaPluginDirectoryNames = listOf(
@@ -696,6 +701,17 @@ val developmentIdeaPluginDirectoryNames = listOf(
     "io.github.amichne.kast",
     "Kast Analysis Backend",
 )
+val configuredDevelopmentJetBrainsPluginsDirectory =
+    providers.gradleProperty("kastDevJetBrainsPluginsDir").orNull
+val configuredDevelopmentJetBrainsProfile =
+    providers.gradleProperty("kastDevJetBrainsProfile").orNull
+val configuredDevelopmentJetBrainsConfigRoot =
+    providers.gradleProperty("kastDevJetBrainsConfigRoot")
+        .orNull
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?.let { file(it).absoluteFile.normalize().path }
+    ?: kastHomeDirectory.resolve("Library/Application Support/JetBrains").path
 
 val installDevelopmentIdeaPlugin: TaskProvider<InstallDevelopmentIdeaPluginTask> by tasks.registering(
     InstallDevelopmentIdeaPluginTask::class
@@ -704,7 +720,10 @@ val installDevelopmentIdeaPlugin: TaskProvider<InstallDevelopmentIdeaPluginTask>
     description = "Builds and installs the development IDEA plugin into a local JetBrains profile."
     dependsOn(":backend-idea:buildPlugin")
     pluginArchive.set(ideaPluginArchive)
-    pluginsDirectory.set(layout.dir(developmentJetBrainsPluginsDir))
+    configuredDevelopmentJetBrainsPluginsDirectory?.let(configuredPluginsDirectory::set)
+    configuredDevelopmentJetBrainsProfile?.let(configuredProfile::set)
+    jetBrainsConfigRootPath.set(configuredDevelopmentJetBrainsConfigRoot)
+    projectDirectoryPath.set(layout.projectDirectory.asFile.absolutePath)
     replacedPluginDirectoryNames.set(developmentIdeaPluginDirectoryNames)
 }
 

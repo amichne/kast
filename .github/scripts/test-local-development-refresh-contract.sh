@@ -75,6 +75,10 @@ grep -Fxq '/AGENTS.local.md' "${repo_root}/.gitignore" \
   || die 'local guidance must be ignored by the source-owned root .gitignore'
 grep -Fxq '/.kast/' "${repo_root}/.gitignore" \
   || die 'the default local authority prefix and stable namespace lock must be source-ignored'
+grep -Fxq '/.kotlin/' "${repo_root}/.gitignore" \
+  || die 'transient Kotlin compiler session state must not perturb source attestation'
+git -C "$repo_root" check-ignore --quiet -- '.kotlin/sessions/kast-contract.salive' \
+  || die 'Kotlin compiler session files must be excluded from source snapshots'
 
 snapshot_file="${tmp_root}/source-snapshot.json"
 snapshot_json="$(
@@ -198,11 +202,22 @@ KAST_RECOVERY_LOG="$recovery_log" CARGO="${tmp_root}/unbuildable-cargo" \
 [[ ! -e "$missing_guidance" && ! -L "$missing_guidance" ]] \
   || die 'removeDevelopmentLocal must clean owned dangling guidance after the prefix is missing'
 
-legacy_install_dry_run="$(${repo_root}/gradlew -m installDevelopmentLocal --no-daemon)"
+profile_free_config_root="${tmp_root}/profile-free-jetbrains-config"
+profile_free_install_args=(
+  -m
+  installDevelopmentLocal
+  -PkastDevJetBrainsConfigRoot="$profile_free_config_root"
+  --configuration-cache
+  --no-daemon
+)
+legacy_install_dry_run="$("${repo_root}/gradlew" "${profile_free_install_args[@]}")"
 for required_task in installDevelopmentCli installDevelopmentIdeaPlugin configureDevelopmentMachineDefaults; do
   grep -Fq ":${required_task}" <<<"$legacy_install_dry_run" \
     || die "installDevelopmentLocal must preserve its established ${required_task} contract"
 done
+legacy_install_reuse="$("${repo_root}/gradlew" "${profile_free_install_args[@]}")"
+grep -Fq 'Configuration cache entry reused.' <<<"$legacy_install_reuse" \
+  || die 'profile-free legacy install planning must reuse configuration cache state'
 
 cargo test \
   --quiet \

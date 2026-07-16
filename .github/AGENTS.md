@@ -31,6 +31,11 @@ CI whenever refresh orchestration, source/artifact provenance, immutable
 generation activation, rollback/removal, local readiness, or installed
 skill/guidance routing changes. Its Gradle graph must remain headless and must
 not include user JetBrains profile or release-configuration mutation.
+The legacy developer install remains covered separately by
+`.github/scripts/test-development-cli-install-contract.sh`. Keep its real IDEA
+plugin task execution wired in CI so explicit-directory, configured-profile,
+running-profile, newest-profile, missing-profile, and configuration-cache
+behavior cannot regress behind dry-run task-graph coverage.
 The separate `.github/scripts/test-local-development-semantic-e2e.sh` gate
 must exercise the receipt-owned installed entrypoint, not checkout build
 outputs. It owns refresh idempotence plus compiler-backed readiness, exact
@@ -101,6 +106,7 @@ For local-development authority changes, run:
 
 ```console
 .github/scripts/test-local-development-refresh-contract.sh
+.github/scripts/test-development-cli-install-contract.sh
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 
