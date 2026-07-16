@@ -997,6 +997,150 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
 }
 
 #[test]
+fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authority() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let content_file = temp.path().join("replacement.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"replace-handle\"\n",
+    )
+    .expect("Gradle workspace marker");
+    std::fs::write(&content_file, "fun greet() = \"replacement\"\n").expect("replacement");
+    let selector_handle = "ksh1.replace-handle";
+
+    let plan = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "replace-declaration",
+            "--selector-handle",
+            selector_handle,
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("replace declaration plan");
+    assert!(
+        plan.status.success(),
+        "replace plan should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr),
+    );
+    let plan: Value = serde_json::from_slice(&plan.stdout).expect("replace plan json");
+    assert_eq!(plan["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
+    assert_eq!(plan["result"]["operation"]["state"], "PLANNED");
+    assert_eq!(
+        plan["result"]["plan"]["type"],
+        "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
+    );
+    assert_eq!(
+        plan["result"]["plan"]["selectorHandle"],
+        selector_handle,
+    );
+    assert!(
+        plan["result"]["plan"].get("symbol").is_none(),
+        "handle plan must not reconstruct a symbol selector: {plan}",
+    );
+
+    let missing_key = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "replace-declaration",
+            "--selector-handle",
+            selector_handle,
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+        ])
+        .output()
+        .expect("replace without idempotency key");
+    assert!(!missing_key.status.success(), "apply must require authority");
+    let missing_key: Value =
+        serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
+    assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
+
+    let socket_path = temp.path().join("replace-handle-apply.sock");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![(
+            "mutation/submit",
+            json!({
+                "operation": {
+                    "operationId": "00000000-0000-0000-0000-000000000393",
+                    "idempotencyKey": "issue-392-replace",
+                    "mutationKind": "REPLACE_DECLARATION",
+                    "state": {
+                        "type": "QUEUED",
+                        "trace": {
+                            "enteredStages": [],
+                            "editApplicationState": "NOT_STARTED"
+                        },
+                        "cancellationRequested": false
+                    }
+                },
+                "deduplicated": false
+            }),
+        )],
+    );
+    let apply = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "replace-declaration",
+            "--selector-handle",
+            selector_handle,
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+            "--idempotency-key",
+            "issue-392-replace",
+        ])
+        .output()
+        .expect("authorized replace declaration");
+    assert!(
+        apply.status.success(),
+        "replace submission should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&apply.stdout),
+        String::from_utf8_lossy(&apply.stderr),
+    );
+    let requests = backend.join().expect("replace backend");
+    let submit = requests
+        .iter()
+        .find(|request| request["method"] == "mutation/submit")
+        .expect("mutation submission");
+    assert_eq!(submit["params"]["type"], "REPLACE_DECLARATION");
+    assert_eq!(
+        submit["params"]["idempotencyKey"],
+        "issue-392-replace",
+    );
+    assert_eq!(
+        submit["params"]["request"]["type"],
+        "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
+    );
+    assert_eq!(
+        submit["params"]["request"]["selectorHandle"],
+        selector_handle,
+    );
+}
+
+#[test]
 fn relative_file_targets_are_canonical_in_mutation_plans() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
