@@ -582,6 +582,129 @@ fn exact_symbol_returns_one_reusable_anchored_identity() {
 }
 
 #[test]
+fn selector_handle_resolves_once_and_reuses_identity_for_references() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.test-issued-selector-handle";
+    let selector = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+
+    let resolve_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-resolve.sock"),
+        vec![(
+            "symbol/resolve",
+            serde_json::json!({
+                "type": "RESOLVE_SUCCESS",
+                "ok": true,
+                "source": "compiler",
+                "selectorHandle": selector_handle,
+                "symbol": {
+                    "fqName": "sample.Service.run",
+                    "kind": "FUNCTION",
+                    "location": {
+                        "filePath": declaration_file,
+                        "startOffset": 42,
+                        "endOffset": 45
+                    }
+                }
+            }),
+        )],
+    );
+
+    let resolved = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "symbol",
+            "--query",
+            "sample.Service.run",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("resolve selector handle");
+    assert!(
+        resolved.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&resolved.stdout),
+        String::from_utf8_lossy(&resolved.stderr),
+    );
+    let resolved_json: serde_json::Value =
+        serde_json::from_slice(&resolved.stdout).expect("resolved handle json");
+    assert_eq!(resolved_json["result"]["identity"], selector);
+    assert_eq!(
+        resolved_json["result"]["selectorHandle"], selector_handle,
+        "compact exact lookup must expose the backend-issued opaque handle",
+    );
+    let mut requests = resolve_backend.join().expect("resolve backend");
+
+    let references_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-references.sock"),
+        vec![(
+            "symbol/references",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": selector,
+                "references": [],
+                "cardinality": {"type": "EXACT", "totalCount": 0},
+                "schemaVersion": 3
+            }),
+        )],
+    );
+    let references = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "references",
+            "--selector-handle",
+            selector_handle,
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("references by selector handle");
+    assert!(
+        references.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&references.stdout),
+        String::from_utf8_lossy(&references.stderr),
+    );
+    requests.extend(references_backend.join().expect("references backend"));
+
+    let semantic_requests = requests
+        .iter()
+        .filter(|request| {
+            request["method"]
+                .as_str()
+                .is_some_and(|method| method.starts_with("symbol/"))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        semantic_requests
+            .iter()
+            .filter_map(|request| request["method"].as_str())
+            .collect::<Vec<_>>(),
+        vec!["symbol/resolve", "symbol/references"],
+        "selector reuse must not perform fuzzy or exact rediscovery",
+    );
+    assert_eq!(
+        semantic_requests[1]["params"]["selectorHandle"],
+        selector_handle,
+    );
+    assert!(semantic_requests[1]["params"].get("selector").is_none());
+}
+
+#[test]
 fn exact_identity_drives_references_callers_continuation_and_impact_without_rediscovery() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
