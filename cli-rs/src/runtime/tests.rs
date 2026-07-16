@@ -3,6 +3,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn descriptor_registry_disappearance_is_an_empty_registry() {
+        let descriptors = parse_descriptor_registry_read(Err(std::io::Error::from(
+            std::io::ErrorKind::NotFound,
+        )))
+        .expect("a concurrently removed descriptor registry is empty");
+
+        assert!(descriptors.is_empty());
+    }
+
+    #[test]
+    fn descriptor_registry_preserves_non_missing_io_failures() {
+        let error = parse_descriptor_registry_read(Err(std::io::Error::from(
+            std::io::ErrorKind::PermissionDenied,
+        )))
+        .expect_err("permission failures must remain explicit");
+
+        assert_eq!(error.code, "IO_ERROR");
+    }
+
+    #[test]
     fn only_a_newly_spawned_local_headless_runtime_receives_the_cold_import_budget() {
         assert_eq!(
             runtime_wait_timeout(

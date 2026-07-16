@@ -1,9 +1,16 @@
 fn read_descriptors(descriptor_directory: &Path) -> Result<Vec<ServerInstanceDescriptor>> {
     let path = descriptor_directory.join("daemons.json");
-    if !path.is_file() {
-        return Ok(vec![]);
+    parse_descriptor_registry_read(fs::read_to_string(path))
+}
+
+fn parse_descriptor_registry_read(
+    read: std::io::Result<String>,
+) -> Result<Vec<ServerInstanceDescriptor>> {
+    match read {
+        Ok(contents) => Ok(serde_json::from_str(&contents).unwrap_or_default()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(vec![]),
+        Err(error) => Err(error.into()),
     }
-    Ok(serde_json::from_str(&fs::read_to_string(path)?).unwrap_or_default())
 }
 
 fn delete_descriptor(
