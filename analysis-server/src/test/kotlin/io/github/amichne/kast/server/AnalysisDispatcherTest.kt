@@ -51,6 +51,8 @@ import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
+import io.github.amichne.kast.api.contract.selector.SelectorOperationFamily
 import io.github.amichne.kast.api.contract.query.RenameQuery
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
@@ -315,6 +317,62 @@ class AnalysisDispatcherTest {
         assertInstanceOf(KastReferencesAvailableResponse::class.java, references)
         assertEquals(resolveCallsAfterLookup, resolveCalls)
         assertEquals(1, referenceCalls)
+    }
+
+    @Test
+    fun `selector handle rejections remain distinct and actionable`() {
+        val expectedRecoveries = mapOf(
+            SelectorHandleAuthority.Resolution.RejectionReason.TAMPERED to "RESOLVE_AGAIN",
+            SelectorHandleAuthority.Resolution.RejectionReason.WRONG_WORKSPACE to "RESOLVE_IN_CURRENT_WORKSPACE",
+            SelectorHandleAuthority.Resolution.RejectionReason.WRONG_BACKEND to "RESOLVE_WITH_ACTIVE_BACKEND",
+            SelectorHandleAuthority.Resolution.RejectionReason.STALE to "RESOLVE_AGAIN",
+            SelectorHandleAuthority.Resolution.RejectionReason.FAMILY_NOT_ALLOWED to "CHOOSE_COMPATIBLE_OPERATION",
+            SelectorHandleAuthority.Resolution.RejectionReason.UNAVAILABLE to "USE_EXPLICIT_SELECTOR",
+        )
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        val backend = object : AnalysisBackend by delegate {
+            override val selectorHandles: SelectorHandleAuthority = object : SelectorHandleAuthority {
+                override fun issue(
+                    selector: KastExactSymbolSelector,
+                    allowedFamilies: Set<SelectorOperationFamily>,
+                ): SelectorHandleAuthority.IssueResult = SelectorHandleAuthority.IssueResult.Unavailable
+
+                override fun resolve(
+                    handle: String,
+                    workspaceRoot: String,
+                    family: SelectorOperationFamily,
+                ): SelectorHandleAuthority.Resolution = SelectorHandleAuthority.Resolution.Rejected(
+                    SelectorHandleAuthority.Resolution.RejectionReason.valueOf(handle.removePrefix("ksh1.")),
+                )
+            }
+        }
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = backend,
+            config = AnalysisServerConfig(),
+        )
+
+        expectedRecoveries.forEach { (reason, expectedRecovery) ->
+            val raw = runBlocking {
+                dispatcher.dispatch(
+                    JsonRpcRequest(
+                        id = JsonPrimitive(reason.ordinal + 1),
+                        method = "symbol/references",
+                        params = JsonObject(
+                            mapOf(
+                                "workspaceRoot" to JsonPrimitive(tempDir.toString()),
+                                "selectorHandle" to JsonPrimitive("ksh1.${reason.name}"),
+                            ),
+                        ),
+                    ),
+                )
+            }
+            val rpc = json.parseToJsonElement(raw).jsonObject
+            val result = assertInstanceOf(JsonObject::class.java, rpc["result"])
+
+            assertEquals("SELECTOR_HANDLE_REJECTED", (result["type"] as JsonPrimitive).content)
+            assertEquals(reason.name, (result["reason"] as JsonPrimitive).content)
+            assertEquals(expectedRecovery, (result["recovery"] as JsonPrimitive).content)
+        }
     }
 
     @Test
