@@ -616,6 +616,7 @@ internal class SkillRpcOrchestrator(
         return when (request) {
             is KastRenameBySymbolRequest -> renameBySymbol(request, progress)
             is KastRenameByOffsetRequest -> renameByOffset(request, progress)
+            is KastRenameBySelectorHandleRequest -> renameBySelectorHandle(request, progress)
         }
     }
 
@@ -804,6 +805,50 @@ internal class SkillRpcOrchestrator(
                     workspaceRoot = workspaceRoot,
                     filePath = filePath,
                     offset = request.offset,
+                    newName = request.newName,
+                )
+            },
+            progress = progress,
+        )
+    }
+
+    private suspend fun renameBySelectorHandle(
+        request: KastRenameBySelectorHandleRequest,
+        progress: MutationProgressReporter,
+    ): KastRenameResponse {
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = null,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.RENAME,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
+        return performRename(
+            filePath = selector.declarationFile,
+            offset = selector.declarationStartOffset,
+            newName = request.newName,
+            queryBuilder = {
+                KastRenameBySelectorHandleQuery(
+                    workspaceRoot = workspaceRoot,
+                    selectorHandle = request.selectorHandle,
+                    newName = request.newName,
+                    filePath = selector.declarationFile,
+                    offset = selector.declarationStartOffset,
+                )
+            },
+            failureQueryBuilder = {
+                KastRenameFailureQuery(
+                    type = "RENAME_BY_SELECTOR_HANDLE_REQUEST",
+                    workspaceRoot = workspaceRoot,
+                    filePath = selector.declarationFile,
+                    offset = selector.declarationStartOffset,
                     newName = request.newName,
                 )
             },

@@ -112,6 +112,14 @@ data class KastRenameByOffsetRequest(
 ) : KastRenameRequest
 
 @Serializable
+@SerialName("RENAME_BY_SELECTOR_HANDLE_REQUEST")
+data class KastRenameBySelectorHandleRequest(
+    val workspaceRoot: String? = null,
+    val selectorHandle: String,
+    val newName: String,
+) : KastRenameRequest
+
+@Serializable
 data class KastScaffoldRequest(
     val workspaceRoot: String? = null,
     val targetFile: String,
@@ -527,6 +535,16 @@ data class KastRenameByOffsetQuery(
     val filePath: String,
     val offset: Int,
     val newName: String,
+) : KastRenameQuery
+
+@Serializable
+@SerialName("RENAME_BY_SELECTOR_HANDLE_REQUEST")
+data class KastRenameBySelectorHandleQuery(
+    val workspaceRoot: String,
+    val selectorHandle: String,
+    val newName: String,
+    val filePath: String,
+    val offset: Int,
 ) : KastRenameQuery
 
 @Serializable
