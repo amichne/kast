@@ -49,7 +49,7 @@ fn raw_rpc_session_with_auto_start(
         workspace_root: Some(workspace_root),
         backend_name,
         idea_home: None,
-        wait_timeout_ms: 60_000,
+        wait_timeout_ms: crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
         accept_indexing: Some(true),
         no_auto_start: Some(!auto_start),
         socket_path: None,

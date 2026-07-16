@@ -1,3 +1,5 @@
+pub const DEFAULT_RUNTIME_WAIT_TIMEOUT_MS: u64 = 60_000;
+
 #[derive(Debug, Args, Clone)]
 pub struct RuntimeArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
@@ -10,7 +12,7 @@ pub struct RuntimeArgs {
     #[arg(long, hide = true)]
     pub idea_home: Option<PathBuf>,
     /// Maximum time to wait for a ready daemon when a command needs one.
-    #[arg(long, default_value_t = 60_000, hide = true)]
+    #[arg(long, default_value_t = DEFAULT_RUNTIME_WAIT_TIMEOUT_MS, hide = true)]
     pub wait_timeout_ms: u64,
     /// Allow up to return while the daemon is servable in INDEXING.
     #[arg(long, num_args = 0..=1, default_missing_value = "true", hide = true)]
@@ -140,4 +142,26 @@ pub enum RuntimeCommand {
     Restart(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
+}
+
+#[cfg(test)]
+mod runtime_args_tests {
+    use super::*;
+
+    #[test]
+    fn runtime_up_uses_bounded_default_timeout() {
+        let cli = Cli::try_parse_from(["kast", "developer", "runtime", "up"])
+            .expect("runtime up arguments");
+        let Some(Command::Developer(DeveloperArgs {
+            command:
+                DeveloperCommand::Runtime(RuntimeCommandArgs {
+                    command: RuntimeCommand::Up(args),
+                }),
+        })) = cli.command
+        else {
+            panic!("expected developer runtime up command");
+        };
+
+        assert_eq!(args.wait_timeout_ms, 60_000);
+    }
 }

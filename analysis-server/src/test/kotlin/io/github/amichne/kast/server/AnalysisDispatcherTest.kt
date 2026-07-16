@@ -42,6 +42,9 @@ import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.contract.ReadCapability
+import io.github.amichne.kast.api.contract.SearchScope
+import io.github.amichne.kast.api.contract.SearchScopeKind
+import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
@@ -606,6 +609,89 @@ class AnalysisDispatcherTest {
         assertEquals(null, observedQueries[0].pageToken)
         assertEquals(1, observedQueries[1].maxResults.value)
         assertEquals(firstPage.page?.nextPageToken, observedQueries[1].pageToken?.value)
+    }
+
+    @Test
+    fun `symbol references preserves an honest paginated result when candidate coverage is complete`() {
+        val fixture = AnalysisBackendContractFixture.create(tempDir)
+        val delegate = FakeAnalysisBackend.contractFixture(fixture)
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult =
+                delegate.findReferences(query).copy(
+                    searchScope = SearchScope(
+                        visibility = SymbolVisibility.PUBLIC,
+                        scope = SearchScopeKind.DEPENDENT_MODULES,
+                        exhaustive = false,
+                        candidateCoverage = SearchScope.CandidateCoverage.COMPLETE,
+                        candidateFileCount = 2,
+                        searchedFileCount = 1,
+                    ),
+                )
+        }
+        val selector = KastExactSymbolSelector(
+            fqName = fixture.symbolFqName,
+            declarationFile = fixture.declarationLocation.filePath,
+            declarationStartOffset = fixture.declarationLocation.startOffset,
+            kind = SymbolKind.FUNCTION,
+        )
+
+        val result = dispatchSuccessWithBackend<KastReferencesResponse>(
+            backend = backend,
+            method = "symbol/references",
+            params = json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = selector,
+                    maxResults = 1,
+                ),
+            ),
+        )
+
+        val available = assertInstanceOf(KastReferencesAvailableResponse::class.java, result)
+        assertFalse(checkNotNull(available.searchScope).exhaustive)
+        assertEquals(SearchScope.CandidateCoverage.COMPLETE, available.searchScope?.candidateCoverage)
+        assertTrue(checkNotNull(available.page).truncated)
+    }
+
+    @Test
+    fun `symbol references degrades when the underlying candidate search is partial`() {
+        val fixture = AnalysisBackendContractFixture.create(tempDir)
+        val delegate = FakeAnalysisBackend.contractFixture(fixture)
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult =
+                delegate.findReferences(query).copy(
+                    searchScope = SearchScope(
+                        visibility = SymbolVisibility.PUBLIC,
+                        scope = SearchScopeKind.DEPENDENT_MODULES,
+                        exhaustive = false,
+                        candidateCoverage = SearchScope.CandidateCoverage.PARTIAL,
+                        candidateFileCount = 2,
+                        searchedFileCount = 1,
+                    ),
+                )
+        }
+        val selector = KastExactSymbolSelector(
+            fqName = fixture.symbolFqName,
+            declarationFile = fixture.declarationLocation.filePath,
+            declarationStartOffset = fixture.declarationLocation.startOffset,
+            kind = SymbolKind.FUNCTION,
+        )
+
+        val result = dispatchSuccessWithBackend<KastReferencesResponse>(
+            backend = backend,
+            method = "symbol/references",
+            params = json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = selector,
+                    maxResults = 1,
+                ),
+            ),
+        )
+
+        assertInstanceOf(KastReferencesDegradedResponse::class.java, result)
     }
 
     @Test

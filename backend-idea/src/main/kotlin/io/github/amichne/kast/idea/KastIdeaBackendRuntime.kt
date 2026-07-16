@@ -96,6 +96,7 @@ object KastIdeaBackendRuntime {
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
+        val semanticAdmission = IdeaIndexSemanticAdmission(project)
         var pluginBackend: KastPluginBackend? = null
         val backend = try {
             val startedPluginBackend = KastPluginBackend(
@@ -106,6 +107,7 @@ object KastIdeaBackendRuntime {
                 backendName = backendName,
                 workspaceIdentity = workspaceIdentity,
                 referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
+                indexSemanticAdmissionStatus = semanticAdmission::status,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -159,6 +161,7 @@ object KastIdeaBackendRuntime {
                 config = config,
                 diagnostics = diagnostics,
                 indexStore = sourceIndexStore,
+                semanticAdmission = semanticAdmission,
             ).also { it.start() }
             projectIndexing = startedProjectIndexing
             return RunningKastIdeaBackend(
@@ -190,6 +193,7 @@ internal class KastIdeaProjectIndexing(
     private val config: KastConfig,
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
+    private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
 ) {
     constructor(
         project: Project,
@@ -244,6 +248,9 @@ internal class KastIdeaProjectIndexing(
                         detail = workspaceIdentity.traceDetails(),
                     )
                     diagnostics.recordIndexHydrating()
+                    semanticAdmission.await {
+                        cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed
+                    }
                     runCatching {
                         SourceIndexHydrator().hydrate(workspaceRoot, config.indexing.remote)
                     }.onFailure { error ->

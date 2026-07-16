@@ -54,8 +54,8 @@ Kast reports and sends their canonical workspace-contained paths.
 Use this section only when a typed `kast agent` command fails, the user asks for
 readiness evidence, or backend state is part of the task.
 
-- `kast ready --for agent|kotlin|release|machine --workspace-root "$PWD"` is read-only readiness.
-- `kast repair --for agent|kotlin|release|machine --workspace-root "$PWD"` is plan-only repair.
+- `kast ready --for agent --workspace-root "$PWD"` is read-only readiness; use `kotlin`, `release`, or `machine` when that is the actual target.
+- `kast repair --for agent --workspace-root "$PWD"` is plan-only repair; use `kotlin`, `release`, or `machine` when that is the actual target.
 - Add `--apply` to `kast repair` only after the repair plan or readiness output asks for install-state mutation.
 - `kast agent verify --workspace-root "$PWD"` proves backend health, runtime status, and capabilities for semantic work.
 - On macOS, Homebrew owns only the CLI and JetBrains owns plugin installation and updates. If metadata is stale, update as needed, reopen the exact project, and refresh it.

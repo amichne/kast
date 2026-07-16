@@ -17,9 +17,11 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
@@ -150,6 +152,9 @@ class KastPluginBackendContractTest {
         psiGeneration: () -> Long = { 1L },
         readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
         referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
+        indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
+            IdeaIndexSemanticAdmission.Status.Ready
+        },
     ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
@@ -160,6 +165,7 @@ class KastPluginBackendContractTest {
         psiGeneration = psiGeneration,
         readEpochObserver = readEpochObserver,
         referenceTraversalObserver = referenceTraversalObserver,
+        indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
     )
 
     private fun ensureProjectReady() {
@@ -197,6 +203,38 @@ class KastPluginBackendContractTest {
         val status = backend().runtimeStatus()
 
         assertEquals(listOf("main", "secondary"), status.sourceModuleNames)
+    }
+
+    @Test
+    fun `runtime cannot report ready while compiler semantic admission is pending`() = runBlocking {
+        ensureProjectReady()
+
+        val status = backend(
+            indexSemanticAdmissionStatus = {
+                IdeaIndexSemanticAdmission.Status.Pending("Kotlin runtime unresolved in :main")
+            },
+        ).runtimeStatus()
+
+        assertEquals(RuntimeState.INDEXING, status.state)
+        assertTrue(status.healthy)
+        assertTrue(status.indexing)
+        assertTrue(status.message.orEmpty().contains("Kotlin runtime unresolved"))
+    }
+
+    @Test
+    fun `runtime degrades when compiler semantic admission fails`() = runBlocking {
+        ensureProjectReady()
+
+        val status = backend(
+            indexSemanticAdmissionStatus = {
+                IdeaIndexSemanticAdmission.Status.Failed("K2 diagnostics unavailable")
+            },
+        ).runtimeStatus()
+
+        assertEquals(RuntimeState.DEGRADED, status.state)
+        assertFalse(status.healthy)
+        assertFalse(status.indexing)
+        assertTrue(status.message.orEmpty().contains("K2 diagnostics unavailable"))
     }
 
     @Test
@@ -480,6 +518,48 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `empty initial source index page falls back to compiler reference search`() = runBlocking {
+        ensureProjectReady()
+        val referenceData = readAction {
+            val usageFile = sampleUsageFileFixture.get()
+            IndexedReferenceTestData(
+                workspaceRoot = commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                declarationFilePath = sampleFile.virtualFile.path,
+                declarationOffset = sampleFile.text.indexOf("greet"),
+                usageFilePath = usageFile.virtualFile.path,
+                usageOffset = usageFile.text.indexOf("greet(\"idea\")"),
+            )
+        }
+        val emptyReadyIndex = ReferenceIndexLookup { _, _, _ ->
+            IndexedReferenceLookupResult.Ready(
+                page = SymbolReferencePage(references = emptyList(), nextOffset = null),
+                generation = SourceIndexGeneration(1),
+            )
+        }
+
+        val result = backend(
+            workspaceRoot = referenceData.workspaceRoot,
+            referenceIndexLookup = emptyReadyIndex,
+        ).findReferences(
+            ReferencesQuery(
+                position = FilePosition(
+                    filePath = referenceData.declarationFilePath,
+                    offset = referenceData.declarationOffset,
+                ),
+                includeDeclaration = false,
+            ),
+        )
+
+        assertTrue(
+            result.references.any { reference ->
+                reference.location.filePath == referenceData.usageFilePath &&
+                    reference.location.startOffset == referenceData.usageOffset
+            },
+        )
+        assertEquals(ResultCardinality.Exact(result.references.size), result.cardinality)
+    }
+
+    @Test
     fun `indexed reference cursor fails typed when index becomes unavailable`() = runBlocking {
         ensureProjectReady()
         val referenceData = readAction {
@@ -617,6 +697,8 @@ class KastPluginBackendContractTest {
         assertEquals(4, first.references.size)
         assertEquals(4, second.references.size)
         assertTrue(first.cardinality is ResultCardinality.KnownMinimum)
+        assertFalse(first.searchScope?.exhaustive ?: true)
+        assertEquals(SearchScope.CandidateCoverage.COMPLETE, first.searchScope?.candidateCoverage)
         assertEquals(1, indexLookupCount)
         assertTrue(first.references.toSet().intersect(second.references.toSet()).isEmpty())
         val trace = Files.readString(traceFile)
@@ -1123,6 +1205,10 @@ class KastPluginBackendContractTest {
             val position = FilePosition(referenceData.declarationFilePath, referenceData.declarationOffset)
             val first = backend.findReferences(ReferencesQuery(position, maxResults = 1))
 
+            assertEquals(false, first.searchScope?.exhaustive)
+            assertEquals(SearchScope.CandidateCoverage.COMPLETE, first.searchScope?.candidateCoverage)
+            assertEquals(true, first.page?.truncated)
+
             store.clearReferencesFromFile(referenceData.usageFilePath)
 
             val failure = runCatching {
@@ -1224,6 +1310,7 @@ class KastPluginBackendContractTest {
         )
 
         assertFalse(result.searchScope?.exhaustive ?: true)
+        assertEquals(SearchScope.CandidateCoverage.PARTIAL, result.searchScope?.candidateCoverage)
         assertTrue(
             (result.searchScope?.searchedFileCount ?: Int.MAX_VALUE) <=
                 (result.searchScope?.candidateFileCount ?: 0),

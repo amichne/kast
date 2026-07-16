@@ -53,7 +53,9 @@ class PsiReferenceScanner(
                                     val resolved = reference.resolve() ?: return@forEach
                                     val (fqName, _) = resolved.targetFqNameAndPackage() ?: return@forEach
                                     val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
-                                    val targetOffset = recoverRuntimePsiFailure { resolved.textRange?.startOffset }
+                                    val targetOffset = recoverRuntimePsiFailure {
+                                        resolved.declarationIdentityOffset()
+                                    }
                                     val sourceElementStart = recoverRuntimePsiFailure {
                                         reference.element.textRange.startOffset
                                     } ?: return@forEach
@@ -168,6 +170,10 @@ class PsiReferenceScanner(
         generateSequence(this as PsiElement?) { it.parent }
             .filterIsInstance<KtNamedDeclaration>()
             .firstNotNullOfOrNull { declaration -> declaration.targetFqNameAndPackage()?.first?.value }
+
+    private fun PsiElement.declarationIdentityOffset(): Int? =
+        (this as? KtNamedDeclaration)?.nameIdentifier?.textRange?.startOffset
+            ?: textRange?.startOffset
 
     private fun PsiElement.edgeKind(): EdgeKind {
         val parents = generateSequence(this as PsiElement?) { it.parent }.take(8).toList()

@@ -8,7 +8,9 @@ Supersession note: ADR 0005 and ADR 0006 supersede the public agent setup,
 harness selection, Copilot package install, portable instruction install,
 `kast agent tools`, `kast agent call`, raw command, and workflow CLI portions
 of this ADR. This ADR remains authoritative only for manifest-backed trust
-rules not replaced by ADR 0006.
+rules not replaced by ADR 0006. ADR 0024 adds an isolated local-development
+authority whose receipt must prove the same resource-trust facts without
+changing release authority.
 
 This ADR records the current contract for agent-facing Kast resources. It
 exists so future agents can preserve the source of truth for the packaged
@@ -42,6 +44,7 @@ model.
 | Packaged skill | `cli-rs/resources/kast-skill/SKILL.md` | thin installed `kast` skill entrypoint only | CLI smoke tests and packaged content tests |
 | Repo-local agent guidance | `cli-rs/src/install/agent_guidance.rs` | selected context file with one managed `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` region | CLI smoke tests, docs content contract |
 | Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json ready`, verifier script |
+| Local-development resource trust | `cli-rs/src/local_development/` plus the captured checkout's skill source and independently attested CLI/backend artifacts | one immutable local generation and its strict authority receipt | `.github/scripts/test-local-development-refresh-contract.sh` |
 
 Marker files such as `.kast-version` and `.github/.kast-copilot-version` are
 retired. They may be detected as stale state, but they are not trusted as a
@@ -68,6 +71,15 @@ Agent-facing changes must keep these requirements true:
 - Stale active-binary/resource combinations report incompatibility and require
   upgrade or reinstall. Do not add a compatibility helper just for older
   binaries.
+- A local-development refresh records the canonical checkout snapshot and
+  length-framed component hashes, requires matching CLI/backend artifact
+  provenance, projects resources only into the explicit exact workspace, and
+  fails closed when any effective resource differs from that generation.
+- Local-development runtime state is keyed by source generation, and its
+  installed skill and guidance route only through the receipt-owned local
+  entrypoint.
+- Local-development rollback and removal restore only receipt-owned resource
+  state; they never mutate Homebrew or JetBrains release authority.
 
 ## Instruction topology
 

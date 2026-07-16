@@ -4,11 +4,11 @@ use crate::error::{CliError, Result};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 
 const HEADLESS_MAIN_CLASS: &str = "io.github.amichne.kast.headless.HeadlessMainKt";
 
-pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
+pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
     let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
@@ -27,7 +27,6 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<()> {
         .stdout(Stdio::from(log))
         .stderr(Stdio::from(log_err))
         .spawn()
-        .map(|_| ())
         .map_err(|error| {
             CliError::new(
                 "DAEMON_START_ERROR",
@@ -49,6 +48,7 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     }
     let runtime_libs_dir =
         config::backend_runtime_libs_dir(config, backend_name, args.runtime_libs_dir.clone())?;
+    crate::local_development::validate_active_local_backend_runtime(&runtime_libs_dir)?;
     let classpath = read_classpath(&runtime_libs_dir)?;
     let java_exec = env::var("JAVA_HOME")
         .ok()
@@ -400,6 +400,7 @@ mod tests {
         config.backends.headless.runtime_libs_dir = Some(headless_libs.clone());
         config.backends.headless.idea_home = Some(idea_home.clone());
         config.server.max_results = 42;
+        config.project_open.profile_auto_init = false;
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
             backend_name: Some(crate::cli::BackendName::Headless),
@@ -429,6 +430,8 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(config_arg).expect("runtime config json"))
                 .expect("runtime config payload");
         assert_eq!(payload["server"]["maxResults"], 42);
+        assert_eq!(payload["projectOpen"]["profileAutoInit"], false);
+        assert!(payload.get("project_open").is_none());
         assert_eq!(
             payload["paths"]["runtimeDir"],
             runtime_dir.display().to_string()

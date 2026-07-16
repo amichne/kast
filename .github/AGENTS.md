@@ -25,6 +25,24 @@ plugin cask from the tap; signed plugin ZIP, feed, signer, checksum, and
 provenance verification remain release-owned JetBrains artifacts.
 For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
+The release-free local authority gate lives in
+`.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
+CI whenever refresh orchestration, source/artifact provenance, immutable
+generation activation, rollback/removal, local readiness, or installed
+skill/guidance routing changes. Its Gradle graph must remain headless and must
+not include user JetBrains profile or release-configuration mutation.
+The legacy developer install remains covered separately by
+`.github/scripts/test-development-cli-install-contract.sh`. Keep its real IDEA
+plugin task execution wired in CI so explicit-directory, configured-profile,
+running-profile, newest-profile, missing-profile, and configuration-cache
+behavior cannot regress behind dry-run task-graph coverage.
+The separate `.github/scripts/test-local-development-semantic-e2e.sh` gate
+must exercise the receipt-owned installed entrypoint, not checkout build
+outputs. It owns refresh idempotence plus compiler-backed readiness, exact
+symbol resolution, a known exhaustive nonzero reference, complete clean-file
+diagnostics, plan-only mutation, explicit runtime shutdown, and receipt-owned
+removal. Keep it in its own CI job so the cold IDEA import does not serialize
+unrelated workflow contracts.
 
 The signed JetBrains repository source lives at
 `packaging/jetbrains/plugin-repository.json`. Runtime pair and IDEA build-range
@@ -82,6 +100,14 @@ For terminal commands and executable examples, run:
 
 ```console
 .github/scripts/test-terminal-command-contract.sh
+```
+
+For local-development authority changes, run:
+
+```console
+.github/scripts/test-local-development-refresh-contract.sh
+.github/scripts/test-development-cli-install-contract.sh
+.github/scripts/test-local-development-semantic-e2e.sh
 ```
 
 For signed JetBrains repository or Pages publication changes, run:

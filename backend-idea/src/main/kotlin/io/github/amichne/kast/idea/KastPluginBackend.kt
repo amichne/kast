@@ -164,6 +164,9 @@ internal class KastPluginBackend(
     private val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     private val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     private val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
+    private val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
+        IdeaIndexSemanticAdmission.Status.Ready
+    },
 ) : CloseableAnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
@@ -215,6 +218,15 @@ internal class KastPluginBackend(
         } ?: emptyList()
 
     private fun referenceSearchRoots(plan: ReferenceSearchPlan): List<Path> {
+        val targetFile = plan.target.element
+            ?.containingFile
+            ?.virtualFile
+            ?.path
+            ?.let(Path::of)
+        if (plan.scopeKind == SearchScopeKind.FILE && targetFile != null) {
+            return listOf(targetFile)
+        }
+
         val moduleRoots = ModuleManager.getInstance(project).modules
             .asSequence()
             .flatMap { module -> ModuleRootManager.getInstance(module).sourceRoots.asSequence() }
@@ -225,12 +237,7 @@ internal class KastPluginBackend(
             .toList()
         if (moduleRoots.isNotEmpty()) return moduleRoots
 
-        val targetDirectory = plan.target.element
-            ?.containingFile
-            ?.virtualFile
-            ?.parent
-            ?.path
-            ?.let(Path::of)
+        val targetDirectory = targetFile?.parent
         return listOfNotNull(targetDirectory)
     }
 
@@ -271,20 +278,28 @@ internal class KastPluginBackend(
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val caps = capabilities()
         val isDumb = DumbService.isDumb(project)
-        val state = if (isDumb) RuntimeState.INDEXING else RuntimeState.READY
+        val admission = indexSemanticAdmissionStatus()
+        val state = when {
+            admission is IdeaIndexSemanticAdmission.Status.Failed -> RuntimeState.DEGRADED
+            isDumb || admission is IdeaIndexSemanticAdmission.Status.Pending -> RuntimeState.INDEXING
+            else -> RuntimeState.READY
+        }
         val moduleNames = ModuleManager.getInstance(project).modules.map { it.name }.sorted()
         return RuntimeStatusResponse(
             state = state,
-            healthy = true,
+            healthy = state != RuntimeState.DEGRADED,
             active = true,
-            indexing = isDumb,
+            indexing = state == RuntimeState.INDEXING,
             backendName = caps.backendName,
             backendVersion = caps.backendVersion,
             workspaceRoot = caps.workspaceRoot,
-            message = if (isDumb) {
-                "IDEA is indexing — analysis results may be incomplete"
-            } else {
-                "IDEA analysis backend is ready"
+            message = when {
+                admission is IdeaIndexSemanticAdmission.Status.Failed ->
+                    "IDEA compiler-backed semantic admission failed: ${admission.detail}"
+                isDumb -> "IDEA is indexing — analysis results may be incomplete"
+                admission is IdeaIndexSemanticAdmission.Status.Pending ->
+                    "IDEA compiler-backed semantic admission is pending: ${admission.detail}"
+                else -> "IDEA analysis backend is ready"
             },
             sourceModuleNames = moduleNames,
         )
@@ -411,6 +426,11 @@ internal class KastPluginBackend(
                     visibility = plan.visibility,
                     scope = plan.scopeKind,
                     exhaustive = outcome.completion.exhaustive && !outcome.hasMoreEvidence,
+                    candidateCoverage = if (outcome.completion.exhaustive) {
+                        SearchScope.CandidateCoverage.COMPLETE
+                    } else {
+                        SearchScope.CandidateCoverage.PARTIAL
+                    },
                     candidateFileCount = outcome.candidateFileCount,
                     searchedFileCount = outcome.searchedFileCount,
                 ),
@@ -562,6 +582,15 @@ internal class KastPluginBackend(
                             "continuationFailure" to "generationChanged",
                         ),
                     )
+                }
+                if (
+                    continuation == null &&
+                    lookup.page.references.isEmpty() &&
+                    lookup.page.nextOffset == null
+                ) {
+                    indexSpan.setAttribute("kast.references.indexReady", true)
+                    indexSpan.setAttribute("kast.references.indexEmptyFallback", true)
+                    return@child null
                 }
                 val indexedRows = runIdeaReadAction {
                     lookup.page.references.filter { row -> indexedReferenceRowInScope(row, plan.searchScope) }

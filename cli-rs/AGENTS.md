@@ -29,6 +29,16 @@ resources.
   limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
+- `src/local_development.rs` and `src/local_development/` own framed checkout
+  identity, independently attested CLI/backend artifacts, immutable local
+  generations, exact receipt topology, generation-scoped runtime state, and
+  the canonical prefix authority lock shared by runtime registration,
+  activation, rollback, and removal. It also owns local skill/guidance command
+  routing. Keep this boundary separate from Homebrew and JetBrains release
+  authority. Changes require
+  `.github/scripts/test-local-development-refresh-contract.sh` plus focused
+  Rust tests; never accept an artifact label without recomputing its source and
+  byte identity.
 - `src/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
   and delegates active admission to the authored typed compatibility matrix.
   Unknown fields, capabilities, revisions, unsupported rows, and missing

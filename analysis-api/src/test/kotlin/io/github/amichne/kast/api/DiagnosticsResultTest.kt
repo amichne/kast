@@ -9,6 +9,9 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
@@ -31,6 +34,22 @@ class DiagnosticsResultTest {
         assertEquals(2, result.requestedFileCount)
         assertEquals(2, result.analyzedFileCount)
         assertEquals(0, result.skippedFileCount)
+    }
+
+    @Test
+    fun `exact diagnostic cardinality carries its wire discriminator`() {
+        val result = DiagnosticsResult.of(
+            diagnostics = emptyList(),
+            fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+        )
+
+        val cardinality = Json.encodeToJsonElement(DiagnosticsResult.serializer(), result)
+            .jsonObject
+            .getValue("cardinality")
+            .jsonObject
+
+        assertEquals("EXACT", cardinality.getValue("type").jsonPrimitive.content)
+        assertEquals(0, cardinality.getValue("totalCount").jsonPrimitive.content.toInt())
     }
 
     @Test

@@ -20,6 +20,28 @@ class WorkspacePathsTest {
     }
 
     @Test
+    fun `kast data root follows explicit environment authority`() {
+        val installRoot = tempDir.resolve("install-root")
+        val dataRoot = tempDir.resolve("generation-data")
+        val env = mapOf(kastDataHomeEnv to dataRoot.toString())
+
+        assertEquals(
+            dataRoot.toAbsolutePath().normalize(),
+            kastDataRoot(env::get, installRoot),
+        )
+    }
+
+    @Test
+    fun `kast data root falls back to install state`() {
+        val installRoot = tempDir.resolve("install-root")
+
+        assertEquals(
+            installRoot.resolve("state").toAbsolutePath().normalize(),
+            kastDataRoot(emptyMap<String, String>()::get, installRoot),
+        )
+    }
+
+    @Test
     fun allPathsResolveFromConfigOnly() {
         val installRoot = Path.of(System.getProperty("user.home"))
             .resolve(".local/share/kast")
@@ -64,6 +86,29 @@ class WorkspacePathsTest {
             installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
+    }
+
+    @Test
+    fun `workspace data directory honors generation data root independently of install root`() {
+        val installRoot = tempDir.resolve("install-root")
+        val dataRoot = tempDir.resolve("state/generation-a/data")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val gitDir = tempDir.resolve("main.git/worktrees/workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            installRoot = { installRoot },
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = tempDir.resolve("main.git"),
+                    gitDir = gitDir,
+                    remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
+                )
+            },
+        )
+
+        assertTrue(!resolver.workspaceDatabasePath(workspaceRoot).startsWith(installRoot))
+        assertTrue(resolver.workspaceDatabasePath(workspaceRoot).startsWith(dataRoot.resolve("workspaces")))
     }
 
     @Test
@@ -246,6 +291,7 @@ class WorkspacePathsTest {
 
     private companion object {
         val kastConfigHomeEnv: String = env("KAST", "CONFIG", "HOME")
+        val kastDataHomeEnv: String = env("KAST", "DATA", "HOME")
 
         fun env(vararg parts: String): String = parts.joinToString("_")
     }

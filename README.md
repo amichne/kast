@@ -36,6 +36,22 @@ The [macOS install guide](https://kast.michne.com/install/macos/) covers the
 root installer and IDE handoff. The [headless Linux guide](https://kast.michne.com/install/headless-linux/)
 covers server and hosted-agent installs.
 
+## Develop From A Checkout
+
+Kast contributors can build and activate the exact current checkout without
+publishing a release or changing Homebrew and JetBrains release authority.
+
+```console
+./gradlew refreshDevelopmentLocal
+```
+
+The command creates a source-bound headless authority under
+`.kast/local-development/`, including the CLI, backend, skill, agent guidance,
+configuration, and strict receipt. Follow [validate a local
+checkout](https://kast.michne.com/distribute/local-development-refresh/) for
+machine-readable verification, linked-worktree isolation, rollback, and
+removal.
+
 ## Try it on your code
 
 Once the workspace is prepared and its backend is ready, run the read-only
@@ -107,6 +123,7 @@ plugin preparation even when `--backend=headless` is selected.
   or explore your repository with the
   [read-only demo](https://kast.michne.com/learn/repository-demo/).
 - Browse the [command reference](https://kast.michne.com/reference/commands/).
+- Validate an unreleased checkout with the [local development refresh](https://kast.michne.com/distribute/local-development-refresh/).
 - Use [inspect Kotlin](https://kast.michne.com/use/inspect-kotlin/) and
   [plan safe edits](https://kast.michne.com/use/plan-safe-edits/) for common
   CLI workflows.

@@ -10,6 +10,7 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
+mod local_development;
 mod lsp;
 mod manifest;
 mod metrics;
@@ -174,7 +175,7 @@ fn default_runtime_args() -> cli::RuntimeArgs {
         workspace_root: None,
         backend_name: None,
         idea_home: None,
-        wait_timeout_ms: 60_000,
+        wait_timeout_ms: cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
         accept_indexing: None,
         no_auto_start: None,
         socket_path: None,
@@ -410,6 +411,12 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         apply,
         jetbrains_config_root,
     };
+    if apply && local_development::active_local_development_receipt()?.is_some() {
+        return Err(CliError::new(
+            "LOCAL_AUTHORITY_REPAIR_UNSUPPORTED",
+            "Local-development authority cannot mutate release install state; rerun the source checkout's refreshDevelopmentLocal task instead.",
+        ));
+    }
     if apply && !install::macos_homebrew_repair_authority_is_provable()? {
         manifest::install_current_executable()?;
     }
@@ -614,6 +621,7 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
 
 fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
+        cli::DeveloperCommand::Local(args) => local_development::run(args.command, output_format),
         cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
         cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
         cli::DeveloperCommand::Machine(args) => run_machine(args.command, output_format),

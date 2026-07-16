@@ -24,6 +24,24 @@ fn symbol_result(workspace: &Path, fq_name: &str) -> Value {
     })
 }
 
+fn rename_preview(workspace: &Path, new_name: &str) -> Value {
+    let file_path = workspace.join("Keywords.kt").display().to_string();
+    json!({
+        "edits": [{
+            "filePath": file_path,
+            "startOffset": 10,
+            "endOffset": 16,
+            "newText": new_name,
+        }],
+        "fileHashes": [{
+            "filePath": file_path,
+            "hash": "a".repeat(64),
+        }],
+        "affectedFiles": [file_path],
+        "schemaVersion": 3,
+    })
+}
+
 fn run_agent_symbol(
     home: &Path,
     config_home: &Path,
@@ -457,11 +475,36 @@ fn removed_agent_workflow_write_validate_fails_before_mutation() {
 }
 
 #[test]
-fn agent_rename_without_apply_returns_identity_first_plan() {
+fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutation_authority() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
-
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("idea.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"rename-preview\"\n",
+    )
+    .expect("Gradle workspace marker");
+    std::fs::write(
+        workspace.join("Keywords.kt"),
+        "package io.example\nclass OrderService { fun process() = Unit }\n",
+    )
+    .expect("Kotlin rename fixture");
+    let backend = spawn_scripted_headless_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            (
+                "symbol/resolve",
+                symbol_result(&workspace, "io.example.OrderService.process"),
+            ),
+            ("raw/rename", rename_preview(&workspace, "processSafely")),
+        ],
+    );
     let plan = kast(&home, &config_home)
         .args([
             "--output",
@@ -474,6 +517,9 @@ fn agent_rename_without_apply_returns_identity_first_plan() {
             "processSafely",
             "--kind",
             "function",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--explain",
         ])
         .output()
         .expect("agent rename plan");
@@ -487,28 +533,138 @@ fn agent_rename_without_apply_returns_identity_first_plan() {
     let stdout: serde_json::Value = serde_json::from_slice(&plan.stdout).expect("plan json");
     assert_eq!(stdout["method"], "agent/rename", "{stdout}");
     assert_eq!(
-        stdout["result"]["type"], "KAST_AGENT_MUTATION_RESULT",
+        stdout["result"]["type"], "KAST_AGENT_RENAME_PLAN",
         "{stdout}"
     );
     assert_eq!(
-        stdout["result"]["operation"]["state"], "PLANNED",
-        "{stdout}"
-    );
-    let plan = &stdout["result"]["plan"];
-    assert_eq!(plan["method"], "symbol/rename", "{stdout}");
-    assert_eq!(
-        stdout["result"]["operation"]["mutationKind"], "RENAME_BY_SYMBOL_REQUEST",
+        stdout["result"]["request"]["method"], "symbol/rename",
         "{stdout}"
     );
     assert_eq!(
-        plan["symbol"], "io.example.OrderService.process",
+        stdout["result"]["request"]["params"]["type"], "RENAME_BY_SYMBOL_REQUEST",
         "{stdout}"
     );
-    assert_eq!(plan["kind"], "function", "{stdout}");
+    assert_eq!(
+        stdout["result"]["request"]["params"]["symbol"], "io.example.OrderService.process",
+        "{stdout}"
+    );
+    assert_eq!(
+        stdout["result"]["preview"]["edits"]
+            .as_array()
+            .map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(
+        stdout["result"]["preview"]["affectedFiles"]
+            .as_array()
+            .map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(
+        stdout["result"]["preview"]["edits"][0]["newText"],
+        "processSafely"
+    );
+    let requests = backend.join().expect("scripted backend");
+    assert_eq!(requests[2]["method"], "symbol/resolve");
+    assert_eq!(requests[3]["method"], "raw/rename");
+    assert_eq!(requests[3]["params"]["dryRun"], true);
+    assert_eq!(
+        requests[3]["params"]["position"]["startOffset"],
+        Value::Null
+    );
+    assert_eq!(requests[3]["params"]["position"]["offset"], 10);
     assert!(
-        !plan.to_string().contains("offset"),
-        "public rename plan must not expose offsets: {stdout}"
+        !stdout["result"]["request"].to_string().contains("offset"),
+        "public identity request must not depend on a caller-provided offset: {stdout}"
     );
+}
+
+#[test]
+fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_uncovered() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("headless.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"rename-preview\"\n",
+    )
+    .expect("Gradle workspace marker");
+    std::fs::write(
+        workspace.join("Keywords.kt"),
+        "package io.example\nclass OrderService { fun process() = Unit }\n",
+    )
+    .expect("Kotlin rename fixture");
+    let first_file = workspace.join("Keywords.kt").display().to_string();
+    let second_file = workspace.join("Usage.kt").display().to_string();
+    let duplicate_hash_preview = json!({
+        "edits": [
+            {
+                "filePath": first_file,
+                "startOffset": 10,
+                "endOffset": 16,
+                "newText": "processSafely",
+            },
+            {
+                "filePath": second_file,
+                "startOffset": 20,
+                "endOffset": 26,
+                "newText": "processSafely",
+            },
+        ],
+        "fileHashes": [
+            {"filePath": first_file, "hash": "a".repeat(64)},
+            {"filePath": first_file, "hash": "b".repeat(64)},
+        ],
+        "affectedFiles": [first_file, second_file],
+        "schemaVersion": 3,
+    });
+    let backend = spawn_scripted_headless_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            (
+                "symbol/resolve",
+                symbol_result(&workspace, "io.example.OrderService.process"),
+            ),
+            ("raw/rename", duplicate_hash_preview),
+        ],
+    );
+
+    let plan = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "io.example.OrderService.process",
+            "--new-name",
+            "processSafely",
+            "--kind",
+            "function",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--explain",
+        ])
+        .output()
+        .expect("agent rename plan");
+
+    assert!(
+        !plan.status.success(),
+        "duplicate hash rows must not satisfy exact affected-file coverage: {}",
+        String::from_utf8_lossy(&plan.stdout),
+    );
+    let stdout: Value = serde_json::from_slice(&plan.stdout).expect("plan failure json");
+    assert_eq!(
+        stdout["error"]["code"], "INVALID_RENAME_PREVIEW",
+        "{stdout}"
+    );
+    backend.join().expect("scripted backend");
 }
 
 #[test]

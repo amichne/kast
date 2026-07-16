@@ -196,22 +196,57 @@ pub(crate) fn spawn_scripted_idea_backend(
     socket_path: &Path,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    write_macos_plugin_workspace_metadata(workspace);
+    spawn_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "idea",
+        scripted_results,
+    )
+}
+
+pub(crate) fn spawn_scripted_headless_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    spawn_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "headless",
+        scripted_results,
+    )
+}
+
+fn spawn_scripted_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    backend_name: &str,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(home).expect("home");
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
-    write_macos_plugin_workspace_metadata(workspace);
     std::fs::write(
         config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"idea\"\n",
+        format!("[runtime]\ndefaultBackend = \"{backend_name}\"\n"),
     )
     .expect("config");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
         serde_json::to_vec_pretty(&serde_json::json!([{
             "workspaceRoot": workspace.display().to_string(),
-            "backendName": "idea",
+            "backendName": backend_name,
             "backendVersion": "scripted-test",
             "transport": "uds",
             "socketPath": socket_path.display().to_string(),
@@ -227,6 +262,7 @@ pub(crate) fn spawn_scripted_idea_backend(
         .set_nonblocking(true)
         .expect("nonblocking scripted backend");
     let server_workspace = workspace.to_path_buf();
+    let server_backend_name = backend_name.to_string();
     thread::spawn(move || {
         let mut requests = Vec::new();
         let mut scripted_results = scripted_results.into_iter();
@@ -256,13 +292,13 @@ pub(crate) fn spawn_scripted_idea_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "idea",
+                    "backendName": server_backend_name.as_str(),
                     "backendVersion": "scripted-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "schemaVersion": 3
                 }),
                 "capabilities" => serde_json::json!({
-                    "backendName": "idea",
+                    "backendName": server_backend_name.as_str(),
                     "backendVersion": "scripted-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "readCapabilities": [

@@ -9,7 +9,8 @@ import kotlinx.serialization.Serializable
 
 /**
  * Describes the scope and completeness of a reference search or rename operation.
- * LLM consumers can use [exhaustive] to gauge confidence in result completeness.
+ * LLM consumers can use [exhaustive] for result-set completeness and [candidateCoverage]
+ * to distinguish ordinary pagination from an incomplete semantic search.
  */
 @Serializable
 data class SearchScope(
@@ -17,13 +18,21 @@ data class SearchScope(
     val visibility: SymbolVisibility,
     @DocField(description = "The breadth of files examined: FILE, MODULE, or DEPENDENT_MODULES.")
     val scope: SearchScopeKind,
-    @DocField(description = "True when the search covered all candidate files without truncation.")
+    @DocField(description = "True only when candidate coverage completed and no result continuation remains.")
     val exhaustive: Boolean,
+    @DocField(description = "Whether the underlying candidate search completed without a semantic or budget limitation.")
+    val candidateCoverage: CandidateCoverage = if (exhaustive) CandidateCoverage.COMPLETE else CandidateCoverage.PARTIAL,
     @DocField(description = "Total number of files that could contain references.")
     val candidateFileCount: Int,
     @DocField(description = "Number of files actually examined during the search.")
     val searchedFileCount: Int,
-)
+) {
+    @Serializable
+    enum class CandidateCoverage {
+        COMPLETE,
+        PARTIAL,
+    }
+}
 
 /** The breadth of files examined during a reference search. */
 @Serializable

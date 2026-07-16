@@ -71,7 +71,9 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         "{skill}"
     );
     assert!(
-        skill.contains("`kast repair --for agent|kotlin|release|machine"),
+        skill.contains("`kast ready --for agent --workspace-root \"$PWD\"`")
+            && skill.contains("`kast repair --for agent --workspace-root \"$PWD\"`")
+            && !skill.contains("--for agent|"),
         "{skill}"
     );
     assert!(

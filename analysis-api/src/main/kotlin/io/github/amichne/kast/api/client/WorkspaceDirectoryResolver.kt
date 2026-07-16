@@ -12,6 +12,7 @@ import java.util.UUID
 
 class WorkspaceDirectoryResolver(
     private val installRoot: () -> Path = ::kastInstallRoot,
+    private val dataRoot: () -> Path = { kastDataRoot(System::getenv, installRoot()) },
     private val gitWorkspaceResolver: (Path) -> GitWorkspace? = GitWorkspaceResolver::discover,
     private val gitRemoteResolver: (Path) -> GitRemote? = GitRemoteParser::origin,
     private val uuidGenerator: () -> UUID = UUID::randomUUID,
@@ -61,7 +62,7 @@ class WorkspaceDirectoryResolver(
         return workspaceRoot.startsWith(tempRoot)
     }
 
-    private fun workspacesRoot(): Path = installRoot().resolve("state/workspaces").toAbsolutePath().normalize()
+    private fun workspacesRoot(): Path = dataRoot().resolve("workspaces").toAbsolutePath().normalize()
 
     private fun gitWorkspaceDataDirectory(workspace: GitWorkspace, remote: GitRemote?): Path {
         val repoRoot = if (remote != null) {

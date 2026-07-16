@@ -9,9 +9,11 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.function.Consumer
 import kotlin.io.path.writeText
 
 class HeadlessServerOptionsTest {
@@ -136,6 +138,56 @@ class HeadlessServerOptionsTest {
     }
 
     @Test
+    fun `headless Gradle import disables dependency source downloads without discarding VM options`() {
+        val disableSources = "-Didea.gradle.download.sources.force=false"
+
+        assertEquals(
+            disableSources,
+            HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled(null),
+        )
+        assertEquals(
+            "-Xmx2g $disableSources",
+            HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled("-Xmx2g"),
+        )
+        assertEquals(
+            "-Xmx2g $disableSources",
+            HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled("-Xmx2g $disableSources"),
+        )
+    }
+
+    @Test
+    fun `headless application disables dependency source downloads before project open`() {
+        val observedValues = mutableListOf<Boolean>()
+
+        HeadlessGradleProjectImportBridge.configureHeadlessApplication(Consumer(observedValues::add))
+
+        assertEquals(listOf(false), observedValues)
+    }
+
+    @Test
+    fun `Gradle bootstrap configures the lean headless import before inspecting the model`() {
+        val workspace = tempDir.resolve("workspace")
+        val phases = mutableListOf<String>()
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = { phases += "configure" },
+            waitForProjectModel = {},
+            inspectProjectModel = {
+                phases += "inspect"
+                modelReadiness(moduleNames = listOf(":app"))
+            },
+            canLinkGradleProject = { _, _ -> true },
+        )
+
+        val result = bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+
+        assertEquals(
+            HeadlessProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
+            result,
+        )
+        assertEquals(listOf("configure", "inspect", "inspect"), phases)
+    }
+
+    @Test
     fun `workspace kind detects Gradle marker files`() {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
@@ -149,13 +201,20 @@ class HeadlessServerOptionsTest {
         val workspace = tempDir.resolve("workspace")
         val observedPaths = mutableListOf<String>()
         var waitCount = 0
-        val moduleSnapshots = ArrayDeque(listOf(emptyList<String>(), listOf(":app")))
+        val modelSnapshots = ArrayDeque(
+            listOf(
+                modelReadiness(),
+                modelReadiness(),
+                modelReadiness(moduleNames = listOf(":app")),
+            ),
+        )
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = {
                 waitCount += 1
             },
-            moduleNames = {
-                moduleSnapshots.removeFirst()
+            inspectProjectModel = {
+                modelSnapshots.removeFirst()
             },
             canLinkGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, externalProjectPath ->
@@ -170,23 +229,192 @@ class HeadlessServerOptionsTest {
             result,
         )
         assertEquals(listOf(workspace.toAbsolutePath().normalize().toString()), observedPaths)
+        assertEquals(2, waitCount)
+    }
+
+    @Test
+    fun `Gradle bootstrap adopts an automatic startup sync without scheduling another import`() {
+        val workspace = tempDir.resolve("workspace")
+        var waitCount = 0
+        var explicitImportCount = 0
+        val modelSnapshots = ArrayDeque(
+            listOf(
+                modelReadiness(),
+                modelReadiness(moduleNames = listOf(":app")),
+            ),
+        )
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
+            waitForProjectModel = { waitCount += 1 },
+            inspectProjectModel = { modelSnapshots.removeFirst() },
+            canLinkGradleProject = { _, _ -> true },
+            linkAndImportGradleProject = { _, _ -> explicitImportCount += 1 },
+        )
+
+        val result = bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+
+        assertEquals(
+            HeadlessProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
+            result,
+        )
         assertEquals(1, waitCount)
+        assertEquals(0, explicitImportCount)
+    }
+
+    @Test
+    fun `Gradle bootstrap refreshes a persisted module model before declaring readiness`() {
+        val workspace = tempDir.resolve("workspace")
+        val observedPaths = mutableListOf<String>()
+        var waitCount = 0
+        val modelSnapshots = ArrayDeque(
+            listOf(
+                modelReadiness(
+                    moduleNames = listOf(":stale"),
+                    compilerReadyKotlinModuleNames = emptyList(),
+                ),
+                modelReadiness(
+                    moduleNames = listOf(":stale"),
+                    compilerReadyKotlinModuleNames = emptyList(),
+                ),
+                modelReadiness(moduleNames = listOf(":fresh")),
+            ),
+        )
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
+            waitForProjectModel = {
+                waitCount += 1
+            },
+            inspectProjectModel = {
+                modelSnapshots.removeFirst()
+            },
+            canLinkGradleProject = { _, _ -> true },
+            linkAndImportGradleProject = { _, externalProjectPath ->
+                observedPaths += externalProjectPath
+            },
+        )
+
+        val result = bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+
+        assertEquals(
+            HeadlessProjectModelBootstrapResult.Ready(moduleNames = listOf(":fresh"), linkedGradleProject = true),
+            result,
+        )
+        assertEquals(listOf(workspace.toAbsolutePath().normalize().toString()), observedPaths)
+        assertEquals(2, waitCount)
+    }
+
+    @Test
+    fun `existing Gradle link is recognized without registering the checkout twice`() {
+        val workspace = tempDir.resolve("workspace").toAbsolutePath().normalize()
+        val linkedProject = GradleProjectSettings().apply {
+            externalProjectPath = workspace.resolve(".").toString()
+        }
+
+        assertTrue(
+            HeadlessGradleProjectImportBridge.hasLinkedProject(
+                listOf(linkedProject),
+                workspace.toString(),
+            ),
+        )
+        assertEquals(
+            false,
+            HeadlessGradleProjectImportBridge.hasLinkedProject(
+                listOf(linkedProject),
+                workspace.resolveSibling("other").toString(),
+            ),
+        )
+    }
+
+    @Test
+    fun `concurrent Gradle sync failure is recognized as existing work`() {
+        assertTrue(
+            HeadlessGradleProjectImportBridge.isConcurrentGradleSyncFailure(
+                RuntimeException("Another 'Sync project' task is currently running for the project: /workspace"),
+            ),
+        )
+    }
+
+    @Test
+    fun `Java-only source modules do not weaken Kotlin compiler readiness`() {
+        val readiness = modelReadiness(
+            moduleNames = listOf(":app", ":java-support"),
+            kotlinSourceModuleNames = listOf(":app"),
+            compilerReadyKotlinModuleNames = listOf(":app"),
+        )
+
+        assertTrue(readiness.compilerReady)
+        assertEquals(emptyList<String>(), readiness.unavailableKotlinModuleNames)
+    }
+
+    @Test
+    fun `Gradle bootstrap waits through a recovered but temporarily unusable compiler model`() {
+        val workspace = tempDir.resolve("workspace")
+        var waitCount = 0
+        var retryCount = 0
+        val modelSnapshots = ArrayDeque(
+            listOf(
+                modelReadiness(
+                    moduleNames = listOf(":app"),
+                    compilerReadyKotlinModuleNames = emptyList(),
+                ),
+                modelReadiness(
+                    moduleNames = listOf(":app"),
+                    compilerReadyKotlinModuleNames = emptyList(),
+                ),
+                modelReadiness(
+                    moduleNames = listOf(":app"),
+                    compilerReadyKotlinModuleNames = emptyList(),
+                ),
+                modelReadiness(moduleNames = listOf(":app")),
+            ),
+        )
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
+            waitForProjectModel = { waitCount += 1 },
+            inspectProjectModel = { modelSnapshots.removeFirst() },
+            canLinkGradleProject = { _, _ -> true },
+            linkAndImportGradleProject = { _, _ -> },
+            waitBeforeReadinessRetry = { retryCount += 1 },
+            maxReadinessChecks = 2,
+        )
+
+        val result = bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+
+        assertEquals(
+            HeadlessProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
+            result,
+        )
+        assertEquals(3, waitCount)
+        assertEquals(1, retryCount)
     }
 
     @Test
     fun `Gradle bootstrap fails when sync still reports no modules`() {
         val workspace = tempDir.resolve("workspace")
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = {},
-            moduleNames = { emptyList() },
+            inspectProjectModel = { modelReadiness() },
             canLinkGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, _ -> },
+            waitBeforeReadinessRetry = {},
+            maxReadinessChecks = 1,
         )
 
         assertThrows(HeadlessGradleModelUnavailableException::class.java) {
             bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
         }
     }
+
+    private fun modelReadiness(
+        moduleNames: List<String> = emptyList(),
+        kotlinSourceModuleNames: List<String> = moduleNames,
+        compilerReadyKotlinModuleNames: List<String> = kotlinSourceModuleNames,
+    ): HeadlessGradleModelReadiness = HeadlessGradleModelReadiness(
+        moduleNames = moduleNames.sorted(),
+        kotlinSourceModuleNames = kotlinSourceModuleNames.sorted(),
+        compilerReadyKotlinModuleNames = compilerReadyKotlinModuleNames.sorted(),
+    )
 
     private fun projectStub(): Project =
         Proxy.newProxyInstance(

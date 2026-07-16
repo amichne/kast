@@ -18,9 +18,18 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
 import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
+import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -263,6 +272,50 @@ class KastProjectOpenAutoIndexingTest {
             assertEquals(listOf("demo.target"), snapshot.importsByPath.getValue(callerPath))
             assertTrue(store.loadManifest().orEmpty().keys.containsAll(setOf(callerPath, targetPath)))
             assertTrue(store.referencesToSymbol("demo.target").any { row -> row.sourcePath == callerPath })
+            val exactReferences = store.generatedReferencePageToExactSymbol(
+                target = ExactReferenceTarget(
+                    fqName = "demo.target",
+                    declarationFile = NormalizedPath.parse(targetPath),
+                    declarationStartOffset = NonNegativeInt(targetFile.text.indexOf("target")),
+                ),
+                offset = NonNegativeInt(0),
+                maxResults = PositiveInt(10),
+            )
+            assertEquals(2, exactReferences.page.references.size)
+            assertTrue(
+                exactReferences.page.references.all { reference -> reference.sourcePath == callerPath },
+                "reference target offsets must use the same name identity returned by exact symbol resolution",
+            )
+            val lookup = ReferenceIndexLookup { target, offset, maxResults ->
+                val generated = store.generatedReferencePageToExactSymbol(target, offset, maxResults)
+                if (generated.exactIdentityAvailable) {
+                    IndexedReferenceLookupResult.Ready(generated.page, generated.generation)
+                } else {
+                    IndexedReferenceLookupResult.IdentityUnavailable(generated.generation)
+                }
+            }
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 500,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
+                referenceIndexLookup = lookup,
+            ).use { backend ->
+                val result = runBlocking {
+                    backend.findReferences(
+                        ReferencesQuery(
+                            position = FilePosition(targetPath, targetFile.text.indexOf("target")),
+                            maxResults = 10,
+                        ),
+                    )
+                }
+                assertEquals(ResultCardinality.Exact(2), result.cardinality)
+                assertEquals(2, result.references.size)
+                assertEquals(true, result.searchScope?.exhaustive)
+            }
         }
     }
 

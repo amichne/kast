@@ -36,7 +36,7 @@ use crate::{output, runtime, validate};
 use clap::CommandFactory;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 
 include!("agent/types.rs");

@@ -26,6 +26,7 @@ or navigation.
 | CLI operator | `docs/use/choose-a-command.md` | Choose the high-level command family for inspection, editing, automation, or release work | `docs/reference/commands.md` |
 | Kotlin maintainer | `docs/use/inspect-kotlin.md` | Understand how agents resolve Kotlin symbols, references, callers, diagnostics, and impact before acting | `docs/use/plan-safe-edits.md` |
 | Release or mirror engineer | `docs/distribute/release-and-mirror.md` | Package, verify, mirror, or activate release artifacts | `docs/distribute/runtime-artifact-contract.md` |
+| Kast contributor | `docs/distribute/local-development-refresh.md` | Build and exercise one exact checkout without publishing a release | `docs/reference/runtime-and-output.md` |
 | Stuck reader | `docs/troubleshoot.md` | Separate install drift, backend state, indexing, semantic failures, and mutation planning | Relevant install, use, or reference page |
 | Architecture-curious reader | `docs/design/operating-model.md` | Understand why Kast separates distribution, setup, runtime, semantic commands, and evidence | Relevant journey page |
 
@@ -53,6 +54,7 @@ turning one page into a mixed narrative.
 | `docs/reference/runtime-and-output.md` | Reference | Look up runtime and public output behavior | Mention only readable and JSON output publicly |
 | `docs/troubleshoot.md` | Diagnostic how-to/reference matrix | Diagnose visible install, backend, indexing, semantic, and mutation failures | Keep read-only command sequences collapsed |
 | `docs/distribute/release-and-mirror.md` | How-to guide | Build, verify, mirror, and activate release artifacts | Link runtime manifest facts to contract reference |
+| `docs/distribute/local-development-refresh.md` | How-to guide | Refresh, verify, roll back, or remove one revision-coherent checkout authority | Keep internal attestation commands behind the one Gradle entrypoint |
 | `docs/distribute/runtime-artifact-contract.md` | Reference | Look up bundle, manifest, checksum, and ledger contracts | Keep schema link current |
 | `docs/design/operating-model.md` | Explanation | Understand system boundaries that affect operations | Do not turn into broad architecture essay |
 
