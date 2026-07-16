@@ -51,6 +51,9 @@ import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorOperationFamily
@@ -92,11 +95,13 @@ import io.github.amichne.kast.testing.AnalysisBackendContractFixture
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -569,6 +574,11 @@ class AnalysisDispatcherTest {
 
         val degraded = assertInstanceOf(KastCallersDegradedResponse::class.java, result)
         assertEquals(KastCallDegradedReason.CALL_HIERARCHY_UNAVAILABLE, degraded.reason)
+        assertEquals(ResultCardinality.KnownMinimum(0), degraded.evidence.cardinality)
+        assertEquals(
+            listOf(RelationshipSearchLimitation.BACKEND_UNAVAILABLE),
+            degraded.evidence.coverage.limitations,
+        )
         assertEquals(0, backend.callRelationCalls)
     }
 
@@ -627,7 +637,95 @@ class AnalysisDispatcherTest {
 
         val degraded = assertInstanceOf(KastHierarchyDegradedResponse::class.java, result)
         assertEquals(KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED, degraded.reason)
+        assertEquals(ResultCardinality.KnownMinimum(0), degraded.evidence.cardinality)
+        assertEquals(
+            listOf(RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED),
+            degraded.evidence.coverage.limitations,
+        )
         assertEquals(1, backend.hierarchyRelationCalls)
+    }
+
+    @Test
+    fun `relationship provider timeouts return typed zero-work evidence`() {
+        assertRelationshipInterruption(
+            mode = RelationshipInterruptionMode.TIMEOUT,
+            expectedReason = "TIMEOUT",
+            expectedLimitation = RelationshipSearchLimitation.TIMED_OUT,
+        )
+    }
+
+    @Test
+    fun `relationship provider cancellation returns typed zero-work evidence`() {
+        assertRelationshipInterruption(
+            mode = RelationshipInterruptionMode.CANCELLED,
+            expectedReason = "CANCELLED",
+            expectedLimitation = RelationshipSearchLimitation.CANCELLED,
+        )
+    }
+
+    private fun assertRelationshipInterruption(
+        mode: RelationshipInterruptionMode,
+        expectedReason: String,
+        expectedLimitation: RelationshipSearchLimitation,
+    ) {
+        val function = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val type = lookupSymbol("sample.Service", SymbolKind.CLASS, "Service.kt", startOffset = 40)
+        val backend = InterruptingRelationshipsBackend(
+            delegate = ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(function, type),
+            ),
+            mode = mode,
+        )
+        val requests = listOf(
+            "symbol/references" to json.encodeToJsonElement(
+                KastReferencesRequest.serializer(),
+                KastReferencesRequest(tempDir.toString(), selector = function.exactSelector()),
+            ),
+            "symbol/callers" to json.encodeToJsonElement(
+                KastCallersRequest.serializer(),
+                KastCallersRequest(tempDir.toString(), selector = function.exactSelector()),
+            ),
+            "symbol/implementations" to json.encodeToJsonElement(
+                KastImplementationsRequest.serializer(),
+                KastImplementationsRequest(tempDir.toString(), selector = type.exactSelector()),
+            ),
+            "symbol/hierarchy" to json.encodeToJsonElement(
+                KastHierarchyRequest.serializer(),
+                KastHierarchyRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = type.exactSelector(),
+                    direction = TypeHierarchyDirection.BOTH,
+                ),
+            ),
+        )
+        val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
+
+        requests.forEachIndexed { index, (method, params) ->
+            val raw = runBlocking {
+                dispatcher.dispatch(
+                    JsonRpcRequest(
+                        method = method,
+                        params = params,
+                        id = JsonPrimitive(index + 1),
+                    ),
+                )
+            }
+            assertTrue("result" in json.parseToJsonElement(raw).jsonObject, raw)
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+            val result = success.result.jsonObject
+            val evidence = checkNotNull(result["evidence"]).jsonObject
+            val cardinality = checkNotNull(evidence["cardinality"]).jsonObject
+            val coverage = checkNotNull(evidence["coverage"]).jsonObject
+            val limitations = checkNotNull(coverage["limitations"]).jsonArray
+                .map { limitation -> (limitation as JsonPrimitive).content }
+
+            assertEquals("DEGRADED", (result["type"] as JsonPrimitive).content, method)
+            assertEquals(expectedReason, (result["reason"] as JsonPrimitive).content, method)
+            assertEquals("KNOWN_MINIMUM", (cardinality["type"] as JsonPrimitive).content, method)
+            assertEquals("0", (cardinality["knownMinimumCount"] as JsonPrimitive).content, method)
+            assertTrue(expectedLimitation.name in limitations, "$method: $limitations")
+        }
     }
 
     @Test
@@ -878,7 +976,7 @@ class AnalysisDispatcherTest {
         )
 
         val firstPage = assertInstanceOf(KastReferencesAvailableResponse::class.java, firstResult)
-        assertEquals(ResultCardinality.Exact(2), firstPage.cardinality)
+        assertEquals(ResultCardinality.KnownMinimum(2), firstPage.cardinality)
         assertEquals(1, firstPage.references.size)
         assertTrue(checkNotNull(firstPage.page).truncated)
         assertTrue(firstPage.page?.nextPageToken != null)
@@ -2323,6 +2421,34 @@ private class DispatcherCancellationHealthBackend(
     override suspend fun health() = throw CancellationException("backend cancelled")
 }
 
+private enum class RelationshipInterruptionMode {
+    TIMEOUT,
+    CANCELLED,
+}
+
+private class InterruptingRelationshipsBackend(
+    private val delegate: AnalysisBackend,
+    private val mode: RelationshipInterruptionMode,
+) : AnalysisBackend by delegate {
+    override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult = interrupt()
+
+    override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult = interrupt()
+
+    override suspend fun implementationRelations(
+        query: KastImplementationsQuery,
+    ): ImplementationRelationsResult = interrupt()
+
+    override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult = interrupt()
+
+    private suspend fun interrupt(): Nothing = when (mode) {
+        RelationshipInterruptionMode.TIMEOUT -> withTimeout(1) {
+            delay(100)
+            error("Relationship provider timeout was not enforced")
+        }
+        RelationshipInterruptionMode.CANCELLED -> throw CancellationException("Relationship provider cancelled")
+    }
+}
+
 private class CapturingApplyEditsBackend(
     private val delegate: AnalysisBackend,
 ) : AnalysisBackend by delegate {
@@ -2527,24 +2653,27 @@ private class RecordingPagedRelationshipsBackend(
 
     override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult {
         callRelationCalls += 1
-        return CallRelationsResult(emptyList(), emptyRelationPage())
+        return CallRelationsResult.Available(emptyList(), emptyRelationPage())
     }
 
     override suspend fun implementationRelations(
         query: KastImplementationsQuery,
     ): ImplementationRelationsResult {
         implementationRelationCalls += 1
-        return ImplementationRelationsResult(emptyList(), emptyRelationPage())
+        return ImplementationRelationsResult.Available(emptyList(), emptyRelationPage())
     }
 
     override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult {
         hierarchyRelationCalls += 1
         hierarchyFailure?.let { throw it }
-        return HierarchyRelationsResult(emptyList(), emptyRelationPage())
+        return HierarchyRelationsResult.Available(emptyList(), emptyRelationPage())
     }
 
     private fun emptyRelationPage(): RelationTraversalPageInfo = RelationTraversalPageInfo.create(
-        cardinality = ResultCardinality.Exact(0),
+        evidence = RelationshipResultEvidence.Complete(
+            cardinality = ResultCardinality.Exact(0),
+            coverage = RelationshipSearchCoverage.complete(),
+        ),
         returnedCount = 0,
         returnedBefore = 0,
         visitedCandidateCount = 0,

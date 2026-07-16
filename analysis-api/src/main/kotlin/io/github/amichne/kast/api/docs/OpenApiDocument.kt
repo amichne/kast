@@ -55,6 +55,10 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
@@ -262,6 +266,34 @@ object OpenApiDocument {
         registry.register("ResultCardinality", ResultCardinality.serializer())
         registry.register("EXACT", ResultCardinality.Exact.serializer())
         registry.register("KNOWN_MINIMUM", ResultCardinality.KnownMinimum.serializer())
+        registry.register("RelationshipCoverageStatus", RelationshipCoverageStatus.serializer())
+        registry.register("RelationshipSearchLimitation", RelationshipSearchLimitation.serializer())
+        registry.register("RelationshipSearchCoverage", RelationshipSearchCoverage.serializer())
+        registry.register(
+            "RelationshipSearchCoverage.Complete",
+            RelationshipSearchCoverage.Complete.serializer(),
+        )
+        registry.register(
+            "RelationshipSearchCoverage.Resumable",
+            RelationshipSearchCoverage.Resumable.serializer(),
+        )
+        registry.register(
+            "RelationshipSearchCoverage.Limited",
+            RelationshipSearchCoverage.Limited.serializer(),
+        )
+        registry.register("RelationshipResultEvidence", RelationshipResultEvidence.serializer())
+        registry.register(
+            "RelationshipResultEvidence.Complete",
+            RelationshipResultEvidence.Complete.serializer(),
+        )
+        registry.register(
+            "RelationshipResultEvidence.Resumable",
+            RelationshipResultEvidence.Resumable.serializer(),
+        )
+        registry.register(
+            "RelationshipResultEvidence.Limited",
+            RelationshipResultEvidence.Limited.serializer(),
+        )
         registry.register("ReferencesResult", ReferencesResult.serializer())
         registry.register("CallHierarchyQuery", CallHierarchyQuery.serializer())
         registry.register("CallHierarchyResult", CallHierarchyResult.serializer())
@@ -806,6 +838,54 @@ internal class SchemaRegistry {
                 ResultCardinality.KnownMinimum.serializer(),
                 discriminatorValue = "KNOWN_MINIMUM",
             )
+            "RelationshipResultEvidence" -> discriminatedUnion(
+                "type",
+                "COMPLETE" to "RelationshipResultEvidence.Complete",
+                "RESUMABLE" to "RelationshipResultEvidence.Resumable",
+                "LIMITED" to "RelationshipResultEvidence.Limited",
+            )
+            "RelationshipResultEvidence.Complete" -> relationshipEvidenceVariant(
+                discriminatorValue = "COMPLETE",
+                cardinalityComponent = "EXACT",
+                coverageComponent = "RelationshipSearchCoverage.Complete",
+            )
+            "RelationshipResultEvidence.Resumable" -> relationshipEvidenceVariant(
+                discriminatorValue = "RESUMABLE",
+                cardinalityComponent = "KNOWN_MINIMUM",
+                coverageComponent = "RelationshipSearchCoverage.Resumable",
+            )
+            "RelationshipResultEvidence.Limited" -> relationshipEvidenceVariant(
+                discriminatorValue = "LIMITED",
+                cardinalityComponent = "KNOWN_MINIMUM",
+                coverageComponent = "RelationshipSearchCoverage.Limited",
+            )
+            "RelationshipSearchCoverage" -> discriminatedUnion(
+                "type",
+                "COMPLETE" to "RelationshipSearchCoverage.Complete",
+                "RESUMABLE" to "RelationshipSearchCoverage.Resumable",
+                "LIMITED" to "RelationshipSearchCoverage.Limited",
+            )
+            "RelationshipSearchCoverage.Complete" -> relationshipCoverageVariant(
+                discriminatorValue = "COMPLETE",
+                fixedStatuses = relationshipCoverageDimensions.associateWith { "COMPLETE" },
+                limitationsMinimum = 0,
+                limitationsMaximum = 0,
+            )
+            "RelationshipSearchCoverage.Resumable" -> relationshipCoverageVariant(
+                discriminatorValue = "RESUMABLE",
+                fixedStatuses = relationshipCoverageDimensions.associateWith { dimension ->
+                    if (dimension == "requestedFamily") "IN_PROGRESS" else "COMPLETE"
+                },
+                limitationsMinimum = 1,
+                limitationsMaximum = 1,
+                fixedLimitation = "FAMILY_SEARCH_IN_PROGRESS",
+            )
+            "RelationshipSearchCoverage.Limited" -> relationshipCoverageVariant(
+                discriminatorValue = "LIMITED",
+                fixedStatuses = emptyMap(),
+                limitationsMinimum = 1,
+                limitationsMaximum = null,
+            )
             "WorkspaceFilesContinuationQuery" -> discriminatedUnion(
                 "action",
                 "ISSUE" to "WorkspaceFilesContinuationQuery.Issue",
@@ -903,6 +983,62 @@ internal class SchemaRegistry {
             )
             else -> null
         }
+
+    private fun relationshipEvidenceVariant(
+        discriminatorValue: String,
+        cardinalityComponent: String,
+        coverageComponent: String,
+    ): Map<String, Any?> = linkedMapOf(
+        "type" to "object",
+        "properties" to linkedMapOf(
+            "type" to linkedMapOf("type" to "string", "const" to discriminatorValue),
+            "cardinality" to refSchema(cardinalityComponent),
+            "coverage" to refSchema(coverageComponent),
+        ),
+        "additionalProperties" to false,
+        "required" to listOf("type", "cardinality", "coverage"),
+    )
+
+    private fun relationshipCoverageVariant(
+        discriminatorValue: String,
+        fixedStatuses: Map<String, String>,
+        limitationsMinimum: Int,
+        limitationsMaximum: Int?,
+        fixedLimitation: String? = null,
+    ): Map<String, Any?> {
+        val properties = linkedMapOf<String, Any?>(
+            "type" to linkedMapOf("type" to "string", "const" to discriminatorValue),
+        )
+        relationshipCoverageDimensions.forEach { dimension ->
+            properties[dimension] = fixedStatuses[dimension]?.let { status ->
+                linkedMapOf("type" to "string", "const" to status)
+            } ?: refSchema("RelationshipCoverageStatus")
+        }
+        properties["limitations"] = linkedMapOf<String, Any?>(
+            "type" to "array",
+            "items" to (fixedLimitation?.let { limitation ->
+                linkedMapOf("type" to "string", "const" to limitation)
+            } ?: refSchema("RelationshipSearchLimitation")),
+            "minItems" to limitationsMinimum,
+        ).also { limitations ->
+            limitationsMaximum?.let { maximum -> limitations["maxItems"] = maximum }
+        }
+        return linkedMapOf(
+            "type" to "object",
+            "properties" to properties,
+            "additionalProperties" to false,
+            "required" to listOf("type") + relationshipCoverageDimensions + "limitations",
+        )
+    }
+
+    private val relationshipCoverageDimensions = listOf(
+        "identity",
+        "projectScope",
+        "sourceSetScope",
+        "indexFreshness",
+        "backend",
+        "requestedFamily",
+    )
 
     private fun continuationQueryVariant(
         action: String,

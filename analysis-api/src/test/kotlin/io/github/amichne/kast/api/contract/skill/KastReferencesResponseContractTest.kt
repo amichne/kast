@@ -10,6 +10,9 @@ import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -57,11 +60,21 @@ class KastReferencesResponseContractTest {
             ),
             containingSymbol = ContainingSymbolEvidence.TopLevel,
         )
+        val resumableEvidence = RelationshipResultEvidence.Resumable(
+            cardinality = ResultCardinality.KnownMinimum(2),
+            coverage = RelationshipSearchCoverage.resumable(),
+        )
+        fun limitedEvidence(
+            limitation: RelationshipSearchLimitation,
+        ): RelationshipResultEvidence.Limited = RelationshipResultEvidence.Limited(
+            cardinality = ResultCardinality.KnownMinimum(0),
+            coverage = RelationshipSearchCoverage.limited(limitation),
+        )
         val responses: Map<String, KastReferencesResponse> = mapOf(
             "AVAILABLE" to KastReferencesAvailableResponse(
                 subject = subject,
                 references = listOf(occurrence),
-                cardinality = ResultCardinality.KnownMinimum(2),
+                evidence = resumableEvidence,
                 page = PageInfo(
                     truncated = true,
                     nextPageToken = "00000000-0000-0000-0000-000000000338",
@@ -74,20 +87,38 @@ class KastReferencesResponseContractTest {
                 selector,
                 subject,
                 KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
+                limitedEvidence(RelationshipSearchLimitation.BACKEND_INCOMPLETE),
             ),
             "CURSOR_STALE" to KastReferencesCursorStaleResponse(
                 selector,
                 RelationCursorStaleReason.GENERATION_CHANGED,
+                limitedEvidence(RelationshipSearchLimitation.GENERATION_CHANGED),
             ),
             "CURSOR_INVALID" to KastReferencesCursorInvalidResponse(
                 selector,
                 RelationCursorInvalidReason.UNKNOWN_HANDLE,
+                limitedEvidence(RelationshipSearchLimitation.CONTINUATION_INVALID),
             ),
         )
 
         responses.forEach { (expectedType, response) ->
             val encoded = json.encodeToString(KastReferencesResponse.serializer(), response)
-            assertEquals(expectedType, json.parseToJsonElement(encoded).jsonObject.getValue("type").jsonPrimitive.content)
+            val encodedObject = json.parseToJsonElement(encoded).jsonObject
+            assertEquals(expectedType, encodedObject.getValue("type").jsonPrimitive.content)
+            when (response) {
+                is KastReferencesAvailableResponse -> assertEquals(
+                    "RESUMABLE",
+                    encodedObject.getValue("evidence").jsonObject.getValue("type").jsonPrimitive.content,
+                )
+                is KastReferencesDegradedResponse,
+                is KastReferencesCursorStaleResponse,
+                is KastReferencesCursorInvalidResponse,
+                -> assertEquals(
+                    "LIMITED",
+                    encodedObject.getValue("evidence").jsonObject.getValue("type").jsonPrimitive.content,
+                )
+                else -> Unit
+            }
             assertEquals(response, json.decodeFromString(KastReferencesResponse.serializer(), encoded))
         }
     }

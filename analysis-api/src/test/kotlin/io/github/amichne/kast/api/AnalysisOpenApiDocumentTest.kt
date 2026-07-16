@@ -300,6 +300,29 @@ class AnalysisOpenApiDocumentTest {
     }
 
     @Test
+    fun `relationship evidence schema preserves proof variants and coverage dimensions`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val evidence = yaml.componentSchema("RelationshipResultEvidence")
+        val completeEvidence = yaml.componentSchema("RelationshipResultEvidence.Complete")
+        val coverage = yaml.componentSchema("RelationshipSearchCoverage")
+        val limitedCoverage = yaml.componentSchema("RelationshipSearchCoverage.Limited")
+
+        assertTrue(evidence.contains("oneOf:"))
+        assertTrue(evidence.contains("RelationshipResultEvidence.Complete"))
+        assertTrue(evidence.contains("RelationshipResultEvidence.Resumable"))
+        assertTrue(evidence.contains("RelationshipResultEvidence.Limited"))
+        assertTrue(completeEvidence.contains("#/components/schemas/EXACT"))
+        assertTrue(completeEvidence.contains("#/components/schemas/RelationshipSearchCoverage.Complete"))
+        assertTrue(coverage.contains("RelationshipSearchCoverage.Complete"))
+        assertTrue(coverage.contains("RelationshipSearchCoverage.Resumable"))
+        assertTrue(coverage.contains("RelationshipSearchCoverage.Limited"))
+        assertTrue(limitedCoverage.contains("sourceSetScope:"))
+        assertTrue(limitedCoverage.contains("indexFreshness:"))
+        assertTrue(limitedCoverage.contains("requestedFamily:"))
+        assertTrue(limitedCoverage.contains("minItems: 1"))
+    }
+
+    @Test
     fun `diagnostics schema admits only exact cardinality`() {
         val yaml = OpenApiDocument.renderYaml()
         val diagnosticsSchema = yaml.substringAfter("    DiagnosticsResult:").substringBefore("    Diagnostic:")

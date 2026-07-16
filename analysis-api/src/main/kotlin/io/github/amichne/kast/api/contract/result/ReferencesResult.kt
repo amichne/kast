@@ -18,8 +18,8 @@ data class ReferencesResult(
     val declaration: Symbol? = null,
     @DocField(description = "Reference locations with containing-symbol semantic evidence.")
     val references: List<ReferenceOccurrence>,
-    @DocField(description = "Exact or known-minimum cardinality established by bounded reference work.")
-    val cardinality: ResultCardinality,
+    @DocField(description = "Proof-carrying cardinality and coverage established by bounded reference work.")
+    val evidence: RelationshipResultEvidence,
     @DocField(description = "Pagination metadata when results are truncated.")
     override val page: PageInfo? = null,
     @DocField(description = "Describes the scope and exhaustiveness of the search.")
@@ -27,6 +27,9 @@ data class ReferencesResult(
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 ) : PageableResult<ReferenceOccurrence> {
+    val cardinality: ResultCardinality
+        get() = evidence.cardinality
+
     override val items: List<ReferenceOccurrence>
         get() = references
 

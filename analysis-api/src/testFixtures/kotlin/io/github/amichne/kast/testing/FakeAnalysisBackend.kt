@@ -53,6 +53,9 @@ import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
@@ -1155,7 +1158,19 @@ class FakeAnalysisBackend private constructor(
                     containingSymbol = ContainingSymbolEvidence.TopLevel,
                 )
             },
-            cardinality = io.github.amichne.kast.api.contract.result.ResultCardinality.Exact(totalCount),
+            evidence = if (hasMore) {
+                RelationshipResultEvidence.Resumable(
+                    cardinality = ResultCardinality.KnownMinimum(
+                        minOf(totalCount, Math.addExact(nextOffset, 1)),
+                    ),
+                    coverage = RelationshipSearchCoverage.resumable(),
+                )
+            } else {
+                RelationshipResultEvidence.Complete(
+                    cardinality = ResultCardinality.Exact(totalCount),
+                    coverage = RelationshipSearchCoverage.complete(),
+                )
+            },
             page = if (hasMore) {
                 PageInfo(
                     truncated = true,

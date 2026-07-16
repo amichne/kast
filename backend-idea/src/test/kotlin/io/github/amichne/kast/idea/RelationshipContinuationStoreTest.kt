@@ -13,6 +13,7 @@ import io.github.amichne.kast.api.contract.result.ImplementationRelation
 import io.github.amichne.kast.api.contract.result.RelationTraversalFamily
 import io.github.amichne.kast.api.contract.result.RelationTraversalHandle
 import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.TypeHierarchyRelation
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test
 
 class RelationshipContinuationStoreTest {
     @Test
-    fun `relationship pages prove one extra result and never replay or omit records`() {
+    fun `relationship pages preserve exact snapshot count and never replay or omit records`() {
         val store = store()
         try {
             val records = (0 until 5).map(::hierarchyRecord)
@@ -37,10 +38,10 @@ class RelationshipContinuationStoreTest {
             val third = store.hierarchy(query, secondHandle, null, generation = 7)
 
             assertEquals(listOf(0, 1), offsets(first.records))
-            assertEquals(ResultCardinality.KnownMinimum(3), first.page.cardinality)
+            assertEquals(ResultCardinality.Exact(5), first.page.cardinality)
             assertEquals(3, first.page.visitedCandidateCount)
             assertEquals(listOf(2, 3), offsets(second.records))
-            assertEquals(ResultCardinality.KnownMinimum(5), second.page.cardinality)
+            assertEquals(ResultCardinality.Exact(5), second.page.cardinality)
             assertEquals(3, second.page.visitedCandidateCount)
             assertEquals(listOf(4), offsets(third.records))
             assertEquals(ResultCardinality.Exact(5), third.page.cardinality)
@@ -195,14 +196,45 @@ class RelationshipContinuationStoreTest {
         }
     }
 
-    private fun store(): RelationshipContinuationStore = RelationshipContinuationStore(
-        ServerLimits(
-            maxResults = 1_000,
-            requestTimeoutMillis = 60_000,
-            maxConcurrentRequests = 4,
-            continuationCapacity = 16,
+    private fun store(): ProvenRelationshipStore = ProvenRelationshipStore(
+        RelationshipContinuationStore(
+            ServerLimits(
+                maxResults = 1_000,
+                requestTimeoutMillis = 60_000,
+                maxConcurrentRequests = 4,
+                continuationCapacity = 16,
+            ),
         ),
     )
+
+    private class ProvenRelationshipStore(
+        private val delegate: RelationshipContinuationStore,
+    ) : AutoCloseable {
+        private val coverage = RelationshipSearchCoverage.complete()
+
+        fun calls(
+            query: RelationshipContinuationStore.CallQuery,
+            handle: RelationTraversalHandle?,
+            records: List<CallRelation>?,
+            generation: Long,
+        ) = delegate.calls(query, handle, records, generation, coverage)
+
+        fun implementations(
+            query: RelationshipContinuationStore.ImplementationQuery,
+            handle: RelationTraversalHandle?,
+            records: List<ImplementationRelation>?,
+            generation: Long,
+        ) = delegate.implementations(query, handle, records, generation, coverage)
+
+        fun hierarchy(
+            query: RelationshipContinuationStore.HierarchyQuery,
+            handle: RelationTraversalHandle?,
+            records: List<TypeHierarchyRelation>?,
+            generation: Long,
+        ) = delegate.hierarchy(query, handle, records, generation, coverage)
+
+        override fun close() = delegate.close()
+    }
 
     private fun callQuery(
         direction: WrapperCallDirection,

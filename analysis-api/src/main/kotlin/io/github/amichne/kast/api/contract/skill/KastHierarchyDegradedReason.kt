@@ -8,4 +8,5 @@ enum class KastHierarchyDegradedReason {
     CANDIDATE_BUDGET_REACHED,
     TRAVERSAL_STATE_BUDGET_REACHED,
     TIMEOUT,
+    CANCELLED,
 }

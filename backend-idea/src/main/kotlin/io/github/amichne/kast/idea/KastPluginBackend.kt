@@ -79,6 +79,9 @@ import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
 import io.github.amichne.kast.api.contract.result.ContainingSymbolUnavailableReason
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
@@ -99,6 +102,7 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyRelation
 import io.github.amichne.kast.api.contract.result.RelationTraversalFamily
 import io.github.amichne.kast.api.contract.result.RelationTraversalHandle
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
+import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
 import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
@@ -170,6 +174,12 @@ internal class KastPluginBackend(
     private val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
+    private val relationshipCoverageAuthority: RelationshipCoverageAuthority =
+        IdeaRelationshipCoverageAuthority(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+        ),
 ) : CloseableAnalysisBackend {
 
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
@@ -355,8 +365,10 @@ internal class KastPluginBackend(
                     query = identity,
                     transition = ContinuationStateTransition { state ->
                         val page = referenceContinuationPage(query, state, span)
-                        page.outcome.nextPosition?.let { nextPosition ->
-                            state.advanceTo(page.knownCount, nextPosition)
+                        val nextPosition = page.outcome.nextPosition
+                            ?.takeIf { page.outcome.completion is ReferenceSearchCompletion.Exhaustive }
+                        nextPosition?.let {
+                            state.advanceTo(page.knownCount, it)
                             ContinuationTransition.Reissue(page, identity)
                         } ?: ContinuationTransition.Complete(page)
                     },
@@ -384,7 +396,9 @@ internal class KastPluginBackend(
                     ?: ideaReferenceSearch(query, plan, null, span)
                 val knownCount = outcome.references.size
                 val page = ReferenceContinuationProjection(plan, outcome, knownCount)
-                val token = outcome.nextPosition?.let { nextPosition ->
+                val token = outcome.nextPosition
+                    ?.takeIf { outcome.completion is ReferenceSearchCompletion.Exhaustive }
+                    ?.let { nextPosition ->
                     when (val issued = referenceContinuations.issue(
                         query = identity,
                         state = ReferenceContinuationState(
@@ -404,10 +418,19 @@ internal class KastPluginBackend(
             }
             val plan = projection.plan
             val outcome = projection.outcome
-            val cardinality = if (outcome.hasMoreEvidence || !outcome.completion.exhaustive) {
-                ResultCardinality.KnownMinimum(projection.knownCount)
-            } else {
-                ResultCardinality.Exact(projection.knownCount)
+            val evidence = when (val completion = outcome.completion) {
+                ReferenceSearchCompletion.Exhaustive -> relationshipEvidence(
+                    completion = if (outcome.hasMoreEvidence) {
+                        RelationshipCoverageAuthority.FamilyCompletion.RESUMABLE
+                    } else {
+                        RelationshipCoverageAuthority.FamilyCompletion.COMPLETE
+                    },
+                    knownMinimumCount = projection.knownCount,
+                )
+                is ReferenceSearchCompletion.Partial -> limitedReferenceEvidence(
+                    knownMinimumCount = projection.knownCount,
+                    reason = completion.reason,
+                )
             }
             val page = nextPageToken?.let { token ->
                 PageInfo(
@@ -423,7 +446,7 @@ internal class KastPluginBackend(
             span.setAttribute("kast.references.searchedFileCount", outcome.searchedFileCount)
             span.setAttribute("kast.references.evidenceCount", outcome.consumedEvidence)
             span.setAttribute("kast.references.observedEvidenceCount", outcome.observedEvidence)
-            span.setAttribute("kast.references.knownMinimumCount", cardinality.knownMinimum())
+            span.setAttribute("kast.references.knownMinimumCount", evidence.cardinality.knownMinimum())
             span.setAttribute("kast.references.resultCount", outcome.references.size)
             span.setAttribute("kast.references.exhaustive", outcome.completion.exhaustive)
             span.setAttribute("kast.references.partialReason", outcome.completion.partialReason)
@@ -431,7 +454,7 @@ internal class KastPluginBackend(
             ReferencesResult(
                 declaration = plan.declaration,
                 references = outcome.references,
-                cardinality = cardinality,
+                evidence = evidence,
                 page = page,
                 searchScope = SearchScope(
                     visibility = plan.visibility,
@@ -831,11 +854,6 @@ internal class KastPluginBackend(
                             break
                         }
                         if (currentFile == null) {
-                            if (!activePosition.traversal.exhausted && pathProbes >= REFERENCE_DISCOVERY_PATH_LIMIT) {
-                                completion = ReferenceSearchCompletion.Partial(
-                                    ReferencePartialReason.PATH_BUDGET_EXHAUSTED,
-                                )
-                            }
                             break
                         }
                     }
@@ -1099,6 +1117,18 @@ internal class KastPluginBackend(
                 depth = query.depth,
                 limit = query.maxResults,
             )
+            val initialAdmission = timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.CALL_HIERARCHY,
+                "kast.idea.callRelations.admit",
+            ) {
+                completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.CALLABLE)
+            }
+            val generation = when (initialAdmission) {
+                is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
+                is CompleteRelationshipCoverageAdmission.Limited ->
+                    return@withContext CallRelationsResult.Limited(initialAdmission.evidence)
+            }
             val handle = query.pageToken?.let(RelationTraversalHandle::parse)
             if (handle != null) {
                 return@withContext timedReadAction(
@@ -1106,15 +1136,25 @@ internal class KastPluginBackend(
                     IdeaTelemetryScope.CALL_HIERARCHY,
                     "kast.idea.callRelations.continue",
                 ) {
-                    relationshipContinuations.calls(
-                        continuationQuery,
-                        handle,
-                        null,
-                        psiGeneration(),
-                    )
+                    when (
+                        val commit = completeRelationshipCoverageAdmission(
+                            query.selector,
+                            RelationshipRootKind.CALLABLE,
+                        )
+                    ) {
+                        is CompleteRelationshipCoverageAdmission.Limited ->
+                            CallRelationsResult.Limited(commit.evidence)
+                        is CompleteRelationshipCoverageAdmission.Proven ->
+                            relationshipContinuations.calls(
+                                continuationQuery,
+                                handle,
+                                null,
+                                commit.generation,
+                                commit.coverage,
+                            )
+                    }
                 }
             }
-            val generation = psiGeneration()
             val direction = when (query.direction) {
                 io.github.amichne.kast.api.contract.skill.WrapperCallDirection.INCOMING ->
                     io.github.amichne.kast.api.contract.CallDirection.INCOMING
@@ -1150,13 +1190,24 @@ internal class KastPluginBackend(
                 IdeaTelemetryScope.CALL_HIERARCHY,
                 "kast.idea.callRelations.commit",
             ) {
-                if (psiGeneration() != generation) throw continuationConflict("generationChanged")
-                relationshipContinuations.calls(
-                    continuationQuery,
-                    null,
-                    records,
-                    generation,
-                )
+                when (
+                    val commit = completeRelationshipCoverageAdmission(
+                        query.selector,
+                        RelationshipRootKind.CALLABLE,
+                        requiredGeneration = generation,
+                    )
+                ) {
+                    is CompleteRelationshipCoverageAdmission.Limited ->
+                        CallRelationsResult.Limited(commit.evidence)
+                    is CompleteRelationshipCoverageAdmission.Proven ->
+                        relationshipContinuations.calls(
+                            continuationQuery,
+                            null,
+                            records,
+                            commit.generation,
+                            commit.coverage,
+                        )
+                }
             }
         }
 
@@ -1190,6 +1241,18 @@ internal class KastPluginBackend(
                 depth = query.depth,
                 limit = query.maxResults,
             )
+            val initialAdmission = timedReadAction(
+                telemetry,
+                IdeaTelemetryScope.TYPE_HIERARCHY,
+                "kast.idea.hierarchyRelations.admit",
+            ) {
+                completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.TYPE)
+            }
+            val generation = when (initialAdmission) {
+                is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
+                is CompleteRelationshipCoverageAdmission.Limited ->
+                    return@withContext HierarchyRelationsResult.Limited(initialAdmission.evidence)
+            }
             val handle = query.pageToken?.let(RelationTraversalHandle::parse)
             if (handle != null) {
                 return@withContext timedReadAction(
@@ -1197,15 +1260,25 @@ internal class KastPluginBackend(
                     IdeaTelemetryScope.TYPE_HIERARCHY,
                     "kast.idea.hierarchyRelations.continue",
                 ) {
-                    relationshipContinuations.hierarchy(
-                        continuationQuery,
-                        handle,
-                        null,
-                        psiGeneration(),
-                    )
+                    when (
+                        val commit = completeRelationshipCoverageAdmission(
+                            query.selector,
+                            RelationshipRootKind.TYPE,
+                        )
+                    ) {
+                        is CompleteRelationshipCoverageAdmission.Limited ->
+                            HierarchyRelationsResult.Limited(commit.evidence)
+                        is CompleteRelationshipCoverageAdmission.Proven ->
+                            relationshipContinuations.hierarchy(
+                                continuationQuery,
+                                handle,
+                                null,
+                                commit.generation,
+                                commit.coverage,
+                            )
+                    }
                 }
             }
-            val generation = psiGeneration()
             val directions = when (query.direction) {
                 io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUPERTYPES ->
                     listOf(io.github.amichne.kast.api.contract.TypeHierarchyDirection.SUPERTYPES)
@@ -1248,13 +1321,24 @@ internal class KastPluginBackend(
                 IdeaTelemetryScope.TYPE_HIERARCHY,
                 "kast.idea.hierarchyRelations.commit",
             ) {
-                if (psiGeneration() != generation) throw continuationConflict("generationChanged")
-                relationshipContinuations.hierarchy(
-                    continuationQuery,
-                    null,
-                    records,
-                    generation,
-                )
+                when (
+                    val commit = completeRelationshipCoverageAdmission(
+                        query.selector,
+                        RelationshipRootKind.TYPE,
+                        requiredGeneration = generation,
+                    )
+                ) {
+                    is CompleteRelationshipCoverageAdmission.Limited ->
+                        HierarchyRelationsResult.Limited(commit.evidence)
+                    is CompleteRelationshipCoverageAdmission.Proven ->
+                        relationshipContinuations.hierarchy(
+                            continuationQuery,
+                            null,
+                            records,
+                            commit.generation,
+                            commit.coverage,
+                        )
+                }
             }
         }
 
@@ -1309,6 +1393,18 @@ internal class KastPluginBackend(
             selector = query.selector,
             limit = query.maxResults,
         )
+        val initialAdmission = timedReadAction(
+            telemetry,
+            IdeaTelemetryScope.IMPLEMENTATIONS,
+            "kast.idea.implementationRelations.admit",
+        ) {
+            completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.TYPE)
+        }
+        val generation = when (initialAdmission) {
+            is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
+            is CompleteRelationshipCoverageAdmission.Limited ->
+                return@withContext ImplementationRelationsResult.Limited(initialAdmission.evidence)
+        }
         val handle = query.pageToken?.let(RelationTraversalHandle::parse)
         if (handle != null) {
             return@withContext timedReadAction(
@@ -1316,15 +1412,25 @@ internal class KastPluginBackend(
                 IdeaTelemetryScope.IMPLEMENTATIONS,
                 "kast.idea.implementationRelations.continue",
             ) {
-                relationshipContinuations.implementations(
-                    continuationQuery,
-                    handle,
-                    null,
-                    psiGeneration(),
-                )
+                when (
+                    val commit = completeRelationshipCoverageAdmission(
+                        query.selector,
+                        RelationshipRootKind.TYPE,
+                    )
+                ) {
+                    is CompleteRelationshipCoverageAdmission.Limited ->
+                        ImplementationRelationsResult.Limited(commit.evidence)
+                    is CompleteRelationshipCoverageAdmission.Proven ->
+                        relationshipContinuations.implementations(
+                            continuationQuery,
+                            handle,
+                            null,
+                            commit.generation,
+                            commit.coverage,
+                        )
+                }
             }
         }
-        val generation = psiGeneration()
         val result = implementations(
             io.github.amichne.kast.api.contract.query.ImplementationsQuery(
                 position = io.github.amichne.kast.api.contract.FilePosition(
@@ -1349,13 +1455,24 @@ internal class KastPluginBackend(
             IdeaTelemetryScope.IMPLEMENTATIONS,
             "kast.idea.implementationRelations.commit",
         ) {
-            if (psiGeneration() != generation) throw continuationConflict("generationChanged")
-            relationshipContinuations.implementations(
-                continuationQuery,
-                null,
-                records,
-                generation,
-            )
+            when (
+                val commit = completeRelationshipCoverageAdmission(
+                    query.selector,
+                    RelationshipRootKind.TYPE,
+                    requiredGeneration = generation,
+                )
+            ) {
+                is CompleteRelationshipCoverageAdmission.Limited ->
+                    ImplementationRelationsResult.Limited(commit.evidence)
+                is CompleteRelationshipCoverageAdmission.Proven ->
+                    relationshipContinuations.implementations(
+                        continuationQuery,
+                        null,
+                        records,
+                        commit.generation,
+                        commit.coverage,
+                    )
+            }
         }
     }
 
@@ -2233,6 +2350,157 @@ internal class KastPluginBackend(
             containingType = containingDeclaration,
         )
 
+    private fun relationshipEvidence(
+        completion: RelationshipCoverageAuthority.FamilyCompletion,
+        knownMinimumCount: Int,
+    ): RelationshipResultEvidence {
+        val coverage = relationshipCoverageAuthority.assess(completion)
+        return when {
+            completion == RelationshipCoverageAuthority.FamilyCompletion.COMPLETE &&
+                coverage is RelationshipSearchCoverage.Complete -> RelationshipResultEvidence.Complete(
+                cardinality = ResultCardinality.Exact(knownMinimumCount),
+                coverage = coverage,
+            )
+            completion == RelationshipCoverageAuthority.FamilyCompletion.RESUMABLE &&
+                coverage is RelationshipSearchCoverage.Resumable -> RelationshipResultEvidence.Resumable(
+                cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
+                coverage = coverage,
+            )
+            coverage is RelationshipSearchCoverage.Limited -> RelationshipResultEvidence.Limited(
+                cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
+                coverage = coverage,
+            )
+            else -> RelationshipResultEvidence.Limited(
+                cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
+                coverage = RelationshipSearchCoverage.limited(
+                    RelationshipSearchLimitation.BACKEND_INCOMPLETE,
+                    RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+                ),
+            )
+        }
+    }
+
+    private fun limitedReferenceEvidence(
+        knownMinimumCount: Int,
+        reason: ReferencePartialReason,
+    ): RelationshipResultEvidence.Limited {
+        val authorityLimitations = when (
+            val coverage = relationshipCoverageAuthority.assess(
+                RelationshipCoverageAuthority.FamilyCompletion.INCOMPLETE,
+            )
+        ) {
+            is RelationshipSearchCoverage.Limited -> coverage.limitations
+            is RelationshipSearchCoverage.Complete,
+            is RelationshipSearchCoverage.Resumable,
+            -> listOf(RelationshipSearchLimitation.BACKEND_INCOMPLETE)
+        }
+        return RelationshipResultEvidence.Limited(
+            cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
+            coverage = RelationshipSearchCoverage.Limited.from(
+                authorityLimitations + reason.limitation +
+                    RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            ),
+        )
+    }
+
+    private fun completeRelationshipCoverageAdmission(
+        selector: KastExactSymbolSelector,
+        rootKind: RelationshipRootKind,
+        requiredGeneration: Long? = null,
+    ): CompleteRelationshipCoverageAdmission {
+        if (requiredGeneration != null && psiGeneration() != requiredGeneration) {
+            return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.GENERATION_CHANGED)
+        }
+        if (!relationshipSelectorMatches(selector, rootKind)) {
+            return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.IDENTITY_UNPROVEN)
+        }
+        val coverage = relationshipCoverageAuthority.assess(
+            RelationshipCoverageAuthority.FamilyCompletion.COMPLETE,
+        )
+        val generation = psiGeneration()
+        if (requiredGeneration != null && generation != requiredGeneration) {
+            return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.GENERATION_CHANGED)
+        }
+        return when (coverage) {
+            is RelationshipSearchCoverage.Complete ->
+                CompleteRelationshipCoverageAdmission.Proven(coverage, generation)
+            is RelationshipSearchCoverage.Limited ->
+                CompleteRelationshipCoverageAdmission.Limited(
+                    RelationshipResultEvidence.Limited(
+                        cardinality = ResultCardinality.KnownMinimum(0),
+                        coverage = coverage,
+                    ),
+                )
+            is RelationshipSearchCoverage.Resumable ->
+                CompleteRelationshipCoverageAdmission.Limited(
+                    RelationshipResultEvidence.Limited(
+                        cardinality = ResultCardinality.KnownMinimum(0),
+                        coverage = RelationshipSearchCoverage.limited(
+                            RelationshipSearchLimitation.BACKEND_INCOMPLETE,
+                            RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+                        ),
+                    ),
+                )
+        }
+    }
+
+    private fun relationshipSelectorMatches(
+        selector: KastExactSymbolSelector,
+        rootKind: RelationshipRootKind,
+    ): Boolean = try {
+        val selectorPath = NormalizedPath.parse(selector.declarationFile)
+        val file = findKtFile(selectorPath.value)
+        val resolved = resolveTarget(file, selector.declarationStartOffset)
+        val target = when (rootKind) {
+            RelationshipRootKind.CALLABLE -> resolved
+            RelationshipRootKind.TYPE -> resolved.typeHierarchyDeclaration() ?: resolved
+        }
+        val symbol = analyze(file) {
+            target.toSymbolModel(
+                containingDeclaration = compilerContainingDeclarationName(target),
+            )
+        }
+        selector.fqName == symbol.fqName &&
+            selectorPath == NormalizedPath.parse(symbol.location.filePath) &&
+            selector.declarationStartOffset == symbol.location.startOffset &&
+            (selector.kind == null || selector.kind == symbol.kind) &&
+            (selector.containingType == null || selector.containingType == symbol.containingDeclaration)
+    } catch (failure: ProcessCanceledException) {
+        throw failure
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun limitedRelationshipCoverageAdmission(
+        limitation: RelationshipSearchLimitation,
+    ): CompleteRelationshipCoverageAdmission.Limited = CompleteRelationshipCoverageAdmission.Limited(
+        RelationshipResultEvidence.Limited(
+            cardinality = ResultCardinality.KnownMinimum(0),
+            coverage = RelationshipSearchCoverage.limited(
+                limitation,
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            ),
+        ),
+    )
+
+    private enum class RelationshipRootKind {
+        CALLABLE,
+        TYPE,
+    }
+
+    private sealed interface CompleteRelationshipCoverageAdmission {
+        data class Proven(
+            val coverage: RelationshipSearchCoverage.Complete,
+            val generation: Long,
+        ) : CompleteRelationshipCoverageAdmission
+
+        data class Limited(
+            val evidence: RelationshipResultEvidence.Limited,
+        ) : CompleteRelationshipCoverageAdmission
+    }
+
     private fun continuationConflict(reason: String): ConflictException = ConflictException(
         message = "Relationship traversal could not preserve bounded exact evidence",
         details = mapOf("continuationFailure" to reason),
@@ -2467,13 +2735,28 @@ private sealed interface ReferenceSearchCompletion {
 }
 
 private enum class ReferencePartialReason {
-    REQUEST_BUDGET_EXHAUSTED,
-    PATH_BUDGET_EXHAUSTED,
-    PSI_RESOLUTION_FAILED,
-    COMPILER_PROVIDER_LIMIT_EXHAUSTED,
-    FILE_BUDGET_EXHAUSTED,
-    TARGET_INVALIDATED,
-    INDEX_LOCATION_UNRESOLVED,
+    REQUEST_BUDGET_EXHAUSTED {
+        override val limitation: RelationshipSearchLimitation = RelationshipSearchLimitation.TIMED_OUT
+    },
+    PSI_RESOLUTION_FAILED {
+        override val limitation: RelationshipSearchLimitation = RelationshipSearchLimitation.BACKEND_INCOMPLETE
+    },
+    COMPILER_PROVIDER_LIMIT_EXHAUSTED {
+        override val limitation: RelationshipSearchLimitation =
+            RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED
+    },
+    FILE_BUDGET_EXHAUSTED {
+        override val limitation: RelationshipSearchLimitation = RelationshipSearchLimitation.TIMED_OUT
+    },
+    TARGET_INVALIDATED {
+        override val limitation: RelationshipSearchLimitation = RelationshipSearchLimitation.GENERATION_CHANGED
+    },
+    INDEX_LOCATION_UNRESOLVED {
+        override val limitation: RelationshipSearchLimitation = RelationshipSearchLimitation.INDEX_STALE
+    },
+    ;
+
+    abstract val limitation: RelationshipSearchLimitation
 }
 
 private class ReferenceSearchBudget(

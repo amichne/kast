@@ -6,12 +6,16 @@ import kotlinx.serialization.Serializable
 @Serializable
 @ConsistentCopyVisibility
 data class RelationTraversalPageInfo private constructor(
-    val cardinality: ResultCardinality,
+    @Serializable(with = RelationshipResultEvidence.CompleteSerializer::class)
+    val evidence: RelationshipResultEvidence.Complete,
     val returnedCount: Int,
     val visitedCandidateCount: Int,
     val truncated: Boolean,
     val nextHandle: RelationTraversalHandle? = null,
 ) {
+    val cardinality: ResultCardinality
+        get() = evidence.cardinality
+
     init {
         require(returnedCount >= 0) { "Returned relationship count must be non-negative" }
         require(visitedCandidateCount >= 0) {
@@ -32,7 +36,7 @@ data class RelationTraversalPageInfo private constructor(
 
     companion object {
         fun create(
-            cardinality: ResultCardinality,
+            evidence: RelationshipResultEvidence.Complete,
             returnedCount: Int,
             returnedBefore: Int,
             visitedCandidateCount: Int,
@@ -49,6 +53,7 @@ data class RelationTraversalPageInfo private constructor(
                 "Visited relationship candidate count cannot exceed its declared limit"
             }
 
+            val cardinality = evidence.cardinality
             val cumulativeReturned = returnedBefore.toLong() + returnedCount.toLong()
             require(cardinality.knownMinimum().toLong() >= cumulativeReturned) {
                 "Relationship cardinality cannot understate cumulative returned results"
@@ -60,7 +65,7 @@ data class RelationTraversalPageInfo private constructor(
             }
 
             return RelationTraversalPageInfo(
-                cardinality = cardinality,
+                evidence = evidence,
                 returnedCount = returnedCount,
                 visitedCandidateCount = visitedCandidateCount,
                 truncated = nextHandle != null,

@@ -182,6 +182,182 @@ jq -e \
   "${tmp_root}/references.json" >/dev/null \
   || die 'installed reference lookup was not known, nonzero, exact, and exhaustive'
 
+coverage_symbol='io.github.amichne.kast.api.coverage.relationshipCoverageAnchor'
+"$kast" --output json agent symbol \
+  --query "$coverage_symbol" \
+  --workspace-root "$repo_root" \
+  --backend headless \
+  --explain >"${tmp_root}/coverage-symbol.json"
+jq -e \
+  --arg symbol "$coverage_symbol" \
+  '.ok == true and
+   .result.outcome.type == "RESOLVED" and
+   .result.outcome.source == "compiler" and
+   .result.outcome.symbol.fqName == $symbol and
+   .result.outcome.symbol.kind == "FUNCTION"' \
+  "${tmp_root}/coverage-symbol.json" >/dev/null \
+  || die 'owned cross-source-set coverage anchor did not resolve from the compiler'
+coverage_file="$(jq -er '.result.outcome.symbol.location.filePath' "${tmp_root}/coverage-symbol.json")"
+coverage_offset="$(jq -er '.result.outcome.symbol.location.startOffset' "${tmp_root}/coverage-symbol.json")"
+coverage_containing_type="$(jq -r '.result.outcome.symbol.containingDeclaration // empty' "${tmp_root}/coverage-symbol.json")"
+coverage_paths="${tmp_root}/coverage-reference-paths.txt"
+coverage_unique_paths="${tmp_root}/coverage-unique-reference-paths.txt"
+coverage_expected_paths="${tmp_root}/coverage-expected-reference-paths.txt"
+: >"$coverage_paths"
+printf '%s\n' \
+  "${repo_root}/analysis-api/src/main/kotlin/io/github/amichne/kast/api/coverage/relationshipCoverageMainUse.kt" \
+  "${repo_root}/analysis-api/src/test/kotlin/io/github/amichne/kast/api/coverage/relationshipCoverageTestUse.kt" \
+  "${repo_root}/analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/api/coverage/relationshipCoverageTestFixtureUse.kt" \
+  | sort >"$coverage_expected_paths"
+coverage_page_token=''
+coverage_page_number=0
+coverage_returned_total=0
+while :; do
+  coverage_page_number=$((coverage_page_number + 1))
+  [[ "$coverage_page_number" -le 64 ]] \
+    || die 'cross-source-set reference paging did not terminate within 64 pages'
+  coverage_args=(
+    --output json agent references
+    --symbol "$coverage_symbol"
+    --declaration-file "$coverage_file"
+    --declaration-start-offset "$coverage_offset"
+    --kind function
+    --workspace-root "$repo_root"
+    --backend headless
+    --limit 1
+    --explain
+  )
+  if [[ -n "$coverage_containing_type" ]]; then
+    coverage_args+=(--containing-type "$coverage_containing_type")
+  fi
+  if [[ -n "$coverage_page_token" ]]; then
+    coverage_args+=(--page-token "$coverage_page_token")
+  fi
+  coverage_page_file="${tmp_root}/coverage-references-${coverage_page_number}.json"
+  "$kast" "${coverage_args[@]}" >"$coverage_page_file"
+  if ! jq -e \
+    '.ok == true and
+     .result.outcome == "AVAILABLE" and
+     .result.page.returnedCount == (.result.records | length)' \
+    "$coverage_page_file" >/dev/null; then
+    jq . "$coverage_page_file" >&2
+    die "cross-source-set reference page ${coverage_page_number} was not available and internally consistent"
+  fi
+  jq -r '.result.records[]?.location.filePath' "$coverage_page_file" >>"$coverage_paths"
+  coverage_returned_total=$((
+    coverage_returned_total + $(jq -er '.result.page.returnedCount' "$coverage_page_file")
+  ))
+  next_coverage_page_token="$(jq -r '.result.page.nextPageToken // empty' "$coverage_page_file")"
+  if [[ -n "$next_coverage_page_token" ]]; then
+    jq -e \
+      --argjson returned "$coverage_returned_total" \
+      '.result.coverage.type == "RESUMABLE" and
+       .result.page.cardinality.type == "KNOWN_MINIMUM" and
+       .result.page.cardinality.knownMinimumCount >= $returned and
+       .result.coverage.requestedFamily == "IN_PROGRESS" and
+       .result.limitations == ["FAMILY_SEARCH_IN_PROGRESS"]' \
+      "$coverage_page_file" >/dev/null \
+      || die "cross-source-set reference page ${coverage_page_number} lost resumable coverage evidence"
+    coverage_page_token="$next_coverage_page_token"
+    continue
+  fi
+  jq -e \
+    --argjson returned "$coverage_returned_total" \
+    --argjson expected_total 3 \
+    '.result.coverage.type == "COMPLETE" and
+     ([.result.coverage.identity,
+       .result.coverage.projectScope,
+       .result.coverage.sourceSetScope,
+       .result.coverage.indexFreshness,
+       .result.coverage.backend,
+       .result.coverage.requestedFamily] | all(. == "COMPLETE")) and
+     $returned == $expected_total and
+     .result.page.cardinality == {"type": "EXACT", "totalCount": $expected_total} and
+     .result.limitations == []' \
+    "$coverage_page_file" >/dev/null \
+    || die 'final cross-source-set reference page did not prove exact complete coverage'
+  break
+done
+[[ "$coverage_page_number" -gt 1 ]] \
+  || die 'cross-source-set reference proof did not exercise paging'
+sort -u "$coverage_paths" >"$coverage_unique_paths"
+if ! diff -u "$coverage_expected_paths" "$coverage_unique_paths"; then
+  die 'cross-source-set reference proof did not return the exact owned main, test, and test-fixture file set'
+fi
+
+zero_symbol='io.github.amichne.kast.testing.RelationshipCoverageFixture.exactZeroAnchor'
+"$kast" --output json agent symbol \
+  --query "$zero_symbol" \
+  --workspace-root "$repo_root" \
+  --backend headless \
+  --explain >"${tmp_root}/zero-symbol.json"
+jq -e \
+  --arg symbol "$zero_symbol" \
+  '.ok == true and
+   .result.outcome.type == "RESOLVED" and
+   .result.outcome.source == "compiler" and
+   .result.outcome.symbol.fqName == $symbol and
+   .result.outcome.symbol.kind == "FUNCTION"' \
+  "${tmp_root}/zero-symbol.json" >/dev/null \
+  || die 'exact-zero relationship fixture did not resolve from the compiler'
+zero_file="$(jq -er '.result.outcome.symbol.location.filePath' "${tmp_root}/zero-symbol.json")"
+zero_offset="$(jq -er '.result.outcome.symbol.location.startOffset' "${tmp_root}/zero-symbol.json")"
+zero_containing_type="$(jq -er '.result.outcome.symbol.containingDeclaration' "${tmp_root}/zero-symbol.json")"
+zero_page_token=''
+zero_page_number=0
+while :; do
+  zero_page_number=$((zero_page_number + 1))
+  [[ "$zero_page_number" -le 64 ]] \
+    || die 'exact-zero reference paging did not terminate within 64 pages'
+  zero_args=(
+    --output json agent references
+    --symbol "$zero_symbol"
+    --declaration-file "$zero_file"
+    --declaration-start-offset "$zero_offset"
+    --kind function
+    --containing-type "$zero_containing_type"
+    --workspace-root "$repo_root"
+    --backend headless
+    --limit 16
+    --count
+  )
+  if [[ -n "$zero_page_token" ]]; then
+    zero_args+=(--page-token "$zero_page_token")
+  fi
+  zero_page_file="${tmp_root}/zero-references-${zero_page_number}.json"
+  "$kast" "${zero_args[@]}" >"$zero_page_file"
+  jq -e \
+    '.ok == true and
+     .result.outcome == "AVAILABLE" and
+     .result.page.returnedCount == 0' \
+    "$zero_page_file" >/dev/null \
+    || die "exact-zero reference page ${zero_page_number} returned a relationship"
+  next_zero_page_token="$(jq -r '.result.page.nextPageToken // empty' "$zero_page_file")"
+  if [[ -n "$next_zero_page_token" ]]; then
+    jq -e \
+      '.result.page.cardinality == {"type": "KNOWN_MINIMUM", "knownMinimumCount": 0} and
+       .result.coverage.type == "RESUMABLE" and
+       .result.limitations == ["FAMILY_SEARCH_IN_PROGRESS"]' \
+      "$zero_page_file" >/dev/null \
+      || die "exact-zero reference page ${zero_page_number} claimed completeness before exhaustion"
+    zero_page_token="$next_zero_page_token"
+    continue
+  fi
+  jq -e \
+    '.result.page.cardinality == {"type": "EXACT", "totalCount": 0} and
+     .result.coverage.type == "COMPLETE" and
+     ([.result.coverage.identity,
+       .result.coverage.projectScope,
+       .result.coverage.sourceSetScope,
+       .result.coverage.indexFreshness,
+       .result.coverage.backend,
+       .result.coverage.requestedFamily] | all(. == "COMPLETE")) and
+     .result.limitations == []' \
+    "$zero_page_file" >/dev/null \
+    || die 'installed exact-zero relationship did not carry complete coverage proof'
+  break
+done
+
 diagnostic_file_args=()
 for diagnostic_file in "${diagnostic_files[@]}"; do
   diagnostic_file_args+=(--file-path "$diagnostic_file")

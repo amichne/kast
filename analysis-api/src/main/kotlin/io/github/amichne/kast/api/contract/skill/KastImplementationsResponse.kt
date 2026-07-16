@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.contract.result.ImplementationRelation
 import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -47,6 +48,8 @@ data class KastImplementationsDegradedResponse(
     val selector: KastExactSymbolSelector,
     val subject: SymbolIdentity,
     val reason: KastImplementationsDegradedReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastImplementationsResponse
 
 @Serializable
@@ -54,6 +57,8 @@ data class KastImplementationsDegradedResponse(
 data class KastImplementationsCursorStaleResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorStaleReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastImplementationsResponse
 
 @Serializable
@@ -61,4 +66,6 @@ data class KastImplementationsCursorStaleResponse(
 data class KastImplementationsCursorInvalidResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorInvalidReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastImplementationsResponse

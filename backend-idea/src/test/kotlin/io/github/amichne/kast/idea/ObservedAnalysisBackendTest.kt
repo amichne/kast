@@ -7,6 +7,8 @@ import io.github.amichne.kast.api.contract.result.CallRelationsResult
 import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
@@ -31,7 +33,10 @@ class ObservedAnalysisBackendTest {
             semanticGeneration = { 0L },
         )
         val page = RelationTraversalPageInfo.create(
-            cardinality = ResultCardinality.Exact(0),
+            evidence = RelationshipResultEvidence.Complete(
+                cardinality = ResultCardinality.Exact(0),
+                coverage = RelationshipSearchCoverage.complete(),
+            ),
             returnedCount = 0,
             returnedBefore = 0,
             visitedCandidateCount = 0,
@@ -39,9 +44,9 @@ class ObservedAnalysisBackendTest {
             nextHandle = null,
         )
         val delegate = RecordingRelationshipBackend(
-            calls = CallRelationsResult(emptyList(), page),
-            implementations = ImplementationRelationsResult(emptyList(), page),
-            hierarchy = HierarchyRelationsResult(emptyList(), page),
+            calls = CallRelationsResult.Available(emptyList(), page),
+            implementations = ImplementationRelationsResult.Available(emptyList(), page),
+            hierarchy = HierarchyRelationsResult.Available(emptyList(), page),
             selectorHandles = selectorHandles,
         )
         val parentDisposable = com.intellij.openapi.util.Disposer.newDisposable()
@@ -59,16 +64,19 @@ class ObservedAnalysisBackendTest {
     @Test
     fun `typed relationship methods delegate exactly once`() = runBlocking {
         val page = RelationTraversalPageInfo.create(
-            cardinality = ResultCardinality.Exact(0),
+            evidence = RelationshipResultEvidence.Complete(
+                cardinality = ResultCardinality.Exact(0),
+                coverage = RelationshipSearchCoverage.complete(),
+            ),
             returnedCount = 0,
             returnedBefore = 0,
             visitedCandidateCount = 0,
             candidateVisitLimit = 16_384,
             nextHandle = null,
         )
-        val expectedCalls = CallRelationsResult(emptyList(), page)
-        val expectedImplementations = ImplementationRelationsResult(emptyList(), page)
-        val expectedHierarchy = HierarchyRelationsResult(emptyList(), page)
+        val expectedCalls = CallRelationsResult.Available(emptyList(), page)
+        val expectedImplementations = ImplementationRelationsResult.Available(emptyList(), page)
+        val expectedHierarchy = HierarchyRelationsResult.Available(emptyList(), page)
         val delegate = RecordingRelationshipBackend(
             calls = expectedCalls,
             implementations = expectedImplementations,

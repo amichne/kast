@@ -2,10 +2,12 @@ package io.github.amichne.kast.idea;
 
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder;
 import com.intellij.openapi.externalSystem.model.DataNode;
+import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.ProjectKeys;
 import com.intellij.openapi.externalSystem.model.project.ContentRootData;
 import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType;
 import com.intellij.openapi.externalSystem.model.project.ModuleData;
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.project.Project;
@@ -68,10 +70,56 @@ public final class IdeaGradleProjectLoadBridge {
         List<Path> roots = linkedBuildRoots.stream()
             .sorted(Comparator.comparing(Path::toString))
             .toList();
+        LinkedHashSet<GradleModuleIdentity> importedModuleIdentities = new LinkedHashSet<>();
+        LinkedHashSet<Path> importedSourceRoots = new LinkedHashSet<>();
+        boolean[] importedModelComplete = {
+            !ProjectDataManager.getInstance().getExternalProjectsData(project, GradleConstants.SYSTEM_ID).isEmpty()
+        };
+        for (ExternalProjectInfo projectInfo :
+            ProjectDataManager.getInstance().getExternalProjectsData(project, GradleConstants.SYSTEM_ID)) {
+            DataNode<?> projectStructure = projectInfo.getExternalProjectStructure();
+            if (projectStructure == null || !projectStructure.isReady()) {
+                importedModelComplete[0] = false;
+                continue;
+            }
+            if (projectInfo.getLastSuccessfulImportTimestamp() <= 0 ||
+                projectInfo.getLastSuccessfulImportTimestamp() < projectInfo.getLastImportTimestamp()) {
+                importedModelComplete[0] = false;
+            }
+            projectStructure.visit(node -> {
+                if (!(node.getData() instanceof ModuleData moduleData)) {
+                    return;
+                }
+                GradleModuleIdentity identity = moduleIdentity(moduleData);
+                if (identity == null) {
+                    importedModelComplete[0] = false;
+                } else {
+                    importedModuleIdentities.add(identity);
+                }
+                collectModuleSourceRoots(node, importedSourceRoots);
+            });
+        }
+
+        List<LoadedGradleModule> loadedModules = new ArrayList<>();
         List<GradleModuleAssociation> associations = new ArrayList<>();
         for (Module module : ModuleManager.getInstance(project).getModules()) {
+            if (module.isDisposed()) {
+                continue;
+            }
+            DataNode<? extends ModuleData> moduleNode = GradleModuleDataIndex.findModuleNode(module);
+            if (moduleNode != null) {
+                GradleModuleIdentity identity = moduleIdentity(moduleNode.getData());
+                if (identity == null) {
+                    importedModelComplete[0] = false;
+                } else {
+                    loadedModules.add(new LoadedGradleModule(
+                        module.getName(),
+                        identity
+                    ));
+                }
+            }
             GradleModuleData gradleModuleData = GradleModuleDataIndex.findGradleModuleData(module);
-            if (gradleModuleData == null) {
+            if (gradleModuleData == null || moduleNode == null) {
                 continue;
             }
             String gradleProjectDirectory = gradleModuleData.getGradleProjectDir();
@@ -96,22 +144,39 @@ public final class IdeaGradleProjectLoadBridge {
                 gradleProjectPath,
                 gradleProjectPath.equals(":") && projectDirectory.equals(linkedBuildRoot),
                 gradleModuleData.isIncludedBuild(),
-                sourceSets(module)
+                sourceSets(moduleNode)
             ));
         }
+        loadedModules.sort(
+            Comparator.comparing(LoadedGradleModule::ideaModuleName)
+                .thenComparing(module -> module.identity().externalProjectPath().toString())
+                .thenComparing(module -> module.identity().externalModuleId())
+        );
         associations.sort(
             Comparator.comparing(GradleModuleAssociation::ideaModuleName)
                 .thenComparing(association -> association.linkedBuildRoot().toString())
                 .thenComparing(GradleModuleAssociation::gradleProjectPath)
         );
-        return new GradleWorkspaceModel(List.copyOf(roots), List.copyOf(associations));
+        List<GradleModuleIdentity> importedModules = importedModuleIdentities.stream()
+            .sorted(
+                Comparator.comparing((GradleModuleIdentity identity) -> identity.externalProjectPath().toString())
+                    .thenComparing(GradleModuleIdentity::externalModuleId)
+            )
+            .toList();
+        List<Path> sourceRoots = importedSourceRoots.stream()
+            .sorted(Comparator.comparing(Path::toString))
+            .toList();
+        return new GradleWorkspaceModel(
+            List.copyOf(roots),
+            importedModelComplete[0],
+            importedModules,
+            List.copyOf(loadedModules),
+            sourceRoots,
+            List.copyOf(associations)
+        );
     }
 
-    private static List<GradleSourceSetAssociation> sourceSets(Module module) {
-        DataNode<? extends ModuleData> moduleNode = GradleModuleDataIndex.findModuleNode(module);
-        if (moduleNode == null) {
-            return List.of();
-        }
+    private static List<GradleSourceSetAssociation> sourceSets(DataNode<? extends ModuleData> moduleNode) {
         List<GradleSourceSetAssociation> sourceSets = new ArrayList<>();
         moduleNode.visit(node -> {
             if (!(node.getData() instanceof GradleSourceSetData sourceSetData)) {
@@ -133,9 +198,40 @@ public final class IdeaGradleProjectLoadBridge {
             .toList();
     }
 
+    private static GradleModuleIdentity moduleIdentity(ModuleData moduleData) {
+        String externalProjectPath = moduleData.getLinkedExternalProjectPath();
+        String externalModuleId = moduleData.getId();
+        if (externalProjectPath == null || externalProjectPath.isBlank() ||
+            externalModuleId == null || externalModuleId.isBlank()) {
+            return null;
+        }
+        return new GradleModuleIdentity(normalize(Path.of(externalProjectPath)), externalModuleId);
+    }
+
+    private static void collectModuleSourceRoots(DataNode<?> node, LinkedHashSet<Path> sourceRoots) {
+        for (DataNode<?> child : node.getChildren()) {
+            if (child.getData() instanceof ModuleData) {
+                continue;
+            }
+            if (child.getKey().equals(ProjectKeys.CONTENT_ROOT) && child.getData() instanceof ContentRootData contentRoot) {
+                for (ExternalSystemSourceType sourceType : ExternalSystemSourceType.values()) {
+                    if (sourceType.isExcluded() || sourceType.isResource()) {
+                        continue;
+                    }
+                    contentRoot.getPaths(sourceType).stream()
+                        .map(ContentRootData.SourceRoot::getPath)
+                        .map(Path::of)
+                        .map(IdeaGradleProjectLoadBridge::normalize)
+                        .forEach(sourceRoots::add);
+                }
+            }
+            collectModuleSourceRoots(child, sourceRoots);
+        }
+    }
+
     private static void collectSourceRoots(DataNode<?> node, LinkedHashSet<Path> sourceRoots) {
         for (DataNode<?> child : node.getChildren()) {
-            if (child.getKey().equals(GradleSourceSetData.KEY)) {
+            if (child.getData() instanceof ModuleData) {
                 continue;
             }
             if (child.getKey().equals(ProjectKeys.CONTENT_ROOT) && child.getData() instanceof ContentRootData contentRoot) {
@@ -197,7 +293,23 @@ public final class IdeaGradleProjectLoadBridge {
 
     public record GradleWorkspaceModel(
         List<Path> linkedBuildRoots,
+        boolean importedModelComplete,
+        List<GradleModuleIdentity> importedModuleIdentities,
+        List<LoadedGradleModule> loadedModules,
+        List<Path> importedSourceRoots,
         List<GradleModuleAssociation> moduleAssociations
+    ) {
+    }
+
+    public record GradleModuleIdentity(
+        Path externalProjectPath,
+        String externalModuleId
+    ) {
+    }
+
+    public record LoadedGradleModule(
+        String ideaModuleName,
+        GradleModuleIdentity identity
     ) {
     }
 

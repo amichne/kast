@@ -6,7 +6,9 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.junit5.TestApplication
@@ -31,6 +33,12 @@ import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
+import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
@@ -44,6 +52,7 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import org.jetbrains.jps.model.java.JavaModuleSourceRootTypes
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -155,6 +164,8 @@ class KastPluginBackendContractTest {
         indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
             IdeaIndexSemanticAdmission.Status.Ready
         },
+        relationshipCoverageAuthority: RelationshipCoverageAuthority =
+            RelationshipCoverageAuthority.proven(),
     ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
@@ -166,6 +177,7 @@ class KastPluginBackendContractTest {
         readEpochObserver = readEpochObserver,
         referenceTraversalObserver = referenceTraversalObserver,
         indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+        relationshipCoverageAuthority = relationshipCoverageAuthority,
     )
 
     private fun ensureProjectReady() {
@@ -175,6 +187,45 @@ class KastPluginBackendContractTest {
         sampleUsageFileFixture.get()
         hierarchyFileFixture.get()
         waitUntilIndexesAreReady(project)
+    }
+
+    private fun relationshipCoverageAuthority(
+        transform: (IdeaGradleProjectLoadBridge.GradleWorkspaceModel) ->
+            IdeaGradleProjectLoadBridge.GradleWorkspaceModel = { model -> model },
+    ): IdeaRelationshipCoverageAuthority {
+        val sourceRoots = ApplicationManager.getApplication().runReadAction<List<Path>> {
+            listOf(mainModuleFixture.get(), secondaryModuleFixture.get())
+                .flatMap { module ->
+                    ModuleRootManager.getInstance(module)
+                        .getSourceRoots(JavaModuleSourceRootTypes.SOURCES)
+                        .toList()
+                }
+                .map { root -> Path.of(root.path).toAbsolutePath().normalize() }
+                .sortedBy(Path::toString)
+        }
+        val workspaceRoot = commonWorkspaceRoot(
+            sourceRoots.first().toString(),
+            sourceRoots.last().toString(),
+        )
+        val mainIdentity = IdeaGradleProjectLoadBridge.GradleModuleIdentity(workspaceRoot, ":main")
+        val secondaryIdentity = IdeaGradleProjectLoadBridge.GradleModuleIdentity(workspaceRoot, ":secondary")
+        val model = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            listOf(workspaceRoot),
+            true,
+            listOf(mainIdentity, secondaryIdentity),
+            listOf(
+                IdeaGradleProjectLoadBridge.LoadedGradleModule("main", mainIdentity),
+                IdeaGradleProjectLoadBridge.LoadedGradleModule("secondary", secondaryIdentity),
+            ),
+            sourceRoots,
+            emptyList(),
+        )
+        return IdeaRelationshipCoverageAuthority(
+            project = project,
+            workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
+            indexSemanticAdmissionStatus = { IdeaIndexSemanticAdmission.Status.Ready },
+            workspaceModelReader = { transform(model) },
+        )
     }
 
     private suspend fun ensureInternalVisibilityProjectReady() {
@@ -203,6 +254,101 @@ class KastPluginBackendContractTest {
         val status = backend().runtimeStatus()
 
         assertEquals(listOf("main", "secondary"), status.sourceModuleNames)
+    }
+
+    @Test
+    fun `relationship coverage is complete only for equal Gradle and IDEA inventories`() {
+        ensureProjectReady()
+
+        val coverage = relationshipCoverageAuthority().assess(
+            RelationshipCoverageAuthority.FamilyCompletion.COMPLETE,
+        )
+
+        assertTrue(coverage is RelationshipSearchCoverage.Complete, coverage.toString())
+    }
+
+    @Test
+    fun `relationship coverage rejects a Gradle project omitted from IDEA`() {
+        ensureProjectReady()
+
+        val coverage = relationshipCoverageAuthority { model ->
+            val omitted = IdeaGradleProjectLoadBridge.GradleModuleIdentity(
+                model.linkedBuildRoots().single(),
+                ":omitted",
+            )
+            IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+                model.linkedBuildRoots(),
+                model.importedModelComplete(),
+                model.importedModuleIdentities() + omitted,
+                model.loadedModules(),
+                model.importedSourceRoots(),
+                model.moduleAssociations(),
+            )
+        }.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
+
+        val limited = coverage as RelationshipSearchCoverage.Limited
+        assertTrue(RelationshipSearchLimitation.PROJECT_SCOPE_INCOMPLETE in limited.limitations)
+    }
+
+    @Test
+    fun `relationship coverage rejects a Gradle source root omitted from IDEA`() {
+        ensureProjectReady()
+
+        val coverage = relationshipCoverageAuthority { model ->
+            val materializedOmittedSourceRoot = model.linkedBuildRoots().single()
+                .resolve("omitted/src/testFixtures/kotlin")
+            Files.createDirectories(materializedOmittedSourceRoot)
+            IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+                model.linkedBuildRoots(),
+                model.importedModelComplete(),
+                model.importedModuleIdentities(),
+                model.loadedModules(),
+                model.importedSourceRoots() + listOf(materializedOmittedSourceRoot),
+                model.moduleAssociations(),
+            )
+        }.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
+
+        val limited = coverage as RelationshipSearchCoverage.Limited
+        assertTrue(RelationshipSearchLimitation.SOURCE_SET_SCOPE_INCOMPLETE in limited.limitations)
+    }
+
+    @Test
+    fun `relationship coverage ignores declared source roots absent from the read epoch`() {
+        ensureProjectReady()
+
+        val coverage = relationshipCoverageAuthority { model ->
+            val absentSourceRoot = model.linkedBuildRoots().single().resolve("absent/src/main/java")
+            assertTrue(Files.notExists(absentSourceRoot))
+            IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+                model.linkedBuildRoots(),
+                model.importedModelComplete(),
+                model.importedModuleIdentities(),
+                model.loadedModules(),
+                model.importedSourceRoots() + listOf(absentSourceRoot),
+                model.moduleAssociations(),
+            )
+        }.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
+
+        assertTrue(coverage is RelationshipSearchCoverage.Complete, coverage.toString())
+    }
+
+    @Test
+    fun `relationship coverage rejects an IDEA source root omitted from Gradle inventory`() {
+        ensureProjectReady()
+
+        val coverage = relationshipCoverageAuthority { model ->
+            IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+                model.linkedBuildRoots(),
+                model.importedModelComplete(),
+                model.importedModuleIdentities(),
+                model.loadedModules(),
+                model.importedSourceRoots().dropLast(1),
+                model.moduleAssociations(),
+            )
+        }.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
+
+        val limited = coverage as RelationshipSearchCoverage.Limited
+        assertTrue(RelationshipSearchLimitation.SOURCE_SET_SCOPE_INCOMPLETE in limited.limitations)
     }
 
     @Test
@@ -411,6 +557,76 @@ class KastPluginBackendContractTest {
         assertTrue(searchScope.searchedFileCount <= searchScope.candidateFileCount)
         assertTrue(references.any { reference -> reference.location.preview.contains("greet(\"idea\")") })
         deleteKotlinFiles(irrelevantFiles)
+    }
+
+    @Test
+    fun `fallback discovery checkpoints remain resumable between candidate files`() = runBlocking {
+        ensureProjectReady()
+        val source = """
+            package demo.deepcheckpoint
+
+            fun deepCheckpointAnchor(): Unit = Unit
+
+            fun deepCheckpointUse(): Unit = deepCheckpointAnchor()
+        """.trimIndent()
+        lateinit var deepRoot: VirtualFile
+        lateinit var deepFile: VirtualFile
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction {
+                deepRoot = mainSourceRootFixture.get().virtualFile.createChildDirectory(this, "DeepCheckpoint")
+                var current = deepRoot
+                repeat(80) { depth ->
+                    current = current.createChildDirectory(this, "level${depth.toString().padStart(3, '0')}")
+                }
+                deepFile = current.createChildData(this, "DeepCheckpoint.kt")
+                VfsUtil.saveText(deepFile, source)
+            }
+        }
+        waitUntilIndexesAreReady(project)
+
+        try {
+            val position = FilePosition(
+                filePath = deepFile.path,
+                offset = source.indexOf("deepCheckpointAnchor"),
+            )
+            val backend = backend(Path.of(mainSourceRootFixture.get().virtualFile.path))
+            var result = backend.findReferences(
+                ReferencesQuery(position = position, includeDeclaration = false, maxResults = 1),
+            )
+            assertTrue(result.references.isEmpty())
+            assertTrue(result.evidence is RelationshipResultEvidence.Resumable, result.evidence.toString())
+            assertNotNull(result.page?.nextPageToken)
+
+            val references = mutableListOf<ReferenceOccurrence>()
+            references += result.references
+            var pageCount = 1
+            while (result.page?.nextPageToken != null) {
+                assertTrue(pageCount < 16, "Candidate discovery did not terminate: $result")
+                result = backend.findReferences(
+                    ReferencesQuery(
+                        position = position,
+                        includeDeclaration = false,
+                        maxResults = 1,
+                        pageToken = result.page?.nextPageToken,
+                    ),
+                )
+                references += result.references
+                pageCount += 1
+            }
+
+            val complete = result.evidence as RelationshipResultEvidence.Complete
+            assertEquals(ResultCardinality.Exact(1), complete.cardinality)
+            assertEquals(1, references.size)
+            assertTrue(references.single().location.preview.contains("deepCheckpointAnchor()"))
+        } finally {
+            application.invokeAndWait {
+                application.runWriteAction {
+                    if (deepRoot.isValid) deepRoot.delete(this)
+                }
+            }
+            waitUntilIndexesAreReady(project)
+        }
     }
 
     @Test
@@ -936,7 +1152,7 @@ class KastPluginBackendContractTest {
     }
 
     @Test
-    fun `reference continuation resumes at the exact reference inside a leaf after budget interruption`() = runBlocking {
+    fun `reference budget interruption fails closed without a continuation`() = runBlocking {
         ensureProjectReady()
         val application = ApplicationManager.getApplication()
         application.invokeAndWait {
@@ -1016,29 +1232,15 @@ class KastPluginBackendContractTest {
             referenceSearchClock = ReferenceSearchClock(clockNanos::get),
             referenceTraversalObserver = observer,
         )
-        val references = mutableListOf<ReferenceOccurrence>()
-        val first = backend.findReferences(
+        val result = backend.findReferences(
             ReferencesQuery(position = testData.position, includeDeclaration = false, maxResults = 50),
         )
-        references += first.references
-        var pageToken: String? = requireNotNull(first.page?.nextPageToken)
-        do {
-            val page = backend.findReferences(
-                ReferencesQuery(
-                    position = testData.position,
-                    includeDeclaration = false,
-                    maxResults = 50,
-                    pageToken = pageToken,
-                ),
-            )
-            references += page.references
-            pageToken = page.page?.nextPageToken
-        } while (pageToken != null)
 
         assertTrue(referencesInLeaf > 1, "test usage leaf did not expose multiple Kotlin references")
-        assertEquals((0 until referencesInLeaf).toList(), processedReferenceIndices)
-        assertEquals(references.distinct(), references)
-        assertEquals(1, references.count { reference -> reference.location.preview.contains("target()") })
+        assertEquals(listOf(0), processedReferenceIndices)
+        assertEquals(null, result.page)
+        val evidence = result.evidence as RelationshipResultEvidence.Limited
+        assertTrue(RelationshipSearchLimitation.TIMED_OUT in evidence.coverage.limitations)
     }
 
     @Test
@@ -1311,6 +1513,9 @@ class KastPluginBackendContractTest {
 
         assertFalse(result.searchScope?.exhaustive ?: true)
         assertEquals(SearchScope.CandidateCoverage.PARTIAL, result.searchScope?.candidateCoverage)
+        assertEquals(null, result.page)
+        val evidence = result.evidence as RelationshipResultEvidence.Limited
+        assertTrue(RelationshipSearchLimitation.TIMED_OUT in evidence.coverage.limitations)
         assertTrue(
             (result.searchScope?.searchedFileCount ?: Int.MAX_VALUE) <=
                 (result.searchScope?.candidateFileCount ?: 0),
@@ -1560,7 +1765,7 @@ class KastPluginBackendContractTest {
         }
         val backend = backend(workspaceRoot)
 
-        val callers = backend.callRelations(
+        val callers = when (val result = backend.callRelations(
             KastCallersQuery(
                 workspaceRoot = workspaceRoot.toString(),
                 selector = greetSelector,
@@ -1568,15 +1773,22 @@ class KastPluginBackendContractTest {
                 depth = 1,
                 maxResults = 4,
             ),
-        )
-        val implementations = backend.implementationRelations(
+        )) {
+            is CallRelationsResult.Available -> result
+            is CallRelationsResult.Limited -> error("Expected complete caller coverage: ${result.evidence}")
+        }
+        val implementations = when (val result = backend.implementationRelations(
             KastImplementationsQuery(
                 workspaceRoot = workspaceRoot.toString(),
                 selector = shapeSelector,
                 maxResults = 4,
             ),
-        )
-        val hierarchy = backend.hierarchyRelations(
+        )) {
+            is ImplementationRelationsResult.Available -> result
+            is ImplementationRelationsResult.Limited ->
+                error("Expected complete implementation coverage: ${result.evidence}")
+        }
+        val hierarchy = when (val result = backend.hierarchyRelations(
             KastHierarchyQuery(
                 workspaceRoot = workspaceRoot.toString(),
                 selector = shapeSelector,
@@ -1584,7 +1796,10 @@ class KastPluginBackendContractTest {
                 depth = 1,
                 maxResults = 4,
             ),
-        )
+        )) {
+            is HierarchyRelationsResult.Available -> result
+            is HierarchyRelationsResult.Limited -> error("Expected complete hierarchy coverage: ${result.evidence}")
+        }
 
         assertEquals(listOf("demo.useGreeting"), callers.records.map { it.relatedSymbol.fqName })
         assertEquals(ResultCardinality.Exact(1), callers.page.cardinality)
@@ -1601,6 +1816,217 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `relationship queries fail closed when source set coverage is excluded`() = runBlocking {
+        ensureProjectReady()
+        val inputs = readAction {
+            val root = commonWorkspaceRoot(
+                sampleFile.virtualFile.path,
+                hierarchyFile.virtualFile.path,
+            )
+            val greetOffset = sampleFile.text.indexOf("greet")
+            RelationshipCoverageTestInputs(
+                workspaceRoot = root,
+                greetPosition = FilePosition(sampleFile.virtualFile.path, greetOffset),
+                greetSelector = KastExactSymbolSelector(
+                    fqName = "demo.greet",
+                    declarationFile = sampleFile.virtualFile.path,
+                    declarationStartOffset = greetOffset,
+                    kind = SymbolKind.FUNCTION,
+                ),
+                shapeSelector = KastExactSymbolSelector(
+                    fqName = "demo.hierarchy.Shape",
+                    declarationFile = hierarchyFile.virtualFile.path,
+                    declarationStartOffset = hierarchyFile.text.indexOf("Shape"),
+                    kind = SymbolKind.INTERFACE,
+                ),
+            )
+        }
+        val excludedCoverage = RelationshipSearchCoverage.limited(
+            RelationshipSearchLimitation.SOURCE_SET_EXCLUDED,
+        )
+        val backend = backend(
+            workspaceRoot = inputs.workspaceRoot,
+            relationshipCoverageAuthority = RelationshipCoverageAuthority { excludedCoverage },
+        )
+
+        val references = backend.findReferences(ReferencesQuery(position = inputs.greetPosition))
+        val referenceEvidence = when (val evidence = references.evidence) {
+            is RelationshipResultEvidence.Limited -> evidence
+            is RelationshipResultEvidence.Complete,
+            is RelationshipResultEvidence.Resumable,
+            -> error("Expected limited reference evidence, got $evidence")
+        }
+        assertEquals(ResultCardinality.KnownMinimum(references.references.size), referenceEvidence.cardinality)
+        assertEquals(listOf(RelationshipSearchLimitation.SOURCE_SET_EXCLUDED), referenceEvidence.coverage.limitations)
+
+        val callers = backend.callRelations(
+            KastCallersQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.greetSelector,
+                direction = WrapperCallDirection.INCOMING,
+                depth = 1,
+                maxResults = 4,
+            ),
+        )
+        val implementations = backend.implementationRelations(
+            KastImplementationsQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.shapeSelector,
+                maxResults = 4,
+            ),
+        )
+        val hierarchy = backend.hierarchyRelations(
+            KastHierarchyQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.shapeSelector,
+                direction = TypeHierarchyDirection.SUBTYPES,
+                depth = 1,
+                maxResults = 4,
+            ),
+        )
+
+        assertTrue(callers is CallRelationsResult.Limited)
+        assertTrue(implementations is ImplementationRelationsResult.Limited)
+        assertTrue(hierarchy is HierarchyRelationsResult.Limited)
+    }
+
+    @Test
+    fun `relationship queries fail closed when the backend root does not match the exact selector`() = runBlocking {
+        ensureProjectReady()
+        val inputs = readAction {
+            val root = commonWorkspaceRoot(
+                sampleFile.virtualFile.path,
+                hierarchyFile.virtualFile.path,
+            )
+            val greetOffset = sampleFile.text.indexOf("greet")
+            RelationshipCoverageTestInputs(
+                workspaceRoot = root,
+                greetPosition = FilePosition(sampleFile.virtualFile.path, greetOffset),
+                greetSelector = KastExactSymbolSelector(
+                    fqName = "demo.notGreet",
+                    declarationFile = sampleFile.virtualFile.path,
+                    declarationStartOffset = greetOffset,
+                    kind = SymbolKind.FUNCTION,
+                ),
+                shapeSelector = KastExactSymbolSelector(
+                    fqName = "demo.hierarchy.NotShape",
+                    declarationFile = hierarchyFile.virtualFile.path,
+                    declarationStartOffset = hierarchyFile.text.indexOf("Shape"),
+                    kind = SymbolKind.INTERFACE,
+                ),
+            )
+        }
+        val backend = backend(inputs.workspaceRoot)
+
+        val callers = backend.callRelations(
+            KastCallersQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.greetSelector,
+                direction = WrapperCallDirection.INCOMING,
+                depth = 1,
+                maxResults = 4,
+            ),
+        ) as CallRelationsResult.Limited
+        val implementations = backend.implementationRelations(
+            KastImplementationsQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.shapeSelector,
+                maxResults = 4,
+            ),
+        ) as ImplementationRelationsResult.Limited
+        val hierarchy = backend.hierarchyRelations(
+            KastHierarchyQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.shapeSelector,
+                direction = TypeHierarchyDirection.SUBTYPES,
+                depth = 1,
+                maxResults = 4,
+            ),
+        ) as HierarchyRelationsResult.Limited
+
+        listOf(callers.evidence, implementations.evidence, hierarchy.evidence).forEach { evidence ->
+            assertTrue(RelationshipSearchLimitation.IDENTITY_UNPROVEN in evidence.coverage.limitations)
+        }
+    }
+
+    @Test
+    fun `relationship queries reassess coverage in the final commit epoch`() = runBlocking {
+        ensureProjectReady()
+        val inputs = readAction {
+            val root = commonWorkspaceRoot(
+                sampleFile.virtualFile.path,
+                hierarchyFile.virtualFile.path,
+            )
+            val greetOffset = sampleFile.text.indexOf("greet")
+            RelationshipCoverageTestInputs(
+                workspaceRoot = root,
+                greetPosition = FilePosition(sampleFile.virtualFile.path, greetOffset),
+                greetSelector = KastExactSymbolSelector(
+                    fqName = "demo.greet",
+                    declarationFile = sampleFile.virtualFile.path,
+                    declarationStartOffset = greetOffset,
+                    kind = SymbolKind.FUNCTION,
+                ),
+                shapeSelector = KastExactSymbolSelector(
+                    fqName = "demo.hierarchy.Shape",
+                    declarationFile = hierarchyFile.virtualFile.path,
+                    declarationStartOffset = hierarchyFile.text.indexOf("Shape"),
+                    kind = SymbolKind.INTERFACE,
+                ),
+            )
+        }
+        fun changingAuthority(): RelationshipCoverageAuthority {
+            val assessments = AtomicInteger()
+            return RelationshipCoverageAuthority {
+                if (assessments.getAndIncrement() == 0) {
+                    RelationshipSearchCoverage.complete()
+                } else {
+                    RelationshipSearchCoverage.limited(RelationshipSearchLimitation.INDEX_NOT_READY)
+                }
+            }
+        }
+
+        val callers = backend(
+            workspaceRoot = inputs.workspaceRoot,
+            relationshipCoverageAuthority = changingAuthority(),
+        ).callRelations(
+            KastCallersQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.greetSelector,
+                direction = WrapperCallDirection.INCOMING,
+                depth = 1,
+                maxResults = 4,
+            ),
+        )
+        val implementations = backend(
+            workspaceRoot = inputs.workspaceRoot,
+            relationshipCoverageAuthority = changingAuthority(),
+        ).implementationRelations(
+            KastImplementationsQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.shapeSelector,
+                maxResults = 4,
+            ),
+        )
+        val hierarchy = backend(
+            workspaceRoot = inputs.workspaceRoot,
+            relationshipCoverageAuthority = changingAuthority(),
+        ).hierarchyRelations(
+            KastHierarchyQuery(
+                workspaceRoot = inputs.workspaceRoot.toString(),
+                selector = inputs.shapeSelector,
+                direction = TypeHierarchyDirection.SUBTYPES,
+                depth = 1,
+                maxResults = 4,
+            ),
+        )
+
+        assertTrue(callers is CallRelationsResult.Limited)
+        assertTrue(implementations is ImplementationRelationsResult.Limited)
+        assertTrue(hierarchy is HierarchyRelationsResult.Limited)
+    }
+
+    @Test
     fun `capabilities read backend version from generated resource`() = runBlocking {
         ensureProjectReady()
 
@@ -1613,6 +2039,13 @@ class KastPluginBackendContractTest {
         assertEquals(expectedVersion, backend().capabilities().backendVersion)
     }
 }
+
+private data class RelationshipCoverageTestInputs(
+    val workspaceRoot: Path,
+    val greetPosition: FilePosition,
+    val greetSelector: KastExactSymbolSelector,
+    val shapeSelector: KastExactSymbolSelector,
+)
 
 private data class IndexedReferenceTestData(
     val workspaceRoot: Path,

@@ -37,9 +37,22 @@
                 }
             }
         ],
-        "cardinality": {
-            "type": "EXACT",
-            "totalCount": 1
+        "evidence": {
+            "type": "COMPLETE",
+            "cardinality": {
+                "type": "EXACT",
+                "totalCount": 1
+            },
+            "coverage": {
+                "type": "COMPLETE",
+                "identity": "COMPLETE",
+                "projectScope": "COMPLETE",
+                "sourceSetScope": "COMPLETE",
+                "indexFreshness": "COMPLETE",
+                "backend": "COMPLETE",
+                "requestedFamily": "COMPLETE",
+                "limitations": []
+            }
         },
         "schemaVersion": 3
     },

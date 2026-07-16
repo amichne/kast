@@ -1,0 +1,24 @@
+package io.github.amichne.kast.api.contract.result
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class RelationshipSearchLimitation {
+    IDENTITY_UNPROVEN,
+    PROJECT_SCOPE_INCOMPLETE,
+    SOURCE_SET_SCOPE_INCOMPLETE,
+    SOURCE_SET_EXCLUDED,
+    INDEX_NOT_READY,
+    INDEX_STALE,
+    BACKEND_INCOMPLETE,
+    BACKEND_UNAVAILABLE,
+    FAMILY_SEARCH_IN_PROGRESS,
+    FAMILY_SEARCH_INCOMPLETE,
+    CANDIDATE_BUDGET_REACHED,
+    TRAVERSAL_STATE_BUDGET_REACHED,
+    TIMED_OUT,
+    CANCELLED,
+    GENERATION_CHANGED,
+    CONTINUATION_EXPIRED,
+    CONTINUATION_INVALID,
+}

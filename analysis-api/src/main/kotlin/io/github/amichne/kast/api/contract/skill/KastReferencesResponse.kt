@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.contract.SymbolIdentity
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.SerialName
@@ -20,12 +21,15 @@ sealed interface KastReferencesResponse
 data class KastReferencesAvailableResponse(
     val subject: SymbolIdentity,
     val references: List<ReferenceOccurrence>,
-    val cardinality: ResultCardinality,
+    val evidence: RelationshipResultEvidence.Available,
     val page: PageInfo? = null,
     val searchScope: SearchScope? = null,
     val declaration: Symbol? = null,
     val schemaVersion: Int = SCHEMA_VERSION,
-) : KastReferencesResponse
+) : KastReferencesResponse {
+    val cardinality: ResultCardinality
+        get() = evidence.cardinality
+}
 
 @Serializable
 @SerialName("SUBJECT_NOT_FOUND")
@@ -53,6 +57,8 @@ data class KastReferencesDegradedResponse(
     val selector: KastExactSymbolSelector,
     val subject: SymbolIdentity,
     val reason: KastReferencesDegradedReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastReferencesResponse
 
 @Serializable
@@ -60,6 +66,8 @@ data class KastReferencesDegradedResponse(
 data class KastReferencesCursorStaleResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorStaleReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastReferencesResponse
 
 @Serializable
@@ -67,4 +75,6 @@ data class KastReferencesCursorStaleResponse(
 data class KastReferencesCursorInvalidResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorInvalidReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastReferencesResponse

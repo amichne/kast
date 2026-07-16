@@ -303,6 +303,7 @@ class KastProjectOpenAutoIndexingTest {
                     maxConcurrentRequests = 4,
                 ),
                 referenceIndexLookup = lookup,
+                relationshipCoverageAuthority = RelationshipCoverageAuthority.proven(),
             ).use { backend ->
                 val result = runBlocking {
                     backend.findReferences(

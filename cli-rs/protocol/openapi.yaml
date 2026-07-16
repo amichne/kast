@@ -1544,6 +1544,218 @@ components:
       required:
         - type
         - knownMinimumCount
+    RelationshipCoverageStatus:
+      type: string
+      enum:
+        - COMPLETE
+        - IN_PROGRESS
+        - PARTIAL
+        - STALE
+        - EXCLUDED
+        - TIMED_OUT
+        - CANCELLED
+        - UNAVAILABLE
+    RelationshipSearchLimitation:
+      type: string
+      enum:
+        - IDENTITY_UNPROVEN
+        - PROJECT_SCOPE_INCOMPLETE
+        - SOURCE_SET_SCOPE_INCOMPLETE
+        - SOURCE_SET_EXCLUDED
+        - INDEX_NOT_READY
+        - INDEX_STALE
+        - BACKEND_INCOMPLETE
+        - BACKEND_UNAVAILABLE
+        - FAMILY_SEARCH_IN_PROGRESS
+        - FAMILY_SEARCH_INCOMPLETE
+        - CANDIDATE_BUDGET_REACHED
+        - TRAVERSAL_STATE_BUDGET_REACHED
+        - TIMED_OUT
+        - CANCELLED
+        - GENERATION_CHANGED
+        - CONTINUATION_EXPIRED
+        - CONTINUATION_INVALID
+    RelationshipSearchCoverage:
+      oneOf:
+        - "$ref": "#/components/schemas/RelationshipSearchCoverage.Complete"
+        - "$ref": "#/components/schemas/RelationshipSearchCoverage.Resumable"
+        - "$ref": "#/components/schemas/RelationshipSearchCoverage.Limited"
+      discriminator:
+        propertyName: type
+        mapping:
+          COMPLETE: "#/components/schemas/RelationshipSearchCoverage.Complete"
+          RESUMABLE: "#/components/schemas/RelationshipSearchCoverage.Resumable"
+          LIMITED: "#/components/schemas/RelationshipSearchCoverage.Limited"
+    RelationshipSearchCoverage.Complete:
+      type: object
+      properties:
+        type:
+          type: string
+          const: COMPLETE
+        identity:
+          type: string
+          const: COMPLETE
+        projectScope:
+          type: string
+          const: COMPLETE
+        sourceSetScope:
+          type: string
+          const: COMPLETE
+        indexFreshness:
+          type: string
+          const: COMPLETE
+        backend:
+          type: string
+          const: COMPLETE
+        requestedFamily:
+          type: string
+          const: COMPLETE
+        limitations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RelationshipSearchLimitation"
+          minItems: 0
+          maxItems: 0
+      additionalProperties: false
+      required:
+        - type
+        - identity
+        - projectScope
+        - sourceSetScope
+        - indexFreshness
+        - backend
+        - requestedFamily
+        - limitations
+    RelationshipSearchCoverage.Resumable:
+      type: object
+      properties:
+        type:
+          type: string
+          const: RESUMABLE
+        identity:
+          type: string
+          const: COMPLETE
+        projectScope:
+          type: string
+          const: COMPLETE
+        sourceSetScope:
+          type: string
+          const: COMPLETE
+        indexFreshness:
+          type: string
+          const: COMPLETE
+        backend:
+          type: string
+          const: COMPLETE
+        requestedFamily:
+          type: string
+          const: IN_PROGRESS
+        limitations:
+          type: array
+          items:
+            type: string
+            const: FAMILY_SEARCH_IN_PROGRESS
+          minItems: 1
+          maxItems: 1
+      additionalProperties: false
+      required:
+        - type
+        - identity
+        - projectScope
+        - sourceSetScope
+        - indexFreshness
+        - backend
+        - requestedFamily
+        - limitations
+    RelationshipSearchCoverage.Limited:
+      type: object
+      properties:
+        type:
+          type: string
+          const: LIMITED
+        identity:
+          "$ref": "#/components/schemas/RelationshipCoverageStatus"
+        projectScope:
+          "$ref": "#/components/schemas/RelationshipCoverageStatus"
+        sourceSetScope:
+          "$ref": "#/components/schemas/RelationshipCoverageStatus"
+        indexFreshness:
+          "$ref": "#/components/schemas/RelationshipCoverageStatus"
+        backend:
+          "$ref": "#/components/schemas/RelationshipCoverageStatus"
+        requestedFamily:
+          "$ref": "#/components/schemas/RelationshipCoverageStatus"
+        limitations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RelationshipSearchLimitation"
+          minItems: 1
+      additionalProperties: false
+      required:
+        - type
+        - identity
+        - projectScope
+        - sourceSetScope
+        - indexFreshness
+        - backend
+        - requestedFamily
+        - limitations
+    RelationshipResultEvidence:
+      oneOf:
+        - "$ref": "#/components/schemas/RelationshipResultEvidence.Complete"
+        - "$ref": "#/components/schemas/RelationshipResultEvidence.Resumable"
+        - "$ref": "#/components/schemas/RelationshipResultEvidence.Limited"
+      discriminator:
+        propertyName: type
+        mapping:
+          COMPLETE: "#/components/schemas/RelationshipResultEvidence.Complete"
+          RESUMABLE: "#/components/schemas/RelationshipResultEvidence.Resumable"
+          LIMITED: "#/components/schemas/RelationshipResultEvidence.Limited"
+    RelationshipResultEvidence.Complete:
+      type: object
+      properties:
+        type:
+          type: string
+          const: COMPLETE
+        cardinality:
+          "$ref": "#/components/schemas/EXACT"
+        coverage:
+          "$ref": "#/components/schemas/RelationshipSearchCoverage.Complete"
+      additionalProperties: false
+      required:
+        - type
+        - cardinality
+        - coverage
+    RelationshipResultEvidence.Resumable:
+      type: object
+      properties:
+        type:
+          type: string
+          const: RESUMABLE
+        cardinality:
+          "$ref": "#/components/schemas/KNOWN_MINIMUM"
+        coverage:
+          "$ref": "#/components/schemas/RelationshipSearchCoverage.Resumable"
+      additionalProperties: false
+      required:
+        - type
+        - cardinality
+        - coverage
+    RelationshipResultEvidence.Limited:
+      type: object
+      properties:
+        type:
+          type: string
+          const: LIMITED
+        cardinality:
+          "$ref": "#/components/schemas/KNOWN_MINIMUM"
+        coverage:
+          "$ref": "#/components/schemas/RelationshipSearchCoverage.Limited"
+      additionalProperties: false
+      required:
+        - type
+        - cardinality
+        - coverage
     ReferencesResult:
       type: object
       properties:
@@ -1555,8 +1767,8 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/ReferenceOccurrence"
-        cardinality:
-          "$ref": "#/components/schemas/ResultCardinality"
+        evidence:
+          "$ref": "#/components/schemas/RelationshipResultEvidence"
         page:
           anyOf:
             - "$ref": "#/components/schemas/PageInfo"
@@ -1571,7 +1783,7 @@ components:
       additionalProperties: false
       required:
         - references
-        - cardinality
+        - evidence
     ReferenceOccurrence:
       type: object
       properties:
