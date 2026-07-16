@@ -128,8 +128,8 @@ internal class SkillRpcOrchestrator(
         val resolvedConstraintSymbol: Symbol?,
     )
 
-    private sealed interface ReferenceSelectorSelection {
-        sealed interface Selected : ReferenceSelectorSelection {
+    private sealed interface SelectorSelection {
+        sealed interface Selected : SelectorSelection {
             val selector: KastExactSymbolSelector
         }
 
@@ -143,7 +143,7 @@ internal class SkillRpcOrchestrator(
 
         data class Rejected(
             val reason: SelectorHandleAuthority.Resolution.RejectionReason,
-        ) : ReferenceSelectorSelection
+        ) : SelectorSelection
     }
 
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse {
@@ -262,10 +262,17 @@ internal class SkillRpcOrchestrator(
 
     suspend fun references(request: KastReferencesRequest): KastReferencesResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selected = when (val selection = selectReferenceSelector(request, workspaceRoot)) {
-            is ReferenceSelectorSelection.Rejected ->
-                return KastReferencesSelectorHandleRejectedResponse(selection.reason)
-            is ReferenceSelectorSelection.Selected -> selection
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.REFERENCES,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
         }
         val selector = selected.selector
         val query = KastReferencesQuery(
@@ -278,7 +285,7 @@ internal class SkillRpcOrchestrator(
         )
         validateReferencesQuery(query)
         val subject = when (selected) {
-            is ReferenceSelectorSelection.Explicit -> {
+            is SelectorSelection.Explicit -> {
                 requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
                 val resolved = try {
                     backend.resolveSymbol(
@@ -294,7 +301,7 @@ internal class SkillRpcOrchestrator(
                 }
                 resolved.toSymbolIdentity()
             }
-            is ReferenceSelectorSelection.Handle -> selector.toHandleSubject()
+            is SelectorSelection.Handle -> selector.toHandleSubject()
         }
         if (!selector.matches(subject)) {
             return KastReferencesSubjectIdentityMismatchResponse(selector, subject)
@@ -366,7 +373,23 @@ internal class SkillRpcOrchestrator(
 
     suspend fun callers(request: KastCallersRequest): KastCallersResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selector = request.selector.normalizedFor(workspaceRoot)
+        val family = when (request.direction) {
+            WrapperCallDirection.INCOMING -> SelectorOperationFamily.CALLERS
+            WrapperCallDirection.OUTGOING -> SelectorOperationFamily.CALLEES
+        }
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = family,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastCallersQuery(
             workspaceRoot = workspaceRoot,
             selector = selector,
@@ -376,7 +399,7 @@ internal class SkillRpcOrchestrator(
             pageToken = request.pageToken,
         )
         validateRelationshipQuery(selector, request.depth, request.maxResults)
-        val subject = resolveRelationshipSubject(selector)
+        val subject = selected.resolveSubject()
             ?: return KastCallersSubjectNotFoundResponse(selector)
         if (!selector.matches(subject)) {
             return KastCallersSubjectIdentityMismatchResponse(selector, subject)
@@ -407,7 +430,19 @@ internal class SkillRpcOrchestrator(
         request: KastImplementationsRequest,
     ): KastImplementationsResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selector = request.selector.normalizedFor(workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.IMPLEMENTATIONS,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastImplementationsQuery(
             workspaceRoot = workspaceRoot,
             selector = selector,
@@ -415,7 +450,7 @@ internal class SkillRpcOrchestrator(
             pageToken = request.pageToken,
         )
         validateRelationshipQuery(selector, null, request.maxResults)
-        val subject = resolveRelationshipSubject(selector)
+        val subject = selected.resolveSubject()
             ?: return KastImplementationsSubjectNotFoundResponse(selector)
         if (!selector.matches(subject)) {
             return KastImplementationsSubjectIdentityMismatchResponse(selector, subject)
@@ -440,7 +475,19 @@ internal class SkillRpcOrchestrator(
 
     suspend fun hierarchy(request: KastHierarchyRequest): KastHierarchyResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selector = request.selector.normalizedFor(workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.HIERARCHY,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastHierarchyQuery(
             workspaceRoot = workspaceRoot,
             selector = selector,
@@ -450,7 +497,7 @@ internal class SkillRpcOrchestrator(
             pageToken = request.pageToken,
         )
         validateRelationshipQuery(selector, request.depth, request.maxResults)
-        val subject = resolveRelationshipSubject(selector)
+        val subject = selected.resolveSubject()
             ?: return KastHierarchySubjectNotFoundResponse(selector)
         if (!selector.matches(subject)) {
             return KastHierarchySubjectIdentityMismatchResponse(selector, subject)
@@ -1645,6 +1692,11 @@ internal class SkillRpcOrchestrator(
         }
     }
 
+    private suspend fun SelectorSelection.Selected.resolveSubject(): SymbolIdentity? = when (this) {
+        is SelectorSelection.Explicit -> resolveRelationshipSubject(selector)
+        is SelectorSelection.Handle -> selector.toHandleSubject()
+    }
+
     private fun validateRelationshipQuery(
         selector: KastExactSymbolSelector,
         depth: Int?,
@@ -1833,27 +1885,27 @@ internal class SkillRpcOrchestrator(
             )
         }
 
-    private fun selectReferenceSelector(
-        request: KastReferencesRequest,
+    private fun selectSelector(
+        explicitSelector: KastExactSymbolSelector?,
+        selectorHandle: String?,
         workspaceRoot: String,
-    ): ReferenceSelectorSelection {
-        val selector = request.selector
-        val selectorHandle = request.selectorHandle
+        family: SelectorOperationFamily,
+    ): SelectorSelection {
         return when {
-            selector != null && selectorHandle == null ->
-                ReferenceSelectorSelection.Explicit(selector)
-            selector == null && selectorHandle != null -> {
+            explicitSelector != null && selectorHandle == null ->
+                SelectorSelection.Explicit(explicitSelector.normalizedFor(workspaceRoot))
+            explicitSelector == null && selectorHandle != null -> {
                 when (
                     val resolution = backend.selectorHandles.resolve(
                         handle = selectorHandle,
                         workspaceRoot = workspaceRoot,
-                        family = SelectorOperationFamily.REFERENCES,
+                        family = family,
                     )
                 ) {
                     is SelectorHandleAuthority.Resolution.Resolved ->
-                        ReferenceSelectorSelection.Handle(resolution.selector)
+                        SelectorSelection.Handle(resolution.selector.normalizedFor(workspaceRoot))
                     is SelectorHandleAuthority.Resolution.Rejected ->
-                        ReferenceSelectorSelection.Rejected(resolution.reason)
+                        SelectorSelection.Rejected(resolution.reason)
                 }
             }
             else -> throw ValidationException(

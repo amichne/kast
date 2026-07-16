@@ -50,6 +50,7 @@ import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorOperationFamily
@@ -2328,18 +2329,28 @@ private class RecordingPagedRelationshipsBackend(
 
     override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult {
         callRelationCalls += 1
-        error("Call relationship traversal was not expected")
+        return CallRelationsResult(emptyList(), emptyRelationPage())
     }
 
     override suspend fun implementationRelations(
         query: KastImplementationsQuery,
     ): ImplementationRelationsResult {
         implementationRelationCalls += 1
-        error("Implementation relationship traversal was not expected")
+        return ImplementationRelationsResult(emptyList(), emptyRelationPage())
     }
 
     override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult {
         hierarchyRelationCalls += 1
-        throw requireNotNull(hierarchyFailure) { "Hierarchy traversal was not expected" }
+        hierarchyFailure?.let { throw it }
+        return HierarchyRelationsResult(emptyList(), emptyRelationPage())
     }
+
+    private fun emptyRelationPage(): RelationTraversalPageInfo = RelationTraversalPageInfo.create(
+        cardinality = ResultCardinality.Exact(0),
+        returnedCount = 0,
+        returnedBefore = 0,
+        visitedCandidateCount = 0,
+        candidateVisitLimit = 16_384,
+        nextHandle = null,
+    )
 }

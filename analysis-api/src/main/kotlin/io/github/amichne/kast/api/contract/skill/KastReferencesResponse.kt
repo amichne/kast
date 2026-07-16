@@ -8,8 +8,6 @@ import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.ResultCardinality
-import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
-import io.github.amichne.kast.api.contract.selector.SelectorHandleRecovery
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -70,16 +68,3 @@ data class KastReferencesCursorInvalidResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorInvalidReason,
 ) : KastReferencesResponse
-
-@Serializable
-@SerialName("SELECTOR_HANDLE_REJECTED")
-data class KastReferencesSelectorHandleRejectedResponse(
-    val reason: SelectorHandleAuthority.Resolution.RejectionReason,
-    val recovery: SelectorHandleRecovery = SelectorHandleRecovery.forReason(reason),
-) : KastReferencesResponse {
-    init {
-        require(recovery == SelectorHandleRecovery.forReason(reason)) {
-            "Selector handle recovery must match its rejection reason"
-        }
-    }
-}
