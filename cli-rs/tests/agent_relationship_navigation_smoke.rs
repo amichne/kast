@@ -277,6 +277,79 @@ fn impact_requires_the_reusable_exact_selector_and_bounded_controls() {
 }
 
 #[test]
+fn selector_handle_drives_impact_without_position_resolution() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    seed_source_index(&workspace);
+    seed_high_cardinality_impact(&workspace, "lib.Foo", 12);
+    let declaration_file =
+        std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("impact declaration");
+    let selector_handle = "ksh1.test-impact-selector-handle";
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-impact.sock"),
+        vec![(
+            "selector/identity",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "identity": relation_identity("lib.Foo", "CLASS", &declaration_file, 1),
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--selector-handle",
+            selector_handle,
+            "--depth",
+            "3",
+            "--limit",
+            "4",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("impact by selector handle");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let result: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("handle impact JSON");
+    assert_eq!(result["result"]["query"]["symbol"], "lib.Foo");
+    assert_eq!(result["result"]["nodes"].as_array().map(Vec::len), Some(4));
+
+    let requests = backend.join().expect("impact identity backend");
+    let identity_request = requests
+        .iter()
+        .find(|request| request["method"] == "selector/identity")
+        .expect("selector identity request");
+    assert_eq!(
+        identity_request["params"]["selectorHandle"],
+        selector_handle,
+    );
+    assert_eq!(identity_request["params"]["family"], "IMPACT");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request["method"] != "raw/resolve"),
+        "handle impact must not perform position resolution: {requests:?}",
+    );
+}
+
+#[test]
 fn impact_pages_are_query_bound_and_do_not_overlap() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
