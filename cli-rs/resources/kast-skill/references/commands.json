@@ -19,6 +19,7 @@
       "symbol/discover",
       "symbol/query",
       "symbol/resolve",
+      "selector/identity",
       "symbol/references",
       "symbol/callers",
       "symbol/implementations",
@@ -838,6 +839,54 @@
         "name": "kast_resolve",
         "description": "Resolve one exact Kotlin symbol identity. A unique match returns RESOLVE_SUCCESS; zero or multiple exact matches return typed not-found or ambiguous outcomes without fuzzy selection."
       }
+    },
+    "selector/identity": {
+      "method": "selector/identity",
+      "category": "symbol",
+      "summary": "Authenticate an opaque selector handle for one operation family and recover its compact exact identity",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "selectorHandle": {
+            "type": "string",
+            "sample": "ksh1.example-selector-handle"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "REFERENCES",
+              "CALLERS",
+              "CALLEES",
+              "IMPLEMENTATIONS",
+              "HIERARCHY",
+              "IMPACT",
+              "RENAME",
+              "REPLACE_DECLARATION"
+            ],
+            "sample": "IMPACT"
+          }
+        },
+        "required": [
+          "selectorHandle",
+          "family"
+        ]
+      },
+      "responseType": "KastSelectorIdentityResponse",
+      "successType": "AVAILABLE",
+      "responseVariants": [
+        "AVAILABLE",
+        "SELECTOR_HANDLE_REJECTED"
+      ],
+      "notes": [
+        "selectorHandle is opaque and must be carried unchanged from exact symbol resolution.",
+        "The backend authenticates workspace, backend, semantic generation, and requested operation family without invoking symbol lookup.",
+        "AVAILABLE returns only the compact authenticated identity needed by local composite commands; the CLI does not reconstruct selector flags."
+      ]
     },
     "symbol/references": {
       "method": "symbol/references",

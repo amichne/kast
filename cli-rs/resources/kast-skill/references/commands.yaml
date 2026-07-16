@@ -30,6 +30,7 @@ categories:
   - symbol/discover
   - symbol/query
   - symbol/resolve
+  - selector/identity
   - symbol/references
   - symbol/callers
   - symbol/implementations
@@ -921,6 +922,44 @@ commands:
       fields: {}
     responseType: RuntimeStatusResponse
     summary: Detailed runtime state including indexing progress
+  selector/identity:
+    category: symbol
+    dataSource: backend
+    method: selector/identity
+    notes:
+    - selectorHandle is opaque and must be carried unchanged from exact symbol resolution.
+    - The backend authenticates workspace, backend, semantic generation, and requested operation family without invoking symbol lookup.
+    - AVAILABLE returns only the compact authenticated identity needed by local composite commands; the CLI does not reconstruct selector flags.
+    request:
+      fields:
+        family:
+          enum:
+          - REFERENCES
+          - CALLERS
+          - CALLEES
+          - IMPLEMENTATIONS
+          - HIERARCHY
+          - IMPACT
+          - RENAME
+          - REPLACE_DECLARATION
+          sample: IMPACT
+          type: string
+        selectorHandle:
+          sample: ksh1.example-selector-handle
+          type: string
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - selectorHandle
+      - family
+    responseType: KastSelectorIdentityResponse
+    responseVariants:
+    - AVAILABLE
+    - SELECTOR_HANDLE_REJECTED
+    successType: AVAILABLE
+    summary: Authenticate an opaque selector handle for one operation family and recover its compact exact identity
   symbol/add-declaration:
     category: symbol
     dataSource: backend

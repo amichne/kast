@@ -13,7 +13,8 @@ data class KastSelectorHandleRejectedResponse(
 ) : KastReferencesResponse,
     KastCallersResponse,
     KastImplementationsResponse,
-    KastHierarchyResponse {
+    KastHierarchyResponse,
+    KastSelectorIdentityResponse {
     init {
         require(recovery == SelectorHandleRecovery.forReason(reason)) {
             "Selector handle recovery must match its rejection reason"

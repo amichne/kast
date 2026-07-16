@@ -506,13 +506,41 @@ class AnalysisDispatcherTest {
         }
         val rpc = json.parseToJsonElement(raw).jsonObject
         val result = assertInstanceOf(JsonObject::class.java, rpc["result"])
-        val selector = assertInstanceOf(JsonObject::class.java, result["selector"])
+        val identity = assertInstanceOf(JsonObject::class.java, result["identity"])
 
         assertEquals("AVAILABLE", (result["type"] as JsonPrimitive).content)
-        assertEquals(symbol.fqName, (selector["fqName"] as JsonPrimitive).content)
-        assertEquals(symbol.location.filePath, (selector["declarationFile"] as JsonPrimitive).content)
-        assertEquals(symbol.location.startOffset, (selector["declarationStartOffset"] as JsonPrimitive).content.toInt())
-        assertEquals(symbol.kind.name, (selector["kind"] as JsonPrimitive).content)
+        assertEquals(symbol.fqName, (identity["fqName"] as JsonPrimitive).content)
+        assertEquals(symbol.location.filePath, (identity["declarationFile"] as JsonPrimitive).content)
+        assertEquals(
+            symbol.location.startOffset,
+            (identity["declarationStartOffset"] as JsonPrimitive).content.toInt(),
+        )
+        assertEquals(symbol.kind.name, (identity["kind"] as JsonPrimitive).content)
+        assertEquals(0, resolveCalls)
+
+        val rejectedRaw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(2),
+                    method = "selector/identity",
+                    params = JsonObject(
+                        mapOf(
+                            "workspaceRoot" to JsonPrimitive(tempDir.toString()),
+                            "selectorHandle" to JsonPrimitive(selectorHandle),
+                            "family" to JsonPrimitive("RENAME"),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val rejected = assertInstanceOf(
+            JsonObject::class.java,
+            json.parseToJsonElement(rejectedRaw).jsonObject["result"],
+        )
+
+        assertEquals("SELECTOR_HANDLE_REJECTED", (rejected["type"] as JsonPrimitive).content)
+        assertEquals("FAMILY_NOT_ALLOWED", (rejected["reason"] as JsonPrimitive).content)
+        assertEquals("CHOOSE_COMPATIBLE_OPERATION", (rejected["recovery"] as JsonPrimitive).content)
         assertEquals(0, resolveCalls)
     }
 

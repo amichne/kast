@@ -1,5 +1,8 @@
 package io.github.amichne.kast.api.contract.selector
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class SelectorOperationFamily(internal val wireBit: Int) {
     REFERENCES(1 shl 0),
     CALLERS(1 shl 1),

@@ -210,6 +210,25 @@ internal class SkillRpcOrchestrator(
         )
     }
 
+    suspend fun selectorIdentity(
+        request: KastSelectorIdentityRequest,
+    ): KastSelectorIdentityResponse {
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        return when (
+            val resolution = backend.selectorHandles.resolve(
+                handle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = request.family,
+            )
+        ) {
+            is SelectorHandleAuthority.Resolution.Resolved -> KastSelectorIdentityAvailableResponse(
+                resolution.selector.normalizedFor(workspaceRoot).toHandleSubject(),
+            )
+            is SelectorHandleAuthority.Resolution.Rejected ->
+                KastSelectorHandleRejectedResponse(resolution.reason)
+        }
+    }
+
     suspend fun discover(request: KastDiscoverRequest): KastDiscoverResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val query = KastDiscoverQuery(

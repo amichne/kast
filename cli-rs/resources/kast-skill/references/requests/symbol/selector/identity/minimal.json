@@ -1,0 +1,9 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "selector/identity",
+  "params": {
+    "family": "IMPACT",
+    "selectorHandle": "ksh1.example-selector-handle"
+  }
+}

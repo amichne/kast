@@ -101,6 +101,14 @@ Compact symbol output includes `selectorHandle` without requiring verbose
 resolve evidence or replaying the backend response. Field selection may request
 the handle directly. Detailed output preserves the backend-issued value.
 
+Local composite commands whose next stage is outside the semantic backend may
+call `selector/identity` with the handle and the intended operation family. The
+backend authenticates the handle and returns only the compact mandatory-kind
+identity, without symbol lookup or a resolve-payload replay. The CLI may feed
+that identity to the named local stage, but does not convert it into selector
+flags or forward it as an explicit semantic selector. This identity exchange is
+not a paging cursor, mutation authorization, or idempotency key.
+
 ## Ownership and proof
 
 `analysis-api` owns host-neutral handle values, operation-family types, and
