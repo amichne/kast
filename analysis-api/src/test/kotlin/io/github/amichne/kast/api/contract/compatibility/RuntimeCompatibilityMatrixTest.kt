@@ -58,11 +58,11 @@ class RuntimeCompatibilityMatrixTest {
         assertEquals(
             RuntimeCompatibilityOutcome.UpdateRequired(
                 RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision(
-                    actual = WorkspaceMetadataRevision(3),
+                    actual = WorkspaceMetadataRevision(4),
                     supported = setOf(CURRENT_METADATA),
                 ),
             ),
-            matrix.assess(facts(workspaceMetadataRevision = WorkspaceMetadataRevision(3))),
+            matrix.assess(facts(workspaceMetadataRevision = WorkspaceMetadataRevision(4))),
         )
     }
 
@@ -166,7 +166,7 @@ class RuntimeCompatibilityMatrixTest {
         val CURRENT_PLUGIN = PluginImplementationVersion("0.13.0")
         val CURRENT_CLI = CliImplementationVersion("0.13.0")
         val CURRENT_PROTOCOL = ProtocolRevision(1)
-        val CURRENT_METADATA = WorkspaceMetadataRevision(2)
+        val CURRENT_METADATA = WorkspaceMetadataRevision(3)
         val CURRENT_RUNTIME = RuntimeIdentity(
             implementationVersion = RuntimeImplementationVersion("0.13.0"),
             backendKind = RuntimeBackendKind.IDEA,

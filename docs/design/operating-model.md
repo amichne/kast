@@ -34,7 +34,8 @@ flowchart LR
 
 | Layer | What it owns | What it does not own |
 | --- | --- | --- |
-| Distribution | Homebrew install, JetBrains plugin install, Linux headless bundle, runtime manifests | Per-command semantic evidence |
+| CLI distribution | Homebrew formula, CLI-only receipt, Linux headless bundle | JetBrains plugin installation, trust, or repository enrollment |
+| Plugin distribution | Signed ZIP, certificate fingerprint, JetBrains custom repository and updates | Homebrew formula or CLI receipt |
 | Workspace setup | Agent skill, managed guidance region, plugin-prepared metadata | Machine runtime installation |
 | Runtime backend | IDEA or headless analysis state | Public command taxonomy |
 | Typed commands | Readiness, repair, runtime lifecycle, semantic inspection, plan-first mutations | Arbitrary raw RPC as a public workflow |
@@ -43,8 +44,9 @@ flowchart LR
 ## Why Setup Differs By Host
 
 macOS developer machines already have the IDE that owns Kotlin project state.
-The JetBrains plugin is therefore the workspace setup authority on macOS after
-the root installer refreshes the binary and plugin.
+Homebrew is the CLI authority; JetBrains is the plugin installation and update
+authority. Their typed compatibility facts meet at plugin-prepared workspace
+metadata, without an exact-version fallback or a shared receipt.
 
 Linux CI, hosted agents, and server images need a self-contained runtime. The
 headless bundle installs the binary, backend runtime, and install manifest

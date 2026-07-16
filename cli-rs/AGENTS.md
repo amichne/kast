@@ -15,8 +15,9 @@ resources.
   `lsp`.
 - `src/runtime/` owns backend lifecycle inspection and mutation for IDEA and
   headless runtimes behind the same command dialect.
-- `src/install/` owns repository setup, managed guidance, machine install,
-  repair, bundle activation, shell integration, and IDEA plugin installation.
+- `src/install/` owns repository setup, managed guidance, CLI machine receipts,
+  repair, bundle activation, shell integration, and bounded legacy cleanup. It
+  does not install or update IDEA plugins.
 - `src/symbol_query/` and `src/metrics_database/` own operational source-index
   reads for the Rust CLI.
 - `src/workspace_inventory.rs` and `src/workspace_inventory/` own uncapped
@@ -28,12 +29,11 @@ resources.
   limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
   state, managed resource records, doctor checks, and repair behavior.
-- `src/self_mgmt.rs` parses revisioned exact-root compatibility facts strictly
-  before applying the current exact CLI/plugin/running-version admission rule.
-  Unknown fields, unknown capabilities, zero revisions, and inconsistent
-  duplicated identity fields fail closed. Until ADR 0023's negotiation
-  cutover, parsed protocol or capability differences must not become a second
-  admission rule or a compatibility fallback.
+- `src/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
+  and delegates active admission to the authored typed compatibility matrix.
+  Unknown fields, capabilities, revisions, unsupported rows, and missing
+  required capabilities fail closed; missing optional capabilities remain
+  local to the operation that needs them.
 - `resources/kast-skill/` owns the packaged `SKILL.md` and internal catalog
   source material used by release checks and generated artifacts.
 - `resources/plugin/` owns package source material used by release validation.

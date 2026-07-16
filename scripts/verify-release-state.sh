@@ -160,7 +160,10 @@ if [[ "$stable" == true ]]; then
   rm -rf "$tap_dir"
   gh repo clone "$homebrew_repo" "$tap_dir" -- --depth 1 >/dev/null
   ruby -c "${tap_dir}/Formula/kast.rb" >/dev/null
-  ruby -c "${tap_dir}/Casks/kast-plugin.rb" >/dev/null
+  [[ ! -e "${tap_dir}/Casks/kast-plugin.rb" ]] || {
+    printf 'Published Homebrew tap retains the retired plugin cask\n' >&2
+    exit 1
+  }
   python3 - "$tag" "${release_dir}/SHA256SUMS" "$tap_dir" <<'PY'
 import json
 import re
@@ -180,11 +183,8 @@ if state.get("current_release") != tag:
     fail(f"homebrew release-state.json current_release is {state.get('current_release')!r}, expected {tag!r}")
 
 formula = (tap_dir / "Formula" / "kast.rb").read_text(encoding="utf-8")
-cask = (tap_dir / "Casks" / "kast-plugin.rb").read_text(encoding="utf-8")
 if f'ARTIFACT_VERSION = "{version}"' not in formula:
     fail("Formula/kast.rb does not name the release version")
-if f'artifact_version = "{version}"' not in cask:
-    fail("Casks/kast-plugin.rb does not name the release version")
 
 sha_entries: dict[str, str] = {}
 for raw_line in sha_file.read_text(encoding="utf-8").splitlines():
@@ -203,15 +203,7 @@ def referenced_cli_assets(content: str) -> list[str]:
         fail("Formula/kast.rb does not reference any Kast CLI release assets")
     return assets
 
-def referenced_cask_assets(content: str) -> list[str]:
-    templated = "kast-idea-v#{version}.zip"
-    literal = f"kast-idea-{tag}.zip"
-    if templated in content or literal in content:
-        return [literal]
-    fail("Casks/kast-plugin.rb does not reference the Kast IDEA release asset")
-
 formula_assets = referenced_cli_assets(formula)
-cask_assets = referenced_cask_assets(cask)
 
 for asset_name in formula_assets:
     digest = sha_entries.get(asset_name)
@@ -220,12 +212,6 @@ for asset_name in formula_assets:
     if not re.search(rf'\bsha256 "{re.escape(digest)}"', formula):
         fail(f"Formula/kast.rb is missing checksum for {asset_name}")
 
-for asset_name in cask_assets:
-    digest = sha_entries.get(asset_name)
-    if digest is None:
-        fail(f"SHA256SUMS is missing {asset_name}")
-    if not re.search(rf'\bsha256 "{re.escape(digest)}"', cask):
-        fail(f"Casks/kast-plugin.rb is missing checksum for {asset_name}")
 PY
 fi
 

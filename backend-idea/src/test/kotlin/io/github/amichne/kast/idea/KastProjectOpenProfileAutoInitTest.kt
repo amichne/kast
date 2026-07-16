@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
 import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
+import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -90,10 +91,12 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(metadata.contains("\"preparedBy\": \"kast-intellij-plugin\""), metadata)
         assertTrue(metadata.contains("\"cliBinary\": \"${binary.toString().jsonEscaped()}\""), metadata)
         val metadataObject = Json.parseToJsonElement(metadata).jsonObject
-        assertEquals(2, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
+        assertEquals(3, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
+        assertFalse(metadataObject.containsKey("pluginVersion"))
+        assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
         assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
-        assertEquals(2, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
+        assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
         assertTrue(
             compatibility.getValue("readCapabilities").jsonArray
@@ -115,14 +118,12 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = legacyBinary),
-            loadHomebrewReceipt = { pluginVersion ->
+            loadHomebrewReceipt = {
                 MacosHomebrewReceiptLoadResult.Loaded(
                     MacosHomebrewInstallReceipt(
                         cliBinary = homebrewBinary,
                         formulaPrefix = homebrewBinary.parent,
-                        cliVersion = pluginVersion,
-                        caskToken = "amichne/kast/kast-plugin",
-                        pluginVersion = pluginVersion,
+                        cliVersion = CliImplementationVersion("receipt-cli-version"),
                     ),
                 )
             },
@@ -137,6 +138,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(homebrewBinary, requests.single().cliBinary)
+        assertEquals("receipt-cli-version", requests.single().cliVersion.value)
     }
 
     @Test
@@ -148,6 +150,7 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithConfiguredBinary(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = configuredBinary),
+            loadCliVersion = { CliImplementationVersion("configured-cli-version") },
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(
@@ -159,25 +162,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(configuredBinary, requests.single().cliBinary)
-    }
-
-    @Test
-    fun `legacy copilot project-open profile remains supported compatibility input`() {
-        val workspace = gradleWorkspace()
-        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
-
-        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
-            workspaceRoot = workspace,
-            config = autoInitConfig(profile = ProjectOpenProfile.COPILOT_LSP),
-            loadHomebrewReceipt = matchingHomebrewReceipt(fakeKastBinary()),
-            prepareWorkspace = { request ->
-                requests.add(request)
-                PluginWorkspaceBootstrapResult.Prepared(workspace.resolve(".kast/setup/workspace.json"), emptyList())
-            },
-        )
-
-        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
-        assertEquals(1, requests.size)
+        assertEquals("configured-cli-version", requests.single().cliVersion.value)
     }
 
     @Test
@@ -253,14 +238,12 @@ class KastProjectOpenProfileAutoInitTest {
 
     private fun matchingHomebrewReceipt(
         binary: Path,
-    ): (PluginVersion) -> MacosHomebrewReceiptLoadResult = { pluginVersion ->
+    ): () -> MacosHomebrewReceiptLoadResult = {
         MacosHomebrewReceiptLoadResult.Loaded(
             MacosHomebrewInstallReceipt(
                 cliBinary = binary,
                 formulaPrefix = binary.parent,
-                cliVersion = pluginVersion,
-                caskToken = "amichne/kast/kast-plugin",
-                pluginVersion = pluginVersion,
+                cliVersion = CliImplementationVersion("0.13.0"),
             ),
         )
     }

@@ -57,7 +57,6 @@ data class KastConfig(
                         enabled = IdeaLaunchEnabled(false),
                         command = IdeaLaunchCommand("idea"),
                         waitTimeoutMillis = IdeaLaunchWaitTimeoutMillis(90_000L),
-                        requireInstalledPlugin = IdeaLaunchRequireInstalledPlugin(true),
                     ),
                 ),
                 projectOpen = ProjectOpenConfig(
@@ -248,13 +247,11 @@ private data class RuntimeIdeaLaunchConfig(
     val enabled: Boolean? = null,
     val command: String? = null,
     val waitTimeoutMillis: Long? = null,
-    val requireInstalledPlugin: Boolean? = null,
 ) {
     fun toOverride(): IdeaLaunchConfigOverride = IdeaLaunchConfigOverride(
         enabled = enabled?.let(::IdeaLaunchEnabled),
         command = command?.let(::IdeaLaunchCommand),
         waitTimeoutMillis = waitTimeoutMillis?.let(::IdeaLaunchWaitTimeoutMillis),
-        requireInstalledPlugin = requireInstalledPlugin?.let(::IdeaLaunchRequireInstalledPlugin),
     )
 }
 
@@ -556,10 +553,8 @@ private fun Map<String, String>.ideaLaunchOverride(): IdeaLaunchConfigOverride? 
     val enabled = booleanValue("runtime.idealaunch.enabled")?.let(::IdeaLaunchEnabled)
     val command = stringValue("runtime.idealaunch.command")?.let(::IdeaLaunchCommand)
     val waitTimeoutMillis = longValue("runtime.idealaunch.waittimeoutmillis")?.let(::IdeaLaunchWaitTimeoutMillis)
-    val requireInstalledPlugin =
-        booleanValue("runtime.idealaunch.requireinstalledplugin")?.let(::IdeaLaunchRequireInstalledPlugin)
-    return takeIfAny(enabled, command, waitTimeoutMillis, requireInstalledPlugin) {
-        IdeaLaunchConfigOverride(enabled, command, waitTimeoutMillis, requireInstalledPlugin)
+    return takeIfAny(enabled, command, waitTimeoutMillis) {
+        IdeaLaunchConfigOverride(enabled, command, waitTimeoutMillis)
     }
 }
 
@@ -709,7 +704,6 @@ data class IdeaLaunchConfig(
     val enabled: IdeaLaunchEnabled,
     val command: IdeaLaunchCommand,
     val waitTimeoutMillis: IdeaLaunchWaitTimeoutMillis,
-    val requireInstalledPlugin: IdeaLaunchRequireInstalledPlugin,
 )
 
 data class IndexingConfig(
@@ -818,7 +812,6 @@ data class IdeaLaunchConfigOverride(
     val enabled: IdeaLaunchEnabled? = null,
     val command: IdeaLaunchCommand? = null,
     val waitTimeoutMillis: IdeaLaunchWaitTimeoutMillis? = null,
-    val requireInstalledPlugin: IdeaLaunchRequireInstalledPlugin? = null,
 )
 
 data class ServerConfigOverride(
@@ -950,7 +943,6 @@ private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLau
     enabled = override?.enabled ?: enabled,
     command = override?.command ?: command,
     waitTimeoutMillis = override?.waitTimeoutMillis ?: waitTimeoutMillis,
-    requireInstalledPlugin = override?.requireInstalledPlugin ?: requireInstalledPlugin,
 )
 
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(

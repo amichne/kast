@@ -1,91 +1,74 @@
 ---
 title: macOS Developer Machine
-description: Install Kast on a macOS developer machine with the root installer.
+description: Install the Homebrew CLI and signed JetBrains plugin with separate authorities.
 icon: lucide/apple
 ---
 
 # macOS Developer Machine
 
-Use this path when you work on a local macOS project with IntelliJ IDEA or
-Android Studio. The normal install is intentionally short: run the installer,
-approve editor closure if prompted, and open the project.
+Use this path when you work on a local macOS project with IntelliJ IDEA or Android Studio.
+On macOS, Homebrew owns the Kast CLI and JetBrains owns the signed plugin.
+Neither authority installs or repairs the other.
 
-## Install The Machine Distribution
+## Install The CLI
 
-Run the root installer once for the machine.
-
-```console title="Install Kast on macOS"
+```console title="Install the Homebrew CLI"
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer is macOS-only. It uses Homebrew to install the global `kast`
-binary and installs or refreshes the matching IDEA or Android Studio plugin.
-It explains planned machine changes before mutating anything. If IntelliJ IDEA
-or Android Studio is running, the installer reports the executable and process
-ID. Enter `y` to close the detected editor and continue. Any other response,
-end-of-input, or non-interactive invocation exits before changing Homebrew or
-plugin files and prints an exact `kill -TERM <pid>` command for manual cleanup.
-
-Homebrew is the machine-install authority on macOS. After the CLI, matching
-plugin, profile links, and defaults converge, Kast records the exact formula
-binary in `~/Library/Application Support/Kast/homebrew-install.json`. The
-plugin reads that receipt instead of trusting whichever `kast` happens to
-appear first on `PATH`.
-
-## Open Your Project
-
-Open IntelliJ IDEA or Android Studio after the installer completes, then open
-the project. The plugin prepares the project so agents can use Kast without a
-separate directory-specific install step.
+The installer taps `amichne/kast`, installs the formula, and runs the installed
+binary's `kast repair --for machine --apply`. Repair writes a strict CLI-only
+receipt at `~/Library/Application Support/Kast/homebrew-install.json`. It does
+not inspect, close, or mutate an IDE.
 
 Normal developer use does not require running readiness, repair, or setup commands by hand.
-Those checks are part of the agent and plugin workflow.
+
+## Install The Signed Plugin
+
+1. Download the signed `kast-idea-v<version>.zip` release asset and its
+   published certificate fingerprint.
+2. In IntelliJ IDEA or Android Studio, choose **Install Plugin from Disk** and
+   select the ZIP.
+3. Add the published signing certificate and custom plugin repository in the
+   IDE. Kast never enrolls trust or repositories automatically.
+4. Reopen the exact project. The plugin writes revisioned compatibility
+   metadata for that root.
+
+JetBrains owns subsequent plugin updates. Homebrew upgrades do not install or
+link the plugin, and plugin updates do not replace the CLI.
 
 ??? question "What the IDE and agents handle"
-    On macOS, workspace setup is owned by the IntelliJ plugin. It prepares the
-    project guidance and metadata agents need when the project opens.
+    On macOS, workspace setup is owned by the IntelliJ plugin. The signed
+    plugin prepares exact-root guidance and compatibility metadata when the
+    project opens. Agents consume that metadata through typed commands; the
+    installer does not write workspace state.
 
-    The CLI does not install skill-only, runtime-only, Copilot package,
-    portable instruction, session hook, generated catalog, workflow helper, or
-    resource-only workspace setup on macOS. If prior Kast-managed files are not
-    required or recognized by the incoming plugin version, the plugin backs them up and removes them
-    from the active setup path.
+## Update And Verify
 
 ??? info "Advanced installer controls"
-    Most users do not need these commands. They exist for automation, mirrors,
-    and support cases.
+    The `update` and `verify` modes exist for automation, mirrors, and support.
+    Pass `--tap` with `--tap-url` for an internal CLI tap. They never enroll
+    plugin trust or mutate an IDE.
 
-    ```console title="Refresh or verify the machine install"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- verify
-    ```
+```console title="Update the CLI"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update
+```
 
-    The default Homebrew tap is `amichne/kast`. Pass both `--tap` and
-    `--tap-url` when a mirror lives on a custom Git host.
+Update the plugin through JetBrains and reopen the exact project. The first
+semantic workflow performs exact-root verification. If compatibility fails,
+update both authorities as needed, reopen the exact
+project, and let the plugin refresh `.kast/setup/workspace.json`.
 
-    ```console title="Install from an internal Homebrew tap"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install \
-      --tap internal/kast \
-      --tap-url https://git.example.com/internal/homebrew-kast.git
-    ```
+## Legacy Cutover Cleanup
 
-    Use `NONINTERACTIVE=1` only when automation has already accepted the
-    installer plan and confirmed that JetBrains editors are closed. Automation
-    never closes a detected editor; it exits with the manual stop command.
+The 0.13.0 repair path recognizes the old joint receipt only for one-shot
+migration to schema 2. It may also back up and unlink an exact legacy
+`Caskroom/kast-plugin/<version>/backend-idea` symlink. Regular files,
+directories, relative links, traversing links, and any unrecognized state are
+preserved. Cleanup never creates a profile or replacement link.
 
-??? warning "Recover from an older local install"
-    An older Kast installation may have left
-    `~/.local/share/kast/install.json` and a `~/.local/bin/kast` shim. Do not
-    delete them with `sudo`, and do not edit Kast's binary path by hand.
+Use `NONINTERACTIVE=1` only to accept the installer plan in automation. An IDE
+needs to be closed only when repair has proved that an owned legacy symlink
+will actually be removed.
 
-    Run the update command above and approve editor closure if prompted. Invoke
-    `verify` after opening the project. Kast treats the Homebrew receipt as
-    authoritative and reports the old manifest as inactive. If a known,
-    writable Kast shim still shadows Homebrew on `PATH`, readiness prints a
-    safe cleanup command that invokes the exact Homebrew binary. If the old
-    path is administrator-owned or its contents are unknown, Kast leaves it in
-    place and reports that no automatic cleanup is safe; ask your machine
-    administrator to resolve ownership or PATH policy.
-
-Continue with [how Kast thinks about evidence](../learn/evidence-model.md) to
-understand what agents do with the installed semantic backend.
+Continue with [how Kast thinks about evidence](../learn/evidence-model.md).

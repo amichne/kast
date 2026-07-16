@@ -20,6 +20,9 @@ path is the headless runtime plus the published `kast-action` contract smoke.
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
+Homebrew publication owns only the CLI formula and must delete the retired
+plugin cask from the tap; signed plugin ZIP, feed, signer, checksum, and
+provenance verification remain release-owned JetBrains artifacts.
 For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
 

@@ -520,7 +520,6 @@ defaultBackend = "idea"
 enabled = true
 command = "/usr/local/bin/idea"
 waitTimeoutMillis = 45678
-requireInstalledPlugin = false
 "#,
         )
         .unwrap();
@@ -535,7 +534,6 @@ requireInstalledPlugin = false
             PathBuf::from("/usr/local/bin/idea")
         );
         assert_eq!(config.runtime.idea_launch.wait_timeout_millis.get(), 45_678);
-        assert!(!config.runtime.idea_launch.require_installed_plugin);
     }
 
     #[test]
@@ -561,7 +559,10 @@ dynamicOutput = false
         let config = KastConfig::defaults();
 
         assert!(config.project_open.profile_auto_init);
-        assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
+        assert_eq!(
+            config.project_open.profile,
+            ProjectOpenProfile::JetbrainsPlugin
+        );
         assert!(config.project_open.auto_exclude_git);
         assert!(config.project_open.gradle_load_enabled);
     }
@@ -574,7 +575,7 @@ dynamicOutput = false
             &config_file,
             r#"[projectOpen]
 profileAutoInit = true
-profile = "copilot-lsp"
+profile = "jetbrains-plugin"
 autoExcludeGit = false
 gradleLoadEnabled = false
 "#,
@@ -585,7 +586,10 @@ gradleLoadEnabled = false
         config.apply(read_partial_config(&config_file).unwrap());
 
         assert!(config.project_open.profile_auto_init);
-        assert_eq!(config.project_open.profile, ProjectOpenProfile::CopilotLsp);
+        assert_eq!(
+            config.project_open.profile,
+            ProjectOpenProfile::JetbrainsPlugin
+        );
         assert!(!config.project_open.auto_exclude_git);
         assert!(!config.project_open.gradle_load_enabled);
     }
@@ -625,6 +629,10 @@ profile = "unknown"
 
         assert_eq!(error.code, "CONFIG_ERROR");
         assert!(error.message.contains("unknown"), "{}", error.message);
-        assert!(error.message.contains("copilot-lsp"), "{}", error.message);
+        assert!(
+            error.message.contains("jetbrains-plugin"),
+            "{}",
+            error.message
+        );
     }
 }

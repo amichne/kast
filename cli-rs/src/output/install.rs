@@ -9,7 +9,6 @@ pub fn print_install_result(result: &InstallResult) -> Result<()> {
     match result {
         InstallResult::ActivateBundle(result) => print_activate_bundle_install(result),
         InstallResult::AgentGuidance(result) => print_agent_guidance_setup_result(result),
-        InstallResult::IdeaPlugin(result) => print_idea_plugin_install(result),
         InstallResult::Shell(result) => print_shell_install(result),
     }
 }
@@ -72,84 +71,6 @@ pub fn print_agent_guidance_setup_result(result: &AgentGuidanceSetupResult) -> R
     print_markdown(&document.into_string())
 }
 
-fn print_idea_plugin_install(result: &InstallIdeaPluginResult) -> Result<()> {
-    let mut document = MarkdownDocument::default();
-    print_idea_plugin_install_summary(&mut document, result);
-    print_markdown(&document.into_string())
-}
-
-fn print_idea_plugin_install_summary(document: &mut MarkdownDocument, result: &InstallIdeaPluginResult) {
-    mdln!(document, "# Kast IDEA plugin install");
-    mdln!(document);
-    mdln!(
-        document,
-        "- Status: {}",
-        if result.dry_run { "planned" } else { "applied" }
-    );
-    mdln!(document);
-    mdln!(document, "## Install summary");
-    let mut rows = vec![
-        ("Cask token", result.cask_token.clone()),
-        ("Plugin version", result.plugin_version.clone()),
-        ("Homebrew action", result.brew_action.clone()),
-        ("Download cache", compact_path_for_output(&result.download_cache)),
-        ("Downloaded", format_bytes_for_output(result.downloaded_bytes)),
-        ("Dry run", yes_no(result.dry_run).to_string()),
-        ("Homebrew prefix", compact_path_for_output(&result.brew_prefix)),
-        ("Formula prefix", compact_path_for_output(&result.formula_prefix)),
-        ("Running CLI", compact_path_for_output(&result.cli_path)),
-        (
-            "Homebrew receipt",
-            compact_path_for_output(&result.homebrew_receipt),
-        ),
-    ];
-    if !result.brew_command.is_empty() {
-        rows.push(("Brew command", result.brew_command.join(" ")));
-    }
-    if let Some(jetbrains_config_root) = &result.jetbrains_config_root {
-        rows.push((
-            "JetBrains config root",
-            compact_path_for_output(jetbrains_config_root),
-        ));
-    }
-    rows.push((
-        "Developer default backend",
-        format!("{:?}", result.developer_defaults.default_backend).to_lowercase(),
-    ));
-    rows.push((
-        "Developer config",
-        compact_path_for_output(&result.developer_defaults.config_path),
-    ));
-    for (item, value) in rows {
-        mdln!(document, "- {item}: `{value}`");
-    }
-    if !result.plugin_directories.is_empty() {
-        mdln!(document);
-        mdln!(document, "## JetBrains destinations");
-        for path in &result.plugin_directories {
-            mdln!(document, "- `{}`", compact_path_for_output(path));
-        }
-    }
-    print_warnings(document, &result.warnings);
-    mdln!(document);
-    mdln!(document, "## Next steps");
-    if result.dry_run {
-        mdln!(
-            document,
-            "- Run `kast developer machine plugin` without `--dry-run` to install the Homebrew cask and link JetBrains profiles."
-        );
-    } else {
-        mdln!(
-            document,
-            "- Open IntelliJ IDEA or Android Studio so JetBrains loads the linked plugin."
-        );
-        mdln!(
-            document,
-            "- Reopen the project, then run `kast status --backend idea` if the IDE backend still is not available."
-        );
-    }
-}
-
 fn print_shell_install(result: &InstallShellResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast shell install");
@@ -193,11 +114,6 @@ pub fn print_developer_machine_defaults(result: &DeveloperMachineDefaultsResult)
         yes_no(result.idea_launch_enabled)
     );
     mdln!(document, "- IDEA launch command: `{}`", result.idea_launch_command);
-    mdln!(
-        document,
-        "- Require installed plugin: {}",
-        yes_no(result.require_installed_plugin)
-    );
     mdln!(document);
     mdln!(document, "## Next steps");
     mdln!(

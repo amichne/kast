@@ -14,54 +14,38 @@ class MacosHomebrewInstallReceiptTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `valid receipt parses into trusted Homebrew authority`() {
-        val pluginVersion = PluginVersion("1.2.3")
+    fun `schema 2 CLI-only receipt parses into trusted Homebrew authority`() {
         val binary = fakeBinary("1.2.3")
-        val receipt = writeReceipt(binary = binary, cliVersion = "1.2.3", pluginVersion = "1.2.3")
-
-        val result = MacosHomebrewReceiptLoader.load(receipt, pluginVersion)
+        val result = MacosHomebrewReceiptLoader.load(writeReceipt(binary, "1.2.3"))
 
         assertTrue(result is MacosHomebrewReceiptLoadResult.Loaded)
-        assertEquals(binary.toRealPath(), (result as MacosHomebrewReceiptLoadResult.Loaded).receipt.cliBinary)
+        val receipt = (result as MacosHomebrewReceiptLoadResult.Loaded).receipt
+        assertEquals(binary.toRealPath(), receipt.cliBinary)
+        assertEquals("1.2.3", receipt.cliVersion.value)
     }
 
     @Test
     fun `missing receipt is a typed expected failure`() {
-        val result = MacosHomebrewReceiptLoader.load(
-            tempDir.resolve("missing.json"),
-            PluginVersion("1.2.3"),
-        )
+        val result = MacosHomebrewReceiptLoader.load(tempDir.resolve("missing.json"))
 
         assertEquals(
             MacosHomebrewReceiptFailure.MISSING,
             (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
         )
+        assertTrue(result.message.contains("repair --for machine --apply"))
     }
 
     @Test
-    fun `malformed receipt is a typed expected failure`() {
-        val receipt = tempDir.resolve("malformed.json")
-        Files.writeString(receipt, "not-json")
-
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
-
-        assertEquals(
-            MacosHomebrewReceiptFailure.INVALID,
-            (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
-        )
-    }
-
-    @Test
-    fun `receipt without completion timestamp is a typed expected failure`() {
+    fun `schema 1 joint receipt is rejected by the forward reader`() {
         val binary = fakeBinary("1.2.3")
         val receipt = writeReceipt(
-            binary = binary,
-            cliVersion = "1.2.3",
-            pluginVersion = "1.2.3",
-            includeUpdatedAt = false,
+            binary,
+            "1.2.3",
+            schemaVersion = 1,
+            pluginField = """, "plugin": {"caskToken":"amichne/kast/kast-plugin","version":"1.2.3"}""",
         )
 
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+        val result = MacosHomebrewReceiptLoader.load(receipt)
 
         assertEquals(
             MacosHomebrewReceiptFailure.INVALID,
@@ -70,28 +54,11 @@ class MacosHomebrewInstallReceiptTest {
     }
 
     @Test
-    fun `invalid binary path is a typed expected failure`() {
-        val receipt = tempDir.resolve("invalid-path.json")
-        Files.writeString(
-            receipt,
-            """
-            {
-              "schemaVersion": 1,
-              "authority": "macos-homebrew",
-              "cli": {
-                "binary": "bad\u0000path",
-                "formulaPrefix": "/opt/homebrew/Cellar/kast/1.2.3",
-                "version": "1.2.3"
-              },
-              "plugin": {
-                "caskToken": "amichne/kast/kast-plugin",
-                "version": "1.2.3"
-              }
-            }
-            """.trimIndent(),
-        )
+    fun `unknown plugin authority field is rejected`() {
+        val binary = fakeBinary("1.2.3")
+        val receipt = writeReceipt(binary, "1.2.3", pluginField = ", \"plugin\": {}")
 
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+        val result = MacosHomebrewReceiptLoader.load(receipt)
 
         assertEquals(
             MacosHomebrewReceiptFailure.INVALID,
@@ -100,24 +67,44 @@ class MacosHomebrewInstallReceiptTest {
     }
 
     @Test
-    fun `stale receipt versions fail before workspace preparation`() {
-        val binary = fakeBinary("1.2.2")
-        val receipt = writeReceipt(binary = binary, cliVersion = "1.2.2", pluginVersion = "1.2.2")
+    fun `duplicate root and CLI keys are rejected before authority projection`() {
+        val binary = fakeBinary("1.2.3")
+        val duplicateRoot = writeReceipt(
+            binary,
+            "1.2.3",
+            rootField = """, "authority": "macos-homebrew""",
+        )
+        val duplicateCli = writeReceipt(
+            binary,
+            "1.2.3",
+            cliField = """, "version": "1.2.3""",
+        )
 
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+        for (path in listOf(duplicateRoot, duplicateCli)) {
+            assertEquals(
+                MacosHomebrewReceiptFailure.INVALID,
+                (MacosHomebrewReceiptLoader.load(path) as MacosHomebrewReceiptLoadResult.Rejected).failure,
+            )
+        }
+    }
+
+    @Test
+    fun `formula prefix version must equal receipt CLI version`() {
+        val binary = fakeBinary("1.2.3")
+
+        val result = MacosHomebrewReceiptLoader.load(writeReceipt(binary, "1.2.4"))
 
         assertEquals(
-            MacosHomebrewReceiptFailure.VERSION_MISMATCH,
+            MacosHomebrewReceiptFailure.INVALID,
             (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
         )
+        assertTrue(result.message.contains("Cellar/kast"))
     }
 
     @Test
     fun `missing receipt binary fails before workspace preparation`() {
         val binary = tempDir.resolve("Cellar/kast/1.2.3/bin/kast")
-        val receipt = writeReceipt(binary = binary, cliVersion = "1.2.3", pluginVersion = "1.2.3")
-
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+        val result = MacosHomebrewReceiptLoader.load(writeReceipt(binary, "1.2.3"))
 
         assertEquals(
             MacosHomebrewReceiptFailure.MISSING_BINARY,
@@ -135,44 +122,13 @@ class MacosHomebrewInstallReceiptTest {
         val formulaBinary = tempDir.resolve("Cellar/kast/1.2.3/bin/kast")
         Files.createDirectories(formulaBinary.parent)
         Files.createSymbolicLink(formulaBinary, outsideBinary)
-        val receipt = writeReceipt(
-            binary = formulaBinary,
-            cliVersion = "1.2.3",
-            pluginVersion = "1.2.3",
-        )
 
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
+        val result = MacosHomebrewReceiptLoader.load(writeReceipt(formulaBinary, "1.2.3"))
 
         assertEquals(
             MacosHomebrewReceiptFailure.INVALID,
             (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
         )
-    }
-
-    @Test
-    @EnabledOnOs(OS.MAC, OS.LINUX)
-    fun `receipt accepts Homebrew bin symlink that resolves inside formula`() {
-        val cellarPrefix = tempDir.resolve("Cellar/kast/1.2.3")
-        val formulaBinary = cellarPrefix.resolve("bin/kast")
-        Files.createDirectories(formulaBinary.parent)
-        Files.writeString(formulaBinary, "#!/usr/bin/env sh\n")
-        check(formulaBinary.toFile().setExecutable(true))
-        val optPrefix = tempDir.resolve("opt/kast")
-        Files.createDirectories(optPrefix.parent)
-        Files.createSymbolicLink(optPrefix, cellarPrefix)
-        val linkedBinary = tempDir.resolve("bin/kast")
-        Files.createDirectories(linkedBinary.parent)
-        Files.createSymbolicLink(linkedBinary, formulaBinary)
-        val receipt = writeReceipt(
-            binary = linkedBinary,
-            formulaPrefix = optPrefix,
-            cliVersion = "1.2.3",
-            pluginVersion = "1.2.3",
-        )
-
-        val result = MacosHomebrewReceiptLoader.load(receipt, PluginVersion("1.2.3"))
-
-        assertTrue(result is MacosHomebrewReceiptLoadResult.Loaded)
     }
 
     @Test
@@ -193,27 +149,26 @@ class MacosHomebrewInstallReceiptTest {
 
     private fun writeReceipt(
         binary: Path,
-        formulaPrefix: Path = binary.parent.parent,
         cliVersion: String,
-        pluginVersion: String,
-        includeUpdatedAt: Boolean = true,
+        schemaVersion: Int = 2,
+        pluginField: String = "",
+        rootField: String = "",
+        cliField: String = "",
     ): Path {
         val receipt = tempDir.resolve("receipt-${System.nanoTime()}.json")
+        Files.createDirectories(binary.parent.parent)
         Files.writeString(
             receipt,
             """
             {
-              "schemaVersion": 1,
+              "schemaVersion": $schemaVersion,
               "authority": "macos-homebrew",
               "cli": {
                 "binary": "${binary.toString().jsonEscaped()}",
-                "formulaPrefix": "${formulaPrefix.toString().jsonEscaped()}",
-                "version": "$cliVersion"
-              },
-              "plugin": {
-                "caskToken": "amichne/kast/kast-plugin",
-                "version": "$pluginVersion"
-              }${if (includeUpdatedAt) ",\n  \"updatedAt\": \"unix:1\"" else ""}
+                "formulaPrefix": "${binary.parent.parent.toString().jsonEscaped()}",
+                "version": "$cliVersion"$cliField
+              }$pluginField$rootField,
+              "updatedAt": "unix:1"
             }
             """.trimIndent(),
         )
@@ -221,5 +176,4 @@ class MacosHomebrewInstallReceiptTest {
     }
 }
 
-private fun String.jsonEscaped(): String =
-    replace("\\", "\\\\").replace("\"", "\\\"")
+private fun String.jsonEscaped(): String = replace("\\", "\\\\").replace("\"", "\\\"")

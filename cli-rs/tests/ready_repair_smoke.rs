@@ -10,9 +10,10 @@ fn machine_ready_prefers_homebrew_receipt_without_local_manifest() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
 
-    let ready = kast(&home, &config_home)
+    let ready = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "json", "ready", "--for", "machine"])
         .output()
         .expect("machine ready");
@@ -27,7 +28,7 @@ fn machine_ready_prefers_homebrew_receipt_without_local_manifest() {
     assert_eq!(stdout["installAuthority"], "macos-homebrew", "{stdout}");
     assert_eq!(
         stdout["homebrewInstall"]["cli"]["binary"],
-        env!("CARGO_BIN_EXE_kast"),
+        homebrew_binary.display().to_string(),
         "{stdout}"
     );
     assert_eq!(
@@ -35,7 +36,7 @@ fn machine_ready_prefers_homebrew_receipt_without_local_manifest() {
         "{stdout}"
     );
 
-    let human = kast(&home, &config_home)
+    let human = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "human", "ready", "--for", "machine"])
         .output()
         .expect("human machine ready");
@@ -59,20 +60,19 @@ fn machine_ready_rejects_a_stale_homebrew_receipt_with_a_stable_code() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    let receipt =
-        write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    let receipt = write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
     let mut document: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&receipt).expect("receipt bytes"))
             .expect("receipt json");
     document["cli"]["version"] = "0.0.0".into();
-    document["plugin"]["version"] = "0.0.0".into();
     std::fs::write(
         &receipt,
         serde_json::to_vec_pretty(&document).expect("stale receipt json"),
     )
     .expect("stale receipt");
 
-    let ready = kast(&home, &config_home)
+    let ready = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "json", "ready", "--for", "machine"])
         .output()
         .expect("machine ready");
@@ -87,15 +87,55 @@ fn machine_ready_rejects_a_stale_homebrew_receipt_with_a_stable_code() {
 
 #[cfg(target_os = "macos")]
 #[test]
+fn machine_ready_and_repair_reject_same_version_receipt_for_another_binary() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    let running_binary = write_homebrew_kast_for_test(&temp.path().join("running"));
+    let forged_binary = write_homebrew_kast_for_test(&temp.path().join("forged"));
+    let receipt = write_macos_homebrew_receipt_for_test(&home, &forged_binary);
+    let original = std::fs::read(&receipt).expect("receipt bytes");
+
+    for arguments in [
+        vec!["--output", "json", "ready", "--for", "machine"],
+        vec!["--output", "json", "repair", "--for", "machine", "--apply"],
+    ] {
+        let output = kast_at(&running_binary, &home, &config_home)
+            .args(arguments)
+            .output()
+            .expect("Kast command");
+        assert!(
+            !output.status.success(),
+            "forged authority must fail closed"
+        );
+        let payload: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("error JSON");
+        assert_eq!(
+            payload["code"], "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
+            "{payload}",
+        );
+        assert_eq!(
+            std::fs::read(&receipt).expect("preserved receipt"),
+            original,
+            "failed authority proof must not rewrite the receipt",
+        );
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
 fn machine_repair_does_not_create_managed_local_install_in_homebrew_mode() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
 
-    let repair = kast(&home, &config_home)
+    let repair = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
         .expect("machine repair");
@@ -118,10 +158,11 @@ fn machine_repair_backs_up_and_retires_confirmed_legacy_identity() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
     let legacy_shim = write_legacy_local_install_for_test(&home, &config_home);
 
-    let repair = kast(&home, &config_home)
+    let repair = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
         .expect("machine repair");
@@ -161,12 +202,13 @@ fn machine_repair_preserves_an_unrecognized_legacy_identity() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
     let legacy_shim = write_legacy_local_install_for_test(&home, &config_home);
     std::fs::write(&legacy_shim, b"#!/bin/sh\nprintf 'user-owned kast\\n'\n")
         .expect("replace shim with unrecognized contents");
 
-    let repair = kast(&home, &config_home)
+    let repair = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
         .expect("machine repair");
@@ -208,7 +250,8 @@ fn machine_repair_warns_when_legacy_identity_is_not_writable() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_homebrew_receipt_for_test(&home, Path::new(env!("CARGO_BIN_EXE_kast")));
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
     let legacy_shim = write_legacy_local_install_for_test(&home, &config_home);
     let legacy_bin_dir = legacy_shim.parent().expect("legacy bin dir");
     let legacy_manifest = install_manifest_path(&home);
@@ -218,7 +261,7 @@ fn machine_repair_warns_when_legacy_identity_is_not_writable() {
     std::fs::set_permissions(legacy_install_root, std::fs::Permissions::from_mode(0o555))
         .expect("lock install root");
 
-    let repair = kast(&home, &config_home)
+    let repair = kast_at(&homebrew_binary, &home, &config_home)
         .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
         .expect("machine repair");
@@ -257,8 +300,8 @@ fn machine_ready_offers_cleanup_only_for_confirmed_legacy_shadow() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    let homebrew_binary = Path::new(env!("CARGO_BIN_EXE_kast"));
-    write_macos_homebrew_receipt_for_test(&home, homebrew_binary);
+    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
+    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
     let legacy_shim = write_legacy_local_install_for_test(&home, &config_home);
     let path = std::env::join_paths([
         legacy_shim.parent().expect("legacy bin"),
@@ -266,7 +309,7 @@ fn machine_ready_offers_cleanup_only_for_confirmed_legacy_shadow() {
     ])
     .expect("PATH");
 
-    let ready = kast(&home, &config_home)
+    let ready = kast_at(&homebrew_binary, &home, &config_home)
         .env("PATH", path)
         .args(["--output", "json", "ready", "--for", "machine"])
         .output()

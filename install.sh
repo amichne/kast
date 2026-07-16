@@ -13,8 +13,8 @@ Usage:
 macOS-only Kast developer-machine installer.
 
 Commands:
-  install   Tap Homebrew, install kast, and install the IDEA plugin.
-  update    Refresh Homebrew metadata, update kast, and refresh the IDEA plugin.
+  install   Tap Homebrew, install the Kast CLI, and establish its receipt.
+  update    Refresh Homebrew metadata, update the Kast CLI, and repair its receipt.
   verify    Check the Homebrew formula and repository readiness.
 
 Options:
@@ -24,7 +24,7 @@ Options:
   -h, --help               Show this help.
 
 Environment:
-  NONINTERACTIVE=1          Skip the install/update plan prompt; never close a detected editor.
+  NONINTERACTIVE=1          Skip the install/update plan prompt.
 USAGE
 }
 
@@ -164,15 +164,15 @@ print_mutation_plan() {
     install)
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - install the Homebrew formula kast"
-      log_note "  - run kast developer machine plugin"
-      log_note "  - leave workspace metadata setup to IntelliJ IDEA or Android Studio"
+      log_note "  - establish the CLI-only Homebrew receipt with kast repair"
+      log_note "  - leave signed plugin installation and updates to JetBrains"
       ;;
     update)
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - run brew update"
       log_note "  - upgrade or reinstall the Homebrew formula kast"
-      log_note "  - converge the version-coupled IDEA plugin through the Homebrew Kast binary"
-      log_note "  - leave workspace metadata refresh to IntelliJ IDEA or Android Studio"
+      log_note "  - repair the CLI-only Homebrew receipt"
+      log_note "  - leave signed plugin updates and workspace metadata refresh to JetBrains"
       ;;
     *)
       die "No mutation plan for command: ${command_name}"
@@ -211,137 +211,6 @@ tap_homebrew() {
   fi
 }
 
-JETBRAINS_PROCESS_PIDS=()
-JETBRAINS_PROCESS_PRODUCTS=()
-JETBRAINS_PROCESS_EXECUTABLES=()
-
-detect_running_jetbrains_ides() {
-  local process_table
-  local pid
-  local executable
-  local product
-
-  JETBRAINS_PROCESS_PIDS=()
-  JETBRAINS_PROCESS_PRODUCTS=()
-  JETBRAINS_PROCESS_EXECUTABLES=()
-  process_table="$(ps -axo pid=,comm=)" || die "Could not inspect running JetBrains IDEs"
-  while read -r pid executable; do
-    product=""
-    case "$executable" in
-      */IntelliJ\ IDEA*.app/Contents/MacOS/idea)
-        product="IntelliJ IDEA"
-        ;;
-      */Android\ Studio*.app/Contents/MacOS/studio)
-        product="Android Studio"
-        ;;
-    esac
-    if [[ -n "$product" && "$pid" =~ ^[0-9]+$ ]]; then
-      JETBRAINS_PROCESS_PIDS+=("$pid")
-      JETBRAINS_PROCESS_PRODUCTS+=("$product")
-      JETBRAINS_PROCESS_EXECUTABLES+=("$executable")
-    fi
-  done <<<"$process_table"
-}
-
-describe_running_jetbrains_ides() {
-  local index
-  for ((index = 0; index < ${#JETBRAINS_PROCESS_PIDS[@]}; index += 1)); do
-    log_note "Detected ${JETBRAINS_PROCESS_PRODUCTS[$index]} (PID ${JETBRAINS_PROCESS_PIDS[$index]}): ${JETBRAINS_PROCESS_EXECUTABLES[$index]}"
-  done
-}
-
-print_jetbrains_stop_command() {
-  local pid
-  printf '%s\n' "To stop what Kast detected manually, run:" >&2
-  printf '  kill -TERM' >&2
-  for pid in "${JETBRAINS_PROCESS_PIDS[@]}"; do
-    printf ' %s' "$pid" >&2
-  done
-  printf '\n' >&2
-}
-
-detected_jetbrains_products() {
-  local product
-  local intellij_idea=""
-  local android_studio=""
-  local products=""
-  for product in "${JETBRAINS_PROCESS_PRODUCTS[@]}"; do
-    case "$product" in
-      "IntelliJ IDEA") intellij_idea="1" ;;
-      "Android Studio") android_studio="1" ;;
-    esac
-  done
-  if [[ -n "$intellij_idea" ]]; then
-    products="IntelliJ IDEA"
-  fi
-  if [[ -n "$android_studio" ]]; then
-    [[ -z "$products" ]] || products="${products}, "
-    products="${products}Android Studio"
-  fi
-  printf '%s\n' "$products"
-}
-
-close_running_jetbrains_ides() {
-  local products="$1"
-  local deadline=$((SECONDS + 30))
-
-  log_step "Closing ${products}"
-  if ! env kill -TERM "${JETBRAINS_PROCESS_PIDS[@]}"; then
-    print_jetbrains_stop_command
-    die "Could not stop the detected JetBrains editor process."
-  fi
-
-  while ((SECONDS < deadline)); do
-    detect_running_jetbrains_ides
-    if ((${#JETBRAINS_PROCESS_PIDS[@]} == 0)); then
-      log_success "${products} closed"
-      return
-    fi
-    sleep 1
-  done
-
-  describe_running_jetbrains_ides
-  print_jetbrains_stop_command
-  die "Timed out waiting for the detected JetBrains editor process to stop."
-}
-
-require_jetbrains_ides_closed() {
-  local products
-  local reply=""
-
-  detect_running_jetbrains_ides
-  if ((${#JETBRAINS_PROCESS_PIDS[@]} == 0)); then
-    return
-  fi
-  describe_running_jetbrains_ides
-  products="$(detected_jetbrains_products)"
-
-  if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
-    print_jetbrains_stop_command
-    die "${products} must be closed before installing or updating the Kast plugin."
-  fi
-
-  trap 'printf "\n" >&2; print_jetbrains_stop_command; exit 130' INT TERM
-  printf '%s' "Close the detected editor and continue? [y/N]: " >&2
-  if ! IFS= read -r reply; then
-    printf '\n' >&2
-    print_jetbrains_stop_command
-    trap - INT TERM
-    die "Could not read editor closure confirmation."
-  fi
-  case "$reply" in
-    y|Y)
-      close_running_jetbrains_ides "$products"
-      trap - INT TERM
-      ;;
-    *)
-      print_jetbrains_stop_command
-      trap - INT TERM
-      die "Aborted while ${products} is running."
-      ;;
-  esac
-}
-
 resolve_homebrew_kast() {
   local formula_prefix
   local kast_binary
@@ -363,8 +232,8 @@ install_kast() {
   run brew install kast
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
-  run "$kast_binary" developer machine plugin
-  log_note "Open ${workspace_root} in IntelliJ IDEA or Android Studio so the plugin can prepare workspace metadata."
+  run "$kast_binary" repair --for machine --apply
+  log_note "Install the signed plugin through JetBrains, then open ${workspace_root} so it can prepare workspace metadata."
   log_success "Install complete"
 }
 
@@ -385,8 +254,8 @@ update_kast() {
   fi
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
-  run "$kast_binary" developer machine plugin
-  log_note "Reopen ${workspace_root} in IntelliJ IDEA or Android Studio so the plugin can refresh workspace metadata."
+  run "$kast_binary" repair --for machine --apply
+  log_note "Update the signed plugin through JetBrains, then reopen ${workspace_root} to refresh workspace metadata."
   log_success "Update complete"
 }
 
@@ -482,7 +351,6 @@ main() {
   case "$command_name" in
     install|update)
       print_banner
-      require_jetbrains_ides_closed
       confirm_mutation "$command_name" "$tap" "$tap_url" "$workspace_root"
       ;;
   esac

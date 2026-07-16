@@ -159,7 +159,6 @@ mod tests {
     }
 
     struct FakeIdeaLaunchOps {
-        plugin_installed: bool,
         launch_result: std::cell::RefCell<Option<Result<()>>>,
         wait_result: std::cell::RefCell<Option<Result<RuntimeCandidateStatus>>>,
         launches: std::cell::RefCell<Vec<(PathBuf, PathBuf)>>,
@@ -167,9 +166,8 @@ mod tests {
     }
 
     impl FakeIdeaLaunchOps {
-        fn ready(plugin_installed: bool) -> Self {
+        fn ready() -> Self {
             Self {
-                plugin_installed,
                 launch_result: std::cell::RefCell::new(Some(Ok(()))),
                 wait_result: std::cell::RefCell::new(Some(Ok(candidate(
                     "idea",
@@ -183,10 +181,6 @@ mod tests {
     }
 
     impl IdeaBackendLaunchOps for FakeIdeaLaunchOps {
-        fn plugin_installed(&self) -> Result<bool> {
-            Ok(self.plugin_installed)
-        }
-
         fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
             self.launches
                 .borrow_mut()
@@ -212,7 +206,7 @@ mod tests {
     fn idea_launch_is_skipped_unless_enabled_and_idea_is_selected() {
         let workspace = PathBuf::from("/work/kast");
         let config = KastConfig::defaults();
-        let ops = FakeIdeaLaunchOps::ready(true);
+        let ops = FakeIdeaLaunchOps::ready();
 
         let selected = maybe_launch_idea_backend(
             &workspace,
@@ -228,31 +222,6 @@ mod tests {
     }
 
     #[test]
-    fn idea_launch_requires_installed_plugin_when_configured() {
-        let workspace = PathBuf::from("/work/kast");
-        let mut config = KastConfig::defaults();
-        config.runtime.default_backend = config::RuntimeDefaultBackend::Idea;
-        config.runtime.idea_launch.enabled = true;
-        let ops = FakeIdeaLaunchOps::ready(false);
-
-        let error = maybe_launch_idea_backend(
-            &workspace,
-            &config,
-            RuntimeBackendPreference::Fixed(BackendName::Idea),
-            false,
-            &ops,
-        )
-        .unwrap_err();
-
-        assert_eq!(error.code, "IDEA_PLUGIN_NOT_INSTALLED");
-        assert!(ops.launches.borrow().is_empty());
-        assert_eq!(
-            error.details.get("installCommand").map(String::as_str),
-            Some("kast developer machine plugin")
-        );
-    }
-
-    #[test]
     fn idea_launch_runs_configured_command_and_waits_for_descriptor() {
         let workspace = PathBuf::from("/work/kast");
         let mut config = KastConfig::defaults();
@@ -260,7 +229,7 @@ mod tests {
         config.runtime.idea_launch.enabled = true;
         config.runtime.idea_launch.command = PathBuf::from("/usr/local/bin/idea");
         config.runtime.idea_launch.wait_timeout_millis = std::num::NonZeroU64::new(12_345).unwrap();
-        let ops = FakeIdeaLaunchOps::ready(true);
+        let ops = FakeIdeaLaunchOps::ready();
 
         let selected = maybe_launch_idea_backend(
             &workspace,
@@ -291,7 +260,7 @@ mod tests {
                 "IDEA_LAUNCH_FAILED",
                 "boom",
             )))),
-            ..FakeIdeaLaunchOps::ready(true)
+            ..FakeIdeaLaunchOps::ready()
         };
 
         let error = maybe_launch_idea_backend(
@@ -317,7 +286,7 @@ mod tests {
                 "RUNTIME_TIMEOUT",
                 "timed out",
             )))),
-            ..FakeIdeaLaunchOps::ready(true)
+            ..FakeIdeaLaunchOps::ready()
         };
 
         let error = maybe_launch_idea_backend(
@@ -330,5 +299,63 @@ mod tests {
         .unwrap_err();
 
         assert_eq!(error.code, "RUNTIME_TIMEOUT");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn runtime_compatibility_separates_global_updates_from_local_capability_absence() {
+        let mut facts = RuntimeCompatibilityFacts {
+            plugin_version: cli::version().to_string(),
+            cli_version: cli::version().to_string(),
+            protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
+            workspace_metadata_revision: WorkspaceMetadataRevision(
+                NonZeroU32::new(3).expect("metadata"),
+            ),
+            read_capabilities: vec![
+                WorkspaceReadCapability::ResolveSymbol,
+                WorkspaceReadCapability::Diagnostics,
+                WorkspaceReadCapability::WorkspaceFiles,
+            ],
+            mutation_capabilities: vec![
+                WorkspaceMutationCapability::ApplyEdits,
+                WorkspaceMutationCapability::RefreshWorkspace,
+                WorkspaceMutationCapability::Rename,
+            ],
+            runtime_identity: WorkspaceRuntimeIdentity {
+                implementation_version: cli::version().to_string(),
+                backend_kind: WorkspaceRuntimeBackendKind::Idea,
+            },
+        };
+
+        assert_eq!(
+            assess_runtime_compatibility(&facts, None).expect("global assessment"),
+            RuntimeCompatibilityAssessment::Compatible,
+        );
+        assert_eq!(
+            assess_runtime_compatibility(
+                &facts,
+                Some(RuntimeCapability::Read(
+                    WorkspaceReadCapability::CallHierarchy,
+                )),
+            )
+            .expect("operation assessment"),
+            RuntimeCompatibilityAssessment::MissingCapability {
+                capability: RuntimeCapability::Read(WorkspaceReadCapability::CallHierarchy),
+            },
+        );
+
+        facts
+            .read_capabilities
+            .retain(|capability| *capability != WorkspaceReadCapability::Diagnostics);
+        assert!(matches!(
+            assess_runtime_compatibility(&facts, None).expect("missing required assessment"),
+            RuntimeCompatibilityAssessment::UpdateRequired {
+                requirement:
+                    RuntimeCompatibilityUpdateRequirement::MissingRequiredCapability {
+                        capability: RuntimeCapability::Read(WorkspaceReadCapability::Diagnostics),
+                    },
+                ..
+            }
+        ));
     }
 }

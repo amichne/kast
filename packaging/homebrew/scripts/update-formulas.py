@@ -40,12 +40,6 @@ def replace_version(content: str, version: str, formula_name: str) -> str:
     return updated
 
 
-def replace_cask_version(content: str, version: str, cask_name: str) -> str:
-    updated, count = re.subn(r'artifact_version = ".*?"', f'artifact_version = "{version}"', content)
-    require(count == 1, f"{cask_name} must contain exactly one artifact version")
-    return updated
-
-
 def replace_sha256s(content: str, replacements: list[str], package_name: str) -> str:
     matches = list(re.finditer(r'sha256 ".*?"', content))
     require(len(matches) == len(replacements), f"{package_name} must contain exactly {len(replacements)} sha256 stanzas")
@@ -84,13 +78,7 @@ def update_readme(root: Path, version: str) -> None:
         f"/v{version}/kast-v{version}-macos-arm64.zip",
         content,
     )
-    content, plugin_count = re.subn(
-        r"/v\d+\.\d+\.\d+/kast-idea-v\d+\.\d+\.\d+\.zip",
-        f"/v{version}/kast-idea-v{version}.zip",
-        content,
-    )
     require(cli_count == 1, "README.md must contain exactly one CLI mirror example")
-    require(plugin_count == 1, "README.md must contain exactly one plugin mirror example")
     readme.write_text(content, encoding="utf-8")
 
 
@@ -99,9 +87,7 @@ def main() -> None:
     version = release_version()
 
     kast_formula = root / "Formula" / "kast.rb"
-    plugin_cask = root / "Casks" / "kast-plugin.rb"
     require(kast_formula.is_file(), "Formula/kast.rb is missing")
-    require(plugin_cask.is_file(), "Casks/kast-plugin.rb is missing")
 
     kast = replace_version(kast_formula.read_text(encoding="utf-8"), version, "Formula/kast.rb")
     kast = replace_sha256s(
@@ -114,9 +100,6 @@ def main() -> None:
     )
     kast_formula.write_text(kast, encoding="utf-8")
 
-    plugin = replace_cask_version(plugin_cask.read_text(encoding="utf-8"), version, "Casks/kast-plugin.rb")
-    plugin = replace_sha256s(plugin, [required_sha("SHA256_PLUGIN")], "Casks/kast-plugin.rb")
-    plugin_cask.write_text(plugin, encoding="utf-8")
     update_release_state(root, version)
     update_readme(root, version)
 

@@ -10,7 +10,7 @@
       "pluginVersion": "{releaseVersion}",
       "cliVersion": "{releaseVersion}",
       "protocolRevision": 1,
-      "workspaceMetadataRevision": 2,
+      "workspaceMetadataRevision": 3,
       "runtime": {
         "implementationVersion": "{releaseVersion}",
         "backendKind": "IDEA"
