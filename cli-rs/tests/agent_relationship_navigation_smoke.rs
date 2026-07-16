@@ -705,6 +705,104 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
 }
 
 #[test]
+fn selector_handle_drives_all_relationship_commands_without_explicit_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.test-issued-relationship-selector-handle";
+    let function = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+    let interface = relation_identity("sample.Service", "INTERFACE", &declaration_file, 10);
+    let cases = vec![
+        (
+            "callers",
+            "symbol/callers",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "callees",
+            "symbol/callers",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "implementations",
+            "symbol/implementations",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": interface,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "hierarchy",
+            "symbol/hierarchy",
+            vec!["--direction", "both"],
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": interface,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+    ];
+
+    for (index, (command_name, method, extra_args, response)) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp.path().join(format!("selector-handle-{command_name}-{index}.sock")),
+            vec![(method, response)],
+        );
+        let mut command = kast(&home, &config);
+        command.args([
+            "--output",
+            "json",
+            "agent",
+            command_name,
+            "--selector-handle",
+            selector_handle,
+        ]);
+        command.args(extra_args);
+        command.args([
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ]);
+        let output = command.output().expect("relationship by selector handle");
+
+        assert!(
+            output.status.success(),
+            "command={command_name} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let requests = backend.join().expect("relationship backend");
+        assert_eq!(requests[2]["method"], method);
+        assert_eq!(requests[2]["params"]["selectorHandle"], selector_handle);
+        assert!(requests[2]["params"].get("selector").is_none());
+    }
+}
+
+#[test]
 fn exact_identity_drives_references_callers_continuation_and_impact_without_rediscovery() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
