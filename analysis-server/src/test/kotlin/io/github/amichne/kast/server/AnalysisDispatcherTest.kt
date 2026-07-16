@@ -467,6 +467,56 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `selector identity authenticates impact handles without provider resolution`() {
+        val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        var resolveCalls = 0
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+                resolveCalls += 1
+                return delegate.resolveSymbol(query)
+            }
+        }
+        val selectorHandle = assertInstanceOf(
+            SelectorHandleAuthority.IssueResult.Issued::class.java,
+            backend.selectorHandles.issue(
+                selector = symbol.exactSelector(),
+                allowedFamilies = setOf(SelectorOperationFamily.IMPACT),
+            ),
+        ).handle.value
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = backend,
+            config = AnalysisServerConfig(),
+        )
+
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "selector/identity",
+                    params = JsonObject(
+                        mapOf(
+                            "workspaceRoot" to JsonPrimitive(tempDir.toString()),
+                            "selectorHandle" to JsonPrimitive(selectorHandle),
+                            "family" to JsonPrimitive("IMPACT"),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val rpc = json.parseToJsonElement(raw).jsonObject
+        val result = assertInstanceOf(JsonObject::class.java, rpc["result"])
+        val selector = assertInstanceOf(JsonObject::class.java, result["selector"])
+
+        assertEquals("AVAILABLE", (result["type"] as JsonPrimitive).content)
+        assertEquals(symbol.fqName, (selector["fqName"] as JsonPrimitive).content)
+        assertEquals(symbol.location.filePath, (selector["declarationFile"] as JsonPrimitive).content)
+        assertEquals(symbol.location.startOffset, (selector["declarationStartOffset"] as JsonPrimitive).content.toInt())
+        assertEquals(symbol.kind.name, (selector["kind"] as JsonPrimitive).content)
+        assertEquals(0, resolveCalls)
+    }
+
+    @Test
     fun `call relationship missing capability degrades without entering traversal`() {
         val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
         val backend = RecordingPagedRelationshipsBackend(
