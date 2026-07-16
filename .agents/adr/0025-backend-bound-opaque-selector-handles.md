@@ -42,14 +42,13 @@ integrity envelope binds all of the following claims:
 - the complete ADR 0022 declaration selector; and
 - a closed set of operation families for which that selector kind is valid.
 
-The envelope uses canonical, versioned serialization plus a cryptographic
-digest. It detects malformed or changed handles before trusting any claim. A
-selector handle is not an authentication, authorization, or confidentiality
-credential: Kast's local backend boundary remains the authority, and callers
-must not rely on the digest to resist a party that can manufacture a new
-envelope. If handles later cross an untrusted boundary, a superseding decision
-must add backend-authenticated issuance rather than describing the digest as a
-signature.
+The envelope uses canonical, versioned serialization plus a keyed message
+authentication code whose 256-bit key exists only in the issuing backend
+instance. A caller can carry the handle but cannot edit and rehash its selector
+claims into another backend-issued identity. The handle is still not an
+authentication, authorization, or confidentiality credential: the local
+backend remains the authority, and every semantic operation applies its normal
+capability and subject-kind rules after handle validation.
 
 The public selector inputs are an exclusive choice:
 
@@ -69,24 +68,28 @@ rename, and replace-declaration. Rename and replace retain their plan-first,
 precondition, scope, and idempotency contracts; the handle selects the subject
 but is not a mutation authorization or idempotency key.
 
-Validation has closed, actionable outcomes:
+Validation returns `SELECTOR_HANDLE_REJECTED` with one closed reason and its
+invariant recovery action:
 
-- `SELECTOR_HANDLE_TAMPERED` for malformed envelopes, unknown versions, digest
+- `TAMPERED` for malformed envelopes, unknown versions, authentication-tag
   disagreement, or invalid claims;
-- `SELECTOR_HANDLE_WRONG_WORKSPACE` when an intact handle names another
-  canonical workspace;
-- `SELECTOR_HANDLE_WRONG_BACKEND` when it names another backend kind or runtime
-  instance;
-- `SELECTOR_HANDLE_STALE` when its bound semantic generation is no longer
-  current; and
-- `SELECTOR_HANDLE_FAMILY_NOT_ALLOWED` when the requested operation family was
-  not issued for the resolved subject kind.
+- `WRONG_WORKSPACE` when a structurally valid handle names another canonical
+  workspace;
+- `WRONG_BACKEND` when it names another backend kind or runtime instance;
+- `STALE` when its authenticated semantic generation is no longer current;
+- `FAMILY_NOT_ALLOWED` when the requested operation family was not issued for
+  the authenticated subject kind; and
+- `UNAVAILABLE` when the active backend cannot validate handles and the caller
+  must use an explicit selector.
 
-Integrity is checked before contextual comparisons. Contextual comparisons are
-then evaluated in workspace, backend, generation, and family order so the same
-input has one deterministic outcome. Each outcome tells the caller to resolve
-again, target the issuing workspace/backend, or choose a supported operation as
-appropriate. None may fall back to fuzzy or FQ-name resolution.
+Canonical parsing happens before contextual comparison. Workspace and backend
+identity are compared next so a genuine cross-scope handle receives its
+specific recovery action without requiring another backend's in-memory key.
+The active backend then authenticates every claim before trusting the selector,
+generation, or family. Generation and family checks follow in that order. A
+caller that edits workspace or backend claim bytes may receive the corresponding
+safe scope rejection rather than `TAMPERED`, but no unauthenticated selector can
+reach semantic work. No outcome may fall back to fuzzy or FQ-name resolution.
 
 Relationship paging remains a separate `krp1.` query-bound cursor. When the
 initial selector was a handle, the public page-token fingerprint binds that

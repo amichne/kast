@@ -8,20 +8,40 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.Base64
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
-class DigestSelectorHandleAuthority(
+class DigestSelectorHandleAuthority private constructor(
     private val workspaceRoot: String,
     private val backendName: String,
     private val backendVersion: String,
     private val backendInstanceId: String,
     private val semanticGeneration: () -> Long,
+    private val integrityKey: ByteArray,
 ) : SelectorHandleAuthority {
+    constructor(
+        workspaceRoot: String,
+        backendName: String,
+        backendVersion: String,
+        backendInstanceId: String,
+        semanticGeneration: () -> Long,
+    ) : this(
+        workspaceRoot = workspaceRoot,
+        backendName = backendName,
+        backendVersion = backendVersion,
+        backendInstanceId = backendInstanceId,
+        semanticGeneration = semanticGeneration,
+        integrityKey = randomIntegrityKey(),
+    )
+
     init {
         require(workspaceRoot.isNotBlank()) { "workspaceRoot must not be blank" }
         require(backendName.isNotBlank()) { "backendName must not be blank" }
         require(backendVersion.isNotBlank()) { "backendVersion must not be blank" }
         require(backendInstanceId.isNotBlank()) { "backendInstanceId must not be blank" }
+        require(integrityKey.size == INTEGRITY_KEY_LENGTH) { "integrityKey must be 256 bits" }
     }
 
     override fun issue(
@@ -44,7 +64,7 @@ class DigestSelectorHandleAuthority(
             familyMask = allowedFamilies.fold(0) { mask, family -> mask or family.wireBit },
         )
         val payload = encodeClaims(claims)
-        val envelope = payload + digest(payload)
+        val envelope = payload + authenticationTag(payload)
         val value = SelectorHandle.PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(envelope)
         return SelectorHandleAuthority.IssueResult.Issued(SelectorHandle.parse(value))
     }
@@ -54,8 +74,9 @@ class DigestSelectorHandleAuthority(
         workspaceRoot: String,
         family: SelectorOperationFamily,
     ): SelectorHandleAuthority.Resolution {
-        val claims = decodeClaims(handle)
+        val envelope = decodeEnvelope(handle)
             ?: return rejected(SelectorHandleAuthority.Resolution.RejectionReason.TAMPERED)
+        val claims = envelope.claims
         if (claims.workspaceRoot != workspaceRoot) {
             return rejected(SelectorHandleAuthority.Resolution.RejectionReason.WRONG_WORKSPACE)
         }
@@ -65,6 +86,9 @@ class DigestSelectorHandleAuthority(
             claims.backendInstanceId != backendInstanceId
         ) {
             return rejected(SelectorHandleAuthority.Resolution.RejectionReason.WRONG_BACKEND)
+        }
+        if (!MessageDigest.isEqual(envelope.claimedTag, authenticationTag(envelope.payload))) {
+            return rejected(SelectorHandleAuthority.Resolution.RejectionReason.TAMPERED)
         }
         if (claims.semanticGeneration != semanticGeneration()) {
             return rejected(SelectorHandleAuthority.Resolution.RejectionReason.STALE)
@@ -94,16 +118,13 @@ class DigestSelectorHandleAuthority(
             bytes.toByteArray()
         }
 
-    private fun decodeClaims(value: String): Claims? = runCatching {
+    private fun decodeEnvelope(value: String): DecodedEnvelope? = runCatching {
         val handle = SelectorHandle.parse(value)
         val envelope = Base64.getUrlDecoder().decode(handle.value.removePrefix(SelectorHandle.PREFIX))
-        require(envelope.size > DIGEST_LENGTH) { "Selector handle payload is missing" }
-        val payload = envelope.copyOfRange(0, envelope.size - DIGEST_LENGTH)
-        val claimedDigest = envelope.copyOfRange(envelope.size - DIGEST_LENGTH, envelope.size)
-        require(MessageDigest.isEqual(claimedDigest, digest(payload))) {
-            "Selector handle digest does not match"
-        }
-        DataInputStream(ByteArrayInputStream(payload)).use { input ->
+        require(envelope.size > AUTHENTICATION_TAG_LENGTH) { "Selector handle payload is missing" }
+        val payload = envelope.copyOfRange(0, envelope.size - AUTHENTICATION_TAG_LENGTH)
+        val claimedTag = envelope.copyOfRange(envelope.size - AUTHENTICATION_TAG_LENGTH, envelope.size)
+        val claims = DataInputStream(ByteArrayInputStream(payload)).use { input ->
             require(input.readUnsignedByte() == PAYLOAD_VERSION) { "Selector handle version is invalid" }
             val claims = Claims(
                 workspaceRoot = input.readText(),
@@ -129,6 +150,11 @@ class DigestSelectorHandleAuthority(
             require(input.available() == 0) { "Selector handle has trailing data" }
             claims
         }
+        DecodedEnvelope(
+            claims = claims,
+            payload = payload,
+            claimedTag = claimedTag,
+        )
     }.getOrNull()
 
     private fun DataOutputStream.writeText(value: String) {
@@ -160,8 +186,11 @@ class DigestSelectorHandleAuthority(
     private fun DataInputStream.readNullableText(): String? =
         if (readBoolean()) readText() else null
 
-    private fun digest(payload: ByteArray): ByteArray =
-        MessageDigest.getInstance(DIGEST_ALGORITHM).digest(payload)
+    private fun authenticationTag(payload: ByteArray): ByteArray =
+        Mac.getInstance(AUTHENTICATION_ALGORITHM).run {
+            init(SecretKeySpec(integrityKey, AUTHENTICATION_ALGORITHM))
+            doFinal(payload)
+        }
 
     private fun rejected(
         reason: SelectorHandleAuthority.Resolution.RejectionReason,
@@ -177,13 +206,24 @@ class DigestSelectorHandleAuthority(
         val familyMask: Int,
     )
 
+    private data class DecodedEnvelope(
+        val claims: Claims,
+        val payload: ByteArray,
+        val claimedTag: ByteArray,
+    )
+
     private companion object {
         const val PAYLOAD_VERSION: Int = 1
-        const val DIGEST_ALGORITHM: String = "SHA-256"
-        const val DIGEST_LENGTH: Int = 32
+        const val AUTHENTICATION_ALGORITHM: String = "HmacSHA256"
+        const val AUTHENTICATION_TAG_LENGTH: Int = 32
+        const val INTEGRITY_KEY_LENGTH: Int = 32
         const val MAX_TEXT_BYTES: Int = 16_384
         val ALL_FAMILY_BITS: Int = SelectorOperationFamily.entries.fold(0) { mask, family ->
             mask or family.wireBit
+        }
+
+        fun randomIntegrityKey(): ByteArray = ByteArray(INTEGRITY_KEY_LENGTH).also { key ->
+            SecureRandom().nextBytes(key)
         }
     }
 }
