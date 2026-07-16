@@ -1576,6 +1576,68 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `selector handle replaces exact declaration without named discovery`() {
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        val targetFile = sampleFile()
+        val declarationOffset = targetFile.readText().indexOf("greet")
+        val replacementFile = tempDir.resolve("handle-replacement-content.kt")
+        Files.writeString(replacementFile, "fun greet() = \"handle\"")
+        var workspaceSymbolCalls = 0
+        val resolvedPositions = mutableListOf<Pair<String, Int>>()
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun workspaceSymbolSearch(
+                query: ParsedWorkspaceSymbolQuery,
+            ): WorkspaceSymbolResult {
+                workspaceSymbolCalls += 1
+                return delegate.workspaceSymbolSearch(query)
+            }
+
+            override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+                resolvedPositions += query.position.filePath.value to query.position.offset.value
+                return delegate.resolveSymbol(query)
+            }
+        }
+        val selectorHandle = assertInstanceOf(
+            SelectorHandleAuthority.IssueResult.Issued::class.java,
+            backend.selectorHandles.issue(
+                selector = KastExactSymbolSelector(
+                    fqName = "sample.greet",
+                    declarationFile = targetFile.toString(),
+                    declarationStartOffset = declarationOffset,
+                    kind = SymbolKind.FUNCTION,
+                    containingType = "sample",
+                ),
+                allowedFamilies = setOf(SelectorOperationFamily.REPLACE_DECLARATION),
+            ),
+        ).handle.value
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/replace-declaration",
+                    params = json.encodeToJsonElement(
+                        KastReplaceDeclarationRequest.serializer(),
+                        KastReplaceDeclarationBySelectorHandleRequest(
+                            workspaceRoot = tempDir.toString(),
+                            selectorHandle = selectorHandle,
+                            contentFile = replacementFile.toString(),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val rpc = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(KastScopeMutationResponse.serializer(), rpc.result)
+
+        assertInstanceOf(KastScopeMutationSuccessResponse::class.java, result)
+        assertTrue(targetFile.readText().contains("fun greet() = \"handle\""))
+        assertEquals(0, workspaceSymbolCalls)
+        assertEquals(listOf(targetFile.toString() to declarationOffset), resolvedPositions)
+    }
+
+    @Test
     fun `symbol replace declaration resolves fully qualified names through simple-name search`() {
         val targetFile = sampleFile()
         val contentFile = tempDir.resolve("fq-replacement-content.kt")
