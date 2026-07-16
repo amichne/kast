@@ -89,6 +89,11 @@ enum AgentReferencesResponseInput {
         selector: AgentRelationSelectorProjection,
         reason: AgentRelationCursorInvalidReason,
     },
+    #[serde(rename = "SELECTOR_HANDLE_REJECTED")]
+    SelectorHandleRejected {
+        reason: AgentSelectorHandleRejectionReason,
+        recovery: AgentSelectorHandleRecovery,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -113,6 +118,39 @@ enum AgentRelationCursorInvalidReason {
     UnknownHandle,
     FamilyMismatch,
     QueryMismatch,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSelectorHandleRejectionReason {
+    Tampered,
+    WrongWorkspace,
+    WrongBackend,
+    Stale,
+    FamilyNotAllowed,
+    Unavailable,
+}
+
+impl AgentSelectorHandleRejectionReason {
+    fn recovery(self) -> AgentSelectorHandleRecovery {
+        match self {
+            Self::Tampered | Self::Stale => AgentSelectorHandleRecovery::ResolveAgain,
+            Self::WrongWorkspace => AgentSelectorHandleRecovery::ResolveInCurrentWorkspace,
+            Self::WrongBackend => AgentSelectorHandleRecovery::ResolveWithActiveBackend,
+            Self::FamilyNotAllowed => AgentSelectorHandleRecovery::ChooseCompatibleOperation,
+            Self::Unavailable => AgentSelectorHandleRecovery::UseExplicitSelector,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentSelectorHandleRecovery {
+    ResolveAgain,
+    ResolveInCurrentWorkspace,
+    ResolveWithActiveBackend,
+    ChooseCompatibleOperation,
+    UseExplicitSelector,
 }
 
 #[derive(Debug, Deserialize)]
@@ -327,6 +365,9 @@ fn project_expected_reference_outcome(
         | AgentReferencesResponseInput::Degraded {
             selector, subject, ..
         } => selector.is_valid() && subject.is_valid(),
+        AgentReferencesResponseInput::SelectorHandleRejected { reason, recovery } => {
+            reason.recovery() == *recovery
+        }
         AgentReferencesResponseInput::Available { .. } => false,
     };
     if !evidence_is_valid {
@@ -382,6 +423,14 @@ fn project_expected_reference_outcome(
             "outcome": "CURSOR_INVALID",
             "selector": selector,
             "reason": reason,
+            "schemaVersion": SCHEMA_VERSION,
+        }),
+        AgentReferencesResponseInput::SelectorHandleRejected { reason, recovery } => json!({
+            "type": "KAST_AGENT_REFERENCES_RESULT",
+            "ok": true,
+            "outcome": "SELECTOR_HANDLE_REJECTED",
+            "reason": reason,
+            "recovery": recovery,
             "schemaVersion": SCHEMA_VERSION,
         }),
         AgentReferencesResponseInput::Available { .. } => {
@@ -931,6 +980,11 @@ enum AgentTypedTraversalResponseInput<Record, Reason> {
         selector: AgentRelationSelectorProjection,
         reason: AgentRelationCursorInvalidReason,
     },
+    #[serde(rename = "SELECTOR_HANDLE_REJECTED")]
+    SelectorHandleRejected {
+        reason: AgentSelectorHandleRejectionReason,
+        recovery: AgentSelectorHandleRecovery,
+    },
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1241,6 +1295,32 @@ fn project_typed_expected_relationship_outcome<Record, Reason>(
 where
     Reason: Serialize,
 {
+    let outcome = match outcome {
+        AgentTypedTraversalResponseInput::SelectorHandleRejected { reason, recovery }
+            if expected.is_none() && reason.recovery() == recovery =>
+        {
+            return projected_agent_envelope(
+                method,
+                true,
+                json!({
+                    "type": result_type,
+                    "ok": true,
+                    "outcome": "SELECTOR_HANDLE_REJECTED",
+                    "reason": reason,
+                    "recovery": recovery,
+                    "schemaVersion": SCHEMA_VERSION,
+                }),
+                None,
+            );
+        }
+        AgentTypedTraversalResponseInput::SelectorHandleRejected { .. } => {
+            return invalid_projection_envelope(
+                method,
+                "Selector handle rejection did not match a handle request and its required recovery.",
+            );
+        }
+        other => other,
+    };
     let Some(expected) = expected else {
         return invalid_projection_envelope(
             method,
