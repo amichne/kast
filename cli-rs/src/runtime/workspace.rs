@@ -310,6 +310,8 @@ enum RuntimeWaitPhase {
     SpawnedRuntime,
 }
 
+const LOCAL_DEVELOPMENT_HEADLESS_COLD_START_WAIT_TIMEOUT_MS: u64 = 600_000;
+
 fn runtime_wait_timeout(
     requested_timeout_ms: u64,
     backend_name: BackendName,
@@ -320,7 +322,7 @@ fn runtime_wait_timeout(
         && backend_name == BackendName::Headless
         && phase == RuntimeWaitPhase::SpawnedRuntime
     {
-        requested_timeout_ms.max(300_000)
+        requested_timeout_ms.max(LOCAL_DEVELOPMENT_HEADLESS_COLD_START_WAIT_TIMEOUT_MS)
     } else {
         requested_timeout_ms
     }

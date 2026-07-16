@@ -11,7 +11,7 @@ mod tests {
                 true,
                 RuntimeWaitPhase::SpawnedRuntime,
             ),
-            300_000,
+            600_000,
         );
         assert_eq!(
             runtime_wait_timeout(
