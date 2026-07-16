@@ -4,6 +4,9 @@ import com.intellij.openapi.project.Project
 import java.nio.file.Path
 
 class HeadlessGradleProjectBootstrap(
+    private val configureGradleImport: (Project) -> Unit = { project ->
+        HeadlessGradleProjectImportBridge.configureHeadlessImport(project)
+    },
     private val waitForProjectModel: (Project) -> Unit = { project ->
         HeadlessGradleProjectImportBridge.awaitGradleModelSettlement(project)
     },
@@ -39,6 +42,7 @@ class HeadlessGradleProjectBootstrap(
             return HeadlessProjectModelBootstrapResult.Skipped("not a Gradle project")
         }
 
+        configureGradleImport(project)
         val modelBeforeSync = inspectProjectModel(project)
         val externalProjectPath = workspaceRoot.toAbsolutePath().normalize().toString()
         if (!canLinkGradleProject(externalProjectPath, project)) {

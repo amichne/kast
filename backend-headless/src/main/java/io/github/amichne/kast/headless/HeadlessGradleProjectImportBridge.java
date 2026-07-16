@@ -18,6 +18,7 @@ import com.intellij.openapi.startup.StartupManager;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.util.execution.ParametersListUtil;
 import org.jetbrains.plugins.gradle.service.project.open.GradleProjectImportUtil;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
@@ -35,7 +36,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public final class HeadlessGradleProjectImportBridge {
+    private static final String DISABLE_DEPENDENCY_SOURCE_DOWNLOADS =
+        "-Didea.gradle.download.sources.force=false";
+
     private HeadlessGradleProjectImportBridge() {
+    }
+
+    public static void configureHeadlessImport(Project project) {
+        GradleSettings settings = GradleSettings.getInstance(project);
+        settings.setGradleVmOptions(withDependencySourceDownloadsDisabled(settings.getGradleVmOptions()));
+    }
+
+    static String withDependencySourceDownloadsDisabled(String currentOptions) {
+        if (currentOptions != null
+            && ParametersListUtil.parse(currentOptions).contains(DISABLE_DEPENDENCY_SOURCE_DOWNLOADS)) {
+            return currentOptions;
+        }
+        if (currentOptions == null || currentOptions.isBlank()) {
+            return DISABLE_DEPENDENCY_SOURCE_DOWNLOADS;
+        }
+        return currentOptions + " " + DISABLE_DEPENDENCY_SOURCE_DOWNLOADS;
     }
 
     public static boolean canLinkAndRefreshGradleProject(String externalProjectPath, Project project) {

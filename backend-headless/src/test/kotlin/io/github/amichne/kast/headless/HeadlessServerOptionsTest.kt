@@ -137,6 +137,47 @@ class HeadlessServerOptionsTest {
     }
 
     @Test
+    fun `headless Gradle import disables dependency source downloads without discarding VM options`() {
+        val disableSources = "-Didea.gradle.download.sources.force=false"
+
+        assertEquals(
+            disableSources,
+            HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled(null),
+        )
+        assertEquals(
+            "-Xmx2g $disableSources",
+            HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled("-Xmx2g"),
+        )
+        assertEquals(
+            "-Xmx2g $disableSources",
+            HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled("-Xmx2g $disableSources"),
+        )
+    }
+
+    @Test
+    fun `Gradle bootstrap configures the lean headless import before inspecting the model`() {
+        val workspace = tempDir.resolve("workspace")
+        val phases = mutableListOf<String>()
+        val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = { phases += "configure" },
+            waitForProjectModel = {},
+            inspectProjectModel = {
+                phases += "inspect"
+                modelReadiness(moduleNames = listOf(":app"))
+            },
+            canLinkGradleProject = { _, _ -> true },
+        )
+
+        val result = bootstrap.bootstrap(projectStub(), workspace, HeadlessWorkspaceKind.GRADLE)
+
+        assertEquals(
+            HeadlessProjectModelBootstrapResult.Ready(moduleNames = listOf(":app"), linkedGradleProject = true),
+            result,
+        )
+        assertEquals(listOf("configure", "inspect", "inspect"), phases)
+    }
+
+    @Test
     fun `workspace kind detects Gradle marker files`() {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
@@ -158,6 +199,7 @@ class HeadlessServerOptionsTest {
             ),
         )
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = {
                 waitCount += 1
             },
@@ -192,6 +234,7 @@ class HeadlessServerOptionsTest {
             ),
         )
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = { waitCount += 1 },
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
@@ -227,6 +270,7 @@ class HeadlessServerOptionsTest {
             ),
         )
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = {
                 waitCount += 1
             },
@@ -315,6 +359,7 @@ class HeadlessServerOptionsTest {
             ),
         )
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = { waitCount += 1 },
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
@@ -337,6 +382,7 @@ class HeadlessServerOptionsTest {
     fun `Gradle bootstrap fails when sync still reports no modules`() {
         val workspace = tempDir.resolve("workspace")
         val bootstrap = HeadlessGradleProjectBootstrap(
+            configureGradleImport = {},
             waitForProjectModel = {},
             inspectProjectModel = { modelReadiness() },
             canLinkGradleProject = { _, _ -> true },
