@@ -108,6 +108,7 @@ object HeadlessRuntime {
         configureSystemProperties()
         val serverOptions = options.serverOptions
         val workspaceRoot = serverOptions.workspaceRoot
+        HeadlessGradleProjectImportBridge.configureHeadlessApplication()
         val project = projectOpener.openProject(workspaceRoot)
         val config = options.runtimeConfig ?: KastConfig.load(
             workspaceRoot = workspaceRoot,

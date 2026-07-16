@@ -13,6 +13,7 @@ import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.function.Consumer
 import kotlin.io.path.writeText
 
 class HeadlessServerOptionsTest {
@@ -152,6 +153,15 @@ class HeadlessServerOptionsTest {
             "-Xmx2g $disableSources",
             HeadlessGradleProjectImportBridge.withDependencySourceDownloadsDisabled("-Xmx2g $disableSources"),
         )
+    }
+
+    @Test
+    fun `headless application disables dependency source downloads before project open`() {
+        val observedValues = mutableListOf<Boolean>()
+
+        HeadlessGradleProjectImportBridge.configureHeadlessApplication(Consumer(observedValues::add))
+
+        assertEquals(listOf(false), observedValues)
     }
 
     @Test

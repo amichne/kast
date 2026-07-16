@@ -22,6 +22,7 @@ import com.intellij.util.execution.ParametersListUtil;
 import org.jetbrains.plugins.gradle.service.project.open.GradleProjectImportUtil;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
+import org.jetbrains.plugins.gradle.settings.GradleSystemSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jetbrains.plugins.gradle.util.GradleImportingUtil;
 
@@ -34,12 +35,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 public final class HeadlessGradleProjectImportBridge {
     private static final String DISABLE_DEPENDENCY_SOURCE_DOWNLOADS =
         "-Didea.gradle.download.sources.force=false";
 
     private HeadlessGradleProjectImportBridge() {
+    }
+
+    public static void configureHeadlessApplication() {
+        configureHeadlessApplication(enabled -> GradleSystemSettings.getInstance().setDownloadSources(enabled));
+    }
+
+    static void configureHeadlessApplication(Consumer<Boolean> updateDownloadSources) {
+        updateDownloadSources.accept(false);
     }
 
     public static void configureHeadlessImport(Project project) {
