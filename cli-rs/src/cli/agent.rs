@@ -1265,15 +1265,22 @@ pub struct AgentRenameArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     /// Existing declaration identity to rename.
-    #[arg(long)]
-    pub symbol: String,
+    #[arg(
+        long,
+        required_unless_present = "selector_handle",
+        conflicts_with = "selector_handle"
+    )]
+    pub symbol: Option<String>,
+    /// Opaque exact selector returned by compiler-backed symbol resolution.
+    #[arg(long = "selector-handle", conflicts_with = "symbol")]
+    pub selector_handle: Option<AgentSelectorHandle>,
     #[arg(long)]
     pub new_name: String,
-    #[arg(long, value_enum)]
+    #[arg(long, value_enum, conflicts_with = "selector_handle")]
     pub kind: Option<AgentSymbolKind>,
-    #[arg(long)]
+    #[arg(long, conflicts_with = "selector_handle")]
     pub file_hint: Option<String>,
-    #[arg(long)]
+    #[arg(long, conflicts_with = "selector_handle")]
     pub containing_type: Option<String>,
     #[command(flatten)]
     pub mutation: AgentMutationApplyArgs,

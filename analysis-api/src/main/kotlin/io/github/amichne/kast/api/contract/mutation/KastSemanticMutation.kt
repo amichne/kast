@@ -4,7 +4,7 @@ import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.contract.skill.KastAddImplementationRequest
 import io.github.amichne.kast.api.contract.skill.KastAddStatementRequest
-import io.github.amichne.kast.api.contract.skill.KastRenameBySymbolRequest
+import io.github.amichne.kast.api.contract.skill.KastRenameRequest
 import io.github.amichne.kast.api.contract.skill.KastReplaceDeclarationRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,7 +19,7 @@ sealed interface KastSemanticMutation {
     @SerialName("RENAME")
     data class Rename(
         override val idempotencyKey: KastMutationIdempotencyKey,
-        val request: KastRenameBySymbolRequest,
+        val request: KastRenameRequest,
     ) : KastSemanticMutation {
         override val kind: KastSemanticMutationKind
             get() = KastSemanticMutationKind.RENAME

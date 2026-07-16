@@ -669,7 +669,10 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         .iter()
         .find(|request| request["method"] == "selector/identity")
         .expect("selector identity request");
-    assert_eq!(identity_request["params"]["selectorHandle"], selector_handle);
+    assert_eq!(
+        identity_request["params"]["selectorHandle"],
+        selector_handle
+    );
     assert_eq!(identity_request["params"]["family"], "RENAME");
     assert!(
         requests
@@ -700,13 +703,16 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         ])
         .output()
         .expect("rename without idempotency key");
-    assert!(!missing_key.status.success(), "apply must require authority");
+    assert!(
+        !missing_key.status.success(),
+        "apply must require authority"
+    );
     let missing_key: Value =
         serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
     assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
 
     let apply_socket_path = temp.path().join("rename-handle-apply.sock");
-    let apply_backend = spawn_scripted_headless_backend(
+    let apply_backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
         &workspace,
