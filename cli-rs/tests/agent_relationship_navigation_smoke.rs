@@ -802,6 +802,99 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
 }
 
 #[test]
+fn selector_handle_rejections_stay_distinct_and_actionable_in_cli_projection() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let selector_handle = "ksh1.test-rejected-selector-handle";
+    let cases = [
+        (
+            "references",
+            "symbol/references",
+            "TAMPERED",
+            "RESOLVE_AGAIN",
+        ),
+        (
+            "callers",
+            "symbol/callers",
+            "WRONG_WORKSPACE",
+            "RESOLVE_IN_CURRENT_WORKSPACE",
+        ),
+        (
+            "references",
+            "symbol/references",
+            "WRONG_BACKEND",
+            "RESOLVE_WITH_ACTIVE_BACKEND",
+        ),
+        ("callers", "symbol/callers", "STALE", "RESOLVE_AGAIN"),
+        (
+            "references",
+            "symbol/references",
+            "FAMILY_NOT_ALLOWED",
+            "CHOOSE_COMPATIBLE_OPERATION",
+        ),
+        (
+            "callers",
+            "symbol/callers",
+            "UNAVAILABLE",
+            "USE_EXPLICIT_SELECTOR",
+        ),
+    ];
+
+    for (index, (command_name, method, reason, recovery)) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp
+                .path()
+                .join(format!("selector-handle-rejection-{index}.sock")),
+            vec![(
+                method,
+                serde_json::json!({
+                    "type": "SELECTOR_HANDLE_REJECTED",
+                    "reason": reason,
+                    "recovery": recovery,
+                    "schemaVersion": 3
+                }),
+            )],
+        );
+        let output = kast(&home, &config)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                command_name,
+                "--selector-handle",
+                selector_handle,
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("relationship handle rejection");
+
+        assert!(
+            output.status.success(),
+            "command={command_name} reason={reason} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let result: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("rejection projection JSON");
+        assert_eq!(result["result"]["outcome"], "SELECTOR_HANDLE_REJECTED");
+        assert_eq!(result["result"]["reason"], reason);
+        assert_eq!(result["result"]["recovery"], recovery);
+        assert_eq!(result["result"]["ok"], true);
+        assert!(result.get("error").is_none(), "projection={result}");
+
+        let requests = backend.join().expect("rejection backend");
+        assert_eq!(requests[2]["method"], method);
+        assert_eq!(requests[2]["params"]["selectorHandle"], selector_handle);
+    }
+}
+
+#[test]
 fn exact_identity_drives_references_callers_continuation_and_impact_without_rediscovery() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
