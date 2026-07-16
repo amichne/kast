@@ -20,6 +20,17 @@ fun kastConfigHome(envLookup: (String) -> String?): Path =
 fun kastInstallRoot(): Path =
     configPath(KastConfig.defaults().paths.installRoot.value)
 
+fun kastDataRoot(): Path = kastDataRoot(System::getenv, kastInstallRoot())
+
+fun kastDataRoot(
+    envLookup: (String) -> String?,
+    installRoot: Path,
+): Path = envLookup("KAST_DATA_HOME")
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?.let { Path(it).toAbsolutePath().normalize() }
+    ?: installRoot.resolve("state").toAbsolutePath().normalize()
+
 fun defaultDescriptorDirectory(): Path =
     configPath(KastConfig.defaults().paths.descriptorDir.value)
 

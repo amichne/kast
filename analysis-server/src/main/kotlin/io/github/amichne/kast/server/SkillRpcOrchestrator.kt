@@ -314,7 +314,7 @@ internal class SkillRpcOrchestrator(
                 )
             }
         }
-        if (completeResult.searchScope?.exhaustive == false) {
+        if (completeResult.searchScope?.candidateCoverage == SearchScope.CandidateCoverage.PARTIAL) {
             return KastReferencesDegradedResponse(
                 selector = request.selector,
                 subject = subject,
@@ -472,6 +472,8 @@ internal class SkillRpcOrchestrator(
             KastScaffoldReferences(
                 locations = result.references,
                 count = result.references.size,
+                cardinality = result.cardinality,
+                page = result.page,
                 searchScope = result.searchScope,
                 declaration = result.declaration,
             )

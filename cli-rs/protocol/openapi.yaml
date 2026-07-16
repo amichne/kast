@@ -1061,6 +1061,8 @@ components:
           "$ref": "#/components/schemas/SearchScopeKind"
         exhaustive:
           type: boolean
+        candidateCoverage:
+          "$ref": "#/components/schemas/CandidateCoverage"
         candidateFileCount:
           type: integer
           format: int32
@@ -1080,6 +1082,11 @@ components:
         - FILE
         - MODULE
         - DEPENDENT_MODULES
+    CandidateCoverage:
+      type: string
+      enum:
+        - COMPLETE
+        - PARTIAL
     TextEdit:
       type: object
       properties:

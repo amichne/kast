@@ -3,6 +3,15 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=KAST_LOCAL_SOURCE_SHA256");
+    if let Ok(source_sha256) = env::var("KAST_LOCAL_SOURCE_SHA256") {
+        if source_sha256.len() != 64 || !source_sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            panic!("KAST_LOCAL_SOURCE_SHA256 must be exactly 64 hexadecimal characters");
+        }
+        println!("cargo:rustc-env=KAST_LOCAL_SOURCE_SHA256={source_sha256}");
+    }
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
     let release_state = manifest_dir

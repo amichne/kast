@@ -62,6 +62,20 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
             receipt.cli.version
         );
     }
+    if let Some(receipt) = &result.local_development {
+        mdln!(document);
+        mdln!(document, "## Local-development authority");
+        mdln!(document, "- Source root: `{}`", receipt.source.canonical_root.display());
+        mdln!(document, "- Git commit: `{}`", receipt.source.git_commit.as_str());
+        mdln!(
+            document,
+            "- Source SHA-256: `{}`",
+            receipt.source.source_tree_sha256.as_str()
+        );
+        mdln!(document, "- Backend: `headless` (`{}`)", receipt.backend.implementation_version);
+        mdln!(document, "- Skill: `{}`", receipt.components.skill.effective_target.display());
+        mdln!(document, "- Guidance: `{}`", receipt.components.guidance.effective_target.display());
+    }
     if let Some(shadow) = &result.legacy_shadow {
         mdln!(document);
         mdln!(document, "## Legacy PATH shadow");
@@ -122,6 +136,7 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
 
 fn install_authority_label(authority: crate::self_mgmt::InstallAuthority) -> &'static str {
     match authority {
+        crate::self_mgmt::InstallAuthority::LocalDevelopment => "local-development",
         crate::self_mgmt::InstallAuthority::MacosHomebrew => "macos-homebrew",
         crate::self_mgmt::InstallAuthority::ManagedLocal => "managed-local",
         crate::self_mgmt::InstallAuthority::Missing => "missing",

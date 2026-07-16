@@ -643,7 +643,8 @@ struct AgentRequest {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AgentOperation {
     ReadOnly,
-    Mutation,
+    MutationPreview,
+    AppliedMutation,
 }
 
 #[derive(Debug, Serialize)]
@@ -742,6 +743,40 @@ struct AgentCompilerSymbolIdentity {
     fields: BTreeMap<String, Value>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRenamePosition {
+    file_path: String,
+    offset: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentRenamePreview {
+    edits: Vec<AgentRenamePreviewEdit>,
+    file_hashes: Vec<AgentRenamePreviewFileHash>,
+    affected_files: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    search_scope: Option<Value>,
+    schema_version: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentRenamePreviewEdit {
+    file_path: String,
+    start_offset: u32,
+    end_offset: u32,
+    new_text: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentRenamePreviewFileHash {
+    file_path: String,
+    hash: String,
+}
+
 impl AgentCompilerSymbolIdentity {
     fn has_complete_anchor(&self) -> bool {
         let location = self.fields.get("location").and_then(Value::as_object);
@@ -759,5 +794,57 @@ impl AgentCompilerSymbolIdentity {
                 .and_then(|location| location.get("startOffset"))
                 .and_then(Value::as_u64)
                 .is_some()
+    }
+
+    fn rename_position(&self) -> Option<AgentRenamePosition> {
+        let location = self.fields.get("location")?.as_object()?;
+        let file_path = location.get("filePath")?.as_str()?.trim();
+        let offset = location.get("startOffset")?.as_u64()?;
+        if file_path.is_empty() || offset > i32::MAX as u64 {
+            return None;
+        }
+        Some(AgentRenamePosition {
+            file_path: file_path.to_string(),
+            offset: offset as u32,
+        })
+    }
+}
+
+impl AgentRenamePreview {
+    fn validate(&self) -> std::result::Result<(), String> {
+        if self.edits.is_empty() {
+            return Err("rename preview contained no edits".to_string());
+        }
+        let mut affected_files = Vec::new();
+        for edit in &self.edits {
+            if edit.file_path.trim().is_empty()
+                || edit.start_offset > edit.end_offset
+                || edit.new_text.is_empty()
+            {
+                return Err("rename preview contained an invalid text edit".to_string());
+            }
+            if !affected_files.contains(&edit.file_path) {
+                affected_files.push(edit.file_path.clone());
+            }
+        }
+        if affected_files != self.affected_files {
+            return Err("rename preview affected files did not match its edits".to_string());
+        }
+        let hashed_files = self
+            .file_hashes
+            .iter()
+            .map(|file_hash| file_hash.file_path.as_str())
+            .collect::<BTreeSet<_>>();
+        if self.file_hashes.len() != self.affected_files.len()
+            || hashed_files.len() != self.affected_files.len()
+            || self.file_hashes.iter().any(|file_hash| {
+                !self.affected_files.contains(&file_hash.file_path)
+                    || file_hash.hash.len() != 64
+                    || !file_hash.hash.bytes().all(|byte| byte.is_ascii_hexdigit())
+            })
+        {
+            return Err("rename preview file hashes did not cover every affected file".to_string());
+        }
+        Ok(())
     }
 }

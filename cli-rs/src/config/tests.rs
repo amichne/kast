@@ -363,7 +363,7 @@ installRoot = "{}"
         let entries = path_resolution_entries(
             &config,
             PathResolutionMode::Cli,
-            PathResolutionEntryContext::from_states(false, false, false, false, false),
+            PathResolutionEntryContext::from_states(false, false, false, false, false, false),
         );
         let entry = |key: &str| report_entry(&entries, key);
 
@@ -411,7 +411,7 @@ installRoot = "{}"
         let entries = path_resolution_entries(
             &config,
             PathResolutionMode::Cli,
-            PathResolutionEntryContext::from_states(true, false, true, true, false),
+            PathResolutionEntryContext::from_states(true, false, true, true, false, false),
         );
         let entry = |key: &str| report_entry(&entries, key);
 
@@ -454,7 +454,7 @@ installRoot = "{}"
         let entries = path_resolution_entries(
             &config,
             PathResolutionMode::Cli,
-            PathResolutionEntryContext::from_states(true, true, false, false, false),
+            PathResolutionEntryContext::from_states(true, true, false, false, false, false),
         );
         let entry = |key: &str| report_entry(&entries, key);
 

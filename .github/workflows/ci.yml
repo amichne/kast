@@ -28,6 +28,9 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Install Rust for command-surface contracts
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Test release workflow contract
         shell: bash
         run: ./.github/scripts/test-release-workflow-contract.sh
@@ -51,6 +54,10 @@ jobs:
       - name: Test macOS installer contract
         shell: bash
         run: ./.github/scripts/test-macos-installer-contract.sh
+
+      - name: Test local development refresh contract
+        shell: bash
+        run: ./.github/scripts/test-local-development-refresh-contract.sh
 
       - uses: actions/setup-python@v6
         with:
@@ -101,6 +108,24 @@ jobs:
       - name: Test Homebrew package renderer
         shell: bash
         run: packaging/homebrew/scripts/test-formulas.py
+
+  local-development-semantic-e2e:
+    name: Local development installed semantic E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Exercise refreshed installed semantics
+        shell: bash
+        run: ./.github/scripts/test-local-development-semantic-e2e.sh
 
   runtime-contracts:
     name: Runtime command and bundle contracts

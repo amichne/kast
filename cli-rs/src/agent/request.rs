@@ -6,7 +6,7 @@ fn execute_request_with_session(
     request: AgentRequest,
     session: Option<&runtime::RawRpcSession>,
 ) -> AgentEnvelope {
-    if request.operation == AgentOperation::Mutation {
+    if request.operation == AgentOperation::AppliedMutation {
         match runtime::semantic_mutation_workspace_route(
             request.runtime.workspace_root.clone(),
             request.runtime.backend_name,

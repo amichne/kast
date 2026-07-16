@@ -177,6 +177,29 @@ val headlessPluginImplementationJar by tasks.registering(Jar::class) {
     }
 }
 
+val localHeadlessPluginImplementationJar by tasks.registering(Jar::class) {
+    group = "build"
+    description = "Builds source-bound headless plugin bytes for local-development authority."
+    dependsOn(":captureDevelopmentSourceSnapshot", ":writeLocalBackendComponentManifest")
+    archiveFileName.set("backend-headless-local-plugin.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("local-development"))
+    from(sourceSets.named("main").map { it.output }) {
+        exclude("META-INF/plugin.xml")
+    }
+    from(rootProject.layout.buildDirectory.file("local-development/source-snapshot.json")) {
+        into("META-INF/kast")
+        rename { "local-source-snapshot.json" }
+    }
+    from(rootProject.layout.buildDirectory.file("local-development/backend-component-manifest.json")) {
+        into("META-INF/kast")
+        rename { "local-backend-components.json" }
+    }
+    manifest {
+        attributes["Implementation-Title"] = "${project.name}-plugin"
+        attributes["Implementation-Version"] = buildVersion.get()
+    }
+}
+
 val headlessBackendIdeaRuntimeJar by tasks.registering(Jar::class) {
     archiveBaseName.set("backend-idea")
     archiveVersion.set(buildVersion)
@@ -300,6 +323,7 @@ tasks.named<WriteWrapperScriptTask>("writeWrapperScript") {
             "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader"
             "-Didea.vendor.name=JetBrains"
             "-Didea.paths.selector=KastHeadless"
+            "-Dkast.idea.autostart=false"
             "-Djna.boot.library.path=${dollar}{idea_home}/lib/jna/${dollar}{jna_arch}"
             "-Djna.nosys=true"
             "-Djna.noclasspath=true"

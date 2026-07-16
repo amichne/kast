@@ -898,6 +898,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "total": 0
                     },
                     "cardinality": {
+                        "type": "EXACT",
                         "totalCount": 0
                     },
                     "schemaVersion": 3

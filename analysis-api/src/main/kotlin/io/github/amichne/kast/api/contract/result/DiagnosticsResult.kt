@@ -8,8 +8,11 @@ import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.*
 import kotlinx.serialization.ExperimentalSerializationApi
-
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 @Serializable
 class DiagnosticsResult private constructor(
@@ -28,6 +31,7 @@ class DiagnosticsResult private constructor(
     @DocField(description = "Exact severity counts across every diagnostic, including records outside this page.")
     val severityCounts: DiagnosticSeverityCounts,
     @DocField(description = "Exact diagnostic cardinality across every page.")
+    @Serializable(with = ExactResultCardinalitySerializer::class)
     val cardinality: ResultCardinality.Exact,
     @DocField(description = "Pagination metadata when results are truncated.")
     override val page: PageInfo? = null,
@@ -148,4 +152,38 @@ class DiagnosticsResult private constructor(
             )
         }
     }
+}
+
+private object ExactResultCardinalitySerializer : KSerializer<ResultCardinality.Exact> {
+    override val descriptor = ExactResultCardinalityWire.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ResultCardinality.Exact) {
+        encoder.encodeSerializableValue(
+            ExactResultCardinalityWire.serializer(),
+            ExactResultCardinalityWire(
+                type = ExactResultCardinalityWireType.EXACT,
+                totalCount = value.totalCount,
+            ),
+        )
+    }
+
+    override fun deserialize(decoder: Decoder): ResultCardinality.Exact {
+        val wire = decoder.decodeSerializableValue(ExactResultCardinalityWire.serializer())
+        return ResultCardinality.Exact(wire.totalCount)
+    }
+}
+
+@Serializable
+@SerialName("EXACT")
+private data class ExactResultCardinalityWire(
+    @DocField(description = "Wire discriminator proving that the diagnostic count is exact.", serverManaged = true)
+    @SerialName("type")
+    val type: ExactResultCardinalityWireType,
+    @DocField(description = "Exact number of diagnostics across every page.")
+    val totalCount: Int,
+)
+
+@Serializable
+private enum class ExactResultCardinalityWireType {
+    EXACT,
 }

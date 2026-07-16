@@ -18,6 +18,7 @@
             "total": 0
         },
         "cardinality": {
+            "type": "EXACT",
             "totalCount": 0
         },
         "schemaVersion": 3

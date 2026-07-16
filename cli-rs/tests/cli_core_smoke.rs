@@ -163,51 +163,6 @@ fn smoke_core_cli_commands() {
         "{agent_tools_json:#}"
     );
 
-    let rename_plan = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "rename",
-            "--symbol",
-            "com.example.Target",
-            "--new-name",
-            "RenamedTarget",
-        ])
-        .output()
-        .expect("agent rename plan");
-    assert!(
-        rename_plan.status.success(),
-        "agent rename without --apply should be plan-only: stdout={}, stderr={}",
-        String::from_utf8_lossy(&rename_plan.stdout),
-        String::from_utf8_lossy(&rename_plan.stderr)
-    );
-    let rename_plan_json: serde_json::Value =
-        serde_json::from_slice(&rename_plan.stdout).expect("rename plan json");
-    assert_eq!(rename_plan_json["ok"], true, "{rename_plan_json:#}");
-    assert_eq!(rename_plan_json["method"], "agent/rename");
-    assert_eq!(
-        rename_plan_json["result"]["type"],
-        "KAST_AGENT_MUTATION_RESULT"
-    );
-    assert_eq!(rename_plan_json["result"]["operation"]["state"], "PLANNED");
-    assert_eq!(
-        rename_plan_json["result"]["operation"]["editApplicationState"],
-        "NOT_STARTED"
-    );
-    assert_eq!(
-        rename_plan_json["result"]["plan"]["method"],
-        "symbol/rename"
-    );
-    assert_eq!(
-        rename_plan_json["result"]["plan"]["symbol"],
-        "com.example.Target"
-    );
-    assert!(
-        rename_plan_json.get("request").is_none(),
-        "{rename_plan_json:#}"
-    );
-
     if cfg!(target_os = "macos") {
         let setup = kast(&home, &config_home)
             .args([

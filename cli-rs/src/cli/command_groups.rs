@@ -7,6 +7,8 @@ pub struct DeveloperArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum DeveloperCommand {
+    /// Build and inspect isolated local-development authority.
+    Local(LocalDevelopmentArgs),
     /// Manage backend runtime lifecycle.
     Runtime(RuntimeCommandArgs),
     /// Inspect local Kast state, catalogs, demos, and source-index metrics.

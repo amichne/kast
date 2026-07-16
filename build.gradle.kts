@@ -1,4 +1,7 @@
 import java.util.zip.ZipInputStream
+import java.security.MessageDigest
+import javax.inject.Inject
+import groovy.json.JsonOutput
 
 plugins {
     base
@@ -55,6 +58,199 @@ abstract class InstallDevelopmentIdeaPluginTask : DefaultTask() {
 
         logger.lifecycle("Installed development IDEA plugin at {}", targetRoot.resolve("backend-idea"))
     }
+}
+
+@DisableCachingByDefault(because = "Cargo owns incremental compilation and the target directory")
+abstract class BuildSourceBoundCliTask @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val sourceSnapshotFile: RegularFileProperty
+
+    @get:Input
+    abstract val cargoExecutable: Property<String>
+
+    @get:Input
+    abstract val implementationVersion: Property<String>
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val cargoManifest: RegularFileProperty
+
+    @TaskAction
+    fun build() {
+        val snapshot = sourceSnapshotFile.get().asFile.readText()
+        val sourceSha256 = Regex(
+            """"sourceTreeSha256"\s*:\s*"([0-9a-f]{64})"""",
+        ).find(snapshot)?.groupValues?.get(1)
+            ?: throw GradleException(
+                "Local-development source snapshot has no valid sourceTreeSha256",
+            )
+        execOperations.exec {
+            environment("KAST_VERSION", implementationVersion.get())
+            environment("KAST_LOCAL_SOURCE_SHA256", sourceSha256)
+            commandLine(
+                cargoExecutable.get(),
+                "build",
+                "--manifest-path",
+                cargoManifest.get().asFile.absolutePath,
+                "--locked",
+                "--release",
+            )
+        }.assertNormalExitValue()
+    }
+}
+
+@DisableCachingByDefault(because = "Mutates receipt-owned local development state")
+abstract class RemoveDevelopmentLocalTask @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    @get:Input
+    abstract val prefixPath: Property<String>
+
+    @get:Input
+    abstract val workspaceRootPath: Property<String>
+
+    @get:Input
+    abstract val installedControllerPath: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val recoveryControllerPath: Property<String>
+
+    @get:Input
+    abstract val checkoutControllerPath: Property<String>
+
+    @get:Input
+    abstract val bootstrapControllerPath: Property<String>
+
+    @TaskAction
+    fun remove() {
+        val installedController = java.io.File(installedControllerPath.get())
+        val explicitRecoveryController = recoveryControllerPath.orNull
+            ?.takeIf(String::isNotBlank)
+            ?.let { path -> java.io.File(path) }
+        val checkoutController = java.io.File(checkoutControllerPath.get())
+        val bootstrapController = java.io.File(bootstrapControllerPath.get())
+        val controller = when {
+            installedController.isFile -> installedController
+            explicitRecoveryController != null -> explicitRecoveryController
+            checkoutController.isFile -> checkoutController
+            bootstrapController.isFile -> bootstrapController
+            else -> throw GradleException(
+                "removeDevelopmentLocal cannot find the installed controller or a checkout recovery controller; " +
+                    "expected ${installedController.absolutePath}, ${checkoutController.absolutePath}, " +
+                    "or ${bootstrapController.absolutePath}"
+            )
+        }
+        if (!controller.isFile) {
+            throw GradleException(
+                "kastLocalRecoveryController is not an executable file: ${controller.absolutePath}"
+            )
+        }
+        execOperations.exec {
+            commandLine(
+                controller.absolutePath,
+                "--output",
+                "json",
+                "developer",
+                "local",
+                "remove",
+                "--prefix",
+                prefixPath.get(),
+                "--workspace-root",
+                workspaceRootPath.get(),
+            )
+        }.assertNormalExitValue()
+    }
+}
+
+@CacheableTask
+abstract class WriteLocalBackendComponentManifestTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val sourceSnapshotFile: RegularFileProperty
+
+    @get:Internal
+    abstract val backendDirectory: DirectoryProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val componentFiles: ConfigurableFileCollection
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @TaskAction
+    fun writeManifest() {
+        val sourceSnapshot = sourceSnapshotFile.get().asFile.readText()
+        val sourceSha256 = Regex(
+            """"sourceTreeSha256"\s*:\s*"([0-9a-f]{64})"""",
+        ).find(sourceSnapshot)?.groupValues?.get(1)
+            ?: throw GradleException(
+                "Local-development source snapshot has no valid sourceTreeSha256",
+            )
+        val root = backendDirectory.get().asFile.toPath().toAbsolutePath().normalize()
+        val components = componentFiles.files
+            .map { file ->
+                val path = file.toPath().toAbsolutePath().normalize()
+                val relative = root.relativize(path).joinToString("/")
+                mapOf(
+                    "kind" to localBackendComponentKind(file.name),
+                    "path" to relative,
+                    "sha256" to sha256(file.readBytes()),
+                )
+            }
+            .sortedBy { component -> component.getValue("kind") }
+        val expectedKinds = setOf(
+            "analysis-api",
+            "analysis-server",
+            "backend-headless-launcher",
+            "backend-headless-plugin-descriptor",
+            "backend-idea",
+            "backend-shared",
+            "index-store",
+        )
+        val actualKinds = components.map { component -> component.getValue("kind") }
+        if (actualKinds.toSet() != expectedKinds || actualKinds.size != expectedKinds.size) {
+            throw GradleException(
+                "Local backend component manifest found $actualKinds; expected ${expectedKinds.sorted()}",
+            )
+        }
+        outputFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(
+                JsonOutput.prettyPrint(
+                    JsonOutput.toJson(
+                        mapOf(
+                            "schemaVersion" to 1,
+                            "sourceTreeSha256" to sourceSha256,
+                            "components" to components,
+                        ),
+                    ),
+                ) + "\n",
+            )
+        }
+    }
+
+    private fun localBackendComponentKind(name: String): String = when {
+        name.startsWith("analysis-api-") && name.endsWith(".jar") -> "analysis-api"
+        name.startsWith("analysis-server-") && name.endsWith(".jar") -> "analysis-server"
+        name.startsWith("backend-headless-") && name.endsWith("-launcher.jar") ->
+            "backend-headless-launcher"
+        name.startsWith("backend-headless-") && name.endsWith("-plugin-descriptor.jar") ->
+            "backend-headless-plugin-descriptor"
+        name.startsWith("backend-idea-") && name.endsWith(".jar") -> "backend-idea"
+        name.startsWith("backend-shared-") && name.endsWith(".jar") -> "backend-shared"
+        name.startsWith("index-store-") && name.endsWith(".jar") -> "index-store"
+        else -> throw GradleException("Unexpected producer-owned backend component: $name")
+    }
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(bytes)
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
 }
 
 group = providers.gradleProperty("GROUP").get()
@@ -153,7 +349,10 @@ fun resolveCargoExecutable(): String {
 }
 
 val cliDebugBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
-val cargoExecutable = resolveCargoExecutable()
+val cliLocalDevelopmentBootstrapBinary: RegularFile =
+    layout.projectDirectory.file("cli-rs/target/local-bootstrap/release/kast")
+val cliLocalDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/release/kast")
+val resolvedCargoExecutable = resolveCargoExecutable()
 val kastDevBinary = kastBinDirectory.absoluteFile.normalize().resolve("kast-dev")
 
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
@@ -161,11 +360,178 @@ val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     description = "Builds the repo-local Rust kast CLI in debug mode."
     environment("KAST_VERSION", project.version.toString())
     commandLine(
-        cargoExecutable,
+        resolvedCargoExecutable,
         "build",
         "--manifest-path",
         layout.projectDirectory.file("cli-rs/Cargo.toml").asFile.absolutePath,
         "--locked",
+    )
+}
+
+val buildLocalDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Builds the optimized CLI used by revision-coherent local authority."
+    environment("KAST_VERSION", project.version.toString())
+    commandLine(
+        resolvedCargoExecutable,
+        "build",
+        "--manifest-path",
+        layout.projectDirectory.file("cli-rs/Cargo.toml").asFile.absolutePath,
+        "--locked",
+        "--release",
+        "--target-dir",
+        layout.projectDirectory.dir("cli-rs/target/local-bootstrap").asFile.absolutePath,
+    )
+}
+
+val developmentSourceSnapshotFile = layout.buildDirectory.file(
+    "local-development/source-snapshot.json"
+)
+val developmentCliProvenanceFile = layout.buildDirectory.file(
+    "local-development/cli-provenance.json"
+)
+val developmentBackendProvenanceFile = layout.buildDirectory.file(
+    "local-development/backend-provenance.json"
+)
+
+val captureDevelopmentSourceSnapshot: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Captures the exact checkout source identity before local artifact production."
+    dependsOn(buildLocalDevelopmentCli)
+    commandLine(
+        cliLocalDevelopmentBootstrapBinary.asFile.absolutePath,
+        "--output",
+        "json",
+        "developer",
+        "local",
+        "snapshot",
+        "--source-root",
+        rootDir.absolutePath,
+        "--output-file",
+        developmentSourceSnapshotFile.get().asFile.absolutePath,
+    )
+}
+
+val rebuildLocalDevelopmentCli: TaskProvider<BuildSourceBoundCliTask> by tasks.registering(
+    BuildSourceBoundCliTask::class,
+) {
+    group = "build"
+    description = "Rebuilds the local CLI after the source snapshot is fixed."
+    dependsOn(captureDevelopmentSourceSnapshot)
+    sourceSnapshotFile.set(developmentSourceSnapshotFile)
+    cargoExecutable.set(resolvedCargoExecutable)
+    implementationVersion.set(project.version.toString())
+    cargoManifest.set(layout.projectDirectory.file("cli-rs/Cargo.toml"))
+}
+
+subprojects {
+    tasks.configureEach {
+        mustRunAfter(captureDevelopmentSourceSnapshot)
+    }
+}
+
+val writeLocalBackendComponentManifest: TaskProvider<WriteLocalBackendComponentManifestTask> by tasks.registering(
+    WriteLocalBackendComponentManifestTask::class,
+) {
+    group = "build"
+    description = "Binds every repo-produced headless backend JAR to the captured source build."
+    dependsOn(captureDevelopmentSourceSnapshot, ":backend-headless:syncPortableDist")
+    sourceSnapshotFile.set(developmentSourceSnapshotFile)
+    val portableBackend = layout.projectDirectory.dir(
+        "backend-headless/build/portable-dist/backend-headless",
+    )
+    backendDirectory.set(portableBackend)
+    componentFiles.from(
+        fileTree(portableBackend) {
+            include("runtime-libs/backend-headless-*-launcher.jar")
+            include("idea-home/plugins/kast-headless/lib/analysis-api-*.jar")
+            include("idea-home/plugins/kast-headless/lib/analysis-server-*.jar")
+            include("idea-home/plugins/kast-headless/lib/backend-headless-*-plugin-descriptor.jar")
+            include("idea-home/plugins/kast-headless/lib/backend-idea-*.jar")
+            include("idea-home/plugins/kast-headless/lib/backend-shared-*.jar")
+            include("idea-home/plugins/kast-headless/lib/index-store-*.jar")
+        },
+    )
+    outputFile.set(
+        layout.buildDirectory.file("local-development/backend-component-manifest.json"),
+    )
+}
+
+val stageDevelopmentBackend: TaskProvider<Sync> by tasks.registering(Sync::class) {
+    group = "build"
+    description = "Stages the headless backend with producer-emitted local source identity."
+    dependsOn(
+        captureDevelopmentSourceSnapshot,
+        writeLocalBackendComponentManifest,
+        ":backend-headless:syncPortableDist",
+        ":backend-headless:localHeadlessPluginImplementationJar",
+    )
+    from(
+        layout.projectDirectory.dir(
+            "backend-headless/build/portable-dist/backend-headless"
+        )
+    ) {
+        exclude("idea-home/plugins/kast-headless/lib/backend-headless-*-plugin.jar")
+    }
+    from(
+        layout.projectDirectory.file(
+            "backend-headless/build/local-development/backend-headless-local-plugin.jar"
+        )
+    ) {
+        into("idea-home/plugins/kast-headless/lib")
+    }
+    into(layout.buildDirectory.dir("local-development/backend-headless"))
+}
+
+val attestDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Binds the exact rebuilt CLI bytes to the captured checkout source."
+    dependsOn(rebuildLocalDevelopmentCli)
+    commandLine(
+        cliLocalDevelopmentBinary.asFile.absolutePath,
+        "--output",
+        "json",
+        "developer",
+        "local",
+        "attest",
+        "--source-root",
+        rootDir.absolutePath,
+        "--expected-source-snapshot",
+        developmentSourceSnapshotFile.get().asFile.absolutePath,
+        "--artifact-kind",
+        "cli",
+        "--artifact",
+        cliLocalDevelopmentBinary.asFile.absolutePath,
+        "--output-file",
+        developmentCliProvenanceFile.get().asFile.absolutePath,
+    )
+}
+
+val attestDevelopmentBackend: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Binds the exact portable headless backend bytes to the captured checkout source."
+    dependsOn(rebuildLocalDevelopmentCli, stageDevelopmentBackend)
+    commandLine(
+        cliLocalDevelopmentBinary.asFile.absolutePath,
+        "--output",
+        "json",
+        "developer",
+        "local",
+        "attest",
+        "--source-root",
+        rootDir.absolutePath,
+        "--expected-source-snapshot",
+        developmentSourceSnapshotFile.get().asFile.absolutePath,
+        "--artifact-kind",
+        "headless-backend",
+        "--artifact",
+        layout.buildDirectory
+            .dir("local-development/backend-headless")
+            .get()
+            .asFile
+            .absolutePath,
+        "--output-file",
+        developmentBackendProvenanceFile.get().asFile.absolutePath,
     )
 }
 
@@ -340,6 +706,105 @@ val installDevelopmentIdeaPlugin: TaskProvider<InstallDevelopmentIdeaPluginTask>
     pluginArchive.set(ideaPluginArchive)
     pluginsDirectory.set(layout.dir(developmentJetBrainsPluginsDir))
     replacedPluginDirectoryNames.set(developmentIdeaPluginDirectoryNames)
+}
+
+fun configuredLocalDevelopmentPrefix(): File =
+    providers.gradleProperty("kastLocalPrefix")
+        .orNull
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?.let(::file)
+    ?: rootDir.resolve(".kast/local-development")
+
+fun configuredLocalDevelopmentWorkspace(): File =
+    providers.gradleProperty("kastLocalWorkspaceRoot")
+        .orNull
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?.let(::file)
+    ?: rootDir
+
+val refreshDevelopmentLocal: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "distribution"
+    description = "Refreshes one revision-coherent local Kast development authority."
+    dependsOn(attestDevelopmentCli, attestDevelopmentBackend)
+    val localPrefix = configuredLocalDevelopmentPrefix()
+    val workspaceRoot = configuredLocalDevelopmentWorkspace()
+    commandLine(
+        cliLocalDevelopmentBinary.asFile.absolutePath,
+        "--output",
+        "json",
+        "developer",
+        "local",
+        "refresh",
+        "--source-root",
+        rootDir.absolutePath,
+        "--workspace-root",
+        workspaceRoot.absoluteFile.normalize().absolutePath,
+        "--prefix",
+        localPrefix.absoluteFile.normalize().absolutePath,
+        "--expected-source-snapshot",
+        developmentSourceSnapshotFile.get().asFile.absolutePath,
+        "--cli-binary",
+        cliLocalDevelopmentBinary.asFile.absolutePath,
+        "--cli-provenance",
+        developmentCliProvenanceFile.get().asFile.absolutePath,
+        "--backend-directory",
+        layout.buildDirectory
+            .dir("local-development/backend-headless")
+            .get()
+            .asFile
+            .absolutePath,
+        "--backend-provenance",
+        developmentBackendProvenanceFile.get().asFile.absolutePath,
+    )
+}
+
+tasks.register<Exec>("rollbackDevelopmentLocal") {
+    group = "distribution"
+    description = "Idempotently reactivates the explicitly selected validated previous local generation."
+    val localPrefix = configuredLocalDevelopmentPrefix().absoluteFile.normalize()
+    val requestedGeneration = providers.gradleProperty("kastLocalGeneration")
+        .map(String::trim)
+        .map { generation ->
+            generation.takeIf(String::isNotEmpty)
+                ?: throw GradleException(
+                    "rollbackDevelopmentLocal requires -PkastLocalGeneration=<generation-id>"
+                )
+        }
+    commandLine(
+        localPrefix.resolve("bin/kast-dev").absolutePath,
+        "--output",
+        "json",
+        "developer",
+        "local",
+        "rollback",
+        "--prefix",
+        localPrefix.absolutePath,
+    )
+    doFirst {
+        val generation = requestedGeneration.orNull
+            ?: throw GradleException(
+                "rollbackDevelopmentLocal requires -PkastLocalGeneration=<generation-id>"
+            )
+        args("--to-generation", generation)
+    }
+}
+
+tasks.register<RemoveDevelopmentLocalTask>("removeDevelopmentLocal") {
+    group = "distribution"
+    description = "Removes only receipt-owned local Kast state and restores ordinary authority."
+    val localPrefix = configuredLocalDevelopmentPrefix().absoluteFile.normalize()
+    prefixPath.set(localPrefix.absolutePath)
+    workspaceRootPath.set(
+        configuredLocalDevelopmentWorkspace().absoluteFile.normalize().absolutePath,
+    )
+    installedControllerPath.set(localPrefix.resolve("bin/kast-dev").absolutePath)
+    recoveryControllerPath.set(
+        providers.gradleProperty("kastLocalRecoveryController").map(String::trim),
+    )
+    checkoutControllerPath.set(cliLocalDevelopmentBinary.asFile.absolutePath)
+    bootstrapControllerPath.set(cliLocalDevelopmentBootstrapBinary.asFile.absolutePath)
 }
 
 tasks.register("installDevelopmentLocal") {

@@ -150,6 +150,8 @@ kast-copilot-plugin/
 .github/instructions/kast-kotlin.md
 .github/instructions/kast-kotlin.instructions.md
 .github/extensions/kast/
+/AGENTS.local.md
+/.kast/
 .agents/skills/kast-api-surface-change/
 .agents/skills/kast-callgraph-review/
 .agents/skills/kast-safe-rename/
