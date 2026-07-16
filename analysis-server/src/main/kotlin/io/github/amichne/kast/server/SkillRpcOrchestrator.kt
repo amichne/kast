@@ -128,16 +128,22 @@ internal class SkillRpcOrchestrator(
         val resolvedConstraintSymbol: Symbol?,
     )
 
-    private sealed interface ReferenceSelector {
-        val selector: KastExactSymbolSelector
+    private sealed interface ReferenceSelectorSelection {
+        sealed interface Selected : ReferenceSelectorSelection {
+            val selector: KastExactSymbolSelector
+        }
 
         data class Explicit(
             override val selector: KastExactSymbolSelector,
-        ) : ReferenceSelector
+        ) : Selected
 
         data class Handle(
             override val selector: KastExactSymbolSelector,
-        ) : ReferenceSelector
+        ) : Selected
+
+        data class Rejected(
+            val reason: SelectorHandleAuthority.Resolution.RejectionReason,
+        ) : ReferenceSelectorSelection
     }
 
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse {
@@ -256,7 +262,11 @@ internal class SkillRpcOrchestrator(
 
     suspend fun references(request: KastReferencesRequest): KastReferencesResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selected = selectReferenceSelector(request, workspaceRoot)
+        val selected = when (val selection = selectReferenceSelector(request, workspaceRoot)) {
+            is ReferenceSelectorSelection.Rejected ->
+                return KastReferencesSelectorHandleRejectedResponse(selection.reason)
+            is ReferenceSelectorSelection.Selected -> selection
+        }
         val selector = selected.selector
         val query = KastReferencesQuery(
             workspaceRoot = workspaceRoot,
@@ -268,7 +278,7 @@ internal class SkillRpcOrchestrator(
         )
         validateReferencesQuery(query)
         val subject = when (selected) {
-            is ReferenceSelector.Explicit -> {
+            is ReferenceSelectorSelection.Explicit -> {
                 requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
                 val resolved = try {
                     backend.resolveSymbol(
@@ -284,7 +294,7 @@ internal class SkillRpcOrchestrator(
                 }
                 resolved.toSymbolIdentity()
             }
-            is ReferenceSelector.Handle -> selector.toHandleSubject()
+            is ReferenceSelectorSelection.Handle -> selector.toHandleSubject()
         }
         if (!selector.matches(subject)) {
             return KastReferencesSubjectIdentityMismatchResponse(selector, subject)
@@ -1826,12 +1836,12 @@ internal class SkillRpcOrchestrator(
     private fun selectReferenceSelector(
         request: KastReferencesRequest,
         workspaceRoot: String,
-    ): ReferenceSelector {
+    ): ReferenceSelectorSelection {
         val selector = request.selector
         val selectorHandle = request.selectorHandle
         return when {
             selector != null && selectorHandle == null ->
-                ReferenceSelector.Explicit(selector)
+                ReferenceSelectorSelection.Explicit(selector)
             selector == null && selectorHandle != null -> {
                 when (
                     val resolution = backend.selectorHandles.resolve(
@@ -1841,10 +1851,9 @@ internal class SkillRpcOrchestrator(
                     )
                 ) {
                     is SelectorHandleAuthority.Resolution.Resolved ->
-                        ReferenceSelector.Handle(resolution.selector)
-                    is SelectorHandleAuthority.Resolution.Rejected -> throw ValidationException(
-                        "selectorHandle was rejected: ${resolution.reason.name}",
-                    )
+                        ReferenceSelectorSelection.Handle(resolution.selector)
+                    is SelectorHandleAuthority.Resolution.Rejected ->
+                        ReferenceSelectorSelection.Rejected(resolution.reason)
                 }
             }
             else -> throw ValidationException(

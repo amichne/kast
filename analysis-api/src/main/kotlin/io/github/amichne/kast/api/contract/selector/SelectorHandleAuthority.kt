@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.contract.selector
 
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
+import kotlinx.serialization.Serializable
 
 interface SelectorHandleAuthority {
     fun issue(
@@ -25,6 +26,7 @@ interface SelectorHandleAuthority {
 
         data class Rejected(val reason: RejectionReason) : Resolution
 
+        @Serializable
         enum class RejectionReason {
             TAMPERED,
             WRONG_WORKSPACE,
