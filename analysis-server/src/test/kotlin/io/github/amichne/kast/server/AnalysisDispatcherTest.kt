@@ -1115,6 +1115,64 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `selector handle renames exact subject without name resolution`() {
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        val file = sampleFile()
+        val selector = KastExactSymbolSelector(
+            fqName = "sample.greet",
+            declarationFile = file.toString(),
+            declarationStartOffset = file.readText().indexOf("greet"),
+            kind = SymbolKind.FUNCTION,
+            containingType = "sample",
+        )
+        var resolveCalls = 0
+        var renameCalls = 0
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+                resolveCalls += 1
+                return delegate.resolveSymbol(query)
+            }
+
+            override suspend fun rename(query: ParsedRenameQuery): RenameResult {
+                renameCalls += 1
+                return delegate.rename(query)
+            }
+        }
+        val selectorHandle = assertInstanceOf(
+            SelectorHandleAuthority.IssueResult.Issued::class.java,
+            backend.selectorHandles.issue(
+                selector = selector,
+                allowedFamilies = setOf(SelectorOperationFamily.RENAME),
+            ),
+        ).handle.value
+        val dispatcher = RpcAnalysisDispatcher(backend = backend, config = AnalysisServerConfig())
+
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/rename",
+                    params = json.encodeToJsonElement(
+                        KastRenameRequest.serializer(),
+                        KastRenameBySelectorHandleRequest(
+                            workspaceRoot = tempDir.toString(),
+                            selectorHandle = selectorHandle,
+                            newName = "hello",
+                        ),
+                    ),
+                ),
+            )
+        }
+        val rpc = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(KastRenameResponse.serializer(), rpc.result)
+
+        assertInstanceOf(KastRenameSuccessResponse::class.java, result)
+        assertTrue(file.readText().contains("fun hello()"))
+        assertEquals(0, resolveCalls)
+        assertEquals(1, renameCalls)
+    }
+
+    @Test
     fun `rename backend cannot omit affected files to bypass refresh preflight`() {
         val backend = MissingRefreshRenameBackend(FakeAnalysisBackend.sample(tempDir))
         val file = sampleFile()
