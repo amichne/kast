@@ -96,6 +96,11 @@ jq -e \
   || die 'machine readiness did not prove the complete local authority'
 
 source_file="${repo_root}/backend-headless/src/main/kotlin/io/github/amichne/kast/headless/HeadlessWorkspaceKind.kt"
+diagnostic_files=(
+  "$source_file"
+  "${repo_root}/analysis-api/src/test/kotlin/io/github/amichne/kast/api/DiagnosticsResultTest.kt"
+  "${repo_root}/analysis-api/src/testFixtures/kotlin/io/github/amichne/kast/testing/AnalysisBackendContractFixture.kt"
+)
 type_symbol='io.github.amichne.kast.headless.HeadlessWorkspaceKind'
 reference_symbol='io.github.amichne.kast.headless.HeadlessWorkspaceKind.Companion.GRADLE_MARKERS'
 before_source_sha="$(sha256_file "$source_file")"
@@ -177,17 +182,28 @@ jq -e \
   "${tmp_root}/references.json" >/dev/null \
   || die 'installed reference lookup was not known, nonzero, exact, and exhaustive'
 
+diagnostic_file_args=()
+for diagnostic_file in "${diagnostic_files[@]}"; do
+  diagnostic_file_args+=(--file-path "$diagnostic_file")
+done
 "$kast" --output json agent diagnostics \
-  --file-path "$source_file" \
+  "${diagnostic_file_args[@]}" \
   --workspace-root "$repo_root" \
   --backend headless \
   --explain >"${tmp_root}/diagnostics.json"
 jq -e \
+  --argjson requested_file_count "${#diagnostic_files[@]}" \
   '.ok == true and
+   (.result.filePaths | length) == $requested_file_count and
    (.result.steps[] | select(.name == "diagnostics").result.semanticOutcome) == "COMPLETE" and
-   (.result.steps[] | select(.name == "diagnostics").result.severityCounts.error) == 0' \
+   (.result.steps[] | select(.name == "diagnostics").result.requestedFileCount) == $requested_file_count and
+   (.result.steps[] | select(.name == "diagnostics").result.analyzedFileCount) == $requested_file_count and
+   (.result.steps[] | select(.name == "diagnostics").result.skippedFileCount) == 0 and
+   (.result.steps[] | select(.name == "diagnostics").result.severityCounts.total) == 0 and
+   (.result.steps[] | select(.name == "diagnostics").result.cardinality) == {"type": "EXACT", "totalCount": 0} and
+   (.result.steps[] | select(.name == "diagnostics").result.diagnostics) == []' \
   "${tmp_root}/diagnostics.json" >/dev/null \
-  || die 'installed diagnostics did not completely analyze the clean Kotlin file'
+  || die 'installed diagnostics did not completely analyze clean main, test, and test-fixture Kotlin files'
 
 "$kast" --output json agent rename \
   --symbol "$type_symbol" \
