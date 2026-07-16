@@ -50,17 +50,26 @@ authentication, authorization, or confidentiality credential: the local
 backend remains the authority, and every semantic operation applies its normal
 capability and subject-kind rules after handle validation.
 
-The public selector inputs are an exclusive choice:
-
-1. the existing explicit `--symbol`, `--declaration-file`,
-   `--declaration-start-offset`, and optional assertion flags; or
-2. one `--selector-handle` value.
+Each public command makes an exclusive choice between its existing explicit
+selector and one `--selector-handle` value. References, callers, callees,
+implementations, hierarchy, and impact keep the ADR 0022 anchored
+`--symbol`, `--declaration-file`, `--declaration-start-offset`, and optional
+assertion flags. Rename and replace-declaration keep their existing named
+`--symbol` selector plus optional kind, file-hint, and containing-type
+constraints. No explicit-selector field may be combined with a handle.
 
 Explicit selectors remain supported for inspection, scripting, recovery, and
 compatibility. The CLI validates the exclusive choice and carries a handle
 unchanged. It never turns the handle back into explicit fields. The backend
 validates the handle and recovers its exact selector before provider, index,
 continuation, or mutation work starts.
+
+The revision-coherent local CLI/backend path moves its non-public RPC request
+algebra atomically. In particular, replace-declaration becomes a closed
+by-symbol/by-selector-handle request instead of retaining the former monolithic
+explicit request discriminator. No legacy decoder, nullable mixed request, or
+dual-write form is retained; the public explicit CLI flags remain available as
+described above.
 
 The following public families accept a handle where their subject-kind rules
 allow it: references, callers, callees, implementations, hierarchy, impact,
