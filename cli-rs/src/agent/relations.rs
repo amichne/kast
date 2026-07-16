@@ -5,6 +5,82 @@ const AGENT_TRAVERSAL_PAYLOAD_TAG: &str = "traversal";
 const AGENT_IMPACT_TOKEN_VERSION: &str = "kip1";
 const AGENT_IMPACT_MAX_OFFSET: usize = 10_000;
 
+struct AgentPreparedRelationshipSelector {
+    selector: Option<Value>,
+    selector_handle: Option<AgentSelectorHandle>,
+    expected: Option<AgentExpectedRelationshipSelector>,
+    workspace_root: String,
+}
+
+impl AgentPreparedRelationshipSelector {
+    fn traversal_fingerprint(
+        &self,
+        relation: &str,
+        direction: &str,
+        depth: Option<u8>,
+        limit: u8,
+    ) -> String {
+        match (&self.expected, &self.selector_handle) {
+            (Some(expected), None) => {
+                traversal_query_fingerprint(relation, expected, direction, depth, limit)
+            }
+            (None, Some(handle)) => selector_handle_traversal_query_fingerprint(
+                &self.workspace_root,
+                relation,
+                handle,
+                direction,
+                depth,
+                limit,
+            ),
+            _ => unreachable!("reusable selector preparation preserves exclusive choice"),
+        }
+    }
+}
+
+fn prepare_reusable_relationship_selector(
+    public_method: &str,
+    runtime: &AgentRuntimeArgs,
+    selector: AgentReusableSymbolSelectorArgs,
+) -> std::result::Result<AgentPreparedRelationshipSelector, Box<AgentEnvelope>> {
+    let selector = selector.into_selector().map_err(|message| {
+        Box::new(error_envelope(
+            public_method.to_string(),
+            None,
+            agent_error("INVALID_SELECTOR_INPUT", message),
+        ))
+    })?;
+    match selector {
+        AgentReusableSymbolSelector::Explicit(selector) => {
+            let (declaration_file, expected) =
+                normalize_relationship_selector(public_method, runtime, &selector)?;
+            let workspace_root = expected.workspace_root.clone();
+            Ok(AgentPreparedRelationshipSelector {
+                selector: Some(drop_nulls(json!({
+                    "fqName": expected.fq_name,
+                    "declarationFile": declaration_file,
+                    "declarationStartOffset": expected.declaration_start_offset,
+                    "kind": expected.kind,
+                    "containingType": expected.containing_type,
+                }))),
+                selector_handle: None,
+                expected: Some(expected),
+                workspace_root,
+            })
+        }
+        AgentReusableSymbolSelector::Handle(handle) => {
+            let normalizer = AgentFilePathNormalizer::from_runtime(runtime).map_err(|error| {
+                Box::new(error_envelope(public_method.to_string(), None, error))
+            })?;
+            Ok(AgentPreparedRelationshipSelector {
+                selector: None,
+                selector_handle: Some(handle),
+                expected: None,
+                workspace_root: normalizer.canonical_root.to_string_lossy().into_owned(),
+            })
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct AgentRawImpactResolveResult {
     #[serde(default)]
@@ -323,23 +399,18 @@ fn execute_agent_call_relationship(
     record_relation: &'static str,
     direction: &'static str,
     runtime: AgentRuntimeArgs,
-    selector: AgentExactSymbolSelectorArgs,
+    selector: AgentReusableSymbolSelectorArgs,
     depth: u8,
     limit: u8,
     page_token: Option<AgentRelationPageToken>,
     view: AgentRelationViewArgs,
 ) -> AgentEnvelope {
-    let (declaration_file, expected) = match normalize_relationship_selector(
-        public_method,
-        &runtime,
-        &selector,
-    ) {
+    let prepared = match prepare_reusable_relationship_selector(public_method, &runtime, selector) {
         Ok(value) => value,
         Err(envelope) => return *envelope,
     };
-    let fingerprint = traversal_query_fingerprint(
+    let fingerprint = prepared.traversal_fingerprint(
         relation,
-        &expected,
         direction,
         Some(depth),
         limit,
@@ -351,17 +422,17 @@ fn execute_agent_call_relationship(
         },
         None => None,
     };
-    let selector = drop_nulls(json!({
-        "fqName": expected.fq_name,
-        "declarationFile": declaration_file,
-        "declarationStartOffset": expected.declaration_start_offset,
-        "kind": expected.kind,
-        "containingType": expected.containing_type,
-    }));
+    let AgentPreparedRelationshipSelector {
+        selector,
+        selector_handle,
+        expected,
+        ..
+    } = prepared;
     let request = json_rpc_request(
         "symbol/callers",
         drop_nulls(json!({
             "selector": selector,
+            "selectorHandle": selector_handle,
             "direction": direction.to_ascii_lowercase(),
             "depth": depth,
             "maxResults": limit,
@@ -393,17 +464,16 @@ fn execute_agent_call_relationship(
 }
 
 fn execute_agent_implementations(args: AgentImplementationsArgs) -> AgentEnvelope {
-    let (declaration_file, expected) = match normalize_relationship_selector(
+    let prepared = match prepare_reusable_relationship_selector(
         "agent/implementations",
         &args.runtime,
-        &args.selector,
+        args.selector,
     ) {
         Ok(value) => value,
         Err(envelope) => return *envelope,
     };
-    let fingerprint = traversal_query_fingerprint(
+    let fingerprint = prepared.traversal_fingerprint(
         "implementations",
-        &expected,
         "",
         None,
         args.limit.get(),
@@ -419,17 +489,17 @@ fn execute_agent_implementations(args: AgentImplementationsArgs) -> AgentEnvelop
         },
         None => None,
     };
-    let selector = drop_nulls(json!({
-        "fqName": expected.fq_name,
-        "declarationFile": declaration_file,
-        "declarationStartOffset": expected.declaration_start_offset,
-        "kind": expected.kind,
-        "containingType": expected.containing_type,
-    }));
+    let AgentPreparedRelationshipSelector {
+        selector,
+        selector_handle,
+        expected,
+        ..
+    } = prepared;
     let request = json_rpc_request(
         "symbol/implementations",
         drop_nulls(json!({
             "selector": selector,
+            "selectorHandle": selector_handle,
             "maxResults": args.limit.get(),
             "pageToken": page_handle,
         })),
@@ -466,17 +536,16 @@ fn execute_agent_hierarchy(args: AgentHierarchyArgs) -> AgentEnvelope {
         AgentHierarchyDirection::Subtypes => "SUBTYPES",
         AgentHierarchyDirection::Both => "BOTH",
     };
-    let (declaration_file, expected) = match normalize_relationship_selector(
+    let prepared = match prepare_reusable_relationship_selector(
         "agent/hierarchy",
         &args.runtime,
-        &args.selector,
+        args.selector,
     ) {
         Ok(value) => value,
         Err(envelope) => return *envelope,
     };
-    let fingerprint = traversal_query_fingerprint(
+    let fingerprint = prepared.traversal_fingerprint(
         "hierarchy",
-        &expected,
         direction,
         Some(args.depth.get()),
         args.limit.get(),
@@ -488,17 +557,17 @@ fn execute_agent_hierarchy(args: AgentHierarchyArgs) -> AgentEnvelope {
         },
         None => None,
     };
-    let selector = drop_nulls(json!({
-        "fqName": expected.fq_name,
-        "declarationFile": declaration_file,
-        "declarationStartOffset": expected.declaration_start_offset,
-        "kind": expected.kind,
-        "containingType": expected.containing_type,
-    }));
+    let AgentPreparedRelationshipSelector {
+        selector,
+        selector_handle,
+        expected,
+        ..
+    } = prepared;
     let request = json_rpc_request(
         "symbol/hierarchy",
         drop_nulls(json!({
             "selector": selector,
+            "selectorHandle": selector_handle,
             "direction": direction,
             "depth": args.depth.get(),
             "maxResults": args.limit.get(),
@@ -576,6 +645,27 @@ fn traversal_query_fingerprint(
         selector.kind.clone().unwrap_or_default(),
         selector.containing_type.clone().unwrap_or_default(),
         String::new(),
+        direction.to_string(),
+        depth.map(|value| value.to_string()).unwrap_or_default(),
+        limit.to_string(),
+    ]
+    .join("\n");
+    crate::manifest::sha256_bytes(proof.as_bytes())[..24].to_string()
+}
+
+fn selector_handle_traversal_query_fingerprint(
+    workspace_root: &str,
+    relation: &str,
+    handle: &AgentSelectorHandle,
+    direction: &str,
+    depth: Option<u8>,
+    limit: u8,
+) -> String {
+    let proof = [
+        workspace_root.to_string(),
+        relation.to_string(),
+        "selector-handle".to_string(),
+        handle.as_str().to_string(),
         direction.to_string(),
         depth.map(|value| value.to_string()).unwrap_or_default(),
         limit.to_string(),

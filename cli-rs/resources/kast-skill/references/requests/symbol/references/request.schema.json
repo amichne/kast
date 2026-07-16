@@ -29,6 +29,18 @@
     },
     "params": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "selectorHandle"
+          ]
+        },
+        {
+          "required": [
+            "selector"
+          ]
+        }
+      ],
       "properties": {
         "includeDeclaration": {
           "type": "boolean"

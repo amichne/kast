@@ -29,6 +29,18 @@
     },
     "params": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "selectorHandle"
+          ]
+        },
+        {
+          "required": [
+            "selector"
+          ]
+        }
+      ],
       "properties": {
         "depth": {
           "type": "integer"
@@ -91,6 +103,9 @@
           ],
           "type": "object"
         },
+        "selectorHandle": {
+          "type": "string"
+        },
         "workspaceRoot": {
           "type": [
             "string",
@@ -99,7 +114,6 @@
         }
       },
       "required": [
-        "selector",
         "direction"
       ],
       "type": "object"

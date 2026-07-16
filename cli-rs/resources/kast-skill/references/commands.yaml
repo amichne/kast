@@ -1188,10 +1188,14 @@ commands:
     dataSource: backend
     method: symbol/callers
     notes:
-    - The selector consumes the canonical identity returned by exact symbol lookup.
+    - Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical identity returned by exact symbol lookup.
+    - selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.
     - direction is fixed by the public callers or callees command.
     - pageToken is an opaque backend-owned rth1 traversal handle.
     request:
+      exclusiveRequired:
+      - selectorHandle
+      - selector
       fields:
         depth:
           optional: true
@@ -1232,17 +1236,21 @@ commands:
               nullable: true
               optional: true
               type: string
+          optional: true
           required:
           - fqName
           - declarationFile
           - declarationStartOffset
           type: object
+        selectorHandle:
+          optional: true
+          sample: ksh1.example-selector-handle
+          type: string
         workspaceRoot:
           nullable: true
           optional: true
           type: string
       required:
-      - selector
       - direction
     responseType: KastCallersResponse
     responseVariants:
@@ -1253,6 +1261,7 @@ commands:
     - DEGRADED
     - CURSOR_STALE
     - CURSOR_INVALID
+    - SELECTOR_HANDLE_REJECTED
     successType: AVAILABLE
     summary: Page exact incoming or outgoing call relationships
     tool:
@@ -1319,6 +1328,9 @@ commands:
     dataSource: backend
     method: symbol/hierarchy
     request:
+      exclusiveRequired:
+      - selectorHandle
+      - selector
       fields:
         depth:
           optional: true
@@ -1360,17 +1372,21 @@ commands:
               nullable: true
               optional: true
               type: string
+          optional: true
           required:
           - fqName
           - declarationFile
           - declarationStartOffset
           type: object
+        selectorHandle:
+          optional: true
+          sample: ksh1.example-selector-handle
+          type: string
         workspaceRoot:
           nullable: true
           optional: true
           type: string
       required:
-      - selector
       - direction
     responseType: KastHierarchyResponse
     responseVariants:
@@ -1381,6 +1397,7 @@ commands:
     - DEGRADED
     - CURSOR_STALE
     - CURSOR_INVALID
+    - SELECTOR_HANDLE_REJECTED
     successType: AVAILABLE
     summary: Page exact type hierarchy relationships
   symbol/implementations:
@@ -1388,6 +1405,9 @@ commands:
     dataSource: backend
     method: symbol/implementations
     request:
+      exclusiveRequired:
+      - selectorHandle
+      - selector
       fields:
         maxResults:
           optional: true
@@ -1420,17 +1440,20 @@ commands:
               nullable: true
               optional: true
               type: string
+          optional: true
           required:
           - fqName
           - declarationFile
           - declarationStartOffset
           type: object
+        selectorHandle:
+          optional: true
+          sample: ksh1.example-selector-handle
+          type: string
         workspaceRoot:
           nullable: true
           optional: true
           type: string
-      required:
-      - selector
     responseType: KastImplementationsResponse
     responseVariants:
     - AVAILABLE
@@ -1440,6 +1463,7 @@ commands:
     - DEGRADED
     - CURSOR_STALE
     - CURSOR_INVALID
+    - SELECTOR_HANDLE_REJECTED
     successType: AVAILABLE
     summary: Page exact implementation relationships
   symbol/query:
@@ -1659,6 +1683,9 @@ commands:
     - Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.
     - Unknown, replayed, mismatched, evicted, or stale page tokens fail with a typed conflict.
     request:
+      exclusiveRequired:
+      - selectorHandle
+      - selector
       fields:
         includeDeclaration:
           optional: true
@@ -1721,6 +1748,7 @@ commands:
     - DEGRADED
     - CURSOR_STALE
     - CURSOR_INVALID
+    - SELECTOR_HANDLE_REJECTED
     successType: AVAILABLE
     summary: Find every usage of a Kotlin symbol
     tool:

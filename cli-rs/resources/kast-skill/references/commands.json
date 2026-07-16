@@ -913,7 +913,11 @@
             "nullable": true,
             "sample": "00000000-0000-4000-8000-000000000337"
           }
-        }
+        },
+        "exclusiveRequired": [
+          "selectorHandle",
+          "selector"
+        ]
       },
       "responseType": "KastReferencesResponse",
       "successType": "AVAILABLE",
@@ -924,7 +928,8 @@
         "UNSUPPORTED_SUBJECT_KIND",
         "DEGRADED",
         "CURSOR_STALE",
-        "CURSOR_INVALID"
+        "CURSOR_INVALID",
+        "SELECTOR_HANDLE_REJECTED"
       ],
       "notes": [
         "Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.",
@@ -951,8 +956,14 @@
             "optional": true,
             "nullable": true
           },
+          "selectorHandle": {
+            "type": "string",
+            "optional": true,
+            "sample": "ksh1.example-selector-handle"
+          },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": { "type": "string" },
               "declarationFile": { "type": "string" },
@@ -993,15 +1004,19 @@
           }
         },
         "required": [
-          "selector",
           "direction"
+        ],
+        "exclusiveRequired": [
+          "selectorHandle",
+          "selector"
         ]
       },
       "responseType": "KastCallersResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"],
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"],
       "notes": [
-        "The selector consumes the canonical identity returned by exact symbol lookup.",
+        "Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical identity returned by exact symbol lookup.",
+        "selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.",
         "direction is fixed by the public callers or callees command.",
         "pageToken is an opaque backend-owned rth1 traversal handle."
       ],
@@ -1018,8 +1033,10 @@
       "request": {
         "fields": {
           "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
+          "selectorHandle": { "type": "string", "optional": true, "sample": "ksh1.example-selector-handle" },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": { "type": "string" },
               "declarationFile": { "type": "string" },
@@ -1032,11 +1049,11 @@
           "maxResults": { "type": "integer", "optional": true },
           "pageToken": { "type": "string", "optional": true, "nullable": true }
         },
-        "required": ["selector"]
+        "exclusiveRequired": ["selectorHandle", "selector"]
       },
       "responseType": "KastImplementationsResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"]
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"]
     },
     "symbol/hierarchy": {
       "method": "symbol/hierarchy",
@@ -1046,8 +1063,10 @@
       "request": {
         "fields": {
           "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
+          "selectorHandle": { "type": "string", "optional": true, "sample": "ksh1.example-selector-handle" },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": { "type": "string" },
               "declarationFile": { "type": "string" },
@@ -1062,11 +1081,12 @@
           "maxResults": { "type": "integer", "optional": true },
           "pageToken": { "type": "string", "optional": true, "nullable": true }
         },
-        "required": ["selector", "direction"]
+        "required": ["direction"],
+        "exclusiveRequired": ["selectorHandle", "selector"]
       },
       "responseType": "KastHierarchyResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"]
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"]
     },
     "symbol/rename": {
       "method": "symbol/rename",

@@ -1014,7 +1014,7 @@ enum AgentHierarchyDegradedReason {
 fn project_typed_call_relationship_envelope(
     method: String,
     envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
+    expected: Option<AgentExpectedRelationshipSelector>,
     relation: &'static str,
     record_relation: &'static str,
     result_limit: usize,
@@ -1043,7 +1043,7 @@ fn project_typed_call_relationship_envelope(
 fn project_typed_implementations_envelope(
     method: String,
     envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
+    expected: Option<AgentExpectedRelationshipSelector>,
     result_limit: usize,
     view: AgentResultView<AgentRelationField>,
 ) -> AgentEnvelope {
@@ -1075,7 +1075,7 @@ fn project_typed_implementations_envelope(
 fn project_typed_hierarchy_envelope(
     method: String,
     envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
+    expected: Option<AgentExpectedRelationshipSelector>,
     direction: &str,
     result_limit: usize,
     max_depth: usize,
@@ -1116,7 +1116,7 @@ fn project_typed_hierarchy_envelope(
 fn project_typed_relationship_envelope<Record, Reason>(
     method: String,
     envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
+    expected: Option<AgentExpectedRelationshipSelector>,
     result_type: &'static str,
     relation: &'static str,
     result_limit: usize,
@@ -1152,7 +1152,9 @@ where
             page,
         } => {
             if !subject.is_valid()
-                || !expected.matches(&mut subject)
+                || !expected
+                    .as_ref()
+                    .is_none_or(|expected| expected.matches(&mut subject))
                 || !admitted_kind(&subject.kind)
                 || !page.is_valid(records.len(), result_limit)
                 || records.iter().any(|record| !record_is_valid(record))
@@ -1232,13 +1234,19 @@ fn project_typed_available_relationship<Record: Serialize>(
 fn project_typed_expected_relationship_outcome<Record, Reason>(
     method: String,
     result_type: &'static str,
-    expected: AgentExpectedRelationshipSelector,
+    expected: Option<AgentExpectedRelationshipSelector>,
     outcome: AgentTypedTraversalResponseInput<Record, Reason>,
     admitted_kind: impl Fn(&str) -> bool,
 ) -> AgentEnvelope
 where
     Reason: Serialize,
 {
+    let Some(expected) = expected else {
+        return invalid_projection_envelope(
+            method,
+            "Handle-backed relationship returned an outcome without authenticated subject evidence.",
+        );
+    };
     let value = match outcome {
         AgentTypedTraversalResponseInput::SubjectNotFound { selector }
             if selector.is_valid() && expected.matches_selector(&selector) =>

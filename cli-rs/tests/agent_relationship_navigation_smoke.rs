@@ -770,7 +770,9 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
             &home,
             &config,
             &workspace,
-            &temp.path().join(format!("selector-handle-{command_name}-{index}.sock")),
+            &temp
+                .path()
+                .join(format!("selector-handle-{command_name}-{index}.sock")),
             vec![(method, response)],
         );
         let mut command = kast(&home, &config);
@@ -783,10 +785,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
             selector_handle,
         ]);
         command.args(extra_args);
-        command.args([
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ]);
+        command.args(["--workspace-root", workspace.to_str().expect("workspace")]);
         let output = command.output().expect("relationship by selector handle");
 
         assert!(

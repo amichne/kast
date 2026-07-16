@@ -97,6 +97,7 @@ mod result_projection_tests {
             source: "compiler".to_string(),
             query: None,
             identity: None,
+            selector_handle: None,
             location: None,
             candidates: Vec::new(),
             relationships: vec![

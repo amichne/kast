@@ -2,5 +2,7 @@
   "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/references",
-  "params": {}
+  "params": {
+    "selectorHandle": "ksh1.example-selector-handle"
+  }
 }

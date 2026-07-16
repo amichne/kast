@@ -858,7 +858,7 @@ pub struct AgentCallersArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
-    pub selector: AgentExactSymbolSelectorArgs,
+    pub selector: AgentReusableSymbolSelectorArgs,
     /// Maximum call traversal depth.
     #[arg(long, default_value_t)]
     pub depth: AgentRelationDepth,
@@ -877,7 +877,7 @@ pub struct AgentCalleesArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
-    pub selector: AgentExactSymbolSelectorArgs,
+    pub selector: AgentReusableSymbolSelectorArgs,
     /// Maximum call traversal depth.
     #[arg(long, default_value_t)]
     pub depth: AgentRelationDepth,
@@ -896,7 +896,7 @@ pub struct AgentImplementationsArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
-    pub selector: AgentExactSymbolSelectorArgs,
+    pub selector: AgentReusableSymbolSelectorArgs,
     /// Maximum relationship records to return.
     #[arg(long, default_value_t)]
     pub limit: AgentRelationLimit,
@@ -912,7 +912,7 @@ pub struct AgentHierarchyArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
-    pub selector: AgentExactSymbolSelectorArgs,
+    pub selector: AgentReusableSymbolSelectorArgs,
     /// Type hierarchy direction.
     #[arg(long, value_enum)]
     pub direction: AgentHierarchyDirection,
