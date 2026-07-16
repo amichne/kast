@@ -135,25 +135,7 @@ fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     result
 }
 
-fn replace_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let temporary = path.with_extension(format!("tmp-{}", std::process::id()));
-    let result = (|| -> Result<()> {
-        let mut output = fs::File::create(&temporary)?;
-        output.write_all(contents)?;
-        output.sync_all()?;
-        crate::manifest::make_executable(&temporary)?;
-        fs::rename(&temporary, path)?;
-        Ok(())
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&temporary);
-    }
-    result
-}
-
+#[cfg(test)]
 fn replace_plain_file_atomically(path: &Path, contents: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;

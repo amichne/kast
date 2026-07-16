@@ -39,7 +39,7 @@ cleanup() {
     if [[ -n "$active_generation" && -d "$local_prefix/state/$active_generation" ]]; then
       find "$local_prefix/state/$active_generation" \
         -type f \
-        -name '*headless-daemon.log' \
+        -name '*.log' \
         -print \
         -exec tail -n 200 {} \; >&2 || true
     fi
@@ -102,9 +102,12 @@ before_source_sha="$(sha256_file "$source_file")"
 before_repository_source_sha="$first_source_sha"
 
 runtime_started=true
-"$kast" --output json developer runtime up \
+if ! "$kast" --output json developer runtime up \
   --workspace-root "$repo_root" \
-  --backend headless >"${tmp_root}/runtime-up.json"
+  --backend headless >"${tmp_root}/runtime-up.json"; then
+  cat "${tmp_root}/runtime-up.json" >&2
+  die 'installed headless runtime failed to start'
+fi
 
 "$kast" --output json agent verify \
   --workspace-root "$repo_root" \
