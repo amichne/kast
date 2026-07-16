@@ -680,10 +680,17 @@ internal class SkillRpcOrchestrator(
     suspend fun replaceDeclaration(
         request: KastReplaceDeclarationRequest,
         progress: MutationProgressReporter = MutationProgressReporter.NONE,
+    ): KastScopeMutationResponse = when (request) {
+        is KastReplaceDeclarationBySymbolRequest -> replaceDeclarationBySymbol(request, progress)
+        is KastReplaceDeclarationBySelectorHandleRequest -> replaceDeclarationBySelectorHandle(request, progress)
+    }
+
+    private suspend fun replaceDeclarationBySymbol(
+        request: KastReplaceDeclarationBySymbolRequest,
+        progress: MutationProgressReporter,
     ): KastScopeMutationResponse {
-        val workspaceRoot = request.requestedWorkspaceRoot?.value
+        val workspaceRoot = workspaceRootFor(request.requestedWorkspaceRoot?.value)
         val symbol = request.requestedSymbol.value
-        workspaceRootFor(workspaceRoot)
         progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
         val resolved = resolveNamedSymbol(
             symbolName = symbol,
@@ -697,34 +704,111 @@ internal class SkillRpcOrchestrator(
             message = "No symbol matching '$symbol' found in workspace",
             logFile = placeholderLogFile(),
         )
-        val declarationScope = resolved.symbol.declarationScope ?: return KastScopeMutationFailureResponse(
+        return replaceResolvedDeclaration(
             operation = request.operation,
+            workspaceRoot = workspaceRoot,
+            contentFile = request.contentFilePath.value,
+            subject = symbol,
+            filePath = resolved.filePath,
+            symbol = resolved.symbol,
+            progress = progress,
+        )
+    }
+
+    private suspend fun replaceDeclarationBySelectorHandle(
+        request: KastReplaceDeclarationBySelectorHandleRequest,
+        progress: MutationProgressReporter,
+    ): KastScopeMutationResponse {
+        val workspaceRoot = workspaceRootFor(request.requestedWorkspaceRoot?.value)
+        progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = null,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.REPLACE_DECLARATION,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
+        requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
+        val resolved = try {
+            backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(
+                        filePath = selector.declarationFile,
+                        offset = selector.declarationStartOffset,
+                    ),
+                    includeDeclarationScope = true,
+                ).parsed(),
+            ).symbol
+        } catch (_: NotFoundException) {
+            return KastScopeMutationFailureResponse(
+                operation = request.operation,
+                stage = "resolve",
+                message = "Selector handle declaration no longer exists",
+                logFile = placeholderLogFile(),
+            )
+        }
+        if (!selector.matches(resolved.toSymbolIdentity())) {
+            return KastScopeMutationFailureResponse(
+                operation = request.operation,
+                stage = "resolve",
+                message = "Selector handle declaration identity no longer matches the compiler subject",
+                logFile = placeholderLogFile(),
+            )
+        }
+        return replaceResolvedDeclaration(
+            operation = request.operation,
+            workspaceRoot = workspaceRoot,
+            contentFile = request.contentFilePath.value,
+            subject = selector.fqName,
+            filePath = selector.declarationFile,
+            symbol = resolved,
+            progress = progress,
+        )
+    }
+
+    private suspend fun replaceResolvedDeclaration(
+        operation: KastScopeMutationOperation,
+        workspaceRoot: String,
+        contentFile: String,
+        subject: String,
+        filePath: String,
+        symbol: Symbol,
+        progress: MutationProgressReporter,
+    ): KastScopeMutationResponse {
+        val declarationScope = symbol.declarationScope ?: return KastScopeMutationFailureResponse(
+            operation = operation,
             stage = "resolve",
-            message = "Resolved symbol '$symbol' did not include declaration scope",
+            message = "Resolved symbol '$subject' did not include declaration scope",
             logFile = placeholderLogFile(),
         )
-        val content = resolveContent(null, request.contentFilePath.value)
+        val content = resolveContent(null, contentFile)
         val response = applyEditsAndValidate(
-            filePath = resolved.filePath,
+            filePath = filePath,
             edits = listOf(
                 TextEdit(
-                    filePath = resolved.filePath,
+                    filePath = filePath,
                     startOffset = declarationScope.startOffset,
                     endOffset = declarationScope.endOffset,
                     newText = content,
                 ),
             ),
             query = KastWriteAndValidateReplaceRangeQuery(
-                workspaceRoot = workspaceRootFor(workspaceRoot),
-                filePath = resolved.filePath,
+                workspaceRoot = workspaceRoot,
+                filePath = filePath,
                 startOffset = declarationScope.startOffset,
                 endOffset = declarationScope.endOffset,
             ),
             progress = progress,
         )
         return response.toScopeMutationResponse(
-            operation = request.operation,
-            affectedFiles = listOf(resolved.filePath),
+            operation = operation,
+            affectedFiles = listOf(filePath),
             editCount = 1,
         )
     }

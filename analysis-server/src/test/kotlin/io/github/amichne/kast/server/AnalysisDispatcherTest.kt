@@ -1557,7 +1557,7 @@ class AnalysisDispatcherTest {
             method = "symbol/replace-declaration",
             params = json.encodeToJsonElement(
                 KastReplaceDeclarationRequest.serializer(),
-                KastReplaceDeclarationRequest(
+                KastReplaceDeclarationBySymbolRequest(
                     workspaceRoot = tempDir.toString(),
                     symbol = "greet",
                     contentFile = contentFile.toString(),
@@ -1647,7 +1647,7 @@ class AnalysisDispatcherTest {
             method = "symbol/replace-declaration",
             params = json.encodeToJsonElement(
                 KastReplaceDeclarationRequest.serializer(),
-                KastReplaceDeclarationRequest(
+                KastReplaceDeclarationBySymbolRequest(
                     workspaceRoot = tempDir.toString(),
                     symbol = "sample.greet",
                     contentFile = contentFile.toString(),

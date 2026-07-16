@@ -681,6 +681,7 @@ fn execute_agent_add_statement(args: AgentStatementMutationArgs) -> AgentEnvelop
 
 fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> AgentEnvelope {
     let params = drop_nulls(json!({
+        "type": "REPLACE_DECLARATION_BY_SYMBOL_REQUEST",
         "symbol": args.symbol,
         "contentFile": args.content_file.display().to_string(),
         "kind": args.kind.map(|kind| kind.canonical()),

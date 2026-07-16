@@ -373,23 +373,40 @@ data class KastAddStatementRequest(
 }
 
 @Serializable
-@SerialName("REPLACE_DECLARATION_REQUEST")
-data class KastReplaceDeclarationRequest(
+sealed interface KastReplaceDeclarationRequest : KastScopeMutationRequest {
+    override val operation: KastScopeMutationOperation
+        get() = KastScopeMutationOperation.REPLACE_DECLARATION
+}
+
+@Serializable
+@SerialName("REPLACE_DECLARATION_BY_SYMBOL_REQUEST")
+data class KastReplaceDeclarationBySymbolRequest(
     val workspaceRoot: String? = null,
     val symbol: String,
     val contentFile: String,
     val fileHint: String? = null,
     val kind: WrapperNamedSymbolKind? = null,
     val containingType: String? = null,
-) : KastSymbolScopeMutationRequest {
+) : KastReplaceDeclarationRequest, KastSymbolScopeMutationRequest {
     override val requestedWorkspaceRoot: NormalizedPath?
         get() = workspaceRoot.toOptionalNormalizedRequestPath()
     override val requestedSymbol: NonBlankString
         get() = NonBlankString(symbol)
     override val contentFilePath: NormalizedPath
         get() = contentFile.toNormalizedRequestPath()
-    override val operation: KastScopeMutationOperation
-        get() = KastScopeMutationOperation.REPLACE_DECLARATION
+}
+
+@Serializable
+@SerialName("REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST")
+data class KastReplaceDeclarationBySelectorHandleRequest(
+    val workspaceRoot: String? = null,
+    val selectorHandle: String,
+    val contentFile: String,
+) : KastReplaceDeclarationRequest {
+    override val requestedWorkspaceRoot: NormalizedPath?
+        get() = workspaceRoot.toOptionalNormalizedRequestPath()
+    override val contentFilePath: NormalizedPath
+        get() = contentFile.toNormalizedRequestPath()
 }
 
 private fun String?.toOptionalNormalizedRequestPath(): NormalizedPath? =
