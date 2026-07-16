@@ -5,14 +5,14 @@ const AGENT_TRAVERSAL_PAYLOAD_TAG: &str = "traversal";
 const AGENT_IMPACT_TOKEN_VERSION: &str = "kip1";
 const AGENT_IMPACT_MAX_OFFSET: usize = 10_000;
 
-struct AgentPreparedRelationshipSelector {
+struct AgentPreparedReusableSelector {
     selector: Option<Value>,
     selector_handle: Option<AgentSelectorHandle>,
     expected: Option<AgentExpectedRelationshipSelector>,
     workspace_root: String,
 }
 
-impl AgentPreparedRelationshipSelector {
+impl AgentPreparedReusableSelector {
     fn traversal_fingerprint(
         &self,
         relation: &str,
@@ -35,13 +35,26 @@ impl AgentPreparedRelationshipSelector {
             _ => unreachable!("reusable selector preparation preserves exclusive choice"),
         }
     }
+
+    fn impact_fingerprint(&self, depth: u8, limit: u8) -> String {
+        match (&self.expected, &self.selector_handle) {
+            (Some(expected), None) => impact_query_fingerprint(expected, depth, limit),
+            (None, Some(handle)) => selector_handle_impact_query_fingerprint(
+                &self.workspace_root,
+                handle,
+                depth,
+                limit,
+            ),
+            _ => unreachable!("reusable selector preparation preserves exclusive choice"),
+        }
+    }
 }
 
-fn prepare_reusable_relationship_selector(
+fn prepare_reusable_selector(
     public_method: &str,
     runtime: &AgentRuntimeArgs,
     selector: AgentReusableSymbolSelectorArgs,
-) -> std::result::Result<AgentPreparedRelationshipSelector, Box<AgentEnvelope>> {
+) -> std::result::Result<AgentPreparedReusableSelector, Box<AgentEnvelope>> {
     let selector = selector.into_selector().map_err(|message| {
         Box::new(error_envelope(
             public_method.to_string(),
@@ -54,7 +67,7 @@ fn prepare_reusable_relationship_selector(
             let (declaration_file, expected) =
                 normalize_relationship_selector(public_method, runtime, &selector)?;
             let workspace_root = expected.workspace_root.clone();
-            Ok(AgentPreparedRelationshipSelector {
+            Ok(AgentPreparedReusableSelector {
                 selector: Some(drop_nulls(json!({
                     "fqName": expected.fq_name,
                     "declarationFile": declaration_file,
@@ -71,7 +84,7 @@ fn prepare_reusable_relationship_selector(
             let normalizer = AgentFilePathNormalizer::from_runtime(runtime).map_err(|error| {
                 Box::new(error_envelope(public_method.to_string(), None, error))
             })?;
-            Ok(AgentPreparedRelationshipSelector {
+            Ok(AgentPreparedReusableSelector {
                 selector: None,
                 selector_handle: Some(handle),
                 expected: None,
@@ -97,10 +110,31 @@ struct AgentRawImpactSubject {
     containing_type: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all_fields = "camelCase")]
+enum AgentSelectorIdentityResponseInput {
+    #[serde(rename = "AVAILABLE")]
+    Available {
+        identity: AgentRelationIdentityProjection,
+    },
+    #[serde(rename = "SELECTOR_HANDLE_REJECTED")]
+    SelectorHandleRejected {
+        reason: AgentSelectorHandleRejectionReason,
+        recovery: AgentSelectorHandleRecovery,
+    },
+}
+
+struct AgentVerifiedImpactSubject {
+    selector: Option<Value>,
+    subject: Option<AgentRawImpactSubject>,
+    identity: AgentRelationIdentityProjection,
+    kind: ImpactSubjectKind,
+}
+
 fn execute_identity_first_impact(args: AgentImpactArgs) -> AgentEnvelope {
-    let (declaration_file, expected) =
-        match normalize_relationship_selector("agent/impact", &args.runtime, &args.selector) {
-            Ok(value) => value,
+    let prepared =
+        match prepare_reusable_selector("agent/impact", &args.runtime, args.selector) {
+            Ok(prepared) => prepared,
             Err(envelope) => return *envelope,
         };
     let detailed = impact_result_view(&args.view).detailed();
@@ -109,7 +143,7 @@ fn execute_identity_first_impact(args: AgentImpactArgs) -> AgentEnvelope {
     } else {
         args.limit.get().min(4)
     };
-    let fingerprint = impact_query_fingerprint(&expected, args.depth.get(), limit);
+    let fingerprint = prepared.impact_fingerprint(args.depth.get(), limit);
     let offset = match args.page_token.as_ref() {
         Some(token) => match decode_impact_page_token(token, &fingerprint) {
             Ok(offset) => offset,
@@ -117,92 +151,31 @@ fn execute_identity_first_impact(args: AgentImpactArgs) -> AgentEnvelope {
         },
         None => 0,
     };
-    let selector = drop_nulls(json!({
-        "fqName": expected.fq_name,
-        "declarationFile": declaration_file,
-        "declarationStartOffset": expected.declaration_start_offset,
-        "kind": expected.kind,
-        "containingType": expected.containing_type,
-    }));
-    let resolve_request = json_rpc_request(
-        "raw/resolve",
-        json!({
-            "position": {
-                "filePath": declaration_file,
-                "offset": expected.declaration_start_offset,
+    let verified = match (
+        prepared.selector,
+        prepared.selector_handle,
+        prepared.expected,
+    ) {
+        (Some(selector), None, Some(expected)) => {
+            match resolve_explicit_impact_subject(&args.runtime, selector, expected) {
+                Ok(verified) => verified,
+                Err(envelope) => return *envelope,
             }
-        }),
-    );
-    let resolved = execute_request(AgentRequest {
-        method: "raw/resolve".to_string(),
-        request: resolve_request.clone(),
-        runtime: args.runtime.clone(),
-        full_response: true,
-        operation: AgentOperation::ReadOnly,
-    });
-    if !resolved.ok {
-        return error_envelope(
-            "agent/impact".to_string(),
-            Some(resolve_request),
-            resolved.error.unwrap_or_else(|| {
-                agent_error(
-                    "IMPACT_SUBJECT_RESOLUTION_FAILED",
-                    "Compiler position resolution failed without a typed error.",
-                )
-            }),
-        );
-    }
-    let Some(resolve_result) = resolved.result else {
-        return invalid_projection_envelope(
-            "agent/impact".to_string(),
-            "Compiler position resolution returned no result.",
-        );
-    };
-    let parsed = match serde_json::from_value::<AgentRawImpactResolveResult>(resolve_result) {
-        Ok(parsed) => parsed,
-        Err(error) => {
-            return invalid_projection_envelope(
-                "agent/impact".to_string(),
-                format!("Compiler position resolution violated its contract: {error}"),
-            );
         }
+        (None, Some(handle), None) => {
+            match resolve_handle_impact_subject(&args.runtime, handle) {
+                Ok(verified) => verified,
+                Err(envelope) => return *envelope,
+            }
+        }
+        _ => unreachable!("reusable selector preparation preserves exclusive choice"),
     };
-    let Some(mut subject) = parsed.symbol else {
-        return impact_outcome_envelope(selector, None, "SUBJECT_NOT_FOUND", None);
-    };
-    let Some(start_offset) = subject.location.start_offset else {
-        return impact_outcome_envelope(
-            selector,
-            Some(subject),
-            "SUBJECT_IDENTITY_MISMATCH",
-            None,
-        );
-    };
-    let mut actual = AgentRelationIdentityProjection {
-        fq_name: subject.fq_name.clone(),
-        kind: subject.kind.to_ascii_uppercase(),
-        declaration_file: subject.location.file_path.clone(),
-        declaration_start_offset: start_offset,
-        containing_type: subject.containing_type.clone(),
-    };
-    if !actual.is_valid() || !expected.matches(&mut actual) {
-        return impact_outcome_envelope(
-            selector,
-            Some(subject),
-            "SUBJECT_IDENTITY_MISMATCH",
-            None,
-        );
-    }
-    subject.location.file_path.clone_from(&actual.declaration_file);
-    subject.kind.clone_from(&actual.kind);
-    let Some(kind) = impact_subject_kind(&actual.kind) else {
-        return impact_outcome_envelope(
-            selector,
-            Some(subject),
-            "UNSUPPORTED_SUBJECT_KIND",
-            None,
-        );
-    };
+    let AgentVerifiedImpactSubject {
+        selector,
+        subject,
+        identity,
+        kind,
+    } = verified;
     let mut envelope = execute_agent_steps(
         "agent/impact",
         args.runtime,
@@ -211,14 +184,14 @@ fn execute_identity_first_impact(args: AgentImpactArgs) -> AgentEnvelope {
             "database/metrics",
             json!({
                 "metric": "impact",
-                "symbol": actual.fq_name,
+                "symbol": identity.fq_name,
                 "depth": args.depth.get(),
                 "limit": limit,
                 "offset": offset,
                 "subject": {
-                    "fqName": actual.fq_name,
-                    "declarationFile": actual.declaration_file,
-                    "declarationStartOffset": actual.declaration_start_offset,
+                    "fqName": identity.fq_name,
+                    "declarationFile": identity.declaration_file,
+                    "declarationStartOffset": identity.declaration_start_offset,
                     "kind": kind,
                 }
             }),
@@ -231,10 +204,207 @@ fn execute_identity_first_impact(args: AgentImpactArgs) -> AgentEnvelope {
             "IMPACT_INDEX_IDENTITY_UNAVAILABLE" | "IMPACT_OVERLOAD_GRANULARITY_UNAVAILABLE"
         )
     {
-        return impact_outcome_envelope(selector, Some(subject), "DEGRADED", Some(code));
+        return impact_outcome_envelope(selector, subject, "DEGRADED", Some(code));
     }
     wrap_impact_page_token(&mut envelope, &fingerprint);
     envelope
+}
+
+fn resolve_explicit_impact_subject(
+    runtime: &AgentRuntimeArgs,
+    selector: Value,
+    expected: AgentExpectedRelationshipSelector,
+) -> std::result::Result<AgentVerifiedImpactSubject, Box<AgentEnvelope>> {
+    let declaration_file = expected.declaration_file.clone();
+    let resolve_request = json_rpc_request(
+        "raw/resolve",
+        json!({
+            "position": {
+                "filePath": declaration_file,
+                "offset": expected.declaration_start_offset,
+            }
+        }),
+    );
+    let resolved = execute_request(AgentRequest {
+        method: "raw/resolve".to_string(),
+        request: resolve_request.clone(),
+        runtime: runtime.clone(),
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    if !resolved.ok {
+        return Err(Box::new(error_envelope(
+            "agent/impact".to_string(),
+            Some(resolve_request),
+            resolved.error.unwrap_or_else(|| {
+                agent_error(
+                    "IMPACT_SUBJECT_RESOLUTION_FAILED",
+                    "Compiler position resolution failed without a typed error.",
+                )
+            }),
+        )));
+    }
+    let Some(resolve_result) = resolved.result else {
+        return Err(Box::new(invalid_projection_envelope(
+            "agent/impact".to_string(),
+            "Compiler position resolution returned no result.",
+        )));
+    };
+    let parsed = match serde_json::from_value::<AgentRawImpactResolveResult>(resolve_result) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            return Err(Box::new(invalid_projection_envelope(
+                "agent/impact".to_string(),
+                format!("Compiler position resolution violated its contract: {error}"),
+            )));
+        }
+    };
+    let Some(mut subject) = parsed.symbol else {
+        return Err(Box::new(impact_outcome_envelope(
+            Some(selector),
+            None,
+            "SUBJECT_NOT_FOUND",
+            None,
+        )));
+    };
+    let Some(start_offset) = subject.location.start_offset else {
+        return Err(Box::new(impact_outcome_envelope(
+            Some(selector),
+            Some(subject),
+            "SUBJECT_IDENTITY_MISMATCH",
+            None,
+        )));
+    };
+    let mut actual = AgentRelationIdentityProjection {
+        fq_name: subject.fq_name.clone(),
+        kind: subject.kind.to_ascii_uppercase(),
+        declaration_file: subject.location.file_path.clone(),
+        declaration_start_offset: start_offset,
+        containing_type: subject.containing_type.clone(),
+    };
+    if !actual.is_valid() || !expected.matches(&mut actual) {
+        return Err(Box::new(impact_outcome_envelope(
+            Some(selector),
+            Some(subject),
+            "SUBJECT_IDENTITY_MISMATCH",
+            None,
+        )));
+    }
+    subject.location.file_path.clone_from(&actual.declaration_file);
+    subject.kind.clone_from(&actual.kind);
+    let Some(kind) = impact_subject_kind(&actual.kind) else {
+        return Err(Box::new(impact_outcome_envelope(
+            Some(selector),
+            Some(subject),
+            "UNSUPPORTED_SUBJECT_KIND",
+            None,
+        )));
+    };
+    Ok(AgentVerifiedImpactSubject {
+        selector: Some(selector),
+        subject: Some(subject),
+        identity: actual,
+        kind,
+    })
+}
+
+fn resolve_handle_impact_subject(
+    runtime: &AgentRuntimeArgs,
+    handle: AgentSelectorHandle,
+) -> std::result::Result<AgentVerifiedImpactSubject, Box<AgentEnvelope>> {
+    let request = json_rpc_request(
+        "selector/identity",
+        json!({
+            "selectorHandle": handle,
+            "family": "IMPACT",
+        }),
+    );
+    let response = execute_request(AgentRequest {
+        method: "selector/identity".to_string(),
+        request: request.clone(),
+        runtime: runtime.clone(),
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    if !response.ok {
+        return Err(Box::new(error_envelope(
+            "agent/impact".to_string(),
+            Some(request),
+            response.error.unwrap_or_else(|| {
+                agent_error(
+                    "IMPACT_SELECTOR_IDENTITY_FAILED",
+                    "Selector identity authentication failed without a typed error.",
+                )
+            }),
+        )));
+    }
+    let Some(result) = response.result else {
+        return Err(Box::new(invalid_projection_envelope(
+            "agent/impact".to_string(),
+            "Selector identity authentication returned no result.",
+        )));
+    };
+    let parsed = serde_json::from_value::<AgentSelectorIdentityResponseInput>(result).map_err(
+        |error| {
+            Box::new(invalid_projection_envelope(
+                "agent/impact".to_string(),
+                format!("Selector identity violated its closed response contract: {error}"),
+            ))
+        },
+    )?;
+    let mut identity = match parsed {
+        AgentSelectorIdentityResponseInput::Available { identity } => identity,
+        AgentSelectorIdentityResponseInput::SelectorHandleRejected { reason, recovery }
+            if reason.recovery() == recovery =>
+        {
+            return Err(Box::new(impact_selector_handle_rejection_envelope(
+                reason, recovery,
+            )));
+        }
+        AgentSelectorIdentityResponseInput::SelectorHandleRejected { .. } => {
+            return Err(Box::new(invalid_projection_envelope(
+                "agent/impact".to_string(),
+                "Selector handle rejection named an invalid recovery action.",
+            )));
+        }
+    };
+    if !identity.is_valid() {
+        return Err(Box::new(invalid_projection_envelope(
+            "agent/impact".to_string(),
+            "Authenticated selector identity was incomplete.",
+        )));
+    }
+    let normalizer = AgentFilePathNormalizer::from_runtime(runtime).map_err(|error| {
+        Box::new(error_envelope(
+            "agent/impact".to_string(),
+            None,
+            error,
+        ))
+    })?;
+    identity.declaration_file = normalizer
+        .normalize(&identity.declaration_file)
+        .map_err(|error| {
+            Box::new(invalid_projection_envelope(
+                "agent/impact".to_string(),
+                format!(
+                    "Authenticated selector identity named an invalid declaration file: {}",
+                    error.message
+                ),
+            ))
+        })?
+        .into_rpc_path();
+    let Some(kind) = impact_subject_kind(&identity.kind) else {
+        return Err(Box::new(invalid_projection_envelope(
+            "agent/impact".to_string(),
+            "Authenticated selector identity used a kind outside the impact family.",
+        )));
+    };
+    Ok(AgentVerifiedImpactSubject {
+        selector: None,
+        subject: None,
+        identity,
+        kind,
+    })
 }
 
 fn impact_subject_kind(kind: &str) -> Option<ImpactSubjectKind> {
@@ -261,6 +431,24 @@ fn impact_query_fingerprint(
         selector.declaration_start_offset.to_string(),
         selector.kind.clone().unwrap_or_default(),
         selector.containing_type.clone().unwrap_or_default(),
+        depth.to_string(),
+        limit.to_string(),
+    ]
+    .join("\n");
+    crate::manifest::sha256_bytes(proof.as_bytes())[..24].to_string()
+}
+
+fn selector_handle_impact_query_fingerprint(
+    workspace_root: &str,
+    handle: &AgentSelectorHandle,
+    depth: u8,
+    limit: u8,
+) -> String {
+    let proof = [
+        workspace_root.to_string(),
+        "impact".to_string(),
+        "selector-handle".to_string(),
+        handle.as_str().to_string(),
         depth.to_string(),
         limit.to_string(),
     ]
@@ -343,7 +531,7 @@ fn wrap_impact_page_token(envelope: &mut AgentEnvelope, fingerprint: &str) {
 }
 
 fn impact_outcome_envelope(
-    selector: Value,
+    selector: Option<Value>,
     verified_subject: Option<AgentRawImpactSubject>,
     outcome: &'static str,
     reason: Option<&str>,
@@ -359,6 +547,23 @@ fn impact_outcome_envelope(
             "reason": reason,
             "schemaVersion": SCHEMA_VERSION,
         })),
+    )
+}
+
+fn impact_selector_handle_rejection_envelope(
+    reason: AgentSelectorHandleRejectionReason,
+    recovery: AgentSelectorHandleRecovery,
+) -> AgentEnvelope {
+    result_envelope(
+        "agent/impact".to_string(),
+        json!({
+            "type": "KAST_AGENT_IMPACT_RESULT",
+            "ok": true,
+            "outcome": "SELECTOR_HANDLE_REJECTED",
+            "reason": reason,
+            "recovery": recovery,
+            "schemaVersion": SCHEMA_VERSION,
+        }),
     )
 }
 
@@ -405,7 +610,7 @@ fn execute_agent_call_relationship(
     page_token: Option<AgentRelationPageToken>,
     view: AgentRelationViewArgs,
 ) -> AgentEnvelope {
-    let prepared = match prepare_reusable_relationship_selector(public_method, &runtime, selector) {
+    let prepared = match prepare_reusable_selector(public_method, &runtime, selector) {
         Ok(value) => value,
         Err(envelope) => return *envelope,
     };
@@ -422,7 +627,7 @@ fn execute_agent_call_relationship(
         },
         None => None,
     };
-    let AgentPreparedRelationshipSelector {
+    let AgentPreparedReusableSelector {
         selector,
         selector_handle,
         expected,
@@ -464,7 +669,7 @@ fn execute_agent_call_relationship(
 }
 
 fn execute_agent_implementations(args: AgentImplementationsArgs) -> AgentEnvelope {
-    let prepared = match prepare_reusable_relationship_selector(
+    let prepared = match prepare_reusable_selector(
         "agent/implementations",
         &args.runtime,
         args.selector,
@@ -489,7 +694,7 @@ fn execute_agent_implementations(args: AgentImplementationsArgs) -> AgentEnvelop
         },
         None => None,
     };
-    let AgentPreparedRelationshipSelector {
+    let AgentPreparedReusableSelector {
         selector,
         selector_handle,
         expected,
@@ -536,7 +741,7 @@ fn execute_agent_hierarchy(args: AgentHierarchyArgs) -> AgentEnvelope {
         AgentHierarchyDirection::Subtypes => "SUBTYPES",
         AgentHierarchyDirection::Both => "BOTH",
     };
-    let prepared = match prepare_reusable_relationship_selector(
+    let prepared = match prepare_reusable_selector(
         "agent/hierarchy",
         &args.runtime,
         args.selector,
@@ -557,7 +762,7 @@ fn execute_agent_hierarchy(args: AgentHierarchyArgs) -> AgentEnvelope {
         },
         None => None,
     };
-    let AgentPreparedRelationshipSelector {
+    let AgentPreparedReusableSelector {
         selector,
         selector_handle,
         expected,

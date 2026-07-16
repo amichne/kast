@@ -1215,7 +1215,7 @@ pub struct AgentImpactArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
-    pub selector: AgentExactSymbolSelectorArgs,
+    pub selector: AgentReusableSymbolSelectorArgs,
     /// Maximum source-impact traversal depth.
     #[arg(long, default_value_t)]
     pub depth: AgentImpactDepth,

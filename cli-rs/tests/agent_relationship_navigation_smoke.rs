@@ -330,6 +330,10 @@ fn selector_handle_drives_impact_without_position_resolution() {
         serde_json::from_slice(&output.stdout).expect("handle impact JSON");
     assert_eq!(result["result"]["query"]["symbol"], "lib.Foo");
     assert_eq!(result["result"]["nodes"].as_array().map(Vec::len), Some(4));
+    let page_token = result["result"]["nextPageToken"]
+        .as_str()
+        .expect("handle-bound impact page token")
+        .to_string();
 
     let requests = backend.join().expect("impact identity backend");
     let identity_request = requests
@@ -347,6 +351,80 @@ fn selector_handle_drives_impact_without_position_resolution() {
             .all(|request| request["method"] != "raw/resolve"),
         "handle impact must not perform position resolution: {requests:?}",
     );
+
+    let mismatched = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--selector-handle",
+            "ksh1.other-impact-selector-handle",
+            "--page-token",
+            &page_token,
+            "--depth",
+            "3",
+            "--limit",
+            "4",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("mismatched handle impact token");
+    assert_eq!(mismatched.status.code(), Some(1));
+    let mismatch: serde_json::Value =
+        serde_json::from_slice(&mismatched.stdout).expect("impact mismatch JSON");
+    assert_eq!(mismatch["error"]["code"], "IMPACT_PAGE_TOKEN_MISMATCH");
+}
+
+#[test]
+fn selector_handle_impact_preserves_rejection_before_sql() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-impact-rejected.sock"),
+        vec![(
+            "selector/identity",
+            serde_json::json!({
+                "type": "SELECTOR_HANDLE_REJECTED",
+                "reason": "STALE",
+                "recovery": "RESOLVE_AGAIN",
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--selector-handle",
+            "ksh1.stale-impact-selector-handle",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("stale impact selector handle");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let result: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("impact rejection JSON");
+    assert_eq!(result["result"]["outcome"], "SELECTOR_HANDLE_REJECTED");
+    assert_eq!(result["result"]["reason"], "STALE");
+    assert_eq!(result["result"]["recovery"], "RESOLVE_AGAIN");
+    backend.join().expect("impact rejection backend");
 }
 
 #[test]
