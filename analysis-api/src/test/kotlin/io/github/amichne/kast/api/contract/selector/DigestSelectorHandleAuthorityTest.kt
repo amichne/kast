@@ -61,7 +61,7 @@ class DigestSelectorHandleAuthorityTest {
         )
         assertRejected(
             SelectorHandleAuthority.Resolution.RejectionReason.TAMPERED,
-            authority.resolve(current.withChangedLastCharacter(), WORKSPACE_ROOT, SelectorOperationFamily.REFERENCES),
+            authority.resolve(current.withChangedAuthenticatedByte(), WORKSPACE_ROOT, SelectorOperationFamily.REFERENCES),
         )
     }
 
@@ -112,8 +112,11 @@ class DigestSelectorHandleAuthorityTest {
         return SelectorHandle.PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(payload + digest)
     }
 
-    private fun String.withChangedLastCharacter(): String =
-        dropLast(1) + if (last() == 'A') 'B' else 'A'
+    private fun String.withChangedAuthenticatedByte(): String {
+        val envelope = Base64.getUrlDecoder().decode(removePrefix(SelectorHandle.PREFIX))
+        envelope[envelope.lastIndex] = (envelope.last().toInt() xor 1).toByte()
+        return SelectorHandle.PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(envelope)
+    }
 
     private fun ByteArray.find(needle: ByteArray): Int = indices.firstOrNull { start ->
         start + needle.size <= size && needle.indices.all { offset -> this[start + offset] == needle[offset] }
