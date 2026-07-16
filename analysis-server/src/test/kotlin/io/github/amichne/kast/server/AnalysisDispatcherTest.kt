@@ -247,6 +247,77 @@ class AnalysisDispatcherTest {
     }
 
     @Test
+    fun `selector handle reuses exact reference subject without re-resolution`() {
+        val delegate = FakeAnalysisBackend.sample(tempDir)
+        var resolveCalls = 0
+        var referenceCalls = 0
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun resolveSymbol(query: ParsedSymbolQuery): SymbolResult {
+                resolveCalls += 1
+                return delegate.resolveSymbol(query)
+            }
+
+            override suspend fun findReferences(query: ParsedReferencesQuery): ReferencesResult {
+                referenceCalls += 1
+                return delegate.findReferences(query)
+            }
+        }
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = backend,
+            config = AnalysisServerConfig(),
+        )
+        val resolvedRaw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "symbol/resolve",
+                    params = json.encodeToJsonElement(
+                        KastResolveRequest.serializer(),
+                        KastResolveRequest(
+                            workspaceRoot = tempDir.toString(),
+                            symbol = "greet",
+                            fileHint = sampleFile().toString(),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val resolvedResponse = json.decodeFromString(JsonRpcSuccessResponse.serializer(), resolvedRaw)
+        val resolvedResult = resolvedResponse.result as JsonObject
+        val selectorHandle = assertInstanceOf(
+            JsonPrimitive::class.java,
+            resolvedResult["selectorHandle"],
+        ).content
+        assertTrue(selectorHandle.startsWith("ksh1."))
+        val resolveCallsAfterLookup = resolveCalls
+
+        val referencesRaw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(2),
+                    method = "symbol/references",
+                    params = JsonObject(
+                        mapOf(
+                            "workspaceRoot" to JsonPrimitive(tempDir.toString()),
+                            "selectorHandle" to JsonPrimitive(selectorHandle),
+                            "maxResults" to JsonPrimitive(1),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val referencesResponse = json.decodeFromString(JsonRpcSuccessResponse.serializer(), referencesRaw)
+        val references = json.decodeFromJsonElement(
+            KastReferencesResponse.serializer(),
+            referencesResponse.result,
+        )
+
+        assertInstanceOf(KastReferencesAvailableResponse::class.java, references)
+        assertEquals(resolveCallsAfterLookup, resolveCalls)
+        assertEquals(1, referenceCalls)
+    }
+
+    @Test
     fun `call relationship missing capability degrades without entering traversal`() {
         val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
         val backend = RecordingPagedRelationshipsBackend(
