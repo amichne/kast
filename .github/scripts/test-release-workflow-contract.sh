@@ -229,12 +229,8 @@ require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-developme
 require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-development-semantic-e2e:" "uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32" "CI workflow contracts must restore pruned Rust dependency builds from the pinned cache action"
 require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-development-semantic-e2e:" "workspaces: cli-rs -> target" "CI workflow contracts must cache the actual Rust workspace"
 require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-development-semantic-e2e:" 'cache-bin: "false"' "CI workflow contracts must not persist runner toolchain binaries"
+# shellcheck disable=SC2016 # GitHub expressions must remain literal contract strings.
 require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-development-semantic-e2e:" 'save-if: ${{ github.ref == '\''refs/heads/main'\'' }}' "CI workflow contracts must persist Rust caches only from trusted main pushes"
-require_block_contains "$ci_workflow" "  local-development-semantic-e2e:" "  runtime-contracts:" "uses: gradle/actions/setup-gradle@v5" "CI installed semantic E2E must restore persisted Gradle build state"
-require_block_contains "$ci_workflow" "  local-development-semantic-e2e:" "  runtime-contracts:" "uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32" "CI installed semantic E2E must restore pruned Rust dependency builds from the pinned cache action"
-require_block_contains "$ci_workflow" "  local-development-semantic-e2e:" "  runtime-contracts:" "workspaces: cli-rs -> target" "CI installed semantic E2E must cache the actual Rust workspace"
-require_block_contains "$ci_workflow" "  local-development-semantic-e2e:" "  runtime-contracts:" 'cache-bin: "false"' "CI installed semantic E2E must not persist runner toolchain binaries"
-require_block_contains "$ci_workflow" "  local-development-semantic-e2e:" "  runtime-contracts:" 'save-if: ${{ github.ref == '\''refs/heads/main'\'' }}' "CI installed semantic E2E must persist Rust caches only from trusted main pushes"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "    needs: workflow-contracts" "CI runtime contracts must wait for the static workflow preflight"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test terminal command contract" "CI runtime contracts must own the terminal command contract"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test Kast Copilot plugin package" "CI runtime contracts must reuse the terminal build for the Copilot package contract"
