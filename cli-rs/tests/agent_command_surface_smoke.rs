@@ -580,6 +580,205 @@ fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutati
 }
 
 #[test]
+fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let plan_socket_path = temp.path().join("rename-handle-plan.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"rename-handle\"\n",
+    )
+    .expect("Gradle workspace marker");
+    let declaration_file = workspace.join("Keywords.kt");
+    std::fs::write(
+        &declaration_file,
+        "package io.example\nclass OrderService { fun process() = Unit }\n",
+    )
+    .expect("Kotlin rename fixture");
+    let selector_handle = "ksh1.rename-handle";
+    let plan_backend = spawn_scripted_headless_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &plan_socket_path,
+        vec![
+            (
+                "selector/identity",
+                json!({
+                    "type": "AVAILABLE",
+                    "identity": {
+                        "fqName": "io.example.OrderService.process",
+                        "kind": "FUNCTION",
+                        "declarationFile": declaration_file.display().to_string(),
+                        "declarationStartOffset": 10,
+                        "containingType": "io.example.OrderService"
+                    },
+                    "schemaVersion": 3
+                }),
+            ),
+            ("raw/rename", rename_preview(&workspace, "processSafely")),
+        ],
+    );
+
+    let plan = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--selector-handle",
+            selector_handle,
+            "--new-name",
+            "processSafely",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--explain",
+        ])
+        .output()
+        .expect("selector handle rename plan");
+
+    assert!(
+        plan.status.success(),
+        "rename plan should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr),
+    );
+    let stdout: Value = serde_json::from_slice(&plan.stdout).expect("rename plan json");
+    assert_eq!(stdout["result"]["type"], "KAST_AGENT_RENAME_PLAN");
+    assert_eq!(
+        stdout["result"]["request"]["params"]["type"],
+        "RENAME_BY_SELECTOR_HANDLE_REQUEST",
+    );
+    assert_eq!(
+        stdout["result"]["request"]["params"]["selectorHandle"],
+        selector_handle,
+    );
+    assert_eq!(
+        stdout["result"]["identity"]["fqName"],
+        "io.example.OrderService.process",
+    );
+    assert!(
+        stdout["result"].get("resolution").is_none(),
+        "handle plan must not replay a resolve envelope: {stdout}",
+    );
+    let requests = plan_backend.join().expect("plan backend");
+    let identity_request = requests
+        .iter()
+        .find(|request| request["method"] == "selector/identity")
+        .expect("selector identity request");
+    assert_eq!(
+        identity_request["params"]["selectorHandle"],
+        selector_handle
+    );
+    assert_eq!(identity_request["params"]["family"], "RENAME");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request["method"] != "symbol/resolve"),
+        "handle rename must not perform name resolution: {requests:?}",
+    );
+    let preview_request = requests
+        .iter()
+        .find(|request| request["method"] == "raw/rename")
+        .expect("rename preview request");
+    assert_eq!(preview_request["params"]["position"]["offset"], 10);
+    assert_eq!(preview_request["params"]["dryRun"], true);
+
+    let missing_key = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--selector-handle",
+            selector_handle,
+            "--new-name",
+            "processSafely",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+        ])
+        .output()
+        .expect("rename without idempotency key");
+    assert!(
+        !missing_key.status.success(),
+        "apply must require authority"
+    );
+    let missing_key: Value =
+        serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
+    assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
+
+    let apply_socket_path = temp.path().join("rename-handle-apply.sock");
+    let apply_backend = spawn_scripted_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &apply_socket_path,
+        vec![(
+            "mutation/submit",
+            json!({
+                "operation": {
+                    "operationId": "00000000-0000-0000-0000-000000000392",
+                    "idempotencyKey": "issue-392-rename",
+                    "mutationKind": "RENAME",
+                    "state": {
+                        "type": "QUEUED",
+                        "trace": {
+                            "enteredStages": [],
+                            "editApplicationState": "NOT_STARTED"
+                        },
+                        "cancellationRequested": false
+                    }
+                },
+                "deduplicated": false
+            }),
+        )],
+    );
+    let apply = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--selector-handle",
+            selector_handle,
+            "--new-name",
+            "processSafely",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+            "--idempotency-key",
+            "issue-392-rename",
+        ])
+        .output()
+        .expect("authorized selector handle rename");
+    assert!(
+        apply.status.success(),
+        "rename submission should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&apply.stdout),
+        String::from_utf8_lossy(&apply.stderr),
+    );
+    let requests = apply_backend.join().expect("apply backend");
+    let submit = requests
+        .iter()
+        .find(|request| request["method"] == "mutation/submit")
+        .expect("mutation submission");
+    assert_eq!(submit["params"]["type"], "RENAME");
+    assert_eq!(submit["params"]["idempotencyKey"], "issue-392-rename");
+    assert_eq!(
+        submit["params"]["request"]["type"],
+        "RENAME_BY_SELECTOR_HANDLE_REQUEST",
+    );
+    assert_eq!(
+        submit["params"]["request"]["selectorHandle"],
+        selector_handle,
+    );
+}
+
+#[test]
 fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_uncovered() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -795,6 +994,151 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             "{stdout}"
         );
     }
+}
+
+#[test]
+fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authority() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let content_file = temp.path().join("replacement.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"replace-handle\"\n",
+    )
+    .expect("Gradle workspace marker");
+    std::fs::write(&content_file, "fun greet() = \"replacement\"\n").expect("replacement");
+    let selector_handle = "ksh1.replace-handle";
+
+    let plan = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "replace-declaration",
+            "--selector-handle",
+            selector_handle,
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("replace declaration plan");
+    assert!(
+        plan.status.success(),
+        "replace plan should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&plan.stdout),
+        String::from_utf8_lossy(&plan.stderr),
+    );
+    let plan: Value = serde_json::from_slice(&plan.stdout).expect("replace plan json");
+    assert_eq!(plan["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
+    assert_eq!(plan["result"]["operation"]["state"], "PLANNED");
+    assert_eq!(
+        plan["result"]["operation"]["mutationKind"],
+        "REPLACE_DECLARATION",
+    );
+    assert_eq!(
+        plan["result"]["plan"]["type"],
+        "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
+    );
+    assert_eq!(plan["result"]["plan"]["selectorHandle"], selector_handle,);
+    assert!(
+        plan["result"]["plan"].get("symbol").is_none(),
+        "handle plan must not reconstruct a symbol selector: {plan}",
+    );
+
+    let missing_key = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "replace-declaration",
+            "--selector-handle",
+            selector_handle,
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+        ])
+        .output()
+        .expect("replace without idempotency key");
+    assert!(
+        !missing_key.status.success(),
+        "apply must require authority"
+    );
+    let missing_key: Value =
+        serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
+    assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
+
+    let socket_path = temp.path().join("replace-handle-apply.sock");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![(
+            "mutation/submit",
+            json!({
+                "operation": {
+                    "operationId": "00000000-0000-0000-0000-000000000393",
+                    "idempotencyKey": "issue-392-replace",
+                    "mutationKind": "REPLACE_DECLARATION",
+                    "state": {
+                        "type": "QUEUED",
+                        "trace": {
+                            "enteredStages": [],
+                            "editApplicationState": "NOT_STARTED"
+                        },
+                        "cancellationRequested": false
+                    }
+                },
+                "deduplicated": false
+            }),
+        )],
+    );
+    let apply = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "replace-declaration",
+            "--selector-handle",
+            selector_handle,
+            "--content-file",
+            content_file.to_str().expect("content"),
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--apply",
+            "--idempotency-key",
+            "issue-392-replace",
+        ])
+        .output()
+        .expect("authorized replace declaration");
+    assert!(
+        apply.status.success(),
+        "replace submission should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&apply.stdout),
+        String::from_utf8_lossy(&apply.stderr),
+    );
+    let requests = backend.join().expect("replace backend");
+    let submit = requests
+        .iter()
+        .find(|request| request["method"] == "mutation/submit")
+        .expect("mutation submission");
+    assert_eq!(submit["params"]["type"], "REPLACE_DECLARATION");
+    assert_eq!(submit["params"]["idempotencyKey"], "issue-392-replace",);
+    assert_eq!(
+        submit["params"]["request"]["type"],
+        "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
+    );
+    assert_eq!(
+        submit["params"]["request"]["selectorHandle"],
+        selector_handle,
+    );
 }
 
 #[test]

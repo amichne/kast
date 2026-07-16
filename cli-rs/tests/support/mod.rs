@@ -125,6 +125,18 @@ pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Pat
 }
 
 pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
+    write_macos_plugin_workspace_metadata_for_cli(
+        workspace,
+        Path::new(env!("CARGO_BIN_EXE_kast")),
+        env!("CARGO_PKG_VERSION"),
+    );
+}
+
+fn write_macos_plugin_workspace_metadata_for_cli(
+    workspace: &Path,
+    cli_binary: &Path,
+    cli_version: &str,
+) {
     #[cfg(target_os = "macos")]
     {
         let workspace: PathBuf = workspace.components().collect();
@@ -139,12 +151,12 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
                 "schemaVersion": 3,
                 "preparedBy": "kast-intellij-plugin",
                 "workspaceRoot": workspace.display().to_string(),
-                "cliBinary": env!("CARGO_BIN_EXE_kast"),
+                "cliBinary": cli_binary.display().to_string(),
                 "backend": "idea",
                 "socketPath": default_socket_path_for_test(&workspace).display().to_string(),
                 "compatibility": {
-                    "pluginVersion": env!("CARGO_PKG_VERSION"),
-                    "cliVersion": env!("CARGO_PKG_VERSION"),
+                    "pluginVersion": cli_version,
+                    "cliVersion": cli_version,
                     "protocolRevision": 1,
                     "workspaceMetadataRevision": 3,
                     "readCapabilities": [
@@ -170,7 +182,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
                         "REFRESH_WORKSPACE"
                     ],
                     "runtimeIdentity": {
-                        "implementationVersion": env!("CARGO_PKG_VERSION"),
+                        "implementationVersion": cli_version,
                         "backendKind": "IDEA"
                     }
                 },
@@ -185,7 +197,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = workspace;
+        let _ = (workspace, cli_binary, cli_version);
     }
 }
 
@@ -203,6 +215,45 @@ pub(crate) fn spawn_scripted_idea_backend(
         workspace,
         socket_path,
         "idea",
+        1,
+        scripted_results,
+    )
+}
+
+pub(crate) struct ScriptedCliAuthority<'a> {
+    binary: &'a Path,
+    version: &'a str,
+}
+
+impl<'a> ScriptedCliAuthority<'a> {
+    pub(crate) fn new(binary: &'a Path, version: &'a str) -> Self {
+        assert!(binary.is_file(), "scripted CLI authority binary");
+        assert!(!version.trim().is_empty(), "scripted CLI authority version");
+        Self { binary, version }
+    }
+}
+
+pub(crate) fn spawn_scripted_idea_backend_for_invocations(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    cli_authority: ScriptedCliAuthority<'_>,
+    invocation_count: usize,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    write_macos_plugin_workspace_metadata_for_cli(
+        workspace,
+        cli_authority.binary,
+        cli_authority.version,
+    );
+    spawn_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "idea",
+        invocation_count,
         scripted_results,
     )
 }
@@ -220,6 +271,7 @@ pub(crate) fn spawn_scripted_headless_backend(
         workspace,
         socket_path,
         "headless",
+        1,
         scripted_results,
     )
 }
@@ -230,8 +282,10 @@ fn spawn_scripted_backend(
     workspace: &Path,
     socket_path: &Path,
     backend_name: &str,
+    invocation_count: usize,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    assert!(invocation_count > 0, "scripted backend needs an invocation");
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(home).expect("home");
     std::fs::create_dir_all(workspace).expect("workspace");
@@ -266,7 +320,7 @@ fn spawn_scripted_backend(
     thread::spawn(move || {
         let mut requests = Vec::new();
         let mut scripted_results = scripted_results.into_iter();
-        let expected_requests = 2 + scripted_results.len();
+        let expected_requests = 2 * invocation_count + scripted_results.len();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
         while requests.len() < expected_requests && std::time::Instant::now() < deadline {
             let (mut stream, _) = match listener.accept() {

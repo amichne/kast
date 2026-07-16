@@ -3,10 +3,6 @@
   "jsonrpc": "2.0",
   "method": "symbol/implementations",
   "params": {
-    "selector": {
-      "declarationFile": "example-declarationFile",
-      "declarationStartOffset": 128,
-      "fqName": "com.example.Widget"
-    }
+    "selectorHandle": "ksh1.example-selector-handle"
   }
 }

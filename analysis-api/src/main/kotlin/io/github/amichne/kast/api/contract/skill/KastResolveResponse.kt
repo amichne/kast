@@ -21,6 +21,7 @@ data class KastResolveSuccessResponse(
     val source: KastResolveResponse.Source = KastResolveResponse.Source.COMPILER,
     val query: KastResolveQuery,
     val symbol: Symbol,
+    val selectorHandle: String,
     val filePath: String,
     val offset: Int,
     val candidate: KastCandidate,

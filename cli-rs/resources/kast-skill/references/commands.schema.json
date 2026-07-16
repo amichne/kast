@@ -140,6 +140,15 @@
           },
           "uniqueItems": true
         },
+        "exclusiveRequired": {
+          "type": "array",
+          "description": "Fields for which exactly one must be present in every request.",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/fieldName"
+          },
+          "uniqueItems": true
+        },
         "sample": {
           "description": "Concrete value used by generated request samples when the catalog shape is broader than one valid wire payload."
         }

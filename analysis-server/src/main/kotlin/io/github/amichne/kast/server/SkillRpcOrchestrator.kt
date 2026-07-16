@@ -12,6 +12,7 @@ import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
@@ -36,6 +37,8 @@ import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
+import io.github.amichne.kast.api.contract.selector.SelectorOperationFamily
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastCallersRequest
 import io.github.amichne.kast.api.contract.skill.KastCallersResponse
@@ -125,6 +128,24 @@ internal class SkillRpcOrchestrator(
         val resolvedConstraintSymbol: Symbol?,
     )
 
+    private sealed interface SelectorSelection {
+        sealed interface Selected : SelectorSelection {
+            val selector: KastExactSymbolSelector
+        }
+
+        data class Explicit(
+            override val selector: KastExactSymbolSelector,
+        ) : Selected
+
+        data class Handle(
+            override val selector: KastExactSymbolSelector,
+        ) : Selected
+
+        data class Rejected(
+            val reason: SelectorHandleAuthority.Resolution.RejectionReason,
+        ) : SelectorSelection
+    }
+
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val query = KastResolveQuery(
@@ -174,6 +195,7 @@ internal class SkillRpcOrchestrator(
         return KastResolveSuccessResponse(
             query = query,
             symbol = resolved.symbol,
+            selectorHandle = issueSelectorHandle(resolved.symbol),
             filePath = resolved.filePath,
             offset = resolved.offset,
             candidate = KastCandidate(
@@ -186,6 +208,25 @@ internal class SkillRpcOrchestrator(
             context = context,
             logFile = placeholderLogFile(),
         )
+    }
+
+    suspend fun selectorIdentity(
+        request: KastSelectorIdentityRequest,
+    ): KastSelectorIdentityResponse {
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        return when (
+            val resolution = backend.selectorHandles.resolve(
+                handle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = request.family,
+            )
+        ) {
+            is SelectorHandleAuthority.Resolution.Resolved -> KastSelectorIdentityAvailableResponse(
+                resolution.selector.normalizedFor(workspaceRoot).toHandleSubject(),
+            )
+            is SelectorHandleAuthority.Resolution.Rejected ->
+                KastSelectorHandleRejectedResponse(resolution.reason)
+        }
     }
 
     suspend fun discover(request: KastDiscoverRequest): KastDiscoverResponse {
@@ -240,83 +281,101 @@ internal class SkillRpcOrchestrator(
 
     suspend fun references(request: KastReferencesRequest): KastReferencesResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.REFERENCES,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastReferencesQuery(
             workspaceRoot = workspaceRoot,
-            selector = request.selector,
+            selector = selector,
             includeDeclaration = request.includeDeclaration,
             includeUsageSiteScope = request.includeUsageSiteScope,
             maxResults = request.maxResults,
             pageToken = request.pageToken,
         )
         validateReferencesQuery(query)
-        requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
-        val resolved = try {
-            backend.resolveSymbol(
-                SymbolQuery(
-                    position = FilePosition(
-                        filePath = request.selector.declarationFile,
-                        offset = request.selector.declarationStartOffset,
-                    ),
-                ).parsed(),
-            ).symbol
-        } catch (_: NotFoundException) {
-            return KastReferencesSubjectNotFoundResponse(request.selector)
+        val subject = when (selected) {
+            is SelectorSelection.Explicit -> {
+                requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
+                val resolved = try {
+                    backend.resolveSymbol(
+                        SymbolQuery(
+                            position = FilePosition(
+                                filePath = selector.declarationFile,
+                                offset = selector.declarationStartOffset,
+                            ),
+                        ).parsed(),
+                    ).symbol
+                } catch (_: NotFoundException) {
+                    return KastReferencesSubjectNotFoundResponse(selector)
+                }
+                resolved.toSymbolIdentity()
+            }
+            is SelectorSelection.Handle -> selector.toHandleSubject()
         }
-        val subject = resolved.toSymbolIdentity()
-        if (!request.selector.matches(subject)) {
-            return KastReferencesSubjectIdentityMismatchResponse(request.selector, subject)
+        if (!selector.matches(subject)) {
+            return KastReferencesSubjectIdentityMismatchResponse(selector, subject)
         }
         if (subject.kind == SymbolKind.UNKNOWN) {
-            return KastReferencesUnsupportedSubjectKindResponse(request.selector, subject)
+            return KastReferencesUnsupportedSubjectKindResponse(selector, subject)
         }
         requireReadCapability(ReadCapability.FIND_REFERENCES)
         val completeResult = try {
             backend.findReferences(
                 ReferencesQuery(
                     position = FilePosition(
-                        filePath = request.selector.declarationFile,
-                        offset = request.selector.declarationStartOffset,
+                        filePath = selector.declarationFile,
+                        offset = selector.declarationStartOffset,
                     ),
                     includeDeclaration = request.includeDeclaration,
                     includeUsageSiteScope = request.includeUsageSiteScope,
                     maxResults = request.maxResults,
                     pageToken = request.pageToken,
-                    selector = request.selector,
+                    selector = selector,
                 ).parsed(),
             )
         } catch (failure: ConflictException) {
             return when (failure.details["continuationFailure"]) {
                 "generationChanged" -> KastReferencesCursorStaleResponse(
-                    request.selector,
+                    selector,
                     RelationCursorStaleReason.GENERATION_CHANGED,
                 )
                 "expired" -> KastReferencesCursorStaleResponse(
-                    request.selector,
+                    selector,
                     RelationCursorStaleReason.EXPIRED,
                 )
                 "queryMismatch" -> KastReferencesCursorInvalidResponse(
-                    request.selector,
+                    selector,
                     RelationCursorInvalidReason.QUERY_MISMATCH,
                 )
                 "boundSourceUnavailable" -> KastReferencesDegradedResponse(
-                    request.selector,
+                    selector,
                     subject,
                     KastReferencesDegradedReason.BOUND_SOURCE_UNAVAILABLE,
                 )
                 "indexIdentityUnavailable" -> KastReferencesDegradedResponse(
-                    request.selector,
+                    selector,
                     subject,
                     KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
                 )
                 else -> KastReferencesCursorInvalidResponse(
-                    request.selector,
+                    selector,
                     RelationCursorInvalidReason.UNKNOWN_HANDLE,
                 )
             }
         }
         if (completeResult.searchScope?.candidateCoverage == SearchScope.CandidateCoverage.PARTIAL) {
             return KastReferencesDegradedResponse(
-                selector = request.selector,
+                selector = selector,
                 subject = subject,
                 reason = KastReferencesDegradedReason.REFERENCES_UNAVAILABLE,
             )
@@ -333,7 +392,23 @@ internal class SkillRpcOrchestrator(
 
     suspend fun callers(request: KastCallersRequest): KastCallersResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selector = request.selector.normalizedFor(workspaceRoot)
+        val family = when (request.direction) {
+            WrapperCallDirection.INCOMING -> SelectorOperationFamily.CALLERS
+            WrapperCallDirection.OUTGOING -> SelectorOperationFamily.CALLEES
+        }
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = family,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastCallersQuery(
             workspaceRoot = workspaceRoot,
             selector = selector,
@@ -343,7 +418,7 @@ internal class SkillRpcOrchestrator(
             pageToken = request.pageToken,
         )
         validateRelationshipQuery(selector, request.depth, request.maxResults)
-        val subject = resolveRelationshipSubject(selector)
+        val subject = selected.resolveSubject()
             ?: return KastCallersSubjectNotFoundResponse(selector)
         if (!selector.matches(subject)) {
             return KastCallersSubjectIdentityMismatchResponse(selector, subject)
@@ -374,7 +449,19 @@ internal class SkillRpcOrchestrator(
         request: KastImplementationsRequest,
     ): KastImplementationsResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selector = request.selector.normalizedFor(workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.IMPLEMENTATIONS,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastImplementationsQuery(
             workspaceRoot = workspaceRoot,
             selector = selector,
@@ -382,7 +469,7 @@ internal class SkillRpcOrchestrator(
             pageToken = request.pageToken,
         )
         validateRelationshipQuery(selector, null, request.maxResults)
-        val subject = resolveRelationshipSubject(selector)
+        val subject = selected.resolveSubject()
             ?: return KastImplementationsSubjectNotFoundResponse(selector)
         if (!selector.matches(subject)) {
             return KastImplementationsSubjectIdentityMismatchResponse(selector, subject)
@@ -407,7 +494,19 @@ internal class SkillRpcOrchestrator(
 
     suspend fun hierarchy(request: KastHierarchyRequest): KastHierarchyResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
-        val selector = request.selector.normalizedFor(workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = request.selector,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.HIERARCHY,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
         val query = KastHierarchyQuery(
             workspaceRoot = workspaceRoot,
             selector = selector,
@@ -417,7 +516,7 @@ internal class SkillRpcOrchestrator(
             pageToken = request.pageToken,
         )
         validateRelationshipQuery(selector, request.depth, request.maxResults)
-        val subject = resolveRelationshipSubject(selector)
+        val subject = selected.resolveSubject()
             ?: return KastHierarchySubjectNotFoundResponse(selector)
         if (!selector.matches(subject)) {
             return KastHierarchySubjectIdentityMismatchResponse(selector, subject)
@@ -517,6 +616,7 @@ internal class SkillRpcOrchestrator(
         return when (request) {
             is KastRenameBySymbolRequest -> renameBySymbol(request, progress)
             is KastRenameByOffsetRequest -> renameByOffset(request, progress)
+            is KastRenameBySelectorHandleRequest -> renameBySelectorHandle(request, progress)
         }
     }
 
@@ -580,10 +680,17 @@ internal class SkillRpcOrchestrator(
     suspend fun replaceDeclaration(
         request: KastReplaceDeclarationRequest,
         progress: MutationProgressReporter = MutationProgressReporter.NONE,
+    ): KastScopeMutationResponse = when (request) {
+        is KastReplaceDeclarationBySymbolRequest -> replaceDeclarationBySymbol(request, progress)
+        is KastReplaceDeclarationBySelectorHandleRequest -> replaceDeclarationBySelectorHandle(request, progress)
+    }
+
+    private suspend fun replaceDeclarationBySymbol(
+        request: KastReplaceDeclarationBySymbolRequest,
+        progress: MutationProgressReporter,
     ): KastScopeMutationResponse {
-        val workspaceRoot = request.requestedWorkspaceRoot?.value
+        val workspaceRoot = workspaceRootFor(request.requestedWorkspaceRoot?.value)
         val symbol = request.requestedSymbol.value
-        workspaceRootFor(workspaceRoot)
         progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
         val resolved = resolveNamedSymbol(
             symbolName = symbol,
@@ -597,34 +704,111 @@ internal class SkillRpcOrchestrator(
             message = "No symbol matching '$symbol' found in workspace",
             logFile = placeholderLogFile(),
         )
-        val declarationScope = resolved.symbol.declarationScope ?: return KastScopeMutationFailureResponse(
+        return replaceResolvedDeclaration(
             operation = request.operation,
+            workspaceRoot = workspaceRoot,
+            contentFile = request.contentFilePath.value,
+            subject = symbol,
+            filePath = resolved.filePath,
+            symbol = resolved.symbol,
+            progress = progress,
+        )
+    }
+
+    private suspend fun replaceDeclarationBySelectorHandle(
+        request: KastReplaceDeclarationBySelectorHandleRequest,
+        progress: MutationProgressReporter,
+    ): KastScopeMutationResponse {
+        val workspaceRoot = workspaceRootFor(request.requestedWorkspaceRoot?.value)
+        progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = null,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.REPLACE_DECLARATION,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
+        requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
+        val resolved = try {
+            backend.resolveSymbol(
+                SymbolQuery(
+                    position = FilePosition(
+                        filePath = selector.declarationFile,
+                        offset = selector.declarationStartOffset,
+                    ),
+                    includeDeclarationScope = true,
+                ).parsed(),
+            ).symbol
+        } catch (_: NotFoundException) {
+            return KastScopeMutationFailureResponse(
+                operation = request.operation,
+                stage = "resolve",
+                message = "Selector handle declaration no longer exists",
+                logFile = placeholderLogFile(),
+            )
+        }
+        if (!selector.matches(resolved.toSymbolIdentity())) {
+            return KastScopeMutationFailureResponse(
+                operation = request.operation,
+                stage = "resolve",
+                message = "Selector handle declaration identity no longer matches the compiler subject",
+                logFile = placeholderLogFile(),
+            )
+        }
+        return replaceResolvedDeclaration(
+            operation = request.operation,
+            workspaceRoot = workspaceRoot,
+            contentFile = request.contentFilePath.value,
+            subject = selector.fqName,
+            filePath = selector.declarationFile,
+            symbol = resolved,
+            progress = progress,
+        )
+    }
+
+    private suspend fun replaceResolvedDeclaration(
+        operation: KastScopeMutationOperation,
+        workspaceRoot: String,
+        contentFile: String,
+        subject: String,
+        filePath: String,
+        symbol: Symbol,
+        progress: MutationProgressReporter,
+    ): KastScopeMutationResponse {
+        val declarationScope = symbol.declarationScope ?: return KastScopeMutationFailureResponse(
+            operation = operation,
             stage = "resolve",
-            message = "Resolved symbol '$symbol' did not include declaration scope",
+            message = "Resolved symbol '$subject' did not include declaration scope",
             logFile = placeholderLogFile(),
         )
-        val content = resolveContent(null, request.contentFilePath.value)
+        val content = resolveContent(null, contentFile)
         val response = applyEditsAndValidate(
-            filePath = resolved.filePath,
+            filePath = filePath,
             edits = listOf(
                 TextEdit(
-                    filePath = resolved.filePath,
+                    filePath = filePath,
                     startOffset = declarationScope.startOffset,
                     endOffset = declarationScope.endOffset,
                     newText = content,
                 ),
             ),
             query = KastWriteAndValidateReplaceRangeQuery(
-                workspaceRoot = workspaceRootFor(workspaceRoot),
-                filePath = resolved.filePath,
+                workspaceRoot = workspaceRoot,
+                filePath = filePath,
                 startOffset = declarationScope.startOffset,
                 endOffset = declarationScope.endOffset,
             ),
             progress = progress,
         )
         return response.toScopeMutationResponse(
-            operation = request.operation,
-            affectedFiles = listOf(resolved.filePath),
+            operation = operation,
+            affectedFiles = listOf(filePath),
             editCount = 1,
         )
     }
@@ -705,6 +889,50 @@ internal class SkillRpcOrchestrator(
                     workspaceRoot = workspaceRoot,
                     filePath = filePath,
                     offset = request.offset,
+                    newName = request.newName,
+                )
+            },
+            progress = progress,
+        )
+    }
+
+    private suspend fun renameBySelectorHandle(
+        request: KastRenameBySelectorHandleRequest,
+        progress: MutationProgressReporter,
+    ): KastRenameResponse {
+        val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selected = when (
+            val selection = selectSelector(
+                explicitSelector = null,
+                selectorHandle = request.selectorHandle,
+                workspaceRoot = workspaceRoot,
+                family = SelectorOperationFamily.RENAME,
+            )
+        ) {
+            is SelectorSelection.Rejected ->
+                return KastSelectorHandleRejectedResponse(selection.reason)
+            is SelectorSelection.Selected -> selection
+        }
+        val selector = selected.selector
+        return performRename(
+            filePath = selector.declarationFile,
+            offset = selector.declarationStartOffset,
+            newName = request.newName,
+            queryBuilder = {
+                KastRenameBySelectorHandleQuery(
+                    workspaceRoot = workspaceRoot,
+                    selectorHandle = request.selectorHandle,
+                    newName = request.newName,
+                    filePath = selector.declarationFile,
+                    offset = selector.declarationStartOffset,
+                )
+            },
+            failureQueryBuilder = {
+                KastRenameFailureQuery(
+                    type = "RENAME_BY_SELECTOR_HANDLE_REQUEST",
+                    workspaceRoot = workspaceRoot,
+                    filePath = selector.declarationFile,
+                    offset = selector.declarationStartOffset,
                     newName = request.newName,
                 )
             },
@@ -1612,6 +1840,11 @@ internal class SkillRpcOrchestrator(
         }
     }
 
+    private suspend fun SelectorSelection.Selected.resolveSubject(): SymbolIdentity? = when (this) {
+        is SelectorSelection.Explicit -> resolveRelationshipSubject(selector)
+        is SelectorSelection.Handle -> selector.toHandleSubject()
+    }
+
     private fun validateRelationshipQuery(
         selector: KastExactSymbolSelector,
         depth: Int?,
@@ -1777,6 +2010,102 @@ internal class SkillRpcOrchestrator(
         declarationStartOffset = io.github.amichne.kast.api.contract.NonNegativeInt(location.startOffset),
         containingType = containingDeclaration,
     )
+
+    private fun Symbol.toExactSelector(): KastExactSymbolSelector = KastExactSymbolSelector(
+        fqName = fqName,
+        declarationFile = location.filePath,
+        declarationStartOffset = location.startOffset,
+        kind = kind,
+        containingType = containingDeclaration,
+    )
+
+    private fun issueSelectorHandle(symbol: Symbol): String =
+        when (
+            val issued = backend.selectorHandles.issue(
+                selector = symbol.toExactSelector(),
+                allowedFamilies = symbol.kind.selectorOperationFamilies(),
+            )
+        ) {
+            is SelectorHandleAuthority.IssueResult.Issued -> issued.handle.value
+            SelectorHandleAuthority.IssueResult.Unavailable -> throw CapabilityNotSupportedException(
+                capability = "SELECTOR_HANDLES",
+                message = "The semantic backend cannot issue reusable selector handles",
+            )
+        }
+
+    private fun selectSelector(
+        explicitSelector: KastExactSymbolSelector?,
+        selectorHandle: String?,
+        workspaceRoot: String,
+        family: SelectorOperationFamily,
+    ): SelectorSelection {
+        return when {
+            explicitSelector != null && selectorHandle == null ->
+                SelectorSelection.Explicit(explicitSelector.normalizedFor(workspaceRoot))
+            explicitSelector == null && selectorHandle != null -> {
+                when (
+                    val resolution = backend.selectorHandles.resolve(
+                        handle = selectorHandle,
+                        workspaceRoot = workspaceRoot,
+                        family = family,
+                    )
+                ) {
+                    is SelectorHandleAuthority.Resolution.Resolved ->
+                        SelectorSelection.Handle(resolution.selector.normalizedFor(workspaceRoot))
+                    is SelectorHandleAuthority.Resolution.Rejected ->
+                        SelectorSelection.Rejected(resolution.reason)
+                }
+            }
+            else -> throw ValidationException(
+                "Provide exactly one of selector or selectorHandle",
+            )
+        }
+    }
+
+    private fun KastExactSymbolSelector.toHandleSubject(): SymbolIdentity = SymbolIdentity(
+        fqName = fqName,
+        kind = kind ?: throw ValidationException("Backend-issued selector handle omitted kind"),
+        declarationFile = NormalizedPath.parse(declarationFile),
+        declarationStartOffset = NonNegativeInt(declarationStartOffset),
+        containingType = containingType,
+    )
+
+    private fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily> = when (this) {
+        SymbolKind.CLASS, SymbolKind.INTERFACE -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.IMPLEMENTATIONS,
+            SelectorOperationFamily.HIERARCHY,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.OBJECT -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.HIERARCHY,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.FUNCTION -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.CALLERS,
+            SelectorOperationFamily.CALLEES,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.PROPERTY -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.PARAMETER -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.RENAME,
+        )
+        SymbolKind.UNKNOWN -> emptySet()
+    }
 
     private fun KastExactSymbolSelector.matches(actual: SymbolIdentity): Boolean =
         fqName == actual.fqName &&

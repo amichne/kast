@@ -13,7 +13,7 @@ import io.github.amichne.kast.api.contract.skill.KastFilePlacementScope
 import io.github.amichne.kast.api.contract.skill.KastPlacementAnchor
 import io.github.amichne.kast.api.contract.skill.KastPlacementSelector
 import io.github.amichne.kast.api.contract.skill.KastRenameBySymbolRequest
-import io.github.amichne.kast.api.contract.skill.KastReplaceDeclarationRequest
+import io.github.amichne.kast.api.contract.skill.KastReplaceDeclarationBySymbolRequest
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastStatementPlacementAnchor
@@ -85,7 +85,7 @@ class KastMutationContractTest {
             ),
             "REPLACE_DECLARATION" to KastSemanticMutation.ReplaceDeclaration(
                 idempotencyKey = key,
-                request = KastReplaceDeclarationRequest(
+                request = KastReplaceDeclarationBySymbolRequest(
                     symbol = "sample.greet",
                     contentFile = "/tmp/replacement.kt",
                 ),

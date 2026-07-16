@@ -277,6 +277,157 @@ fn impact_requires_the_reusable_exact_selector_and_bounded_controls() {
 }
 
 #[test]
+fn selector_handle_drives_impact_without_position_resolution() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    seed_source_index(&workspace);
+    seed_high_cardinality_impact(&workspace, "lib.Foo", 12);
+    let declaration_file =
+        std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("impact declaration");
+    let selector_handle = "ksh1.test-impact-selector-handle";
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-impact.sock"),
+        vec![(
+            "selector/identity",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "identity": relation_identity("lib.Foo", "CLASS", &declaration_file, 1),
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--selector-handle",
+            selector_handle,
+            "--depth",
+            "3",
+            "--limit",
+            "4",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("impact by selector handle");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let result: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("handle impact JSON");
+    assert_eq!(result["result"]["query"]["symbol"], "lib.Foo");
+    assert_eq!(result["result"]["nodes"].as_array().map(Vec::len), Some(4));
+    let page_token = result["result"]["nextPageToken"]
+        .as_str()
+        .expect("handle-bound impact page token")
+        .to_string();
+
+    let requests = backend.join().expect("impact identity backend");
+    let identity_request = requests
+        .iter()
+        .find(|request| request["method"] == "selector/identity")
+        .expect("selector identity request");
+    assert_eq!(
+        identity_request["params"]["selectorHandle"],
+        selector_handle,
+    );
+    assert_eq!(identity_request["params"]["family"], "IMPACT");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request["method"] != "raw/resolve"),
+        "handle impact must not perform position resolution: {requests:?}",
+    );
+
+    let mismatched = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--selector-handle",
+            "ksh1.other-impact-selector-handle",
+            "--page-token",
+            &page_token,
+            "--depth",
+            "3",
+            "--limit",
+            "4",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("mismatched handle impact token");
+    assert_eq!(mismatched.status.code(), Some(1));
+    let mismatch: serde_json::Value =
+        serde_json::from_slice(&mismatched.stdout).expect("impact mismatch JSON");
+    assert_eq!(mismatch["error"]["code"], "IMPACT_PAGE_TOKEN_MISMATCH");
+}
+
+#[test]
+fn selector_handle_impact_preserves_rejection_before_sql() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-impact-rejected.sock"),
+        vec![(
+            "selector/identity",
+            serde_json::json!({
+                "type": "SELECTOR_HANDLE_REJECTED",
+                "reason": "STALE",
+                "recovery": "RESOLVE_AGAIN",
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "impact",
+            "--selector-handle",
+            "ksh1.stale-impact-selector-handle",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("stale impact selector handle");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let result: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("impact rejection JSON");
+    assert_eq!(result["result"]["outcome"], "SELECTOR_HANDLE_REJECTED");
+    assert_eq!(result["result"]["reason"], "STALE");
+    assert_eq!(result["result"]["recovery"], "RESOLVE_AGAIN");
+    backend.join().expect("impact rejection backend");
+}
+
+#[test]
 fn impact_pages_are_query_bound_and_do_not_overlap() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -579,6 +730,319 @@ fn exact_symbol_returns_one_reusable_anchored_identity() {
     );
     let requests = backend.join().expect("scripted backend");
     assert_eq!(requests[2]["method"], "symbol/resolve");
+}
+
+#[test]
+fn selector_handle_resolves_once_and_reuses_identity_for_references() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.test-issued-selector-handle";
+    let selector = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+
+    let resolve_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-resolve.sock"),
+        vec![(
+            "symbol/resolve",
+            serde_json::json!({
+                "type": "RESOLVE_SUCCESS",
+                "ok": true,
+                "source": "compiler",
+                "selectorHandle": selector_handle,
+                "symbol": {
+                    "fqName": "sample.Service.run",
+                    "kind": "FUNCTION",
+                    "location": {
+                        "filePath": declaration_file,
+                        "startOffset": 42,
+                        "endOffset": 45
+                    }
+                }
+            }),
+        )],
+    );
+
+    let resolved = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "symbol",
+            "--query",
+            "sample.Service.run",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("resolve selector handle");
+    assert!(
+        resolved.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&resolved.stdout),
+        String::from_utf8_lossy(&resolved.stderr),
+    );
+    let resolved_json: serde_json::Value =
+        serde_json::from_slice(&resolved.stdout).expect("resolved handle json");
+    assert_eq!(resolved_json["result"]["identity"], selector);
+    assert_eq!(
+        resolved_json["result"]["selectorHandle"], selector_handle,
+        "compact exact lookup must expose the backend-issued opaque handle",
+    );
+    let mut requests = resolve_backend.join().expect("resolve backend");
+
+    let references_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("selector-handle-references.sock"),
+        vec![(
+            "symbol/references",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": selector,
+                "references": [],
+                "cardinality": {"type": "EXACT", "totalCount": 0},
+                "schemaVersion": 3
+            }),
+        )],
+    );
+    let references = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "references",
+            "--selector-handle",
+            selector_handle,
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("references by selector handle");
+    assert!(
+        references.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&references.stdout),
+        String::from_utf8_lossy(&references.stderr),
+    );
+    requests.extend(references_backend.join().expect("references backend"));
+
+    let semantic_requests = requests
+        .iter()
+        .filter(|request| {
+            request["method"]
+                .as_str()
+                .is_some_and(|method| method.starts_with("symbol/"))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        semantic_requests
+            .iter()
+            .filter_map(|request| request["method"].as_str())
+            .collect::<Vec<_>>(),
+        vec!["symbol/resolve", "symbol/references"],
+        "selector reuse must not perform fuzzy or exact rediscovery",
+    );
+    assert_eq!(
+        semantic_requests[1]["params"]["selectorHandle"],
+        selector_handle,
+    );
+    assert!(semantic_requests[1]["params"].get("selector").is_none());
+}
+
+#[test]
+fn selector_handle_drives_all_relationship_commands_without_explicit_identity() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.test-issued-relationship-selector-handle";
+    let function = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+    let interface = relation_identity("sample.Service", "INTERFACE", &declaration_file, 10);
+    let cases = vec![
+        (
+            "callers",
+            "symbol/callers",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "callees",
+            "symbol/callers",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "implementations",
+            "symbol/implementations",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": interface,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "hierarchy",
+            "symbol/hierarchy",
+            vec!["--direction", "both"],
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": interface,
+                "records": [],
+                "page": exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+    ];
+
+    for (index, (command_name, method, extra_args, response)) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp
+                .path()
+                .join(format!("selector-handle-{command_name}-{index}.sock")),
+            vec![(method, response)],
+        );
+        let mut command = kast(&home, &config);
+        command.args([
+            "--output",
+            "json",
+            "agent",
+            command_name,
+            "--selector-handle",
+            selector_handle,
+        ]);
+        command.args(extra_args);
+        command.args(["--workspace-root", workspace.to_str().expect("workspace")]);
+        let output = command.output().expect("relationship by selector handle");
+
+        assert!(
+            output.status.success(),
+            "command={command_name} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let requests = backend.join().expect("relationship backend");
+        assert_eq!(requests[2]["method"], method);
+        assert_eq!(requests[2]["params"]["selectorHandle"], selector_handle);
+        assert!(requests[2]["params"].get("selector").is_none());
+    }
+}
+
+#[test]
+fn selector_handle_rejections_stay_distinct_and_actionable_in_cli_projection() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let selector_handle = "ksh1.test-rejected-selector-handle";
+    let cases = [
+        (
+            "references",
+            "symbol/references",
+            "TAMPERED",
+            "RESOLVE_AGAIN",
+        ),
+        (
+            "callers",
+            "symbol/callers",
+            "WRONG_WORKSPACE",
+            "RESOLVE_IN_CURRENT_WORKSPACE",
+        ),
+        (
+            "references",
+            "symbol/references",
+            "WRONG_BACKEND",
+            "RESOLVE_WITH_ACTIVE_BACKEND",
+        ),
+        ("callers", "symbol/callers", "STALE", "RESOLVE_AGAIN"),
+        (
+            "references",
+            "symbol/references",
+            "FAMILY_NOT_ALLOWED",
+            "CHOOSE_COMPATIBLE_OPERATION",
+        ),
+        (
+            "callers",
+            "symbol/callers",
+            "UNAVAILABLE",
+            "USE_EXPLICIT_SELECTOR",
+        ),
+    ];
+
+    for (index, (command_name, method, reason, recovery)) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp
+                .path()
+                .join(format!("selector-handle-rejection-{index}.sock")),
+            vec![(
+                method,
+                serde_json::json!({
+                    "type": "SELECTOR_HANDLE_REJECTED",
+                    "reason": reason,
+                    "recovery": recovery,
+                    "schemaVersion": 3
+                }),
+            )],
+        );
+        let output = kast(&home, &config)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                command_name,
+                "--selector-handle",
+                selector_handle,
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("relationship handle rejection");
+
+        assert!(
+            output.status.success(),
+            "command={command_name} reason={reason} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let result: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("rejection projection JSON");
+        assert_eq!(result["result"]["outcome"], "SELECTOR_HANDLE_REJECTED");
+        assert_eq!(result["result"]["reason"], reason);
+        assert_eq!(result["result"]["recovery"], recovery);
+        assert_eq!(result["result"]["ok"], true);
+        assert!(result.get("error").is_none(), "projection={result}");
+
+        let requests = backend.join().expect("rejection backend");
+        assert_eq!(requests[2]["method"], method);
+        assert_eq!(requests[2]["params"]["selectorHandle"], selector_handle);
+    }
 }
 
 #[test]

@@ -173,17 +173,38 @@ fn execute_agent_diagnostics(args: AgentDiagnosticsArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
-    let params = drop_nulls(json!({
-        "type": "RENAME_BY_SYMBOL_REQUEST",
-        "symbol": args.symbol,
-        "newName": args.new_name,
-        "kind": args.kind.map(|kind| kind.canonical()),
-        "fileHint": args.file_hint,
-        "containingType": args.containing_type,
-    }));
+    let selector_handle = args.selector_handle.clone();
+    let params = match (args.symbol.as_ref(), selector_handle.as_ref()) {
+        (Some(symbol), None) => drop_nulls(json!({
+            "type": "RENAME_BY_SYMBOL_REQUEST",
+            "symbol": symbol,
+            "newName": args.new_name,
+            "kind": args.kind.map(|kind| kind.canonical()),
+            "fileHint": args.file_hint,
+            "containingType": args.containing_type,
+        })),
+        (None, Some(handle)) => json!({
+            "type": "RENAME_BY_SELECTOR_HANDLE_REQUEST",
+            "selectorHandle": handle,
+            "newName": args.new_name,
+        }),
+        _ => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                None,
+                agent_error(
+                    "INVALID_SELECTOR_INPUT",
+                    "Provide exactly one of --symbol or --selector-handle.",
+                ),
+            );
+        }
+    };
     let request = json_rpc_request("symbol/rename", params.clone());
     if !args.mutation.apply {
-        return execute_agent_rename_preview(args, request);
+        return match selector_handle {
+            Some(handle) => execute_agent_rename_handle_preview(args, request, handle),
+            None => execute_agent_rename_symbol_preview(args, request),
+        };
     }
     let idempotency_key = match applied_idempotency_key(args.mutation) {
         Ok(key) => key,
@@ -206,11 +227,24 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
     })
 }
 
-fn execute_agent_rename_preview(args: AgentRenameArgs, identity_request: Value) -> AgentEnvelope {
+fn execute_agent_rename_symbol_preview(
+    args: AgentRenameArgs,
+    identity_request: Value,
+) -> AgentEnvelope {
+    let Some(symbol) = args.symbol.as_ref() else {
+        return error_envelope(
+            "agent/rename".to_string(),
+            Some(identity_request),
+            agent_error(
+                "INVALID_SELECTOR_INPUT",
+                "A named rename preview requires --symbol.",
+            ),
+        );
+    };
     let resolve_request = json_rpc_request(
         "symbol/resolve",
         drop_nulls(json!({
-            "symbol": args.symbol,
+            "symbol": symbol,
             "kind": args.kind.map(|kind| kind.canonical()),
             "fileHint": args.file_hint,
             "containingType": args.containing_type,
@@ -268,7 +302,7 @@ fn execute_agent_rename_preview(args: AgentRenameArgs, identity_request: Value) 
         }
     };
     let resolved = match serde_json::from_value::<AgentCompilerResolveResponse>(resolved_value.clone()) {
-        Ok(AgentCompilerResolveResponse::Resolved { symbol }) => symbol,
+        Ok(AgentCompilerResolveResponse::Resolved { symbol, .. }) => symbol,
         Ok(AgentCompilerResolveResponse::NotFound) => {
             return error_envelope(
                 "agent/rename".to_string(),
@@ -315,6 +349,190 @@ fn execute_agent_rename_preview(args: AgentRenameArgs, identity_request: Value) 
             ),
         );
     };
+    execute_agent_rename_preview_at_position(
+        args,
+        identity_request,
+        &session,
+        position,
+        "resolution",
+        resolved_value,
+        "Run `kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>` to apply this verified rename plan.",
+    )
+}
+
+fn execute_agent_rename_handle_preview(
+    args: AgentRenameArgs,
+    identity_request: Value,
+    selector_handle: AgentSelectorHandle,
+) -> AgentEnvelope {
+    let selector_identity_request = json_rpc_request(
+        "selector/identity",
+        json!({
+            "selectorHandle": selector_handle,
+            "family": "RENAME",
+        }),
+    );
+    let session = match runtime::raw_rpc_session(
+        args.runtime.workspace_root.clone(),
+        args.runtime.backend_name,
+    ) {
+        Ok(session) => session,
+        Err(error) => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                Some(identity_request),
+                AgentError::from_cli_error(error),
+            );
+        }
+    };
+    let response = execute_request_with_session(
+        AgentRequest {
+            method: "selector/identity".to_string(),
+            request: selector_identity_request,
+            runtime: args.runtime.clone(),
+            full_response: true,
+            operation: AgentOperation::ReadOnly,
+        },
+        Some(&session),
+    );
+    if !response.ok {
+        return error_envelope(
+            "agent/rename".to_string(),
+            Some(identity_request),
+            response.error.unwrap_or_else(|| {
+                agent_error(
+                    "RENAME_SELECTOR_IDENTITY_FAILED",
+                    "Selector identity authentication failed without a typed error.",
+                )
+            }),
+        );
+    }
+    let Some(result) = response.result else {
+        return error_envelope(
+            "agent/rename".to_string(),
+            Some(identity_request),
+            agent_error(
+                "INVALID_SELECTOR_IDENTITY",
+                "Selector identity authentication returned no result.",
+            ),
+        );
+    };
+    let parsed = match serde_json::from_value::<AgentSelectorIdentityResponseInput>(result) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                Some(identity_request),
+                agent_error(
+                    "INVALID_SELECTOR_IDENTITY",
+                    format!("Selector identity violated its closed response contract: {error}"),
+                ),
+            );
+        }
+    };
+    let mut identity = match parsed {
+        AgentSelectorIdentityResponseInput::Available { identity } => identity,
+        AgentSelectorIdentityResponseInput::SelectorHandleRejected { reason, recovery }
+            if reason.recovery() == recovery =>
+        {
+            let mut error = agent_error(
+                "SELECTOR_HANDLE_REJECTED",
+                "The backend rejected the rename selector handle.",
+            );
+            error.details.insert("reason".to_string(), json!(reason));
+            error
+                .details
+                .insert("recovery".to_string(), json!(recovery));
+            return error_envelope("agent/rename".to_string(), Some(identity_request), error);
+        }
+        AgentSelectorIdentityResponseInput::SelectorHandleRejected { .. } => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                Some(identity_request),
+                agent_error(
+                    "INVALID_SELECTOR_IDENTITY",
+                    "Selector handle rejection named an invalid recovery action.",
+                ),
+            );
+        }
+    };
+    if !identity.is_valid() {
+        return error_envelope(
+            "agent/rename".to_string(),
+            Some(identity_request),
+            agent_error(
+                "INVALID_SELECTOR_IDENTITY",
+                "Authenticated selector identity was incomplete.",
+            ),
+        );
+    }
+    let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
+        Ok(normalizer) => normalizer,
+        Err(error) => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                Some(identity_request),
+                error,
+            );
+        }
+    };
+    identity.declaration_file = match normalizer.normalize(&identity.declaration_file) {
+        Ok(file) => file.into_rpc_path(),
+        Err(error) => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                Some(identity_request),
+                error,
+            );
+        }
+    };
+    if identity.declaration_start_offset > i32::MAX as u64 {
+        return error_envelope(
+            "agent/rename".to_string(),
+            Some(identity_request),
+            agent_error(
+                "INVALID_SELECTOR_IDENTITY",
+                "Authenticated selector identity offset exceeded the semantic backend range.",
+            ),
+        );
+    }
+    let position = AgentRenamePosition {
+        file_path: identity.declaration_file.clone(),
+        offset: identity.declaration_start_offset as u32,
+    };
+    let identity = match serde_json::to_value(identity) {
+        Ok(identity) => identity,
+        Err(error) => {
+            return error_envelope(
+                "agent/rename".to_string(),
+                Some(identity_request),
+                agent_error(
+                    "INVALID_SELECTOR_IDENTITY",
+                    format!("Authenticated selector identity could not be projected: {error}"),
+                ),
+            );
+        }
+    };
+    execute_agent_rename_preview_at_position(
+        args,
+        identity_request,
+        &session,
+        position,
+        "identity",
+        identity,
+        "Run `kast agent rename --selector-handle <handle> --new-name <name> --apply --idempotency-key <stable-key> --workspace-root <repo>` to submit this verified rename.",
+    )
+}
+
+fn execute_agent_rename_preview_at_position(
+    args: AgentRenameArgs,
+    identity_request: Value,
+    session: &runtime::RawRpcSession,
+    position: AgentRenamePosition,
+    evidence_name: &'static str,
+    evidence: Value,
+    help: &'static str,
+) -> AgentEnvelope {
     let preview_request = json_rpc_request(
         "raw/rename",
         json!({
@@ -331,7 +549,7 @@ fn execute_agent_rename_preview(args: AgentRenameArgs, identity_request: Value) 
             full_response: true,
             operation: AgentOperation::MutationPreview,
         },
-        Some(&session),
+        Some(session),
     );
     if !preview_envelope.ok {
         return error_envelope(
@@ -368,19 +586,20 @@ fn execute_agent_rename_preview(args: AgentRenameArgs, identity_request: Value) 
             agent_error("INVALID_RENAME_PREVIEW", message),
         );
     }
-    let result = json!({
+    let mut result = json!({
         "type": "KAST_AGENT_RENAME_PLAN",
         "ok": true,
         "mutates": true,
         "applyRequired": true,
         "request": identity_request,
-        "resolution": resolved_value,
         "preview": preview,
-        "help": [
-            "Run `kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>` to apply this verified rename plan."
-        ],
+        "help": [help],
         "schemaVersion": SCHEMA_VERSION,
     });
+    result
+        .as_object_mut()
+        .expect("rename plan must be a JSON object")
+        .insert(evidence_name.to_string(), evidence);
     result_envelope("agent/rename".to_string(), result)
 }
 
@@ -461,13 +680,31 @@ fn execute_agent_add_statement(args: AgentStatementMutationArgs) -> AgentEnvelop
 }
 
 fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> AgentEnvelope {
-    let params = drop_nulls(json!({
-        "symbol": args.symbol,
-        "contentFile": args.content_file.display().to_string(),
-        "kind": args.kind.map(|kind| kind.canonical()),
-        "fileHint": args.file_hint,
-        "containingType": args.containing_type,
-    }));
+    let params = match (args.symbol.as_ref(), args.selector_handle.as_ref()) {
+        (Some(symbol), None) => drop_nulls(json!({
+            "type": "REPLACE_DECLARATION_BY_SYMBOL_REQUEST",
+            "symbol": symbol,
+            "contentFile": args.content_file.display().to_string(),
+            "kind": args.kind.map(|kind| kind.canonical()),
+            "fileHint": args.file_hint,
+            "containingType": args.containing_type,
+        })),
+        (None, Some(handle)) => json!({
+            "type": "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
+            "selectorHandle": handle,
+            "contentFile": args.content_file.display().to_string(),
+        }),
+        _ => {
+            return error_envelope(
+                "agent/replace-declaration".to_string(),
+                None,
+                agent_error(
+                    "INVALID_SELECTOR_INPUT",
+                    "Provide exactly one of --symbol or --selector-handle.",
+                ),
+            );
+        }
+    };
     execute_agent_mutation(
         "agent/replace-declaration",
         "symbol/replace-declaration",

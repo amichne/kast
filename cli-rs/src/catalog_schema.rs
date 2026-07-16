@@ -223,6 +223,7 @@ pub(crate) fn variant_discriminator(command: &Value, method: &str) -> Result<Str
 fn request_object_schema(request: &Value, context: &str) -> Result<Value> {
     let fields = object_at(request, "fields", context)?;
     let required = request_required(request)?;
+    let exclusive_required = request_exclusive_required(request, context)?;
     let mut schema = Map::new();
     schema.insert("type".to_string(), Value::String("object".to_string()));
     schema.insert(
@@ -235,8 +236,61 @@ fn request_object_schema(request: &Value, context: &str) -> Result<Value> {
             Value::Array(required.into_iter().map(Value::String).collect()),
         );
     }
+    if !exclusive_required.is_empty() {
+        schema.insert(
+            "oneOf".to_string(),
+            Value::Array(
+                exclusive_required
+                    .into_iter()
+                    .map(|field| json!({ "required": [field] }))
+                    .collect(),
+            ),
+        );
+    }
     schema.insert("additionalProperties".to_string(), Value::Bool(false));
     Ok(Value::Object(schema))
+}
+
+pub(crate) fn request_exclusive_required(request: &Value, context: &str) -> Result<Vec<String>> {
+    let Some(values) = request.get("exclusiveRequired") else {
+        return Ok(Vec::new());
+    };
+    let values = values.as_array().ok_or_else(|| {
+        CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!("Catalog exclusiveRequired for `{context}` must be an array."),
+        )
+    })?;
+    if values.len() < 2 {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!("Catalog exclusiveRequired for `{context}` must name at least two fields."),
+        ));
+    }
+    let fields = object_at(request, "fields", context)?;
+    let mut names = Vec::with_capacity(values.len());
+    for value in values {
+        let name = value.as_str().filter(|name| !name.is_empty()).ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Catalog exclusiveRequired entries for `{context}` must be non-empty strings."),
+            )
+        })?;
+        if !fields.contains_key(name) {
+            return Err(CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Catalog exclusiveRequired field `{context}.{name}` is not declared."),
+            ));
+        }
+        if names.iter().any(|existing| existing == name) {
+            return Err(CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Catalog exclusiveRequired field `{context}.{name}` is duplicated."),
+            ));
+        }
+        names.push(name.to_string());
+    }
+    Ok(names)
 }
 
 fn fields_to_properties(fields: &Map<String, Value>, context: &str) -> Result<Value> {
@@ -438,6 +492,53 @@ mod tests {
         assert!(
             validator.validate(&valid).is_ok(),
             "nullable enum fields must accept null"
+        );
+    }
+
+    #[test]
+    fn exclusive_required_fields_accept_exactly_one_alternative() {
+        let catalog = json!({
+            "commands": {
+                "symbol/references": {
+                    "request": {
+                        "fields": {
+                            "selectorHandle": { "type": "string", "optional": true },
+                            "selector": { "type": "object", "optional": true }
+                        },
+                        "exclusiveRequired": ["selectorHandle", "selector"]
+                    }
+                }
+            }
+        });
+        let schema = request_schema(&catalog, "symbol/references").expect("schema");
+        let validator = jsonschema::validator_for(&schema).expect("schema compiles");
+        let request = |params| {
+            json!({
+                "jsonrpc": "2.0",
+                "method": "symbol/references",
+                "params": params,
+                "id": 1,
+            })
+        };
+
+        assert!(
+            validator
+                .validate(&request(json!({ "selectorHandle": "ksh1.opaque" })))
+                .is_ok()
+        );
+        assert!(
+            validator
+                .validate(&request(json!({ "selector": {} })))
+                .is_ok()
+        );
+        assert!(validator.validate(&request(json!({}))).is_err());
+        assert!(
+            validator
+                .validate(&request(json!({
+                    "selectorHandle": "ksh1.opaque",
+                    "selector": {}
+                })))
+                .is_err()
         );
     }
 

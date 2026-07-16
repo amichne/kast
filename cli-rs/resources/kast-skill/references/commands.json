@@ -19,6 +19,7 @@
       "symbol/discover",
       "symbol/query",
       "symbol/resolve",
+      "selector/identity",
       "symbol/references",
       "symbol/callers",
       "symbol/implementations",
@@ -839,6 +840,54 @@
         "description": "Resolve one exact Kotlin symbol identity. A unique match returns RESOLVE_SUCCESS; zero or multiple exact matches return typed not-found or ambiguous outcomes without fuzzy selection."
       }
     },
+    "selector/identity": {
+      "method": "selector/identity",
+      "category": "symbol",
+      "summary": "Authenticate an opaque selector handle for one operation family and recover its compact exact identity",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "selectorHandle": {
+            "type": "string",
+            "sample": "ksh1.example-selector-handle"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "REFERENCES",
+              "CALLERS",
+              "CALLEES",
+              "IMPLEMENTATIONS",
+              "HIERARCHY",
+              "IMPACT",
+              "RENAME",
+              "REPLACE_DECLARATION"
+            ],
+            "sample": "IMPACT"
+          }
+        },
+        "required": [
+          "selectorHandle",
+          "family"
+        ]
+      },
+      "responseType": "KastSelectorIdentityResponse",
+      "successType": "AVAILABLE",
+      "responseVariants": [
+        "AVAILABLE",
+        "SELECTOR_HANDLE_REJECTED"
+      ],
+      "notes": [
+        "selectorHandle is opaque and must be carried unchanged from exact symbol resolution.",
+        "The backend authenticates workspace, backend, semantic generation, and requested operation family without invoking symbol lookup.",
+        "AVAILABLE returns only the compact authenticated identity needed by local composite commands; the CLI does not reconstruct selector flags."
+      ]
+    },
     "symbol/references": {
       "method": "symbol/references",
       "category": "symbol",
@@ -851,8 +900,14 @@
             "optional": true,
             "nullable": true
           },
+          "selectorHandle": {
+            "type": "string",
+            "optional": true,
+            "sample": "ksh1.example-selector-handle"
+          },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": {
                 "type": "string"
@@ -908,7 +963,8 @@
             "sample": "00000000-0000-4000-8000-000000000337"
           }
         },
-        "required": [
+        "exclusiveRequired": [
+          "selectorHandle",
           "selector"
         ]
       },
@@ -921,10 +977,12 @@
         "UNSUPPORTED_SUBJECT_KIND",
         "DEGRADED",
         "CURSOR_STALE",
-        "CURSOR_INVALID"
+        "CURSOR_INVALID",
+        "SELECTOR_HANDLE_REJECTED"
       ],
       "notes": [
-        "The selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.",
+        "Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.",
+        "selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.",
         "Optional kind and containingType values are hard identity assertions.",
         "maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.",
         "Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.",
@@ -947,8 +1005,14 @@
             "optional": true,
             "nullable": true
           },
+          "selectorHandle": {
+            "type": "string",
+            "optional": true,
+            "sample": "ksh1.example-selector-handle"
+          },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": { "type": "string" },
               "declarationFile": { "type": "string" },
@@ -989,15 +1053,19 @@
           }
         },
         "required": [
-          "selector",
           "direction"
+        ],
+        "exclusiveRequired": [
+          "selectorHandle",
+          "selector"
         ]
       },
       "responseType": "KastCallersResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"],
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"],
       "notes": [
-        "The selector consumes the canonical identity returned by exact symbol lookup.",
+        "Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical identity returned by exact symbol lookup.",
+        "selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.",
         "direction is fixed by the public callers or callees command.",
         "pageToken is an opaque backend-owned rth1 traversal handle."
       ],
@@ -1014,8 +1082,10 @@
       "request": {
         "fields": {
           "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
+          "selectorHandle": { "type": "string", "optional": true, "sample": "ksh1.example-selector-handle" },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": { "type": "string" },
               "declarationFile": { "type": "string" },
@@ -1028,11 +1098,11 @@
           "maxResults": { "type": "integer", "optional": true },
           "pageToken": { "type": "string", "optional": true, "nullable": true }
         },
-        "required": ["selector"]
+        "exclusiveRequired": ["selectorHandle", "selector"]
       },
       "responseType": "KastImplementationsResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"]
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"]
     },
     "symbol/hierarchy": {
       "method": "symbol/hierarchy",
@@ -1042,8 +1112,10 @@
       "request": {
         "fields": {
           "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
+          "selectorHandle": { "type": "string", "optional": true, "sample": "ksh1.example-selector-handle" },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": { "type": "string" },
               "declarationFile": { "type": "string" },
@@ -1058,11 +1130,12 @@
           "maxResults": { "type": "integer", "optional": true },
           "pageToken": { "type": "string", "optional": true, "nullable": true }
         },
-        "required": ["selector", "direction"]
+        "required": ["direction"],
+        "exclusiveRequired": ["selectorHandle", "selector"]
       },
       "responseType": "KastHierarchyResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID"]
+      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"]
     },
     "symbol/rename": {
       "method": "symbol/rename",

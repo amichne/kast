@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class KastCallersRequest(
     val workspaceRoot: String? = null,
-    val selector: KastExactSymbolSelector,
+    val selector: KastExactSymbolSelector? = null,
+    val selectorHandle: String? = null,
     val direction: WrapperCallDirection = WrapperCallDirection.INCOMING,
     val depth: Int = 1,
     val maxResults: Int = 4,

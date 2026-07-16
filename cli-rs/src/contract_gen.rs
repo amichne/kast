@@ -285,9 +285,19 @@ fn sample_request(request: &Value, maximal: bool) -> Result<Map<String, Value>> 
         .and_then(Value::as_object)
         .ok_or_else(|| CliError::new("RPC_CATALOG_INVALID", "Request fields must be an object."))?;
     let required = request_required(request)?;
+    let exclusive_required = catalog_schema::request_exclusive_required(request, "request")?;
+    let selected_exclusive = if maximal {
+        exclusive_required.last()
+    } else {
+        exclusive_required.first()
+    };
     let mut payload = Map::new();
     for (name, field) in fields {
-        if maximal || required.iter().any(|required_name| required_name == name) {
+        let belongs_to_exclusive_group = exclusive_required.iter().any(|field| field == name);
+        if selected_exclusive == Some(name)
+            || (!belongs_to_exclusive_group && maximal)
+            || required.iter().any(|required_name| required_name == name)
+        {
             payload.insert(name.clone(), sample_field(name, field, maximal)?);
         }
     }
@@ -548,6 +558,61 @@ mod tests {
         assert!(files.contains_key(Path::new(
             "/tmp/requests/symbol/example/request.schema.json"
         )));
+    }
+
+    #[test]
+    fn generated_samples_choose_one_exclusive_required_field() {
+        let catalog = json!({
+            "commands": {
+                "symbol/references": {
+                    "method": "symbol/references",
+                    "category": "symbol",
+                    "request": {
+                        "fields": {
+                            "workspaceRoot": { "type": "string", "optional": true },
+                            "selectorHandle": {
+                                "type": "string",
+                                "optional": true,
+                                "sample": "ksh1.opaque"
+                            },
+                            "selector": {
+                                "type": "object",
+                                "optional": true,
+                                "fields": {
+                                    "fqName": { "type": "string" }
+                                },
+                                "required": ["fqName"]
+                            }
+                        },
+                        "exclusiveRequired": ["selectorHandle", "selector"]
+                    }
+                }
+            }
+        });
+        let files = generated_files_from_catalog(
+            &catalog,
+            Path::new("/tmp/commands.yaml"),
+            Path::new("/tmp/requests"),
+        )
+        .expect("generated files");
+        let parse = |name| {
+            serde_json::from_str::<Value>(
+                files
+                    .get(Path::new(name))
+                    .expect("generated request sample"),
+            )
+            .expect("request sample JSON")
+        };
+        let minimal = parse("/tmp/requests/symbol/references/minimal.json");
+        let maximal = parse("/tmp/requests/symbol/references/maximal.json");
+
+        assert_eq!(minimal["params"]["selectorHandle"], "ksh1.opaque");
+        assert!(minimal["params"].get("selector").is_none());
+        assert!(maximal["params"].get("selectorHandle").is_none());
+        assert_eq!(
+            maximal["params"]["selector"]["fqName"],
+            "com.example.Widget"
+        );
     }
 
     #[test]

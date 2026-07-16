@@ -8,6 +8,8 @@ import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
 import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
@@ -19,6 +21,41 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class ObservedAnalysisBackendTest {
+    @Test
+    fun `selector handle authority remains available through observation`() {
+        val selectorHandles = DigestSelectorHandleAuthority(
+            workspaceRoot = "/workspace",
+            backendName = "idea",
+            backendVersion = "test",
+            backendInstanceId = "observed-backend-test",
+            semanticGeneration = { 0L },
+        )
+        val page = RelationTraversalPageInfo.create(
+            cardinality = ResultCardinality.Exact(0),
+            returnedCount = 0,
+            returnedBefore = 0,
+            visitedCandidateCount = 0,
+            candidateVisitLimit = 16_384,
+            nextHandle = null,
+        )
+        val delegate = RecordingRelationshipBackend(
+            calls = CallRelationsResult(emptyList(), page),
+            implementations = ImplementationRelationsResult(emptyList(), page),
+            hierarchy = HierarchyRelationsResult(emptyList(), page),
+            selectorHandles = selectorHandles,
+        )
+        val parentDisposable = com.intellij.openapi.util.Disposer.newDisposable()
+        val unusedProject = com.intellij.mock.MockProject(null, parentDisposable)
+
+        try {
+            val observed = ObservedAnalysisBackend(delegate, KastDiagnosticsService(unusedProject))
+
+            assertSame(selectorHandles, observed.selectorHandles)
+        } finally {
+            com.intellij.openapi.util.Disposer.dispose(parentDisposable)
+        }
+    }
+
     @Test
     fun `typed relationship methods delegate exactly once`() = runBlocking {
         val page = RelationTraversalPageInfo.create(
@@ -97,6 +134,7 @@ private class RecordingRelationshipBackend(
     private val calls: CallRelationsResult,
     private val implementations: ImplementationRelationsResult,
     private val hierarchy: HierarchyRelationsResult,
+    override val selectorHandles: SelectorHandleAuthority = SelectorHandleAuthority.Unsupported,
 ) : CloseableAnalysisBackend {
     var callRelationsCount: Int = 0
         private set

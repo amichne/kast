@@ -31,6 +31,31 @@ source ownership, generated outputs, or validation gates, update the nearest
 scoped `AGENTS.md` in the same change. Agent-only ADRs stay under
 `.agents/adr/`; published docs navigation is owned by the docs source.
 
+## Revision-Coherent Contract Evolution
+
+ADR 0024 makes the local-development CLI, backend, skill, guidance, and
+configuration one attested source generation. Inside an execution path that
+proves those components came from the same revision, treat their private
+protocol and data model as one atomic contract. Prefer a clean replacement to
+backward-compatibility scaffolding: required fields may become required,
+internal variants may be renamed or removed, and both sides must move together
+with their generators, tests, and installed-workflow proof.
+
+Do not add nullable defaults, legacy decoders, dual-read or dual-write paths,
+deprecated aliases, or fallback behavior solely to let revision-coherent
+components consume payloads from an older peer that the authority model cannot
+select. If a value may legitimately outlive its issuing generation but should
+not migrate, bind it to the revision or generation and reject it with a typed,
+actionable stale or incompatible outcome.
+
+This clean-break authority does not automatically cover public documented
+interfaces, user-owned persisted data, release or rollback paths, external
+integrations, or any boundary whose components can actually run at different
+revisions. Those surfaces still require an explicit migration, compatibility
+decision, or superseding ADR. When revision coherence cannot be proved, fail
+closed and treat compatibility as a deliberate product decision rather than an
+accidental parser feature.
+
 ## Signed IDEA Plugin Release Authority
 
 The release tag owns the only production IDEA plugin build. The

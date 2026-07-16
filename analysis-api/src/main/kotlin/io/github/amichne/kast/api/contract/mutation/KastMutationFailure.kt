@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.contract.mutation
 
 import io.github.amichne.kast.api.contract.skill.KastRenameFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastRenameSuccessResponse
+import io.github.amichne.kast.api.contract.skill.KastSelectorHandleRejectedResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
@@ -10,6 +11,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed interface KastMutationFailure {
+    @Serializable
+    @SerialName("SELECTOR_HANDLE_REJECTED")
+    data class SelectorHandleRejected(
+        val response: KastSelectorHandleRejectedResponse,
+    ) : KastMutationFailure
+
     @Serializable
     @SerialName("RENAME_FAILURE")
     data class Rename(

@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
 import io.github.amichne.kast.api.contract.skill.KastRenameFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastRenameSuccessResponse
+import io.github.amichne.kast.api.contract.skill.KastSelectorHandleRejectedResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.server.SkillRpcOrchestrator
@@ -93,10 +94,14 @@ private fun KastRenameSuccessResponse.toOutcome(): MutationOperationRegistry.Exe
 private fun KastRenameFailureResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
     MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.Rename(this))
 
+private fun KastSelectorHandleRejectedResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
+    MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.SelectorHandleRejected(this))
+
 private fun io.github.amichne.kast.api.contract.skill.KastRenameResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
     when (this) {
         is KastRenameSuccessResponse -> toOutcome()
         is KastRenameFailureResponse -> toOutcome()
+        is KastSelectorHandleRejectedResponse -> toOutcome()
     }
 
 private fun io.github.amichne.kast.api.contract.skill.KastScopeMutationResponse.toOutcome(): MutationOperationRegistry.ExecutionOutcome =
@@ -109,6 +114,7 @@ private fun io.github.amichne.kast.api.contract.skill.KastScopeMutationResponse.
 
         is KastScopeMutationFailureResponse ->
             MutationOperationRegistry.ExecutionOutcome.Failed(KastMutationFailure.Scope(this))
+        is KastSelectorHandleRejectedResponse -> toOutcome()
     }
 
 @Suppress("UNCHECKED_CAST")

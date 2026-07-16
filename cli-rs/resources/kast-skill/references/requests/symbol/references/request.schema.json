@@ -29,6 +29,18 @@
     },
     "params": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "selectorHandle"
+          ]
+        },
+        {
+          "required": [
+            "selector"
+          ]
+        }
+      ],
       "properties": {
         "includeDeclaration": {
           "type": "boolean"
@@ -87,6 +99,9 @@
           ],
           "type": "object"
         },
+        "selectorHandle": {
+          "type": "string"
+        },
         "workspaceRoot": {
           "type": [
             "string",
@@ -94,9 +109,6 @@
           ]
         }
       },
-      "required": [
-        "selector"
-      ],
       "type": "object"
     }
   },

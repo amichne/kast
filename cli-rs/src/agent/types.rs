@@ -669,6 +669,8 @@ enum AgentSymbolLookupOutcome {
     Resolved {
         source: AgentSymbolLookupSource,
         symbol: Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        selector_handle: Option<AgentSelectorHandle>,
         resolution: Value,
         relations: Vec<AgentSymbolRelation>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -726,7 +728,11 @@ struct AgentCompilerFallback {
 #[serde(tag = "type")]
 enum AgentCompilerResolveResponse {
     #[serde(rename = "RESOLVE_SUCCESS")]
-    Resolved { symbol: AgentCompilerSymbolIdentity },
+    Resolved {
+        symbol: AgentCompilerSymbolIdentity,
+        #[serde(default, rename = "selectorHandle")]
+        selector_handle: Option<AgentSelectorHandle>,
+    },
     #[serde(rename = "RESOLVE_NOT_FOUND")]
     NotFound,
     #[serde(rename = "RESOLVE_AMBIGUOUS")]

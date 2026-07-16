@@ -107,6 +107,8 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.shared.analysis.FileOutlineBuilder
 import io.github.amichne.kast.shared.analysis.ImportAnalysis
 import io.github.amichne.kast.shared.analysis.SemanticInsertionPointResolver
@@ -145,6 +147,7 @@ import org.jetbrains.kotlin.psi.KtParameter
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import java.util.concurrent.CancellationException
 
 @OptIn(KaExperimentalApi::class)
@@ -172,6 +175,14 @@ internal class KastPluginBackend(
     private val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val sharedWorkspaceIdentity = workspaceIdentity.workspaceIdentity
+    override val selectorHandles: SelectorHandleAuthority =
+        DigestSelectorHandleAuthority(
+            workspaceRoot = workspaceRoot.toString(),
+            backendName = backendName ?: defaultBackendName(),
+            backendVersion = BACKEND_VERSION,
+            backendInstanceId = UUID.randomUUID().toString(),
+            semanticGeneration = psiGeneration,
+        )
     private val referenceContinuations = SharedContinuationStore<
         ReferencePageToken,
         ReferenceQueryIdentity,

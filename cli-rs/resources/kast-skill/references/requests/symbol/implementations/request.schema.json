@@ -29,6 +29,18 @@
     },
     "params": {
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "selectorHandle"
+          ]
+        },
+        {
+          "required": [
+            "selector"
+          ]
+        }
+      ],
       "properties": {
         "maxResults": {
           "type": "integer"
@@ -81,6 +93,9 @@
           ],
           "type": "object"
         },
+        "selectorHandle": {
+          "type": "string"
+        },
         "workspaceRoot": {
           "type": [
             "string",
@@ -88,9 +103,6 @@
           ]
         }
       },
-      "required": [
-        "selector"
-      ],
       "type": "object"
     }
   },

@@ -1,9 +1,9 @@
 {
   "id": 1,
   "jsonrpc": "2.0",
-  "method": "symbol/callers",
+  "method": "selector/identity",
   "params": {
-    "direction": "incoming",
+    "family": "IMPACT",
     "selectorHandle": "ksh1.example-selector-handle"
   }
 }

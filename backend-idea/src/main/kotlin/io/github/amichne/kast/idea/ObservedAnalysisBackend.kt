@@ -24,6 +24,7 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedCallHierarchyQuery
 import io.github.amichne.kast.api.validation.ParsedCodeActionsQuery
@@ -49,6 +50,9 @@ internal class ObservedAnalysisBackend(
     private val delegate: CloseableAnalysisBackend,
     private val diagnostics: KastDiagnosticsService,
 ) : CloseableAnalysisBackend {
+    override val selectorHandles: SelectorHandleAuthority
+        get() = delegate.selectorHandles
+
     override suspend fun capabilities(): BackendCapabilities = observe(KastBackendOperation.CAPABILITIES) {
         delegate.capabilities().also(diagnostics::recordCapabilities)
     }

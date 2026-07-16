@@ -72,6 +72,8 @@ import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import java.nio.file.Files
@@ -79,6 +81,7 @@ import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.util.UUID
 import kotlin.io.path.writeText
 
 class FakeAnalysisBackend private constructor(
@@ -150,6 +153,14 @@ class FakeAnalysisBackend private constructor(
             paths.filter(Files::isRegularFile).map(Path::toString).forEach(::add)
         }
     }.toMutableSet()
+    override val selectorHandles: SelectorHandleAuthority =
+        DigestSelectorHandleAuthority(
+            workspaceRoot = workspaceRoot.toAbsolutePath().normalize().toString(),
+            backendName = backendName,
+            backendVersion = "0.1.0-test",
+            backendInstanceId = UUID.randomUUID().toString(),
+            semanticGeneration = { 0L },
+        )
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
         backendName = backendName,

@@ -4,10 +4,6 @@
   "method": "symbol/hierarchy",
   "params": {
     "direction": "SUPERTYPES",
-    "selector": {
-      "declarationFile": "example-declarationFile",
-      "declarationStartOffset": 128,
-      "fqName": "com.example.Widget"
-    }
+    "selectorHandle": "ksh1.example-selector-handle"
   }
 }

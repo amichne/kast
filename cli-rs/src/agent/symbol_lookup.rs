@@ -98,7 +98,10 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
         }
     };
     match parsed {
-        AgentCompilerResolveResponse::Resolved { symbol } if symbol.has_complete_anchor() => {
+        AgentCompilerResolveResponse::Resolved {
+            symbol,
+            selector_handle,
+        } if symbol.has_complete_anchor() => {
             let symbol = serde_json::to_value(symbol).unwrap_or(Value::Null);
             symbol_lookup_envelope(
                 args.mode,
@@ -106,6 +109,7 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
                 AgentSymbolLookupOutcome::Resolved {
                     source: AgentSymbolLookupSource::Compiler,
                     symbol,
+                    selector_handle,
                     resolution: result,
                     relations: Vec::new(),
                     compiler_fallback: None,
@@ -241,6 +245,7 @@ fn indexed_exact_or_compiler_error(
         [symbol] if symbol_has_complete_anchor(symbol) => AgentSymbolLookupOutcome::Resolved {
             source: AgentSymbolLookupSource::IndexedExact,
             symbol: symbol.clone(),
+            selector_handle: None,
             resolution: result,
             relations: Vec::new(),
             compiler_fallback: Some(fallback),

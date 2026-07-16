@@ -74,6 +74,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-development-cli-install-contract.sh
 
+      - name: Test installed selector handle workflow
+        shell: bash
+        run: ./.github/scripts/test-selector-handle-installed-workflow.sh
+
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"

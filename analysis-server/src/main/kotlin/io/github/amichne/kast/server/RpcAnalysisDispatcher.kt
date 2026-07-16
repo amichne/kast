@@ -360,6 +360,13 @@ class RpcAnalysisDispatcher(
                 skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
             )
 
+            "selector/identity" -> encode(
+                KastSelectorIdentityResponse.serializer(),
+                skillRpc.selectorIdentity(
+                    decodeParams(KastSelectorIdentityRequest.serializer(), params),
+                ),
+            )
+
             "symbol/discover" -> encode(
                 KastDiscoverResponse.serializer(),
                 skillRpc.discover(decodeParams(KastDiscoverRequest.serializer(), params)),
