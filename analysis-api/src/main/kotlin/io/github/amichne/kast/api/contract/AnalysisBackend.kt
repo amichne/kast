@@ -19,6 +19,7 @@ import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
@@ -26,6 +27,9 @@ import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.validation.*
 
 interface AnalysisBackend {
+    val selectorHandles: SelectorHandleAuthority
+        get() = SelectorHandleAuthority.Unsupported
+
     suspend fun capabilities(): BackendCapabilities
 
     suspend fun runtimeStatus(): RuntimeStatusResponse {

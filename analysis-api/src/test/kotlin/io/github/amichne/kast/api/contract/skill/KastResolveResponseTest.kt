@@ -9,7 +9,7 @@ class KastResolveResponseTest {
     private val json = Json
 
     @Test
-    fun `existing success and failure discriminators remain compatible`() {
+    fun `success and failure discriminators decode with required selector handle`() {
         val success = json.decodeFromString<KastResolveResponse>(
             """
             {
@@ -22,6 +22,7 @@ class KastResolveResponseTest {
               "candidate":{"line":1,"column":1,"context":"class Parser"},
               "candidateCount":1,
               "alternatives":[],
+              "selectorHandle":"ksh1.test-handle",
               "logFile":"/tmp/kast.log"
             }
             """.trimIndent(),
@@ -39,7 +40,8 @@ class KastResolveResponseTest {
             """.trimIndent(),
         )
 
-        assertInstanceOf(KastResolveSuccessResponse::class.java, success)
+        val typedSuccess = assertInstanceOf(KastResolveSuccessResponse::class.java, success)
+        assertEquals("ksh1.test-handle", typedSuccess.selectorHandle)
         assertInstanceOf(KastResolveFailureResponse::class.java, failure)
     }
 

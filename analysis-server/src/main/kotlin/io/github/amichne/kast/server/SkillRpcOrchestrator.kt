@@ -12,6 +12,7 @@ import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
@@ -36,6 +37,8 @@ import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
+import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
+import io.github.amichne.kast.api.contract.selector.SelectorOperationFamily
 import io.github.amichne.kast.api.contract.skill.KastCallersQuery
 import io.github.amichne.kast.api.contract.skill.KastCallersRequest
 import io.github.amichne.kast.api.contract.skill.KastCallersResponse
@@ -125,6 +128,18 @@ internal class SkillRpcOrchestrator(
         val resolvedConstraintSymbol: Symbol?,
     )
 
+    private sealed interface ReferenceSelector {
+        val selector: KastExactSymbolSelector
+
+        data class Explicit(
+            override val selector: KastExactSymbolSelector,
+        ) : ReferenceSelector
+
+        data class Handle(
+            override val selector: KastExactSymbolSelector,
+        ) : ReferenceSelector
+    }
+
     suspend fun resolve(request: KastResolveRequest): KastResolveResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val query = KastResolveQuery(
@@ -174,6 +189,7 @@ internal class SkillRpcOrchestrator(
         return KastResolveSuccessResponse(
             query = query,
             symbol = resolved.symbol,
+            selectorHandle = issueSelectorHandle(resolved.symbol),
             filePath = resolved.filePath,
             offset = resolved.offset,
             candidate = KastCandidate(
@@ -240,83 +256,90 @@ internal class SkillRpcOrchestrator(
 
     suspend fun references(request: KastReferencesRequest): KastReferencesResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
+        val selected = selectReferenceSelector(request, workspaceRoot)
+        val selector = selected.selector
         val query = KastReferencesQuery(
             workspaceRoot = workspaceRoot,
-            selector = request.selector,
+            selector = selector,
             includeDeclaration = request.includeDeclaration,
             includeUsageSiteScope = request.includeUsageSiteScope,
             maxResults = request.maxResults,
             pageToken = request.pageToken,
         )
         validateReferencesQuery(query)
-        requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
-        val resolved = try {
-            backend.resolveSymbol(
-                SymbolQuery(
-                    position = FilePosition(
-                        filePath = request.selector.declarationFile,
-                        offset = request.selector.declarationStartOffset,
-                    ),
-                ).parsed(),
-            ).symbol
-        } catch (_: NotFoundException) {
-            return KastReferencesSubjectNotFoundResponse(request.selector)
+        val subject = when (selected) {
+            is ReferenceSelector.Explicit -> {
+                requireReadCapability(ReadCapability.RESOLVE_SYMBOL)
+                val resolved = try {
+                    backend.resolveSymbol(
+                        SymbolQuery(
+                            position = FilePosition(
+                                filePath = selector.declarationFile,
+                                offset = selector.declarationStartOffset,
+                            ),
+                        ).parsed(),
+                    ).symbol
+                } catch (_: NotFoundException) {
+                    return KastReferencesSubjectNotFoundResponse(selector)
+                }
+                resolved.toSymbolIdentity()
+            }
+            is ReferenceSelector.Handle -> selector.toHandleSubject()
         }
-        val subject = resolved.toSymbolIdentity()
-        if (!request.selector.matches(subject)) {
-            return KastReferencesSubjectIdentityMismatchResponse(request.selector, subject)
+        if (!selector.matches(subject)) {
+            return KastReferencesSubjectIdentityMismatchResponse(selector, subject)
         }
         if (subject.kind == SymbolKind.UNKNOWN) {
-            return KastReferencesUnsupportedSubjectKindResponse(request.selector, subject)
+            return KastReferencesUnsupportedSubjectKindResponse(selector, subject)
         }
         requireReadCapability(ReadCapability.FIND_REFERENCES)
         val completeResult = try {
             backend.findReferences(
                 ReferencesQuery(
                     position = FilePosition(
-                        filePath = request.selector.declarationFile,
-                        offset = request.selector.declarationStartOffset,
+                        filePath = selector.declarationFile,
+                        offset = selector.declarationStartOffset,
                     ),
                     includeDeclaration = request.includeDeclaration,
                     includeUsageSiteScope = request.includeUsageSiteScope,
                     maxResults = request.maxResults,
                     pageToken = request.pageToken,
-                    selector = request.selector,
+                    selector = selector,
                 ).parsed(),
             )
         } catch (failure: ConflictException) {
             return when (failure.details["continuationFailure"]) {
                 "generationChanged" -> KastReferencesCursorStaleResponse(
-                    request.selector,
+                    selector,
                     RelationCursorStaleReason.GENERATION_CHANGED,
                 )
                 "expired" -> KastReferencesCursorStaleResponse(
-                    request.selector,
+                    selector,
                     RelationCursorStaleReason.EXPIRED,
                 )
                 "queryMismatch" -> KastReferencesCursorInvalidResponse(
-                    request.selector,
+                    selector,
                     RelationCursorInvalidReason.QUERY_MISMATCH,
                 )
                 "boundSourceUnavailable" -> KastReferencesDegradedResponse(
-                    request.selector,
+                    selector,
                     subject,
                     KastReferencesDegradedReason.BOUND_SOURCE_UNAVAILABLE,
                 )
                 "indexIdentityUnavailable" -> KastReferencesDegradedResponse(
-                    request.selector,
+                    selector,
                     subject,
                     KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
                 )
                 else -> KastReferencesCursorInvalidResponse(
-                    request.selector,
+                    selector,
                     RelationCursorInvalidReason.UNKNOWN_HANDLE,
                 )
             }
         }
         if (completeResult.searchScope?.candidateCoverage == SearchScope.CandidateCoverage.PARTIAL) {
             return KastReferencesDegradedResponse(
-                selector = request.selector,
+                selector = selector,
                 subject = subject,
                 reason = KastReferencesDegradedReason.REFERENCES_UNAVAILABLE,
             )
@@ -1777,6 +1800,103 @@ internal class SkillRpcOrchestrator(
         declarationStartOffset = io.github.amichne.kast.api.contract.NonNegativeInt(location.startOffset),
         containingType = containingDeclaration,
     )
+
+    private fun Symbol.toExactSelector(): KastExactSymbolSelector = KastExactSymbolSelector(
+        fqName = fqName,
+        declarationFile = location.filePath,
+        declarationStartOffset = location.startOffset,
+        kind = kind,
+        containingType = containingDeclaration,
+    )
+
+    private fun issueSelectorHandle(symbol: Symbol): String =
+        when (
+            val issued = backend.selectorHandles.issue(
+                selector = symbol.toExactSelector(),
+                allowedFamilies = symbol.kind.selectorOperationFamilies(),
+            )
+        ) {
+            is SelectorHandleAuthority.IssueResult.Issued -> issued.handle.value
+            SelectorHandleAuthority.IssueResult.Unavailable -> throw CapabilityNotSupportedException(
+                capability = "SELECTOR_HANDLES",
+                message = "The semantic backend cannot issue reusable selector handles",
+            )
+        }
+
+    private fun selectReferenceSelector(
+        request: KastReferencesRequest,
+        workspaceRoot: String,
+    ): ReferenceSelector {
+        val selector = request.selector
+        val selectorHandle = request.selectorHandle
+        return when {
+            selector != null && selectorHandle == null ->
+                ReferenceSelector.Explicit(selector)
+            selector == null && selectorHandle != null -> {
+                when (
+                    val resolution = backend.selectorHandles.resolve(
+                        handle = selectorHandle,
+                        workspaceRoot = workspaceRoot,
+                        family = SelectorOperationFamily.REFERENCES,
+                    )
+                ) {
+                    is SelectorHandleAuthority.Resolution.Resolved ->
+                        ReferenceSelector.Handle(resolution.selector)
+                    is SelectorHandleAuthority.Resolution.Rejected -> throw ValidationException(
+                        "selectorHandle was rejected: ${resolution.reason.name}",
+                    )
+                }
+            }
+            else -> throw ValidationException(
+                "Provide exactly one of selector or selectorHandle",
+            )
+        }
+    }
+
+    private fun KastExactSymbolSelector.toHandleSubject(): SymbolIdentity = SymbolIdentity(
+        fqName = fqName,
+        kind = kind ?: throw ValidationException("Backend-issued selector handle omitted kind"),
+        declarationFile = NormalizedPath.parse(declarationFile),
+        declarationStartOffset = NonNegativeInt(declarationStartOffset),
+        containingType = containingType,
+    )
+
+    private fun SymbolKind.selectorOperationFamilies(): Set<SelectorOperationFamily> = when (this) {
+        SymbolKind.CLASS, SymbolKind.INTERFACE -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.IMPLEMENTATIONS,
+            SelectorOperationFamily.HIERARCHY,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.OBJECT -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.HIERARCHY,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.FUNCTION -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.CALLERS,
+            SelectorOperationFamily.CALLEES,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.PROPERTY -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.IMPACT,
+            SelectorOperationFamily.RENAME,
+            SelectorOperationFamily.REPLACE_DECLARATION,
+        )
+        SymbolKind.PARAMETER -> setOf(
+            SelectorOperationFamily.REFERENCES,
+            SelectorOperationFamily.RENAME,
+        )
+        SymbolKind.UNKNOWN -> emptySet()
+    }
 
     private fun KastExactSymbolSelector.matches(actual: SymbolIdentity): Boolean =
         fqName == actual.fqName &&
