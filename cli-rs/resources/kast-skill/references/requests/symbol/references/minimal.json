@@ -2,11 +2,5 @@
   "id": 1,
   "jsonrpc": "2.0",
   "method": "symbol/references",
-  "params": {
-    "selector": {
-      "declarationFile": "example-declarationFile",
-      "declarationStartOffset": 128,
-      "fqName": "com.example.Widget"
-    }
-  }
+  "params": {}
 }

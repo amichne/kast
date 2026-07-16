@@ -851,8 +851,14 @@
             "optional": true,
             "nullable": true
           },
+          "selectorHandle": {
+            "type": "string",
+            "optional": true,
+            "sample": "ksh1.example-selector-handle"
+          },
           "selector": {
             "type": "object",
+            "optional": true,
             "fields": {
               "fqName": {
                 "type": "string"
@@ -907,10 +913,7 @@
             "nullable": true,
             "sample": "00000000-0000-4000-8000-000000000337"
           }
-        },
-        "required": [
-          "selector"
-        ]
+        }
       },
       "responseType": "KastReferencesResponse",
       "successType": "AVAILABLE",
@@ -924,7 +927,8 @@
         "CURSOR_INVALID"
       ],
       "notes": [
-        "The selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.",
+        "Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.",
+        "selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.",
         "Optional kind and containingType values are hard identity assertions.",
         "maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.",
         "Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.",

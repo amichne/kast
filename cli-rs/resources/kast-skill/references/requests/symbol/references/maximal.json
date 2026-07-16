@@ -14,6 +14,7 @@
       "fqName": "com.example.Widget",
       "kind": "UNKNOWN"
     },
+    "selectorHandle": "ksh1.example-selector-handle",
     "workspaceRoot": "/absolute/path/to/workspace"
   }
 }

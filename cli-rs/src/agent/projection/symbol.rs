@@ -15,6 +15,8 @@ enum AgentSymbolOutcomeProjectionInput {
         source: String,
         symbol: Value,
         #[serde(default)]
+        selector_handle: Option<AgentSelectorHandle>,
+        #[serde(default)]
         relations: Vec<AgentSymbolRelationProjectionInput>,
     },
     IdentityAnchorUnavailable {
@@ -288,6 +290,7 @@ struct AgentSymbolProjection {
     source: String,
     query: Option<String>,
     identity: Option<AgentSymbolIdentityProjection>,
+    selector_handle: Option<AgentSelectorHandle>,
     location: Option<AgentLocationInput>,
     candidates: Vec<AgentSymbolCandidateProjection>,
     relationships: Vec<AgentRelationshipProjection>,
@@ -303,6 +306,7 @@ impl AgentSymbolProjection {
             AgentSymbolOutcomeProjectionInput::Resolved {
                 source,
                 symbol,
+                selector_handle,
                 relations,
             } => {
                 let symbol = AgentSymbolEvidenceProjection::try_from(symbol)?;
@@ -319,6 +323,7 @@ impl AgentSymbolProjection {
                     source,
                     query: None,
                     identity: Some(symbol.identity),
+                    selector_handle,
                     location: symbol.location,
                     candidates: Vec::new(),
                     relationships: relations
@@ -337,6 +342,7 @@ impl AgentSymbolProjection {
                     source,
                     query: Some(query),
                     identity: None,
+                    selector_handle: None,
                     location: None,
                     candidates: Vec::new(),
                     relationships: Vec::new(),
@@ -349,6 +355,7 @@ impl AgentSymbolProjection {
                 source,
                 query: Some(query),
                 identity: None,
+                selector_handle: None,
                 location: None,
                 candidates: Vec::new(),
                 relationships: Vec::new(),
@@ -364,6 +371,7 @@ impl AgentSymbolProjection {
                 source,
                 query: Some(query),
                 identity: None,
+                selector_handle: None,
                 location: None,
                 candidates: project_symbol_candidates(candidates)?,
                 relationships: Vec::new(),
@@ -379,6 +387,7 @@ impl AgentSymbolProjection {
                 source,
                 query: Some(query),
                 identity: None,
+                selector_handle: None,
                 location: None,
                 candidates: project_symbol_candidates(candidates)?,
                 relationships: Vec::new(),
@@ -510,6 +519,8 @@ struct AgentSymbolCompactResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     identity: Option<AgentSymbolIdentityProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    selector_handle: Option<AgentSelectorHandle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     location: Option<AgentLocationInput>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     candidates: Vec<AgentSymbolCandidateProjection>,
@@ -529,6 +540,7 @@ impl From<AgentSymbolProjection> for AgentSymbolCompactResult {
             source: value.source,
             query: value.query,
             identity: value.identity,
+            selector_handle: value.selector_handle,
             location: value.location,
             candidates: value.candidates,
             relationships: value.relationships,
@@ -556,6 +568,8 @@ struct AgentSymbolSelectedResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     identity: Option<AgentSymbolIdentityProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    selector_handle: Option<AgentSelectorHandle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     location: Option<AgentLocationInput>,
     #[serde(skip_serializing_if = "Option::is_none")]
     relationships: Option<Vec<AgentRelationshipProjection>>,
@@ -576,6 +590,9 @@ impl AgentSymbolSelectedResult {
             source: selected(AgentSymbolField::Source).then_some(value.source),
             identity: selected(AgentSymbolField::Identity)
                 .then_some(value.identity)
+                .flatten(),
+            selector_handle: selected(AgentSymbolField::SelectorHandle)
+                .then_some(value.selector_handle)
                 .flatten(),
             location: selected(AgentSymbolField::Location)
                 .then_some(value.location)

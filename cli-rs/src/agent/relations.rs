@@ -730,11 +730,48 @@ fn execute_agent_references(args: AgentReferencesArgs) -> AgentEnvelope {
         Ok(normalizer) => normalizer,
         Err(error) => return error_envelope("agent/references".to_string(), None, error),
     };
-    let declaration_file = match normalizer.normalize(args.selector.declaration_file.as_str()) {
-        Ok(path) => path.into_rpc_path(),
-        Err(error) => return error_envelope("agent/references".to_string(), None, error),
+    let selector = match args.selector.into_selector() {
+        Ok(selector) => selector,
+        Err(message) => {
+            return error_envelope(
+                "agent/references".to_string(),
+                None,
+                agent_error("INVALID_SELECTOR_INPUT", message),
+            );
+        }
     };
-    let fingerprint = reference_query_fingerprint(&normalizer, &declaration_file, &args);
+    let (selector, selector_handle, fingerprint) = match selector {
+        AgentReusableSymbolSelector::Explicit(selector) => {
+            let (declaration_file, expected) =
+                match normalize_relationship_selector("agent/references", &args.runtime, &selector)
+                {
+                    Ok(value) => value,
+                    Err(envelope) => return *envelope,
+                };
+            let fingerprint = reference_query_fingerprint(
+                &expected,
+                args.include_declaration,
+                args.limit.get(),
+            );
+            let selector = drop_nulls(json!({
+                "fqName": expected.fq_name,
+                "declarationFile": declaration_file,
+                "declarationStartOffset": expected.declaration_start_offset,
+                "kind": expected.kind,
+                "containingType": expected.containing_type,
+            }));
+            (Some(selector), None, fingerprint)
+        }
+        AgentReusableSymbolSelector::Handle(handle) => {
+            let fingerprint = selector_handle_reference_query_fingerprint(
+                &normalizer,
+                &handle,
+                args.include_declaration,
+                args.limit.get(),
+            );
+            (None, Some(handle), fingerprint)
+        }
+    };
     let page_token = match args.page_token.as_ref() {
         Some(token) => match decode_reference_page_token(token, &fingerprint) {
             Ok(token) => Some(token),
@@ -744,15 +781,9 @@ fn execute_agent_references(args: AgentReferencesArgs) -> AgentEnvelope {
         },
         None => None,
     };
-    let selector = drop_nulls(json!({
-        "fqName": args.selector.symbol.as_str(),
-        "declarationFile": declaration_file,
-        "declarationStartOffset": args.selector.declaration_start_offset.get(),
-        "kind": args.selector.kind.map(|kind| kind.canonical().to_ascii_uppercase()),
-        "containingType": args.selector.containing_type.as_ref().map(CanonicalSymbolName::as_str),
-    }));
     let params = drop_nulls(json!({
         "selector": selector,
+        "selectorHandle": selector_handle,
         "includeDeclaration": args.include_declaration,
         "maxResults": args.limit.get(),
         "pageToken": page_token,
@@ -769,33 +800,40 @@ fn execute_agent_references(args: AgentReferencesArgs) -> AgentEnvelope {
 }
 
 fn reference_query_fingerprint(
-    normalizer: &AgentFilePathNormalizer,
-    declaration_file: &str,
-    args: &AgentReferencesArgs,
+    selector: &AgentExpectedRelationshipSelector,
+    include_declaration: bool,
+    limit: u8,
 ) -> String {
-    let kind = args
-        .selector
-        .kind
-        .map(|kind| kind.canonical().to_ascii_uppercase())
-        .unwrap_or_default();
-    let containing_type = args
-        .selector
-        .containing_type
-        .as_ref()
-        .map(CanonicalSymbolName::as_str)
-        .unwrap_or_default();
+    let proof = [
+        selector.workspace_root.clone(),
+        AGENT_REFERENCE_RELATION.to_string(),
+        selector.fq_name.clone(),
+        selector.declaration_file.clone(),
+        selector.declaration_start_offset.to_string(),
+        selector.kind.clone().unwrap_or_default(),
+        selector.containing_type.clone().unwrap_or_default(),
+        include_declaration.to_string(),
+        String::new(),
+        String::new(),
+        limit.to_string(),
+    ]
+    .join("\n");
+    crate::manifest::sha256_bytes(proof.as_bytes())[..24].to_string()
+}
+
+fn selector_handle_reference_query_fingerprint(
+    normalizer: &AgentFilePathNormalizer,
+    handle: &AgentSelectorHandle,
+    include_declaration: bool,
+    limit: u8,
+) -> String {
     let proof = [
         normalizer.canonical_root.to_string_lossy().into_owned(),
         AGENT_REFERENCE_RELATION.to_string(),
-        args.selector.symbol.as_str().to_string(),
-        declaration_file.to_string(),
-        args.selector.declaration_start_offset.get().to_string(),
-        kind,
-        containing_type.to_string(),
-        args.include_declaration.to_string(),
-        String::new(),
-        String::new(),
-        args.limit.get().to_string(),
+        "selector-handle".to_string(),
+        handle.as_str().to_string(),
+        include_declaration.to_string(),
+        limit.to_string(),
     ]
     .join("\n");
     crate::manifest::sha256_bytes(proof.as_bytes())[..24].to_string()

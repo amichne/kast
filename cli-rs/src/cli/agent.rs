@@ -758,11 +758,88 @@ pub struct AgentExactSymbolSelectorArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+pub struct AgentReusableSymbolSelectorArgs {
+    /// Fully-qualified compiler symbol identity for an explicit selector.
+    #[arg(
+        long,
+        required_unless_present = "selector_handle",
+        conflicts_with = "selector_handle"
+    )]
+    pub symbol: Option<CanonicalSymbolName>,
+    /// Declaration file returned by exact lookup for an explicit selector.
+    #[arg(
+        long = "declaration-file",
+        required_unless_present = "selector_handle",
+        conflicts_with = "selector_handle"
+    )]
+    pub declaration_file: Option<WorkspaceDeclarationFile>,
+    /// Declaration start offset returned by exact lookup for an explicit selector.
+    #[arg(
+        long = "declaration-start-offset",
+        required_unless_present = "selector_handle",
+        conflicts_with = "selector_handle"
+    )]
+    pub declaration_start_offset: Option<DeclarationStartOffset>,
+    /// Optional hard assertion for the declaration kind.
+    #[arg(long, value_enum, conflicts_with = "selector_handle")]
+    pub kind: Option<AgentSymbolKind>,
+    /// Optional hard assertion for the containing type.
+    #[arg(long = "containing-type", conflicts_with = "selector_handle")]
+    pub containing_type: Option<CanonicalSymbolName>,
+    /// Opaque exact selector returned by compiler-backed symbol resolution.
+    #[arg(long = "selector-handle")]
+    pub selector_handle: Option<AgentSelectorHandle>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum AgentReusableSymbolSelector {
+    Explicit(AgentExactSymbolSelectorArgs),
+    Handle(AgentSelectorHandle),
+}
+
+impl AgentReusableSymbolSelectorArgs {
+    pub(crate) fn into_selector(self) -> Result<AgentReusableSymbolSelector, String> {
+        match (
+            self.symbol,
+            self.declaration_file,
+            self.declaration_start_offset,
+            self.kind,
+            self.containing_type,
+            self.selector_handle,
+        ) {
+            (None, None, None, None, None, Some(handle)) => {
+                Ok(AgentReusableSymbolSelector::Handle(handle))
+            }
+            (
+                Some(symbol),
+                Some(declaration_file),
+                Some(declaration_start_offset),
+                kind,
+                containing_type,
+                None,
+            ) => Ok(AgentReusableSymbolSelector::Explicit(
+                AgentExactSymbolSelectorArgs {
+                    symbol,
+                    declaration_file,
+                    declaration_start_offset,
+                    kind,
+                    containing_type,
+                },
+            )),
+            _ => Err(
+                "provide either --selector-handle or the complete explicit declaration selector"
+                    .to_string(),
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Args, Clone)]
 pub struct AgentReferencesArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
-    pub selector: AgentExactSymbolSelectorArgs,
+    pub selector: AgentReusableSymbolSelectorArgs,
     /// Include the selected declaration in reference evidence.
     #[arg(long)]
     pub include_declaration: bool,
@@ -1007,6 +1084,50 @@ impl std::str::FromStr for AgentRelationPageToken {
             || !value.starts_with("krp1.")
         {
             return Err("relationship page token is malformed".to_string());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentSelectorHandle(String);
+
+impl AgentSelectorHandle {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Serialize for AgentSelectorHandle {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for AgentSelectorHandle {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        value.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+impl std::str::FromStr for AgentSelectorHandle {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.len() > 4_096
+            || !value.is_ascii()
+            || value.chars().any(char::is_control)
+            || !value.starts_with("ksh1.")
+            || value.len() == "ksh1.".len()
+        {
+            return Err("selector handle is malformed".to_string());
         }
         Ok(Self(value.to_string()))
     }
@@ -1377,6 +1498,7 @@ impl AgentSymbolViewArgs {
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AgentSymbolField {
     Identity,
+    SelectorHandle,
     Location,
     Mode,
     Outcome,

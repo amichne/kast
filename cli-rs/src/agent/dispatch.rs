@@ -268,7 +268,7 @@ fn execute_agent_rename_preview(args: AgentRenameArgs, identity_request: Value) 
         }
     };
     let resolved = match serde_json::from_value::<AgentCompilerResolveResponse>(resolved_value.clone()) {
-        Ok(AgentCompilerResolveResponse::Resolved { symbol }) => symbol,
+        Ok(AgentCompilerResolveResponse::Resolved { symbol, .. }) => symbol,
         Ok(AgentCompilerResolveResponse::NotFound) => {
             return error_envelope(
                 "agent/rename".to_string(),
