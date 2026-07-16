@@ -1037,13 +1037,14 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     assert_eq!(plan["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
     assert_eq!(plan["result"]["operation"]["state"], "PLANNED");
     assert_eq!(
+        plan["result"]["operation"]["mutationKind"],
+        "REPLACE_DECLARATION",
+    );
+    assert_eq!(
         plan["result"]["plan"]["type"],
         "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
     );
-    assert_eq!(
-        plan["result"]["plan"]["selectorHandle"],
-        selector_handle,
-    );
+    assert_eq!(plan["result"]["plan"]["selectorHandle"], selector_handle,);
     assert!(
         plan["result"]["plan"].get("symbol").is_none(),
         "handle plan must not reconstruct a symbol selector: {plan}",
@@ -1065,7 +1066,10 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         ])
         .output()
         .expect("replace without idempotency key");
-    assert!(!missing_key.status.success(), "apply must require authority");
+    assert!(
+        !missing_key.status.success(),
+        "apply must require authority"
+    );
     let missing_key: Value =
         serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
     assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
@@ -1126,10 +1130,7 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submission");
     assert_eq!(submit["params"]["type"], "REPLACE_DECLARATION");
-    assert_eq!(
-        submit["params"]["idempotencyKey"],
-        "issue-392-replace",
-    );
+    assert_eq!(submit["params"]["idempotencyKey"], "issue-392-replace",);
     assert_eq!(
         submit["params"]["request"]["type"],
         "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",

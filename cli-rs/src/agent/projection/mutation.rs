@@ -24,9 +24,11 @@ struct AgentMutationPlanRequestInput {
 #[serde(rename_all = "camelCase")]
 struct AgentMutationPlanParamsInput {
     #[serde(default, rename = "type")]
-    mutation_kind: Option<String>,
+    request_type: Option<String>,
     #[serde(default)]
     symbol: Option<String>,
+    #[serde(default)]
+    selector_handle: Option<AgentSelectorHandle>,
     #[serde(default)]
     new_name: Option<String>,
     #[serde(default)]
@@ -303,8 +305,12 @@ struct AgentMutationOperationProjection {
 #[serde(rename_all = "camelCase")]
 struct AgentMutationPlanProjection {
     method: String,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    request_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     symbol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selector_handle: Option<AgentSelectorHandle>,
     #[serde(skip_serializing_if = "Option::is_none")]
     new_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -385,9 +391,7 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                     .and_then(|placement| placement.scope.inside_file())
                     .map(str::to_string);
                 let file_path = params.file_path.or(inside_file);
-                let mutation_kind = params
-                    .mutation_kind
-                    .unwrap_or_else(|| mutation_kind_from_method(&method));
+                let mutation_kind = mutation_kind_from_method(&method);
                 Ok(Self {
                     operation: AgentMutationOperationProjection {
                         operation_id: None,
@@ -403,7 +407,9 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                     },
                     plan: Some(AgentMutationPlanProjection {
                         method,
+                        request_type: params.request_type,
                         symbol: params.symbol,
+                        selector_handle: params.selector_handle,
                         new_name: params.new_name,
                         kind: params.kind,
                         file_hint: params.file_hint,

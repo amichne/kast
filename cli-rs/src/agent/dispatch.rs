@@ -680,14 +680,31 @@ fn execute_agent_add_statement(args: AgentStatementMutationArgs) -> AgentEnvelop
 }
 
 fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> AgentEnvelope {
-    let params = drop_nulls(json!({
-        "type": "REPLACE_DECLARATION_BY_SYMBOL_REQUEST",
-        "symbol": args.symbol,
-        "contentFile": args.content_file.display().to_string(),
-        "kind": args.kind.map(|kind| kind.canonical()),
-        "fileHint": args.file_hint,
-        "containingType": args.containing_type,
-    }));
+    let params = match (args.symbol.as_ref(), args.selector_handle.as_ref()) {
+        (Some(symbol), None) => drop_nulls(json!({
+            "type": "REPLACE_DECLARATION_BY_SYMBOL_REQUEST",
+            "symbol": symbol,
+            "contentFile": args.content_file.display().to_string(),
+            "kind": args.kind.map(|kind| kind.canonical()),
+            "fileHint": args.file_hint,
+            "containingType": args.containing_type,
+        })),
+        (None, Some(handle)) => json!({
+            "type": "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
+            "selectorHandle": handle,
+            "contentFile": args.content_file.display().to_string(),
+        }),
+        _ => {
+            return error_envelope(
+                "agent/replace-declaration".to_string(),
+                None,
+                agent_error(
+                    "INVALID_SELECTOR_INPUT",
+                    "Provide exactly one of --symbol or --selector-handle.",
+                ),
+            );
+        }
+    };
     execute_agent_mutation(
         "agent/replace-declaration",
         "symbol/replace-declaration",
