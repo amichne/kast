@@ -11,6 +11,7 @@ change:
 
 - `.github/workflows/*.yml`
 - `.github/scripts/*`
+- `.github/ci/*.json`
 - `.github/dependabot.yml`
 - `.github/skill-shadowing.json`
 
@@ -27,15 +28,26 @@ For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
 The release-free local authority gate lives in
 `.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
-CI whenever refresh orchestration, source/artifact provenance, immutable
+the independent `local-authority-contracts` CI job whenever refresh
+orchestration, source/artifact provenance, immutable
 generation activation, rollback/removal, local readiness, or installed
 skill/guidance routing changes. Its Gradle graph must remain headless and must
 not include user JetBrains profile or release-configuration mutation.
 The legacy developer install remains covered separately by
-`.github/scripts/test-development-cli-install-contract.sh`. Keep its real IDEA
-plugin task execution wired in CI so explicit-directory, configured-profile,
-running-profile, newest-profile, missing-profile, and configuration-cache
-behavior cannot regress behind dry-run task-graph coverage.
+`.github/scripts/test-development-cli-install-contract.sh` in the same job.
+Keep its real IDEA plugin task execution wired in CI so explicit-directory,
+configured-profile, running-profile, newest-profile, missing-profile, and
+configuration-cache behavior cannot regress behind dry-run task-graph
+coverage. Installed CLI workflow proofs also belong in that build-backed job,
+not in the static fanout gate.
+
+The `workflow-contracts` job is the static CI fanout gate. It must not install
+Java, initialize Gradle, install Rust, or execute an installed-development
+workflow. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
+stable proof-output ownership, and timing samples. Keep output equivalence
+blocking, keep timing provisional until five comparable successful candidate
+runs exist, and run `.github/scripts/test-ci-workflow-model.sh` whenever jobs,
+`needs` edges, proof owners, or timing evidence change.
 The separate `.github/scripts/test-local-development-semantic-e2e.sh` gate
 must exercise the receipt-owned installed entrypoint, not checkout build
 outputs. It owns refresh idempotence plus compiler-backed readiness, exact
@@ -105,8 +117,10 @@ For terminal commands and executable examples, run:
 For local-development authority changes, run:
 
 ```console
+.github/scripts/test-ci-workflow-model.sh
 .github/scripts/test-local-development-refresh-contract.sh
 .github/scripts/test-development-cli-install-contract.sh
+.github/scripts/test-selector-handle-installed-workflow.sh
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 
