@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 1,
   "provenance": {
-    "description": "Issue 401 fanout split. The first four baseline static-gate samples predate the installed-selector contract and are normalized by its observed three-second warm execution; the fifth baseline and candidate are exact proof-shape observations. Candidate timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline and candidate timing samples describe the split before duplicate-owner removal. The integrated candidate proof set is exact, including the main-only legacy profile-install canary, while timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
     "source": "https://github.com/amichne/kast/pull/407",
     "baselineRunIds": [
@@ -321,7 +321,6 @@
         "outputs": [
           "local-development-refresh-contract",
           "development-cli-install-contract",
-          "installed-selector-handle-workflow",
           "cli-plugin-authority-cutover-contract"
         ],
         "durationSamplesSeconds": [
@@ -366,7 +365,7 @@
         "durationSamplesSeconds": [
           566
         ],
-        "executionClass": "toolchain"
+        "executionClass": "static"
       },
       {
         "id": "maven-publication-contract",
@@ -391,6 +390,7 @@
           "rust-format",
           "rust-clippy",
           "rust-tests",
+          "installed-selector-handle-workflow",
           "rust-release-build",
           "lsp-config-smoke",
           "lsp-pivot-gates",

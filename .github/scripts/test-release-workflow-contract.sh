@@ -26,6 +26,13 @@ require_not_contains() {
   ! grep -Fq -- "$unexpected" "$file_path" || die "${description}: found '${unexpected}' in ${file_path}"
 }
 
+require_not_matches() {
+  local file_path="$1"
+  local unexpected_pattern="$2"
+  local description="$3"
+  ! grep -Eq -- "$unexpected_pattern" "$file_path" || die "${description}: matched '${unexpected_pattern}' in ${file_path}"
+}
+
 require_order() {
   local file_path="$1"
   local earlier="$2"
@@ -101,6 +108,24 @@ require_block_not_contains() {
   ! grep -Fq -- "$unexpected" <<< "$block" || die "${description}: found '${unexpected}' in '${block_start}' block"
 }
 
+require_block_not_matches() {
+  local file_path="$1"
+  local block_start="$2"
+  local block_end="$3"
+  local unexpected_pattern="$4"
+  local description="$5"
+  local block
+  block="$(
+    awk -v block_start="$block_start" -v block_end="$block_end" '
+      index($0, block_start) { in_block = 1 }
+      in_block && index($0, block_end) && !index($0, block_start) { exit }
+      in_block { print }
+    ' "$file_path"
+  )"
+  [[ -n "$block" ]] || die "${description}: missing block '${block_start}' in ${file_path}"
+  ! grep -Eq -- "$unexpected_pattern" <<< "$block" || die "${description}: matched '${unexpected_pattern}' in '${block_start}' block"
+}
+
 repo_root="$(resolve_repo_root)"
 ci_workflow="${repo_root}/.github/workflows/ci.yml"
 ci_build_and_test_workflow="${repo_root}/.github/workflows/ci-build-and-test.yml"
@@ -126,6 +151,9 @@ idea_plugin_repository_contract="${repo_root}/.github/scripts/test-jetbrains-plu
 idea_plugin_repository_source="${repo_root}/packaging/jetbrains/plugin-repository.json"
 idea_plugin_repository_renderer="${repo_root}/.github/scripts/render-jetbrains-plugin-repository.py"
 runtime_compatibility_contract="${repo_root}/.github/scripts/test-runtime-compatibility-contract.sh"
+cli_plugin_authority_cutover_contract="${repo_root}/.github/scripts/test-cli-plugin-authority-cutover-contract.sh"
+local_development_refresh_contract="${repo_root}/.github/scripts/test-local-development-refresh-contract.sh"
+selector_handle_workflow_test="${repo_root}/cli-rs/tests/selector_handle_installed_workflow.rs"
 runtime_compatibility_source="${repo_root}/packaging/jetbrains/runtime-compatibility.json"
 runtime_compatibility_renderer="${repo_root}/.github/scripts/render-runtime-compatibility.py"
 release_state_verifier="${repo_root}/scripts/verify-release-state.sh"
@@ -239,7 +267,7 @@ require_block_not_contains "$ci_workflow" "  workflow-contracts:" "  local-autho
 require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "Test CI workflow graph model" "CI static fanout contracts must execute the deterministic graph model"
 require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "test-ci-workflow-model.sh" "CI static fanout contracts must own proof-output equivalence validation"
 require_block_not_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "    needs:" "CI local-authority contracts must remain an independent required root"
-require_block_not_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "    if:" "CI local-authority contracts must run for every CI trigger"
+require_block_not_matches "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" '^    if:' "CI local-authority contracts must run for every CI trigger"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "uses: gradle/actions/setup-gradle@v5" "CI local-authority contracts must restore persisted Gradle build state"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "cache-cleanup: always" "CI local-authority contracts must keep Gradle cache cleanup bounded"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32" "CI local-authority contracts must restore pruned Rust dependency builds from the pinned cache action"
@@ -249,8 +277,30 @@ require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-de
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" 'save-if: ${{ github.ref == '\''refs/heads/main'\'' }}' "CI local-authority contracts must persist Rust caches only from trusted main pushes"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "test-local-development-refresh-contract.sh" "CI local-authority contracts must execute the local refresh contract"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "test-development-cli-install-contract.sh" "CI local-authority contracts must execute the legacy development install contract"
+require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "if: github.event_name == 'push' && github.ref == 'refs/heads/main'" "CI must quarantine the legacy development install proof to integrated main pushes"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "test-cli-plugin-authority-cutover-contract.sh" "CI local-authority contracts must execute the CLI and plugin cutover contract"
-require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "test-selector-handle-installed-workflow.sh" "CI local-authority contracts must execute the installed selector handle workflow"
+require_block_not_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "test-selector-handle-installed-workflow.sh" "CI local-authority contracts must not reinstall the CLI to rerun a Rust integration test"
+require_block_not_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "actions/setup-python" "CI local-authority contracts must not initialize the documentation toolchain"
+require_not_matches "$cli_plugin_authority_cutover_contract" '^[[:space:]]*\.github/scripts/test-macos-installer-contract\.sh[[:space:]]*$' "CLI/plugin cutover must not rerun the installer owner"
+require_not_matches "$cli_plugin_authority_cutover_contract" '^[[:space:]]*python3 packaging/homebrew/scripts/test-formulas\.py[[:space:]]*$' "CLI/plugin cutover must not rerun the Homebrew owner"
+require_not_contains "$cli_plugin_authority_cutover_contract" "cargo test" "CLI/plugin cutover must not rerun Rust tests"
+require_not_contains "$cli_plugin_authority_cutover_contract" "./gradlew" "CLI/plugin cutover must not rerun Kotlin or IDEA tests"
+require_not_contains "$cli_plugin_authority_cutover_contract" ".github/scripts/test-runtime-compatibility-contract.sh" "CLI/plugin cutover must not rerun the runtime compatibility owner"
+require_not_contains "$cli_plugin_authority_cutover_contract" ".github/scripts/test-release-workflow-contract.sh" "CLI/plugin cutover must not rerun the release workflow owner"
+require_not_contains "$cli_plugin_authority_cutover_contract" ".github/scripts/test-release-asset-verifier.sh" "CLI/plugin cutover must not rerun the release asset owner"
+require_not_contains "$cli_plugin_authority_cutover_contract" ".github/scripts/test-docs-content-contract.sh" "CLI/plugin cutover must not rerun the documentation owner"
+require_not_contains "$cli_plugin_authority_cutover_contract" ".github/scripts/test-docs-navigation-contract.sh" "CLI/plugin cutover must not rerun the documentation navigation owner"
+require_not_contains "$cli_plugin_authority_cutover_contract" "zensical build" "CLI/plugin cutover must not rerun the documentation renderer"
+require_not_contains "$cli_plugin_authority_cutover_contract" "cargo run" "CLI/plugin cutover must not rebuild the CLI for a generation contract"
+require_not_contains "$runtime_compatibility_contract" "./gradlew" "Runtime compatibility source contract must not rerun Kotlin or IDEA tests"
+require_not_contains "$runtime_compatibility_contract" "cargo test" "Runtime compatibility source contract must not rerun Rust tests"
+require_not_contains "$runtime_compatibility_contract" ".github/scripts/test-release-provenance-assembler.sh" "Runtime compatibility source contract must not rerun release provenance tests"
+require_not_contains "$runtime_compatibility_contract" ".github/scripts/test-release-asset-verifier.sh" "Runtime compatibility source contract must not rerun release asset tests"
+require_not_contains "$runtime_compatibility_contract" ".github/scripts/test-release-workflow-contract.sh" "Runtime compatibility source contract must not rerun release workflow tests"
+require_not_contains "$local_development_refresh_contract" "cargo test" "Local refresh source contract must not rerun Rust tests"
+require_not_contains "$selector_handle_workflow_test" "skipped:" "Selector handle integration proof must not silently skip in the Rust owner"
+require_contains "$selector_handle_workflow_test" "env!(\"CARGO_BIN_EXE_kast\")" "Selector handle integration proof must execute Cargo's exact built CLI"
+require_block_contains "$ci_workflow" "  rust-cli:" "  build-and-test:" "cli-rs/target/release/kast developer release generate contract --check" "The Rust owner must reuse its release binary for generation contract validation"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "    needs: workflow-contracts" "CI runtime contracts must wait for the static workflow preflight"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test terminal command contract" "CI runtime contracts must own the terminal command contract"
 require_block_contains "$ci_workflow" "  runtime-contracts:" "  maven-publication-contract:" "      - name: Test Kast Copilot plugin package" "CI runtime contracts must reuse the terminal build for the Copilot package contract"

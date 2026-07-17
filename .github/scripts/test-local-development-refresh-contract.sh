@@ -242,15 +242,4 @@ legacy_install_reuse="$("${repo_root}/gradlew" "${profile_free_install_args[@]}"
 grep -Fq 'Configuration cache entry reused.' <<<"$legacy_install_reuse" \
   || die 'profile-free legacy install planning must reuse configuration cache state'
 
-cargo test \
-  --quiet \
-  --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
-  --locked \
-  local_development::
-cargo test \
-  --quiet \
-  --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
-  --locked \
-  --test local_development_refresh_smoke
-
 printf '%s\n' 'Local development refresh contract passed'

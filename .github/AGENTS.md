@@ -34,12 +34,23 @@ generation activation, rollback/removal, local readiness, or installed
 skill/guidance routing changes. Its Gradle graph must remain headless and must
 not include user JetBrains profile or release-configuration mutation.
 The legacy developer install remains covered separately by
-`.github/scripts/test-development-cli-install-contract.sh` in the same job.
-Keep its real IDEA plugin task execution wired in CI so explicit-directory,
-configured-profile, running-profile, newest-profile, missing-profile, and
-configuration-cache behavior cannot regress behind dry-run task-graph
-coverage. Installed CLI workflow proofs also belong in that build-backed job,
-not in the static fanout gate.
+`.github/scripts/test-development-cli-install-contract.sh`. It is not the
+revision-coherent local authority and must not run for every pull request.
+Keep its real IDEA plugin task execution on integrated `main` pushes so
+explicit-directory, configured-profile, running-profile, newest-profile,
+missing-profile, and configuration-cache behavior cannot regress behind
+dry-run task-graph coverage. Removing that documented compatibility surface
+requires an explicit ADR decision.
+
+Umbrella source contracts must not rerun focused owners. The CLI/plugin
+cutover contract owns source presence, absence, and authority assertions only;
+the runtime compatibility contract owns deterministic source and manifest
+rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
+IDEA tests run in their Gradle owners, documentation rendering runs in the
+documentation workflow, and installer, release, provenance, and asset
+contracts run once in their named jobs. A focused Rust integration test must
+not return success by skipping when an outer installer environment variable is
+absent.
 
 The `workflow-contracts` job is the static CI fanout gate. It must not install
 Java, initialize Gradle, install Rust, or execute an installed-development
