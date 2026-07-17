@@ -87,6 +87,7 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let skill_root = workspace.join(".agents/skills");
+    std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
     let init = Command::new("git")
         .arg("-C")
@@ -101,21 +102,33 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
         String::from_utf8_lossy(&init.stderr)
     );
 
-    let repair = kast(&home, &config_home)
-        .current_dir(&workspace)
-        .args(["--output", "json", "repair", "--apply"])
+    let install_root = default_install_root(&home);
+    let bin_dir = default_bin_dir(&home);
+    let bundle = write_install_bundle_source(temp.path(), "v0.7.11-ci");
+    let activate = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "release",
+            "activate",
+            "bundle",
+            "--source",
+            bundle.to_str().expect("bundle path"),
+            "--install-root",
+            install_root.to_str().expect("install root"),
+            "--bin-dir",
+            bin_dir.to_str().expect("bin dir"),
+            "--config-home",
+            config_home.to_str().expect("config home"),
+        ])
         .output()
-        .expect("repair");
+        .expect("activate bundle");
     assert!(
-        !repair.status.success(),
-        "install repair must not claim agent readiness before workspace resources exist"
-    );
-    let repair_json: serde_json::Value =
-        serde_json::from_slice(&repair.stdout).expect("repair json");
-    assert_eq!(repair_json["repair"]["applied"], true, "{repair_json:#}");
-    assert_eq!(
-        repair_json["ready"]["agentEnvironment"]["ok"], false,
-        "{repair_json:#}"
+        activate.status.success(),
+        "bundle activation should establish the managed backend: stdout={}, stderr={}",
+        String::from_utf8_lossy(&activate.stdout),
+        String::from_utf8_lossy(&activate.stderr)
     );
     assert!(install_manifest_path(&home).is_file());
 
