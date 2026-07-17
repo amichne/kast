@@ -353,7 +353,9 @@ fn effective_skill_diagnostic(
             && state != AgentResourceState::Modified
             && name_matches
             && candidate_revision == Some(dialect_revision);
-        let repair_command = (!compatible).then(|| {
+        let repair_command = if compatible {
+            None
+        } else {
             skill_repair_command(
                 workspace_root,
                 local_development,
@@ -362,7 +364,7 @@ fn effective_skill_diagnostic(
                 plugin_owned,
                 running_binary,
             )
-        });
+        };
         candidates.push(DoctorAgentSkillCandidateDiagnostic {
             path: path.display().to_string(),
             source,
@@ -460,17 +462,17 @@ fn skill_repair_command(
     manifest_managed: bool,
     plugin_owned: bool,
     running_binary: &str,
-) -> String {
+) -> Option<String> {
     if let Some(local) = local_development
         && same_binary_path(&local.components.skill.effective_target, skill_path)
     {
-        return format!(
+        return Some(format!(
             "cd {} && ./gradlew refreshDevelopmentLocal",
             shell_quote_for_remediation(&local.source.canonical_root.display().to_string())
-        );
+        ));
     }
     if plugin_owned {
-        return workspace_root.map_or_else(
+        return Some(workspace_root.map_or_else(
             || "Open the exact project in IntelliJ IDEA with the Kast plugin enabled".to_string(),
             |workspace_root| {
                 format!(
@@ -478,26 +480,49 @@ fn skill_repair_command(
                     shell_quote_for_remediation(&workspace_root.display().to_string())
                 )
             },
-        );
+        ));
     }
     if manifest_managed
         && let Some(workspace_root) = workspace_root
         && let Some(skill_root) = skill_path.parent().and_then(Path::parent)
     {
-        return format!(
+        return Some(format!(
             "{} setup --workspace-root {} --skill-target-dir {} --force",
             shell_quote_for_remediation(running_binary),
             shell_quote_for_remediation(&workspace_root.display().to_string()),
             shell_quote_for_remediation(&skill_root.display().to_string()),
-        );
+        ));
+    }
+    if !skill_path.exists() {
+        return workspace_root.map(|workspace_root| {
+            if cfg!(target_os = "macos") {
+                format!(
+                    "open -a 'IntelliJ IDEA' {}",
+                    shell_quote_for_remediation(&workspace_root.display().to_string())
+                )
+            } else if let Some(skill_root) = skill_path.parent().and_then(Path::parent) {
+                format!(
+                    "{} setup --workspace-root {} --skill-target-dir {}",
+                    shell_quote_for_remediation(running_binary),
+                    shell_quote_for_remediation(&workspace_root.display().to_string()),
+                    shell_quote_for_remediation(&skill_root.display().to_string()),
+                )
+            } else {
+                format!(
+                    "{} setup --workspace-root {}",
+                    shell_quote_for_remediation(running_binary),
+                    shell_quote_for_remediation(&workspace_root.display().to_string()),
+                )
+            }
+        });
     }
     let skill_directory = skill_path.parent().unwrap_or(skill_path);
     let incompatible = unique_quarantine_path(skill_directory);
-    format!(
+    Some(format!(
         "mv {} {}",
         shell_quote_for_remediation(&skill_directory.display().to_string()),
         shell_quote_for_remediation(&incompatible.display().to_string()),
-    )
+    ))
 }
 
 fn unique_quarantine_path(skill_directory: &Path) -> PathBuf {
@@ -631,19 +656,18 @@ fn guidance_resource_state(
     if !path.is_file() {
         return AgentResourceState::Missing;
     }
-    if let Some(matches) = managed_resource_matches {
-        return if matches {
-            AgentResourceState::Managed
-        } else {
-            AgentResourceState::Modified
-        };
-    }
     let content = fs::read_to_string(path).unwrap_or_default();
     let has_managed_region = content.contains("<kast>") && content.contains("</kast>");
     if let Some(expected) = expected_plugin_region {
         if !has_managed_region {
             AgentResourceState::Foreign
         } else if content.contains(expected) {
+            AgentResourceState::Managed
+        } else {
+            AgentResourceState::Modified
+        }
+    } else if let Some(matches) = managed_resource_matches {
+        if matches {
             AgentResourceState::Managed
         } else {
             AgentResourceState::Modified
@@ -821,6 +845,24 @@ fn workspace_relative(workspace_root: Option<&Path>, path: &Path) -> Option<Path
 #[cfg(test)]
 mod agent_readiness_tests {
     use super::*;
+
+    #[test]
+    fn trusted_plugin_guidance_ignores_inactive_manifest_checksum() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let guidance = temp.path().join("AGENTS.local.md");
+        let expected = "<kast>\nmanaged plugin guidance\n</kast>";
+        fs::write(
+            &guidance,
+            format!("user preface\n{expected}\nuser suffix\n"),
+        )
+        .expect("plugin guidance");
+
+        assert_eq!(
+            guidance_resource_state(&guidance, Some(false), Some(expected)),
+            AgentResourceState::Managed,
+            "trusted plugin evidence must outrank an inactive legacy manifest checksum"
+        );
+    }
 
     #[test]
     fn guidance_states_distinguish_ownership_and_integrity() {

@@ -1,7 +1,57 @@
 mod support;
 
-#[cfg(target_os = "macos")]
 use support::*;
+
+#[test]
+fn missing_expected_skill_reports_install_repair_instead_of_quarantine() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+
+    let ready = kast(&home, &config_home)
+        .env_remove("CODEX_HOME")
+        .current_dir(&workspace)
+        .args([
+            "--output",
+            "json",
+            "ready",
+            "--for",
+            "agent",
+            "--workspace-root",
+        ])
+        .arg(&workspace)
+        .output()
+        .expect("agent ready");
+
+    assert!(
+        !ready.status.success(),
+        "a missing effective skill must block readiness"
+    );
+    let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
+    let missing_skill = payload["agentEnvironment"]["skills"]["candidates"]
+        .as_array()
+        .expect("skill candidates")
+        .iter()
+        .find(|candidate| candidate["state"] == "missing")
+        .unwrap_or_else(|| panic!("missing expected skill candidate: {payload:#}"));
+    let repair = missing_skill["repairCommand"]
+        .as_str()
+        .unwrap_or_else(|| panic!("missing skill repair command: {missing_skill:#}"));
+    assert!(
+        !repair.starts_with("mv "),
+        "a missing path cannot be quarantined: {repair}"
+    );
+    if cfg!(target_os = "macos") {
+        assert!(repair.contains("open -a 'IntelliJ IDEA'"), "{repair}");
+    } else {
+        assert!(repair.contains(" setup --workspace-root "), "{repair}");
+    }
+}
 
 #[cfg(target_os = "macos")]
 #[test]
