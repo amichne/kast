@@ -42,6 +42,16 @@ names and hashes every repo-built runtime JAR in the portable distribution.
 Refresh rejects an ordinary Cargo binary, a relabeled backend, a stale sibling
 JAR, an incomplete component set, or bytes changed after attestation.
 
+## Understand Repository Validation
+
+Pull requests run focused proof at the boundary that owns each change. The
+complete Kast-on-Kast installed semantic scenario runs on
+main, nightly, manual, and release paths so a cold import does not delay
+ordinary pull-request feedback. The same fail-closed canary definition
+exercises the receipt-owned CLI and headless backend in every path; release
+publication cannot proceed after a failed canary. A failure preserves the
+workflow log and uploads available runtime logs for diagnosis.
+
 ## Verify What Agents Will Use
 
 Ask the receipt-owned launcher for machine-readable readiness before relying on

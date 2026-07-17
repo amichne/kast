@@ -1,8 +1,8 @@
 {
   "$schema": "./workflow-graph-model.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline and candidate timing samples describe the split before duplicate-owner removal. The integrated candidate proof set is exact, including the main-only legacy profile-install canary, while timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline and current candidate timing samples predate duplicate-owner removal and full-E2E relocation. The integrated candidate proof set remains exact: the legacy profile install runs on main and the full Kast-on-Kast E2E is an explicit canary outside the pull-request critical path. Timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
     "source": "https://github.com/amichne/kast/pull/407",
     "baselineRunIds": [
@@ -279,6 +279,7 @@
         "executionClass": "artifact-consumer"
       }
     ],
+    "canaryTaskIds": [],
     "fanoutGateTaskIds": [
       "workflow-contracts"
     ],
@@ -337,7 +338,7 @@
         "durationSamplesSeconds": [
           1223
         ],
-        "executionClass": "toolchain"
+        "executionClass": "release"
       },
       {
         "id": "runtime-contracts",
@@ -510,6 +511,9 @@
         ],
         "executionClass": "artifact-consumer"
       }
+    ],
+    "canaryTaskIds": [
+      "local-development-semantic-e2e"
     ],
     "fanoutGateTaskIds": [
       "workflow-contracts"

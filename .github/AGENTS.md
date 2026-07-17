@@ -57,15 +57,21 @@ Java, initialize Gradle, install Rust, or execute an installed-development
 workflow. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
 stable proof-output ownership, and timing samples. Keep output equivalence
 blocking, keep timing provisional until five comparable successful candidate
-runs exist, and run `.github/scripts/test-ci-workflow-model.sh` whenever jobs,
-`needs` edges, proof owners, or timing evidence change.
-The separate `.github/scripts/test-local-development-semantic-e2e.sh` gate
+runs exist, and list integrated non-PR proofs explicitly in `canaryTaskIds` so
+they remain in the output inventory without inflating the required
+pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
+whenever jobs, `needs` edges, proof owners, canary classification, or timing
+evidence change.
+The separate `.github/scripts/test-local-development-semantic-e2e.sh` canary
 must exercise the receipt-owned installed entrypoint, not checkout build
 outputs. It owns refresh idempotence plus compiler-backed readiness, exact
 symbol resolution, a known exhaustive nonzero reference, complete clean-file
 diagnostics, plan-only mutation, explicit runtime shutdown, and receipt-owned
-removal. Keep it in its own CI job so the cold IDEA import does not serialize
-unrelated workflow contracts.
+removal. Keep its authoritative job in
+`.github/workflows/local-development-canary.yml`, outside ordinary pull-request
+CI. The reusable workflow must run on integrated `main`, nightly, manually,
+and from release preparation; release publication must fail closed when it
+fails and preserve actionable runtime logs.
 
 The signed JetBrains repository source lives at
 `packaging/jetbrains/plugin-repository.json`. Runtime pair and IDEA build-range

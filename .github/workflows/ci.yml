@@ -126,24 +126,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-cli-plugin-authority-cutover-contract.sh
 
-  local-development-semantic-e2e:
-    name: Local development installed semantic E2E
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Exercise refreshed installed semantics
-        shell: bash
-        run: ./.github/scripts/test-local-development-semantic-e2e.sh
-
   runtime-contracts:
     name: Runtime command and bundle contracts
     runs-on: ubuntu-latest
