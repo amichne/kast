@@ -7,7 +7,7 @@ class HeadlessGradleProjectBootstrap(
     private val configureGradleImport: (Project) -> Unit = { project ->
         HeadlessGradleProjectImportBridge.configureHeadlessImport(project)
     },
-    private val waitForProjectModel: (Project) -> Unit = { project ->
+    private val waitForProjectModel: (Project) -> HeadlessGradleModelSettlementEvidence = { project ->
         HeadlessGradleProjectImportBridge.awaitGradleModelSettlement(project)
     },
     private val inspectProjectModel: (Project) -> HeadlessGradleModelReadiness = { project ->

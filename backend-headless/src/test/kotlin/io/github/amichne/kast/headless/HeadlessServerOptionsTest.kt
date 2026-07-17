@@ -13,6 +13,7 @@ import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.util.function.Consumer
 import kotlin.io.path.writeText
 
@@ -170,7 +171,7 @@ class HeadlessServerOptionsTest {
         val phases = mutableListOf<String>()
         val bootstrap = HeadlessGradleProjectBootstrap(
             configureGradleImport = { phases += "configure" },
-            waitForProjectModel = {},
+            waitForProjectModel = { settlementEvidence() },
             inspectProjectModel = {
                 phases += "inspect"
                 modelReadiness(moduleNames = listOf(":app"))
@@ -212,6 +213,7 @@ class HeadlessServerOptionsTest {
             configureGradleImport = {},
             waitForProjectModel = {
                 waitCount += 1
+                settlementEvidence()
             },
             inspectProjectModel = {
                 modelSnapshots.removeFirst()
@@ -245,7 +247,10 @@ class HeadlessServerOptionsTest {
         )
         val bootstrap = HeadlessGradleProjectBootstrap(
             configureGradleImport = {},
-            waitForProjectModel = { waitCount += 1 },
+            waitForProjectModel = {
+                waitCount += 1
+                settlementEvidence()
+            },
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, _ -> explicitImportCount += 1 },
@@ -283,6 +288,7 @@ class HeadlessServerOptionsTest {
             configureGradleImport = {},
             waitForProjectModel = {
                 waitCount += 1
+                settlementEvidence()
             },
             inspectProjectModel = {
                 modelSnapshots.removeFirst()
@@ -370,7 +376,10 @@ class HeadlessServerOptionsTest {
         )
         val bootstrap = HeadlessGradleProjectBootstrap(
             configureGradleImport = {},
-            waitForProjectModel = { waitCount += 1 },
+            waitForProjectModel = {
+                waitCount += 1
+                settlementEvidence()
+            },
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, _ -> },
@@ -393,7 +402,7 @@ class HeadlessServerOptionsTest {
         val workspace = tempDir.resolve("workspace")
         val bootstrap = HeadlessGradleProjectBootstrap(
             configureGradleImport = {},
-            waitForProjectModel = {},
+            waitForProjectModel = { settlementEvidence() },
             inspectProjectModel = { modelReadiness() },
             canLinkGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, _ -> },
@@ -415,6 +424,30 @@ class HeadlessServerOptionsTest {
         kotlinSourceModuleNames = kotlinSourceModuleNames.sorted(),
         compilerReadyKotlinModuleNames = compilerReadyKotlinModuleNames.sorted(),
     )
+
+    private fun settlementEvidence(): HeadlessGradleModelSettlementEvidence {
+        val observation = HeadlessGradleImportObservation(
+            reload = HeadlessGradleReloadState.COMPLETED,
+            resolve = HeadlessGradleResolveState.IDLE,
+            index = HeadlessIdeaIndexState.SMART,
+            lifecycle = HeadlessProjectLifecycleState.ACTIVE,
+        )
+        return HeadlessGradleModelSettlementEvidence(
+            lastObservation = observation,
+            recentTransitions = listOf(
+                HeadlessGradleImportTransition(
+                    observation = observation,
+                    firstObservedAt = Duration.ZERO,
+                    lastObservedAt = Duration.ZERO,
+                    occurrenceCount = 10,
+                ),
+            ),
+            elapsed = Duration.ofMillis(900),
+            totalObservations = 10,
+            totalTransitions = 0,
+            stableObservations = 10,
+        )
+    }
 
     private fun projectStub(): Project =
         Proxy.newProxyInstance(

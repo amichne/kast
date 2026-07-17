@@ -87,10 +87,15 @@ static workflow gate captures one source snapshot. The Rust and Linux jobs
 produce one source-bound CLI and backend from it, and one prepared-generation
 job attests and packages that generation. Ubuntu/Debian containers and the
 published action validate ledgered derivatives of those same bytes instead of
-rebuilding or repackaging them. The complete Kast-on-Kast installed semantic
-scenario runs on
-main, nightly, manual, and release paths so a cold import does not delay
-ordinary pull-request feedback. The same fail-closed canary definition
+rebuilding or repackaging them. One required pull-request job activates that
+prepared generation against a small two-module Gradle fixture. It proves real
+headless import, selector-handle reuse, main/test/test-fixture diagnostics, a
+deliberate unresolved reference, plan-only rename, shutdown, and removal in a
+single runtime cycle without installing Rust or refreshing the generation.
+
+The complete Kast-on-Kast installed semantic scenario runs on
+main, nightly, manual, and release paths so a cold full-repository import does
+not delay ordinary pull-request feedback. The same fail-closed canary definition
 exercises the receipt-owned CLI and headless backend in every path; release
 publication cannot proceed after a failed canary. A failure preserves the
 workflow log and uploads available runtime logs for diagnosis.

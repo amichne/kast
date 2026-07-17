@@ -75,6 +75,15 @@ CI. The reusable workflow must run on integrated `main`, nightly, manually,
 and from release preparation; release publication must fail closed when it
 fails and preserve actionable runtime logs.
 
+Ordinary pull requests own one narrower installed proof in
+`.github/scripts/test-local-development-semantic-fixture.sh`. Its job must
+depend only on `prepared-generation`, verify that artifact and ledger, activate
+without a refresh or producer toolchain, and exercise the authored two-module
+Gradle fixture with one runtime cycle. It must prove compiler-backed readiness,
+selector-handle reuse, clean and deliberately broken diagnostics, plan-only
+rename, unchanged source bytes, explicit stop, and receipt-owned removal. It
+must not invoke the full Kast-on-Kast canary or add a second build owner.
+
 The signed JetBrains repository source lives at
 `packaging/jetbrains/plugin-repository.json`. Runtime pair and IDEA build-range
 truth lives separately at `packaging/jetbrains/runtime-compatibility.json`.
@@ -145,6 +154,7 @@ For local-development authority changes, run:
 .github/scripts/test-local-development-refresh-contract.sh
 .github/scripts/test-development-cli-install-contract.sh
 .github/scripts/test-selector-handle-installed-workflow.sh
+.github/scripts/test-local-development-semantic-fixture.sh
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 

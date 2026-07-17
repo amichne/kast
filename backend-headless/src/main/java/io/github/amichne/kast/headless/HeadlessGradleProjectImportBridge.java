@@ -175,18 +175,15 @@ public final class HeadlessGradleProjectImportBridge {
         importFuture.get(5, TimeUnit.MINUTES);
     }
 
-    public static void awaitGradleModelSettlement(Project project) {
+    public static HeadlessGradleModelSettlementEvidence awaitGradleModelSettlement(Project project) {
         awaitStartupActivities(project, project.getBasePath() == null ? project.getName() : project.getBasePath());
-        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(5);
-        int stableObservations = 0;
-        while (stableObservations < 10) {
-            boolean gradleIdle = !isGradleReloadActive(project);
-            boolean smart = !DumbService.getInstance(project).isDumb();
-            stableObservations = gradleIdle && smart ? stableObservations + 1 : 0;
-            if (stableObservations < 10) {
-                pauseUntilNextObservation(deadlineNanos, "Gradle model settlement");
-            }
+        HeadlessGradleModelSettlementOutcome outcome = HeadlessGradleModelSettlementAwaiter
+            .standard()
+            .await(() -> inspectGradleImportObservation(project));
+        if (outcome instanceof HeadlessGradleModelSettlementOutcome.Settled settled) {
+            return settled.getEvidence();
         }
+        throw new HeadlessGradleModelSettlementException(outcome);
     }
 
     static boolean isConcurrentGradleSyncFailure(Throwable failure) {
@@ -196,12 +193,35 @@ public final class HeadlessGradleProjectImportBridge {
     }
 
     private static boolean isGradleReloadActive(Project project) {
+        HeadlessGradleImportObservation observation = inspectGradleImportObservation(project);
+        return observation.getReload() != HeadlessGradleReloadState.COMPLETED
+            || observation.getResolve() == HeadlessGradleResolveState.IN_PROGRESS;
+    }
+
+    private static HeadlessGradleImportObservation inspectGradleImportObservation(Project project) {
+        if (project.isDisposed()) {
+            return new HeadlessGradleImportObservation(
+                HeadlessGradleReloadState.COMPLETED,
+                HeadlessGradleResolveState.IDLE,
+                HeadlessIdeaIndexState.SMART,
+                HeadlessProjectLifecycleState.DISPOSED
+            );
+        }
         ObservableOperationTrace reload = GradleImportingUtil.getGradleProjectReloadOperation(project, project);
         ObservableOperationStatus status = reload.getStatus();
-        return status == ObservableOperationStatus.SCHEDULED
-            || status == ObservableOperationStatus.IN_PROGRESS
-            || ExternalSystemProcessingManager.getInstance()
-                .hasTaskOfTypeInProgress(ExternalSystemTaskType.RESOLVE_PROJECT, project);
+        HeadlessGradleReloadState reloadState = switch (status) {
+            case SCHEDULED -> HeadlessGradleReloadState.SCHEDULED;
+            case IN_PROGRESS -> HeadlessGradleReloadState.IN_PROGRESS;
+            case COMPLETED -> HeadlessGradleReloadState.COMPLETED;
+        };
+        boolean resolveActive = ExternalSystemProcessingManager.getInstance()
+            .hasTaskOfTypeInProgress(ExternalSystemTaskType.RESOLVE_PROJECT, project);
+        return new HeadlessGradleImportObservation(
+            reloadState,
+            resolveActive ? HeadlessGradleResolveState.IN_PROGRESS : HeadlessGradleResolveState.IDLE,
+            DumbService.getInstance(project).isDumb() ? HeadlessIdeaIndexState.DUMB : HeadlessIdeaIndexState.SMART,
+            HeadlessProjectLifecycleState.ACTIVE
+        );
     }
 
     private static void awaitStartupActivities(Project project, String externalProjectPath) {

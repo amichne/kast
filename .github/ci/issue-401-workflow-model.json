@@ -2,9 +2,9 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 2,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate pull-request timing is the first comparable run after relocating the full Kast-on-Kast E2E to an explicit canary. The new prepared-generation node uses a conservative 300-second pre-CI estimate until an exact final-shape run replaces it; proof outputs remain exactly equivalent because the node assumes ownership of the existing agent headless build proof. Timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate timing includes the first successful immutable prepared-generation topology run. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Its conservative 300-second estimate remains provisional until exact final-shape runs replace it. Proof outputs remain exactly equivalent and timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
-    "source": "https://github.com/amichne/kast/pull/409",
+    "source": "https://github.com/amichne/kast/pull/410",
     "baselineRunIds": [
       29511350239,
       29519251086,
@@ -13,7 +13,7 @@
       29540820473
     ],
     "candidateRunIds": [
-      29565328465
+      29573334046
     ]
   },
   "baseline": {
@@ -182,6 +182,20 @@
           933,
           803,
           452
+        ],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "installed-semantic-fixture",
+        "needs": [
+          "build-and-test-linux",
+          "rust-cli"
+        ],
+        "outputs": [
+          "representative-installed-semantic-fixture"
+        ],
+        "durationSamplesSeconds": [
+          300
         ],
         "executionClass": "gradle-cache"
       },
@@ -446,6 +460,19 @@
         ],
         "outputs": [
           "agent-headless-portable-build-linux"
+        ],
+        "durationSamplesSeconds": [
+          300
+        ],
+        "executionClass": "artifact-consumer"
+      },
+      {
+        "id": "installed-semantic-fixture",
+        "needs": [
+          "prepared-generation"
+        ],
+        "outputs": [
+          "representative-installed-semantic-fixture"
         ],
         "durationSamplesSeconds": [
           300

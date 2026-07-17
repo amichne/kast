@@ -740,6 +740,72 @@ jobs:
             --module-name kast-action-smoke \
             --gradle-root "$GITHUB_WORKSPACE"
 
+  installed-semantic-fixture:
+    name: Representative installed semantic fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    needs:
+      - prepared-generation
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
+      - name: Ensure zstd is available for prepared generation extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Download prepared local generation
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-prepared-local-generation
+          path: dist
+
+      - name: Download prepared generation ledgers
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-prepared-generation
+          path: ci-ledgers
+
+      - name: Verify prepared local generation artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger ci-ledgers/ci-prepared-local-generation.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-prepared-local-generation \
+            --artifact ci-prepared-local-generation=dist/kast-local-prepared-generation.tar.zst
+          (cd dist && sha256sum -c kast-local-prepared-generation.sha256)
+
+      - name: Exercise representative installed semantics
+        env:
+          KAST_PREPARED_GENERATION_ARCHIVE: ${{ github.workspace }}/dist/kast-local-prepared-generation.tar.zst
+          KAST_SEMANTIC_FIXTURE_EVIDENCE_DIR: ${{ github.workspace }}/build/installed-semantic-fixture-evidence
+        shell: bash
+        run: ./.github/scripts/test-local-development-semantic-fixture.sh
+
+      - name: Upload representative semantic diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: representative-installed-semantic-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/installed-semantic-fixture-evidence
+          if-no-files-found: warn
+          retention-days: 5
+
   analysis-server-transport:
     name: Analysis server transport
     runs-on: ubuntu-latest
