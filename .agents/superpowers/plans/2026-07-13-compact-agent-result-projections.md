@@ -83,7 +83,7 @@ Cargo integration tests, Markdown docs contracts.
 
 - Modify: `docs/reference/agent-commands.md`
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
-- Modify: `cli-rs/resources/kast-skill/references/quickstart.md`
+- Modify: `cli-rs/protocol/source/quickstart.md`
 - Modify: relevant packaged-content tests
 
 - [x] Document compact default, fields/count, and verbose/explain without

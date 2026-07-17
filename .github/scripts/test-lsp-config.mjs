@@ -8,7 +8,7 @@ const configPath = process.env.KAST_LSP_CONFIG_PATH
   ?? resolve(repoRoot, "cli-rs", "resources", "plugin", "lsp.json");
 const config = JSON.parse(await readFile(configPath, "utf8"));
 const server = config.lspServers?.["kotlin"];
-const rpcCatalogPath = resolve(repoRoot, "cli-rs", "resources", "kast-skill", "references", "commands.json");
+const rpcCatalogPath = resolve(repoRoot, "cli-rs", "protocol", "source", "commands.json");
 const rpcCatalog = JSON.parse(await readFile(rpcCatalogPath, "utf8"));
 
 assert(server, "lspServers.kotlin is required");
@@ -79,6 +79,7 @@ if (initialize.error) {
       "DAEMON_START_ERROR",
       "HEADLESS_BACKEND_NOT_INSTALLED",
       "IDEA_NOT_RUNNING",
+      "MACOS_HOMEBREW_RECEIPT_INVALID",
       "MACOS_PLUGIN_WORKSPACE_REQUIRED",
       "NO_BACKEND_AVAILABLE",
       "RUNTIME_TIMEOUT",

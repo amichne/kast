@@ -1,9 +1,9 @@
 # Kast routing improvement
 
 The installed skill entrypoint, source catalog, and
-`fixtures/maintenance/evals/routing.json` are the canonical routing surface for
+`evals/routing.json` are the canonical routing surface for
 the Kast skill. Validate routing cases against
-`fixtures/maintenance/evals/routing.schema.json`. Keep positive cases centered
+`evals/routing.schema.json`. Keep positive cases centered
 on the public agent surface: `expectedPrimitive.name` should be `kast`,
 `allowedActions` should name typed `kast ...` commands, and
 `forbiddenActions` should cover generic Kotlin tools such as `grep`, `rg`, and

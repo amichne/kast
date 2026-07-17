@@ -32,6 +32,7 @@ write_zip_asset() {
 import stat
 import sys
 import zipfile
+import json
 from pathlib import Path
 
 asset_path = Path(sys.argv[1])
@@ -46,6 +47,65 @@ asset_path.parent.mkdir(parents=True, exist_ok=True)
 if kind == "idea":
     with zipfile.ZipFile(asset_path, "w") as archive:
         write_entry(archive, "backend-idea/lib/backend-idea.jar", b"plugin")
+elif kind == "codex":
+    marketplace = {
+        "name": "kast",
+        "plugins": [{
+            "name": "kast",
+            "source": {"source": "local", "path": "./plugins/kast"},
+            "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+            "category": "Productivity",
+        }],
+    }
+    manifest = {
+        "name": "kast",
+        "version": "9.8.7",
+        "description": "Kast Codex plugin fixture",
+        "author": {"name": "Austin Michne"},
+        "homepage": "https://kast.michne.com/",
+        "repository": "https://github.com/amichne/kast",
+        "license": "MIT",
+        "skills": "./skills/",
+        "interface": {
+            "privacyPolicyURL": "https://kast.michne.com/privacy/",
+            "termsOfServiceURL": "https://kast.michne.com/terms/",
+        },
+    }
+    hook_events = {
+        "SessionStart": "session-start",
+        "SubagentStart": "subagent-start",
+        "PreToolUse": "pre-tool-use",
+        "PostToolUse": "post-tool-use",
+        "Stop": "stop",
+    }
+    hooks = {
+        "hooks": {
+            codex_event: [{
+                "hooks": [{
+                    "type": "command",
+                    "command": f'"$PLUGIN_ROOT/scripts/kast-codex-hook" {rust_event}',
+                }]
+            }]
+            for codex_event, rust_event in hook_events.items()
+        }
+    }
+    files = {
+        "marketplace.json": json.dumps(marketplace).encode(),
+        ".agents/plugins/marketplace.json": json.dumps(marketplace).encode(),
+        "plugins/kast/.codex-plugin/plugin.json": json.dumps(manifest).encode(),
+        "plugins/kast/hooks/hooks.json": json.dumps(hooks).encode(),
+        "plugins/kast/scripts/kast-codex-hook": b"#!/bin/sh\nexit 0\n",
+        "plugins/kast/skills/kast-codex/SKILL.md": b"---\nname: kast-codex\ndescription: \"Fixture skill.\"\n---\n\n# Kast Codex\n",
+        "plugins/kast/skills/kast-codex/agents/openai.yaml": b"interface:\n  display_name: \"Kast\"\n  short_description: \"Kast fixture\"\n  default_prompt: \"Use $kast-codex.\"\n\npolicy:\n  allow_implicit_invocation: true\n",
+        "plugins/kast/skills/kast-codex/references/commands.md": b"# Commands\n",
+        "plugins/kast/skills/kast-codex/references/examples.md": b"# Examples\n",
+        "plugins/kast/assets/codex-exposure.toon": b"version: 9.8.7\n",
+        "plugins/kast/assets/hook-recovery-messages.toon": b"messages[0]:\n",
+        "plugins/kast/assets/kast.svg": b"<svg/>\n",
+    }
+    with zipfile.ZipFile(asset_path, "w") as archive:
+        for name, contents in files.items():
+            write_entry(archive, name, contents, 0o755 if name.endswith("kast-codex-hook") else 0o644)
 else:
     raise SystemExit(f"unknown asset kind: {kind}")
 PY
@@ -61,6 +121,7 @@ write_expected_assets() {
   write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
   write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
   write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
+  write_zip_asset "${release_dir}/kast-codex-plugin-${tag}.zip" codex
   write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
   write_text_asset "${release_dir}/kast-headless-linux-x64.tar.zst"
   python3 - "${release_dir}/kast-runtime-manifest.json" "${release_dir}/kast-headless-linux-x64.tar.zst" <<'PY'
@@ -134,6 +195,7 @@ entries = [
     ("cli-linux-arm64", f"kast-{tag}-linux-arm64.zip"),
     ("cli-macos-x64", f"kast-{tag}-macos-x64.zip"),
     ("cli-macos-arm64", f"kast-{tag}-macos-arm64.zip"),
+    ("codex-plugin", f"kast-codex-plugin-{tag}.zip"),
     ("gradle-ro-cache", "gradle-ro-dep-cache.tar.zst"),
     ("headless-linux-x64", "kast-headless-linux-x64.tar.zst"),
     ("openapi", "openapi.yaml"),
@@ -166,6 +228,13 @@ for entry in builds:
                 ":backend-idea:verifyPluginSignature",
             ],
         })
+    if entry["platformId"] == "codex-plugin":
+        entry.update({
+            "sha": "0123456789abcdef0123456789abcdef01234567",
+            "ref": f"refs/tags/{tag}",
+            "pluginVersion": tag.removeprefix("v"),
+            "generatorCommand": "kast developer codex generate --release",
+        })
 payload = {"builds": builds}
 (release_dir / "build-provenance.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
@@ -190,6 +259,7 @@ assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
+  "kast-codex-plugin-${tag}.zip"
   "gradle-ro-dep-cache.tar.zst"
   "kast-headless-linux-x64.tar.zst"
   "openapi.yaml"
@@ -204,6 +274,26 @@ write_sha256sums "$release_dir" "${assets[@]}"
 write_provenance
 
 "$verifier" --release-dir "$release_dir" --tag "$tag"
+
+python3 - "${release_dir}/build-provenance.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+payload = json.loads(path.read_text(encoding="utf-8"))
+codex = next(entry for entry in payload["builds"] if entry.get("platformId") == "codex-plugin")
+codex["pluginVersion"] = "9.8.8"
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+if "$verifier" --release-dir "$release_dir" --tag "$tag" \
+  >"${scratch_dir}/codex-version.out" \
+  2>"${scratch_dir}/codex-version.err"; then
+  die "release with mismatched Codex plugin provenance unexpectedly verified"
+fi
+grep -Fq "Codex plugin provenance pluginVersion" "${scratch_dir}/codex-version.err" \
+  || die "Codex plugin version failure did not name the provenance contract"
+write_provenance
 
 python3 - "${release_dir}/kast-runtime-compatibility.json" <<'PY'
 import json
@@ -232,6 +322,7 @@ core_assets=(
   "kast-${tag}-linux-arm64.zip"
   "kast-${tag}-macos-x64.zip"
   "kast-${tag}-macos-arm64.zip"
+  "kast-codex-plugin-${tag}.zip"
   "gradle-ro-dep-cache.tar.zst"
   "kast-headless-linux-x64.tar.zst"
   "openapi.yaml"

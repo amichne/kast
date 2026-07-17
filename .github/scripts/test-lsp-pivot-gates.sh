@@ -116,7 +116,7 @@ if (lsp.includes('"kast/symbolResolve" =>') || lsp.includes('"kast/databaseMetri
 
 const buildRs = requireText("cli-rs/build.rs", {
   "LSP route generator": "lsp_custom_routes.rs",
-  "RPC catalog input": "resources/kast-skill/references/commands.json",
+  "RPC catalog input": "protocol/source/commands.json",
 });
 if (buildRs.includes("symbol/resolve") || buildRs.includes("database/metrics")) {
   fail("LSP route generation must read method names from the catalog instead of hard-coding routes");
@@ -158,6 +158,7 @@ const allowedFailClosed = new Set([
   "DAEMON_START_ERROR",
   "HEADLESS_BACKEND_NOT_INSTALLED",
   "IDEA_NOT_RUNNING",
+  "MACOS_HOMEBREW_RECEIPT_INVALID",
   "MACOS_PLUGIN_WORKSPACE_REQUIRED",
   "NO_BACKEND_AVAILABLE",
   "RUNTIME_TIMEOUT",

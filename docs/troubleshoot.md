@@ -16,6 +16,11 @@ sequence when needed.
 | --- | --- | --- |
 | Kast CLI does not appear after install | Homebrew formula or CLI receipt repair did not complete | Rerun the installer, then run `kast ready --for machine` |
 | Kast plugin does not appear | The signed ZIP was not installed or the custom repository is not enrolled | Use **Install Plugin from Disk** or update the repository settings in JetBrains |
+| `kast@kast` does not appear in Codex | The extracted Kast marketplace is not configured, or the plugin was not installed from it | Add the marketplace root, run `codex plugin add kast@kast`, and start a new Codex task |
+| Codex reports a Kast/plugin version mismatch | The marketplace archive and active Kast binary came from different releases | Install the matching CLI and Codex plugin release, reinstall `kast@kast`, and start a new task |
+| A generic Kotlin edit is denied | The typed Kast mutation route has not produced target-bound fallback evidence | Let Codex try the corresponding typed mutation first; fall back only after its typed failure is recorded |
+| Codex continues instead of stopping | Changed Kotlin lacks diagnostics for its current hash or an explicit typed blocker | Run diagnostics for every changed Kotlin file or report the typed blocker |
+| A delegated task reports the wrong workspace | The task and semantic evidence refer to different linked worktrees | Open and prepare the exact delegated worktree, then start verification there |
 | `~/.local/bin/kast` runs instead of Homebrew Kast | An older managed local shim precedes Homebrew on `PATH` | Run read-only machine readiness and use its cleanup command only when one is offered |
 | Repair asks for the IDE to close | A recognized legacy Homebrew plugin symlink is ready for bounded removal | Close the affected IDE window and rerun `kast repair --for machine --apply` |
 | The agent cannot use Kast in a macOS project | The project has not been opened with the Kast plugin active | Open the project in the IDE and let the plugin prepare it |
@@ -77,6 +82,46 @@ of the host fallback.
 Do not use the unprepared headless route for applied mutations on macOS; plugin
 preparation for the exact root remains mandatory and is checked before runtime
 descriptor discovery.
+
+## Recover The Codex Plugin
+
+Use this sequence when Codex does not load the Kast skill or hooks, or when it
+reports a release mismatch.
+
+1. Confirm that the active `kast` binary came from the intended release.
+2. Confirm that the configured marketplace root contains `marketplace.json`
+   and `plugins/kast/.codex-plugin/plugin.json` from that same release.
+3. Reinstall and inspect the plugin:
+
+    ```console
+    codex plugin add kast@kast
+    codex plugin list
+    ```
+
+4. Start a new Codex task. Do not use the task that observed the older plugin
+   generation.
+5. Open or prepare the exact linked worktree if session-start evidence reports
+   another root.
+
+The plugin does not bundle Kast and cannot repair a missing CLI. It also cannot
+apply a setup or repair plan from a hook.
+
+## Handle A Legacy Global Kast Skill
+
+The provider-neutral repository or workspace `.agents/skills/kast` remains
+supported and should not be removed. A separate global
+`~/.codex/skills/kast` may predate the plugin marketplace.
+
+Ask Kast for a plan before changing the global copy:
+
+```console
+kast repair --for agent --workspace-root "$PWD"
+```
+
+Apply only when the plan proves that a Kast receipt owns the legacy target and
+the user has authorized the cleanup. The repair backs up the recognized copy
+before removal. If ownership is unknown, leave the directory unchanged and
+report it; do not delete it manually to make plugin discovery pass.
 
 ## Keep Fixes Plan-First
 

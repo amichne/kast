@@ -18,6 +18,7 @@ nav = [
   { "Install" = [
     { "macOS developer machine" = "install/macos.md" },
     { "Headless Linux and hosted agents" = "install/headless-linux.md" },
+    { "Codex plugin" = "install/codex.md" },
   ]},
   { "Learn" = [
     { "First semantic workflow" = "learn/first-semantic-workflow.md" },
@@ -29,12 +30,16 @@ nav = [
     { "Inspect Kotlin" = "use/inspect-kotlin.md" },
     { "Plan safe edits" = "use/plan-safe-edits.md" },
     { "Automate with agents" = "use/automate-with-agents.md" },
+    { "Use Kast in Codex" = "use/codex.md" },
   ]},
   { "Reference" = [
     { "Command surface" = "reference/commands.md" },
     { "Agent commands" = "reference/agent-commands.md" },
     { "Mutation selectors" = "reference/mutation-selectors.md" },
     { "Runtime and output modes" = "reference/runtime-and-output.md" },
+    { "Codex plugin contract" = "reference/codex-plugin.md" },
+    { "Codex plugin privacy" = "privacy.md" },
+    { "Codex plugin terms" = "terms.md" },
   ]},
   { "Troubleshoot" = "troubleshoot.md" },
   { "Distribute" = [

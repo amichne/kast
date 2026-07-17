@@ -225,15 +225,13 @@ fn packaged_guidance_prefers_workspace_relative_kotlin_targets() {
 #[test]
 fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let routing_eval_path =
-        root.join("resources/kast-skill/fixtures/maintenance/evals/routing.json");
+    let routing_eval_path = root.join("protocol/maintenance/evals/routing.json");
     let routing_eval: Value = serde_json::from_str(
         &std::fs::read_to_string(&routing_eval_path)
             .unwrap_or_else(|error| panic!("read {}: {error}", routing_eval_path.display())),
     )
     .expect("routing eval json");
-    let routing_schema_path =
-        root.join("resources/kast-skill/fixtures/maintenance/evals/routing.schema.json");
+    let routing_schema_path = root.join("protocol/maintenance/evals/routing.schema.json");
     let routing_schema: Value = serde_json::from_str(
         &std::fs::read_to_string(&routing_schema_path)
             .unwrap_or_else(|error| panic!("read {}: {error}", routing_schema_path.display())),
@@ -448,14 +446,13 @@ fn packaged_skill_routing_eval_covers_kotlin_navigation_surface() {
 #[test]
 fn packaged_skill_format_impact_eval_covers_toon_accuracy_surface() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let eval_path = root.join("resources/kast-skill/fixtures/maintenance/evals/format-impact.json");
+    let eval_path = root.join("protocol/maintenance/evals/format-impact.json");
     let eval: Value = serde_json::from_str(
         &std::fs::read_to_string(&eval_path)
             .unwrap_or_else(|error| panic!("read {}: {error}", eval_path.display())),
     )
     .expect("format impact eval json");
-    let schema_path =
-        root.join("resources/kast-skill/fixtures/maintenance/evals/format-impact.schema.json");
+    let schema_path = root.join("protocol/maintenance/evals/format-impact.schema.json");
     let schema: Value = serde_json::from_str(
         &std::fs::read_to_string(&schema_path)
             .unwrap_or_else(|error| panic!("read {}: {error}", schema_path.display())),
@@ -633,7 +630,7 @@ fn format_impact_metric_pack_and_runner_capture_scoreable_answers() {
     );
 
     let target = repo_root.join("cli-rs/resources/kast-skill");
-    let eval_path = target.join("fixtures/maintenance/evals/format-impact.json");
+    let eval_path = repo_root.join("cli-rs/protocol/maintenance/evals/format-impact.json");
     let eval: Value = serde_json::from_str(
         &std::fs::read_to_string(&eval_path)
             .unwrap_or_else(|error| panic!("read {}: {error}", eval_path.display())),
@@ -766,7 +763,7 @@ fn routing_format_impact_metric_pack_and_runner_capture_scoreable_answers() {
     );
 
     let target = repo_root.join("cli-rs/resources/kast-skill");
-    let routing_path = target.join("fixtures/maintenance/evals/routing.json");
+    let routing_path = repo_root.join("cli-rs/protocol/maintenance/evals/routing.json");
     let routing: Value = serde_json::from_str(
         &std::fs::read_to_string(&routing_path)
             .unwrap_or_else(|error| panic!("read {}: {error}", routing_path.display())),

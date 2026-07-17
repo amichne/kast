@@ -52,21 +52,24 @@ compatibility_renderer="${repo_root}/.github/scripts/render-runtime-compatibilit
   --manifest "${release_dir}/kast-runtime-compatibility.json" \
   --release-tag "$tag"
 
-python3 - "$release_dir" "$tag" <<'PY'
+python3 - "$release_dir" "$tag" "$repo_root" <<'PY'
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 release_dir = Path(sys.argv[1])
 tag = sys.argv[2]
+repo_root = Path(sys.argv[3])
 
 required = {
     "cli-linux-arm64": f"kast-{tag}-linux-arm64.zip",
     "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
     "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
+    "codex-plugin": f"kast-codex-plugin-{tag}.zip",
     "gradle-ro-cache": "gradle-ro-dep-cache.tar.zst",
     "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
     "idea": f"kast-idea-{tag}.zip",
@@ -137,6 +140,16 @@ if idea_provenance.get("verificationTasks") != [
     ":backend-idea:verifyPluginSignature",
 ]:
     fail("IDEA plugin provenance must carry the complete signed compatibility gate")
+
+codex_provenance = by_platform["codex-plugin"]
+if codex_provenance.get("ref") != f"refs/tags/{tag}":
+    fail(f"Codex plugin provenance ref must be refs/tags/{tag}")
+if codex_provenance.get("sha") != release_sha:
+    fail("Codex plugin provenance sha must match signed IDEA provenance")
+if codex_provenance.get("pluginVersion") != tag.removeprefix("v"):
+    fail("Codex plugin provenance pluginVersion must match release tag")
+if codex_provenance.get("generatorCommand") != "kast developer codex generate --release":
+    fail("Codex plugin provenance must name the release-mode Rust generator")
 
 expected_assets = set()
 for platform_id, entry in by_platform.items():
@@ -266,6 +279,18 @@ compatibility = json.loads(
 )
 if compatibility["releaseSha"] != release_sha:
     fail("runtime compatibility manifest releaseSha must match signed IDEA provenance")
+
+codex_asset = release_dir / supported["codex-plugin"]
+subprocess.run(
+    [
+        str(repo_root / ".github" / "scripts" / "verify-codex-plugin-package.py"),
+        "--archive",
+        str(codex_asset),
+        "--version",
+        tag.removeprefix("v"),
+    ],
+    check=True,
+)
 
 print(f"Verified Kast release assets for {tag} in {release_dir}")
 PY

@@ -7,6 +7,7 @@ const [, , rawTargetPath] = process.argv;
 const manifestDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(manifestDir, "../../..");
 const targetPath = rawTargetPath ? resolve(rawTargetPath) : join(repoRoot, "cli-rs/resources/kast-skill");
+const maintenancePath = join(repoRoot, "cli-rs/protocol/maintenance/evals");
 const observedPath = process.env.KAST_ROUTING_FORMAT_IMPACT_OBSERVED_JSONL
   ? resolve(process.env.KAST_ROUTING_FORMAT_IMPACT_OBSERVED_JSONL)
   : null;
@@ -59,8 +60,8 @@ function collectStrings(value, strings = []) {
   return strings;
 }
 
-const corpus = readJson(join(targetPath, "fixtures/maintenance/evals/routing.json"));
-const schema = readJson(join(targetPath, "fixtures/maintenance/evals/routing.schema.json"));
+const corpus = readJson(join(maintenancePath, "routing.json"));
+const schema = readJson(join(maintenancePath, "routing.schema.json"));
 const cases = Array.isArray(corpus.cases) ? corpus.cases : [];
 const checks = [];
 
@@ -103,7 +104,7 @@ checks.push(
       ? "Routing JSON/TOON comparison suite covers every routing eval case."
       : "Routing JSON/TOON comparison suite is missing required cases.",
     missingCaseIds.length === 0 ? [...caseIds].sort() : missingCaseIds,
-    ["Keep the routing comparison suite derived from every case in fixtures/maintenance/evals/routing.json."],
+    ["Keep the routing comparison suite derived from every case in cli-rs/protocol/maintenance/evals/routing.json."],
   ),
 );
 

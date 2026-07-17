@@ -19,7 +19,7 @@
 - Retain typed terminal results for the backend daemon lifetime; daemon-restart durability remains unsupported and ambiguous.
 - Filesystem fallback is safe only when successfully retrieved terminal state proves edit application never began.
 - Keep one non-private top-level production Kotlin type per same-named file; direct sealed variants stay with their root.
-- Treat `cli-rs/resources/kast-skill/references/commands.json` as catalog source and regenerate YAML/request schemas/samples.
+- Treat `cli-rs/protocol/source/commands.json` as catalog source and regenerate YAML/request schemas/samples.
 - Do not push or open a pull request.
 
 ---
@@ -268,11 +268,11 @@ git commit -m "feat: retain observable mutation operations"
 - Modify: `cli-rs/src/agent/dispatch.rs`
 - Test: `cli-rs/tests/agent_command_surface_smoke.rs`
 - Create: `cli-rs/tests/agent_operation_surface_smoke.rs`
-- Modify: `cli-rs/resources/kast-skill/references/commands.json`
-- Generate: `cli-rs/resources/kast-skill/references/commands.yaml`
-- Generate: `cli-rs/resources/kast-skill/references/requests/mutation/submit/`
-- Generate: `cli-rs/resources/kast-skill/references/requests/mutation/status/`
-- Generate: `cli-rs/resources/kast-skill/references/requests/mutation/cancel/`
+- Modify: `cli-rs/protocol/source/commands.json`
+- Generate: `cli-rs/protocol/source/commands.yaml`
+- Generate: `cli-rs/protocol/source/requests/mutation/submit/`
+- Generate: `cli-rs/protocol/source/requests/mutation/status/`
+- Generate: `cli-rs/protocol/source/requests/mutation/cancel/`
 - Modify/Generate: `cli-rs/protocol/api-specification.md`
 
 **Interfaces:**
@@ -341,7 +341,7 @@ catalog.
 - [ ] **Step 6: Commit the CLI and generated contract slice**
 
 ```console
-git add cli-rs/src cli-rs/tests cli-rs/resources/kast-skill/references cli-rs/protocol/api-specification.md
+git add cli-rs/src cli-rs/tests cli-rs/protocol/source cli-rs/protocol/api-specification.md
 git diff --cached --check
 git commit -m "feat: expose mutation operation controls"
 ```
@@ -353,7 +353,7 @@ git commit -m "feat: expose mutation operation controls"
 - Modify: `docs/reference/mutation-selectors.md`
 - Modify: `docs/use/automate-with-agents.md`
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
-- Modify: `cli-rs/resources/kast-skill/references/quickstart.md`
+- Modify: `cli-rs/protocol/source/quickstart.md`
 - Test: `cli-rs/tests/packaged_content_smoke.rs`
 
 **Interfaces:**

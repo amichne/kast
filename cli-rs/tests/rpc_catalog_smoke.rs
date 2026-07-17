@@ -4,10 +4,8 @@ use std::path::Path;
 use std::process::Command;
 
 fn catalog() -> Value {
-    serde_json::from_str(include_str!(
-        "../resources/kast-skill/references/commands.json"
-    ))
-    .expect("commands catalog")
+    serde_json::from_str(include_str!("../protocol/source/commands.json"))
+        .expect("commands catalog")
 }
 
 #[test]
@@ -142,20 +140,17 @@ fn assert_valid(schema: &Value, instance: &Value) {
 #[test]
 fn command_contract_yaml_and_request_samples_are_current() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    assert!(root.join("protocol/source/commands.yaml").is_file());
     assert!(
-        root.join("resources/kast-skill/references/commands.yaml")
+        root.join("protocol/source/requests/raw/workspace-symbol/minimal.json")
             .is_file()
     );
     assert!(
-        root.join("resources/kast-skill/references/requests/raw/workspace-symbol/minimal.json")
+        root.join("protocol/source/requests/symbol/rename/RENAME_BY_OFFSET_REQUEST/maximal.json")
             .is_file()
     );
     assert!(
-        root.join("resources/kast-skill/references/requests/symbol/rename/RENAME_BY_OFFSET_REQUEST/maximal.json")
-            .is_file()
-    );
-    assert!(
-        root.join("resources/kast-skill/references/requests/symbol/query/request.schema.json")
+        root.join("protocol/source/requests/symbol/query/request.schema.json")
             .is_file()
     );
 
@@ -189,7 +184,7 @@ fn generated_request_schemas_validate_every_catalog_sample() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let catalog = catalog();
     let commands = catalog["commands"].as_object().expect("commands object");
-    let requests_root = root.join("resources/kast-skill/references/requests");
+    let requests_root = root.join("protocol/source/requests");
     let mut schema_paths = Vec::new();
     collect_named_files(&requests_root, "request.schema.json", &mut schema_paths);
     assert_eq!(
@@ -241,13 +236,10 @@ fn generated_request_schemas_validate_every_catalog_sample() {
 #[test]
 fn command_catalog_is_schema_backed_and_self_consistent() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    assert!(
-        root.join("resources/kast-skill/references/commands.schema.json")
-            .is_file()
-    );
+    assert!(root.join("protocol/source/commands.schema.json").is_file());
 
     let catalog = catalog();
-    let catalog_schema = schema_value("resources/kast-skill/references/commands.schema.json");
+    let catalog_schema = schema_value("protocol/source/commands.schema.json");
     assert_valid(&catalog_schema, &catalog);
     assert_eq!(catalog["$schema"], "./commands.schema.json");
 
@@ -301,7 +293,7 @@ fn command_catalog_is_schema_backed_and_self_consistent() {
 
 #[test]
 fn command_catalog_schema_rejects_unrecognized_command_properties() {
-    let catalog_schema = schema_value("resources/kast-skill/references/commands.schema.json");
+    let catalog_schema = schema_value("protocol/source/commands.schema.json");
     let validator = jsonschema::validator_for(&catalog_schema).expect("schema compiles");
     let mut invalid_catalog = catalog();
     invalid_catalog["commands"]["symbol/query"]["unrecognized"] = Value::Bool(true);
@@ -353,7 +345,7 @@ fn symbol_query_catalog_documents_relevance_filters() {
     }
 
     let maximal: Value = serde_json::from_str(include_str!(
-        "../resources/kast-skill/references/requests/symbol/query/maximal.json"
+        "../protocol/source/requests/symbol/query/maximal.json"
     ))
     .expect("symbol/query maximal request");
     let maximal_filters = &maximal["params"]["filters"];
@@ -377,7 +369,7 @@ fn symbol_query_catalog_samples_validate_against_shared_schema() {
         "../analysis-api/src/main/resources/contracts/symbol-query/symbol-query-request.schema.json",
     );
     let generated_request_schema =
-        schema_value("resources/kast-skill/references/requests/symbol/query/request.schema.json");
+        schema_value("protocol/source/requests/symbol/query/request.schema.json");
     let canonical_minimal: Value = serde_json::from_str(include_str!(
         "../../analysis-api/src/main/resources/contracts/symbol-query/examples/request-minimal.json"
     ))
@@ -387,11 +379,11 @@ fn symbol_query_catalog_samples_validate_against_shared_schema() {
     ))
     .expect("canonical maximal request");
     let catalog_minimal: Value = serde_json::from_str(include_str!(
-        "../resources/kast-skill/references/requests/symbol/query/minimal.json"
+        "../protocol/source/requests/symbol/query/minimal.json"
     ))
     .expect("catalog minimal request");
     let catalog_maximal: Value = serde_json::from_str(include_str!(
-        "../resources/kast-skill/references/requests/symbol/query/maximal.json"
+        "../protocol/source/requests/symbol/query/maximal.json"
     ))
     .expect("catalog maximal request");
 
@@ -430,7 +422,7 @@ fn workspace_files_catalog_declares_generation_bound_server_paging() {
     assert!(description.contains("generation-bound"), "{description}");
 
     let maximal: Value = serde_json::from_str(include_str!(
-        "../resources/kast-skill/references/requests/raw/workspace-files/maximal.json"
+        "../protocol/source/requests/raw/workspace-files/maximal.json"
     ))
     .expect("workspace-files maximal request");
     assert_eq!(maximal["params"]["includeFiles"], Value::Bool(true));
@@ -490,7 +482,7 @@ fn workspace_files_continuation_catalog_declares_issue_and_consume_variants() {
 
     for (variant, expected_action) in [("ISSUE", "ISSUE"), ("CONSUME", "CONSUME")] {
         let sample = schema_value(&format!(
-            "resources/kast-skill/references/requests/raw/workspace-files-continuation/{variant}/minimal.json"
+            "protocol/source/requests/raw/workspace-files-continuation/{variant}/minimal.json"
         ));
         assert_eq!(sample["params"]["action"], expected_action);
         assert!(sample["params"].get("type").is_none());
@@ -499,8 +491,7 @@ fn workspace_files_continuation_catalog_declares_issue_and_consume_variants() {
 
 #[test]
 fn workspace_file_catalog_samples_use_typed_token_and_digest_wire_values() {
-    let raw_maximal =
-        schema_value("resources/kast-skill/references/requests/raw/workspace-files/maximal.json");
+    let raw_maximal = schema_value("protocol/source/requests/raw/workspace-files/maximal.json");
     assert_canonical_uuid(
         &raw_maximal["params"]["snapshotToken"],
         "raw snapshot token",
@@ -509,7 +500,7 @@ fn workspace_file_catalog_samples_use_typed_token_and_digest_wire_values() {
 
     for variant in ["minimal", "maximal"] {
         let issue = schema_value(&format!(
-            "resources/kast-skill/references/requests/raw/workspace-files-continuation/ISSUE/{variant}.json"
+            "protocol/source/requests/raw/workspace-files-continuation/ISSUE/{variant}.json"
         ));
         assert_lowercase_sha256(
             &issue["params"]["state"]["compositionStampDigest"],
@@ -517,7 +508,7 @@ fn workspace_file_catalog_samples_use_typed_token_and_digest_wire_values() {
         );
 
         let consume = schema_value(&format!(
-            "resources/kast-skill/references/requests/raw/workspace-files-continuation/CONSUME/{variant}.json"
+            "protocol/source/requests/raw/workspace-files-continuation/CONSUME/{variant}.json"
         ));
         assert_canonical_uuid(&consume["params"]["pageToken"], "public continuation token");
     }

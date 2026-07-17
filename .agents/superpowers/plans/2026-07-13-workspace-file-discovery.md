@@ -1338,17 +1338,17 @@ git commit -m "feat: expose bounded workspace file discovery"
 **Files:**
 
 - Regenerate: `cli-rs/protocol/`
-- Modify: `cli-rs/resources/kast-skill/references/commands.json`
-- Regenerate: `cli-rs/resources/kast-skill/references/commands.yaml`
-- Regenerate: `cli-rs/resources/kast-skill/references/requests/raw/workspace-files/`
-- Regenerate: `cli-rs/resources/kast-skill/references/requests/raw/workspace-files-continuation/`
+- Modify: `cli-rs/protocol/source/commands.json`
+- Regenerate: `cli-rs/protocol/source/commands.yaml`
+- Regenerate: `cli-rs/protocol/source/requests/raw/workspace-files/`
+- Regenerate: `cli-rs/protocol/source/requests/raw/workspace-files-continuation/`
 - Modify: `cli-rs/tests/rpc_catalog_smoke.rs`
 - Modify: `cli-rs/tests/agent_workspace_files_smoke.rs`
 - Modify: `cli-rs/AGENTS.md`
 - Modify: `cli-rs/src/agent/AGENTS.md`
 - Modify: `cli-rs/resources/kast-skill/AGENTS.md`
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
-- Modify: `cli-rs/resources/kast-skill/references/quickstart.md`
+- Modify: `cli-rs/protocol/source/quickstart.md`
 - Modify: `docs/reference/agent-commands.md`
 - Modify: `docs/use/inspect-kotlin.md`
 

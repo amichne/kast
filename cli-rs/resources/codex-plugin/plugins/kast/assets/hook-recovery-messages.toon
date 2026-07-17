@@ -1,0 +1,7 @@
+version: "0.1.0"
+schema_version: 1
+messages[4]{code,message,nextStep}:
+  KAST_CODEX_BINARY_MISSING,The Kast binary is unavailable to the Codex plugin.,"Install Kast or put the active binary on PATH, then start a new task."
+  KAST_CODEX_VERSION_MISMATCH,The plugin and active Kast binary are from different releases.,Update Kast and reinstall kast@kast from the same release.
+  KAST_TYPED_ROUTE_REQUIRED,Try the corresponding typed Kast mutation before a generic Kotlin edit.,"Run the plan-first kast --output toon agent mutation and preserve its typed outcome."
+  KAST_DIAGNOSTICS_REQUIRED,New Kotlin changes do not have diagnostics for their current contents.,"Run kast --output toon agent diagnostics for each changed Kotlin file."

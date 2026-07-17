@@ -333,7 +333,7 @@ fn parse_args() -> Result<Args, Box<dyn Error>> {
 
     Ok(Args {
         kast_bin: kast_bin.ok_or("missing --kast-bin")?,
-        target: target.unwrap_or_else(|| PathBuf::from("cli-rs/resources/kast-skill")),
+        target: target.unwrap_or_else(|| PathBuf::from("cli-rs/protocol/maintenance")),
         output: output.ok_or("missing --output")?,
         answer_requests,
         answers,
@@ -350,15 +350,11 @@ fn read_corpus(target: &Path, suite: Suite) -> Result<Corpus, Box<dyn Error>> {
 }
 
 fn evals_dir(target: &Path) -> PathBuf {
-    target.join("fixtures").join("maintenance").join("evals")
+    target.join("evals")
 }
 
 fn read_format_impact_corpus(target: &Path) -> Result<Corpus, Box<dyn Error>> {
-    let path = target
-        .join("fixtures")
-        .join("maintenance")
-        .join("evals")
-        .join("format-impact.json");
+    let path = evals_dir(target).join("format-impact.json");
     let content = fs::read_to_string(&path)?;
     Ok(serde_json::from_str(&content)?)
 }

@@ -1,0 +1,22 @@
+version: "0.1.0"
+schema_version: 1
+semantic_commands[17]{command,path,mode,planApply,evidence,example}:
+  "workspace-files","agent workspace-files",read,false,typed workspace paths and coverage,"kast --output toon agent workspace-files --workspace-root <root>"
+  symbol,agent symbol,read,false,"compiler-resolved symbol identity","kast --output toon agent symbol --workspace-root <root> --query <name>"
+  references,agent references,read,false,bounded reference identities,"kast --output toon agent references --workspace-root <root> --symbol <fq-name>"
+  callers,agent callers,read,false,bounded incoming caller identities,"kast --output toon agent callers --workspace-root <root> --symbol <fq-name>"
+  callees,agent callees,read,false,bounded outgoing callee identities,"kast --output toon agent callees --workspace-root <root> --symbol <fq-name>"
+  implementations,agent implementations,read,false,bounded implementation identities,"kast --output toon agent implementations --workspace-root <root> --symbol <fq-name>"
+  hierarchy,agent hierarchy,read,false,bounded hierarchy identities,"kast --output toon agent hierarchy --workspace-root <root> --symbol <fq-name>"
+  impact,agent impact,read,false,"source-index impact evidence","kast --output toon agent impact --workspace-root <root> --symbol <fq-name>"
+  diagnostics,agent diagnostics,read,false,diagnostics bound to current file contents,"kast --output toon agent diagnostics --workspace-root <root> --file-path <path>"
+  rename,agent rename,"plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent rename --workspace-root <root> --symbol <fq-name> --new-name <name>"
+  "add-file","agent add-file","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-file --workspace-root <root> --file-path <path> --content-file <file>"
+  "add-declaration","agent add-declaration","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-declaration --workspace-root <root> --inside-file <path> --at file-bottom --content-file <file>"
+  "add-implementation","agent add-implementation","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-implementation --workspace-root <root> --inside-file <path> --at file-bottom --content-file <file>"
+  "add-statement","agent add-statement","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-statement --workspace-root <root> --inside-scope <fq-name> --at body-end --content-file <file>"
+  "replace-declaration","agent replace-declaration","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent replace-declaration --workspace-root <root> --symbol <fq-name> --content-file <file>"
+  "operation-status",agent operation status,"operation-control",false,latest retained operation state,"kast --output toon agent operation status --workspace-root <root> --idempotency-key <key>"
+  "operation-cancel",agent operation cancel,"operation-control",false,cooperative cancellation outcome,"kast --output toon agent operation cancel --workspace-root <root> --operation-id <id>"
+hook_only[7]: version,context,ready,repair (plan only),status,agent verify,developer codex hook <event>
+not_exposed[10]: setup,"repair --apply",agent lsp,developer runtime,demo,doctor,developer codex generate,agent tools,agent call,agent workflow

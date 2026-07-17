@@ -7,6 +7,8 @@ const [, , rawTargetPath, targetKind = "directory"] = process.argv;
 const manifestDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(manifestDir, "../../..");
 const targetPath = rawTargetPath ? resolve(rawTargetPath) : join(repoRoot, "cli-rs/resources/kast-skill");
+const catalogPath = join(repoRoot, "cli-rs/protocol/source/commands.json");
+const maintenancePath = join(repoRoot, "cli-rs/protocol/maintenance/evals");
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -85,9 +87,9 @@ function isPublicCommand(name) {
   );
 }
 
-const catalog = readJson(join(targetPath, "references/commands.json"));
-const routing = readJson(join(targetPath, "fixtures/maintenance/evals/routing.json"));
-const routingSchema = readJson(join(targetPath, "fixtures/maintenance/evals/routing.schema.json"));
+const catalog = readJson(catalogPath);
+const routing = readJson(join(maintenancePath, "routing.json"));
+const routingSchema = readJson(join(maintenancePath, "routing.schema.json"));
 const commands = catalog.commands ?? {};
 const toolNames = new Set(
   Object.values(commands)
@@ -136,7 +138,7 @@ checks.push(
       ? "Routing corpus covers initial pickup, continuous use, recovery, efficiency, negative routing, and public API boundary."
       : "Routing corpus is missing required coverage cases.",
     missingCaseIds.length === 0 ? [...caseIds].sort() : missingCaseIds,
-    ["Add missing cases to fixtures/maintenance/evals/routing.json."],
+    ["Add missing cases to cli-rs/protocol/maintenance/evals/routing.json."],
   ),
 );
 

@@ -497,7 +497,7 @@ agent workflow.
   typed public command.
 - `cli-rs/AGENTS.md` and `cli-rs/resources/kast-skill/AGENTS.md` own the nearest
   Rust/public-resource boundaries and mandatory package, LSP, and routing gates.
-- `cli-rs/resources/kast-skill/references/commands.json` is the hand-authored
+- `cli-rs/protocol/source/commands.json` is the hand-authored
   internal raw-command catalog. Generated YAML, request schemas, and request
   samples derive from it.
 

@@ -901,7 +901,7 @@ same proof that authorizes public capability projection. Issue #342 extends
 the registry; #338 does not create a parallel catalog.
 
 The internal raw catalog has a separate, explicit source boundary:
-`cli-rs/resources/kast-skill/references/commands.json` is hand-authored and is
+`cli-rs/protocol/source/commands.json` is hand-authored and is
 updated with snapshot/page fields and current internal guidance. The release
 contract generator also records the internal continuation issue/consume method.
 It consumes that JSON to produce `commands.yaml`, request schemas, and request

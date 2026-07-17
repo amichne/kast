@@ -145,7 +145,7 @@
     #[test]
     fn custom_lsp_routes_match_rpc_catalog() {
         let catalog: Value = serde_json::from_str(include_str!(
-            "../../../resources/kast-skill/references/commands.json"
+            "../../../protocol/source/commands.json"
         ))
         .expect("commands catalog");
         let expected = expected_custom_routes_from_catalog(&catalog);

@@ -1,0 +1,42 @@
+{
+  "name": "kast",
+  "version": "0.1.0",
+  "description": "Compiler-backed Kotlin semantics for Codex through the typed Kast CLI.",
+  "author": {
+    "name": "Austin Michne",
+    "email": "austin@michne.com",
+    "url": "https://github.com/amichne"
+  },
+  "homepage": "https://kast.michne.com/",
+  "repository": "https://github.com/amichne/kast",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "gradle",
+    "kotlin",
+    "semantic-analysis"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kast",
+    "shortDescription": "Compiler-backed Kotlin semantics for Codex.",
+    "longDescription": "Inspect and change Kotlin through Kast's fixed, typed, plan-first CLI surface.",
+    "developerName": "Austin Michne",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://kast.michne.com/",
+    "privacyPolicyURL": "https://kast.michne.com/privacy/",
+    "termsOfServiceURL": "https://kast.michne.com/terms/",
+    "defaultPrompt": [
+      "Find a Kotlin symbol and show its callers.",
+      "Plan a safe Kotlin rename and run diagnostics.",
+      "Add a Kotlin implementation through Kast."
+    ],
+    "composerIcon": "./assets/kast.svg",
+    "logo": "./assets/kast.svg",
+    "logoDark": "./assets/kast.svg"
+  }
+}

@@ -10,6 +10,49 @@ Use this guide when you are building, promoting, mirroring, or image-layering
 Kast artifacts. Most macOS developers should use the [macOS install
 guide](../install/macos.md) instead.
 
+## Package The Codex Plugin
+
+The Codex marketplace is generated from the release-built Rust command
+contract. Check committed generated assets before creating the release staging
+tree:
+
+```console title="Check Codex plugin generation"
+kast developer codex generate --check
+```
+
+Release generation uses the binary's `KAST_VERSION` and writes into an
+isolated staging directory. It does not accept a caller-provided version.
+
+```console title="Generate the release marketplace"
+kast developer codex generate \
+  --release \
+  --output-dir "$PWD/build/codex-plugin-release"
+```
+
+The `build-codex-plugin` producer packages
+`kast-codex-plugin-<tag>.zip`, where the tag includes its leading `v`. The
+archive root contains `marketplace.json` and `plugins/kast/`; it contains no
+Kast binary, MCP server, app connector, custom agent profile, raw RPC payload,
+or copied command catalog.
+
+Validate the archive before publication:
+
+```console title="Verify the Codex plugin archive"
+export KAST_RELEASE_TAG="v1.2.3"
+.github/scripts/verify-codex-plugin-package.py \
+  --archive "dist/kast-codex-plugin-${KAST_RELEASE_TAG}.zip" \
+  --version "${KAST_RELEASE_TAG#v}"
+```
+
+The producer records `build-ledger-codex-plugin.json` with artifact kind
+`release-codex-plugin` and provenance platform `codex-plugin`. The immutable
+uploader publishes the ZIP before aggregate checksums are generated. Release
+verification must prove one release version across the CLI, IDEA plugin,
+Codex manifest, generated exposure asset, build ledger, and provenance.
+`scripts/verify-release-assets.sh` reapplies the package validator to the
+downloaded archive and binds its digest, version, and generator identity to the
+Codex provenance record.
+
 ## Package A Linux Headless Bundle
 
 The Ubuntu/Debian bundle combines the Rust CLI and portable headless backend

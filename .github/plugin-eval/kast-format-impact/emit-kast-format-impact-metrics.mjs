@@ -7,6 +7,7 @@ const [, , rawTargetPath] = process.argv;
 const manifestDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(manifestDir, "../../..");
 const targetPath = rawTargetPath ? resolve(rawTargetPath) : join(repoRoot, "cli-rs/resources/kast-skill");
+const maintenancePath = join(repoRoot, "cli-rs/protocol/maintenance/evals");
 const observedPath = process.env.KAST_FORMAT_IMPACT_OBSERVED_JSONL
   ? resolve(process.env.KAST_FORMAT_IMPACT_OBSERVED_JSONL)
   : null;
@@ -56,8 +57,8 @@ function isNegativeCase(item) {
   return item.expectedPrimitive?.type === "none" && item.expectedPrimitive?.name === "none";
 }
 
-const corpus = readJson(join(targetPath, "fixtures/maintenance/evals/format-impact.json"));
-const schema = readJson(join(targetPath, "fixtures/maintenance/evals/format-impact.schema.json"));
+const corpus = readJson(join(maintenancePath, "format-impact.json"));
+const schema = readJson(join(maintenancePath, "format-impact.schema.json"));
 const cases = Array.isArray(corpus.cases) ? corpus.cases : [];
 const checks = [];
 
@@ -97,7 +98,7 @@ checks.push(
       ? "Format impact corpus covers typed command plans, extraction, relationship continuation, plan recovery, typed sequence evidence, negative routing, and large read-only output."
       : "Format impact corpus is missing required coverage cases.",
     missingCaseIds.length === 0 ? [...caseIds].sort() : missingCaseIds,
-    ["Add missing cases to fixtures/maintenance/evals/format-impact.json."],
+    ["Add missing cases to cli-rs/protocol/maintenance/evals/format-impact.json."],
   ),
 );
 
