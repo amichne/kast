@@ -120,6 +120,12 @@ shared contract moves. Rust smoke and integration tests live in `cli-rs/tests`.
 Generated docs, RPC catalogs, and package manifests require their contract
 scripts alongside unit tests.
 
+Headless Gradle import settlement keeps its timeout and stability policy in
+typed Kotlin with deterministic fake-time tests. Required pull-request
+semantics use the small authored multi-module fixture and an already-prepared
+generation; the full repository Kast-on-Kast workflow remains an integrated
+canary.
+
 ## Commit & Pull Request Guidelines
 
 History uses concise conventional commits such as `fix: ...`, `feat: ...`,

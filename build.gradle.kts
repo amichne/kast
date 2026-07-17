@@ -809,6 +809,7 @@ tasks.register<org.gradle.api.tasks.bundling.Zip>("packageSourceBoundDevelopment
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    entryCompression = org.gradle.api.tasks.bundling.ZipEntryCompression.STORED
     into("backend-headless") {
         from(layout.buildDirectory.dir("local-development/backend-headless"))
     }

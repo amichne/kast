@@ -101,15 +101,26 @@ by its producer.
 
 Pull-request automation applies the same separation across jobs. The static
 fanout gate captures the source snapshot without installing Java, Gradle, or
-Rust. The existing Rust job compiles that digest into its one release binary,
-and the existing Linux Gradle job embeds the same snapshot into its one
-source-bound headless backend. A single `prepared-generation` job verifies the
-outer CI ledgers, re-attests the extracted component bytes, prepares and
-verifies the immutable generation with its exact CLI, and derives the Linux
-bundle, headless runtime, runtime manifest, and Gradle read-only cache once.
-Each published file receives an outer CI artifact ledger. Container and action
-jobs consume those files and ledgers as validation-only jobs; they do not rerun
-Rust, Kotlin, Gradle, installation packaging, or release packaging.
+Rust. An independent `source-bound-cli` producer compiles that digest into its
+one release binary while the required Rust job owns formatting, Clippy, and
+tests in parallel. A dedicated `source-bound-headless-backend` producer embeds
+the same snapshot into the one backend artifact while the Linux Gradle job owns
+the full Kotlin test boundary independently. The source-bound Linux job is the
+sole pull-request portable-backend producer and owns the archive, its
+no-fat-jar layout assertion, and its artifact ledger. The prior macOS portable
+producer is retired because its archive was neither consumed nor shipped; each
+retired proof output maps explicitly to the corresponding source-bound Linux
+proof in the deterministic workflow model. Production macOS authority remains
+the signed IDEA plugin and its release verification. `prepared-generation`
+verifies the outer CI ledgers, re-attests the extracted component bytes, and
+publishes and verifies the immutable generation with its exact CLI. The
+representative semantic fixture can consume that artifact immediately. The
+Ubuntu/Debian producer derives its bundle while the `kast-action` contract independently
+derives and consumes its headless runtime, runtime manifest, and Gradle
+read-only cache in the same focused job. Cross-job files receive outer CI
+artifact ledgers; same-job action inputs receive ledgers that are verified
+before installation. Neither path reruns Rust, Kotlin, or Gradle component
+builds.
 
 ### Activation and effective paths
 
@@ -163,6 +174,18 @@ hook before application startup; local execution therefore cannot consult
 Homebrew authority or rewrite workspace metadata while a source snapshot is
 being exercised. The installed skill and guidance teach this explicit
 receipt-owned startup before the reuse-only `agent verify` command.
+
+Gradle model settlement is itself proof-carrying. The Java IDEA bridge maps
+the observable reload operation, external resolve task, indexing mode, and
+project lifecycle into a closed Kotlin observation. A deterministic awaiter
+owns the unchanged five-minute timeout, 100-millisecond sampling interval,
+ten-observation stability requirement, and bounded run-length transition
+trace. Success returns settlement evidence. Timeout, interruption, or project
+disposal carries the last observation, elapsed time, stable count, total
+observations, transition count, and recent states into the daemon failure.
+Continuing state progress is therefore distinguishable from a stalled import;
+the timeout is not lengthened and no retry is introduced without that
+boundary evidence.
 
 Runtime startup participates in the same canonical prefix authority lock as
 refresh, rollback, and removal. It revalidates the active receipt and all
@@ -238,8 +261,10 @@ into or inferred by the local prefix.
 | Generation staging, validation, activation, rollback, removal | `cli-rs/src/local_development/` | failure-injection and idempotence tests |
 | Checkout build orchestration | root `build.gradle.kts` and typed tasks under `build-logic/` | `.github/scripts/test-local-development-refresh-contract.sh` |
 | Immutable prepared generation and activation | `cli-rs/src/local_development/prepared_generation.rs`, root `build.gradle.kts`, and `scripts/package-prepared-local-generation.sh` | focused Rust tests, local-development source contract, and CI artifact ledgers |
-| Pull-request generation assembly and derived Linux packages | `.github/workflows/ci.yml` and `scripts/assemble-prepared-local-generation.sh` | release workflow contract plus exact proof-output graph model |
+| Pull-request source-bound CLI, generation assembly, and derived Linux packages | `.github/workflows/ci.yml`, `scripts/assemble-prepared-local-generation.sh`, and `scripts/package-prepared-local-generation-derivatives.sh` | release workflow contract plus exact proof-output graph model |
 | Headless development backend | `backend-headless/` portable distribution | layout verification plus semantic probes |
+| Gradle import settlement evidence | `backend-headless/` typed settlement observation, policy, evidence, outcome, and IDEA mapper | deterministic focused tests plus repeated transition sequences |
+| Representative installed semantics | `backend-headless/src/test/resources/fixtures/installed-semantic-gradle/` and `.github/scripts/test-local-development-semantic-fixture.sh` | required pull-request job consuming the prepared generation without rebuilding |
 | Installed semantic boundary | `.github/scripts/test-local-development-semantic-e2e.sh` | integrated main/nightly/manual/release canary for refresh/reuse, readiness, exact semantic reads, plan-only mutation, stop, and removal |
 | Skill source | `cli-rs/resources/kast-skill/SKILL.md` | command/help lockstep contract |
 | Managed local guidance renderer | `cli-rs/src/local_development/` | receipt, command-lockstep, and workspace-preservation tests |
@@ -265,12 +290,22 @@ The local authority is not complete until executable checks prove:
   cold-budget accounting;
 - generation-scoped runtime descriptors, source indexes, and caches;
 - cold Gradle import and shared compiler-admission completion before a ready
-  claim, with the extended timeout scoped to local headless startup;
+  claim, with the extended timeout scoped to local headless startup and typed
+  last-state transition evidence on every failed settlement;
 - installed skill and guidance bare paths exist and every taught runnable
   invocation parses completely against the effective CLI; and
 - exact symbol resolution, a known nonzero reference query, clean-file
   diagnostics, and a backend-produced nonzero plan-only mutation preview
   through the refreshed headless generation.
+
+Ordinary pull requests also consume the already-prepared generation in one
+small two-module Gradle fixture. That required proof covers production, test,
+and `java-test-fixtures` source sets, compiler-issued selector-handle reuse for
+references and rename planning, exact zero diagnostics for clean files, an
+exact nonzero `UNRESOLVED_REFERENCE` diagnostic for a broken file, explicit
+single-runtime shutdown, unchanged fixture bytes, and receipt-owned removal.
+It installs no Rust toolchain, invokes no refresh, and does not replace the
+full repository canary.
 
 Validation is layered by authored owner. Source and ownership contracts may
 assert that a focused owner exists and is wired, but they do not invoke that
@@ -301,6 +336,12 @@ The focused pull-request source gate is:
 
 ```console
 .github/scripts/test-local-development-refresh-contract.sh
+```
+
+The focused installed pull-request proof is:
+
+```console
+.github/scripts/test-local-development-semantic-fixture.sh
 ```
 
 The integrated installed canary is:

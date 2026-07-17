@@ -266,6 +266,7 @@ require_contains "$artifact_doc" "one producer" "Artifact contract must state si
 require_contains "$local_development_doc" "prepareDevelopmentLocalGeneration" "Local development docs must expose build-once generation preparation"
 require_contains "$local_development_doc" "activateDevelopmentLocal" "Local development docs must expose rebuild-free generation activation"
 require_contains "$local_development_doc" "generation.json" "Local development docs must identify the strict prepared-generation ledger"
+require_contains "$local_development_doc" "two-module Gradle fixture" "Local development docs must distinguish the required representative semantic proof from the full canary"
 require_contains "$runtime_schema" '"$id": "https://kast.michne.com/distribute/kast-runtime-manifest.schema.json"' "Runtime schema id must match new public path"
 
 require_contains "$operating_model_doc" "The Layer Boundary" "Operating model must explain layers"

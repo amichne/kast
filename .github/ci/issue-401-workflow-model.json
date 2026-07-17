@@ -1,10 +1,10 @@
 {
   "$schema": "./workflow-graph-model.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate pull-request timing is the first comparable run after relocating the full Kast-on-Kast E2E to an explicit canary. The new prepared-generation node uses a conservative 300-second pre-CI estimate until an exact final-shape run replaces it; proof outputs remain exactly equivalent because the node assumes ownership of the existing agent headless build proof. Timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, source-bound backend production, full Kotlin validation, and prepared-generation publication are independent nodes. The Ubuntu bundle producer and kast-action validation each derive only their owned package family directly from that generation. The unshipped macOS portable producer is retired: the source-bound Linux producer owns its archive, no-fat-jar layout proof, and ledger replacements. Conservative estimates remain provisional until five comparable final-shape runs replace them.",
     "observedAt": "2026-07-17",
-    "source": "https://github.com/amichne/kast/pull/409",
+    "source": "https://github.com/amichne/kast/pull/413",
     "baselineRunIds": [
       29511350239,
       29519251086,
@@ -12,9 +12,7 @@
       29530440846,
       29540820473
     ],
-    "candidateRunIds": [
-      29565328465
-    ]
+    "candidateRunIds": []
   },
   "baseline": {
     "tasks": [
@@ -148,9 +146,9 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-linux",
+          "jvm-backend-tests",
           "headless-portable-no-fat-jar-linux",
-          "build-test-reports-linux",
+          "build-test-reports",
           "headless-portable-artifact-linux",
           "ci-artifact-ledger-headless-linux",
           "agent-headless-portable-build-linux"
@@ -170,9 +168,7 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-macos",
           "headless-portable-no-fat-jar-macos",
-          "build-test-reports-macos",
           "headless-portable-artifact-macos",
           "ci-artifact-ledger-headless-macos"
         ],
@@ -182,6 +178,20 @@
           933,
           803,
           452
+        ],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "installed-semantic-fixture",
+        "needs": [
+          "build-and-test-linux",
+          "rust-cli"
+        ],
+        "outputs": [
+          "representative-installed-semantic-fixture"
+        ],
+        "durationSamplesSeconds": [
+          300
         ],
         "executionClass": "gradle-cache"
       },
@@ -391,7 +401,19 @@
           "rust-format",
           "rust-clippy",
           "rust-tests",
-          "installed-selector-handle-workflow",
+          "installed-selector-handle-workflow"
+        ],
+        "durationSamplesSeconds": [
+          300
+        ],
+        "executionClass": "toolchain"
+      },
+      {
+        "id": "source-bound-cli",
+        "needs": [
+          "workflow-contracts"
+        ],
+        "outputs": [
           "rust-release-build",
           "lsp-config-smoke",
           "lsp-pivot-gates",
@@ -399,7 +421,7 @@
           "ci-artifact-ledger-rust-cli-linux-x64"
         ],
         "durationSamplesSeconds": [
-          434
+          300
         ],
         "executionClass": "toolchain"
       },
@@ -409,31 +431,11 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-linux",
-          "headless-portable-no-fat-jar-linux",
-          "build-test-reports-linux",
-          "headless-portable-artifact-linux",
-          "ci-artifact-ledger-headless-linux"
+          "jvm-backend-tests",
+          "build-test-reports"
         ],
         "durationSamplesSeconds": [
-          520
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "build-and-test-macos",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "jvm-backend-tests-macos",
-          "headless-portable-no-fat-jar-macos",
-          "build-test-reports-macos",
-          "headless-portable-artifact-macos",
-          "ci-artifact-ledger-headless-macos"
-        ],
-        "durationSamplesSeconds": [
-          552
+          360
         ],
         "executionClass": "gradle-cache"
       },
@@ -441,11 +443,50 @@
         "id": "prepared-generation",
         "needs": [
           "workflow-contracts",
-          "rust-cli",
-          "build-and-test-linux"
+          "source-bound-cli",
+          "source-bound-headless-backend"
         ],
         "outputs": [
           "agent-headless-portable-build-linux"
+        ],
+        "durationSamplesSeconds": [
+          60
+        ],
+        "executionClass": "artifact-consumer"
+      },
+      {
+        "id": "prepared-ubuntu-debian-bundle",
+        "needs": [
+          "prepared-generation"
+        ],
+        "outputs": [],
+        "durationSamplesSeconds": [
+          240
+        ],
+        "executionClass": "artifact-consumer"
+      },
+      {
+        "id": "source-bound-headless-backend",
+        "needs": [
+          "workflow-contracts"
+        ],
+        "outputs": [
+          "headless-portable-no-fat-jar-linux",
+          "headless-portable-artifact-linux",
+          "ci-artifact-ledger-headless-linux"
+        ],
+        "durationSamplesSeconds": [
+          300
+        ],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "installed-semantic-fixture",
+        "needs": [
+          "prepared-generation"
+        ],
+        "outputs": [
+          "representative-installed-semantic-fixture"
         ],
         "durationSamplesSeconds": [
           300
@@ -486,7 +527,7 @@
       {
         "id": "install-container-ubuntu-22.04",
         "needs": [
-          "prepared-generation"
+          "prepared-ubuntu-debian-bundle"
         ],
         "outputs": [
           "ubuntu-22.04-java-21-install-contract"
@@ -499,7 +540,7 @@
       {
         "id": "install-container-ubuntu-24.04",
         "needs": [
-          "prepared-generation"
+          "prepared-ubuntu-debian-bundle"
         ],
         "outputs": [
           "ubuntu-24.04-java-21-install-contract"
@@ -518,7 +559,7 @@
           "kast-action-v2-installed-runtime-contract"
         ],
         "durationSamplesSeconds": [
-          267
+          400
         ],
         "executionClass": "artifact-consumer"
       }
@@ -533,6 +574,11 @@
       812
     ]
   },
+  "retiredProofOutputReplacements": {
+    "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
+    "headless-portable-artifact-macos": "headless-portable-artifact-linux",
+    "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux"
+  },
   "expectations": {
     "outputEquivalence": "exact",
     "timingEvidenceMode": "provisional",
@@ -540,7 +586,7 @@
     "maximumCandidateCriticalPathSeconds": 1800,
     "minimumFanoutGateReductionSeconds": 800,
     "maximumCandidateFanoutGateSeconds": 90,
-    "maximumCandidateTaskCountIncrease": 2,
+    "maximumCandidateTaskCountIncrease": 4,
     "maximumMedianModelDriftRatio": 0.25,
     "minimumTaskSamples": 5,
     "minimumWorkflowSamples": 5

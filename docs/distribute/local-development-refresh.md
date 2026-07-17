@@ -83,14 +83,28 @@ activation.
 ## Understand Repository Validation
 
 Pull requests run focused proof at the boundary that owns each change. The
-static workflow gate captures one source snapshot. The Rust and Linux jobs
-produce one source-bound CLI and backend from it, and one prepared-generation
-job attests and packages that generation. Ubuntu/Debian containers and the
-published action validate ledgered derivatives of those same bytes instead of
-rebuilding or repackaging them. The complete Kast-on-Kast installed semantic
-scenario runs on
-main, nightly, manual, and release paths so a cold import does not delay
-ordinary pull-request feedback. The same fail-closed canary definition
+static workflow gate captures one source snapshot. Independent source-bound
+CLI and backend jobs produce one CLI and backend from it while Rust and Kotlin
+validation run in parallel. Linux owns the JVM backend tests. The macOS product
+surface remains the signed IDEA plugin release boundary. The source-bound Linux
+producer owns the only pull-request portable headless distribution, its
+no-fat-jar layout assertion, and its artifact ledger; the former unconsumed
+macOS archive proofs are explicitly replaced by those production-input proofs
+in the workflow model. One prepared-generation job attests and packages that
+generation. The required semantic fixture can consume it immediately; a pair
+of parallel downstream owners derives the Ubuntu/Debian bundle and
+published-action runtime inputs from the verified prepared bytes. The action
+owner installs those inputs in the same focused job, avoiding another artifact
+hop without rebuilding either component. One required
+pull-request job activates the generation against a small
+two-module Gradle fixture. It proves real headless import, selector-handle
+reuse, main/test/test-fixture diagnostics, a
+deliberate unresolved reference, plan-only rename, shutdown, and removal in a
+single runtime cycle without installing Rust or refreshing the generation.
+
+The complete Kast-on-Kast installed semantic scenario runs on
+main, nightly, manual, and release paths so a cold full-repository import does
+not delay ordinary pull-request feedback. The same fail-closed canary definition
 exercises the receipt-owned CLI and headless backend in every path; release
 publication cannot proceed after a failed canary. A failure preserves the
 workflow log and uploads available runtime logs for diagnosis.

@@ -135,6 +135,9 @@ val backendIdeaPluginArtifacts: Configuration by configurations.creating {
     isTransitive = false
 }
 
+private val backendIdeaHeadlessRuntimeCapability =
+    "${project.group}:backend-idea-headless-runtime"
+
 application {
     mainClass = "io.github.amichne.kast.headless.HeadlessMainKt"
 }
@@ -257,15 +260,27 @@ dependencies {
 
     headlessPluginRuntime(project(":analysis-api"))
     headlessPluginRuntime(project(":analysis-server"))
-    headlessPluginRuntime(project(":backend-idea"))
+    headlessPluginRuntime(project(":backend-idea")) {
+        capabilities {
+            requireCapability(backendIdeaHeadlessRuntimeCapability)
+        }
+    }
     headlessPluginRuntime(project(":backend-shared"))
     headlessPluginRuntime(project(":index-store"))
     headlessPluginRuntime(libs.coroutines.core)
 
-    backendIdeaPluginArtifacts(project(":backend-idea"))
+    backendIdeaPluginArtifacts(project(":backend-idea")) {
+        capabilities {
+            requireCapability(backendIdeaHeadlessRuntimeCapability)
+        }
+    }
 
     testImplementation(project(":analysis-api"))
-    testImplementation(project(":backend-idea"))
+    testImplementation(project(":backend-idea")) {
+        capabilities {
+            requireCapability(backendIdeaHeadlessRuntimeCapability)
+        }
+    }
     testImplementation(gradlePluginLibs)
 }
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 RECOMMENDED_SAMPLE_FLOOR = 5
 IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9._:/-]*$")
 EXECUTION_CLASSES = {
@@ -78,6 +78,7 @@ class Expectations:
 class Model:
     baseline: Plan
     candidate: Plan
+    retired_proof_output_replacements: Mapping[str, str]
     expectations: Expectations
 
 
@@ -218,7 +219,7 @@ def parse_task(value: Any, path: str) -> Task:
     return Task(
         id=task_id,
         needs=needs,
-        outputs=parse_identifier_list(item["outputs"], f"{path}.outputs", minimum_items=1),
+        outputs=parse_identifier_list(item["outputs"], f"{path}.outputs"),
         duration_samples_seconds=parse_duration_samples(
             item["durationSamplesSeconds"], f"{path}.durationSamplesSeconds"
         ),
@@ -407,12 +408,59 @@ def validate_provenance(value: Any) -> None:
             raise ModelError(f"{path}.{key} must not contain duplicates")
 
 
+def parse_proof_output_replacements(
+    value: Any,
+    baseline: Plan,
+    candidate: Plan,
+) -> Mapping[str, str]:
+    path = "retiredProofOutputReplacements"
+    items = require_mapping(value, path)
+    baseline_output_ids = {
+        output for task in baseline.tasks.values() for output in task.outputs
+    }
+    candidate_output_ids = {
+        output for task in candidate.tasks.values() for output in task.outputs
+    }
+    replacements: dict[str, str] = {}
+    for baseline_value, replacement_value in items.items():
+        baseline_output_id = require_string(
+            baseline_value,
+            f"{path} key",
+            identifier=True,
+        )
+        replacement_output_id = require_string(
+            replacement_value,
+            f"{path}.{baseline_output_id}",
+            identifier=True,
+        )
+        if baseline_output_id not in baseline_output_ids:
+            raise ModelError(
+                f"{path} references unknown baseline proof {baseline_output_id}"
+            )
+        if baseline_output_id in candidate_output_ids:
+            raise ModelError(
+                f"{path} baseline proof is still present in the candidate: {baseline_output_id}"
+            )
+        if replacement_output_id not in candidate_output_ids:
+            raise ModelError(
+                f"{path}.{baseline_output_id} references unknown candidate proof {replacement_output_id}"
+            )
+        replacements[baseline_output_id] = replacement_output_id
+    return dict(sorted(replacements.items()))
+
+
 def parse_model(value: Any) -> Model:
     item = require_mapping(value, "model")
     validate_keys(
         item,
         path="model",
-        required={"schemaVersion", "baseline", "candidate", "expectations"},
+        required={
+            "schemaVersion",
+            "baseline",
+            "candidate",
+            "retiredProofOutputReplacements",
+            "expectations",
+        },
         optional={"$schema", "provenance"},
     )
     version = require_integer(item["schemaVersion"], "model.schemaVersion", minimum=1)
@@ -424,9 +472,14 @@ def parse_model(value: Any) -> Model:
         require_string(item["$schema"], "model.$schema")
     if "provenance" in item:
         validate_provenance(item["provenance"])
+    baseline = parse_plan(item["baseline"], "baseline")
+    candidate = parse_plan(item["candidate"], "candidate")
     return Model(
-        baseline=parse_plan(item["baseline"], "baseline"),
-        candidate=parse_plan(item["candidate"], "candidate"),
+        baseline=baseline,
+        candidate=candidate,
+        retired_proof_output_replacements=parse_proof_output_replacements(
+            item["retiredProofOutputReplacements"], baseline, candidate
+        ),
         expectations=parse_expectations(item["expectations"]),
     )
 
@@ -570,8 +623,14 @@ def compare(model: Model) -> dict[str, Any]:
     expectations = model.expectations
     baseline_outputs = set(baseline.output_ids)
     candidate_outputs = set(candidate.output_ids)
-    missing_outputs = sorted(baseline_outputs - candidate_outputs)
-    added_outputs = sorted(candidate_outputs - baseline_outputs)
+    replacement_by_baseline_output = model.retired_proof_output_replacements
+    replacement_candidate_outputs = set(replacement_by_baseline_output.values())
+    missing_outputs = sorted(
+        (baseline_outputs - candidate_outputs) - replacement_by_baseline_output.keys()
+    )
+    added_outputs = sorted(
+        (candidate_outputs - baseline_outputs) - replacement_candidate_outputs
+    )
     critical_reduction = baseline.critical_path_seconds - candidate.critical_path_seconds
     gate_reduction = baseline.fanout_gate_seconds - candidate.fanout_gate_seconds
     task_count_increase = candidate.task_count - baseline.task_count
@@ -621,12 +680,18 @@ def compare(model: Model) -> dict[str, Any]:
         undersampled = sorted(
             task_id
             for task_id, task in plan.tasks.items()
-            if len(task.duration_samples_seconds) < expectations.minimum_task_samples
+            if task_id not in plan.canary_task_ids
+            and len(task.duration_samples_seconds) < expectations.minimum_task_samples
         )
         if undersampled:
-            timing_findings.append(
-                f"{name} tasks below minimumTaskSamples: {', '.join(undersampled)}"
+            undersampled_finding = (
+                f"{name} required tasks below minimumTaskSamples: "
+                + ", ".join(undersampled)
             )
+            if name == "baseline":
+                warnings.append(undersampled_finding)
+            else:
+                timing_findings.append(undersampled_finding)
         if (
             len(plan.observed_workflow_duration_samples_seconds)
             < expectations.minimum_workflow_samples
@@ -670,6 +735,7 @@ def compare(model: Model) -> dict[str, Any]:
             "outputEquivalent": not missing_outputs and not added_outputs,
             "missingOutputIds": missing_outputs,
             "addedOutputIds": added_outputs,
+            "retiredProofOutputReplacements": replacement_by_baseline_output,
             "criticalPathReductionSeconds": rounded(critical_reduction),
             "criticalPathReductionRatio": rounded(
                 critical_reduction / baseline.critical_path_seconds

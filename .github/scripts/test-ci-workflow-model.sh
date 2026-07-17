@@ -25,11 +25,19 @@ report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 if report["status"] != "provisional":
     raise SystemExit(f"expected provisional timing evidence, received {report['status']}")
 if not report["comparison"]["outputEquivalent"]:
-    raise SystemExit("candidate proof outputs must exactly match the baseline")
-if report["comparison"]["taskCountIncrease"] != 2:
-    raise SystemExit("the fanout split and immutable generation producer must add exactly two execution nodes")
-if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 1:
-    raise SystemExit("the immutable generation producer must be the only added pull-request execution node")
+    raise SystemExit("candidate proof outputs must match or have an explicit replacement")
+expected_replacements = {
+    "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux",
+    "headless-portable-artifact-macos": "headless-portable-artifact-linux",
+    "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
+}
+actual_replacements = report["comparison"]["retiredProofOutputReplacements"]
+if actual_replacements != expected_replacements:
+    raise SystemExit(f"retired macOS proofs must name their Linux replacements: {actual_replacements}")
+if report["comparison"]["taskCountIncrease"] != 4:
+    raise SystemExit("the final graph must add exactly four execution nodes after removing the duplicate macOS producer")
+if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 3:
+    raise SystemExit("the final graph must add exactly three pull-request execution nodes after relocating the full canary and deleting the macOS duplicate")
 if report["candidate"]["fanoutGateSeconds"] > 90:
     raise SystemExit("the modeled static fanout gate must not exceed 90 seconds")
 if report["candidate"]["canaryTaskIds"] != ["local-development-semantic-e2e"]:
@@ -38,6 +46,55 @@ if "local-development-semantic-e2e" in report["candidate"]["criticalPathTaskIds"
     raise SystemExit("the full installed semantic E2E must not remain on the pull-request critical path")
 if not any("provisional" in warning for warning in report["warnings"]):
     raise SystemExit("timing evidence must remain explicitly provisional below five samples")
+PY
+
+blocking_required_task_model="${scratch_dir}/blocking-required-task-timing.json"
+python3 - "$model" "$blocking_required_task_model" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+document = json.loads(source.read_text(encoding="utf-8"))
+candidate = document["candidate"]
+canary_ids = set(candidate["canaryTaskIds"])
+for task in candidate["tasks"]:
+    if task["id"] not in canary_ids:
+        task["durationSamplesSeconds"] *= 5
+candidate["observedWorkflowDurationSamplesSeconds"] *= 5
+document["expectations"]["timingEvidenceMode"] = "blocking"
+document["expectations"]["maximumMedianModelDriftRatio"] = 1
+target.write_text(json.dumps(document), encoding="utf-8")
+PY
+
+blocking_required_task_report="${scratch_dir}/blocking-required-task-report.json"
+set +e
+python3 "$checker" "$blocking_required_task_model" >"$blocking_required_task_report"
+blocking_required_task_status=$?
+set -e
+if [[ "$blocking_required_task_status" -ne 0 ]]; then
+  cat "$blocking_required_task_report" >&2
+  die "blocking required-task timing model failed with exit ${blocking_required_task_status}"
+fi
+python3 - "$blocking_required_task_report" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if report["status"] != "pass":
+    raise SystemExit(
+        "blocking PR timing must not require five samples from an off-PR canary: "
+        + "; ".join(report["failures"])
+    )
+if not any(
+    warning.startswith(
+        "baseline required tasks below minimumTaskSamples: installed-semantic-fixture"
+    )
+    for warning in report["warnings"]
+):
+    raise SystemExit("undersampled historical baseline tasks must remain explicit warnings")
 PY
 
 required_canary_model="${scratch_dir}/required-canary.json"
@@ -98,6 +155,70 @@ if report["status"] != "fail":
     raise SystemExit("output loss must produce a failed comparison")
 if not report["comparison"]["missingOutputIds"]:
     raise SystemExit("output loss must name the missing proof identifier")
+PY
+
+unexplained_retirement_model="${scratch_dir}/unexplained-retirement.json"
+python3 - "$model" "$unexplained_retirement_model" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+document = json.loads(source.read_text(encoding="utf-8"))
+document["retiredProofOutputReplacements"].pop("headless-portable-no-fat-jar-macos")
+target.write_text(json.dumps(document), encoding="utf-8")
+PY
+
+unexplained_retirement_report="${scratch_dir}/unexplained-retirement-report.json"
+set +e
+python3 "$checker" "$unexplained_retirement_model" >"$unexplained_retirement_report"
+unexplained_retirement_status=$?
+set -e
+[[ "$unexplained_retirement_status" -eq 1 ]] \
+  || die "an unexplained retired proof must fail with exit 1, received ${unexplained_retirement_status}"
+python3 - "$unexplained_retirement_report" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if report["status"] != "fail":
+    raise SystemExit("an unexplained retired proof must fail comparison")
+if "headless-portable-no-fat-jar-macos" not in report["comparison"]["missingOutputIds"]:
+    raise SystemExit("the failed comparison must name the unexplained retired proof")
+PY
+
+invalid_replacement_model="${scratch_dir}/invalid-replacement.json"
+python3 - "$model" "$invalid_replacement_model" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+document = json.loads(source.read_text(encoding="utf-8"))
+document["retiredProofOutputReplacements"]["ci-artifact-ledger-headless-macos"] = "missing-proof"
+target.write_text(json.dumps(document), encoding="utf-8")
+PY
+
+invalid_replacement_report="${scratch_dir}/invalid-replacement-report.json"
+set +e
+python3 "$checker" "$invalid_replacement_model" >"$invalid_replacement_report"
+invalid_replacement_status=$?
+set -e
+[[ "$invalid_replacement_status" -eq 2 ]] \
+  || die "an invalid replacement target must fail validation with exit 2, received ${invalid_replacement_status}"
+python3 - "$invalid_replacement_report" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if report["status"] != "invalid":
+    raise SystemExit("an unknown replacement target must make the model invalid")
+if "missing-proof" not in report["errors"][0]:
+    raise SystemExit("model validation must name the unknown replacement target")
 PY
 
 printf '%s\n' 'CI workflow model contract passed'

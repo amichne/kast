@@ -26,19 +26,35 @@ require_not_contains() {
   ! grep -Fq -- "$forbidden" "$file_path" || die "${description}: found forbidden '${forbidden}' in ${file_path}"
 }
 
+require_count() {
+  local file_path="$1"
+  local expected="$2"
+  local required_count="$3"
+  local description="$4"
+  local actual_count
+  actual_count="$(grep -Fc -- "$expected" "$file_path")"
+  [[ "$actual_count" -eq "$required_count" ]] \
+    || die "${description}: expected ${required_count} occurrences of '${expected}' in ${file_path}, found ${actual_count}"
+}
+
 repo_root="$(resolve_repo_root)"
 kast_script="${repo_root}/kast.sh"
 headless_build="${repo_root}/backend-headless/build.gradle.kts"
+idea_build="${repo_root}/backend-idea/build.gradle.kts"
 headless_project_opener="${repo_root}/backend-headless/src/main/kotlin/io/github/amichne/kast/headless/HeadlessProjectOpener.kt"
 runtime_app_plugin="${repo_root}/build-logic/src/main/kotlin/kast.runtime-app.gradle.kts"
 verify_layout_task="${repo_root}/build-logic/src/main/kotlin/VerifyClasspathLayoutTask.kt"
 
-for path in "$kast_script" "$headless_build" "$headless_project_opener" "$runtime_app_plugin" "$verify_layout_task"; do
+for path in "$kast_script" "$headless_build" "$idea_build" "$headless_project_opener" "$runtime_app_plugin" "$verify_layout_task"; do
   [[ -f "$path" ]] || die "Required build contract file is missing: $path"
 done
 
 require_contains "$runtime_app_plugin" "kastIncludeShadowJar" "Shared app packaging must expose a shadow-jar inclusion property"
 require_contains "$headless_build" 'extra["kastIncludeShadowJar"] = "false"' "Headless backend must opt out of the shadow fat jar"
+require_contains "$idea_build" "val headlessRuntimeElements: Configuration" "IDEA must publish a typed headless-only runtime variant"
+require_contains "$idea_build" 'outgoing.artifact(tasks.named<Jar>("jar"))' "The headless-only IDEA variant must publish only the base jar"
+require_contains "$idea_build" 'outgoing.capability("${project.group}:backend-idea-headless-runtime:${project.version}")' "The headless-only IDEA variant must expose a distinct capability"
+require_count "$headless_build" "requireCapability(backendIdeaHeadlessRuntimeCapability)" 3 "Every headless runtime consumer must select the base-only IDEA capability"
 require_contains "$headless_build" "agentPackagedIdeaHomeEntries" "Headless backend must define the agent IDEA-home profile"
 require_contains "$headless_build" '"agent" -> agentPackagedIdeaHomeEntries' "Headless backend must select the agent IDEA-home profile"
 require_contains "$headless_build" '"plugins/java-ide-customization/**"' "Agent profile must include the Java IDE customization plugin required by IDEA startup"

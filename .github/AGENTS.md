@@ -52,14 +52,26 @@ contracts run once in their named jobs. A focused Rust integration test must
 not return success by skipping when an outer installer environment variable is
 absent.
 
+The Linux build-and-test job exclusively owns the JVM backend test suite and
+its reports. The source-bound Linux backend job is the sole pull-request
+portable-distribution producer and owns its no-fat-jar assertion, artifact,
+and ledger. Do not add a platform build for an archive that is neither shipped
+nor consumed. Production macOS authority remains the signed IDEA plugin and
+its release verification.
+
 The `workflow-contracts` job is the static CI fanout gate. It must not install
 Java, initialize Gradle, install Rust, or execute an installed-development
 workflow. It captures and ledgers the immutable source snapshot consumed by
 the existing Rust and Linux producers; this static identity step must not turn
-into a second build owner. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
-stable proof-output ownership, and timing samples. Keep output equivalence
-blocking, keep timing provisional until five comparable successful candidate
-runs exist, and list integrated non-PR proofs explicitly in `canaryTaskIds` so
+into a second build owner. `.github/ci/issue-401-workflow-model.json` records
+the expanded DAG, stable proof-output ownership, and timing samples. Keep
+output equivalence blocking. A retired proof needs an explicit typed
+`retiredProofOutputReplacements` entry naming its current owner, with the
+rationale documented in the owning ADR and published contract; unexplained
+loss remains a failure. Keep timing provisional until five comparable
+successful candidate runs exist; historical baseline-only sampling gaps remain
+explicit warnings rather than weakening the candidate gate. List integrated
+non-PR proofs explicitly in `canaryTaskIds` so
 they remain in the output inventory without inflating the required
 pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing
@@ -74,6 +86,15 @@ removal. Keep its authoritative job in
 CI. The reusable workflow must run on integrated `main`, nightly, manually,
 and from release preparation; release publication must fail closed when it
 fails and preserve actionable runtime logs.
+
+Ordinary pull requests own one narrower installed proof in
+`.github/scripts/test-local-development-semantic-fixture.sh`. Its job must
+depend only on `prepared-generation`, verify that artifact and ledger, activate
+without a refresh or producer toolchain, and exercise the authored two-module
+Gradle fixture with one runtime cycle. It must prove compiler-backed readiness,
+selector-handle reuse, clean and deliberately broken diagnostics, plan-only
+rename, unchanged source bytes, explicit stop, and receipt-owned removal. It
+must not invoke the full Kast-on-Kast canary or add a second build owner.
 
 The signed JetBrains repository source lives at
 `packaging/jetbrains/plugin-repository.json`. Runtime pair and IDEA build-range
@@ -102,11 +123,16 @@ built, and downstream packaging or publication jobs must verify that receipt
 against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
 the publisher consume an existing one. Pull-request Linux packaging is owned
-by `prepared-generation`: it verifies the static source snapshot plus the
-single Rust CLI and Linux backend outputs, publishes one immutable prepared
-generation, and derives the Ubuntu/Debian and `kast-action` inputs exactly
-once. Container and action jobs are validation-only consumers and must not
-rebuild or repackage those inputs.
+by three explicit layers. `source-bound-cli` and
+`source-bound-headless-backend` build the single release CLI and backend while
+their required Rust and Kotlin validation jobs run independently.
+`prepared-generation` verifies both components and publishes one immutable
+generation for the representative semantic fixture. The
+`prepared-ubuntu-debian-bundle` producer and `kast-action-runtime-contract`
+derive only their owned package family from those verified bytes; the action
+contract consumes its derived inputs without a second artifact hop. A
+derivative owner may verify the generation ledger and digest, but must not
+rerun the generation's internal semantic verification.
 
 ## Copilot Package Source
 
@@ -145,6 +171,7 @@ For local-development authority changes, run:
 .github/scripts/test-local-development-refresh-contract.sh
 .github/scripts/test-development-cli-install-contract.sh
 .github/scripts/test-selector-handle-installed-workflow.sh
+.github/scripts/test-local-development-semantic-fixture.sh
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 
