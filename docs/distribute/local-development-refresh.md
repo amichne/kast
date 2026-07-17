@@ -42,10 +42,53 @@ names and hashes every repo-built runtime JAR in the portable distribution.
 Refresh rejects an ordinary Cargo binary, a relabeled backend, a stale sibling
 JAR, an incomplete component set, or bytes changed after attestation.
 
+## Prepare Once, Activate Without Rebuilding
+
+Use the split tasks when the same source-attested generation must be reused or
+when activation timing must exclude compilation and packaging.
+
+```console title="Build and attest one immutable generation"
+./gradlew prepareDevelopmentLocalGeneration
+```
+
+The task writes a prepared directory under
+`build/local-development/prepared-generations/` and records its selected path
+in `build/local-development/prepared-generation-path.txt`. Its strict
+`generation.json` ledger binds the source snapshot, CLI, backend, producer
+provenance, backend component manifest, skill, guidance inputs, and runtime
+configuration to fixed relative paths and SHA-256 digests. The directory is
+portable as a unit: component provenance does not retain the producer's
+temporary absolute paths.
+
+Activate the selected directory without running Cargo, Kotlin compilation,
+Gradle packaging, or another attestation pass.
+
+```console title="Verify and activate the prepared generation"
+./gradlew activateDevelopmentLocal
+```
+
+To consume a relocated generation, select it explicitly.
+
+```console title="Activate a relocated prepared generation"
+./gradlew activateDevelopmentLocal \
+  -PkastLocalPreparedGeneration="/absolute/path/to/prepared-generation"
+```
+
+Activation runs the exact prepared `bin/kast`, recomputes every source and
+component digest, validates the embedded backend manifest, and rejects extra,
+missing, linked, special, or renamed entries before it changes authority.
+`refreshDevelopmentLocal` remains the one-command aggregate of preparation and
+activation.
+
 ## Understand Repository Validation
 
 Pull requests run focused proof at the boundary that owns each change. The
-complete Kast-on-Kast installed semantic scenario runs on
+static workflow gate captures one source snapshot. The Rust and Linux jobs
+produce one source-bound CLI and backend from it, and one prepared-generation
+job attests and packages that generation. Ubuntu/Debian containers and the
+published action validate ledgered derivatives of those same bytes instead of
+rebuilding or repackaging them. The complete Kast-on-Kast installed semantic
+scenario runs on
 main, nightly, manual, and release paths so a cold import does not delay
 ordinary pull-request feedback. The same fail-closed canary definition
 exercises the receipt-owned CLI and headless backend in every path; release

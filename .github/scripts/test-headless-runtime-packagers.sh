@@ -114,6 +114,14 @@ write_fixture_backend_zip "$backend_zip" "${scratch_dir}/backend"
 
 unsafe_path_zip="${scratch_dir}/unsafe-path.zip"
 write_unsafe_zip "$unsafe_path_zip" path
+if "${repo_root}/scripts/extract-safe-zip.py" \
+  "$unsafe_path_zip" \
+  "${scratch_dir}/unsafe-path-extract" \
+  >"${scratch_dir}/unsafe-extractor-path.out" 2>"${scratch_dir}/unsafe-extractor-path.err"; then
+  die "safe ZIP extractor accepted path traversal"
+fi
+grep -Fq "unsafe zip member" "${scratch_dir}/unsafe-extractor-path.err" \
+  || die "safe ZIP extractor path failure did not identify the unsafe member"
 if "${repo_root}/scripts/package-headless-runtime.sh" \
   --cli-archive "$unsafe_path_zip" \
   --backend-archive "$backend_zip" \
@@ -127,6 +135,14 @@ grep -Fq "unsafe zip member" "${scratch_dir}/unsafe-path.err" || die "unsafe pat
 
 unsafe_symlink_zip="${scratch_dir}/unsafe-symlink.zip"
 write_unsafe_zip "$unsafe_symlink_zip" symlink
+if "${repo_root}/scripts/extract-safe-zip.py" \
+  "$unsafe_symlink_zip" \
+  "${scratch_dir}/unsafe-symlink-extract" \
+  >"${scratch_dir}/unsafe-extractor-symlink.out" 2>"${scratch_dir}/unsafe-extractor-symlink.err"; then
+  die "safe ZIP extractor accepted a symlink"
+fi
+grep -Fq "unsafe zip member type" "${scratch_dir}/unsafe-extractor-symlink.err" \
+  || die "safe ZIP extractor symlink failure did not identify the unsafe type"
 if "${repo_root}/scripts/package-headless-runtime.sh" \
   --cli-archive "$unsafe_symlink_zip" \
   --backend-archive "$backend_zip" \
@@ -136,6 +152,12 @@ if "${repo_root}/scripts/package-headless-runtime.sh" \
   >"${scratch_dir}/unsafe-symlink.out" 2>"${scratch_dir}/unsafe-symlink.err"; then
   die "unsafe symlink zip unexpectedly packaged"
 fi
+
+"${repo_root}/scripts/extract-safe-zip.py" \
+  "$cli_zip" \
+  "${scratch_dir}/safe-cli-extract"
+[[ -x "${scratch_dir}/safe-cli-extract/kast" ]] \
+  || die "safe ZIP extractor must preserve the CLI executable bit"
 grep -Fq "unsafe zip member type" "${scratch_dir}/unsafe-symlink.err" || die "unsafe symlink zip failure did not mention unsafe type"
 
 runtime_artifact="${scratch_dir}/kast-headless-linux-x64.tar.zst"

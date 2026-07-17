@@ -1,5 +1,7 @@
 const LOCAL_DEVELOPMENT_RECEIPT_SCHEMA_VERSION: u32 = 2;
 const LOCAL_ARTIFACT_PROVENANCE_SCHEMA_VERSION: u32 = 1;
+const LOCAL_PREPARED_GENERATION_SCHEMA_VERSION: u32 = 1;
+const LOCAL_GUIDANCE_INPUTS_SCHEMA_VERSION: u32 = 1;
 const LOCAL_BACKEND_SOURCE_SNAPSHOT_ENTRY: &str = "META-INF/kast/local-source-snapshot.json";
 const LOCAL_BACKEND_COMPONENT_MANIFEST_ENTRY: &str = "META-INF/kast/local-backend-components.json";
 
@@ -13,6 +15,28 @@ pub struct LocalDevelopmentRefreshRequest {
     pub cli_provenance: PathBuf,
     pub backend_directory: PathBuf,
     pub backend_provenance: PathBuf,
+    pub skill_source: PathBuf,
+    pub config_source: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalDevelopmentPrepareRequest {
+    pub source_root: PathBuf,
+    pub expected_source_snapshot: PathBuf,
+    pub cli_binary: PathBuf,
+    pub cli_provenance: PathBuf,
+    pub backend_directory: PathBuf,
+    pub backend_provenance: PathBuf,
+    pub skill_source: PathBuf,
+    pub output_directory: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalDevelopmentActivateRequest {
+    pub source_root: PathBuf,
+    pub workspace_root: PathBuf,
+    pub prefix: PathBuf,
+    pub prepared_generation: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +65,23 @@ pub struct LocalDevelopmentRemoveRequest {
 pub struct LocalDevelopmentRefreshResult {
     pub receipt: LocalDevelopmentReceipt,
     pub skipped: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDevelopmentPrepareResult {
+    pub ledger: LocalPreparedGenerationLedger,
+    pub directory: PathBuf,
+    pub skipped: bool,
+    pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDevelopmentPreparedVerificationResult {
+    pub ledger: LocalPreparedGenerationLedger,
+    pub directory: PathBuf,
     pub schema_version: u32,
 }
 
@@ -91,6 +132,55 @@ pub struct LocalArtifactProvenance {
     pub artifact: PathBuf,
     pub sha256: Sha256Digest,
     pub implementation_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LocalPreparedArtifactProvenance {
+    schema_version: u32,
+    kind: LocalArtifactKind,
+    source: SourceSnapshot,
+    sha256: Sha256Digest,
+    implementation_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalPreparedGenerationLedger {
+    pub schema_version: u32,
+    pub generation_id: LocalGenerationId,
+    pub source: SourceSnapshot,
+    pub implementation_version: String,
+    pub components: LocalPreparedGenerationComponents,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalPreparedGenerationComponents {
+    pub source_snapshot: LocalPreparedGenerationComponent,
+    pub cli: LocalPreparedGenerationComponent,
+    pub cli_provenance: LocalPreparedGenerationComponent,
+    pub backend: LocalPreparedGenerationComponent,
+    pub backend_provenance: LocalPreparedGenerationComponent,
+    pub backend_component_manifest: LocalPreparedGenerationComponent,
+    pub skill: LocalPreparedGenerationComponent,
+    pub guidance_inputs: LocalPreparedGenerationComponent,
+    pub config: LocalPreparedGenerationComponent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LocalPreparedGenerationComponent {
+    pub relative_path: PathBuf,
+    pub sha256: Sha256Digest,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LocalGuidanceInputs {
+    schema_version: u32,
+    source: SourceSnapshot,
+    skill_relative_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -209,6 +209,22 @@ fn validate_backend_embedded_source_identity(
     Ok(())
 }
 
+fn backend_embedded_component_manifest_bytes(artifact: &Path) -> Result<Vec<u8>> {
+    let plugin_jar = backend_plugin_implementation_jar(artifact)?;
+    let file = fs::File::open(&plugin_jar)?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|error| {
+        CliError::new(
+            "LOCAL_BACKEND_SOURCE_ATTESTATION_INVALID",
+            format!("Invalid headless backend plugin jar {}: {error}", plugin_jar.display()),
+        )
+    })?;
+    read_backend_attestation_entry(
+        &mut archive,
+        &plugin_jar,
+        LOCAL_BACKEND_COMPONENT_MANIFEST_ENTRY,
+    )
+}
+
 fn read_backend_attestation_entry(
     archive: &mut zip::ZipArchive<fs::File>,
     plugin_jar: &Path,

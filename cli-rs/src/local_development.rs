@@ -5,6 +5,7 @@ include!("local_development/source_snapshot.rs");
 include!("local_development/types.rs");
 include!("local_development/filesystem.rs");
 include!("local_development/provenance.rs");
+include!("local_development/prepared_generation.rs");
 include!("local_development/refresh.rs");
 include!("local_development/lifecycle.rs");
 
@@ -28,7 +29,53 @@ pub fn run(command: LocalDevelopmentCommand, output_format: OutputFormat) -> Res
             crate::output::print_structured(&result, output_format)?;
             Ok(0)
         }
+        LocalDevelopmentCommand::Prepare(args) => {
+            let skill_source = args
+                .source_root
+                .join("cli-rs/resources/kast-skill/SKILL.md");
+            let result = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
+                source_root: args.source_root,
+                expected_source_snapshot: args.expected_source_snapshot,
+                cli_binary: args.cli_binary,
+                cli_provenance: args.cli_provenance,
+                backend_directory: args.backend_directory,
+                backend_provenance: args.backend_provenance,
+                skill_source,
+                output_directory: args.output_directory,
+            })?;
+            crate::output::print_structured(&result, output_format)?;
+            Ok(0)
+        }
+        LocalDevelopmentCommand::Verify(args) => {
+            let result =
+                verify_local_development_generation(&args.source_root, &args.prepared_generation)?;
+            require_exact_controller(
+                &result.directory.join(PREPARED_CLI_PATH),
+                "LOCAL_VERIFY_CONTROLLER_MISMATCH",
+            )?;
+            crate::output::print_structured(&result, output_format)?;
+            Ok(0)
+        }
+        LocalDevelopmentCommand::Activate(args) => {
+            let prefix = args
+                .prefix
+                .unwrap_or_else(|| args.source_root.join(".kast/local-development"));
+            let result = activate_local_development_generation(LocalDevelopmentActivateRequest {
+                source_root: args.source_root,
+                workspace_root: args.workspace_root,
+                prefix,
+                prepared_generation: args.prepared_generation,
+            })?;
+            crate::output::print_structured(&result, output_format)?;
+            Ok(0)
+        }
         LocalDevelopmentCommand::Refresh(args) => {
+            let skill_source = args
+                .source_root
+                .join("cli-rs/resources/kast-skill/SKILL.md");
+            let config_source = args
+                .source_root
+                .join("cli-rs/resources/local-development/config.toml");
             let prefix = args
                 .prefix
                 .unwrap_or_else(|| args.source_root.join(".kast/local-development"));
@@ -41,6 +88,8 @@ pub fn run(command: LocalDevelopmentCommand, output_format: OutputFormat) -> Res
                 cli_provenance: args.cli_provenance,
                 backend_directory: args.backend_directory,
                 backend_provenance: args.backend_provenance,
+                skill_source,
+                config_source,
             })?;
             crate::output::print_structured(&result, output_format)?;
             Ok(0)

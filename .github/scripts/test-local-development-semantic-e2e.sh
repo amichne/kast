@@ -66,7 +66,7 @@ first_cli_sha="$(jq -er '.components.cli.sha256' "$receipt")"
 first_backend_sha="$(jq -er '.components.backend.sha256' "$receipt")"
 
 second_refresh_log="${tmp_root}/second-refresh.log"
-if ! ./gradlew refreshDevelopmentLocal --no-daemon >"$second_refresh_log" 2>&1; then
+if ! ./gradlew activateDevelopmentLocal --no-daemon >"$second_refresh_log" 2>&1; then
   cat "$second_refresh_log" >&2
   die 'the idempotent local-development refresh failed'
 fi

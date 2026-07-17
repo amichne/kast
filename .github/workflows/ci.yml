@@ -23,6 +23,41 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Capture immutable local source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/capture-local-source-snapshot.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --output-file dist/local-source/source-snapshot.json \
+            >/dev/null
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/local-source-snapshot.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-local-source-snapshot \
+            --artifact-name kast-local-source-snapshot \
+            --artifact-path dist/local-source/source-snapshot.json \
+            --producer-job workflow-contracts \
+            --build-command-id ci-static-local-source-snapshot
+
+      - name: Upload immutable local source snapshot
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-local-source-snapshot
+          path: dist/local-source/source-snapshot.json
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload immutable local source snapshot ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-local-source-snapshot
+          path: dist/ci-ledgers/local-source-snapshot.json
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Test release workflow contract
         shell: bash
         run: ./.github/scripts/test-release-workflow-contract.sh
@@ -222,6 +257,31 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Download local source snapshot
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-local-source-snapshot
+          path: build/ci-inputs
+
+      - name: Download local source snapshot ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-local-source-snapshot
+          path: build/ci-input-ledgers
+
+      - name: Verify local source snapshot
+        id: local-source-snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger build/ci-input-ledgers/local-source-snapshot.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-local-source-snapshot \
+            --artifact ci-local-source-snapshot=build/ci-inputs/source-snapshot.json
+          source_sha256="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("build/ci-inputs/source-snapshot.json").read_text(encoding="utf-8"))["sourceTreeSha256"])')"
+          printf 'source_sha256=%s\n' "$source_sha256" >> "$GITHUB_OUTPUT"
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -239,7 +299,10 @@ jobs:
 
       - name: Build Rust CLI
         working-directory: cli-rs
-        run: KAST_VERSION=0.0.0-ci cargo build --release --locked
+        run: >
+          KAST_VERSION=0.0.0-ci
+          KAST_LOCAL_SOURCE_SHA256="${{ steps.local-source-snapshot.outputs.source_sha256 }}"
+          cargo build --release --locked
 
       - name: Validate generated CLI contracts
         run: cli-rs/target/release/kast developer release generate contract --check
@@ -307,12 +370,185 @@ jobs:
     with:
       runner: macos-latest
 
+  prepared-generation:
+    name: Prepared source-attested generation
+    runs-on: ubuntu-24.04
+    needs:
+      - workflow-contracts
+      - rust-cli
+      - build-and-test-linux
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Free disk for prepared generation assembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Ensure zstd is available for prepared generation packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Download local source snapshot
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-local-source-snapshot
+          path: build/ci-inputs
+
+      - name: Download local source snapshot ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-local-source-snapshot
+          path: build/ci-input-ledgers
+
+      - name: Download Rust CLI CI asset
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-rust-cli-linux-x64
+          path: build/ci-inputs
+
+      - name: Download Rust CLI CI ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-rust-cli-linux-x64
+          path: build/ci-input-ledgers
+
+      - name: Download source-bound headless backend
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-headless-ubuntu-latest
+          path: build/ci-inputs
+
+      - name: Download source-bound headless backend ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-headless-ubuntu-latest
+          path: build/ci-input-ledgers
+
+      - name: Verify generation producer inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger build/ci-input-ledgers/local-source-snapshot.json \
+            --ledger build/ci-input-ledgers/rust-cli-linux-x64.json \
+            --ledger build/ci-input-ledgers/headless-ubuntu-latest.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-local-source-snapshot \
+            --require-kind ci-rust-cli-linux-x64 \
+            --require-kind ci-headless-ubuntu-latest \
+            --artifact ci-local-source-snapshot=build/ci-inputs/source-snapshot.json \
+            --artifact ci-rust-cli-linux-x64=build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
+            --artifact ci-headless-ubuntu-latest=build/ci-inputs/kast-local-source-bound-backend.zip
+
+      - name: Assemble and package prepared generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
+          printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
+          printf 'KAST_PREPARED_RUNTIME_VERSION=%s\n' "$runtime_version" >> "$GITHUB_ENV"
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
+          scripts/assemble-prepared-local-generation.sh \
+            --source-root "$GITHUB_WORKSPACE" \
+            --source-snapshot build/ci-inputs/source-snapshot.json \
+            --cli-archive build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
+            --backend-archive build/ci-inputs/kast-local-source-bound-backend.zip \
+            --prepared-generation build/ci-prepared-generation \
+            --dist-directory dist \
+            --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" \
+            --runtime-version "$runtime_version"
+          [[ -f "$bundle_asset" ]] || { echo "Missing prepared Ubuntu/Debian bundle" >&2; exit 1; }
+
+      - name: Record prepared generation output ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers/prepared-generation
+          record_output() {
+            local kind="$1"
+            local name="$2"
+            local path="$3"
+            local command_id="$4"
+            scripts/verify-ci-artifact-ledger.py record \
+              --output "dist/ci-ledgers/prepared-generation/${kind}.json" \
+              --git-sha "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --artifact-kind "$kind" \
+              --artifact-name "$name" \
+              --artifact-path "$path" \
+              --producer-job prepared-generation \
+              --build-command-id "$command_id"
+          }
+          record_output ci-prepared-local-generation kast-prepared-local-generation \
+            dist/kast-local-prepared-generation.tar.zst ci-assemble-prepared-local-generation
+          record_output ci-ubuntu-debian-bundle kast-ubuntu-debian-ci-bundle \
+            "dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz" ci-package-ubuntu-debian-bundle
+          record_output ci-headless-runtime kast-action-runtime-inputs \
+            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
+          record_output ci-headless-runtime-manifest kast-action-runtime-inputs \
+            dist/kast-runtime-manifest.json ci-package-headless-runtime
+          record_output ci-gradle-ro-cache kast-action-runtime-inputs \
+            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
+
+      - name: Upload prepared local generation
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-prepared-local-generation
+          path: |
+            dist/kast-local-prepared-generation.tar.zst
+            dist/kast-local-prepared-generation.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload prepared Ubuntu and Debian bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-ubuntu-debian-ci-bundle
+          path: dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload prepared kast-action runtime inputs
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-action-runtime-inputs
+          path: |
+            dist/kast-headless-linux-x64.tar.zst
+            dist/kast-headless-linux-x64.sha256
+            dist/kast-runtime-manifest.json
+            dist/gradle-ro-dep-cache.tar.zst
+            dist/gradle-ro-dep-cache.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload prepared generation ledgers
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-prepared-generation
+          path: dist/ci-ledgers/prepared-generation
+          if-no-files-found: error
+          retention-days: 3
+
   install-ubuntu-debian-container:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     needs:
-      - build-and-test-linux
-      - rust-cli
+      - prepared-generation
     strategy:
       fail-fast: false
       matrix:
@@ -324,72 +560,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Download headless backend distribution
+      - name: Download prepared Ubuntu and Debian bundle
         uses: actions/download-artifact@v7
         with:
-          name: kast-headless-ubuntu-latest
-          path: backend-headless/build/distributions
-
-      - name: Download Rust CLI CI asset
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-rust-cli-linux-x64
+          name: kast-ubuntu-debian-ci-bundle
           path: dist
 
-      - name: Download Rust CLI CI ledger
+      - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-rust-cli-linux-x64
+          name: ci-artifact-ledger-prepared-generation
           path: ci-ledgers
 
-      - name: Download headless backend ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-headless-ubuntu-latest
-          path: ci-ledgers
-
-      - name: Resolve Rust CLI CI asset
+      - name: Verify prepared Ubuntu and Debian bundle
         shell: bash
         run: |
           set -euo pipefail
-          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
-          [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
-          printf 'KAST_RUST_CLI_TAG=%s\n' "v0.0.0-ci" >> "$GITHUB_ENV"
-          printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "v0.7.11-ci" >> "$GITHUB_ENV"
-          printf 'KAST_RUST_CLI_ASSET=%s\n' "$cli_asset" >> "$GITHUB_ENV"
-
-      - name: Package Ubuntu/Debian CI bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
-          [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
+          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz"
           scripts/verify-ci-artifact-ledger.py verify \
-            --ledger ci-ledgers/rust-cli-linux-x64.json \
-            --ledger ci-ledgers/headless-ubuntu-latest.json \
+            --ledger ci-ledgers/ci-ubuntu-debian-bundle.json \
             --git-sha "$GITHUB_SHA" \
-            --require-kind ci-rust-cli-linux-x64 \
-            --require-kind ci-headless-ubuntu-latest \
-            --artifact "ci-rust-cli-linux-x64=${KAST_RUST_CLI_ASSET}" \
-            --artifact "ci-headless-ubuntu-latest=${backend_asset}"
-          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
-
-          packager_dir="${RUNNER_TEMP}/kast-ci-packager"
-          rm -rf "$packager_dir"
-          mkdir -p "$packager_dir"
-          python3 -m zipfile -e "$KAST_RUST_CLI_ASSET" "$packager_dir"
-          packager_bin="${packager_dir}/kast"
-          [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
-          chmod 755 "$packager_bin"
-
-          "$packager_bin" \
-            developer release package ubuntu-debian-bundle \
-            --repo-root "$PWD" \
-            --cli-archive "$KAST_RUST_CLI_ASSET" \
-            --backend-archive "$backend_asset" \
-            --version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" \
-            --bundle-output "$bundle_asset"
-
+            --require-kind ci-ubuntu-debian-bundle \
+            --artifact "ci-ubuntu-debian-bundle=${bundle_asset}"
           printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
 
       - name: Validate Ubuntu/Debian bundle in Ubuntu container
@@ -403,8 +595,7 @@ jobs:
     name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
-      - build-and-test-linux
-      - rust-cli
+      - prepared-generation
     steps:
       - uses: actions/checkout@v5
 
@@ -438,101 +629,50 @@ jobs:
             sudo apt-get install -y --no-install-recommends zstd
           fi
 
-      - name: Download headless backend distribution
+      - name: Download prepared kast-action runtime inputs
         uses: actions/download-artifact@v7
         with:
-          name: kast-headless-ubuntu-latest
-          path: backend-headless/build/distributions
-
-      - name: Download Rust CLI CI asset
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-rust-cli-linux-x64
+          name: kast-action-runtime-inputs
           path: dist
 
-      - name: Download Rust CLI CI ledger
+      - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-rust-cli-linux-x64
+          name: ci-artifact-ledger-prepared-generation
           path: ci-ledgers
 
-      - name: Download headless backend ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-headless-ubuntu-latest
-          path: ci-ledgers
-
-      - name: Package kast-action runtime inputs
-        id: package-runtime
+      - name: Verify prepared kast-action runtime inputs
+        id: verify-runtime
         shell: bash
         run: |
           set -euo pipefail
           runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
-          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
-          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
-          [[ -f "$cli_asset" ]] || { echo "Missing Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
-          [[ -n "$backend_asset" ]] || { echo "Missing headless backend portable zip" >&2; exit 1; }
           scripts/verify-ci-artifact-ledger.py verify \
-            --ledger ci-ledgers/rust-cli-linux-x64.json \
-            --ledger ci-ledgers/headless-ubuntu-latest.json \
+            --ledger ci-ledgers/ci-headless-runtime.json \
+            --ledger ci-ledgers/ci-headless-runtime-manifest.json \
+            --ledger ci-ledgers/ci-gradle-ro-cache.json \
             --git-sha "$GITHUB_SHA" \
-            --require-kind ci-rust-cli-linux-x64 \
-            --require-kind ci-headless-ubuntu-latest \
-            --artifact "ci-rust-cli-linux-x64=${cli_asset}" \
-            --artifact "ci-headless-ubuntu-latest=${backend_asset}"
-
-          ./scripts/package-headless-runtime.sh \
-            --cli-archive "$cli_asset" \
-            --backend-archive "$backend_asset" \
-            --version "$runtime_version" \
-            --output "dist/kast-headless-linux-x64.tar.zst" \
-            --manifest-output "dist/kast-runtime-manifest.json"
-
-          gradle_seed="${RUNNER_TEMP}/gradle-ro-seed"
-          rm -rf "$gradle_seed"
-          mkdir -p "$gradle_seed/caches/modules-2/files-2.1/headless/smoke"
-          printf '%s\n' "fixture" > "$gradle_seed/caches/modules-2/files-2.1/headless/smoke/artifact.pom"
-          ./scripts/package-gradle-ro-cache.sh \
-            --gradle-user-home "$gradle_seed" \
-            --output "dist/gradle-ro-dep-cache.tar.zst"
-
+            --require-kind ci-headless-runtime \
+            --require-kind ci-headless-runtime-manifest \
+            --require-kind ci-gradle-ro-cache \
+            --artifact ci-headless-runtime=dist/kast-headless-linux-x64.tar.zst \
+            --artifact ci-headless-runtime-manifest=dist/kast-runtime-manifest.json \
+            --artifact ci-gradle-ro-cache=dist/gradle-ro-dep-cache.tar.zst
           (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
           (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
           printf 'runtime_version=%s\n' "$runtime_version" >> "$GITHUB_OUTPUT"
           printf 'runtime_sha=%s\n' "$(awk '{ print $1 }' dist/kast-headless-linux-x64.sha256)" >> "$GITHUB_OUTPUT"
           printf 'gradle_cache_sha=%s\n' "$(awk '{ print $1 }' dist/gradle-ro-dep-cache.sha256)" >> "$GITHUB_OUTPUT"
 
-      - name: Reclaim verified runtime packaging inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          cli_asset="dist/kast-v0.0.0-ci-linux-x64.zip"
-          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
-          [[ -f "$cli_asset" ]] || { echo "Missing consumed Rust CLI CI asset: ${cli_asset}" >&2; exit 1; }
-          [[ -n "$backend_asset" ]] || { echo "Missing consumed headless backend portable zip" >&2; exit 1; }
-
-          printf '%s\n' "Disk use before reclaiming verified runtime inputs:"
-          df -h /
-          du -sh "$backend_asset" "$cli_asset" "$GRADLE_USER_HOME/caches" 2>/dev/null || true
-
-          rm -f "$backend_asset" "$cli_asset"
-          rm -rf \
-            "$GRADLE_USER_HOME"/caches/build-cache-* \
-            "$GRADLE_USER_HOME"/caches/transforms-* \
-            "$GRADLE_USER_HOME"/caches/*/transforms
-
-          printf '%s\n' "Disk use after reclaiming verified runtime inputs and rebuildable Gradle state:"
-          df -h /
-
       - name: Install packaged runtime with kast-action
         uses: amichne/kast-action@v2
         with:
-          version: ${{ steps.package-runtime.outputs.runtime_version }}
+          version: ${{ steps.verify-runtime.outputs.runtime_version }}
           artifact-url: file://${{ github.workspace }}/dist/kast-headless-linux-x64.tar.zst
-          artifact-sha256: ${{ steps.package-runtime.outputs.runtime_sha }}
+          artifact-sha256: ${{ steps.verify-runtime.outputs.runtime_sha }}
           manifest-url: file://${{ github.workspace }}/dist/kast-runtime-manifest.json
           gradle-ro-cache-url: file://${{ github.workspace }}/dist/gradle-ro-dep-cache.tar.zst
-          gradle-ro-cache-sha256: ${{ steps.package-runtime.outputs.gradle_cache_sha }}
+          gradle-ro-cache-sha256: ${{ steps.verify-runtime.outputs.gradle_cache_sha }}
           install-dir: ${{ runner.temp }}/kast-install
           fail-on-cache-miss: "true"
           strict: "true"
