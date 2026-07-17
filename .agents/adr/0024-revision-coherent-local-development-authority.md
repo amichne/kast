@@ -236,6 +236,23 @@ The local authority is not complete until executable checks prove:
   diagnostics, and a backend-produced nonzero plan-only mutation preview
   through the refreshed headless generation.
 
+Validation is layered by authored owner. Source and ownership contracts may
+assert that a focused owner exists and is wired, but they do not invoke that
+owner again. Rust unit and integration tests execute in the Rust job, Kotlin
+and IDEA tests execute in their Gradle jobs, documentation renders in the
+documentation workflow, and installer, runtime-compatibility, release,
+provenance, and asset contracts execute once in their named owners. The
+selector-handle integration test binds directly to Cargo's exact built binary,
+so the Rust owner cannot report success by silently skipping it.
+
+The pre-existing `installDevelopmentLocal` compatibility task is not the
+revision-coherent local authority defined by this ADR. Its profile-writing
+contract remains executable on integrated `main` pushes, but it is quarantined
+from the universal pull-request gate. This changes validation frequency, not
+the documented compatibility surface; removing the task or its supported
+profile behavior requires a separate product decision. Pull requests retain
+the source/task-graph assertions and the release-free local-authority proof.
+
 The focused source gate is:
 
 ```console

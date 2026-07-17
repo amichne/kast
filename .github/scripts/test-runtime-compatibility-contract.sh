@@ -140,27 +140,4 @@ for invalid_source in "$scratch_dir"/invalid-*.json; do
   fi
 done
 
-./scripts/ci-gradle-retry.sh ./gradlew \
-  :analysis-api:test \
-  --tests '*RuntimeCompatibilityMatrixTest*' \
-  --tests '*RuntimeCompatibilitySourceContractTest*' \
-  --tests '*AnalysisOpenApiDocumentTest*' \
-  --tests '*DocFieldCoverageTest*' \
-  --no-daemon
-
-./scripts/ci-gradle-retry.sh ./gradlew \
-  :backend-idea:test \
-  --tests '*KastProjectOpenProfileAutoInitTest*' \
-  --no-daemon
-
-cargo test \
-  --manifest-path cli-rs/Cargo.toml \
-  --locked \
-  --test runtime_compatibility_metadata_smoke
-
-.github/scripts/test-jetbrains-plugin-repository-contract.sh
-.github/scripts/test-release-provenance-assembler.sh
-.github/scripts/test-release-asset-verifier.sh
-.github/scripts/test-release-workflow-contract.sh
-
 echo "runtime compatibility contract: ok"
