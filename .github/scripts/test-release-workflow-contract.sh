@@ -403,6 +403,7 @@ require_contains "$ci_workflow" 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "CI bund
 require_contains "$ci_workflow" "v0.7.11-ci" "CI bundle tests must use a bundle version at or above the embedded backend minimum"
 require_contains "$prepared_generation_derivatives" 'bundle_asset="${dist_directory}/kast-ubuntu-debian-headless-x86_64-${bundle_version}.tar.gz"' "Prepared-generation derivatives must name the bundle from the ready-compatible version"
 require_not_contains "$prepared_generation_derivatives" "developer local verify" "Derivative consumers must trust the attested ledger instead of duplicating generation proof"
+require_contains "$prepared_generation_derivatives" 'zip -X -0 -q -r "$backend_archive" backend-headless' "Ephemeral derivative inputs must store prepared backend bytes instead of recompressing them"
 require_contains "$ci_workflow" '--bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG"' "CI package derivation must pass the ready-compatible bundle version"
 require_contains "$prepared_generation_derivatives" '--version "$bundle_version"' "Prepared-generation derivatives must write the ready-compatible version into the bundle manifest"
 require_not_contains "$ci_workflow" '--version "$KAST_RUST_CLI_TAG"' "CI bundle tests must not write the synthetic Rust CLI tag into the backend manifest"

@@ -108,8 +108,8 @@ chmod 755 "${cli_staging}/kast"
 cp -R "${prepared_backend}/." "${backend_staging}/backend-headless/"
 cli_archive="${scratch_dir}/kast-v0.0.0-ci-linux-x64.zip"
 backend_archive="${scratch_dir}/kast-local-source-bound-backend.zip"
-(cd "$cli_staging" && zip -X -9 -q "$cli_archive" kast)
-(cd "$backend_staging" && zip -X -9 -q -r "$backend_archive" backend-headless)
+(cd "$cli_staging" && zip -X -0 -q "$cli_archive" kast)
+(cd "$backend_staging" && zip -X -0 -q -r "$backend_archive" backend-headless)
 
 case "$package_kind" in
   ubuntu-debian-bundle)
