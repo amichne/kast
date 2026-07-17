@@ -204,7 +204,7 @@ into or inferred by the local prefix.
 | Generation staging, validation, activation, rollback, removal | `cli-rs/src/local_development/` | failure-injection and idempotence tests |
 | Checkout build orchestration | root `build.gradle.kts` and typed tasks under `build-logic/` | `.github/scripts/test-local-development-refresh-contract.sh` |
 | Headless development backend | `backend-headless/` portable distribution | layout verification plus semantic probes |
-| Installed semantic boundary | `.github/scripts/test-local-development-semantic-e2e.sh` | refresh/reuse, readiness, exact semantic reads, plan-only mutation, stop, and removal |
+| Installed semantic boundary | `.github/scripts/test-local-development-semantic-e2e.sh` | integrated main/nightly/manual/release canary for refresh/reuse, readiness, exact semantic reads, plan-only mutation, stop, and removal |
 | Skill source | `cli-rs/resources/kast-skill/SKILL.md` | command/help lockstep contract |
 | Managed local guidance renderer | `cli-rs/src/local_development/` | receipt, command-lockstep, and workspace-preservation tests |
 | Machine-readable readiness | `cli-rs/src/self_mgmt.rs` and `cli-rs/src/output/ready.rs` | local authority smoke tests |
@@ -253,10 +253,23 @@ the documented compatibility surface; removing the task or its supported
 profile behavior requires a separate product decision. Pull requests retain
 the source/task-graph assertions and the release-free local-authority proof.
 
-The focused source gate is:
+The complete Kast-on-Kast installed semantic boundary is an integration
+canary, not an ordinary pull-request root. One reusable workflow runs it on
+integrated `main`, nightly, manually, and against the exact prepared release
+tag. A failed canary is a failed release prerequisite, is never
+`continue-on-error`, and retains runtime logs for diagnosis. The deterministic
+workflow model keeps this canary's proof output in the exact integrated output
+inventory while excluding its duration from the pull-request critical path.
+
+The focused pull-request source gate is:
 
 ```console
 .github/scripts/test-local-development-refresh-contract.sh
+```
+
+The integrated installed canary is:
+
+```console
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 RECOMMENDED_SAMPLE_FLOOR = 5
 IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9._:/-]*$")
 EXECUTION_CLASSES = {
@@ -55,6 +55,7 @@ class Task:
 @dataclass(frozen=True)
 class Plan:
     tasks: Mapping[str, Task]
+    canary_task_ids: tuple[str, ...]
     fanout_gate_task_ids: tuple[str, ...]
     observed_workflow_duration_samples_seconds: tuple[float, ...]
 
@@ -85,6 +86,7 @@ class PlanAnalysis:
     task_count: int
     edge_count: int
     output_ids: tuple[str, ...]
+    canary_task_ids: tuple[str, ...]
     critical_path_task_ids: tuple[str, ...]
     critical_path_seconds: float
     fanout_gate_seconds: float
@@ -229,7 +231,12 @@ def parse_plan(value: Any, path: str) -> Plan:
     validate_keys(
         item,
         path=path,
-        required={"tasks", "fanoutGateTaskIds", "observedWorkflowDurationSamplesSeconds"},
+        required={
+            "tasks",
+            "canaryTaskIds",
+            "fanoutGateTaskIds",
+            "observedWorkflowDurationSamplesSeconds",
+        },
     )
     raw_tasks = require_list(item["tasks"], f"{path}.tasks")
     if not raw_tasks:
@@ -262,6 +269,26 @@ def parse_plan(value: Any, path: str) -> Plan:
                 )
             output_owners[output] = task.id
 
+    canary_tasks = parse_identifier_list(
+        item["canaryTaskIds"],
+        f"{path}.canaryTaskIds",
+    )
+    missing_canaries = sorted(set(canary_tasks) - tasks.keys())
+    if missing_canaries:
+        raise ModelError(
+            f"{path}.canaryTaskIds references missing tasks: {', '.join(missing_canaries)}"
+        )
+    required_tasks = set(tasks) - set(canary_tasks)
+    if not required_tasks:
+        raise ModelError(f"{path} must contain at least one pull-request task")
+    for task_id in sorted(required_tasks):
+        canary_needs = sorted(set(tasks[task_id].needs) & set(canary_tasks))
+        if canary_needs:
+            raise ModelError(
+                f"{path}.tasks[{task_id}] pull-request task depends on canary tasks: "
+                + ", ".join(canary_needs)
+            )
+
     fanout_gates = parse_identifier_list(
         item["fanoutGateTaskIds"],
         f"{path}.fanoutGateTaskIds",
@@ -272,9 +299,15 @@ def parse_plan(value: Any, path: str) -> Plan:
         raise ModelError(
             f"{path}.fanoutGateTaskIds references missing tasks: {', '.join(missing_gates)}"
         )
+    canary_gates = sorted(set(fanout_gates) & set(canary_tasks))
+    if canary_gates:
+        raise ModelError(
+            f"{path}.fanoutGateTaskIds must not include canary tasks: {', '.join(canary_gates)}"
+        )
 
     plan = Plan(
         tasks=tasks,
+        canary_task_ids=canary_tasks,
         fanout_gate_task_ids=fanout_gates,
         observed_workflow_duration_samples_seconds=parse_duration_samples(
             item["observedWorkflowDurationSamplesSeconds"],
@@ -434,7 +467,12 @@ def maximum_parallel_tasks(starts: Mapping[str, float], finishes: Mapping[str, f
 
 
 def analyze_plan(plan: Plan) -> PlanAnalysis:
-    order = topological_order(plan)
+    canary_task_ids = set(plan.canary_task_ids)
+    order = tuple(
+        task_id
+        for task_id in topological_order(plan)
+        if task_id not in canary_task_ids
+    )
     starts: dict[str, float] = {}
     finishes: dict[str, float] = {}
     predecessor: dict[str, str | None] = {}
@@ -471,6 +509,7 @@ def analyze_plan(plan: Plan) -> PlanAnalysis:
         task_count=len(plan.tasks),
         edge_count=sum(len(task.needs) for task in plan.tasks.values()),
         output_ids=output_ids,
+        canary_task_ids=tuple(sorted(canary_task_ids)),
         critical_path_task_ids=tuple(critical_path),
         critical_path_seconds=modeled,
         fanout_gate_seconds=max(finishes[task_id] for task_id in plan.fanout_gate_task_ids),
@@ -506,8 +545,10 @@ def stats_document(stats: DurationStats) -> dict[str, int | float]:
 def analysis_document(analysis: PlanAnalysis) -> dict[str, Any]:
     return {
         "taskCount": analysis.task_count,
+        "pullRequestTaskCount": analysis.task_count - len(analysis.canary_task_ids),
         "edgeCount": analysis.edge_count,
         "outputCount": len(analysis.output_ids),
+        "canaryTaskIds": list(analysis.canary_task_ids),
         "criticalPathTaskIds": list(analysis.critical_path_task_ids),
         "criticalPathSeconds": rounded(analysis.critical_path_seconds),
         "fanoutGateSeconds": rounded(analysis.fanout_gate_seconds),

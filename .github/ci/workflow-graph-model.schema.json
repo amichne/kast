@@ -16,7 +16,7 @@
       "minLength": 1
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "provenance": {
       "$ref": "#/$defs/provenance"
@@ -90,6 +90,7 @@
       "additionalProperties": false,
       "required": [
         "tasks",
+        "canaryTaskIds",
         "fanoutGateTaskIds",
         "observedWorkflowDurationSamplesSeconds"
       ],
@@ -100,6 +101,13 @@
           "items": {
             "$ref": "#/$defs/task"
           }
+        },
+        "canaryTaskIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier"
+          },
+          "uniqueItems": true
         },
         "fanoutGateTaskIds": {
           "type": "array",

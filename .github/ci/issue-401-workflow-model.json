@@ -1,10 +1,10 @@
 {
   "$schema": "./workflow-graph-model.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline and candidate timing samples describe the split before duplicate-owner removal. The integrated candidate proof set is exact, including the main-only legacy profile-install canary, while timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate pull-request timing is the first comparable final-shape run after relocating the full Kast-on-Kast E2E to an explicit canary; that canary retains its latest observed duration so exact integrated proof remains represented outside the pull-request critical path. Timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
-    "source": "https://github.com/amichne/kast/pull/407",
+    "source": "https://github.com/amichne/kast/pull/409",
     "baselineRunIds": [
       29511350239,
       29519251086,
@@ -13,7 +13,7 @@
       29540820473
     ],
     "candidateRunIds": [
-      29558675350
+      29565328465
     ]
   },
   "baseline": {
@@ -279,6 +279,7 @@
         "executionClass": "artifact-consumer"
       }
     ],
+    "canaryTaskIds": [],
     "fanoutGateTaskIds": [
       "workflow-contracts"
     ],
@@ -311,7 +312,7 @@
           "homebrew-package-renderer"
         ],
         "durationSamplesSeconds": [
-          18
+          15
         ],
         "executionClass": "static"
       },
@@ -324,7 +325,7 @@
           "cli-plugin-authority-cutover-contract"
         ],
         "durationSamplesSeconds": [
-          855
+          304
         ],
         "executionClass": "toolchain"
       },
@@ -337,7 +338,7 @@
         "durationSamplesSeconds": [
           1223
         ],
-        "executionClass": "toolchain"
+        "executionClass": "release"
       },
       {
         "id": "runtime-contracts",
@@ -350,7 +351,7 @@
           "ubuntu-debian-bundle-smoke"
         ],
         "durationSamplesSeconds": [
-          140
+          128
         ],
         "executionClass": "toolchain"
       },
@@ -363,7 +364,7 @@
           "runtime-compatibility-contract"
         ],
         "durationSamplesSeconds": [
-          566
+          5
         ],
         "executionClass": "static"
       },
@@ -377,7 +378,7 @@
           "ci-artifact-ledger-maven-publication"
         ],
         "durationSamplesSeconds": [
-          58
+          55
         ],
         "executionClass": "gradle-cache"
       },
@@ -398,7 +399,7 @@
           "ci-artifact-ledger-rust-cli-linux-x64"
         ],
         "durationSamplesSeconds": [
-          459
+          434
         ],
         "executionClass": "toolchain"
       },
@@ -416,7 +417,7 @@
           "agent-headless-portable-build-linux"
         ],
         "durationSamplesSeconds": [
-          548
+          520
         ],
         "executionClass": "gradle-cache"
       },
@@ -433,7 +434,7 @@
           "ci-artifact-ledger-headless-macos"
         ],
         "durationSamplesSeconds": [
-          933
+          552
         ],
         "executionClass": "gradle-cache"
       },
@@ -446,7 +447,7 @@
           "analysis-server-socket-transport"
         ],
         "durationSamplesSeconds": [
-          53
+          70
         ],
         "executionClass": "gradle-cache"
       },
@@ -464,7 +465,7 @@
           "idea-plugin-performance-baselines"
         ],
         "durationSamplesSeconds": [
-          423
+          626
         ],
         "executionClass": "gradle-cache"
       },
@@ -478,7 +479,7 @@
           "ubuntu-22.04-java-21-install-contract"
         ],
         "durationSamplesSeconds": [
-          118
+          119
         ],
         "executionClass": "oci"
       },
@@ -492,7 +493,7 @@
           "ubuntu-24.04-java-21-install-contract"
         ],
         "durationSamplesSeconds": [
-          117
+          120
         ],
         "executionClass": "oci"
       },
@@ -506,16 +507,19 @@
           "kast-action-v2-installed-runtime-contract"
         ],
         "durationSamplesSeconds": [
-          328
+          267
         ],
         "executionClass": "artifact-consumer"
       }
+    ],
+    "canaryTaskIds": [
+      "local-development-semantic-e2e"
     ],
     "fanoutGateTaskIds": [
       "workflow-contracts"
     ],
     "observedWorkflowDurationSamplesSeconds": [
-      1224
+      812
     ]
   },
   "expectations": {
