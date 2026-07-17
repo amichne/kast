@@ -285,6 +285,9 @@ fn classify_local_development(command: &LocalDevelopmentCommand) -> CodexExposur
     match command {
         LocalDevelopmentCommand::Snapshot(_)
         | LocalDevelopmentCommand::Attest(_)
+        | LocalDevelopmentCommand::Prepare(_)
+        | LocalDevelopmentCommand::Verify(_)
+        | LocalDevelopmentCommand::Activate(_)
         | LocalDevelopmentCommand::Refresh(_)
         | LocalDevelopmentCommand::Rollback(_)
         | LocalDevelopmentCommand::Remove(_) => CodexExposure::NotExposed,
