@@ -181,7 +181,10 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
 
     let ready = std::process::Command::new(prefix.join("bin/kast-dev"))
         .env("HOME", &home)
-        .args(["--output", "json", "ready", "--for", "machine"])
+        .env("CODEX_HOME", home.join(".codex"))
+        .args(["--output", "json", "ready", "--for", "agent"])
+        .arg("--workspace-root")
+        .arg(&repository)
         .output()
         .expect("local ready");
     assert!(
@@ -206,6 +209,30 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
     );
     assert_eq!(
         payload["binary"]["configuredMatchesRunning"], true,
+        "{payload}"
+    );
+    assert_eq!(
+        payload["agentEnvironment"]["installAuthority"], "local-development",
+        "{payload}"
+    );
+    assert_eq!(
+        payload["agentEnvironment"]["binary"]["sourcePath"],
+        std::fs::canonicalize(&repository)
+            .expect("canonical repository")
+            .display()
+            .to_string(),
+        "{payload}"
+    );
+    assert_eq!(
+        payload["agentEnvironment"]["backend"]["kind"], "headless",
+        "{payload}"
+    );
+    assert_eq!(
+        payload["agentEnvironment"]["guidance"]["state"], "managed",
+        "{payload}"
+    );
+    assert_eq!(
+        payload["agentEnvironment"]["skills"]["compatible"], true,
         "{payload}"
     );
     assert!(
@@ -344,7 +371,7 @@ fn initialize_repository(root: &std::path::Path) {
     write_file(&root.join(".gitignore"), b"/AGENTS.local.md\n/.kast/\n");
     write_file(
         &root.join("cli-rs/resources/kast-skill/SKILL.md"),
-        b"---\nname: kast\ndescription: fixture\n---\nUse `kast agent verify`.\n",
+        b"---\nname: kast\ndescription: fixture\nmetadata:\n  kast-cli-dialect-revision: \"1\"\n---\nUse `kast agent verify`.\n",
     );
     write_file(
         &root.join("cli-rs/resources/local-development/config.toml"),

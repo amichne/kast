@@ -132,7 +132,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
     );
 }
 
-fn write_macos_plugin_workspace_metadata_for_cli(
+pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
     workspace: &Path,
     cli_binary: &Path,
     cli_version: &str,
@@ -142,7 +142,22 @@ fn write_macos_plugin_workspace_metadata_for_cli(
         let workspace: PathBuf = workspace.components().collect();
         let skill = workspace.join(".agents/skills/kast/SKILL.md");
         std::fs::create_dir_all(skill.parent().expect("skill parent")).expect("skill dir");
-        std::fs::write(&skill, "# Kast\n").expect("skill");
+        std::fs::write(
+            &skill,
+            format!(
+                "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"1\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\nUse `kast agent verify --workspace-root \"$PWD\"` before Kotlin semantic work when state is uncertain.\nUse typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename`.\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json`, then run `kast agent verify --workspace-root \"$PWD\"` from that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {cli_version}\nCLI version: {cli_version}\nCLI invocation: `{}`\n",
+                cli_binary.display()
+            ),
+        )
+        .expect("skill");
+        std::fs::write(
+            workspace.join("AGENTS.local.md"),
+            format!(
+                "<kast>\n## Kast routing\nUse `{}` before Kotlin or Gradle semantic work.\nUse `kast agent verify --workspace-root \"$PWD\"` to verify the plugin-prepared workspace.\nUse typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.\nDo not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.\nBefore each linked worker starts, open the exact worktree root as its own IDE project and run `kast agent verify --workspace-root \"$PWD\"` from that worktree.\nNever reuse another worktree's Kast runtime, metadata, or semantic evidence.\nKeep the IDE project open while active; close its exact IDE project or window before removing the worktree.\n</kast>\n",
+                skill.display()
+            ),
+        )
+        .expect("guidance");
         let metadata = workspace.join(".kast/setup/workspace.json");
         std::fs::create_dir_all(metadata.parent().expect("metadata parent")).expect("metadata dir");
         std::fs::write(
@@ -188,6 +203,7 @@ fn write_macos_plugin_workspace_metadata_for_cli(
                 },
                 "requiredArtifacts": [
                     ".agents/skills/kast/SKILL.md",
+                    "AGENTS.local.md",
                     ".kast/setup/workspace.json"
                 ]
             }))

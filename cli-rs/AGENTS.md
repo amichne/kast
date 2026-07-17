@@ -27,8 +27,10 @@ resources.
   structured Gradle source-set and Kotlin package provenance states, the
   kind-relevant backend/index/filesystem/Git coherence barrier, and typed
   limitations used by `agent workspace-files` and Gradle DSL consumers.
-- `src/install.rs`, `src/manifest.rs`, and `src/self_mgmt.rs` own install
-  state, managed resource records, doctor checks, and repair behavior.
+- `src/install.rs`, `src/manifest.rs`, `src/self_mgmt.rs`, and
+  `src/self_mgmt/agent_readiness.rs` own install state, managed resource
+  records, doctor checks, effective binary/backend/skill/guidance evidence,
+  CLI dialect compatibility, and repair behavior.
 - `src/local_development.rs` and `src/local_development/` own framed checkout
   identity, independently attested CLI/backend artifacts, immutable local
   generations, the strict portable prepared-generation ledger, exact receipt topology, generation-scoped runtime state, and

@@ -5,6 +5,8 @@ description: >
   Kotlin `.kt` or `.kts` discovery, symbol identity, references, callers, diagnostics,
   source-index impact, semantic rename, typed scope mutation, or focused Gradle
   validation.
+metadata:
+  kast-cli-dialect-revision: "1"
 ---
 
 # Kast

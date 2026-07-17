@@ -48,6 +48,10 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         .unwrap_or_else(|error| panic!("read {}: {error}", skill_path.display()));
 
     assert!(
+        skill.contains("kast-cli-dialect-revision: \"1\""),
+        "packaged skill must identify the CLI dialect it teaches: {skill}"
+    );
+    assert!(
         skill.contains("Use `kast agent` before generic file reads"),
         "{skill}"
     );
@@ -122,6 +126,25 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         skill.lines().count() <= 70,
         "installed skill should stay thin: {} lines",
         skill.lines().count()
+    );
+}
+
+#[test]
+fn skill_dialect_revision_stays_revision_coherent_with_the_idea_plugin() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repo root");
+    let plugin_bootstrap_path = root.join(
+        "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/PluginWorkspaceBootstrap.kt",
+    );
+    let plugin_bootstrap = std::fs::read_to_string(&plugin_bootstrap_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", plugin_bootstrap_path.display()));
+    let packaged_skill = include_str!("../resources/kast-skill/SKILL.md");
+
+    assert!(
+        packaged_skill.contains("kast-cli-dialect-revision: \"1\"")
+            && plugin_bootstrap.contains("CLI_DIALECT_REVISION = 1"),
+        "the packaged and IDEA-rendered skills must declare the same CLI dialect revision",
     );
 }
 

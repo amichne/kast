@@ -219,7 +219,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
-        Command::Doctor(args) => run_ready(args, output_format),
+        Command::Doctor(args) => run_ready(args.into(), output_format),
         Command::Agent(args) => run_agent(args, output_format),
     }
 }

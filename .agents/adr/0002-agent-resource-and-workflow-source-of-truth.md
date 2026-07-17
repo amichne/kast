@@ -10,7 +10,9 @@ harness selection, Copilot package install, portable instruction install,
 of this ADR. This ADR remains authoritative only for manifest-backed trust
 rules not replaced by ADR 0006. ADR 0024 adds an isolated local-development
 authority whose receipt must prove the same resource-trust facts without
-changing release authority.
+changing release authority. ADR 0027 supersedes the readiness and effective
+skill/guidance compatibility portions with a cross-authority agent-environment
+verdict.
 
 This ADR records the current contract for agent-facing Kast resources. It
 exists so future agents can preserve the source of truth for the packaged

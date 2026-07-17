@@ -130,7 +130,7 @@ actual_kast_bin="$(absolute_path "$kast_bin")"
   || die "kast on PATH does not match install-dir: expected ${expected_kast_bin}, got ${actual_kast_bin}"
 
 "$kast_bin" --version
-"$kast_bin" ready
+"$kast_bin" ready --for machine
 
 if [[ "$require_gradle_cache" == "true" ]]; then
   [[ -n "${GRADLE_RO_DEP_CACHE:-}" ]] || die "GRADLE_RO_DEP_CACHE is unset"

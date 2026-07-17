@@ -132,7 +132,7 @@ docker run --rm \
 
     java -version
     kast version
-    kast ready
+    kast ready --for machine
     kast developer runtime up \
       "${backend_args[@]}" \
       --workspace-root="${KAST_UBUNTU_DEBIAN_SMOKE_WORKSPACE}" \

@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter
 
 object PluginWorkspaceBootstrap {
     private val SCHEMA_VERSION = WorkspaceMetadataRevision.CURRENT.value
+    private const val CLI_DIALECT_REVISION = 1
     private const val REQUIRED_SKILL_RELATIVE = ".agents/skills/kast/SKILL.md"
     private const val METADATA_RELATIVE = ".kast/setup/workspace.json"
     private const val KAST_MANAGED_FENCE_START = "<kast>"
@@ -180,6 +181,8 @@ object PluginWorkspaceBootstrap {
         |---
         |name: kast
         |description: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.
+        |metadata:
+        |  kast-cli-dialect-revision: "$CLI_DIALECT_REVISION"
         |---
         |
         |# Kast
