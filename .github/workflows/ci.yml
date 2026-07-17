@@ -23,25 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          cache-cleanup: always
-
-      - name: Install Rust for command-surface contracts
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache local-authority Rust builds
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
-        with:
-          workspaces: cli-rs -> target
-          cache-bin: "false"
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-
       - name: Test release workflow contract
         shell: bash
         run: ./.github/scripts/test-release-workflow-contract.sh
@@ -65,31 +46,6 @@ jobs:
       - name: Test macOS installer contract
         shell: bash
         run: ./.github/scripts/test-macos-installer-contract.sh
-
-      - name: Test local development refresh contract
-        shell: bash
-        run: ./.github/scripts/test-local-development-refresh-contract.sh
-
-      - name: Test development CLI and IDEA profile install contract
-        shell: bash
-        run: ./.github/scripts/test-development-cli-install-contract.sh
-
-      - name: Test installed selector handle workflow
-        shell: bash
-        run: ./.github/scripts/test-selector-handle-installed-workflow.sh
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-docs.txt
-
-      - name: Install docs dependencies for authority gate
-        run: pip install -r requirements-docs.txt
-
-      - name: Test CLI and plugin authority cutover contract
-        shell: bash
-        run: ./.github/scripts/test-cli-plugin-authority-cutover-contract.sh
 
       - name: Test Kast routing evals
         shell: bash
@@ -127,6 +83,56 @@ jobs:
       - name: Test Homebrew package renderer
         shell: bash
         run: packaging/homebrew/scripts/test-formulas.py
+
+  local-authority-contracts:
+    name: Local development authority contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
+      - name: Install Rust for local-authority contracts
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache local-authority Rust builds
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: cli-rs -> target
+          cache-bin: "false"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Test local development refresh contract
+        shell: bash
+        run: ./.github/scripts/test-local-development-refresh-contract.sh
+
+      - name: Test development CLI and IDEA profile install contract
+        shell: bash
+        run: ./.github/scripts/test-development-cli-install-contract.sh
+
+      - name: Test installed selector handle workflow
+        shell: bash
+        run: ./.github/scripts/test-selector-handle-installed-workflow.sh
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install docs dependencies for authority gate
+        run: pip install -r requirements-docs.txt
+
+      - name: Test CLI and plugin authority cutover contract
+        shell: bash
+        run: ./.github/scripts/test-cli-plugin-authority-cutover-contract.sh
 
   local-development-semantic-e2e:
     name: Local development installed semantic E2E
