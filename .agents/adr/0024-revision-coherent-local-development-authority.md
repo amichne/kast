@@ -101,15 +101,18 @@ by its producer.
 
 Pull-request automation applies the same separation across jobs. The static
 fanout gate captures the source snapshot without installing Java, Gradle, or
-Rust. The existing Rust job compiles that digest into its one release binary,
-and the existing Linux Gradle job embeds the same snapshot into its one
-source-bound headless backend. A single `prepared-generation` job verifies the
-outer CI ledgers, re-attests the extracted component bytes, prepares and
-verifies the immutable generation with its exact CLI, and derives the Linux
-bundle, headless runtime, runtime manifest, and Gradle read-only cache once.
-Each published file receives an outer CI artifact ledger. Container and action
-jobs consume those files and ledgers as validation-only jobs; they do not rerun
-Rust, Kotlin, Gradle, installation packaging, or release packaging.
+Rust. An independent `source-bound-cli` producer compiles that digest into its
+one release binary while the required Rust job owns formatting, Clippy, and
+tests in parallel. The existing Linux Gradle job embeds the same snapshot into
+its one source-bound headless backend. `prepared-generation` verifies the
+outer CI ledgers, re-attests the extracted component bytes, and publishes and
+verifies the immutable generation with its exact CLI. The representative
+semantic fixture can consume that artifact immediately. A separate downstream
+producer derives the Linux bundle, headless runtime, runtime manifest, and
+Gradle read-only cache from the verified prepared bytes. Each published file
+receives an outer CI artifact ledger. Container and action jobs consume those
+files and ledgers as validation-only jobs; they do not rerun Rust, Kotlin, or
+Gradle component builds.
 
 ### Activation and effective paths
 
@@ -250,7 +253,7 @@ into or inferred by the local prefix.
 | Generation staging, validation, activation, rollback, removal | `cli-rs/src/local_development/` | failure-injection and idempotence tests |
 | Checkout build orchestration | root `build.gradle.kts` and typed tasks under `build-logic/` | `.github/scripts/test-local-development-refresh-contract.sh` |
 | Immutable prepared generation and activation | `cli-rs/src/local_development/prepared_generation.rs`, root `build.gradle.kts`, and `scripts/package-prepared-local-generation.sh` | focused Rust tests, local-development source contract, and CI artifact ledgers |
-| Pull-request generation assembly and derived Linux packages | `.github/workflows/ci.yml` and `scripts/assemble-prepared-local-generation.sh` | release workflow contract plus exact proof-output graph model |
+| Pull-request source-bound CLI, generation assembly, and derived Linux packages | `.github/workflows/ci.yml`, `scripts/assemble-prepared-local-generation.sh`, and `scripts/package-prepared-local-generation-derivatives.sh` | release workflow contract plus exact proof-output graph model |
 | Headless development backend | `backend-headless/` portable distribution | layout verification plus semantic probes |
 | Gradle import settlement evidence | `backend-headless/` typed settlement observation, policy, evidence, outcome, and IDEA mapper | deterministic focused tests plus repeated transition sequences |
 | Representative installed semantics | `backend-headless/src/test/resources/fixtures/installed-semantic-gradle/` and `.github/scripts/test-local-development-semantic-fixture.sh` | required pull-request job consuming the prepared generation without rebuilding |

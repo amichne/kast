@@ -218,7 +218,7 @@ def parse_task(value: Any, path: str) -> Task:
     return Task(
         id=task_id,
         needs=needs,
-        outputs=parse_identifier_list(item["outputs"], f"{path}.outputs", minimum_items=1),
+        outputs=parse_identifier_list(item["outputs"], f"{path}.outputs"),
         duration_samples_seconds=parse_duration_samples(
             item["durationSamplesSeconds"], f"{path}.durationSamplesSeconds"
         ),

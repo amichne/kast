@@ -261,6 +261,39 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust validation builds
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: cli-rs -> target
+          shared-key: rust-cli-validation
+          cache-bin: "false"
+
+      - name: Check Rust formatting
+        working-directory: cli-rs
+        run: cargo fmt --all -- --check
+
+      - name: Check Rust lints
+        working-directory: cli-rs
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Test Rust CLI
+        working-directory: cli-rs
+        run: cargo test --locked --all-targets --all-features
+
+      - name: Check generated Codex plugin assets
+        shell: bash
+        run: cargo run --manifest-path cli-rs/Cargo.toml --locked --bin kast -- developer codex generate --check
+
+  source-bound-cli:
+    name: Source-bound release CLI
+    runs-on: ubuntu-22.04
+    needs: workflow-contracts
+    steps:
+      - uses: actions/checkout@v5
+
       - name: Download local source snapshot
         uses: actions/download-artifact@v7
         with:
@@ -289,17 +322,12 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Check Rust formatting
-        working-directory: cli-rs
-        run: cargo fmt --all -- --check
-
-      - name: Check Rust lints
-        working-directory: cli-rs
-        run: cargo clippy --locked --all-targets --all-features -- -D warnings
-
-      - name: Test Rust CLI
-        working-directory: cli-rs
-        run: cargo test --locked --all-targets --all-features
+      - name: Cache source-bound release build
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          workspaces: cli-rs -> target
+          shared-key: source-bound-cli-release
+          cache-bin: "false"
 
       - name: Build Rust CLI
         working-directory: cli-rs
@@ -310,10 +338,6 @@ jobs:
 
       - name: Validate generated CLI contracts
         run: cli-rs/target/release/kast developer release generate contract --check
-
-      - name: Check generated Codex plugin assets
-        shell: bash
-        run: cargo run --manifest-path cli-rs/Cargo.toml --locked --bin kast -- developer codex generate --check
 
       - name: Package Codex plugin CI asset
         shell: bash
@@ -338,7 +362,7 @@ jobs:
             --artifact-kind ci-codex-plugin \
             --artifact-name kast-codex-plugin \
             --artifact-path "dist/${asset_name}" \
-            --producer-job rust-cli \
+            --producer-job source-bound-cli \
             --build-command-id ci-codex-plugin-generate
 
       - name: Test LSP config smoke
@@ -371,7 +395,7 @@ jobs:
             --artifact-kind ci-rust-cli-linux-x64 \
             --artifact-name kast-rust-cli-linux-x64 \
             --artifact-path dist/kast-v0.0.0-ci-linux-x64.zip \
-            --producer-job rust-cli \
+            --producer-job source-bound-cli \
             --build-command-id ci-rust-cli-release-build
 
       - name: Upload Rust CLI CI asset
@@ -425,22 +449,10 @@ jobs:
     runs-on: ubuntu-24.04
     needs:
       - workflow-contracts
-      - rust-cli
+      - source-bound-cli
       - build-and-test-linux
     steps:
       - uses: actions/checkout@v5
-
-      - name: Free disk for prepared generation assembly
-        shell: bash
-        run: |
-          set -euo pipefail
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL
-          df -h /
 
       - name: Ensure zstd is available for prepared generation packaging
         shell: bash
@@ -507,21 +519,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
-          KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
-          printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
-          printf 'KAST_PREPARED_RUNTIME_VERSION=%s\n' "$runtime_version" >> "$GITHUB_ENV"
-          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz"
           scripts/assemble-prepared-local-generation.sh \
             --source-root "$GITHUB_WORKSPACE" \
             --source-snapshot build/ci-inputs/source-snapshot.json \
             --cli-archive build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
             --backend-archive build/ci-inputs/kast-local-source-bound-backend.zip \
             --prepared-generation build/ci-prepared-generation \
-            --dist-directory dist \
-            --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" \
-            --runtime-version "$runtime_version"
-          [[ -f "$bundle_asset" ]] || { echo "Missing prepared Ubuntu/Debian bundle" >&2; exit 1; }
+            --output dist/kast-local-prepared-generation.tar.zst
 
       - name: Record prepared generation output ledgers
         shell: bash
@@ -546,14 +550,6 @@ jobs:
           }
           record_output ci-prepared-local-generation kast-prepared-local-generation \
             dist/kast-local-prepared-generation.tar.zst ci-assemble-prepared-local-generation
-          record_output ci-ubuntu-debian-bundle kast-ubuntu-debian-ci-bundle \
-            "dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz" ci-package-ubuntu-debian-bundle
-          record_output ci-headless-runtime kast-action-runtime-inputs \
-            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
-          record_output ci-headless-runtime-manifest kast-action-runtime-inputs \
-            dist/kast-runtime-manifest.json ci-package-headless-runtime
-          record_output ci-gradle-ro-cache kast-action-runtime-inputs \
-            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
 
       - name: Upload prepared local generation
         uses: actions/upload-artifact@v6
@@ -564,6 +560,110 @@ jobs:
             dist/kast-local-prepared-generation.sha256
           if-no-files-found: error
           retention-days: 1
+
+      - name: Upload prepared generation ledgers
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-prepared-generation
+          path: dist/ci-ledgers/prepared-generation
+          if-no-files-found: error
+          retention-days: 3
+
+  prepared-linux-packages:
+    name: Prepared Linux package derivatives
+    runs-on: ubuntu-24.04
+    needs:
+      - prepared-generation
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Free disk for derived Linux package assembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Ensure zstd is available for prepared generation extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Download prepared local generation
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-prepared-local-generation
+          path: ${{ runner.temp }}/kast-prepared-generation
+
+      - name: Download prepared generation ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-prepared-generation
+          path: ${{ runner.temp }}/kast-prepared-generation-ledger
+
+      - name: Verify prepared generation input
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-prepared-local-generation \
+            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
+          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
+
+      - name: Package verified Linux derivatives
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
+          printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
+          scripts/package-prepared-local-generation-derivatives.sh \
+            --source-root "$GITHUB_WORKSPACE" \
+            --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
+            --dist-directory dist \
+            --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" \
+            --runtime-version "$runtime_version"
+
+      - name: Record derived Linux package ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers/prepared-linux-packages
+          record_output() {
+            local kind="$1"
+            local name="$2"
+            local path="$3"
+            local command_id="$4"
+            scripts/verify-ci-artifact-ledger.py record \
+              --output "dist/ci-ledgers/prepared-linux-packages/${kind}.json" \
+              --git-sha "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --artifact-kind "$kind" \
+              --artifact-name "$name" \
+              --artifact-path "$path" \
+              --producer-job prepared-linux-packages \
+              --build-command-id "$command_id"
+          }
+          record_output ci-ubuntu-debian-bundle kast-ubuntu-debian-ci-bundle \
+            "dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz" ci-package-ubuntu-debian-bundle
+          record_output ci-headless-runtime kast-action-runtime-inputs \
+            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
+          record_output ci-headless-runtime-manifest kast-action-runtime-inputs \
+            dist/kast-runtime-manifest.json ci-package-headless-runtime
+          record_output ci-gradle-ro-cache kast-action-runtime-inputs \
+            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
 
       - name: Upload prepared Ubuntu and Debian bundle
         uses: actions/upload-artifact@v6
@@ -588,11 +688,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Upload prepared generation ledgers
+      - name: Upload derived Linux package ledgers
         uses: actions/upload-artifact@v6
         with:
-          name: ci-artifact-ledger-prepared-generation
-          path: dist/ci-ledgers/prepared-generation
+          name: ci-artifact-ledger-prepared-linux-packages
+          path: dist/ci-ledgers/prepared-linux-packages
           if-no-files-found: error
           retention-days: 3
 
@@ -600,7 +700,7 @@ jobs:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     needs:
-      - prepared-generation
+      - prepared-linux-packages
     strategy:
       fail-fast: false
       matrix:
@@ -621,7 +721,7 @@ jobs:
       - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-prepared-generation
+          name: ci-artifact-ledger-prepared-linux-packages
           path: ci-ledgers
 
       - name: Verify prepared Ubuntu and Debian bundle
@@ -647,7 +747,7 @@ jobs:
     name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
-      - prepared-generation
+      - prepared-linux-packages
     steps:
       - uses: actions/checkout@v5
 
@@ -690,7 +790,7 @@ jobs:
       - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-prepared-generation
+          name: ci-artifact-ledger-prepared-linux-packages
           path: ci-ledgers
 
       - name: Verify prepared kast-action runtime inputs
@@ -771,28 +871,28 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: kast-prepared-local-generation
-          path: dist
+          path: ${{ runner.temp }}/kast-prepared-generation
 
       - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
           name: ci-artifact-ledger-prepared-generation
-          path: ci-ledgers
+          path: ${{ runner.temp }}/kast-prepared-generation-ledger
 
       - name: Verify prepared local generation artifact
         shell: bash
         run: |
           set -euo pipefail
           scripts/verify-ci-artifact-ledger.py verify \
-            --ledger ci-ledgers/ci-prepared-local-generation.json \
+            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
             --git-sha "$GITHUB_SHA" \
             --require-kind ci-prepared-local-generation \
-            --artifact ci-prepared-local-generation=dist/kast-local-prepared-generation.tar.zst
-          (cd dist && sha256sum -c kast-local-prepared-generation.sha256)
+            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
+          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
 
       - name: Exercise representative installed semantics
         env:
-          KAST_PREPARED_GENERATION_ARCHIVE: ${{ github.workspace }}/dist/kast-local-prepared-generation.tar.zst
+          KAST_PREPARED_GENERATION_ARCHIVE: ${{ runner.temp }}/kast-prepared-generation/kast-local-prepared-generation.tar.zst
           KAST_SEMANTIC_FIXTURE_EVIDENCE_DIR: ${{ github.workspace }}/build/installed-semantic-fixture-evidence
         shell: bash
         run: ./.github/scripts/test-local-development-semantic-fixture.sh

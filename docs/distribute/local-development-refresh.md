@@ -83,13 +83,15 @@ activation.
 ## Understand Repository Validation
 
 Pull requests run focused proof at the boundary that owns each change. The
-static workflow gate captures one source snapshot. The Rust and Linux jobs
-produce one source-bound CLI and backend from it, and one prepared-generation
-job attests and packages that generation. Ubuntu/Debian containers and the
-published action validate ledgered derivatives of those same bytes instead of
-rebuilding or repackaging them. One required pull-request job activates that
-prepared generation against a small two-module Gradle fixture. It proves real
-headless import, selector-handle reuse, main/test/test-fixture diagnostics, a
+static workflow gate captures one source snapshot. Independent source-bound
+CLI and Linux jobs produce one CLI and backend from it while Rust validation
+runs in parallel. One prepared-generation job attests and packages that
+generation. The required semantic fixture can consume it immediately; a
+downstream producer derives Ubuntu/Debian and published-action packages from
+the verified prepared bytes without rebuilding either component. One required
+pull-request job activates the generation against a small
+two-module Gradle fixture. It proves real headless import, selector-handle
+reuse, main/test/test-fixture diagnostics, a
 deliberate unresolved reference, plan-only rename, shutdown, and removal in a
 single runtime cycle without installing Rust or refreshing the generation.
 
