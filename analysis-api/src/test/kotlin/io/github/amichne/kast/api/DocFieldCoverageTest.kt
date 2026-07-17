@@ -37,6 +37,8 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.DiagnosticSeverityCounts
 import io.github.amichne.kast.api.contract.result.RefreshResult
@@ -136,6 +138,12 @@ class DocFieldCoverageTest {
         "ContainingSymbolEvidence" to ContainingSymbolEvidence.serializer(),
         "EXACT" to ResultCardinality.Exact.serializer(),
         "KNOWN_MINIMUM" to ResultCardinality.KnownMinimum.serializer(),
+        "RelationshipSearchCoverage.Complete" to RelationshipSearchCoverage.Complete.serializer(),
+        "RelationshipSearchCoverage.Resumable" to RelationshipSearchCoverage.Resumable.serializer(),
+        "RelationshipSearchCoverage.Limited" to RelationshipSearchCoverage.Limited.serializer(),
+        "RelationshipResultEvidence.Complete" to RelationshipResultEvidence.Complete.serializer(),
+        "RelationshipResultEvidence.Resumable" to RelationshipResultEvidence.Resumable.serializer(),
+        "RelationshipResultEvidence.Limited" to RelationshipResultEvidence.Limited.serializer(),
         "ReferencesResult" to ReferencesResult.serializer(),
         "CallHierarchyQuery" to CallHierarchyQuery.serializer(),
         "CallHierarchyResult" to CallHierarchyResult.serializer(),

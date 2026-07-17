@@ -46,6 +46,362 @@ impl AgentRelationSelectorProjection {
                 .as_ref()
                 .is_none_or(|value| !value.trim().is_empty())
     }
+
+    fn matches_identity(&self, actual: &mut AgentRelationIdentityProjection) -> bool {
+        let declaration_file_matches =
+            declaration_files_match(&self.declaration_file, &actual.declaration_file);
+        if declaration_file_matches {
+            actual.declaration_file.clone_from(&self.declaration_file);
+        }
+        self.fq_name == actual.fq_name
+            && declaration_file_matches
+            && self.declaration_start_offset == actual.declaration_start_offset
+            && self.kind.as_ref().is_none_or(|kind| kind == &actual.kind)
+            && self
+                .containing_type
+                .as_ref()
+                .is_none_or(|containing_type| {
+                    actual.containing_type.as_ref() == Some(containing_type)
+                })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentRelationshipCoverageStatus {
+    Complete,
+    InProgress,
+    Partial,
+    Stale,
+    Excluded,
+    TimedOut,
+    Cancelled,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentRelationshipSearchLimitation {
+    IdentityUnproven,
+    ProjectScopeIncomplete,
+    SourceSetScopeIncomplete,
+    SourceSetExcluded,
+    IndexNotReady,
+    IndexStale,
+    BackendIncomplete,
+    BackendUnavailable,
+    FamilySearchInProgress,
+    FamilySearchIncomplete,
+    CandidateBudgetReached,
+    TraversalStateBudgetReached,
+    TimedOut,
+    Cancelled,
+    GenerationChanged,
+    ContinuationExpired,
+    ContinuationInvalid,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all_fields = "camelCase")]
+enum AgentRelationshipCoverageInput {
+    #[serde(rename = "COMPLETE")]
+    Complete {
+        identity: AgentRelationshipCoverageStatus,
+        project_scope: AgentRelationshipCoverageStatus,
+        source_set_scope: AgentRelationshipCoverageStatus,
+        index_freshness: AgentRelationshipCoverageStatus,
+        backend: AgentRelationshipCoverageStatus,
+        requested_family: AgentRelationshipCoverageStatus,
+        limitations: Vec<AgentRelationshipSearchLimitation>,
+    },
+    #[serde(rename = "RESUMABLE")]
+    Resumable {
+        identity: AgentRelationshipCoverageStatus,
+        project_scope: AgentRelationshipCoverageStatus,
+        source_set_scope: AgentRelationshipCoverageStatus,
+        index_freshness: AgentRelationshipCoverageStatus,
+        backend: AgentRelationshipCoverageStatus,
+        requested_family: AgentRelationshipCoverageStatus,
+        limitations: Vec<AgentRelationshipSearchLimitation>,
+    },
+    #[serde(rename = "LIMITED")]
+    Limited {
+        identity: AgentRelationshipCoverageStatus,
+        project_scope: AgentRelationshipCoverageStatus,
+        source_set_scope: AgentRelationshipCoverageStatus,
+        index_freshness: AgentRelationshipCoverageStatus,
+        backend: AgentRelationshipCoverageStatus,
+        requested_family: AgentRelationshipCoverageStatus,
+        limitations: Vec<AgentRelationshipSearchLimitation>,
+    },
+}
+
+impl AgentRelationshipCoverageInput {
+    fn is_valid(&self) -> bool {
+        match self {
+            Self::Complete {
+                identity,
+                project_scope,
+                source_set_scope,
+                index_freshness,
+                backend,
+                requested_family,
+                limitations,
+            } => {
+                [
+                    identity,
+                    project_scope,
+                    source_set_scope,
+                    index_freshness,
+                    backend,
+                    requested_family,
+                ]
+                .into_iter()
+                .all(|status| *status == AgentRelationshipCoverageStatus::Complete)
+                    && limitations.is_empty()
+            }
+            Self::Resumable {
+                identity,
+                project_scope,
+                source_set_scope,
+                index_freshness,
+                backend,
+                requested_family,
+                limitations,
+            } => {
+                [
+                    identity,
+                    project_scope,
+                    source_set_scope,
+                    index_freshness,
+                    backend,
+                ]
+                .into_iter()
+                .all(|status| *status == AgentRelationshipCoverageStatus::Complete)
+                    && *requested_family == AgentRelationshipCoverageStatus::InProgress
+                    && limitations
+                        == &[AgentRelationshipSearchLimitation::FamilySearchInProgress]
+            }
+            Self::Limited {
+                identity,
+                project_scope,
+                source_set_scope,
+                index_freshness,
+                backend,
+                requested_family,
+                limitations,
+            } => {
+                let canonical = !limitations.is_empty()
+                    && limitations.windows(2).all(|pair| pair[0] < pair[1]);
+                canonical
+                    && *identity
+                        == status_for_identity_limitations(limitations)
+                    && *project_scope
+                        == status_for_project_limitations(limitations)
+                    && *source_set_scope
+                        == status_for_source_set_limitations(limitations)
+                    && *index_freshness
+                        == status_for_index_limitations(limitations)
+                    && *backend == status_for_backend_limitations(limitations)
+                    && *requested_family == status_for_family_limitations(limitations)
+            }
+        }
+    }
+
+    fn is_complete(&self) -> bool {
+        matches!(self, Self::Complete { .. }) && self.is_valid()
+    }
+
+    fn is_resumable(&self) -> bool {
+        matches!(self, Self::Resumable { .. }) && self.is_valid()
+    }
+
+    fn is_limited(&self) -> bool {
+        matches!(self, Self::Limited { .. }) && self.is_valid()
+    }
+
+    fn limitations(&self) -> &[AgentRelationshipSearchLimitation] {
+        match self {
+            Self::Complete { limitations, .. }
+            | Self::Resumable { limitations, .. }
+            | Self::Limited { limitations, .. } => limitations,
+        }
+    }
+}
+
+fn status_for_identity_limitations(
+    limitations: &[AgentRelationshipSearchLimitation],
+) -> AgentRelationshipCoverageStatus {
+    if limitations.contains(&AgentRelationshipSearchLimitation::IdentityUnproven) {
+        AgentRelationshipCoverageStatus::Unavailable
+    } else {
+        AgentRelationshipCoverageStatus::Complete
+    }
+}
+
+fn status_for_project_limitations(
+    limitations: &[AgentRelationshipSearchLimitation],
+) -> AgentRelationshipCoverageStatus {
+    if limitations.contains(&AgentRelationshipSearchLimitation::ProjectScopeIncomplete) {
+        AgentRelationshipCoverageStatus::Partial
+    } else {
+        AgentRelationshipCoverageStatus::Complete
+    }
+}
+
+fn status_for_source_set_limitations(
+    limitations: &[AgentRelationshipSearchLimitation],
+) -> AgentRelationshipCoverageStatus {
+    if limitations.contains(&AgentRelationshipSearchLimitation::SourceSetExcluded) {
+        AgentRelationshipCoverageStatus::Excluded
+    } else if limitations.contains(&AgentRelationshipSearchLimitation::SourceSetScopeIncomplete) {
+        AgentRelationshipCoverageStatus::Partial
+    } else {
+        AgentRelationshipCoverageStatus::Complete
+    }
+}
+
+fn status_for_index_limitations(
+    limitations: &[AgentRelationshipSearchLimitation],
+) -> AgentRelationshipCoverageStatus {
+    if limitations.contains(&AgentRelationshipSearchLimitation::IndexStale)
+        || limitations.contains(&AgentRelationshipSearchLimitation::GenerationChanged)
+    {
+        AgentRelationshipCoverageStatus::Stale
+    } else if limitations.contains(&AgentRelationshipSearchLimitation::IndexNotReady) {
+        AgentRelationshipCoverageStatus::InProgress
+    } else {
+        AgentRelationshipCoverageStatus::Complete
+    }
+}
+
+fn status_for_backend_limitations(
+    limitations: &[AgentRelationshipSearchLimitation],
+) -> AgentRelationshipCoverageStatus {
+    if limitations.contains(&AgentRelationshipSearchLimitation::Cancelled) {
+        AgentRelationshipCoverageStatus::Cancelled
+    } else if limitations.iter().any(|limitation| {
+        matches!(
+            limitation,
+            AgentRelationshipSearchLimitation::BackendUnavailable
+                | AgentRelationshipSearchLimitation::TraversalStateBudgetReached
+                | AgentRelationshipSearchLimitation::ContinuationExpired
+                | AgentRelationshipSearchLimitation::ContinuationInvalid
+        )
+    }) {
+        AgentRelationshipCoverageStatus::Unavailable
+    } else if limitations.contains(&AgentRelationshipSearchLimitation::BackendIncomplete) {
+        AgentRelationshipCoverageStatus::Partial
+    } else {
+        AgentRelationshipCoverageStatus::Complete
+    }
+}
+
+fn status_for_family_limitations(
+    limitations: &[AgentRelationshipSearchLimitation],
+) -> AgentRelationshipCoverageStatus {
+    if limitations.contains(&AgentRelationshipSearchLimitation::TimedOut) {
+        AgentRelationshipCoverageStatus::TimedOut
+    } else if limitations.contains(&AgentRelationshipSearchLimitation::Cancelled) {
+        AgentRelationshipCoverageStatus::Cancelled
+    } else if limitations.contains(&AgentRelationshipSearchLimitation::FamilySearchInProgress) {
+        AgentRelationshipCoverageStatus::InProgress
+    } else if limitations.iter().any(|limitation| {
+        matches!(
+            limitation,
+            AgentRelationshipSearchLimitation::IndexNotReady
+                | AgentRelationshipSearchLimitation::BackendUnavailable
+                | AgentRelationshipSearchLimitation::ContinuationExpired
+                | AgentRelationshipSearchLimitation::ContinuationInvalid
+        )
+    }) {
+        AgentRelationshipCoverageStatus::Unavailable
+    } else {
+        AgentRelationshipCoverageStatus::Partial
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentKnownMinimumCardinality {
+    KnownMinimum { known_minimum_count: usize },
+}
+
+impl AgentKnownMinimumCardinality {
+    fn known_minimum(self) -> usize {
+        match self {
+            Self::KnownMinimum {
+                known_minimum_count,
+            } => known_minimum_count,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all_fields = "camelCase")]
+enum AgentRelationshipResultEvidenceInput {
+    #[serde(rename = "COMPLETE")]
+    Complete {
+        cardinality: AgentExactCardinality,
+        coverage: AgentRelationshipCoverageInput,
+    },
+    #[serde(rename = "RESUMABLE")]
+    Resumable {
+        cardinality: AgentKnownMinimumCardinality,
+        coverage: AgentRelationshipCoverageInput,
+    },
+    #[serde(rename = "LIMITED")]
+    Limited {
+        cardinality: AgentKnownMinimumCardinality,
+        coverage: AgentRelationshipCoverageInput,
+    },
+}
+
+impl AgentRelationshipResultEvidenceInput {
+    fn is_valid_available(&self) -> bool {
+        match self {
+            Self::Complete { coverage, .. } => coverage.is_complete(),
+            Self::Resumable { coverage, .. } => coverage.is_resumable(),
+            Self::Limited { .. } => false,
+        }
+    }
+
+    fn is_valid_complete(&self) -> bool {
+        matches!(self, Self::Complete { coverage, .. } if coverage.is_complete())
+    }
+
+    fn is_valid_resumable(&self) -> bool {
+        matches!(self, Self::Resumable { coverage, .. } if coverage.is_resumable())
+    }
+
+    fn is_valid_limited(&self) -> bool {
+        matches!(self, Self::Limited { coverage, .. } if coverage.is_limited())
+    }
+
+    fn cardinality(&self) -> AgentResultCardinality {
+        match self {
+            Self::Complete { cardinality, .. } => AgentResultCardinality::Exact {
+                total_count: cardinality.total_count(),
+            },
+            Self::Resumable { cardinality, .. } | Self::Limited { cardinality, .. } => {
+                AgentResultCardinality::KnownMinimum {
+                    known_minimum_count: cardinality.known_minimum(),
+                }
+            }
+        }
+    }
+
+    fn coverage(&self) -> &AgentRelationshipCoverageInput {
+        match self {
+            Self::Complete { coverage, .. }
+            | Self::Resumable { coverage, .. }
+            | Self::Limited { coverage, .. } => coverage,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,7 +411,7 @@ enum AgentReferencesResponseInput {
     Available {
         subject: AgentRelationIdentityProjection,
         references: Vec<AgentReferenceOccurrenceInput>,
-        cardinality: AgentResultCardinality,
+        evidence: AgentRelationshipResultEvidenceInput,
         #[serde(default)]
         page: Option<AgentReferencePageInput>,
     },
@@ -78,16 +434,19 @@ enum AgentReferencesResponseInput {
         selector: AgentRelationSelectorProjection,
         subject: AgentRelationIdentityProjection,
         reason: AgentReferencesDegradedReason,
+        evidence: AgentRelationshipResultEvidenceInput,
     },
     #[serde(rename = "CURSOR_STALE")]
     CursorStale {
         selector: AgentRelationSelectorProjection,
         reason: AgentRelationCursorStaleReason,
+        evidence: AgentRelationshipResultEvidenceInput,
     },
     #[serde(rename = "CURSOR_INVALID")]
     CursorInvalid {
         selector: AgentRelationSelectorProjection,
         reason: AgentRelationCursorInvalidReason,
+        evidence: AgentRelationshipResultEvidenceInput,
     },
     #[serde(rename = "SELECTOR_HANDLE_REJECTED")]
     SelectorHandleRejected {
@@ -103,6 +462,8 @@ enum AgentReferencesDegradedReason {
     IndexIdentityUnavailable,
     BoundSourceUnavailable,
     CandidateBudgetReached,
+    Timeout,
+    Cancelled,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -234,7 +595,9 @@ struct AgentReferencesAvailableProjection {
     #[serde(skip_serializing_if = "Option::is_none")]
     page: Option<AgentRelationPageProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    limitations: Option<Vec<String>>,
+    coverage: Option<AgentRelationshipCoverageInput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limitations: Option<Vec<AgentRelationshipSearchLimitation>>,
     schema_version: u32,
 }
 
@@ -247,6 +610,10 @@ fn project_references_envelope(
         return compact_error_envelope(envelope);
     }
     let method = envelope.method.clone();
+    let provenance = match reference_request_provenance(&envelope) {
+        Ok(provenance) => provenance,
+        Err(message) => return invalid_projection_envelope(method, message),
+    };
     let Some(result) = envelope.result.clone() else {
         return invalid_projection_envelope(method, "References returned no result.");
     };
@@ -263,7 +630,7 @@ fn project_references_envelope(
         AgentReferencesResponseInput::Available {
             subject,
             references,
-            cardinality,
+            evidence,
             page,
         } => project_available_references(
             method,
@@ -271,10 +638,92 @@ fn project_references_envelope(
             result_limit,
             subject,
             references,
-            cardinality,
+            evidence,
             page,
+            &provenance,
         ),
-        other => project_expected_reference_outcome(method, other),
+        other => project_expected_reference_outcome(method, other, &provenance),
+    }
+}
+
+#[derive(Debug, Clone)]
+enum AgentReferenceRequestProvenance {
+    Explicit(AgentExpectedRelationshipSelector),
+    Handle,
+}
+
+impl AgentReferenceRequestProvenance {
+    fn matches_subject(&self, subject: &mut AgentRelationIdentityProjection) -> bool {
+        subject.is_valid()
+            && match self {
+                Self::Explicit(expected) => expected.matches(subject),
+                Self::Handle => true,
+            }
+    }
+
+    fn matches_selector(&self, selector: &AgentRelationSelectorProjection) -> bool {
+        selector.is_valid()
+            && match self {
+                Self::Explicit(expected) => expected.matches_selector(selector),
+                Self::Handle => true,
+            }
+    }
+
+    fn matches_selector_and_subject(
+        &self,
+        selector: &AgentRelationSelectorProjection,
+        subject: &mut AgentRelationIdentityProjection,
+    ) -> bool {
+        self.matches_selector(selector)
+            && self.matches_subject(subject)
+            && selector.matches_identity(subject)
+    }
+
+    fn is_handle(&self) -> bool {
+        matches!(self, Self::Handle)
+    }
+}
+
+fn reference_request_provenance(
+    envelope: &AgentEnvelope,
+) -> std::result::Result<AgentReferenceRequestProvenance, String> {
+    let params = envelope
+        .request
+        .as_ref()
+        .and_then(|request| request.get("params"))
+        .and_then(Value::as_object)
+        .ok_or_else(|| "References omitted normalized request provenance.".to_string())?;
+    let selector = params.get("selector").filter(|value| !value.is_null());
+    let selector_handle = params
+        .get("selectorHandle")
+        .filter(|value| !value.is_null());
+    match (selector, selector_handle) {
+        (Some(selector), None) => {
+            let selector = serde_json::from_value::<AgentRelationSelectorProjection>(
+                selector.clone(),
+            )
+            .map_err(|error| format!("References explicit selector provenance was invalid: {error}"))?;
+            if !selector.is_valid() {
+                return Err("References explicit selector provenance was invalid.".to_string());
+            }
+            Ok(AgentReferenceRequestProvenance::Explicit(
+                AgentExpectedRelationshipSelector {
+                    workspace_root: String::new(),
+                    fq_name: selector.fq_name,
+                    declaration_file: selector.declaration_file,
+                    declaration_start_offset: selector.declaration_start_offset,
+                    kind: selector.kind,
+                    containing_type: selector.containing_type,
+                },
+            ))
+        }
+        (None, Some(Value::String(handle))) if !handle.trim().is_empty() => {
+            Ok(AgentReferenceRequestProvenance::Handle)
+        }
+        _ => Err(
+            "References request provenance did not contain exactly one explicit selector or selector handle."
+                .to_string(),
+        ),
     }
 }
 
@@ -283,12 +732,14 @@ fn project_available_references(
     method: String,
     view: AgentResultView<AgentRelationField>,
     result_limit: usize,
-    subject: AgentRelationIdentityProjection,
+    mut subject: AgentRelationIdentityProjection,
     references: Vec<AgentReferenceOccurrenceInput>,
-    cardinality: AgentResultCardinality,
+    evidence: AgentRelationshipResultEvidenceInput,
     page: Option<AgentReferencePageInput>,
+    provenance: &AgentReferenceRequestProvenance,
 ) -> AgentEnvelope {
-    if !subject.is_valid()
+    if !evidence.is_valid_available()
+        || !provenance.matches_subject(&mut subject)
         || references.len() > result_limit
         || references.iter().any(|reference| {
             reference.location.file_path.trim().is_empty()
@@ -304,8 +755,9 @@ fn project_available_references(
     let returned_count = references.len();
     let truncated = page.as_ref().is_some_and(|page| page.truncated);
     let next_page_token = page.and_then(|page| page.next_page_token);
-    if cardinality.known_minimum() < returned_count
-        || (truncated && cardinality.known_minimum() < returned_count.saturating_add(1))
+    let cardinality = evidence.cardinality();
+    if evidence.is_valid_resumable() != truncated
+        || cardinality.known_minimum() < returned_count
         || truncated != next_page_token.is_some()
     {
         return invalid_projection_envelope(method, "References contained inconsistent page evidence.");
@@ -329,6 +781,8 @@ fn project_available_references(
         truncated,
         next_page_token,
     };
+    let coverage = evidence.coverage().clone();
+    let limitations = evidence.coverage().limitations().to_vec();
     projected_agent_envelope(
         method,
         true,
@@ -343,7 +797,8 @@ fn project_available_references(
             records: selected(AgentRelationField::Records).then_some(records),
             page: (selected(AgentRelationField::Page) || matches!(view, AgentResultView::Count))
                 .then_some(page),
-            limitations: selected(AgentRelationField::Limitations).then_some(Vec::new()),
+            coverage: Some(coverage),
+            limitations: Some(limitations),
             schema_version: SCHEMA_VERSION,
         },
         None,
@@ -353,20 +808,37 @@ fn project_available_references(
 fn project_expected_reference_outcome(
     method: String,
     outcome: AgentReferencesResponseInput,
+    provenance: &AgentReferenceRequestProvenance,
 ) -> AgentEnvelope {
     let evidence_is_valid = match &outcome {
-        AgentReferencesResponseInput::SubjectNotFound { selector }
-        | AgentReferencesResponseInput::CursorStale { selector, .. }
-        | AgentReferencesResponseInput::CursorInvalid { selector, .. } => selector.is_valid(),
-        AgentReferencesResponseInput::SubjectIdentityMismatch { selector, actual } => {
-            selector.is_valid() && actual.is_valid()
+        AgentReferencesResponseInput::SubjectNotFound { selector } => {
+            provenance.matches_selector(selector)
         }
-        AgentReferencesResponseInput::UnsupportedSubjectKind { selector, subject }
-        | AgentReferencesResponseInput::Degraded {
-            selector, subject, ..
-        } => selector.is_valid() && subject.is_valid(),
+        AgentReferencesResponseInput::CursorStale {
+            selector, evidence, ..
+        }
+        | AgentReferencesResponseInput::CursorInvalid {
+            selector, evidence, ..
+        } => provenance.matches_selector(selector) && evidence.is_valid_limited(),
+        AgentReferencesResponseInput::SubjectIdentityMismatch { selector, actual } => {
+            provenance.matches_selector(selector) && actual.is_valid()
+        }
+        AgentReferencesResponseInput::UnsupportedSubjectKind { selector, subject } => {
+            let mut subject = subject.clone();
+            provenance.matches_selector_and_subject(selector, &mut subject)
+        }
+        AgentReferencesResponseInput::Degraded {
+            selector,
+            subject,
+            evidence,
+            ..
+        } => {
+            let mut subject = subject.clone();
+            provenance.matches_selector_and_subject(selector, &mut subject)
+                && evidence.is_valid_limited()
+        }
         AgentReferencesResponseInput::SelectorHandleRejected { reason, recovery } => {
-            reason.recovery() == *recovery
+            provenance.is_handle() && reason.recovery() == *recovery
         }
         AgentReferencesResponseInput::Available { .. } => false,
     };
@@ -400,29 +872,51 @@ fn project_expected_reference_outcome(
             "subject": subject,
             "schemaVersion": SCHEMA_VERSION,
         }),
-        AgentReferencesResponseInput::Degraded { selector, subject, reason } => json!({
+        AgentReferencesResponseInput::Degraded {
+            selector,
+            subject,
+            reason,
+            evidence,
+        } => json!({
             "type": "KAST_AGENT_REFERENCES_RESULT",
             "ok": true,
             "outcome": "DEGRADED",
             "selector": selector,
             "subject": subject,
             "reason": reason,
+            "cardinality": evidence.cardinality(),
+            "coverage": evidence.coverage(),
+            "limitations": evidence.coverage().limitations(),
             "schemaVersion": SCHEMA_VERSION,
         }),
-        AgentReferencesResponseInput::CursorStale { selector, reason } => json!({
+        AgentReferencesResponseInput::CursorStale {
+            selector,
+            reason,
+            evidence,
+        } => json!({
             "type": "KAST_AGENT_REFERENCES_RESULT",
             "ok": true,
             "outcome": "CURSOR_STALE",
             "selector": selector,
             "reason": reason,
+            "cardinality": evidence.cardinality(),
+            "coverage": evidence.coverage(),
+            "limitations": evidence.coverage().limitations(),
             "schemaVersion": SCHEMA_VERSION,
         }),
-        AgentReferencesResponseInput::CursorInvalid { selector, reason } => json!({
+        AgentReferencesResponseInput::CursorInvalid {
+            selector,
+            reason,
+            evidence,
+        } => json!({
             "type": "KAST_AGENT_REFERENCES_RESULT",
             "ok": true,
             "outcome": "CURSOR_INVALID",
             "selector": selector,
             "reason": reason,
+            "cardinality": evidence.cardinality(),
+            "coverage": evidence.coverage(),
+            "limitations": evidence.coverage().limitations(),
             "schemaVersion": SCHEMA_VERSION,
         }),
         AgentReferencesResponseInput::SelectorHandleRejected { reason, recovery } => json!({
@@ -452,10 +946,8 @@ struct AgentExpectedRelationshipSelector {
 
 impl AgentExpectedRelationshipSelector {
     fn matches(&self, actual: &mut AgentRelationIdentityProjection) -> bool {
-        let declaration_file_matches = self.declaration_file == actual.declaration_file
-            || std::fs::canonicalize(&actual.declaration_file)
-                .ok()
-                .is_some_and(|path| path.to_string_lossy() == self.declaration_file);
+        let declaration_file_matches =
+            declaration_files_match(&self.declaration_file, &actual.declaration_file);
         if declaration_file_matches {
             actual.declaration_file.clone_from(&self.declaration_file);
         }
@@ -472,406 +964,22 @@ impl AgentExpectedRelationshipSelector {
     }
 
     fn matches_selector(&self, selector: &AgentRelationSelectorProjection) -> bool {
+        let declaration_file_matches =
+            declaration_files_match(&self.declaration_file, &selector.declaration_file);
         self.fq_name == selector.fq_name
-            && self.declaration_file == selector.declaration_file
+            && declaration_file_matches
             && self.declaration_start_offset == selector.declaration_start_offset
             && self.kind == selector.kind
             && self.containing_type == selector.containing_type
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawRelationshipSymbolInput {
-    fq_name: String,
-    kind: String,
-    location: AgentLocationInput,
-    #[serde(default)]
-    containing_type: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawCallNodeInput {
-    symbol: AgentRawRelationshipSymbolInput,
-    #[serde(default)]
-    call_site: Option<AgentLocationInput>,
-    #[serde(default)]
-    children: Vec<AgentRawCallNodeInput>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawCallStatsInput {
-    total_edges: usize,
-    max_depth_reached: usize,
-    #[serde(default)]
-    truncated_nodes: usize,
-    #[serde(default)]
-    timeout_reached: bool,
-    #[serde(default)]
-    max_total_calls_reached: bool,
-    #[serde(default)]
-    max_children_per_node_reached: bool,
-}
-
-impl AgentRawCallStatsInput {
-    fn is_exhaustive(&self) -> bool {
-        self.truncated_nodes == 0
-            && !self.timeout_reached
-            && !self.max_total_calls_reached
-            && !self.max_children_per_node_reached
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawCallHierarchyInput {
-    root: AgentRawCallNodeInput,
-    stats: AgentRawCallStatsInput,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawImplementationsInput {
-    declaration: AgentRawRelationshipSymbolInput,
-    implementations: Vec<AgentRawRelationshipSymbolInput>,
-    exhaustive: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawHierarchyNodeInput {
-    symbol: AgentRawRelationshipSymbolInput,
-    #[serde(default)]
-    children: Vec<AgentRawHierarchyNodeInput>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawHierarchyStatsInput {
-    total_nodes: usize,
-    max_depth_reached: usize,
-    truncated: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRawHierarchyInput {
-    root: AgentRawHierarchyNodeInput,
-    stats: AgentRawHierarchyStatsInput,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentCallRelationshipRecordProjection {
-    relation: &'static str,
-    related_symbol: AgentRelationIdentityProjection,
-    call_site: AgentLocationInput,
-    depth: usize,
-    containing_symbol: AgentContainingSymbolInput,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentImplementationRecordProjection {
-    relation: &'static str,
-    implementation: AgentRelationIdentityProjection,
-    declaration_location: AgentLocationInput,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentHierarchyRecordProjection {
-    relation: &'static str,
-    related_symbol: AgentRelationIdentityProjection,
-    declaration_location: AgentLocationInput,
-    depth: usize,
-}
-
-#[allow(clippy::too_many_arguments)]
-fn project_raw_call_relationship_envelope(
-    method: String,
-    envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
-    relation: &'static str,
-    record_relation: &'static str,
-    direction: &'static str,
-    result_limit: usize,
-    max_depth: usize,
-    view: AgentResultView<AgentRelationField>,
-) -> AgentEnvelope {
-    if !envelope.ok {
-        return compact_relationship_error(method, envelope);
-    }
-    let Some(result) = envelope.result else {
-        return invalid_projection_envelope(method, "Call hierarchy returned no result.");
-    };
-    let input = match serde_json::from_value::<AgentRawCallHierarchyInput>(result) {
-        Ok(input) => input,
-        Err(error) => {
-            return invalid_projection_envelope(
-                method,
-                format!("Call hierarchy violated its closed response contract: {error}"),
-            );
-        }
-    };
-    let AgentRawCallHierarchyInput { root, stats } = input;
-    if !stats.is_exhaustive() {
-        return invalid_projection_envelope(
-            method,
-            "Call hierarchy was incomplete without resumable traversal state.",
-        );
-    }
-    let AgentRawCallNodeInput {
-        symbol,
-        call_site: _,
-        children,
-    } = root;
-    let (mut subject, _) = match project_raw_relationship_symbol(symbol) {
-        Ok(subject) => subject,
-        Err(message) => return invalid_projection_envelope(method, message),
-    };
-    if !expected.matches(&mut subject) {
-        return invalid_projection_envelope(
-            method,
-            "Call hierarchy subject did not match the selected declaration anchor.",
-        );
-    }
-    let mut records = Vec::new();
-    let mut observed_max_depth = 0_usize;
-    let mut frontier = std::collections::VecDeque::new();
-    for child in children {
-        frontier.push_back((child, 1_usize, subject.clone()));
-    }
-    while let Some((node, depth, parent)) = frontier.pop_front() {
-        if records.len() == result_limit || depth > max_depth {
-            return invalid_projection_envelope(
-                method,
-                "Call hierarchy exceeded the requested result or depth bound.",
-            );
-        }
-        observed_max_depth = observed_max_depth.max(depth);
-        let AgentRawCallNodeInput {
-            symbol,
-            call_site,
-            children,
-        } = node;
-        let (related_symbol, _) = match project_raw_relationship_symbol(symbol) {
-            Ok(symbol) => symbol,
-            Err(message) => return invalid_projection_envelope(method, message),
-        };
-        let Some(call_site) = call_site.filter(valid_relationship_location) else {
-            return invalid_projection_envelope(
-                method,
-                "Call hierarchy record omitted its valid call-site location.",
-            );
-        };
-        let containing_identity = if direction == "INCOMING" {
-            related_symbol.clone()
-        } else {
-            parent
-        };
-        for child in children {
-            frontier.push_back((child, depth + 1, related_symbol.clone()));
-        }
-        records.push(AgentCallRelationshipRecordProjection {
-            relation: record_relation,
-            related_symbol,
-            call_site: call_site.compact_relationship(),
-            depth,
-            containing_symbol: AgentContainingSymbolInput::Known {
-                symbol: containing_identity,
-            },
-        });
-    }
-    if stats.total_edges != records.len() || stats.max_depth_reached != observed_max_depth {
-        return invalid_projection_envelope(
-            method,
-            "Call hierarchy statistics did not match its complete bounded evidence.",
-        );
-    }
-    project_available_relationship(
-        method,
-        "KAST_AGENT_CALL_RELATIONSHIP_RESULT",
-        subject,
-        relation,
-        records,
-        view,
-    )
-}
-
-fn project_raw_implementations_envelope(
-    method: String,
-    envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
-    result_limit: usize,
-    view: AgentResultView<AgentRelationField>,
-) -> AgentEnvelope {
-    if !envelope.ok {
-        return compact_relationship_error(method, envelope);
-    }
-    let Some(result) = envelope.result else {
-        return invalid_projection_envelope(method, "Implementations returned no result.");
-    };
-    let input = match serde_json::from_value::<AgentRawImplementationsInput>(result) {
-        Ok(input) => input,
-        Err(error) => {
-            return invalid_projection_envelope(
-                method,
-                format!("Implementations violated its closed response contract: {error}"),
-            );
-        }
-    };
-    if !input.exhaustive || input.implementations.len() > result_limit {
-        return invalid_projection_envelope(
-            method,
-            "Implementations were incomplete or exceeded the requested result bound.",
-        );
-    }
-    let (mut subject, _) = match project_raw_relationship_symbol(input.declaration) {
-        Ok(subject) => subject,
-        Err(message) => return invalid_projection_envelope(method, message),
-    };
-    if !expected.matches(&mut subject) {
-        return invalid_projection_envelope(
-            method,
-            "Implementation subject did not match the selected declaration anchor.",
-        );
-    }
-    let mut records = Vec::with_capacity(input.implementations.len());
-    for implementation in input.implementations {
-        let (implementation, declaration_location) =
-            match project_raw_relationship_symbol(implementation) {
-                Ok(value) => value,
-                Err(message) => return invalid_projection_envelope(method, message),
-            };
-        records.push(AgentImplementationRecordProjection {
-            relation: "IMPLEMENTATION",
-            implementation,
-            declaration_location,
-        });
-    }
-    project_available_relationship(
-        method,
-        "KAST_AGENT_IMPLEMENTATIONS_RESULT",
-        subject,
-        "implementations",
-        records,
-        view,
-    )
-}
-
-fn project_raw_hierarchy_envelope(
-    method: String,
-    envelope: AgentEnvelope,
-    expected: AgentExpectedRelationshipSelector,
-    record_relation: &'static str,
-    result_limit: usize,
-    max_depth: usize,
-    view: AgentResultView<AgentRelationField>,
-) -> AgentEnvelope {
-    if !envelope.ok {
-        return compact_relationship_error(method, envelope);
-    }
-    let Some(result) = envelope.result else {
-        return invalid_projection_envelope(method, "Type hierarchy returned no result.");
-    };
-    let input = match serde_json::from_value::<AgentRawHierarchyInput>(result) {
-        Ok(input) => input,
-        Err(error) => {
-            return invalid_projection_envelope(
-                method,
-                format!("Type hierarchy violated its closed response contract: {error}"),
-            );
-        }
-    };
-    if input.stats.truncated {
-        return invalid_projection_envelope(
-            method,
-            "Type hierarchy was incomplete without resumable traversal state.",
-        );
-    }
-    let AgentRawHierarchyNodeInput { symbol, children } = input.root;
-    let (mut subject, _) = match project_raw_relationship_symbol(symbol) {
-        Ok(subject) => subject,
-        Err(message) => return invalid_projection_envelope(method, message),
-    };
-    if !expected.matches(&mut subject) {
-        return invalid_projection_envelope(
-            method,
-            "Type hierarchy subject did not match the selected declaration anchor.",
-        );
-    }
-    let mut records = Vec::new();
-    let mut observed_max_depth = 0_usize;
-    let mut frontier = std::collections::VecDeque::new();
-    for child in children {
-        frontier.push_back((child, 1_usize));
-    }
-    while let Some((node, depth)) = frontier.pop_front() {
-        if records.len() == result_limit || depth > max_depth {
-            return invalid_projection_envelope(
-                method,
-                "Type hierarchy exceeded the requested result or depth bound.",
-            );
-        }
-        observed_max_depth = observed_max_depth.max(depth);
-        let AgentRawHierarchyNodeInput { symbol, children } = node;
-        let (related_symbol, declaration_location) =
-            match project_raw_relationship_symbol(symbol) {
-                Ok(value) => value,
-                Err(message) => return invalid_projection_envelope(method, message),
-            };
-        records.push(AgentHierarchyRecordProjection {
-            relation: record_relation,
-            related_symbol,
-            declaration_location,
-            depth,
-        });
-        for child in children {
-            frontier.push_back((child, depth + 1));
-        }
-    }
-    if input.stats.total_nodes != records.len().saturating_add(1)
-        || input.stats.max_depth_reached != observed_max_depth
-    {
-        return invalid_projection_envelope(
-            method,
-            "Type hierarchy statistics did not match its complete bounded evidence.",
-        );
-    }
-    project_available_relationship(
-        method,
-        "KAST_AGENT_HIERARCHY_RESULT",
-        subject,
-        "hierarchy",
-        records,
-        view,
-    )
-}
-
-fn project_raw_relationship_symbol(
-    symbol: AgentRawRelationshipSymbolInput,
-) -> std::result::Result<(AgentRelationIdentityProjection, AgentLocationInput), &'static str> {
-    if !valid_relationship_location(&symbol.location) {
-        return Err("Relationship symbol omitted its valid declaration location.");
-    }
-    let declaration_start_offset = symbol
-        .location
-        .start_offset
-        .ok_or("Relationship symbol omitted its declaration offset.")?;
-    let identity = AgentRelationIdentityProjection {
-        fq_name: symbol.fq_name,
-        kind: symbol.kind,
-        declaration_file: symbol.location.file_path.clone(),
-        declaration_start_offset,
-        containing_type: symbol.containing_type,
-    };
-    if !identity.is_valid() {
-        return Err("Relationship symbol contained an invalid identity.");
-    }
-    Ok((identity, symbol.location.compact_relationship()))
+fn declaration_files_match(left: &str, right: &str) -> bool {
+    left == right
+        || std::fs::canonicalize(left)
+            .ok()
+            .zip(std::fs::canonicalize(right).ok())
+            .is_some_and(|(left, right)| left == right)
 }
 
 fn valid_relationship_location(location: &AgentLocationInput) -> bool {
@@ -885,60 +993,6 @@ fn valid_relationship_location(location: &AgentLocationInput) -> bool {
 fn compact_relationship_error(method: String, mut envelope: AgentEnvelope) -> AgentEnvelope {
     envelope.method = method;
     compact_error_envelope(envelope)
-}
-
-fn project_available_relationship<Record: Serialize>(
-    method: String,
-    result_type: &'static str,
-    subject: AgentRelationIdentityProjection,
-    relation: &'static str,
-    records: Vec<Record>,
-    view: AgentResultView<AgentRelationField>,
-) -> AgentEnvelope {
-    let returned_count = records.len();
-    let selected = |field| match &view {
-        AgentResultView::Fields(fields) => fields.contains(&field),
-        AgentResultView::Count => false,
-        AgentResultView::Compact | AgentResultView::Verbose | AgentResultView::Explain => true,
-    };
-    let mut result = serde_json::Map::from_iter([
-        ("type".to_string(), Value::String(result_type.to_string())),
-        ("ok".to_string(), Value::Bool(true)),
-        ("outcome".to_string(), Value::String("AVAILABLE".to_string())),
-        ("schemaVersion".to_string(), Value::from(SCHEMA_VERSION)),
-    ]);
-    if selected(AgentRelationField::Subject) {
-        result.insert(
-            "subject".to_string(),
-            serde_json::to_value(subject).unwrap_or(Value::Null),
-        );
-    }
-    if selected(AgentRelationField::Relation) || matches!(view, AgentResultView::Count) {
-        result.insert("relation".to_string(), Value::String(relation.to_string()));
-    }
-    if selected(AgentRelationField::Records) {
-        result.insert(
-            "records".to_string(),
-            serde_json::to_value(records).unwrap_or(Value::Null),
-        );
-    }
-    if selected(AgentRelationField::Page) || matches!(view, AgentResultView::Count) {
-        result.insert(
-            "page".to_string(),
-            json!({
-                "cardinality": {
-                    "type": "EXACT",
-                    "totalCount": returned_count,
-                },
-                "returnedCount": returned_count,
-                "truncated": false,
-            }),
-        );
-    }
-    if selected(AgentRelationField::Limitations) {
-        result.insert("limitations".to_string(), Value::Array(Vec::new()));
-    }
-    projected_agent_envelope(method, true, Value::Object(result), None)
 }
 
 #[derive(Debug, Deserialize)]
@@ -969,16 +1023,19 @@ enum AgentTypedTraversalResponseInput<Record, Reason> {
         selector: AgentRelationSelectorProjection,
         subject: AgentRelationIdentityProjection,
         reason: Reason,
+        evidence: AgentRelationshipResultEvidenceInput,
     },
     #[serde(rename = "CURSOR_STALE")]
     CursorStale {
         selector: AgentRelationSelectorProjection,
         reason: AgentRelationCursorStaleReason,
+        evidence: AgentRelationshipResultEvidenceInput,
     },
     #[serde(rename = "CURSOR_INVALID")]
     CursorInvalid {
         selector: AgentRelationSelectorProjection,
         reason: AgentRelationCursorInvalidReason,
+        evidence: AgentRelationshipResultEvidenceInput,
     },
     #[serde(rename = "SELECTOR_HANDLE_REJECTED")]
     SelectorHandleRejected {
@@ -990,7 +1047,7 @@ enum AgentTypedTraversalResponseInput<Record, Reason> {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentTypedTraversalPageInput {
-    cardinality: AgentResultCardinality,
+    evidence: AgentRelationshipResultEvidenceInput,
     returned_count: usize,
     visited_candidate_count: usize,
     truncated: bool,
@@ -1000,14 +1057,27 @@ struct AgentTypedTraversalPageInput {
 
 impl AgentTypedTraversalPageInput {
     fn is_valid(&self, record_count: usize, result_limit: usize) -> bool {
-        self.returned_count == record_count
+        let cardinality = self.evidence.cardinality();
+        self.evidence.is_valid_complete()
+            && self.returned_count == record_count
             && record_count <= result_limit
             && self.visited_candidate_count >= record_count
             && self.visited_candidate_count <= 16_384
             && self.truncated == self.next_page_token.is_some()
-            && self.cardinality.known_minimum() >= record_count
-            && (!self.truncated || self.cardinality.known_minimum() > record_count)
+            && cardinality.known_minimum() >= record_count
+            && (!self.truncated || cardinality.known_minimum() > record_count)
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTypedTraversalPageProjection {
+    cardinality: AgentResultCardinality,
+    returned_count: usize,
+    visited_candidate_count: usize,
+    truncated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_page_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1044,6 +1114,7 @@ enum AgentCallDegradedReason {
     CandidateBudgetReached,
     TraversalStateBudgetReached,
     Timeout,
+    Cancelled,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -1053,6 +1124,7 @@ enum AgentImplementationsDegradedReason {
     CandidateBudgetReached,
     TraversalStateBudgetReached,
     Timeout,
+    Cancelled,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -1062,6 +1134,7 @@ enum AgentHierarchyDegradedReason {
     CandidateBudgetReached,
     TraversalStateBudgetReached,
     Timeout,
+    Cancelled,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1247,6 +1320,23 @@ fn project_typed_available_relationship<Record: Serialize>(
     page: AgentTypedTraversalPageInput,
     view: AgentResultView<AgentRelationField>,
 ) -> AgentEnvelope {
+    let AgentTypedTraversalPageInput {
+        evidence,
+        returned_count,
+        visited_candidate_count,
+        truncated,
+        next_page_token,
+    } = page;
+    let cardinality = evidence.cardinality();
+    let coverage = evidence.coverage().clone();
+    let limitations = evidence.coverage().limitations().to_vec();
+    let page = AgentTypedTraversalPageProjection {
+        cardinality,
+        returned_count,
+        visited_candidate_count,
+        truncated,
+        next_page_token,
+    };
     let selected = |field| match &view {
         AgentResultView::Fields(fields) => fields.contains(&field),
         AgentResultView::Count => false,
@@ -1279,9 +1369,14 @@ fn project_typed_available_relationship<Record: Serialize>(
             serde_json::to_value(page).unwrap_or(Value::Null),
         );
     }
-    if selected(AgentRelationField::Limitations) {
-        result.insert("limitations".to_string(), Value::Array(Vec::new()));
-    }
+    result.insert(
+        "coverage".to_string(),
+        serde_json::to_value(coverage).unwrap_or(Value::Null),
+    );
+    result.insert(
+        "limitations".to_string(),
+        serde_json::to_value(limitations).unwrap_or(Value::Null),
+    );
     projected_agent_envelope(method, true, Value::Object(result), None)
 }
 
@@ -1317,6 +1412,97 @@ where
             return invalid_projection_envelope(
                 method,
                 "Selector handle rejection did not match a handle request and its required recovery.",
+            );
+        }
+        AgentTypedTraversalResponseInput::Degraded {
+            selector,
+            mut subject,
+            reason,
+            evidence,
+        } if expected.is_none() => {
+            if !selector.is_valid()
+                || !subject.is_valid()
+                || !selector.matches_identity(&mut subject)
+                || !admitted_kind(&subject.kind)
+                || !evidence.is_valid_limited()
+            {
+                return invalid_projection_envelope(
+                    method,
+                    "Handle-backed degraded relationship contained inconsistent subject or limitation evidence.",
+                );
+            }
+            return projected_agent_envelope(
+                method,
+                true,
+                json!({
+                    "type": result_type,
+                    "ok": true,
+                    "outcome": "DEGRADED",
+                    "selector": selector,
+                    "subject": subject,
+                    "reason": reason,
+                    "cardinality": evidence.cardinality(),
+                    "coverage": evidence.coverage(),
+                    "limitations": evidence.coverage().limitations(),
+                    "schemaVersion": SCHEMA_VERSION,
+                }),
+                None,
+            );
+        }
+        AgentTypedTraversalResponseInput::CursorStale {
+            selector,
+            reason,
+            evidence,
+        } if expected.is_none() => {
+            if !selector.is_valid() || !evidence.is_valid_limited() {
+                return invalid_projection_envelope(
+                    method,
+                    "Handle-backed stale relationship contained invalid selector or limitation evidence.",
+                );
+            }
+            return projected_agent_envelope(
+                method,
+                true,
+                json!({
+                    "type": result_type,
+                    "ok": true,
+                    "outcome": "CURSOR_STALE",
+                    "selector": selector,
+                    "reason": reason,
+                    "cardinality": evidence.cardinality(),
+                    "coverage": evidence.coverage(),
+                    "limitations": evidence.coverage().limitations(),
+                    "schemaVersion": SCHEMA_VERSION,
+                }),
+                None,
+            );
+        }
+        AgentTypedTraversalResponseInput::CursorInvalid {
+            selector,
+            reason,
+            evidence,
+        } if expected.is_none() => {
+            if !selector.is_valid() || !evidence.is_valid_limited() {
+                return invalid_projection_envelope(
+                    method,
+                    "Handle-backed invalid relationship contained invalid selector or limitation evidence.",
+                );
+            }
+            return projected_agent_envelope(
+                method,
+                true,
+                json!({
+                    "type": result_type,
+                    "ok": true,
+                    "outcome": "CURSOR_INVALID",
+                    "selector": selector,
+                    "reason": reason,
+                    "cardinality": evidence.cardinality(),
+                    "coverage": evidence.coverage(),
+                    "limitations": evidence.coverage().limitations(),
+                    "schemaVersion": SCHEMA_VERSION,
+                }),
+                None,
             );
         }
         other => other,
@@ -1390,12 +1576,14 @@ where
             selector,
             mut subject,
             reason,
+            evidence,
         } => {
             if !selector.is_valid()
                 || !expected.matches_selector(&selector)
                 || !subject.is_valid()
                 || !expected.matches(&mut subject)
                 || !admitted_kind(&subject.kind)
+                || !evidence.is_valid_limited()
             {
                 return invalid_projection_envelope(
                     method,
@@ -1409,11 +1597,20 @@ where
                 "selector": selector,
                 "subject": subject,
                 "reason": reason,
+                "cardinality": evidence.cardinality(),
+                "coverage": evidence.coverage(),
+                "limitations": evidence.coverage().limitations(),
                 "schemaVersion": SCHEMA_VERSION,
             })
         }
-        AgentTypedTraversalResponseInput::CursorStale { selector, reason }
-            if selector.is_valid() && expected.matches_selector(&selector) =>
+        AgentTypedTraversalResponseInput::CursorStale {
+            selector,
+            reason,
+            evidence,
+        }
+            if selector.is_valid()
+                && expected.matches_selector(&selector)
+                && evidence.is_valid_limited() =>
         {
             json!({
                 "type": result_type,
@@ -1421,11 +1618,20 @@ where
                 "outcome": "CURSOR_STALE",
                 "selector": selector,
                 "reason": reason,
+                "cardinality": evidence.cardinality(),
+                "coverage": evidence.coverage(),
+                "limitations": evidence.coverage().limitations(),
                 "schemaVersion": SCHEMA_VERSION,
             })
         }
-        AgentTypedTraversalResponseInput::CursorInvalid { selector, reason }
-            if selector.is_valid() && expected.matches_selector(&selector) =>
+        AgentTypedTraversalResponseInput::CursorInvalid {
+            selector,
+            reason,
+            evidence,
+        }
+            if selector.is_valid()
+                && expected.matches_selector(&selector)
+                && evidence.is_valid_limited() =>
         {
             json!({
                 "type": result_type,
@@ -1433,6 +1639,9 @@ where
                 "outcome": "CURSOR_INVALID",
                 "selector": selector,
                 "reason": reason,
+                "cardinality": evidence.cardinality(),
+                "coverage": evidence.coverage(),
+                "limitations": evidence.coverage().limitations(),
                 "schemaVersion": SCHEMA_VERSION,
             })
         }

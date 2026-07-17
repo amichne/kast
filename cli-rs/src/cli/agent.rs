@@ -1624,7 +1624,7 @@ pub struct AgentRelationViewArgs {
     /// Return only selected relationship result fields.
     #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
     pub fields: Vec<AgentRelationField>,
-    /// Return relationship cardinality and page evidence only.
+    /// Return relationship cardinality, coverage, limitations, and page evidence only.
     #[arg(long)]
     pub count: bool,
 }
@@ -1635,6 +1635,7 @@ pub enum AgentRelationField {
     Relation,
     Records,
     Page,
+    Coverage,
     Limitations,
 }
 

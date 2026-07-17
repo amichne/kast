@@ -429,7 +429,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin declaration: Symbol?` | The resolved declaration symbol, included when `includeDeclaration` was set. |
             | `#!kotlin references: List<ReferenceOccurrence>` | Reference locations with containing-symbol semantic evidence. |
-            | `#!kotlin cardinality: ResultCardinality` | Exact or known-minimum cardinality established by bounded reference work. |
+            | `#!kotlin evidence: RelationshipResultEvidence` | Proof-carrying cardinality and coverage established by bounded reference work. |
             | `#!kotlin page: PageInfo?` | Pagination metadata when results are truncated. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
@@ -499,9 +499,22 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             }
                         }
                     ],
-                    "cardinality": {
-                        "type": "EXACT",
-                        "totalCount": 1
+                    "evidence": {
+                        "type": "COMPLETE",
+                        "cardinality": {
+                            "type": "EXACT",
+                            "totalCount": 1
+                        },
+                        "coverage": {
+                            "type": "COMPLETE",
+                            "identity": "COMPLETE",
+                            "projectScope": "COMPLETE",
+                            "sourceSetScope": "COMPLETE",
+                            "indexFreshness": "COMPLETE",
+                            "backend": "COMPLETE",
+                            "requestedFamily": "COMPLETE",
+                            "limitations": []
+                        }
                     },
                     "schemaVersion": 3
                 },

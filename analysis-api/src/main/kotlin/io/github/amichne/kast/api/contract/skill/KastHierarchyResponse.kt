@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.SymbolIdentity
 import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.TypeHierarchyRelation
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
 import kotlinx.serialization.SerialName
@@ -47,6 +48,8 @@ data class KastHierarchyDegradedResponse(
     val selector: KastExactSymbolSelector,
     val subject: SymbolIdentity,
     val reason: KastHierarchyDegradedReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastHierarchyResponse
 
 @Serializable
@@ -54,6 +57,8 @@ data class KastHierarchyDegradedResponse(
 data class KastHierarchyCursorStaleResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorStaleReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastHierarchyResponse
 
 @Serializable
@@ -61,4 +66,6 @@ data class KastHierarchyCursorStaleResponse(
 data class KastHierarchyCursorInvalidResponse(
     val selector: KastExactSymbolSelector,
     val reason: RelationCursorInvalidReason,
+    @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
+    val evidence: RelationshipResultEvidence.Limited,
 ) : KastHierarchyResponse

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.api
 
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.testing.AnalysisBackendContractFixture
@@ -64,11 +66,14 @@ class FakeAnalysisBackendContinuationTest {
             }.message,
         )
 
-        val nextToken = checkNotNull(
-            backend.findReferences(query.parsed()).page?.nextPageToken,
-        )
+        val firstPage = backend.findReferences(query.parsed())
+        val nextToken = checkNotNull(firstPage.page?.nextPageToken)
+        val resumable = assertInstanceOf(RelationshipResultEvidence.Resumable::class.java, firstPage.evidence)
+        assertEquals(ResultCardinality.KnownMinimum(2), resumable.cardinality)
         val finalPage = backend.findReferences(query.copy(pageToken = nextToken).parsed())
         assertNull(finalPage.page)
+        val complete = assertInstanceOf(RelationshipResultEvidence.Complete::class.java, finalPage.evidence)
+        assertEquals(ResultCardinality.Exact(2), complete.cardinality)
         assertEquals(
             "Unknown or consumed reference continuation token",
             assertConflict {

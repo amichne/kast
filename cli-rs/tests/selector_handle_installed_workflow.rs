@@ -37,6 +37,23 @@ fn cli_version(binary: &std::path::Path) -> String {
         .to_string()
 }
 
+fn complete_relationship_evidence(total_count: usize) -> serde_json::Value {
+    serde_json::json!({
+        "type": "COMPLETE",
+        "cardinality": {"type": "EXACT", "totalCount": total_count},
+        "coverage": {
+            "type": "COMPLETE",
+            "identity": "COMPLETE",
+            "projectScope": "COMPLETE",
+            "sourceSetScope": "COMPLETE",
+            "indexFreshness": "COMPLETE",
+            "backend": "COMPLETE",
+            "requestedFamily": "COMPLETE",
+            "limitations": []
+        }
+    })
+}
+
 #[test]
 fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operations() {
     let cli_binary = std::path::PathBuf::from(env!("CARGO_BIN_EXE_kast"));
@@ -99,7 +116,7 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
                     "type": "AVAILABLE",
                     "subject": identity,
                     "references": [],
-                    "cardinality": {"type": "EXACT", "totalCount": 0},
+                    "evidence": complete_relationship_evidence(0),
                     "schemaVersion": 3
                 }),
             ),
@@ -110,7 +127,7 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
                     "subject": identity,
                     "records": [],
                     "page": {
-                        "cardinality": {"type": "EXACT", "totalCount": 0},
+                        "evidence": complete_relationship_evidence(0),
                         "returnedCount": 0,
                         "visitedCandidateCount": 0,
                         "truncated": false
@@ -169,6 +186,8 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
     let (references_toon, references) = decode_default_toon("references", references);
     assert_eq!(references["result"]["outcome"], "AVAILABLE");
     assert_eq!(references["result"]["subject"], identity);
+    assert_eq!(references["result"]["coverage"]["type"], "COMPLETE");
+    assert_eq!(references["result"]["limitations"], serde_json::json!([]));
 
     let callers = kast_at(&cli_binary, &home, &config_home)
         .args([
@@ -184,6 +203,8 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
     let (callers_toon, callers) = decode_default_toon("callers", callers);
     assert_eq!(callers["result"]["outcome"], "AVAILABLE");
     assert_eq!(callers["result"]["subject"], identity);
+    assert_eq!(callers["result"]["coverage"]["type"], "COMPLETE");
+    assert_eq!(callers["result"]["limitations"], serde_json::json!([]));
 
     let toon_bytes = resolved_toon.len() + references_toon.len() + callers_toon.len();
     let pretty_json_bytes = [&resolved, &references, &callers]

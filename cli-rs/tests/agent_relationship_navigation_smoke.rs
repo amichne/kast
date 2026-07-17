@@ -44,10 +44,100 @@ fn relation_location(file: &std::path::Path, start_offset: u64) -> serde_json::V
 
 fn exact_relation_page(total_count: usize) -> serde_json::Value {
     serde_json::json!({
+        "evidence": complete_relationship_evidence(total_count),
+        "returnedCount": total_count,
+        "visitedCandidateCount": total_count,
+        "truncated": false
+    })
+}
+
+fn proofless_exact_relation_page(total_count: usize) -> serde_json::Value {
+    serde_json::json!({
         "cardinality": {"type": "EXACT", "totalCount": total_count},
         "returnedCount": total_count,
         "visitedCandidateCount": total_count,
         "truncated": false
+    })
+}
+
+fn complete_relationship_coverage() -> serde_json::Value {
+    serde_json::json!({
+        "type": "COMPLETE",
+        "identity": "COMPLETE",
+        "projectScope": "COMPLETE",
+        "sourceSetScope": "COMPLETE",
+        "indexFreshness": "COMPLETE",
+        "backend": "COMPLETE",
+        "requestedFamily": "COMPLETE",
+        "limitations": []
+    })
+}
+
+fn complete_relationship_evidence(total_count: usize) -> serde_json::Value {
+    serde_json::json!({
+        "type": "COMPLETE",
+        "cardinality": {"type": "EXACT", "totalCount": total_count},
+        "coverage": complete_relationship_coverage()
+    })
+}
+
+fn resumable_relationship_evidence(known_minimum_count: usize) -> serde_json::Value {
+    serde_json::json!({
+        "type": "RESUMABLE",
+        "cardinality": {
+            "type": "KNOWN_MINIMUM",
+            "knownMinimumCount": known_minimum_count
+        },
+        "coverage": {
+            "type": "RESUMABLE",
+            "identity": "COMPLETE",
+            "projectScope": "COMPLETE",
+            "sourceSetScope": "COMPLETE",
+            "indexFreshness": "COMPLETE",
+            "backend": "COMPLETE",
+            "requestedFamily": "IN_PROGRESS",
+            "limitations": ["FAMILY_SEARCH_IN_PROGRESS"]
+        }
+    })
+}
+
+fn excluded_source_set_evidence(known_minimum_count: usize) -> serde_json::Value {
+    serde_json::json!({
+        "type": "LIMITED",
+        "cardinality": {
+            "type": "KNOWN_MINIMUM",
+            "knownMinimumCount": known_minimum_count
+        },
+        "coverage": {
+            "type": "LIMITED",
+            "identity": "COMPLETE",
+            "projectScope": "COMPLETE",
+            "sourceSetScope": "EXCLUDED",
+            "indexFreshness": "COMPLETE",
+            "backend": "COMPLETE",
+            "requestedFamily": "PARTIAL",
+            "limitations": ["SOURCE_SET_EXCLUDED", "FAMILY_SEARCH_INCOMPLETE"]
+        }
+    })
+}
+
+fn generation_changed_evidence(known_minimum_count: usize) -> serde_json::Value {
+    serde_json::json!({
+        "type": "LIMITED",
+        "cardinality": {
+            "type": "KNOWN_MINIMUM",
+            "knownMinimumCount": known_minimum_count
+        },
+        "coverage": {
+            "type": "LIMITED",
+            "identity": "COMPLETE",
+            "projectScope": "COMPLETE",
+            "sourceSetScope": "COMPLETE",
+            "indexFreshness": "STALE",
+            "backend": "COMPLETE",
+            "requestedFamily": "PARTIAL",
+            "limitations": ["GENERATION_CHANGED"]
+        }
     })
 }
 
@@ -191,6 +281,469 @@ fn relationship_types_reject_invalid_values_before_runtime_io() {
             String::from_utf8_lossy(&output.stderr),
         );
     }
+}
+
+#[test]
+fn exact_zero_relationships_require_complete_coverage_proof() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.proofless-exact-zero";
+    let function = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+    let interface = relation_identity("sample.Service", "INTERFACE", &declaration_file, 10);
+    let cases = vec![
+        (
+            "references",
+            "symbol/references",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "references": [],
+                "cardinality": {"type": "EXACT", "totalCount": 0},
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "callers",
+            "symbol/callers",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "records": [],
+                "page": proofless_exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "callees",
+            "symbol/callers",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": function,
+                "records": [],
+                "page": proofless_exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "implementations",
+            "symbol/implementations",
+            Vec::<&str>::new(),
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": interface,
+                "records": [],
+                "page": proofless_exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+        (
+            "hierarchy",
+            "symbol/hierarchy",
+            vec!["--direction", "both"],
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": interface,
+                "records": [],
+                "page": proofless_exact_relation_page(0),
+                "schemaVersion": 3
+            }),
+        ),
+    ];
+
+    for (index, (command_name, method, extra_args, response)) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp.path().join(format!("proofless-zero-{index}.sock")),
+            vec![(method, response)],
+        );
+        let mut command = kast(&home, &config);
+        command.args([
+            "--output",
+            "json",
+            "agent",
+            command_name,
+            "--selector-handle",
+            selector_handle,
+        ]);
+        command.args(extra_args);
+        command.args(["--workspace-root", workspace.to_str().expect("workspace")]);
+
+        let output = command.output().expect("proofless relationship");
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "command={command_name} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("invalid relationship json");
+        assert_eq!(
+            stdout["error"]["code"], "AGENT_RESULT_INVALID",
+            "command={command_name} output={stdout}",
+        );
+        backend.join().expect("scripted backend");
+    }
+}
+
+#[test]
+fn relationship_evidence_variants_reject_inconsistent_coverage_facts() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.inconsistent-relationship-evidence";
+    let subject = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+    let cases = [
+        serde_json::json!({
+            "type": "COMPLETE",
+            "cardinality": {"type": "EXACT", "totalCount": 0},
+            "coverage": {
+                "type": "COMPLETE",
+                "identity": "COMPLETE",
+                "projectScope": "COMPLETE",
+                "sourceSetScope": "EXCLUDED",
+                "indexFreshness": "COMPLETE",
+                "backend": "COMPLETE",
+                "requestedFamily": "COMPLETE",
+                "limitations": []
+            }
+        }),
+        serde_json::json!({
+            "type": "RESUMABLE",
+            "cardinality": {"type": "KNOWN_MINIMUM", "knownMinimumCount": 1},
+            "coverage": {
+                "type": "RESUMABLE",
+                "identity": "COMPLETE",
+                "projectScope": "COMPLETE",
+                "sourceSetScope": "COMPLETE",
+                "indexFreshness": "COMPLETE",
+                "backend": "COMPLETE",
+                "requestedFamily": "IN_PROGRESS",
+                "limitations": []
+            }
+        }),
+        serde_json::json!({
+            "type": "LIMITED",
+            "cardinality": {"type": "KNOWN_MINIMUM", "knownMinimumCount": 0},
+            "coverage": {
+                "type": "LIMITED",
+                "identity": "COMPLETE",
+                "projectScope": "COMPLETE",
+                "sourceSetScope": "COMPLETE",
+                "indexFreshness": "COMPLETE",
+                "backend": "COMPLETE",
+                "requestedFamily": "PARTIAL",
+                "limitations": []
+            }
+        }),
+    ];
+
+    for (index, evidence) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp.path().join(format!("invalid-evidence-{index}.sock")),
+            vec![(
+                "symbol/references",
+                serde_json::json!({
+                    "type": "AVAILABLE",
+                    "subject": subject,
+                    "references": [],
+                    "evidence": evidence,
+                    "schemaVersion": 3
+                }),
+            )],
+        );
+        let output = kast(&home, &config)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "references",
+                "--selector-handle",
+                selector_handle,
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("inconsistent relationship evidence");
+
+        assert_eq!(output.status.code(), Some(1));
+        let stdout: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("invalid evidence output");
+        assert_eq!(stdout["error"]["code"], "AGENT_RESULT_INVALID");
+        backend.join().expect("scripted backend");
+    }
+}
+
+#[test]
+fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.complete-exact-zero";
+    let response = || {
+        serde_json::json!({
+            "type": "AVAILABLE",
+            "subject": relation_identity(
+                "sample.Service.run",
+                "FUNCTION",
+                &declaration_file,
+                42,
+            ),
+            "references": [],
+            "evidence": complete_relationship_evidence(0),
+            "schemaVersion": 3
+        })
+    };
+
+    let compact_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("complete-zero-compact.sock"),
+        vec![("symbol/references", response())],
+    );
+    let compact = kast(&home, &config)
+        .args([
+            "agent",
+            "references",
+            "--selector-handle",
+            selector_handle,
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("compact complete zero");
+    assert!(
+        compact.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&compact.stdout),
+        String::from_utf8_lossy(&compact.stderr),
+    );
+    let compact_stdout = String::from_utf8_lossy(&compact.stdout);
+    assert!(compact_stdout.contains("coverage"), "{compact_stdout}");
+    assert!(compact_stdout.contains("COMPLETE"), "{compact_stdout}");
+    assert!(compact_stdout.contains("limitations"), "{compact_stdout}");
+    compact_backend.join().expect("compact backend");
+
+    let count_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("complete-zero-count.sock"),
+        vec![("symbol/references", response())],
+    );
+    let count = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "references",
+            "--selector-handle",
+            selector_handle,
+            "--count",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("count complete zero");
+    assert!(
+        count.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&count.stdout),
+        String::from_utf8_lossy(&count.stderr),
+    );
+    let count: serde_json::Value =
+        serde_json::from_slice(&count.stdout).expect("count complete zero json");
+    assert_eq!(count["result"]["page"]["cardinality"]["type"], "EXACT");
+    assert_eq!(count["result"]["page"]["cardinality"]["totalCount"], 0);
+    assert_eq!(count["result"]["coverage"]["type"], "COMPLETE");
+    assert_eq!(count["result"]["limitations"], serde_json::json!([]));
+    count_backend.join().expect("count backend");
+
+    let selected_backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("complete-zero-selected.sock"),
+        vec![("symbol/references", response())],
+    );
+    let selected = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "references",
+            "--selector-handle",
+            selector_handle,
+            "--fields",
+            "subject",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("selected complete zero");
+    assert!(
+        selected.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&selected.stdout),
+        String::from_utf8_lossy(&selected.stderr),
+    );
+    let selected: serde_json::Value =
+        serde_json::from_slice(&selected.stdout).expect("selected complete zero json");
+    assert!(selected["result"].get("page").is_none());
+    assert_eq!(selected["result"]["coverage"]["type"], "COMPLETE");
+    assert_eq!(selected["result"]["limitations"], serde_json::json!([]));
+    selected_backend.join().expect("selected backend");
+}
+
+#[test]
+fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.degraded-relationship";
+    let selector = serde_json::json!({
+        "fqName": "sample.Service.run",
+        "declarationFile": declaration_file,
+        "declarationStartOffset": 42,
+        "kind": "FUNCTION"
+    });
+    let subject = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("degraded-evidence.sock"),
+        vec![(
+            "symbol/callers",
+            serde_json::json!({
+                "type": "DEGRADED",
+                "selector": selector,
+                "subject": subject,
+                "reason": "CALL_HIERARCHY_UNAVAILABLE",
+                "evidence": excluded_source_set_evidence(3),
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "callers",
+            "--selector-handle",
+            selector_handle,
+            "--count",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("degraded relationship evidence");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("degraded relationship json");
+    assert_eq!(stdout["result"]["outcome"], "DEGRADED");
+    assert_eq!(
+        stdout["result"]["cardinality"],
+        serde_json::json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 3})
+    );
+    assert_eq!(stdout["result"]["coverage"]["type"], "LIMITED");
+    assert_eq!(
+        stdout["result"]["limitations"],
+        serde_json::json!(["SOURCE_SET_EXCLUDED", "FAMILY_SEARCH_INCOMPLETE"])
+    );
+    backend.join().expect("degraded backend");
+}
+
+#[test]
+fn handle_backed_stale_relationship_preserves_known_minimum_and_limitations() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    let selector_handle = "ksh1.stale-relationship";
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("stale-evidence.sock"),
+        vec![(
+            "symbol/callers",
+            serde_json::json!({
+                "type": "CURSOR_STALE",
+                "selector": {
+                    "fqName": "sample.Service.run",
+                    "declarationFile": declaration_file,
+                    "declarationStartOffset": 42,
+                    "kind": "FUNCTION"
+                },
+                "reason": "GENERATION_CHANGED",
+                "evidence": generation_changed_evidence(2),
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "callers",
+            "--selector-handle",
+            selector_handle,
+            "--count",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("stale relationship evidence");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("stale relationship json");
+    assert_eq!(stdout["result"]["outcome"], "CURSOR_STALE");
+    assert_eq!(
+        stdout["result"]["cardinality"],
+        serde_json::json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 2})
+    );
+    assert_eq!(stdout["result"]["coverage"]["indexFreshness"], "STALE");
+    assert_eq!(
+        stdout["result"]["limitations"],
+        serde_json::json!(["GENERATION_CHANGED"])
+    );
+    backend.join().expect("stale backend");
 }
 
 #[test]
@@ -806,7 +1359,7 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
                 "type": "AVAILABLE",
                 "subject": selector,
                 "references": [],
-                "cardinality": {"type": "EXACT", "totalCount": 0},
+                "evidence": complete_relationship_evidence(0),
                 "schemaVersion": 3
             }),
         )],
@@ -1118,7 +1671,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                     "location": relation_location(&workspace.join("app/A.kt"), 30),
                     "containingSymbol": {"type": "TOP_LEVEL"}
                 }],
-                "cardinality": {"type": "KNOWN_MINIMUM", "knownMinimumCount": 2},
+                "evidence": resumable_relationship_evidence(2),
                 "page": {
                     "truncated": true,
                     "nextPageToken": reference_handle
@@ -1173,7 +1726,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                 "type": "AVAILABLE",
                 "subject": selector,
                 "references": [],
-                "cardinality": {"type": "EXACT", "totalCount": 1},
+                "evidence": complete_relationship_evidence(1),
                 "schemaVersion": 3
             }),
         )],
@@ -1451,10 +2004,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
                         }
                     }
                 }],
-                "cardinality": {
-                    "type": "KNOWN_MINIMUM",
-                    "knownMinimumCount": 2
-                },
+                "evidence": resumable_relationship_evidence(2),
                 "page": {
                     "truncated": true,
                     "nextPageToken": backend_token
@@ -1539,7 +2089,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
                     "declarationStartOffset": 15
                 },
                 "references": [],
-                "cardinality": {"type": "EXACT", "totalCount": 1},
+                "evidence": complete_relationship_evidence(1),
                 "schemaVersion": 3
             }),
         )],
@@ -1605,6 +2155,80 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
 }
 
 #[test]
+fn references_preserve_a_zero_known_minimum_while_search_remains_resumable() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let backend_token = "00000000-0000-4000-8000-000000000337";
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config,
+        &workspace,
+        &temp.path().join("idea.sock"),
+        vec![(
+            "symbol/references",
+            serde_json::json!({
+                "type": "AVAILABLE",
+                "subject": {
+                    "fqName": "sample.Service",
+                    "kind": "CLASS",
+                    "declarationFile": declaration_file,
+                    "declarationStartOffset": 15
+                },
+                "references": [],
+                "evidence": resumable_relationship_evidence(0),
+                "page": {
+                    "truncated": true,
+                    "nextPageToken": backend_token
+                },
+                "schemaVersion": 3
+            }),
+        )],
+    );
+
+    let output = kast(&home, &config)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "references",
+            "--symbol",
+            "sample.Service",
+            "--declaration-file",
+            declaration_file.to_str().expect("declaration file"),
+            "--declaration-start-offset",
+            "15",
+            "--kind",
+            "class",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("resumable empty reference page");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("resumable reference json");
+    assert_eq!(stdout["result"]["page"]["returnedCount"], 0);
+    assert_eq!(
+        stdout["result"]["page"]["cardinality"],
+        serde_json::json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 0}),
+    );
+    assert_eq!(stdout["result"]["coverage"]["type"], "RESUMABLE");
+    assert!(stdout["result"]["page"]["truncated"].as_bool().unwrap());
+    backend.join().expect("scripted backend");
+}
+
+#[test]
 fn references_project_every_closed_non_available_outcome() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -1652,7 +2276,8 @@ fn references_project_every_closed_non_available_outcome() {
                 "type": "DEGRADED",
                 "selector": selector,
                 "subject": subject,
-                "reason": "REFERENCES_UNAVAILABLE"
+                "reason": "REFERENCES_UNAVAILABLE",
+                "evidence": excluded_source_set_evidence(0)
             }),
         ),
         (
@@ -1660,7 +2285,8 @@ fn references_project_every_closed_non_available_outcome() {
             serde_json::json!({
                 "type": "CURSOR_STALE",
                 "selector": selector,
-                "reason": "GENERATION_CHANGED"
+                "reason": "GENERATION_CHANGED",
+                "evidence": excluded_source_set_evidence(0)
             }),
         ),
         (
@@ -1668,7 +2294,8 @@ fn references_project_every_closed_non_available_outcome() {
             serde_json::json!({
                 "type": "CURSOR_INVALID",
                 "selector": selector,
-                "reason": "UNKNOWN_HANDLE"
+                "reason": "UNKNOWN_HANDLE",
+                "evidence": excluded_source_set_evidence(0)
             }),
         ),
     ];
@@ -1757,6 +2384,108 @@ fn references_fail_closed_on_an_unknown_response_variant() {
         serde_json::from_slice(&output.stdout).expect("invalid references json");
     assert_eq!(stdout["error"]["code"], "AGENT_RESULT_INVALID");
     backend.join().expect("scripted backend");
+}
+
+#[test]
+fn explicit_references_fail_closed_on_response_provenance_mismatch() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let declaration_file = workspace.join("Service.kt");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
+    let requested_selector = serde_json::json!({
+        "fqName": "sample.Service",
+        "declarationFile": declaration_file,
+        "declarationStartOffset": 15,
+        "kind": "CLASS"
+    });
+    let other_selector = serde_json::json!({
+        "fqName": "sample.Other",
+        "declarationFile": declaration_file,
+        "declarationStartOffset": 15,
+        "kind": "CLASS"
+    });
+    let other_subject = serde_json::json!({
+        "fqName": "sample.Other",
+        "kind": "CLASS",
+        "declarationFile": declaration_file,
+        "declarationStartOffset": 15
+    });
+    let cases = [
+        serde_json::json!({
+            "type": "AVAILABLE",
+            "subject": other_subject,
+            "references": [],
+            "evidence": complete_relationship_evidence(0),
+            "schemaVersion": 3
+        }),
+        serde_json::json!({
+            "type": "DEGRADED",
+            "selector": requested_selector,
+            "subject": other_subject,
+            "reason": "REFERENCES_UNAVAILABLE",
+            "evidence": excluded_source_set_evidence(0),
+            "schemaVersion": 3
+        }),
+        serde_json::json!({
+            "type": "CURSOR_STALE",
+            "selector": other_selector,
+            "reason": "GENERATION_CHANGED",
+            "evidence": excluded_source_set_evidence(0),
+            "schemaVersion": 3
+        }),
+        serde_json::json!({
+            "type": "SELECTOR_HANDLE_REJECTED",
+            "reason": "STALE",
+            "recovery": "RESOLVE_AGAIN",
+            "schemaVersion": 3
+        }),
+    ];
+
+    for (index, response) in cases.into_iter().enumerate() {
+        let backend = spawn_scripted_idea_backend(
+            &home,
+            &config,
+            &workspace,
+            &temp
+                .path()
+                .join(format!("reference-provenance-{index}.sock")),
+            vec![("symbol/references", response)],
+        );
+        let output = kast(&home, &config)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "references",
+                "--symbol",
+                "sample.Service",
+                "--declaration-file",
+                declaration_file.to_str().expect("declaration file"),
+                "--declaration-start-offset",
+                "15",
+                "--kind",
+                "class",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .output()
+            .expect("mismatched reference provenance");
+
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "case={index} stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+        let result: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("provenance failure JSON");
+        assert_eq!(result["error"]["code"], "AGENT_RESULT_INVALID");
+        backend.join().expect("provenance backend");
+    }
 }
 
 #[test]
@@ -1883,10 +2612,7 @@ fn compact_references_bound_high_cardinality_output() {
                     "declarationStartOffset": 15
                 },
                 "references": references,
-                "cardinality": {
-                    "type": "KNOWN_MINIMUM",
-                    "knownMinimumCount": TOTAL_REFERENCES
-                },
+                "evidence": resumable_relationship_evidence(TOTAL_REFERENCES),
                 "page": {"truncated": true, "nextPageToken": backend_token},
                 "schemaVersion": 3
             }),
@@ -2222,7 +2948,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
                 ),
                 "records": first_records,
                 "page": {
-                    "cardinality": {"type": "KNOWN_MINIMUM", "knownMinimumCount": 5},
+                    "evidence": complete_relationship_evidence(5),
                     "returnedCount": 4,
                     "visitedCandidateCount": 5,
                     "truncated": true,
@@ -2292,7 +3018,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
                 ),
                 "records": [second_record],
                 "page": {
-                    "cardinality": {"type": "EXACT", "totalCount": 5},
+                    "evidence": complete_relationship_evidence(5),
                     "returnedCount": 1,
                     "visitedCandidateCount": 1,
                     "truncated": false
@@ -2392,7 +3118,8 @@ fn typed_relationship_commands_project_closed_non_available_outcomes() {
                     &canonical_file,
                     15,
                 ),
-                "reason": "CALL_HIERARCHY_UNAVAILABLE"
+                "reason": "CALL_HIERARCHY_UNAVAILABLE",
+                "evidence": excluded_source_set_evidence(0)
             }),
         ),
         (
@@ -2435,7 +3162,8 @@ fn typed_relationship_commands_project_closed_non_available_outcomes() {
                     &canonical_file,
                     15,
                 ),
-                "reason": "TYPE_HIERARCHY_UNAVAILABLE"
+                "reason": "TYPE_HIERARCHY_UNAVAILABLE",
+                "evidence": excluded_source_set_evidence(0)
             }),
         ),
     ]

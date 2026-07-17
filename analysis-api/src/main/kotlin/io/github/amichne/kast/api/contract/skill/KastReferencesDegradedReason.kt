@@ -8,4 +8,6 @@ enum class KastReferencesDegradedReason {
     INDEX_IDENTITY_UNAVAILABLE,
     BOUND_SOURCE_UNAVAILABLE,
     CANDIDATE_BUDGET_REACHED,
+    TIMEOUT,
+    CANCELLED,
 }

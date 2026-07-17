@@ -33,8 +33,15 @@ import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
+import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
 import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
 import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
+import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
@@ -107,9 +114,12 @@ import io.github.amichne.kast.server.mutation.MutationProgressEvent
 import io.github.amichne.kast.server.mutation.MutationProgressReporter
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 
 internal class SkillRpcOrchestrator(
     private val backend: AnalysisBackend,
@@ -343,47 +353,100 @@ internal class SkillRpcOrchestrator(
                     selector = selector,
                 ).parsed(),
             )
+        } catch (_: TimeoutCancellationException) {
+            return KastReferencesDegradedResponse(
+                selector,
+                subject,
+                KastReferencesDegradedReason.TIMEOUT,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.TIMED_OUT),
+            )
+        } catch (failure: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw failure
+            return KastReferencesDegradedResponse(
+                selector,
+                subject,
+                KastReferencesDegradedReason.CANCELLED,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.CANCELLED),
+            )
         } catch (failure: ConflictException) {
             return when (failure.details["continuationFailure"]) {
                 "generationChanged" -> KastReferencesCursorStaleResponse(
                     selector,
                     RelationCursorStaleReason.GENERATION_CHANGED,
+                    limitedRelationshipEvidence(
+                        0,
+                        RelationshipSearchLimitation.GENERATION_CHANGED,
+                    ),
                 )
                 "expired" -> KastReferencesCursorStaleResponse(
                     selector,
                     RelationCursorStaleReason.EXPIRED,
+                    limitedRelationshipEvidence(
+                        0,
+                        RelationshipSearchLimitation.CONTINUATION_EXPIRED,
+                    ),
                 )
                 "queryMismatch" -> KastReferencesCursorInvalidResponse(
                     selector,
                     RelationCursorInvalidReason.QUERY_MISMATCH,
+                    limitedRelationshipEvidence(
+                        0,
+                        RelationshipSearchLimitation.CONTINUATION_INVALID,
+                    ),
                 )
                 "boundSourceUnavailable" -> KastReferencesDegradedResponse(
                     selector,
                     subject,
                     KastReferencesDegradedReason.BOUND_SOURCE_UNAVAILABLE,
+                    limitedRelationshipEvidence(
+                        0,
+                        RelationshipSearchLimitation.BACKEND_UNAVAILABLE,
+                    ),
                 )
                 "indexIdentityUnavailable" -> KastReferencesDegradedResponse(
                     selector,
                     subject,
                     KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
+                    limitedRelationshipEvidence(
+                        0,
+                        RelationshipSearchLimitation.BACKEND_INCOMPLETE,
+                    ),
                 )
                 else -> KastReferencesCursorInvalidResponse(
                     selector,
                     RelationCursorInvalidReason.UNKNOWN_HANDLE,
+                    limitedRelationshipEvidence(
+                        0,
+                        RelationshipSearchLimitation.CONTINUATION_INVALID,
+                    ),
                 )
             }
         }
-        if (completeResult.searchScope?.candidateCoverage == SearchScope.CandidateCoverage.PARTIAL) {
-            return KastReferencesDegradedResponse(
+        val evidence = if (
+            completeResult.searchScope?.candidateCoverage == SearchScope.CandidateCoverage.PARTIAL &&
+            completeResult.evidence !is RelationshipResultEvidence.Limited
+        ) {
+            limitedRelationshipEvidence(
+                completeResult.evidence.cardinality.knownMinimum(),
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            )
+        } else {
+            completeResult.evidence
+        }
+        val availableEvidence: RelationshipResultEvidence.Available = when (evidence) {
+            is RelationshipResultEvidence.Complete -> evidence
+            is RelationshipResultEvidence.Resumable -> evidence
+            is RelationshipResultEvidence.Limited -> return KastReferencesDegradedResponse(
                 selector = selector,
                 subject = subject,
                 reason = KastReferencesDegradedReason.REFERENCES_UNAVAILABLE,
+                evidence = evidence,
             )
         }
         return KastReferencesAvailableResponse(
             subject = subject,
             references = completeResult.references,
-            cardinality = completeResult.cardinality,
+            evidence = availableEvidence,
             page = completeResult.page,
             searchScope = completeResult.searchScope,
             declaration = completeResult.declaration,
@@ -431,18 +494,45 @@ internal class SkillRpcOrchestrator(
                 selector,
                 subject,
                 KastCallDegradedReason.CALL_HIERARCHY_UNAVAILABLE,
+                limitedRelationshipEvidence(
+                    0,
+                    RelationshipSearchLimitation.BACKEND_UNAVAILABLE,
+                ),
             )
         }
         val result = try {
             backend.callRelations(query)
+        } catch (_: TimeoutCancellationException) {
+            return KastCallersDegradedResponse(
+                selector,
+                subject,
+                KastCallDegradedReason.TIMEOUT,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.TIMED_OUT),
+            )
+        } catch (failure: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw failure
+            return KastCallersDegradedResponse(
+                selector,
+                subject,
+                KastCallDegradedReason.CANCELLED,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.CANCELLED),
+            )
         } catch (failure: ConflictException) {
             return callContinuationOutcome(selector, subject, failure)
         }
-        return KastCallersAvailableResponse(
-            subject = subject,
-            records = result.records,
-            page = result.page,
-        )
+        return when (result) {
+            is CallRelationsResult.Available -> KastCallersAvailableResponse(
+                subject = subject,
+                records = result.records,
+                page = result.page,
+            )
+            is CallRelationsResult.Limited -> KastCallersDegradedResponse(
+                selector = selector,
+                subject = subject,
+                reason = KastCallDegradedReason.CALL_HIERARCHY_UNAVAILABLE,
+                evidence = result.evidence,
+            )
+        }
     }
 
     suspend fun implementations(
@@ -482,14 +572,42 @@ internal class SkillRpcOrchestrator(
                 selector,
                 subject,
                 KastImplementationsDegradedReason.IMPLEMENTATIONS_UNAVAILABLE,
+                limitedRelationshipEvidence(
+                    0,
+                    RelationshipSearchLimitation.BACKEND_UNAVAILABLE,
+                ),
             )
         }
         val result = try {
             backend.implementationRelations(query)
+        } catch (_: TimeoutCancellationException) {
+            return KastImplementationsDegradedResponse(
+                selector,
+                subject,
+                KastImplementationsDegradedReason.TIMEOUT,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.TIMED_OUT),
+            )
+        } catch (failure: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw failure
+            return KastImplementationsDegradedResponse(
+                selector,
+                subject,
+                KastImplementationsDegradedReason.CANCELLED,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.CANCELLED),
+            )
         } catch (failure: ConflictException) {
             return implementationContinuationOutcome(selector, subject, failure)
         }
-        return KastImplementationsAvailableResponse(subject, result.records, result.page)
+        return when (result) {
+            is ImplementationRelationsResult.Available ->
+                KastImplementationsAvailableResponse(subject, result.records, result.page)
+            is ImplementationRelationsResult.Limited -> KastImplementationsDegradedResponse(
+                selector = selector,
+                subject = subject,
+                reason = KastImplementationsDegradedReason.IMPLEMENTATIONS_UNAVAILABLE,
+                evidence = result.evidence,
+            )
+        }
     }
 
     suspend fun hierarchy(request: KastHierarchyRequest): KastHierarchyResponse {
@@ -529,14 +647,42 @@ internal class SkillRpcOrchestrator(
                 selector,
                 subject,
                 KastHierarchyDegradedReason.TYPE_HIERARCHY_UNAVAILABLE,
+                limitedRelationshipEvidence(
+                    0,
+                    RelationshipSearchLimitation.BACKEND_UNAVAILABLE,
+                ),
             )
         }
         val result = try {
             backend.hierarchyRelations(query)
+        } catch (_: TimeoutCancellationException) {
+            return KastHierarchyDegradedResponse(
+                selector,
+                subject,
+                KastHierarchyDegradedReason.TIMEOUT,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.TIMED_OUT),
+            )
+        } catch (failure: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw failure
+            return KastHierarchyDegradedResponse(
+                selector,
+                subject,
+                KastHierarchyDegradedReason.CANCELLED,
+                limitedRelationshipEvidence(0, RelationshipSearchLimitation.CANCELLED),
+            )
         } catch (failure: ConflictException) {
             return hierarchyContinuationOutcome(selector, subject, failure)
         }
-        return KastHierarchyAvailableResponse(subject, result.records, result.page)
+        return when (result) {
+            is HierarchyRelationsResult.Available ->
+                KastHierarchyAvailableResponse(subject, result.records, result.page)
+            is HierarchyRelationsResult.Limited -> KastHierarchyDegradedResponse(
+                selector = selector,
+                subject = subject,
+                reason = KastHierarchyDegradedReason.TYPE_HIERARCHY_UNAVAILABLE,
+                evidence = result.evidence,
+            )
+        }
     }
 
     suspend fun scaffold(request: KastScaffoldRequest): KastScaffoldResponse {
@@ -1869,39 +2015,87 @@ internal class SkillRpcOrchestrator(
         }
     }
 
+    private fun limitedRelationshipEvidence(
+        knownMinimumCount: Int,
+        first: RelationshipSearchLimitation,
+        vararg additional: RelationshipSearchLimitation,
+    ): RelationshipResultEvidence.Limited = RelationshipResultEvidence.Limited(
+        cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
+        coverage = RelationshipSearchCoverage.limited(first, *additional),
+    )
+
     private fun callContinuationOutcome(
         selector: KastExactSymbolSelector,
         subject: SymbolIdentity,
         failure: ConflictException,
     ): KastCallersResponse = when (failure.details["continuationFailure"]) {
         "generationChanged" -> KastCallersCursorStaleResponse(
-            selector,
-            RelationCursorStaleReason.GENERATION_CHANGED,
+            selector = selector,
+            reason = RelationCursorStaleReason.GENERATION_CHANGED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.GENERATION_CHANGED,
+            ),
         )
-        "expired" -> KastCallersCursorStaleResponse(selector, RelationCursorStaleReason.EXPIRED)
+        "expired" -> KastCallersCursorStaleResponse(
+            selector = selector,
+            reason = RelationCursorStaleReason.EXPIRED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_EXPIRED,
+            ),
+        )
         "familyMismatch" -> KastCallersCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.FAMILY_MISMATCH,
+            selector = selector,
+            reason = RelationCursorInvalidReason.FAMILY_MISMATCH,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "queryMismatch" -> KastCallersCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.QUERY_MISMATCH,
+            selector = selector,
+            reason = RelationCursorInvalidReason.QUERY_MISMATCH,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "unknown" -> KastCallersCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.UNKNOWN_HANDLE,
+            selector = selector,
+            reason = RelationCursorInvalidReason.UNKNOWN_HANDLE,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "candidateBudgetReached" -> KastCallersDegradedResponse(
-            selector,
-            subject,
-            KastCallDegradedReason.CANDIDATE_BUDGET_REACHED,
+            selector = selector,
+            subject = subject,
+            reason = KastCallDegradedReason.CANDIDATE_BUDGET_REACHED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED,
+            ),
         )
         "traversalStateBudgetReached" -> KastCallersDegradedResponse(
-            selector,
-            subject,
-            KastCallDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+            selector = selector,
+            subject = subject,
+            reason = KastCallDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.TRAVERSAL_STATE_BUDGET_REACHED,
+            ),
         )
-        "timeout" -> KastCallersDegradedResponse(selector, subject, KastCallDegradedReason.TIMEOUT)
+        "timeout" -> KastCallersDegradedResponse(
+            selector = selector,
+            subject = subject,
+            reason = KastCallDegradedReason.TIMEOUT,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.TIMED_OUT,
+            ),
+        )
         else -> throw failure
     }
 
@@ -1911,39 +2105,71 @@ internal class SkillRpcOrchestrator(
         failure: ConflictException,
     ): KastImplementationsResponse = when (failure.details["continuationFailure"]) {
         "generationChanged" -> KastImplementationsCursorStaleResponse(
-            selector,
-            RelationCursorStaleReason.GENERATION_CHANGED,
+            selector = selector,
+            reason = RelationCursorStaleReason.GENERATION_CHANGED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.GENERATION_CHANGED,
+            ),
         )
         "expired" -> KastImplementationsCursorStaleResponse(
-            selector,
-            RelationCursorStaleReason.EXPIRED,
+            selector = selector,
+            reason = RelationCursorStaleReason.EXPIRED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_EXPIRED,
+            ),
         )
         "familyMismatch" -> KastImplementationsCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.FAMILY_MISMATCH,
+            selector = selector,
+            reason = RelationCursorInvalidReason.FAMILY_MISMATCH,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "queryMismatch" -> KastImplementationsCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.QUERY_MISMATCH,
+            selector = selector,
+            reason = RelationCursorInvalidReason.QUERY_MISMATCH,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "unknown" -> KastImplementationsCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.UNKNOWN_HANDLE,
+            selector = selector,
+            reason = RelationCursorInvalidReason.UNKNOWN_HANDLE,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "candidateBudgetReached" -> KastImplementationsDegradedResponse(
-            selector,
-            subject,
-            KastImplementationsDegradedReason.CANDIDATE_BUDGET_REACHED,
+            selector = selector,
+            subject = subject,
+            reason = KastImplementationsDegradedReason.CANDIDATE_BUDGET_REACHED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED,
+            ),
         )
         "traversalStateBudgetReached" -> KastImplementationsDegradedResponse(
-            selector,
-            subject,
-            KastImplementationsDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+            selector = selector,
+            subject = subject,
+            reason = KastImplementationsDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.TRAVERSAL_STATE_BUDGET_REACHED,
+            ),
         )
         "timeout" -> KastImplementationsDegradedResponse(
-            selector,
-            subject,
-            KastImplementationsDegradedReason.TIMEOUT,
+            selector = selector,
+            subject = subject,
+            reason = KastImplementationsDegradedReason.TIMEOUT,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.TIMED_OUT,
+            ),
         )
         else -> throw failure
     }
@@ -1954,39 +2180,71 @@ internal class SkillRpcOrchestrator(
         failure: ConflictException,
     ): KastHierarchyResponse = when (failure.details["continuationFailure"]) {
         "generationChanged" -> KastHierarchyCursorStaleResponse(
-            selector,
-            RelationCursorStaleReason.GENERATION_CHANGED,
+            selector = selector,
+            reason = RelationCursorStaleReason.GENERATION_CHANGED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.GENERATION_CHANGED,
+            ),
         )
         "expired" -> KastHierarchyCursorStaleResponse(
-            selector,
-            RelationCursorStaleReason.EXPIRED,
+            selector = selector,
+            reason = RelationCursorStaleReason.EXPIRED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_EXPIRED,
+            ),
         )
         "familyMismatch" -> KastHierarchyCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.FAMILY_MISMATCH,
+            selector = selector,
+            reason = RelationCursorInvalidReason.FAMILY_MISMATCH,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "queryMismatch" -> KastHierarchyCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.QUERY_MISMATCH,
+            selector = selector,
+            reason = RelationCursorInvalidReason.QUERY_MISMATCH,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "unknown" -> KastHierarchyCursorInvalidResponse(
-            selector,
-            RelationCursorInvalidReason.UNKNOWN_HANDLE,
+            selector = selector,
+            reason = RelationCursorInvalidReason.UNKNOWN_HANDLE,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CONTINUATION_INVALID,
+            ),
         )
         "candidateBudgetReached" -> KastHierarchyDegradedResponse(
-            selector,
-            subject,
-            KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED,
+            selector = selector,
+            subject = subject,
+            reason = KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED,
+            ),
         )
         "traversalStateBudgetReached" -> KastHierarchyDegradedResponse(
-            selector,
-            subject,
-            KastHierarchyDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+            selector = selector,
+            subject = subject,
+            reason = KastHierarchyDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.TRAVERSAL_STATE_BUDGET_REACHED,
+            ),
         )
         "timeout" -> KastHierarchyDegradedResponse(
-            selector,
-            subject,
-            KastHierarchyDegradedReason.TIMEOUT,
+            selector = selector,
+            subject = subject,
+            reason = KastHierarchyDegradedReason.TIMEOUT,
+            evidence = limitedRelationshipEvidence(
+                0,
+                RelationshipSearchLimitation.TIMED_OUT,
+            ),
         )
         else -> throw failure
     }

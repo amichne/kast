@@ -19,6 +19,8 @@ import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
 import io.github.amichne.kast.api.contract.result.RelationTraversalFamily
 import io.github.amichne.kast.api.contract.result.RelationTraversalHandle
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.TypeHierarchyRelation
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
@@ -84,13 +86,14 @@ internal class RelationshipContinuationStore(
         handle: RelationTraversalHandle?,
         initialRecords: List<CallRelation>?,
         generation: Long,
-    ): CallRelationsResult {
+        coverage: RelationshipSearchCoverage.Complete,
+    ): CallRelationsResult.Available {
         val store = when (query.direction) {
             io.github.amichne.kast.api.contract.skill.WrapperCallDirection.INCOMING -> callerStore
             io.github.amichne.kast.api.contract.skill.WrapperCallDirection.OUTGOING -> calleeStore
         }
-        val page = store.page(query, query.limit, handle, initialRecords, generation)
-        return CallRelationsResult(page.records, page.pageInfo)
+        val page = store.page(query, query.limit, handle, initialRecords, generation, coverage)
+        return CallRelationsResult.Available(page.records, page.pageInfo)
     }
 
     fun implementations(
@@ -98,9 +101,10 @@ internal class RelationshipContinuationStore(
         handle: RelationTraversalHandle?,
         initialRecords: List<ImplementationRelation>?,
         generation: Long,
-    ): ImplementationRelationsResult {
-        val page = implementationStore.page(query, query.limit, handle, initialRecords, generation)
-        return ImplementationRelationsResult(page.records, page.pageInfo)
+        coverage: RelationshipSearchCoverage.Complete,
+    ): ImplementationRelationsResult.Available {
+        val page = implementationStore.page(query, query.limit, handle, initialRecords, generation, coverage)
+        return ImplementationRelationsResult.Available(page.records, page.pageInfo)
     }
 
     fun hierarchy(
@@ -108,9 +112,10 @@ internal class RelationshipContinuationStore(
         handle: RelationTraversalHandle?,
         initialRecords: List<TypeHierarchyRelation>?,
         generation: Long,
-    ): HierarchyRelationsResult {
-        val page = hierarchyStore.page(query, query.limit, handle, initialRecords, generation)
-        return HierarchyRelationsResult(page.records, page.pageInfo)
+        coverage: RelationshipSearchCoverage.Complete,
+    ): HierarchyRelationsResult.Available {
+        val page = hierarchyStore.page(query, query.limit, handle, initialRecords, generation, coverage)
+        return HierarchyRelationsResult.Available(page.records, page.pageInfo)
     }
 
     override fun close() {
@@ -155,16 +160,18 @@ internal class RelationshipContinuationStore(
             handle: RelationTraversalHandle?,
             initialRecords: List<Record>?,
             generation: Long,
+            coverage: RelationshipSearchCoverage.Complete,
         ): PublicPage<Record> = if (handle == null) {
             start(
                 query,
                 limit,
                 requireNotNull(initialRecords) { "A first relationship page requires records" },
                 generation,
+                coverage,
             )
         } else {
             require(initialRecords == null) { "A continuation page must not restart provider work" }
-            resume(query, limit, handle, generation)
+            resume(query, limit, handle, generation, coverage)
         }
 
         override fun close() {
@@ -176,6 +183,7 @@ internal class RelationshipContinuationStore(
             limit: Int,
             records: List<Record>,
             generation: Long,
+            coverage: RelationshipSearchCoverage.Complete,
         ): PublicPage<Record> {
             if (records.size > MAX_STATE_RECORDS) {
                 throw traversalStateUnavailable(ContinuationAccessFailure.UnknownToken)
@@ -185,7 +193,7 @@ internal class RelationshipContinuationStore(
             val nextHandle = remaining?.let { rest ->
                 when (val issued = store.issue(
                     query,
-                    State(rest, page.size, generation),
+                    State(rest, page.size, records.size, generation),
                 )) {
                     is ContinuationIssueResult.Issued ->
                         RelationTraversalHandle.create(family, issued.token)
@@ -197,7 +205,9 @@ internal class RelationshipContinuationStore(
                 records = page,
                 returnedBefore = 0,
                 cumulativeReturned = page.size,
+                totalCount = records.size,
                 nextHandle = nextHandle,
+                coverage = coverage,
             )
         }
 
@@ -206,6 +216,7 @@ internal class RelationshipContinuationStore(
             limit: Int,
             handle: RelationTraversalHandle,
             generation: Long,
+            coverage: RelationshipSearchCoverage.Complete,
         ): PublicPage<Record> {
             if (handle.family != family) {
                 throw continuationConflict("familyMismatch")
@@ -226,6 +237,7 @@ internal class RelationshipContinuationStore(
                         records,
                         returnedBefore,
                         cumulativeReturned,
+                        state.totalCount,
                     )
                     if (remaining == null) {
                         ContinuationTransition.Complete(projection)
@@ -239,13 +251,17 @@ internal class RelationshipContinuationStore(
                     records = consumed.output.records,
                     returnedBefore = consumed.output.returnedBefore,
                     cumulativeReturned = consumed.output.cumulativeReturned,
+                    totalCount = consumed.output.totalCount,
                     nextHandle = null,
+                    coverage = coverage,
                 )
                 is ContinuationConsumeResult.Reissued -> publicPage(
                     records = consumed.output.records,
                     returnedBefore = consumed.output.returnedBefore,
                     cumulativeReturned = consumed.output.cumulativeReturned,
+                    totalCount = consumed.output.totalCount,
                     nextHandle = RelationTraversalHandle.create(family, consumed.token),
+                    coverage = coverage,
                 )
                 is ContinuationConsumeResult.Rejected -> throw when (consumed.failure) {
                     ContinuationAccessFailure.ExpiredToken -> continuationConflict("expired")
@@ -262,19 +278,20 @@ internal class RelationshipContinuationStore(
             records: List<Record>,
             returnedBefore: Int,
             cumulativeReturned: Int,
+            totalCount: Int,
             nextHandle: RelationTraversalHandle?,
+            coverage: RelationshipSearchCoverage.Complete,
         ): PublicPage<Record> {
             val hasMore = nextHandle != null
-            val cardinality = if (hasMore) {
-                ResultCardinality.KnownMinimum(Math.addExact(cumulativeReturned, 1))
-            } else {
-                ResultCardinality.Exact(cumulativeReturned)
-            }
+            val evidence = RelationshipResultEvidence.Complete(
+                cardinality = ResultCardinality.Exact(totalCount),
+                coverage = coverage,
+            )
             val visitedCandidateCount = Math.addExact(records.size, if (hasMore) 1 else 0)
             return PublicPage(
                 records,
                 RelationTraversalPageInfo.create(
-                    cardinality = cardinality,
+                    evidence = evidence,
                     returnedCount = records.size,
                     returnedBefore = returnedBefore,
                     visitedCandidateCount = visitedCandidateCount,
@@ -309,8 +326,15 @@ internal class RelationshipContinuationStore(
     private class State<Record : Any>(
         remaining: List<Record>,
         returnedBefore: Int,
+        val totalCount: Int,
         val generation: Long,
     ) : ContinuationOwnedState() {
+        init {
+            require(totalCount >= returnedBefore + remaining.size) {
+                "Relationship snapshot total must cover returned and retained records"
+            }
+        }
+
         var remaining: List<Record> = remaining
             private set
         var returnedBefore: Int = returnedBefore
@@ -329,6 +353,7 @@ internal class RelationshipContinuationStore(
         val records: List<Record>,
         val returnedBefore: Int,
         val cumulativeReturned: Int,
+        val totalCount: Int,
     ) : ContinuationProjection()
 
     private data class PublicPage<Record : Any>(
