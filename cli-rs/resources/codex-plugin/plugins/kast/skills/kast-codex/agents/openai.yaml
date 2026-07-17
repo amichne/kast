@@ -1,0 +1,7 @@
+interface:
+  display_name: "Kast for Codex"
+  short_description: "Route Kotlin work through the typed Kast CLI"
+  default_prompt: "Use $kast-codex to inspect or change Kotlin through the typed Kast CLI."
+
+policy:
+  allow_implicit_invocation: true

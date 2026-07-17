@@ -24,7 +24,7 @@ Batch requests and JSON-RPC notifications aren't supported.
 
 Typed `kast agent` commands route through higher-level `symbol/*`
 orchestration methods and `database/*` index methods. The complete internal
-method catalog lives in `cli-rs/resources/kast-skill/references/commands.json`
+method catalog lives in `cli-rs/protocol/source/commands.json`
 and is packaged by the Rust CLI in `cli-rs/`.
 
 Use OpenAPI when you need the raw backend schema. Use `commands.json`
@@ -38,13 +38,13 @@ can browse the JSON-RPC suite directly on this page.
 <!-- BEGIN GENERATED RPC CONTRACT SUITE -->
 ### Browse the JSON-RPC suite
 
-This section is generated from `cli-rs/resources/kast-skill/references/commands.json`
+This section is generated from `cli-rs/protocol/source/commands.json`
 so the page exposes the internal JSON-RPC catalog used by typed
 `kast agent` commands and installed skills. It embeds the command
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `42`.
+Catalog version: `dev`. Methods: `43`.
 
 #### Method families
 
@@ -54,7 +54,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | --- | --- | --- | --- |
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit`<br>`mutation/status`<br>`mutation/cancel` |
-| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
+| `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
@@ -93,10 +93,11 @@ uses a discriminated response envelope.
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
 | `symbol/resolve` | `symbol` | backend | Resolve an exact simple or fully-qualified symbol identity with hard constraints and typed expected outcomes | `symbol` | `workspaceRoot`<br>`fileHint`<br>`kind`<br>`containingType`<br>`includeDeclarationScope`<br>`includeDocumentation`<br>`surroundingLines`<br>`includeSurroundingMembers` | `KastResolveResponse` | `RESOLVE_SUCCESS`<br>`RESOLVE_NOT_FOUND`<br>`RESOLVE_AMBIGUOUS`<br>`RESOLVE_FAILURE` |
-| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | `selector` | `workspaceRoot`<br>`includeDeclaration`<br>`includeUsageSiteScope`<br>`maxResults`<br>`pageToken` | `KastReferencesResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
-| `symbol/callers` | `symbol` | backend | Page exact incoming or outgoing call relationships | `selector`<br>`direction` | `workspaceRoot`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastCallersResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
-| `symbol/implementations` | `symbol` | backend | Page exact implementation relationships | `selector` | `workspaceRoot`<br>`maxResults`<br>`pageToken` | `KastImplementationsResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
-| `symbol/hierarchy` | `symbol` | backend | Page exact type hierarchy relationships | `selector`<br>`direction` | `workspaceRoot`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastHierarchyResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID` |
+| `selector/identity` | `symbol` | backend | Authenticate an opaque selector handle for one operation family and recover its compact exact identity | `selectorHandle`<br>`family` | `workspaceRoot` | `KastSelectorIdentityResponse` | `AVAILABLE`<br>`SELECTOR_HANDLE_REJECTED` |
+| `symbol/references` | `symbol` | backend | Find every usage of a Kotlin symbol | none | `workspaceRoot`<br>`selectorHandle`<br>`selector`<br>`includeDeclaration`<br>`includeUsageSiteScope`<br>`maxResults`<br>`pageToken` | `KastReferencesResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID`<br>`SELECTOR_HANDLE_REJECTED` |
+| `symbol/callers` | `symbol` | backend | Page exact incoming or outgoing call relationships | `direction` | `workspaceRoot`<br>`selectorHandle`<br>`selector`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastCallersResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID`<br>`SELECTOR_HANDLE_REJECTED` |
+| `symbol/implementations` | `symbol` | backend | Page exact implementation relationships | none | `workspaceRoot`<br>`selectorHandle`<br>`selector`<br>`maxResults`<br>`pageToken` | `KastImplementationsResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID`<br>`SELECTOR_HANDLE_REJECTED` |
+| `symbol/hierarchy` | `symbol` | backend | Page exact type hierarchy relationships | `direction` | `workspaceRoot`<br>`selectorHandle`<br>`selector`<br>`depth`<br>`maxResults`<br>`pageToken` | `KastHierarchyResponse` | `AVAILABLE`<br>`SUBJECT_NOT_FOUND`<br>`SUBJECT_IDENTITY_MISMATCH`<br>`UNSUPPORTED_SUBJECT_KIND`<br>`DEGRADED`<br>`CURSOR_STALE`<br>`CURSOR_INVALID`<br>`SELECTOR_HANDLE_REJECTED` |
 | `symbol/rename` | `symbol` | backend | Resolve or target a symbol and apply a rename | `type`<br>`RENAME_BY_SYMBOL_REQUEST`: `symbol`, `newName`<br>`RENAME_BY_OFFSET_REQUEST`: `filePath`, `offset`, `newName` | none | `KastRenameResponse` | `RENAME_SUCCESS`<br>`RENAME_FAILURE` |
 | `symbol/write-and-validate` | `symbol` | backend | Apply generated Kotlin code and validate the result | `type`<br>`CREATE_FILE_REQUEST`: `filePath`<br>`INSERT_AT_OFFSET_REQUEST`: `filePath`, `offset`<br>`REPLACE_RANGE_REQUEST`: `filePath`, `startOffset`, `endOffset` | none | `KastWriteAndValidateResponse` | `WRITE_AND_VALIDATE_SUCCESS`<br>`WRITE_AND_VALIDATE_FAILURE` |
 | `symbol/add-file` | `symbol` | backend | Create a Kotlin file from a content file and validate the result | `filePath`<br>`contentFile` | `workspaceRoot` | `KastScopeMutationResponse` | `SCOPE_MUTATION_SUCCESS`<br>`SCOPE_MUTATION_FAILURE` |
@@ -122,7 +123,7 @@ uses a discriminated response envelope.
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
-| `database/metrics` | `database` | sqlite | Query source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
+| `database/metrics` | `database` | sqlite | Query source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`offset`<br>`subject`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
 
 #### Command field details
 
@@ -332,23 +333,45 @@ Notes:
 </details>
 
 <details markdown="1">
+<summary><code>selector/identity</code> - Authenticate an opaque selector handle for one operation family and recover its compact exact identity</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `selectorHandle` | `string` | yes | no |  |
+| `family` | `string` | yes | no | `REFERENCES`<br>`CALLERS`<br>`CALLEES`<br>`IMPLEMENTATIONS`<br>`HIERARCHY`<br>`IMPACT`<br>`RENAME`<br>`REPLACE_DECLARATION` |
+
+Response type: `KastSelectorIdentityResponse`.
+Result variants: `AVAILABLE`, `SELECTOR_HANDLE_REJECTED`.
+
+Notes:
+
+- selectorHandle is opaque and must be carried unchanged from exact symbol resolution.
+- The backend authenticates workspace, backend, semantic generation, and requested operation family without invoking symbol lookup.
+- AVAILABLE returns only the compact authenticated identity needed by local composite commands; the CLI does not reconstruct selector flags.
+
+</details>
+
+<details markdown="1">
 <summary><code>symbol/references</code> - Find every usage of a Kotlin symbol</summary>
 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
-| `selector` | `object` | yes | no |  |
+| `selectorHandle` | `string` | no | no |  |
+| `selector` | `object` | no | no |  |
 | `includeDeclaration` | `boolean` | no | no |  |
 | `includeUsageSiteScope` | `boolean` | no | no |  |
 | `maxResults` | `integer` | no | no |  |
 | `pageToken` | `string` | no | yes |  |
 
 Response type: `KastReferencesResponse`.
-Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`, `SELECTOR_HANDLE_REJECTED`.
 
 Notes:
 
-- The selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.
+- Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical FQ name, declaration file, and declaration start offset returned by exact symbol lookup.
+- selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.
 - Optional kind and containingType values are hard identity assertions.
 - maxResults bounds the returned page and the server-held INDEX or lazy IDEA continuation work.
 - Pass PageInfo.nextPageToken as pageToken to consume the next deterministic, non-overlapping page. Tokens are opaque, one-use, and bound to the workspace, query options, evidence source, and source generation.
@@ -362,18 +385,20 @@ Notes:
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
-| `selector` | `object` | yes | no |  |
+| `selectorHandle` | `string` | no | no |  |
+| `selector` | `object` | no | no |  |
 | `direction` | `string` | yes | no | `incoming`<br>`outgoing` |
 | `depth` | `integer` | no | no |  |
 | `maxResults` | `integer` | no | no |  |
 | `pageToken` | `string` | no | yes |  |
 
 Response type: `KastCallersResponse`.
-Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`, `SELECTOR_HANDLE_REJECTED`.
 
 Notes:
 
-- The selector consumes the canonical identity returned by exact symbol lookup.
+- Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical identity returned by exact symbol lookup.
+- selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.
 - direction is fixed by the public callers or callees command.
 - pageToken is an opaque backend-owned rth1 traversal handle.
 
@@ -385,12 +410,13 @@ Notes:
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
-| `selector` | `object` | yes | no |  |
+| `selectorHandle` | `string` | no | no |  |
+| `selector` | `object` | no | no |  |
 | `maxResults` | `integer` | no | no |  |
 | `pageToken` | `string` | no | yes |  |
 
 Response type: `KastImplementationsResponse`.
-Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`, `SELECTOR_HANDLE_REJECTED`.
 
 </details>
 
@@ -400,14 +426,15 @@ Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, 
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
-| `selector` | `object` | yes | no |  |
+| `selectorHandle` | `string` | no | no |  |
+| `selector` | `object` | no | no |  |
 | `direction` | `string` | yes | no | `SUPERTYPES`<br>`SUBTYPES`<br>`BOTH` |
 | `depth` | `integer` | no | no |  |
 | `maxResults` | `integer` | no | no |  |
 | `pageToken` | `string` | no | yes |  |
 
 Response type: `KastHierarchyResponse`.
-Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`.
+Result variants: `AVAILABLE`, `SUBJECT_NOT_FOUND`, `SUBJECT_IDENTITY_MISMATCH`, `UNSUPPORTED_SUBJECT_KIND`, `DEGRADED`, `CURSOR_STALE`, `CURSOR_INVALID`, `SELECTOR_HANDLE_REJECTED`.
 
 </details>
 
@@ -803,6 +830,8 @@ Response type: `CompletionsResult`.
 | `limit` | `integer` | no | no |  |
 | `symbol` | `string` | no | yes |  |
 | `depth` | `integer` | no | no |  |
+| `offset` | `integer` | no | no |  |
+| `subject` | `object` | no | no |  |
 | `fileGlob` | `string` | no | yes |  |
 | `folderFilter` | `string` | no | yes |  |
 

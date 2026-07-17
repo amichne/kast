@@ -1,97 +1,45 @@
-# Kast skill and internal catalog guide
+# Provider-neutral Kast skill guide
 
 This file applies to `cli-rs/resources/kast-skill/` and descendants. This tree
-contains the packaged skill entrypoint plus internal catalog material used by
-docs, backend contracts, release checks, and generated LSP custom route
-metadata.
+is the small provider-neutral skill installed by repository setup. It is not
+an internal protocol workspace.
 
-## Local purpose
+## Authored sources
 
-- `SKILL.md` is the packaged skill source installed by repository setup.
-- `references/commands.json` is the internal machine-readable command catalog.
-- `references/commands.yaml` and generated request schemas/samples are derived
-  contract artifacts.
-- `references/quickstart.md` and `references/runbook.md` are agent-facing
-  lookup material.
-- `references/workflows.md` owns install/config/package verification, project
-  readiness, semantic workflow sequencing, and recovery ownership.
-- `scripts/verify-kast-state.py` is the internal deterministic helper for
-  read-only state checks.
+- `SKILL.md` owns the compact Kotlin and Gradle routing loop.
+- `references/quickstart.md` owns typed first-use examples.
+- `references/runbook.md` owns concise semantic recovery guidance.
+- `references/workflows.md` owns readiness, exact-worktree, and validation
+  sequencing that is useful across agent providers.
 
-The current source-of-truth contract for the public product surface, workflows,
-AXI command dialect, and validation gates is
-`.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
+Keep the skill focused on public `kast` and `kast agent` commands. Do not place
+raw RPC catalogs, generated schemas, request fixtures, maintenance evaluation
+packs, provider hooks, package manifests, or verification scripts in this
+directory. Internal catalog truth and generated request fixtures live under
+`cli-rs/protocol/source/`; routing and format evaluation material lives under
+`cli-rs/protocol/maintenance/`; the internal read-only verifier lives at
+`scripts/verify-kast-state.py`.
 
 ## Edit rules
 
-- Treat `references/commands.json` as the source catalog for internal methods,
-  request fields, tool names, and flow grouping.
-- Regenerate derived contract artifacts after catalog changes.
-- Keep command and tool descriptions aligned with ADR 0006.
-- Rust CLI modules own operational source-index reads; JVM handlers own
-  API-backed semantic work.
-- Keep recovery guidance resolve-first and compiler-backed.
-- Skill guidance routes agents to `kast ready`, `kast repair`, and typed
-  `kast agent` commands.
-- Skill guidance routes workspace discovery through public
-  `kast agent workspace-files`, including typed source/script filters,
-  generation/query-bound public continuation, kind-relevant partial coverage,
-  build-qualified Gradle ownership, proven/unproven package and source-set
-  evidence, and direct `filePath` composition with
-  diagnostics and exact symbol lookup. It must not teach
-  `raw/workspace-files` as a public workflow.
-- Keep `.kts` source-index limitations and cross-source coherence limitations
-  explicit. `.kt` index progress is irrelevant to a script-only request and
-  #340, but relevant source/mixed partitions must remain partial. Never describe
-  a partial or pending relevant candidate lane as exhaustive.
-- Teach package/source-set filters as proof-only: structured Kotlin
-  PSI/compiler package evidence and Gradle model source sets may match; legacy
-  or unavailable labels remain explicit partial evidence. Teach the closed
-  package selector as `root` for proven-root evidence or
-  `named:<canonical-kotlin-package-fq-name>` for exact proven-named evidence.
-- The packaged script is an internal verification helper. Keep it
-  JSON-emitting, eager about input validation, and read-only by default.
-
-## Downstream surfaces
-
-Internal catalog changes can affect:
-
-- `cli-rs/protocol/api-specification.md` generated summary block
-- `cli-rs/src/lsp.rs` generated custom method list and dispatch metadata
-- `docs/commands/agent.md`, `docs/commands/lsp.md`, and package tests when
-  internal method names or flow groups change
-- public workspace-file routing, paging examples, and installed skill content
-  when the typed command or continuation contract changes
+- Keep the main skill below 70 lines and defer only genuinely useful detail.
+- Route Kotlin discovery through `kast agent workspace-files` and preserve its
+  exact coverage and continuation evidence.
+- Preserve compiler-resolved symbol identity across relationship and mutation
+  commands.
+- Keep mutations plan-first, applied with stable idempotency keys, and followed
+  by diagnostics for current file contents.
+- Keep readiness and repair guidance read-only by default. Applying repair
+  requires explicit user authority.
+- Do not teach retired `tools`, `call`, or `workflow` commands, raw RPC names,
+  LSP internals, developer commands, package files, or hooks as the normal
+  semantic surface.
 
 ## Verify
 
-For any workspace-files routing, packaged guidance, or internal catalog change,
-run all package, LSP, routing, and generated-contract checks below:
-
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
-python3 .github/scripts/render-rpc-contract-summary.py --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
-.github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-kast-routing-evals.sh
-.github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
-zensical build --clean
-./gradlew test --no-daemon
-./gradlew buildIdeaPlugin --no-daemon
-```
-
-The format-impact reports remain optional experiments. When running them, set
-`KAST_SKILL_EVAL_AGENT_OUTPUT_SHAPE`
-to `text`, `json`, or `toon` before running the comparison script. Suite-specific
-overrides are `KAST_FORMAT_IMPACT_AGENT_OUTPUT_SHAPE` and
-`KAST_ROUTING_FORMAT_IMPACT_AGENT_OUTPUT_SHAPE`; unset them to fall back to the
-shared value, and set `json` to switch captured answer requests back to JSON.
-
-Use `kast developer release validate --request-file <file>` for hand-authored request examples.
-Run the packaged verifier after script edits:
-
-```console
-python3 cli-rs/resources/kast-skill/scripts/verify-kast-state.py --workspace-root "$PWD"
+python3 scripts/verify-kast-state.py --workspace-root "$PWD"
 ```

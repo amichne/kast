@@ -15,12 +15,12 @@ END_MARKER = "<!-- END GENERATED RPC CONTRACT SUITE -->"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COMMAND_PATH_CANDIDATES = [
-    REPO_ROOT / "cli-rs/resources/kast-skill/references/commands.json",
+    REPO_ROOT / "cli-rs/protocol/source/commands.json",
 ]
 COMMANDS_PATH = None
 DOC_PATH = REPO_ROOT / "cli-rs/protocol/api-specification.md"
-COMMANDS_PATH_LABEL = "`cli-rs/resources/kast-skill/references/commands.json`"
-CANONICAL_COMMANDS_PATH_LABEL = "`cli-rs/resources/kast-skill/references/commands.json`"
+COMMANDS_PATH_LABEL = "`cli-rs/protocol/source/commands.json`"
+CANONICAL_COMMANDS_PATH_LABEL = "`cli-rs/protocol/source/commands.json`"
 
 CATEGORY_PURPOSES = {
     "system": "Runtime readiness, backend state, and capability discovery.",

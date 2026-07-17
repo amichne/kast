@@ -71,7 +71,7 @@ explicitly. The typed CLI supplies that request for `--mode discovery`.
 | Indexed exact and fuzzy query behavior | `cli-rs/src/symbol_query/` |
 | Compiler exact result contract | `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/skill/KastResolveResponse.kt` |
 | Compiler exact selection | `analysis-server/src/main/kotlin/io/github/amichne/kast/server/SkillRpcOrchestrator.kt` |
-| Internal command catalog | `cli-rs/resources/kast-skill/references/commands.json` |
+| Internal command catalog | `cli-rs/protocol/source/commands.json` |
 | Public guidance | `cli-rs/resources/kast-skill/`, `docs/reference/agent-commands.md`, `docs/use/inspect-kotlin.md` |
 
 Generated protocol artifacts remain outputs of the contract generator. Edit

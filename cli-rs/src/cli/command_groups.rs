@@ -17,6 +17,8 @@ pub enum DeveloperCommand {
     Machine(MachineArgs),
     /// Build, activate, and validate release artifacts.
     Release(ReleaseArgs),
+    /// Generate and run the Codex plugin contract.
+    Codex(CodexArgs),
 }
 
 #[derive(Debug, Args, Clone)]

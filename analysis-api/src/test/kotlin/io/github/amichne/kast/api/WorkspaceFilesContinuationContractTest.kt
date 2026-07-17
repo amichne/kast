@@ -36,7 +36,7 @@ class WorkspaceFilesContinuationContractTest {
         val repoRoot = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
             .first { java.nio.file.Files.isDirectory(it.resolve("cli-rs")) }
         val samplesRoot = repoRoot.resolve(
-            "cli-rs/resources/kast-skill/references/requests/raw/workspace-files-continuation",
+            "cli-rs/protocol/source/requests/raw/workspace-files-continuation",
         )
 
         for (variant in listOf("ISSUE", "CONSUME")) {

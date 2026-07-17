@@ -61,7 +61,7 @@ conversation summaries.
 | Headless server path | `docs/getting-started/headless-linux.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Public summary | `README.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Plugin package source | `cli-rs/resources/plugin/` | `.github/scripts/test-kast-copilot-plugin.sh` |
-| Internal command catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check` |
+| Internal command catalog | `cli-rs/protocol/source/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check` |
 | Protocol artifacts | `cli-rs/protocol/` | `.github/scripts/render-rpc-contract-summary.py --check`, `./gradlew :analysis-api:test` |
 
 Generated or installed copies must not become independent product truth. When

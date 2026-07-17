@@ -98,7 +98,7 @@ pub fn validate_samples(samples_root: &Path, catalog: &Value) -> Result<Validate
 }
 
 pub fn embedded_catalog_source() -> &'static str {
-    include_str!("../resources/kast-skill/references/commands.json")
+    include_str!("../protocol/source/commands.json")
 }
 
 pub fn embedded_catalog() -> Result<Value> {
@@ -211,7 +211,7 @@ fn json_pointer_path(path: &str) -> String {
 }
 
 fn default_samples_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/kast-skill/references/requests")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("protocol/source/requests")
 }
 
 impl ValidateReport {

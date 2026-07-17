@@ -20,7 +20,7 @@ dependencies {
 }
 
 val workspaceFilesContinuationSamples = rootProject.layout.projectDirectory.dir(
-    "cli-rs/resources/kast-skill/references/requests/raw/workspace-files-continuation",
+    "cli-rs/protocol/source/requests/raw/workspace-files-continuation",
 )
 val runtimeCompatibilitySource = rootProject.layout.projectDirectory.file(
     "packaging/jetbrains/runtime-compatibility.json",

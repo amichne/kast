@@ -36,7 +36,7 @@ struct JsonRpcRequest {
 
 impl ContractPaths {
     pub fn defaults(manifest_dir: &Path) -> Self {
-        let references = manifest_dir.join("resources/kast-skill/references");
+        let references = manifest_dir.join("protocol/source");
         Self {
             catalog: references.join("commands.json"),
             yaml: references.join("commands.yaml"),

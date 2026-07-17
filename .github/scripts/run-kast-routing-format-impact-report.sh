@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
-target="${repo_root}/cli-rs/resources/kast-skill"
+target="${repo_root}/cli-rs/protocol/maintenance"
 metric_pack_dir="${repo_root}/.github/plugin-eval/kast-routing-format-impact"
 report_dir="${repo_root}/cli-rs/target/routing-format-impact"
 observed_jsonl="${report_dir}/observed.jsonl"
@@ -48,7 +48,8 @@ cargo run \
   >"$summary_json"
 
 KAST_ROUTING_FORMAT_IMPACT_OBSERVED_JSONL="$observed_jsonl" \
-  node "${metric_pack_dir}/emit-kast-routing-format-impact-metrics.mjs" "$target" skill
+  node "${metric_pack_dir}/emit-kast-routing-format-impact-metrics.mjs" \
+    "${repo_root}/cli-rs/resources/kast-skill" skill
 
 printf 'Kast routing format impact report written: %s\n' "$observed_jsonl"
 printf 'Kast routing format impact answer requests written: %s\n' "$answer_requests_jsonl"

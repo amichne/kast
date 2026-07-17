@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+  echo "usage: kast-codex-hook <event>" >&2
+  exit 2
+fi
+
+if [ -n "${KAST_CODEX_BINARY:-}" ]; then
+  case "$KAST_CODEX_BINARY" in
+    /*) ;;
+    *)
+      echo "KAST_CODEX_BINARY must be an absolute path" >&2
+      exit 1
+      ;;
+  esac
+  kast_binary=$KAST_CODEX_BINARY
+else
+  kast_binary=$(command -v kast || true)
+  if [ -z "$kast_binary" ]; then
+    echo "kast is not installed or is not on PATH" >&2
+    exit 1
+  fi
+fi
+
+if [ ! -x "$kast_binary" ]; then
+  echo "kast binary is not executable: $kast_binary" >&2
+  exit 1
+fi
+
+exec "$kast_binary" developer codex hook "$1"

@@ -206,7 +206,7 @@ git commit -m "fix: refresh Kast mutations before analysis"
 ### Task 4: Generated Contracts and Full Verification
 
 **Files:**
-- Modify generated files under `cli-rs/protocol/` and `cli-rs/resources/kast-skill/references/` only through their owning Gradle generators.
+- Modify generated files under `cli-rs/protocol/` and `cli-rs/protocol/source/` only through their owning Gradle generators.
 - Create: `.agent-turn/issue-335-report.md` as untracked turn evidence.
 
 **Interfaces:**
@@ -246,7 +246,7 @@ failure caused by absent plugin metadata as a concern, not as semantic proof.
 ```bash
 git diff --stat
 git diff --check
-git add cli-rs/protocol cli-rs/resources/kast-skill/references
+git add cli-rs/protocol cli-rs/protocol/source
 git diff --cached --check
 git commit -m "docs: regenerate semantic admission contracts"
 ```

@@ -1348,9 +1348,9 @@ git commit -m "feat: page source impact by identity"
 
 **Files:**
 
-- Modify: `cli-rs/resources/kast-skill/references/commands.json`
+- Modify: `cli-rs/protocol/source/commands.json`
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
-- Modify: `cli-rs/resources/kast-skill/references/quickstart.md`
+- Modify: `cli-rs/protocol/source/quickstart.md`
 - Modify: `docs/reference/agent-commands.md`
 - Modify: `docs/use/inspect-kotlin.md`
 - Modify: `cli-rs/tests/packaged_content_smoke.rs`
@@ -1361,8 +1361,8 @@ git commit -m "feat: page source impact by identity"
   `tiktoken-rs = "0.12"` test-only dependency.
 - Review unchanged after #338: `cli-rs/Cargo.lock` already owns its locked
   resolution.
-- Modify generated: `cli-rs/resources/kast-skill/references/commands.yaml`
-- Modify generated: `cli-rs/resources/kast-skill/references/requests/`
+- Modify generated: `cli-rs/protocol/source/commands.yaml`
+- Modify generated: `cli-rs/protocol/source/requests/`
 - Modify generated: `cli-rs/protocol/`
 
 **Interfaces:**

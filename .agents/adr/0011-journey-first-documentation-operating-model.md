@@ -58,7 +58,7 @@ may be a how-to guide, while a page under "Reference" must stay lookup-shaped.
 | Reader journeys and page roles | `.agents/docs/documentation-journeys.md` | `.github/scripts/test-docs-content-contract.sh` |
 | Published Markdown | `docs/` | `.github/scripts/test-docs-content-contract.sh`, `zensical build --clean` |
 | CLI command shape | `kast --help`, `cli-rs/src/cli/`, `cli-rs/src/main.rs` | Cargo CLI tests and docs content contract |
-| Internal command catalog | `cli-rs/resources/kast-skill/references/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check` |
+| Internal command catalog | `cli-rs/protocol/source/commands.json` | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check` |
 | Protocol artifacts | `cli-rs/protocol/` | `./gradlew :analysis-api:test`, `./gradlew :analysis-server:test` |
 | Release OpenAPI copy | `dist/openapi.yaml` from `stageOpenApiSpec` | `./gradlew stageOpenApiSpec` |
 

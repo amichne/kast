@@ -54,7 +54,7 @@ Every walked path is classified as one of:
 | Public config model | `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/fields/` |
 | IDEA setup behavior | `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/` |
 | Protocol docs | `analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/`, `cli-rs/protocol/` |
-| Internal catalog | `cli-rs/resources/kast-skill/references/commands.json`, `.github/scripts/render-rpc-contract-summary.py` |
+| Internal catalog | `cli-rs/protocol/source/commands.json`, `.github/scripts/render-rpc-contract-summary.py` |
 
 ## Change Rule
 

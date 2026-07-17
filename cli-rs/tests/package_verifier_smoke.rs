@@ -135,8 +135,7 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
     std::fs::write(fake_skill_root.join("SKILL.md"), "# Out-of-date skill\n")
         .expect("fake stale skill");
 
-    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR")).join("../scripts/verify-kast-state.py");
     let verify = Command::new("python3")
         .arg(&verifier)
         .arg("--workspace-root")
@@ -285,8 +284,7 @@ fn packaged_verifier_rejects_still_public_agent_tools() {
     .expect("fake kast");
     set_executable_for_test(&fake_bin);
 
-    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR")).join("../scripts/verify-kast-state.py");
     let verify = Command::new("python3")
         .arg(&verifier)
         .arg("--workspace-root")
@@ -334,8 +332,7 @@ fn packaged_verifier_uses_selected_binary_in_skill_recovery() {
         .display()
         .to_string();
 
-    let verifier = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/kast-skill/scripts/verify-kast-state.py");
+    let verifier = Path::new(env!("CARGO_MANIFEST_DIR")).join("../scripts/verify-kast-state.py");
     let verify = Command::new("python3")
         .arg(&verifier)
         .arg("--workspace-root")

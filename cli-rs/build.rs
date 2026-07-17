@@ -35,7 +35,7 @@ fn main() {
     .expect("write generated source-index schema");
     println!("cargo:rustc-env=KAST_SOURCE_INDEX_SCHEMA_VERSION={version}");
 
-    let command_catalog = manifest_dir.join("resources/kast-skill/references/commands.json");
+    let command_catalog = manifest_dir.join("protocol/source/commands.json");
     println!("cargo:rerun-if-changed={}", command_catalog.display());
     let catalog_content = fs::read_to_string(&command_catalog).unwrap_or_else(|error| {
         panic!("failed to read {}: {error}", command_catalog.display());

@@ -353,9 +353,9 @@ git commit -m "feat: canonicalize mutation file targets"
 
 **Files:**
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
-- Modify: `cli-rs/resources/kast-skill/references/quickstart.md`
-- Modify: `cli-rs/resources/kast-skill/references/runbook.md`
-- Modify: `cli-rs/resources/kast-skill/references/workflows.md`
+- Modify: `cli-rs/protocol/source/quickstart.md`
+- Modify: `cli-rs/protocol/source/runbook.md`
+- Modify: `cli-rs/protocol/source/workflows.md`
 - Modify: `docs/reference/agent-commands.md`
 - Modify: `cli-rs/tests/packaged_content_smoke.rs`
 - Create: `.agent-turn/issue-341-report.md` (ignored evidence)
@@ -428,9 +428,9 @@ red-green evidence, commits, commands, counts, and remaining concerns. Then:
 
 ```bash
 git add cli-rs/resources/kast-skill/SKILL.md \
-  cli-rs/resources/kast-skill/references/quickstart.md \
-  cli-rs/resources/kast-skill/references/runbook.md \
-  cli-rs/resources/kast-skill/references/workflows.md \
+  cli-rs/protocol/source/quickstart.md \
+  cli-rs/protocol/source/runbook.md \
+  cli-rs/protocol/source/workflows.md \
   docs/reference/agent-commands.md \
   cli-rs/tests/packaged_content_smoke.rs
 git diff --cached --check

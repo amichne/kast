@@ -371,9 +371,9 @@ git commit -m "feat: add fail-closed exact symbol mode"
 
 **Files:**
 
-- Modify: `cli-rs/resources/kast-skill/references/commands.json`
+- Modify: `cli-rs/protocol/source/commands.json`
 - Modify: `cli-rs/resources/kast-skill/SKILL.md`
-- Modify: `cli-rs/resources/kast-skill/references/workflows.md`
+- Modify: `cli-rs/protocol/source/workflows.md`
 - Modify: `docs/reference/agent-commands.md`
 - Modify: `docs/use/inspect-kotlin.md`
 - Modify: `docs/learn/evidence-model.md`

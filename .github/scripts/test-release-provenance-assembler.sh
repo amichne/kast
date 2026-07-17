@@ -40,6 +40,21 @@ JSON
     return
   fi
 
+  if [[ "$platform" == "codex-plugin" ]]; then
+    cat > "$path" <<JSON
+{
+  "platformId": "${platform}",
+  "assetName": "${asset}",
+  "assetDigest": "sha256:$(printf '%064d' 1)",
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "ref": "refs/tags/v9.8.7",
+  "pluginVersion": "9.8.7",
+  "generatorCommand": "kast developer codex generate --release"
+}
+JSON
+    return
+  fi
+
   cat > "$path" <<JSON
 {
   "platformId": "${platform}",
@@ -77,6 +92,10 @@ write_provenance \
   "cli-macos-arm64" \
   "kast-${tag}-macos-arm64.zip"
 write_provenance \
+  "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" \
+  "codex-plugin" \
+  "kast-codex-plugin-${tag}.zip"
+write_provenance \
   "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json" \
   "idea" \
   "kast-idea-${tag}.zip"
@@ -113,6 +132,7 @@ output="${scratch_dir}/dist/build-provenance.json"
   "${scratch_dir}/provenance-cli-linux-x64" \
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
+  "${scratch_dir}/provenance-codex-plugin" \
   "${scratch_dir}/provenance-gradle-ro-cache" \
   "${scratch_dir}/provenance-headless-linux-x64" \
   "${scratch_dir}/provenance-idea" \
@@ -133,6 +153,7 @@ expected = [
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
+    "codex-plugin",
     "gradle-ro-cache",
     "headless-linux-x64",
     "idea",
@@ -152,6 +173,7 @@ PY
   "${scratch_dir}/provenance-cli-linux-x64" \
   "${scratch_dir}/provenance-cli-macos-arm64" \
   "${scratch_dir}/provenance-cli-macos-x64" \
+  "${scratch_dir}/provenance-codex-plugin" \
   "${scratch_dir}/provenance-gradle-ro-cache" \
   "${scratch_dir}/provenance-headless-linux-x64" \
   "${scratch_dir}/provenance-idea" \
@@ -160,8 +182,29 @@ PY
   "${scratch_dir}/provenance-runtime-compatibility" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
+python3 - "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+payload = json.loads(path.read_text(encoding="utf-8"))
+payload["pluginVersion"] = "9.8.8"
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+if "$assembler" --output "$output" --tag "$tag" "$scratch_dir" \
+  >"${scratch_dir}/codex-version.out" 2>"${scratch_dir}/codex-version.err"; then
+  die "assembler unexpectedly passed mismatched Codex plugin provenance"
+fi
+grep -Fq "pluginVersion must match" "${scratch_dir}/codex-version.err" \
+  || die "Codex plugin provenance failure did not name pluginVersion"
+write_provenance \
+  "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" \
+  "codex-plugin" \
+  "kast-codex-plugin-${tag}.zip"
+
 rm "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json"
-if "$assembler" --output "$output" --tag "$tag" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-gradle-ro-cache" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-openapi" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-runtime-compatibility" "${scratch_dir}/provenance-ubuntu-debian-headless" \
+if "$assembler" --output "$output" --tag "$tag" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-codex-plugin" "${scratch_dir}/provenance-gradle-ro-cache" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-openapi" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-runtime-compatibility" "${scratch_dir}/provenance-ubuntu-debian-headless" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing idea provenance"
 fi

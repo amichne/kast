@@ -59,13 +59,13 @@ case. This is where you decide whether a miss is durable enough to become a
 checked-in eval.
 
 Finally review `promotion-candidates.json`. These are suggested additions to
-`fixtures/maintenance/evals/routing.json`, not auto-approved changes.
+`cli-rs/protocol/maintenance/evals/routing.json`, not auto-approved changes.
 
 ## Promote durable misses
 
 When a prompt pattern recurs, add a sanitized entry to
-`fixtures/maintenance/evals/routing.json`.
-Validate it against `fixtures/maintenance/evals/routing.schema.json` and use
+`cli-rs/protocol/maintenance/evals/routing.json`.
+Validate it against `cli-rs/protocol/maintenance/evals/routing.schema.json` and use
 the existing examples in that file as the canonical case shape.
 The packaged content smoke test validates that this corpus exists, routes every
 case to the `kast` skill, forbids text-search fallbacks for Kotlin semantics,
