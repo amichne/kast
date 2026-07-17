@@ -111,13 +111,15 @@ built, and downstream packaging or publication jobs must verify that receipt
 against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
 the publisher consume an existing one. Pull-request Linux packaging is owned
-by three explicit stages. `source-bound-cli` builds the single release CLI
+by three explicit layers. `source-bound-cli` builds the single release CLI
 while the required Rust validation job runs independently. `prepared-generation`
 verifies that CLI plus the single Linux backend and publishes one immutable
-generation for the representative semantic fixture. `prepared-linux-packages`
-derives the Ubuntu/Debian and `kast-action` inputs from those verified bytes.
-Container and action jobs are validation-only consumers and must not rebuild
-or repackage those inputs.
+generation for the representative semantic fixture. Parallel
+`prepared-ubuntu-debian-bundle` and `prepared-kast-action-runtime` jobs derive
+only their owned package family from those verified bytes. Container and action
+jobs are validation-only consumers and must not rebuild or repackage those
+inputs. A derivative producer may verify the generation ledger and digest, but
+must not rerun the generation's internal semantic verification.
 
 ## Copilot Package Source
 

@@ -86,9 +86,10 @@ Pull requests run focused proof at the boundary that owns each change. The
 static workflow gate captures one source snapshot. Independent source-bound
 CLI and Linux jobs produce one CLI and backend from it while Rust validation
 runs in parallel. One prepared-generation job attests and packages that
-generation. The required semantic fixture can consume it immediately; a
-downstream producer derives Ubuntu/Debian and published-action packages from
-the verified prepared bytes without rebuilding either component. One required
+generation. The required semantic fixture can consume it immediately; a pair
+of parallel downstream producers derives the Ubuntu/Debian bundle and
+published-action runtime inputs from the verified prepared bytes without
+rebuilding either component or waiting for the other package family. One required
 pull-request job activates the generation against a small
 two-module Gradle fixture. It proves real headless import, selector-handle
 reuse, main/test/test-fixture diagnostics, a

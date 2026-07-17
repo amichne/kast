@@ -8,7 +8,7 @@ die() {
 
 usage() {
   printf '%s\n' \
-    'Usage: scripts/package-prepared-local-generation-derivatives.sh --source-root <checkout> --prepared-generation-archive <tar.zst> --dist-directory <directory> --bundle-version <version> --runtime-version <version>' \
+    'Usage: scripts/package-prepared-local-generation-derivatives.sh --kind <ubuntu-debian-bundle|kast-action-runtime> --source-root <checkout> --prepared-generation-archive <tar.zst> --dist-directory <directory> [--bundle-version <version>] [--runtime-version <version>]' \
     >&2
 }
 
@@ -18,6 +18,7 @@ resolve_repo_root() {
   cd -- "${script_dir}/.." && pwd
 }
 
+package_kind=""
 source_root=""
 prepared_generation_archive=""
 dist_directory=""
@@ -25,6 +26,9 @@ bundle_version=""
 runtime_version=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --kind)
+      [[ $# -ge 2 ]] || die 'Missing value for --kind'
+      package_kind="$2"; shift 2 ;;
     --source-root)
       [[ $# -ge 2 ]] || die 'Missing value for --source-root'
       source_root="$2"; shift 2 ;;
@@ -47,11 +51,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+[[ -n "$package_kind" ]] || { usage; die '--kind is required'; }
+case "$package_kind" in
+  ubuntu-debian-bundle)
+    [[ -n "$bundle_version" ]] || { usage; die '--bundle-version is required for ubuntu-debian-bundle'; }
+    [[ -z "$runtime_version" ]] || die '--runtime-version is not valid for ubuntu-debian-bundle'
+    ;;
+  kast-action-runtime)
+    [[ -n "$runtime_version" ]] || { usage; die '--runtime-version is required for kast-action-runtime'; }
+    [[ -z "$bundle_version" ]] || die '--bundle-version is not valid for kast-action-runtime'
+    ;;
+  *)
+    usage; die "Unsupported package kind: $package_kind"
+    ;;
+esac
 [[ -n "$source_root" ]] || { usage; die '--source-root is required'; }
 [[ -n "$prepared_generation_archive" ]] || { usage; die '--prepared-generation-archive is required'; }
 [[ -n "$dist_directory" ]] || { usage; die '--dist-directory is required'; }
-[[ -n "$bundle_version" ]] || { usage; die '--bundle-version is required'; }
-[[ -n "$runtime_version" ]] || { usage; die '--runtime-version is required'; }
 [[ -d "$source_root" ]] || die "Source root not found: $source_root"
 [[ -f "$prepared_generation_archive" ]] \
   || die "Prepared generation archive not found: $prepared_generation_archive"
@@ -84,11 +100,6 @@ prepared_cli="${prepared_generation}/bin/kast"
 prepared_backend="${prepared_generation}/backend-headless"
 [[ -x "$prepared_cli" ]] || die 'Prepared generation does not contain executable bin/kast'
 [[ -d "$prepared_backend" ]] || die 'Prepared generation does not contain backend-headless/'
-"$prepared_cli" --output json developer local verify \
-  --source-root "$source_root" \
-  --prepared-generation "$prepared_generation" \
-  >/dev/null
-
 cli_staging="${scratch_dir}/cli"
 backend_staging="${scratch_dir}/backend"
 mkdir -p "$cli_staging" "${backend_staging}/backend-headless"
@@ -100,27 +111,32 @@ backend_archive="${scratch_dir}/kast-local-source-bound-backend.zip"
 (cd "$cli_staging" && zip -X -9 -q "$cli_archive" kast)
 (cd "$backend_staging" && zip -X -9 -q -r "$backend_archive" backend-headless)
 
-bundle_asset="${dist_directory}/kast-ubuntu-debian-headless-x86_64-${bundle_version}.tar.gz"
-"$prepared_cli" developer release package ubuntu-debian-bundle \
-  --repo-root "$source_root" \
-  --cli-archive "$cli_archive" \
-  --backend-archive "$backend_archive" \
-  --version "$bundle_version" \
-  --bundle-output "$bundle_asset"
+case "$package_kind" in
+  ubuntu-debian-bundle)
+    bundle_asset="${dist_directory}/kast-ubuntu-debian-headless-x86_64-${bundle_version}.tar.gz"
+    "$prepared_cli" developer release package ubuntu-debian-bundle \
+      --repo-root "$source_root" \
+      --cli-archive "$cli_archive" \
+      --backend-archive "$backend_archive" \
+      --version "$bundle_version" \
+      --bundle-output "$bundle_asset"
+    ;;
+  kast-action-runtime)
+    "${repo_root}/scripts/package-headless-runtime.sh" \
+      --cli-archive "$cli_archive" \
+      --backend-archive "$backend_archive" \
+      --version "$runtime_version" \
+      --output "${dist_directory}/kast-headless-linux-x64.tar.zst" \
+      --manifest-output "${dist_directory}/kast-runtime-manifest.json"
 
-"${repo_root}/scripts/package-headless-runtime.sh" \
-  --cli-archive "$cli_archive" \
-  --backend-archive "$backend_archive" \
-  --version "$runtime_version" \
-  --output "${dist_directory}/kast-headless-linux-x64.tar.zst" \
-  --manifest-output "${dist_directory}/kast-runtime-manifest.json"
+    gradle_seed="${scratch_dir}/gradle-ro-seed"
+    mkdir -p "${gradle_seed}/caches/modules-2/files-2.1/headless/smoke"
+    printf '%s\n' 'fixture' > "${gradle_seed}/caches/modules-2/files-2.1/headless/smoke/artifact.pom"
+    "${repo_root}/scripts/package-gradle-ro-cache.sh" \
+      --gradle-user-home "$gradle_seed" \
+      --output "${dist_directory}/gradle-ro-dep-cache.tar.zst"
+    ;;
+esac
 
-gradle_seed="${scratch_dir}/gradle-ro-seed"
-mkdir -p "${gradle_seed}/caches/modules-2/files-2.1/headless/smoke"
-printf '%s\n' 'fixture' > "${gradle_seed}/caches/modules-2/files-2.1/headless/smoke/artifact.pom"
-"${repo_root}/scripts/package-gradle-ro-cache.sh" \
-  --gradle-user-home "$gradle_seed" \
-  --output "${dist_directory}/gradle-ro-dep-cache.tar.zst"
-
-printf 'Derived Linux packages from verified prepared generation %s\n' \
-  "$prepared_generation" >&2
+printf 'Derived %s package from attested prepared generation %s\n' \
+  "$package_kind" "$prepared_generation" >&2

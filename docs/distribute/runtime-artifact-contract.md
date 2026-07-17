@@ -84,11 +84,12 @@ CLI before packaging. Relocation is allowed; changing component bytes, fixed
 relative paths, layout entries, source identity, or embedded backend evidence
 is not.
 
-CI has one producer for this generation and its derived Linux packages. The
-Ubuntu/Debian bundle, headless runtime archive, runtime manifest, and Gradle
-read-only cache are produced once by the prepared-generation job. Container
-and action jobs download and verify those ledgered files; they do not rebuild
-the CLI or backend and do not repackage the downloads.
+CI has one producer for this generation and one focused producer for each
+derived package family. The Ubuntu/Debian bundle is produced independently of
+the headless runtime archive, runtime manifest, and Gradle read-only cache, so
+neither package family delays the other. Container and action jobs download and
+verify their ledgered files; they do not rebuild the CLI or backend and do not
+repackage the downloads.
 
 ## Build Ledger
 

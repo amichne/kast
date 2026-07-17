@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 2,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate timing includes the first successful immutable prepared-generation topology run. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, prepared-generation publication, and derived Linux package assembly are independent nodes so unrelated proof cannot delay the representative fixture. Conservative estimates remain provisional until exact final-shape runs replace them. Proof outputs remain exactly equivalent and timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate timing includes the first successful immutable prepared-generation topology run. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, prepared-generation publication, Ubuntu bundle packaging, and kast-action runtime packaging are independent nodes so unrelated proof cannot delay the representative fixture or either packaging consumer. Conservative estimates remain provisional until exact final-shape runs replace them. Proof outputs remain exactly equivalent and timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
     "source": "https://github.com/amichne/kast/pull/410",
     "baselineRunIds": [
@@ -479,13 +479,24 @@
         "executionClass": "artifact-consumer"
       },
       {
-        "id": "prepared-linux-packages",
+        "id": "prepared-ubuntu-debian-bundle",
         "needs": [
           "prepared-generation"
         ],
         "outputs": [],
         "durationSamplesSeconds": [
-          180
+          240
+        ],
+        "executionClass": "artifact-consumer"
+      },
+      {
+        "id": "prepared-kast-action-runtime",
+        "needs": [
+          "prepared-generation"
+        ],
+        "outputs": [],
+        "durationSamplesSeconds": [
+          150
         ],
         "executionClass": "artifact-consumer"
       },
@@ -536,7 +547,7 @@
       {
         "id": "install-container-ubuntu-22.04",
         "needs": [
-          "prepared-linux-packages"
+          "prepared-ubuntu-debian-bundle"
         ],
         "outputs": [
           "ubuntu-22.04-java-21-install-contract"
@@ -549,7 +560,7 @@
       {
         "id": "install-container-ubuntu-24.04",
         "needs": [
-          "prepared-linux-packages"
+          "prepared-ubuntu-debian-bundle"
         ],
         "outputs": [
           "ubuntu-24.04-java-21-install-contract"
@@ -562,7 +573,7 @@
       {
         "id": "kast-action",
         "needs": [
-          "prepared-linux-packages"
+          "prepared-kast-action-runtime"
         ],
         "outputs": [
           "kast-action-v2-installed-runtime-contract"
@@ -590,7 +601,7 @@
     "maximumCandidateCriticalPathSeconds": 1800,
     "minimumFanoutGateReductionSeconds": 800,
     "maximumCandidateFanoutGateSeconds": 90,
-    "maximumCandidateTaskCountIncrease": 4,
+    "maximumCandidateTaskCountIncrease": 5,
     "maximumMedianModelDriftRatio": 0.25,
     "minimumTaskSamples": 5,
     "minimumWorkflowSamples": 5

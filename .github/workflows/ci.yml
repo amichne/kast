@@ -569,15 +569,15 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  prepared-linux-packages:
-    name: Prepared Linux package derivatives
+  prepared-ubuntu-debian-bundle:
+    name: Prepared Ubuntu and Debian bundle
     runs-on: ubuntu-24.04
     needs:
       - prepared-generation
     steps:
       - uses: actions/checkout@v5
 
-      - name: Free disk for derived Linux package assembly
+      - name: Free disk for prepared bundle assembly
         shell: bash
         run: |
           set -euo pipefail
@@ -621,49 +621,42 @@ jobs:
             --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
           (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
 
-      - name: Package verified Linux derivatives
+      - name: Package prepared Ubuntu and Debian bundle
         shell: bash
         run: |
           set -euo pipefail
-          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
           KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
           printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
           scripts/package-prepared-local-generation-derivatives.sh \
+            --kind ubuntu-debian-bundle \
             --source-root "$GITHUB_WORKSPACE" \
             --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
             --dist-directory dist \
-            --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" \
-            --runtime-version "$runtime_version"
+            --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG"
 
-      - name: Record derived Linux package ledgers
+      - name: Record prepared bundle ledger
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/ci-ledgers/prepared-linux-packages
+          mkdir -p dist/ci-ledgers/prepared-ubuntu-debian-bundle
           record_output() {
             local kind="$1"
             local name="$2"
             local path="$3"
             local command_id="$4"
             scripts/verify-ci-artifact-ledger.py record \
-              --output "dist/ci-ledgers/prepared-linux-packages/${kind}.json" \
+              --output "dist/ci-ledgers/prepared-ubuntu-debian-bundle/${kind}.json" \
               --git-sha "$GITHUB_SHA" \
               --source-ref "$GITHUB_REF" \
               --workflow-run-id "$GITHUB_RUN_ID" \
               --artifact-kind "$kind" \
               --artifact-name "$name" \
               --artifact-path "$path" \
-              --producer-job prepared-linux-packages \
+              --producer-job prepared-ubuntu-debian-bundle \
               --build-command-id "$command_id"
           }
           record_output ci-ubuntu-debian-bundle kast-ubuntu-debian-ci-bundle \
             "dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz" ci-package-ubuntu-debian-bundle
-          record_output ci-headless-runtime kast-action-runtime-inputs \
-            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
-          record_output ci-headless-runtime-manifest kast-action-runtime-inputs \
-            dist/kast-runtime-manifest.json ci-package-headless-runtime
-          record_output ci-gradle-ro-cache kast-action-runtime-inputs \
-            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
 
       - name: Upload prepared Ubuntu and Debian bundle
         uses: actions/upload-artifact@v6
@@ -674,6 +667,105 @@ jobs:
             dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz.sha256
           if-no-files-found: error
           retention-days: 1
+
+      - name: Upload prepared bundle ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-prepared-ubuntu-debian-bundle
+          path: dist/ci-ledgers/prepared-ubuntu-debian-bundle
+          if-no-files-found: error
+          retention-days: 3
+
+  prepared-kast-action-runtime:
+    name: Prepared kast-action runtime inputs
+    runs-on: ubuntu-24.04
+    needs:
+      - prepared-generation
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Free disk for prepared action-runtime assembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Ensure zstd is available for prepared generation extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends zstd
+          fi
+
+      - name: Download prepared local generation
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-prepared-local-generation
+          path: ${{ runner.temp }}/kast-prepared-generation
+
+      - name: Download prepared generation ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-prepared-generation
+          path: ${{ runner.temp }}/kast-prepared-generation-ledger
+
+      - name: Verify prepared generation input
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-prepared-local-generation \
+            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
+          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
+
+      - name: Package prepared kast-action runtime inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          scripts/package-prepared-local-generation-derivatives.sh \
+            --kind kast-action-runtime \
+            --source-root "$GITHUB_WORKSPACE" \
+            --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
+            --dist-directory dist \
+            --runtime-version "$runtime_version"
+
+      - name: Record prepared kast-action runtime ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers/prepared-kast-action-runtime
+          record_output() {
+            local kind="$1"
+            local path="$2"
+            local command_id="$3"
+            scripts/verify-ci-artifact-ledger.py record \
+              --output "dist/ci-ledgers/prepared-kast-action-runtime/${kind}.json" \
+              --git-sha "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --artifact-kind "$kind" \
+              --artifact-name kast-action-runtime-inputs \
+              --artifact-path "$path" \
+              --producer-job prepared-kast-action-runtime \
+              --build-command-id "$command_id"
+          }
+          record_output ci-headless-runtime \
+            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
+          record_output ci-headless-runtime-manifest \
+            dist/kast-runtime-manifest.json ci-package-headless-runtime
+          record_output ci-gradle-ro-cache \
+            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
 
       - name: Upload prepared kast-action runtime inputs
         uses: actions/upload-artifact@v6
@@ -688,11 +780,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Upload derived Linux package ledgers
+      - name: Upload prepared kast-action runtime ledgers
         uses: actions/upload-artifact@v6
         with:
-          name: ci-artifact-ledger-prepared-linux-packages
-          path: dist/ci-ledgers/prepared-linux-packages
+          name: ci-artifact-ledger-prepared-kast-action-runtime
+          path: dist/ci-ledgers/prepared-kast-action-runtime
           if-no-files-found: error
           retention-days: 3
 
@@ -700,7 +792,7 @@ jobs:
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     needs:
-      - prepared-linux-packages
+      - prepared-ubuntu-debian-bundle
     strategy:
       fail-fast: false
       matrix:
@@ -721,7 +813,7 @@ jobs:
       - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-prepared-linux-packages
+          name: ci-artifact-ledger-prepared-ubuntu-debian-bundle
           path: ci-ledgers
 
       - name: Verify prepared Ubuntu and Debian bundle
@@ -747,7 +839,7 @@ jobs:
     name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
-      - prepared-linux-packages
+      - prepared-kast-action-runtime
     steps:
       - uses: actions/checkout@v5
 
@@ -790,7 +882,7 @@ jobs:
       - name: Download prepared generation ledgers
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-prepared-linux-packages
+          name: ci-artifact-ledger-prepared-kast-action-runtime
           path: ci-ledgers
 
       - name: Verify prepared kast-action runtime inputs
