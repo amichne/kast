@@ -285,6 +285,9 @@ fn classify_local_development(command: &LocalDevelopmentCommand) -> CodexExposur
     match command {
         LocalDevelopmentCommand::Snapshot(_)
         | LocalDevelopmentCommand::Attest(_)
+        | LocalDevelopmentCommand::Prepare(_)
+        | LocalDevelopmentCommand::Verify(_)
+        | LocalDevelopmentCommand::Activate(_)
         | LocalDevelopmentCommand::Refresh(_)
         | LocalDevelopmentCommand::Rollback(_)
         | LocalDevelopmentCommand::Remove(_) => CodexExposure::NotExposed,
@@ -452,6 +455,54 @@ mod tests {
         );
         assert_eq!(
             parsed_exposure(&["developer", "codex", "generate"]),
+            CodexExposure::NotExposed
+        );
+        assert_eq!(
+            parsed_exposure(&[
+                "developer",
+                "local",
+                "prepare",
+                "--source-root",
+                ".",
+                "--expected-source-snapshot",
+                "snapshot.json",
+                "--cli-binary",
+                "kast",
+                "--cli-provenance",
+                "cli.json",
+                "--backend-directory",
+                "backend",
+                "--backend-provenance",
+                "backend.json",
+                "--output-directory",
+                "prepared",
+            ]),
+            CodexExposure::NotExposed
+        );
+        assert_eq!(
+            parsed_exposure(&[
+                "developer",
+                "local",
+                "verify",
+                "--source-root",
+                ".",
+                "--prepared-generation",
+                "prepared",
+            ]),
+            CodexExposure::NotExposed
+        );
+        assert_eq!(
+            parsed_exposure(&[
+                "developer",
+                "local",
+                "activate",
+                "--source-root",
+                ".",
+                "--workspace-root",
+                ".",
+                "--prepared-generation",
+                "prepared",
+            ]),
             CodexExposure::NotExposed
         );
         assert_eq!(
