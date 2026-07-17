@@ -506,10 +506,8 @@ fn unique_quarantine_path(skill_directory: &Path) -> PathBuf {
         return first;
     }
     loop {
-        let candidate = skill_directory.with_extension(format!(
-            "incompatible.{}",
-            uuid::Uuid::new_v4().as_simple()
-        ));
+        let candidate = skill_directory
+            .with_extension(format!("incompatible.{}", uuid::Uuid::new_v4().as_simple()));
         if !candidate.exists() {
             return candidate;
         }
