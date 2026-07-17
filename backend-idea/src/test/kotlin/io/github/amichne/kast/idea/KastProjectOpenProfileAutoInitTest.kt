@@ -78,6 +78,7 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(workspace.resolve(".agents/skills/kast/SKILL.md").isRegularFile())
         assertTrue(workspace.resolve("AGENTS.local.md").isRegularFile())
         val skill = Files.readString(workspace.resolve(".agents/skills/kast/SKILL.md"))
+        assertTrue(skill.contains("kast-cli-dialect-revision: \"1\""), skill)
         assertTrue(skill.contains("For every delegated worker using a linked Git worktree"), skill)
         assertTrue(skill.contains("Before the worker starts, open the exact worktree root"), skill)
         assertTrue(skill.contains("Never reuse another worktree's Kast runtime, metadata, or semantic evidence"), skill)

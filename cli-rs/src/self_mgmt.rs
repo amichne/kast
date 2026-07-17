@@ -16,6 +16,11 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod agent_readiness;
+
+use agent_readiness::agent_environment_diagnostic;
+pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
+
 pub use crate::manifest::{
     KastInstallManifest as InstallState, ManagedRepo, ManagedRepoResource,
     ManagedRepoResourceHistory, ManagedResourceKind,
@@ -117,6 +122,8 @@ pub struct SelfDoctorResult {
     pub configuration: DoctorConfigurationDiagnostic,
     pub canonical_directory: DoctorCanonicalDirectoryDiagnostic,
     pub binary: DoctorBinaryDiagnostic,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_environment: Option<DoctorAgentEnvironmentDiagnostic>,
     pub path_resolution: PathResolutionReport,
     pub minimum_backend_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -316,22 +323,36 @@ pub fn doctor(
         target,
         workspace_root,
         install.as_ref(),
+        local_development.is_some(),
         homebrew_install.is_some(),
         &binary,
         &mut issues,
     );
+    let install_authority = if local_development.is_some() {
+        InstallAuthority::LocalDevelopment
+    } else if homebrew_install.is_some() {
+        InstallAuthority::MacosHomebrew
+    } else if install.is_some() {
+        InstallAuthority::ManagedLocal
+    } else {
+        InstallAuthority::Missing
+    };
+    let agent_environment = if matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
+        Some(agent_environment_diagnostic(
+            workspace_root,
+            install_authority,
+            local_development.as_ref(),
+            install.as_ref(),
+            &binary,
+            &mut issues,
+        )?)
+    } else {
+        None
+    };
     Ok(SelfDoctorResult {
         target,
         installed: local_development.is_some() || homebrew_install.is_some() || install.is_some(),
-        install_authority: if local_development.is_some() {
-            InstallAuthority::LocalDevelopment
-        } else if homebrew_install.is_some() {
-            InstallAuthority::MacosHomebrew
-        } else if install.is_some() {
-            InstallAuthority::ManagedLocal
-        } else {
-            InstallAuthority::Missing
-        },
+        install_authority,
         local_development,
         homebrew_install,
         legacy_shadow,
@@ -340,6 +361,7 @@ pub fn doctor(
         configuration,
         canonical_directory,
         binary,
+        agent_environment,
         path_resolution,
         minimum_backend_version: minimum_backend_version.to_string(),
         install,
@@ -399,11 +421,12 @@ fn apply_ready_target_checks(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
     install: Option<&InstallState>,
+    local_development: bool,
     homebrew_install: bool,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
-    apply_macos_plugin_workspace_check(target, workspace_root, issues);
+    apply_macos_plugin_workspace_check(target, workspace_root, local_development, issues);
     match target {
         ReadyTarget::Agent | ReadyTarget::Release => {}
         ReadyTarget::Machine => {
@@ -458,9 +481,10 @@ fn should_verify_repo_resources_for_target(
 fn apply_macos_plugin_workspace_check(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
+    local_development: bool,
     issues: &mut Vec<String>,
 ) {
-    if !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
+    if local_development || !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
         return;
     }
     match workspace_root {
@@ -479,6 +503,7 @@ fn apply_macos_plugin_workspace_check(
 fn apply_macos_plugin_workspace_check(
     _target: ReadyTarget,
     _workspace_root: Option<&Path>,
+    _local_development: bool,
     _issues: &mut Vec<String>,
 ) {
 }

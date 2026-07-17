@@ -26,6 +26,10 @@ fn machine_ready_prefers_homebrew_receipt_without_local_manifest() {
     );
     let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("ready json");
     assert_eq!(stdout["installAuthority"], "macos-homebrew", "{stdout}");
+    assert!(
+        stdout["agentEnvironment"].is_null(),
+        "machine readiness must not report an agent-environment verdict: {stdout}"
+    );
     assert_eq!(
         stdout["homebrewInstall"]["cli"]["binary"],
         homebrew_binary.display().to_string(),

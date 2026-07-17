@@ -139,6 +139,12 @@ instead of applying it.
     kast --output json status --workspace-root "$PWD"
     ```
 
+    When agent readiness fails, inspect `agentEnvironment.skills.candidates`
+    and `agentEnvironment.guidance`. Their state and source path distinguish a
+    stale selectable skill from missing, modified, user-owned, managed, or
+    foreign guidance. A `repairCommand` is a direct, recoverable next step;
+    readiness itself does not execute it or overwrite user content.
+
     On macOS, machine readiness also reports the active install authority, the
     exact Homebrew binary from the trusted receipt, and any legacy PATH shadow.
 
