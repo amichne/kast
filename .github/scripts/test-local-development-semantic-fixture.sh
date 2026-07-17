@@ -158,6 +158,24 @@ jq -e \
   "${evidence_dir}/references.json" >/dev/null \
   || die 'Representative fixture references were not exact, exhaustive, and nonzero'
 
+"$installed_kast" --output json agent rename \
+  --selector-handle "$selector_handle" \
+  --new-name RenderTokenProof \
+  --workspace-root "$fixture_root" \
+  --backend headless \
+  --explain >"${evidence_dir}/rename-plan.json"
+jq -e \
+  --arg handle "$selector_handle" \
+  '.ok == true and
+   .result.type == "KAST_AGENT_RENAME_PLAN" and
+   .result.applyRequired == true and
+   .result.request.params.selectorHandle == $handle and
+   (.result.preview.edits | length) > 0 and
+   (.result.preview.affectedFiles | length) > 0 and
+   (.result.preview.fileHashes | length) == (.result.preview.affectedFiles | length)' \
+  "${evidence_dir}/rename-plan.json" >/dev/null \
+  || die 'Representative rename did not reuse the selector handle for a non-applied plan'
+
 clean_files=(
   "${fixture_root}/domain/src/main/kotlin/fixture/domain/RenderToken.kt"
   "${fixture_root}/domain/src/test/kotlin/fixture/domain/RenderTokenTestProbe.kt"
@@ -204,24 +222,6 @@ jq -e \
   "${evidence_dir}/diagnostics-broken.json" >/dev/null \
   || die 'Representative broken source did not produce an exact unresolved-reference diagnostic'
 /bin/unlink "$broken_file"
-
-"$installed_kast" --output json agent rename \
-  --selector-handle "$selector_handle" \
-  --new-name RenderTokenProof \
-  --workspace-root "$fixture_root" \
-  --backend headless \
-  --explain >"${evidence_dir}/rename-plan.json"
-jq -e \
-  --arg handle "$selector_handle" \
-  '.ok == true and
-   .result.type == "KAST_AGENT_RENAME_PLAN" and
-   .result.applyRequired == true and
-   .result.request.params.selectorHandle == $handle and
-   (.result.preview.edits | length) > 0 and
-   (.result.preview.affectedFiles | length) > 0 and
-   (.result.preview.fileHashes | length) == (.result.preview.affectedFiles | length)' \
-  "${evidence_dir}/rename-plan.json" >/dev/null \
-  || die 'Representative rename did not reuse the selector handle for a non-applied plan'
 
 hash_kotlin_tree "$fixture_root" >"${evidence_dir}/kotlin-after.sha256"
 cmp "${evidence_dir}/kotlin-before.sha256" "${evidence_dir}/kotlin-after.sha256" \
