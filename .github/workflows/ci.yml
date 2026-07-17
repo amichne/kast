@@ -712,16 +712,6 @@ jobs:
           -PkastLocalSourceSnapshot=build/ci-inputs/source-snapshot.json
           -PkastHeadlessIdeaHomeProfile=agent
 
-      - name: Assert source-bound distribution excludes fat jar
-        shell: bash
-        run: |
-          set -euo pipefail
-          if find backend-headless/build/portable-dist -name '*-all.jar' -print -quit | grep -q .; then
-            echo "Source-bound headless distribution must not contain fat jars" >&2
-            find backend-headless/build/portable-dist -name '*-all.jar' -print >&2
-            exit 1
-          fi
-
       - name: Upload source-bound headless backend distribution
         uses: actions/upload-artifact@v6
         with:

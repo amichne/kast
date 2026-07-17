@@ -804,7 +804,7 @@ val stageDevelopmentBackend: TaskProvider<Sync> by tasks.registering(Sync::class
 tasks.register<org.gradle.api.tasks.bundling.Zip>("packageSourceBoundDevelopmentBackend") {
     group = "distribution"
     description = "Packages the already-built source-bound local headless backend."
-    dependsOn(stageDevelopmentBackend)
+    dependsOn(stageDevelopmentBackend, ":backend-headless:verifyHeadlessPortableDistLayout")
     archiveFileName.set("kast-local-source-bound-backend.zip")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     isPreserveFileTimestamps = false

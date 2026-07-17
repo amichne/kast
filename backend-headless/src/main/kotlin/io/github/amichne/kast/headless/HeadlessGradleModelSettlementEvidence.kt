@@ -21,16 +21,4 @@ data class HeadlessGradleModelSettlementEvidence(
         require(stableObservations >= 0) { "stableObservations must not be negative" }
     }
 
-    val transitionProgress: TransitionProgress
-        get() =
-            if (totalTransitions == 0L) {
-                TransitionProgress.NO_TRANSITIONS
-            } else {
-                TransitionProgress.TRANSITIONS_OBSERVED
-            }
-
-    enum class TransitionProgress {
-        NO_TRANSITIONS,
-        TRANSITIONS_OBSERVED,
-    }
 }

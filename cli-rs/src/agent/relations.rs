@@ -567,7 +567,7 @@ fn impact_selector_handle_rejection_envelope(
     )
 }
 
-fn execute_agent_callers(args: AgentCallersArgs) -> AgentEnvelope {
+fn execute_agent_callers(args: AgentCallsArgs) -> AgentEnvelope {
     execute_agent_call_relationship(
         "agent/callers",
         "callers",
@@ -582,7 +582,7 @@ fn execute_agent_callers(args: AgentCallersArgs) -> AgentEnvelope {
     )
 }
 
-fn execute_agent_callees(args: AgentCalleesArgs) -> AgentEnvelope {
+fn execute_agent_callees(args: AgentCallsArgs) -> AgentEnvelope {
     execute_agent_call_relationship(
         "agent/callees",
         "callees",

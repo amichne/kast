@@ -154,7 +154,7 @@ depend on unfinished shared state, or otherwise be tightly coupled.
 
 <kast>
 ## Kast routing
-Use `/Users/amichne/.codex/worktrees/68b86775-b0bf-43c9-9591-997877217b53/kast/.agents/skills/kast/SKILL.md` before Kotlin or Gradle semantic work.
+Use `/Users/amichne/code/kast/.agents/skills/kast/SKILL.md` before Kotlin or Gradle semantic work.
 Use `kast agent verify --workspace-root "$PWD"` to verify the plugin-prepared workspace.
 Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.
 Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.

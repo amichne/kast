@@ -342,26 +342,11 @@ fn write_files(root: &Path, files: &[GeneratedFile]) -> Result<()> {
 }
 
 fn check_files(root: &Path, files: &[GeneratedFile]) -> Result<()> {
-    let rendered_root = std::env::temp_dir().join(format!(
-        "kast-codex-generate-check-{}",
-        uuid::Uuid::new_v4()
-    ));
-    write_files(&rendered_root, files)?;
-    let result = compare_files(root, &rendered_root, files);
-    let cleanup = fs::remove_dir_all(&rendered_root);
-    result?;
-    cleanup?;
-    Ok(())
-}
-
-fn compare_files(root: &Path, rendered_root: &Path, files: &[GeneratedFile]) -> Result<()> {
     let mut drift = Vec::new();
     for file in files {
         let path = root.join(file.relative_path);
-        let rendered_path = rendered_root.join(file.relative_path);
-        let rendered = fs::read(&rendered_path)?;
         match fs::read(&path) {
-            Ok(actual) if actual == rendered => {
+            Ok(actual) if actual == file.contents => {
                 if file.executable && fs::metadata(&path)?.permissions().mode() & 0o111 == 0 {
                     drift.push(format!("{} is not executable", file.relative_path));
                 }

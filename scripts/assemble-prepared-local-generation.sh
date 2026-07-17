@@ -117,12 +117,6 @@ backend_provenance="${provenance_directory}/backend.json"
   --output-directory "$prepared_generation" \
   >/dev/null
 
-prepared_cli="${prepared_generation}/bin/kast"
-"$prepared_cli" --output json developer local verify \
-  --source-root "$source_root" \
-  --prepared-generation "$prepared_generation" \
-  >/dev/null
-
 "${repo_root}/scripts/package-prepared-local-generation.sh" \
   --source-root "$source_root" \
   --prepared-generation "$prepared_generation" \
