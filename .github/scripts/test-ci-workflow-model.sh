@@ -40,6 +40,50 @@ if not any("provisional" in warning for warning in report["warnings"]):
     raise SystemExit("timing evidence must remain explicitly provisional below five samples")
 PY
 
+blocking_required_task_model="${scratch_dir}/blocking-required-task-timing.json"
+python3 - "$model" "$blocking_required_task_model" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+document = json.loads(source.read_text(encoding="utf-8"))
+for task in document["baseline"]["tasks"]:
+    task["durationSamplesSeconds"] *= 5
+candidate = document["candidate"]
+canary_ids = set(candidate["canaryTaskIds"])
+for task in candidate["tasks"]:
+    if task["id"] not in canary_ids:
+        task["durationSamplesSeconds"] *= 5
+candidate["observedWorkflowDurationSamplesSeconds"] *= 5
+document["expectations"]["timingEvidenceMode"] = "blocking"
+document["expectations"]["maximumMedianModelDriftRatio"] = 1
+target.write_text(json.dumps(document), encoding="utf-8")
+PY
+
+blocking_required_task_report="${scratch_dir}/blocking-required-task-report.json"
+set +e
+python3 "$checker" "$blocking_required_task_model" >"$blocking_required_task_report"
+blocking_required_task_status=$?
+set -e
+if [[ "$blocking_required_task_status" -ne 0 ]]; then
+  cat "$blocking_required_task_report" >&2
+  die "blocking required-task timing model failed with exit ${blocking_required_task_status}"
+fi
+python3 - "$blocking_required_task_report" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if report["status"] != "pass":
+    raise SystemExit(
+        "blocking PR timing must not require five samples from an off-PR canary: "
+        + "; ".join(report["failures"])
+    )
+PY
+
 required_canary_model="${scratch_dir}/required-canary.json"
 python3 - "$model" "$required_canary_model" <<'PY'
 import json

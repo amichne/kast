@@ -621,11 +621,13 @@ def compare(model: Model) -> dict[str, Any]:
         undersampled = sorted(
             task_id
             for task_id, task in plan.tasks.items()
-            if len(task.duration_samples_seconds) < expectations.minimum_task_samples
+            if task_id not in plan.canary_task_ids
+            and len(task.duration_samples_seconds) < expectations.minimum_task_samples
         )
         if undersampled:
             timing_findings.append(
-                f"{name} tasks below minimumTaskSamples: {', '.join(undersampled)}"
+                f"{name} required tasks below minimumTaskSamples: "
+                + ", ".join(undersampled)
             )
         if (
             len(plan.observed_workflow_duration_samples_seconds)

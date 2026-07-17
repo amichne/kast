@@ -578,18 +578,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Free disk for prepared bundle assembly
-        shell: bash
-        run: |
-          set -euo pipefail
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL
-          df -h /
-
       - name: Ensure zstd is available for prepared generation extraction
         shell: bash
         run: |
@@ -713,18 +701,6 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Free disk for source-bound backend production
-        shell: bash
-        run: |
-          set -euo pipefail
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL
-          df -h /
-
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-cleanup: always
@@ -847,18 +823,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-
-      - name: Free disk for kast-action runtime installation
-        shell: bash
-        run: |
-          set -euo pipefail
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL
-          df -h /
 
       - uses: gradle/actions/setup-gradle@v5
         with:
