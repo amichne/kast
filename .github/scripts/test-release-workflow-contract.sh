@@ -369,6 +369,7 @@ require_contains "$ci_build_and_test_workflow" "packageSourceBoundDevelopmentBac
 require_not_contains "$ci_build_and_test_workflow" "Build agent headless backend distribution" "CI Linux must not rebuild the agent backend after publishing its source-bound artifact"
 require_block_contains "$ci_workflow" "  prepared-generation:" "  install-ubuntu-debian-container:" "scripts/assemble-prepared-local-generation.sh" "CI must assemble and verify one immutable prepared generation"
 require_block_contains "$ci_workflow" "  prepared-generation:" "  install-ubuntu-debian-container:" "ci-artifact-ledger-prepared-generation" "CI must ledger and publish prepared-generation outputs once"
+require_block_contains "$ci_workflow" "  prepared-generation:" "  install-ubuntu-debian-container:" "dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz.sha256" "The prepared Ubuntu and Debian bundle upload must preserve its required digest sidecar"
 require_block_contains "$ci_workflow" "  install-ubuntu-debian-container:" "  kast-action-runtime-contract:" "      - prepared-generation" "Ubuntu and Debian validation must consume the prepared-generation producer"
 require_block_not_contains "$ci_workflow" "  install-ubuntu-debian-container:" "  kast-action-runtime-contract:" "package ubuntu-debian-bundle" "Container consumers must not repackage the Ubuntu and Debian bundle"
 require_block_contains "$ci_workflow" "  kast-action-runtime-contract:" "  analysis-server-transport:" "      - prepared-generation" "kast-action validation must consume the prepared-generation producer"

@@ -519,7 +519,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: kast-ubuntu-debian-ci-bundle
-          path: dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz
+          path: |
+            dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz
+            dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz.sha256
           if-no-files-found: error
           retention-days: 1
 
