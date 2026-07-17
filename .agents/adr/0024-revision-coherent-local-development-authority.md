@@ -103,16 +103,18 @@ Pull-request automation applies the same separation across jobs. The static
 fanout gate captures the source snapshot without installing Java, Gradle, or
 Rust. An independent `source-bound-cli` producer compiles that digest into its
 one release binary while the required Rust job owns formatting, Clippy, and
-tests in parallel. The existing Linux Gradle job embeds the same snapshot into
-its one source-bound headless backend. `prepared-generation` verifies the
+tests in parallel. A dedicated `source-bound-headless-backend` producer embeds
+the same snapshot into the one backend artifact while the Linux Gradle job owns
+the full Kotlin test boundary independently. `prepared-generation` verifies the
 outer CI ledgers, re-attests the extracted component bytes, and publishes and
 verifies the immutable generation with its exact CLI. The representative
-semantic fixture can consume that artifact immediately. A separate downstream
-producer derives the Linux bundle, headless runtime, runtime manifest, and
-Gradle read-only cache from the verified prepared bytes. Each published file
-receives an outer CI artifact ledger. Container and action jobs consume those
-files and ledgers as validation-only jobs; they do not rerun Rust, Kotlin, or
-Gradle component builds.
+semantic fixture can consume that artifact immediately. The Ubuntu/Debian
+producer derives its bundle while the `kast-action` contract independently
+derives and consumes its headless runtime, runtime manifest, and Gradle
+read-only cache in the same focused job. Cross-job files receive outer CI
+artifact ledgers; same-job action inputs receive ledgers that are verified
+before installation. Neither path reruns Rust, Kotlin, or Gradle component
+builds.
 
 ### Activation and effective paths
 

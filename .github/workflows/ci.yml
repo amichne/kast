@@ -450,7 +450,7 @@ jobs:
     needs:
       - workflow-contracts
       - source-bound-cli
-      - build-and-test-linux
+      - source-bound-headless-backend
     steps:
       - uses: actions/checkout@v5
 
@@ -676,15 +676,42 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  prepared-kast-action-runtime:
-    name: Prepared kast-action runtime inputs
+  source-bound-headless-backend:
+    name: Source-bound headless backend
     runs-on: ubuntu-24.04
     needs:
-      - prepared-generation
+      - workflow-contracts
     steps:
       - uses: actions/checkout@v5
 
-      - name: Free disk for prepared action-runtime assembly
+      - name: Download local source snapshot
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-local-source-snapshot
+          path: build/ci-inputs
+
+      - name: Download local source snapshot ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-local-source-snapshot
+          path: build/ci-input-ledgers
+
+      - name: Verify local source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger build/ci-input-ledgers/local-source-snapshot.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-local-source-snapshot \
+            --artifact ci-local-source-snapshot=build/ci-inputs/source-snapshot.json
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Free disk for source-bound backend production
         shell: bash
         run: |
           set -euo pipefail
@@ -696,95 +723,65 @@ jobs:
             /opt/hostedtoolcache/CodeQL
           df -h /
 
-      - name: Ensure zstd is available for prepared generation extraction
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-cleanup: always
+
+      - name: Cache source-bound IntelliJ runtime distribution
+        uses: actions/cache@v5
+        with:
+          path: ~/.gradle/kast/headless-idea-distributions
+          key: intellij-runtime-Linux-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            intellij-runtime-Linux-
+
+      - name: Build source-bound headless backend distribution
+        run: >
+          ./scripts/ci-gradle-retry.sh
+          ./gradlew
+          packageSourceBoundDevelopmentBackend
+          -PkastLocalSourceSnapshot=build/ci-inputs/source-snapshot.json
+          -PkastHeadlessIdeaHomeProfile=agent
+
+      - name: Assert source-bound distribution excludes fat jar
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
+          if find backend-headless/build/portable-dist -name '*-all.jar' -print -quit | grep -q .; then
+            echo "Source-bound headless distribution must not contain fat jars" >&2
+            find backend-headless/build/portable-dist -name '*-all.jar' -print >&2
+            exit 1
           fi
 
-      - name: Download prepared local generation
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-prepared-local-generation
-          path: ${{ runner.temp }}/kast-prepared-generation
-
-      - name: Download prepared generation ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-prepared-generation
-          path: ${{ runner.temp }}/kast-prepared-generation-ledger
-
-      - name: Verify prepared generation input
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-prepared-local-generation \
-            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
-          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
-
-      - name: Package prepared kast-action runtime inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
-          scripts/package-prepared-local-generation-derivatives.sh \
-            --kind kast-action-runtime \
-            --source-root "$GITHUB_WORKSPACE" \
-            --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
-            --dist-directory dist \
-            --runtime-version "$runtime_version"
-
-      - name: Record prepared kast-action runtime ledgers
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers/prepared-kast-action-runtime
-          record_output() {
-            local kind="$1"
-            local path="$2"
-            local command_id="$3"
-            scripts/verify-ci-artifact-ledger.py record \
-              --output "dist/ci-ledgers/prepared-kast-action-runtime/${kind}.json" \
-              --git-sha "$GITHUB_SHA" \
-              --source-ref "$GITHUB_REF" \
-              --workflow-run-id "$GITHUB_RUN_ID" \
-              --artifact-kind "$kind" \
-              --artifact-name kast-action-runtime-inputs \
-              --artifact-path "$path" \
-              --producer-job prepared-kast-action-runtime \
-              --build-command-id "$command_id"
-          }
-          record_output ci-headless-runtime \
-            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
-          record_output ci-headless-runtime-manifest \
-            dist/kast-runtime-manifest.json ci-package-headless-runtime
-          record_output ci-gradle-ro-cache \
-            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
-
-      - name: Upload prepared kast-action runtime inputs
+      - name: Upload source-bound headless backend distribution
         uses: actions/upload-artifact@v6
         with:
-          name: kast-action-runtime-inputs
-          path: |
-            dist/kast-headless-linux-x64.tar.zst
-            dist/kast-headless-linux-x64.sha256
-            dist/kast-runtime-manifest.json
-            dist/gradle-ro-dep-cache.tar.zst
-            dist/gradle-ro-dep-cache.sha256
+          name: kast-headless-ubuntu-latest
+          path: build/distributions/kast-local-source-bound-backend.zip
           if-no-files-found: error
           retention-days: 1
 
-      - name: Upload prepared kast-action runtime ledgers
+      - name: Record source-bound headless backend ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/headless-ubuntu-latest.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-headless-ubuntu-latest \
+            --artifact-name kast-headless-ubuntu-latest \
+            --artifact-path build/distributions/kast-local-source-bound-backend.zip \
+            --producer-job source-bound-headless-backend \
+            --build-command-id ci-headless-source-bound-development
+
+      - name: Upload source-bound headless backend ledger
         uses: actions/upload-artifact@v6
         with:
-          name: ci-artifact-ledger-prepared-kast-action-runtime
-          path: dist/ci-ledgers/prepared-kast-action-runtime
+          name: ci-artifact-ledger-headless-ubuntu-latest
+          path: dist/ci-ledgers/headless-ubuntu-latest.json
           if-no-files-found: error
           retention-days: 3
 
@@ -839,7 +836,7 @@ jobs:
     name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
-      - prepared-kast-action-runtime
+      - prepared-generation
     steps:
       - uses: actions/checkout@v5
 
@@ -873,17 +870,67 @@ jobs:
             sudo apt-get install -y --no-install-recommends zstd
           fi
 
-      - name: Download prepared kast-action runtime inputs
+      - name: Download prepared local generation
         uses: actions/download-artifact@v7
         with:
-          name: kast-action-runtime-inputs
-          path: dist
+          name: kast-prepared-local-generation
+          path: ${{ runner.temp }}/kast-prepared-generation
 
-      - name: Download prepared generation ledgers
+      - name: Download prepared generation ledger
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-prepared-kast-action-runtime
-          path: ci-ledgers
+          name: ci-artifact-ledger-prepared-generation
+          path: ${{ runner.temp }}/kast-prepared-generation-ledger
+
+      - name: Verify prepared generation input
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-prepared-local-generation \
+            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
+          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
+
+      - name: Package prepared kast-action runtime inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          scripts/package-prepared-local-generation-derivatives.sh \
+            --kind kast-action-runtime \
+            --source-root "$GITHUB_WORKSPACE" \
+            --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
+            --dist-directory dist \
+            --runtime-version "$runtime_version"
+
+      - name: Record prepared kast-action runtime ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-ledgers/kast-action-runtime
+          record_output() {
+            local kind="$1"
+            local path="$2"
+            local command_id="$3"
+            scripts/verify-ci-artifact-ledger.py record \
+              --output "dist/ci-ledgers/kast-action-runtime/${kind}.json" \
+              --git-sha "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --artifact-kind "$kind" \
+              --artifact-name kast-action-runtime-inputs \
+              --artifact-path "$path" \
+              --producer-job kast-action-runtime-contract \
+              --build-command-id "$command_id"
+          }
+          record_output ci-headless-runtime \
+            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
+          record_output ci-headless-runtime-manifest \
+            dist/kast-runtime-manifest.json ci-package-headless-runtime
+          record_output ci-gradle-ro-cache \
+            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
 
       - name: Verify prepared kast-action runtime inputs
         id: verify-runtime
@@ -892,9 +939,9 @@ jobs:
           set -euo pipefail
           runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
           scripts/verify-ci-artifact-ledger.py verify \
-            --ledger ci-ledgers/ci-headless-runtime.json \
-            --ledger ci-ledgers/ci-headless-runtime-manifest.json \
-            --ledger ci-ledgers/ci-gradle-ro-cache.json \
+            --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime.json \
+            --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime-manifest.json \
+            --ledger dist/ci-ledgers/kast-action-runtime/ci-gradle-ro-cache.json \
             --git-sha "$GITHUB_SHA" \
             --require-kind ci-headless-runtime \
             --require-kind ci-headless-runtime-manifest \

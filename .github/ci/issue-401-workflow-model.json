@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 2,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate timing includes the first successful immutable prepared-generation topology run. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, prepared-generation publication, Ubuntu bundle packaging, and kast-action runtime packaging are independent nodes so unrelated proof cannot delay the representative fixture or either packaging consumer. Conservative estimates remain provisional until exact final-shape runs replace them. Proof outputs remain exactly equivalent and timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate timing includes the first successful immutable prepared-generation topology run. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, source-bound backend production, full Kotlin validation, and prepared-generation publication are independent nodes. The Ubuntu bundle producer and kast-action validation each derive only their owned package family directly from that generation. Conservative estimates remain provisional until exact final-shape runs replace them. Proof outputs remain exactly equivalent and timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
     "source": "https://github.com/amichne/kast/pull/410",
     "baselineRunIds": [
@@ -436,13 +436,10 @@
         ],
         "outputs": [
           "jvm-backend-tests-linux",
-          "headless-portable-no-fat-jar-linux",
-          "build-test-reports-linux",
-          "headless-portable-artifact-linux",
-          "ci-artifact-ledger-headless-linux"
+          "build-test-reports-linux"
         ],
         "durationSamplesSeconds": [
-          520
+          360
         ],
         "executionClass": "gradle-cache"
       },
@@ -468,7 +465,7 @@
         "needs": [
           "workflow-contracts",
           "source-bound-cli",
-          "build-and-test-linux"
+          "source-bound-headless-backend"
         ],
         "outputs": [
           "agent-headless-portable-build-linux"
@@ -490,15 +487,19 @@
         "executionClass": "artifact-consumer"
       },
       {
-        "id": "prepared-kast-action-runtime",
+        "id": "source-bound-headless-backend",
         "needs": [
-          "prepared-generation"
+          "workflow-contracts"
         ],
-        "outputs": [],
+        "outputs": [
+          "headless-portable-no-fat-jar-linux",
+          "headless-portable-artifact-linux",
+          "ci-artifact-ledger-headless-linux"
+        ],
         "durationSamplesSeconds": [
-          150
+          300
         ],
-        "executionClass": "artifact-consumer"
+        "executionClass": "gradle-cache"
       },
       {
         "id": "installed-semantic-fixture",
@@ -573,13 +574,13 @@
       {
         "id": "kast-action",
         "needs": [
-          "prepared-kast-action-runtime"
+          "prepared-generation"
         ],
         "outputs": [
           "kast-action-v2-installed-runtime-contract"
         ],
         "durationSamplesSeconds": [
-          267
+          400
         ],
         "executionClass": "artifact-consumer"
       }
