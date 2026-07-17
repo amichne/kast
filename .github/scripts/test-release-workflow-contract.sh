@@ -236,6 +236,8 @@ require_block_not_contains "$ci_workflow" "  workflow-contracts:" "  local-autho
 require_block_not_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "test-development-cli-install-contract.sh" "CI static fanout contracts must not execute the legacy development install contract"
 require_block_not_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "test-cli-plugin-authority-cutover-contract.sh" "CI static fanout contracts must not execute the CLI and plugin cutover contract"
 require_block_not_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "test-selector-handle-installed-workflow.sh" "CI static fanout contracts must not execute an installed CLI workflow"
+require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "Test CI workflow graph model" "CI static fanout contracts must execute the deterministic graph model"
+require_block_contains "$ci_workflow" "  workflow-contracts:" "  local-authority-contracts:" "test-ci-workflow-model.sh" "CI static fanout contracts must own proof-output equivalence validation"
 require_block_not_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "    needs:" "CI local-authority contracts must remain an independent required root"
 require_block_not_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "    if:" "CI local-authority contracts must run for every CI trigger"
 require_block_contains "$ci_workflow" "  local-authority-contracts:" "  local-development-semantic-e2e:" "uses: gradle/actions/setup-gradle@v5" "CI local-authority contracts must restore persisted Gradle build state"

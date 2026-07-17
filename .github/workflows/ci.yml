@@ -27,6 +27,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-release-workflow-contract.sh
 
+      - name: Test CI workflow graph model
+        shell: bash
+        run: ./.github/scripts/test-ci-workflow-model.sh
+
       - name: Test JetBrains plugin repository contract
         shell: bash
         run: ./.github/scripts/test-jetbrains-plugin-repository-contract.sh
