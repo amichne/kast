@@ -379,6 +379,22 @@ fn smoke_core_cli_commands() {
     );
     assert!(!install_manifest_path(&home).exists());
 
+    let doctor = kast(&home, &config_home)
+        .args(["--output", "json", "doctor"])
+        .output()
+        .expect("legacy doctor alias");
+    assert!(
+        !doctor.status.success(),
+        "doctor should still fail before machine installation exists"
+    );
+    let doctor_json: serde_json::Value =
+        serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    assert_eq!(doctor_json["target"], "machine", "{doctor_json:#}");
+    assert!(
+        doctor_json["agentEnvironment"].is_null(),
+        "the kast-action compatibility alias must verify machine installation, not agent resources: {doctor_json:#}"
+    );
+
     let repair = kast(&home, &config_home)
         .args(["--output", "json", "repair", "--apply"])
         .output()
