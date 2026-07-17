@@ -103,15 +103,21 @@ fn packaged_verifier_prefers_manifest_resource_checksums() {
 
     let repair = kast(&home, &config_home)
         .current_dir(&workspace)
-        .args(["repair", "--apply"])
+        .args(["--output", "json", "repair", "--apply"])
         .output()
         .expect("repair");
     assert!(
-        repair.status.success(),
-        "repair --apply should converge: stdout={}, stderr={}",
-        String::from_utf8_lossy(&repair.stdout),
-        String::from_utf8_lossy(&repair.stderr)
+        !repair.status.success(),
+        "install repair must not claim agent readiness before workspace resources exist"
     );
+    let repair_json: serde_json::Value =
+        serde_json::from_slice(&repair.stdout).expect("repair json");
+    assert_eq!(repair_json["repair"]["applied"], true, "{repair_json:#}");
+    assert_eq!(
+        repair_json["ready"]["agentEnvironment"]["ok"], false,
+        "{repair_json:#}"
+    );
+    assert!(install_manifest_path(&home).is_file());
 
     let install = kast(&home, &config_home)
         .current_dir(&workspace)
