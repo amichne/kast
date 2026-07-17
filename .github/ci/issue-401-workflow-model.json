@@ -1,10 +1,10 @@
 {
   "$schema": "./workflow-graph-model.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate timing includes the first successful immutable prepared-generation topology run. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, source-bound backend production, full Kotlin validation, and prepared-generation publication are independent nodes. The Ubuntu bundle producer and kast-action validation each derive only their owned package family directly from that generation. Conservative estimates remain provisional until exact final-shape runs replace them. Proof outputs remain exactly equivalent and timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, source-bound backend production, full Kotlin validation, and prepared-generation publication are independent nodes. The Ubuntu bundle producer and kast-action validation each derive only their owned package family directly from that generation. The unshipped macOS portable producer is retired: the source-bound Linux producer owns its archive, no-fat-jar layout proof, and ledger replacements. Conservative estimates remain provisional until five comparable final-shape runs replace them.",
     "observedAt": "2026-07-17",
-    "source": "https://github.com/amichne/kast/pull/410",
+    "source": "https://github.com/amichne/kast/pull/413",
     "baselineRunIds": [
       29511350239,
       29519251086,
@@ -12,9 +12,7 @@
       29530440846,
       29540820473
     ],
-    "candidateRunIds": [
-      29573334046
-    ]
+    "candidateRunIds": []
   },
   "baseline": {
     "tasks": [
@@ -442,21 +440,6 @@
         "executionClass": "gradle-cache"
       },
       {
-        "id": "build-and-test-macos",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "headless-portable-no-fat-jar-macos",
-          "headless-portable-artifact-macos",
-          "ci-artifact-ledger-headless-macos"
-        ],
-        "durationSamplesSeconds": [
-          552
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
         "id": "prepared-generation",
         "needs": [
           "workflow-contracts",
@@ -591,6 +574,11 @@
       812
     ]
   },
+  "retiredProofOutputReplacements": {
+    "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
+    "headless-portable-artifact-macos": "headless-portable-artifact-linux",
+    "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux"
+  },
   "expectations": {
     "outputEquivalence": "exact",
     "timingEvidenceMode": "provisional",
@@ -598,7 +586,7 @@
     "maximumCandidateCriticalPathSeconds": 1800,
     "minimumFanoutGateReductionSeconds": 800,
     "maximumCandidateFanoutGateSeconds": 90,
-    "maximumCandidateTaskCountIncrease": 5,
+    "maximumCandidateTaskCountIncrease": 4,
     "maximumMedianModelDriftRatio": 0.25,
     "minimumTaskSamples": 5,
     "minimumWorkflowSamples": 5

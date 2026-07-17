@@ -2,19 +2,14 @@ name: CI build and test
 
 on:
   workflow_call:
-    inputs:
-      runner:
-        description: Runner label for the platform validation job
-        required: true
-        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-test:
-    name: Build & test (${{ inputs.runner }})
-    runs-on: ${{ inputs.runner }}
+    name: Build & test (ubuntu-latest)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -24,7 +19,6 @@ jobs:
           java-version: "21"
 
       - name: Free disk for headless backend distribution
-        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -37,16 +31,8 @@ jobs:
           df -h /
 
       - uses: gradle/actions/setup-gradle@v5
-        env:
-          # setup-gradle v5 continues after shared archive extraction warnings.
-          # Do not expose macOS builds to a partially restored Gradle cache tree.
-          GRADLE_BUILD_ACTION_SKIP_RESTORE: ${{ runner.os == 'macOS' && 'dependencies transforms' || '' }}
         with:
           cache-cleanup: always
-          gradle-home-cache-excludes: |
-            ${{ runner.os == 'macOS' && 'caches/modules-*' || '' }}
-            ${{ runner.os == 'macOS' && 'caches/transforms-*' || '' }}
-            ${{ runner.os == 'macOS' && 'caches/*/transforms' || '' }}
 
       - name: Cache IntelliJ runtime distributions
         uses: actions/cache@v5
@@ -55,12 +41,11 @@ jobs:
             ~/.gradle/kast/headless-idea-distributions
             ~/.gradle/kast/shared-idea-distributions
             ~/.gradle/kast/backend-idea-distributions
-          key: intellij-runtime-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          key: intellij-runtime-Linux-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: |
-            intellij-runtime-${{ runner.os }}-
+            intellij-runtime-Linux-
 
       - name: Test JVM backend modules
-        if: runner.os == 'Linux'
         run: >
           ./scripts/ci-gradle-retry.sh
           ./gradlew
@@ -69,66 +54,13 @@ jobs:
           :backend-shared:compileKotlin
           :backend-headless:test
 
-      - name: Build headless backend distribution
-        if: runner.os != 'Linux'
-        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-headless:portableDistZip
-
-      - name: Assert headless distribution excludes fat jar
-        if: runner.os != 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if find backend-headless/build/portable-dist -name '*-all.jar' -print -quit | grep -q .; then
-            echo "Headless portable distribution must not contain fat jars" >&2
-            find backend-headless/build/portable-dist -name '*-all.jar' -print >&2
-            exit 1
-          fi
-
       - name: Upload build-and-test test reports
-        if: always() && runner.os == 'Linux'
+        if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: build-and-test-reports-${{ inputs.runner }}
+          name: build-and-test-reports-ubuntu-latest
           path: |
             **/build/test-results/test/*.xml
             **/build/reports/tests/test/
           if-no-files-found: ignore
-          retention-days: 3
-
-      - name: Upload portable headless backend distribution
-        if: runner.os != 'Linux'
-        uses: actions/upload-artifact@v6
-        with:
-          name: kast-headless-${{ inputs.runner }}
-          path: backend-headless/build/distributions/backend-headless-*-portable.zip
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Record headless backend ledger
-        if: runner.os != 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers
-          backend_asset="$(find backend-headless/build/distributions -maxdepth 1 -name 'backend-headless-*-portable.zip' -print -quit)"
-          build_command_id="ci-headless-portable-dist"
-          [[ -f "$backend_asset" ]] || { echo "Missing headless backend distribution: ${backend_asset}" >&2; exit 1; }
-          scripts/verify-ci-artifact-ledger.py record \
-            --output "dist/ci-ledgers/headless-${{ inputs.runner }}.json" \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "$GITHUB_REF" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind "ci-headless-${{ inputs.runner }}" \
-            --artifact-name "kast-headless-${{ inputs.runner }}" \
-            --artifact-path "$backend_asset" \
-            --producer-job "build-and-test-${{ inputs.runner }}" \
-            --build-command-id "$build_command_id"
-
-      - name: Upload headless backend ledger
-        if: runner.os != 'Linux'
-        uses: actions/upload-artifact@v6
-        with:
-          name: ci-artifact-ledger-headless-${{ inputs.runner }}
-          path: dist/ci-ledgers/headless-${{ inputs.runner }}.json
-          if-no-files-found: error
           retention-days: 3

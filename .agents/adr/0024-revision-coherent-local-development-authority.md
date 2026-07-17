@@ -105,13 +105,17 @@ Rust. An independent `source-bound-cli` producer compiles that digest into its
 one release binary while the required Rust job owns formatting, Clippy, and
 tests in parallel. A dedicated `source-bound-headless-backend` producer embeds
 the same snapshot into the one backend artifact while the Linux Gradle job owns
-the full Kotlin test boundary independently. The macOS Gradle job owns only its
-portable headless distribution proof and does not rerun that Linux-owned test
-suite. `prepared-generation` verifies the
-outer CI ledgers, re-attests the extracted component bytes, and publishes and
-verifies the immutable generation with its exact CLI. The representative
-semantic fixture can consume that artifact immediately. The Ubuntu/Debian
-producer derives its bundle while the `kast-action` contract independently
+the full Kotlin test boundary independently. The source-bound Linux job is the
+sole pull-request portable-backend producer and owns the archive, its
+no-fat-jar layout assertion, and its artifact ledger. The prior macOS portable
+producer is retired because its archive was neither consumed nor shipped; each
+retired proof output maps explicitly to the corresponding source-bound Linux
+proof in the deterministic workflow model. Production macOS authority remains
+the signed IDEA plugin and its release verification. `prepared-generation`
+verifies the outer CI ledgers, re-attests the extracted component bytes, and
+publishes and verifies the immutable generation with its exact CLI. The
+representative semantic fixture can consume that artifact immediately. The
+Ubuntu/Debian producer derives its bundle while the `kast-action` contract independently
 derives and consumes its headless runtime, runtime manifest, and Gradle
 read-only cache in the same focused job. Cross-job files receive outer CI
 artifact ledgers; same-job action inputs receive ledgers that are verified

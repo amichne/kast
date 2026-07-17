@@ -91,6 +91,11 @@ neither package family delays the other. Container and action jobs download and
 verify their ledgered files; they do not rebuild the CLI or backend and do not
 repackage the downloads.
 
+The source-bound Linux backend is the sole pull-request portable-backend
+producer. Its archive, no-fat-jar layout assertion, and ledger replace the
+retired macOS portable proofs, whose artifact had no consumer or release path.
+macOS release authority is the separately signed and verified IDEA plugin.
+
 ## Build Ledger
 
 Release, snapshot, and pull-request generation automation builds each

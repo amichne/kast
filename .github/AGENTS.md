@@ -53,18 +53,25 @@ not return success by skipping when an outer installer environment variable is
 absent.
 
 The Linux build-and-test job exclusively owns the JVM backend test suite and
-its reports. The macOS build-and-test job owns the macOS portable headless
-distribution, no-fat-jar assertion, artifact, and ledger only; it must not
-rerun Linux-owned JVM tests.
+its reports. The source-bound Linux backend job is the sole pull-request
+portable-distribution producer and owns its no-fat-jar assertion, artifact,
+and ledger. Do not add a platform build for an archive that is neither shipped
+nor consumed. Production macOS authority remains the signed IDEA plugin and
+its release verification.
 
 The `workflow-contracts` job is the static CI fanout gate. It must not install
 Java, initialize Gradle, install Rust, or execute an installed-development
 workflow. It captures and ledgers the immutable source snapshot consumed by
 the existing Rust and Linux producers; this static identity step must not turn
-into a second build owner. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
-stable proof-output ownership, and timing samples. Keep output equivalence
-blocking, keep timing provisional until five comparable successful candidate
-runs exist, and list integrated non-PR proofs explicitly in `canaryTaskIds` so
+into a second build owner. `.github/ci/issue-401-workflow-model.json` records
+the expanded DAG, stable proof-output ownership, and timing samples. Keep
+output equivalence blocking. A retired proof needs an explicit typed
+`retiredProofOutputReplacements` entry naming its current owner, with the
+rationale documented in the owning ADR and published contract; unexplained
+loss remains a failure. Keep timing provisional until five comparable
+successful candidate runs exist; historical baseline-only sampling gaps remain
+explicit warnings rather than weakening the candidate gate. List integrated
+non-PR proofs explicitly in `canaryTaskIds` so
 they remain in the output inventory without inflating the required
 pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing

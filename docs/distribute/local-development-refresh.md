@@ -85,9 +85,12 @@ activation.
 Pull requests run focused proof at the boundary that owns each change. The
 static workflow gate captures one source snapshot. Independent source-bound
 CLI and backend jobs produce one CLI and backend from it while Rust and Kotlin
-validation run in parallel. Linux owns the JVM backend tests; macOS proves only
-its portable headless distribution instead of rerunning that suite. One
-prepared-generation job attests and packages that
+validation run in parallel. Linux owns the JVM backend tests. The macOS product
+surface remains the signed IDEA plugin release boundary. The source-bound Linux
+producer owns the only pull-request portable headless distribution, its
+no-fat-jar layout assertion, and its artifact ledger; the former unconsumed
+macOS archive proofs are explicitly replaced by those production-input proofs
+in the workflow model. One prepared-generation job attests and packages that
 generation. The required semantic fixture can consume it immediately; a pair
 of parallel downstream owners derives the Ubuntu/Debian bundle and
 published-action runtime inputs from the verified prepared bytes. The action

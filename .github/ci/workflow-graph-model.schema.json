@@ -8,6 +8,7 @@
     "schemaVersion",
     "baseline",
     "candidate",
+    "retiredProofOutputReplacements",
     "expectations"
   ],
   "properties": {
@@ -16,7 +17,7 @@
       "minLength": 1
     },
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "provenance": {
       "$ref": "#/$defs/provenance"
@@ -26,6 +27,15 @@
     },
     "candidate": {
       "$ref": "#/$defs/plan"
+    },
+    "retiredProofOutputReplacements": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/identifier"
+      }
     },
     "expectations": {
       "$ref": "#/$defs/expectations"
