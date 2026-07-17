@@ -3,8 +3,6 @@ mod support;
 use support::metrics::seed_source_index;
 use support::{ScriptedCliAuthority, kast_at, spawn_scripted_idea_backend_for_invocations};
 
-const INSTALLED_BINARY_ENV: &str = "KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY";
-
 fn decode_default_toon(
     operation: &str,
     output: std::process::Output,
@@ -15,7 +13,7 @@ fn decode_default_toon(
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
-    let rendered = String::from_utf8(output.stdout).expect("installed CLI output is UTF-8");
+    let rendered = String::from_utf8(output.stdout).expect("CLI output is UTF-8");
     assert!(
         !rendered.trim_start().starts_with('{'),
         "{operation} must use default TOON instead of JSON",
@@ -25,17 +23,17 @@ fn decode_default_toon(
     (rendered, decoded)
 }
 
-fn installed_cli_version(binary: &std::path::Path) -> String {
+fn cli_version(binary: &std::path::Path) -> String {
     let output = std::process::Command::new(binary)
         .arg("--version")
         .output()
-        .expect("read installed CLI version");
-    assert!(output.status.success(), "installed CLI version command");
+        .expect("read CLI version");
+    assert!(output.status.success(), "CLI version command");
     String::from_utf8(output.stdout)
-        .expect("installed CLI version is UTF-8")
+        .expect("CLI version is UTF-8")
         .trim()
         .strip_prefix("kast ")
-        .expect("installed CLI version prefix")
+        .expect("CLI version prefix")
         .to_string()
 }
 
@@ -57,20 +55,14 @@ fn complete_relationship_evidence(total_count: usize) -> serde_json::Value {
 }
 
 #[test]
-fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations() {
-    let Some(installed_binary) = std::env::var_os(INSTALLED_BINARY_ENV) else {
-        eprintln!(
-            "skipped: run .github/scripts/test-selector-handle-installed-workflow.sh for installed proof"
-        );
-        return;
-    };
-    let installed_binary = std::path::PathBuf::from(installed_binary);
+fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operations() {
+    let cli_binary = std::path::PathBuf::from(env!("CARGO_BIN_EXE_kast"));
     assert!(
-        installed_binary.is_file(),
-        "installed CLI does not exist: {}",
-        installed_binary.display(),
+        cli_binary.is_file(),
+        "Cargo-built CLI does not exist: {}",
+        cli_binary.display(),
     );
-    let installed_version = installed_cli_version(&installed_binary);
+    let cli_version = cli_version(&cli_binary);
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -97,7 +89,7 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
         &config_home,
         &workspace,
         &temp.path().join("idea.sock"),
-        ScriptedCliAuthority::new(&installed_binary, &installed_version),
+        ScriptedCliAuthority::new(&cli_binary, &cli_version),
         3,
         vec![
             (
@@ -147,7 +139,7 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
     );
 
     let workspace_root = workspace.to_str().expect("workspace path");
-    let resolved = kast_at(&installed_binary, &home, &config_home)
+    let resolved = kast_at(&cli_binary, &home, &config_home)
         .args([
             "agent",
             "symbol",
@@ -157,7 +149,7 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
             workspace_root,
         ])
         .output()
-        .expect("run installed selector resolve");
+        .expect("run selector resolve");
     let (resolved_toon, resolved) = decode_default_toon("resolve", resolved);
     assert_eq!(
         resolved["result"]["identity"], identity,
@@ -180,7 +172,7 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
         );
     }
 
-    let references = kast_at(&installed_binary, &home, &config_home)
+    let references = kast_at(&cli_binary, &home, &config_home)
         .args([
             "agent",
             "references",
@@ -190,14 +182,14 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
             workspace_root,
         ])
         .output()
-        .expect("run installed references");
+        .expect("run references");
     let (references_toon, references) = decode_default_toon("references", references);
     assert_eq!(references["result"]["outcome"], "AVAILABLE");
     assert_eq!(references["result"]["subject"], identity);
     assert_eq!(references["result"]["coverage"]["type"], "COMPLETE");
     assert_eq!(references["result"]["limitations"], serde_json::json!([]));
 
-    let callers = kast_at(&installed_binary, &home, &config_home)
+    let callers = kast_at(&cli_binary, &home, &config_home)
         .args([
             "agent",
             "callers",
@@ -207,7 +199,7 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
             workspace_root,
         ])
         .output()
-        .expect("run installed callers");
+        .expect("run callers");
     let (callers_toon, callers) = decode_default_toon("callers", callers);
     assert_eq!(callers["result"]["outcome"], "AVAILABLE");
     assert_eq!(callers["result"]["subject"], identity);
@@ -239,7 +231,7 @@ fn installed_cli_resolves_once_and_reuses_handle_across_default_toon_operations(
             .filter_map(|request| request["method"].as_str())
             .collect::<Vec<_>>(),
         vec!["symbol/resolve", "symbol/references", "symbol/callers"],
-        "installed workflow must resolve once and never rediscover by name",
+        "selector handle workflow must resolve once and never rediscover by name",
     );
     assert_eq!(
         semantic_requests

@@ -123,31 +123,5 @@ require_not_contains "cli-rs/resources/kast-skill/SKILL.md" "developer machine p
 
 bash -n install.sh
 bash -n .github/scripts/test-cli-plugin-authority-cutover-contract.sh
-.github/scripts/test-macos-installer-contract.sh
-python3 packaging/homebrew/scripts/test-formulas.py
-
-cargo test \
-  --manifest-path cli-rs/Cargo.toml \
-  --locked \
-  --test cli_plugin_authority_cutover_smoke \
-  --test runtime_compatibility_metadata_smoke \
-  --test ready_repair_smoke
-
-./scripts/ci-gradle-retry.sh ./gradlew \
-  :analysis-api:test \
-  --tests '*RuntimeCompatibilityMatrixTest*' \
-  --tests '*RuntimeCompatibilitySourceContractTest*' \
-  :backend-idea:test \
-  --tests '*MacosHomebrewInstallReceiptTest*' \
-  --tests '*KastProjectOpenProfileAutoInitTest*' \
-  --no-daemon
-
-.github/scripts/test-runtime-compatibility-contract.sh
-.github/scripts/test-release-workflow-contract.sh
-.github/scripts/test-release-asset-verifier.sh
-cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
-.github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
-zensical build --clean
 
 printf 'cli/plugin authority cutover contract: ok\n'

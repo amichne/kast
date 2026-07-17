@@ -204,7 +204,7 @@ into or inferred by the local prefix.
 | Generation staging, validation, activation, rollback, removal | `cli-rs/src/local_development/` | failure-injection and idempotence tests |
 | Checkout build orchestration | root `build.gradle.kts` and typed tasks under `build-logic/` | `.github/scripts/test-local-development-refresh-contract.sh` |
 | Headless development backend | `backend-headless/` portable distribution | layout verification plus semantic probes |
-| Installed semantic boundary | `.github/scripts/test-local-development-semantic-e2e.sh` | refresh/reuse, readiness, exact semantic reads, plan-only mutation, stop, and removal |
+| Installed semantic boundary | `.github/scripts/test-local-development-semantic-e2e.sh` | integrated main/nightly/manual/release canary for refresh/reuse, readiness, exact semantic reads, plan-only mutation, stop, and removal |
 | Skill source | `cli-rs/resources/kast-skill/SKILL.md` | command/help lockstep contract |
 | Managed local guidance renderer | `cli-rs/src/local_development/` | receipt, command-lockstep, and workspace-preservation tests |
 | Machine-readable readiness | `cli-rs/src/self_mgmt.rs` and `cli-rs/src/output/ready.rs` | local authority smoke tests |
@@ -236,10 +236,40 @@ The local authority is not complete until executable checks prove:
   diagnostics, and a backend-produced nonzero plan-only mutation preview
   through the refreshed headless generation.
 
-The focused source gate is:
+Validation is layered by authored owner. Source and ownership contracts may
+assert that a focused owner exists and is wired, but they do not invoke that
+owner again. Rust unit and integration tests execute in the Rust job, Kotlin
+and IDEA tests execute in their Gradle jobs, documentation renders in the
+documentation workflow, and installer, runtime-compatibility, release,
+provenance, and asset contracts execute once in their named owners. The
+selector-handle integration test binds directly to Cargo's exact built binary,
+so the Rust owner cannot report success by silently skipping it.
+
+The pre-existing `installDevelopmentLocal` compatibility task is not the
+revision-coherent local authority defined by this ADR. Its profile-writing
+contract remains executable on integrated `main` pushes, but it is quarantined
+from the universal pull-request gate. This changes validation frequency, not
+the documented compatibility surface; removing the task or its supported
+profile behavior requires a separate product decision. Pull requests retain
+the source/task-graph assertions and the release-free local-authority proof.
+
+The complete Kast-on-Kast installed semantic boundary is an integration
+canary, not an ordinary pull-request root. One reusable workflow runs it on
+integrated `main`, nightly, manually, and against the exact prepared release
+tag. A failed canary is a failed release prerequisite, is never
+`continue-on-error`, and retains runtime logs for diagnosis. The deterministic
+workflow model keeps this canary's proof output in the exact integrated output
+inventory while excluding its duration from the pull-request critical path.
+
+The focused pull-request source gate is:
 
 ```console
 .github/scripts/test-local-development-refresh-contract.sh
+```
+
+The integrated installed canary is:
+
+```console
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 

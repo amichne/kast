@@ -11,6 +11,7 @@ change:
 
 - `.github/workflows/*.yml`
 - `.github/scripts/*`
+- `.github/ci/*.json`
 - `.github/dependabot.yml`
 - `.github/skill-shadowing.json`
 
@@ -27,22 +28,50 @@ For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
 The release-free local authority gate lives in
 `.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
-CI whenever refresh orchestration, source/artifact provenance, immutable
+the independent `local-authority-contracts` CI job whenever refresh
+orchestration, source/artifact provenance, immutable
 generation activation, rollback/removal, local readiness, or installed
 skill/guidance routing changes. Its Gradle graph must remain headless and must
 not include user JetBrains profile or release-configuration mutation.
 The legacy developer install remains covered separately by
-`.github/scripts/test-development-cli-install-contract.sh`. Keep its real IDEA
-plugin task execution wired in CI so explicit-directory, configured-profile,
-running-profile, newest-profile, missing-profile, and configuration-cache
-behavior cannot regress behind dry-run task-graph coverage.
-The separate `.github/scripts/test-local-development-semantic-e2e.sh` gate
+`.github/scripts/test-development-cli-install-contract.sh`. It is not the
+revision-coherent local authority and must not run for every pull request.
+Keep its real IDEA plugin task execution on integrated `main` pushes so
+explicit-directory, configured-profile, running-profile, newest-profile,
+missing-profile, and configuration-cache behavior cannot regress behind
+dry-run task-graph coverage. Removing that documented compatibility surface
+requires an explicit ADR decision.
+
+Umbrella source contracts must not rerun focused owners. The CLI/plugin
+cutover contract owns source presence, absence, and authority assertions only;
+the runtime compatibility contract owns deterministic source and manifest
+rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
+IDEA tests run in their Gradle owners, documentation rendering runs in the
+documentation workflow, and installer, release, provenance, and asset
+contracts run once in their named jobs. A focused Rust integration test must
+not return success by skipping when an outer installer environment variable is
+absent.
+
+The `workflow-contracts` job is the static CI fanout gate. It must not install
+Java, initialize Gradle, install Rust, or execute an installed-development
+workflow. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
+stable proof-output ownership, and timing samples. Keep output equivalence
+blocking, keep timing provisional until five comparable successful candidate
+runs exist, and list integrated non-PR proofs explicitly in `canaryTaskIds` so
+they remain in the output inventory without inflating the required
+pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
+whenever jobs, `needs` edges, proof owners, canary classification, or timing
+evidence change.
+The separate `.github/scripts/test-local-development-semantic-e2e.sh` canary
 must exercise the receipt-owned installed entrypoint, not checkout build
 outputs. It owns refresh idempotence plus compiler-backed readiness, exact
 symbol resolution, a known exhaustive nonzero reference, complete clean-file
 diagnostics, plan-only mutation, explicit runtime shutdown, and receipt-owned
-removal. Keep it in its own CI job so the cold IDEA import does not serialize
-unrelated workflow contracts.
+removal. Keep its authoritative job in
+`.github/workflows/local-development-canary.yml`, outside ordinary pull-request
+CI. The reusable workflow must run on integrated `main`, nightly, manually,
+and from release preparation; release publication must fail closed when it
+fails and preserve actionable runtime logs.
 
 The signed JetBrains repository source lives at
 `packaging/jetbrains/plugin-repository.json`. Runtime pair and IDEA build-range
@@ -105,8 +134,10 @@ For terminal commands and executable examples, run:
 For local-development authority changes, run:
 
 ```console
+.github/scripts/test-ci-workflow-model.sh
 .github/scripts/test-local-development-refresh-contract.sh
 .github/scripts/test-development-cli-install-contract.sh
+.github/scripts/test-selector-handle-installed-workflow.sh
 .github/scripts/test-local-development-semantic-e2e.sh
 ```
 
