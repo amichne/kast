@@ -119,10 +119,10 @@ jq -e \
    .result.semanticWorkspace.workspaceKind == "DISPOSABLE_CHECKOUT" and
    .result.semanticWorkspace.evidenceQuality == "COMPILER_BACKED" and
    (.result.semanticWorkspace.sourceModuleNames | length) > 0 and
-   .result.semanticWorkspace.limitations == [] and
+   (.result.semanticWorkspace.limitations | all(. == "REFERENCE_INDEX_UNAVAILABLE")) and
    (.result.steps[] | select(.name == "runtime-status").result.state) == "READY"' \
   "${evidence_dir}/verify.json" >/dev/null \
-  || die 'Representative fixture did not reach compiler-backed READY state'
+  || die 'Representative fixture did not reach compiler-backed READY state with only the expected cold-index limitation'
 
 type_symbol='fixture.domain.RenderToken'
 "$installed_kast" --output json agent symbol \
