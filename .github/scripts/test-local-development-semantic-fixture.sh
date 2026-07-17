@@ -60,6 +60,7 @@ trap cleanup EXIT
 command -v jq >/dev/null 2>&1 || die 'jq is required for the semantic fixture'
 command -v python3 >/dev/null 2>&1 || die 'python3 is required for the semantic fixture'
 command -v tar >/dev/null 2>&1 || die 'tar is required for the semantic fixture'
+command -v git >/dev/null 2>&1 || die 'git is required for the semantic fixture'
 
 mkdir -p "$evidence_dir" "$fixture_root" "$prepared_parent"
 cp -R "${fixture_source}/." "$fixture_root/"
@@ -68,6 +69,9 @@ cp "${repo_root}/gradlew.bat" "$fixture_root/gradlew.bat"
 mkdir -p "$fixture_root/gradle"
 cp -R "${repo_root}/gradle/wrapper" "$fixture_root/gradle/wrapper"
 chmod +x "$fixture_root/gradlew"
+git init --quiet "$fixture_root"
+git -C "$fixture_root" check-ignore --quiet -- AGENTS.local.md \
+  || die 'Representative fixture must source-own its local-guidance ignore rule'
 
 tar --zstd --extract --no-same-owner --file "$archive" --directory "$prepared_parent"
 prepared_generation=""
