@@ -44,16 +44,6 @@ pub enum CodexHookEvent {
 }
 
 impl CodexHookEvent {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::SessionStart => "session-start",
-            Self::SubagentStart => "subagent-start",
-            Self::PreToolUse => "pre-tool-use",
-            Self::PostToolUse => "post-tool-use",
-            Self::Stop => "stop",
-        }
-    }
-
     pub(crate) fn codex_name(self) -> &'static str {
         match self {
             Self::SessionStart => "SessionStart",
