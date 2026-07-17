@@ -28,6 +28,12 @@ trap cleanup EXIT
 refresh_help="$(${repo_root}/gradlew -q help --task refreshDevelopmentLocal)"
 grep -Fq 'Refreshes one revision-coherent local Kast development authority.' <<<"$refresh_help" \
   || die 'refreshDevelopmentLocal must describe the revision-coherent local authority boundary'
+prepare_help="$(${repo_root}/gradlew -q help --task prepareDevelopmentLocalGeneration)"
+grep -Fq 'Prepares one immutable source-attested local development generation.' <<<"$prepare_help" \
+  || die 'prepareDevelopmentLocalGeneration must expose the immutable producer boundary'
+activate_help="$(${repo_root}/gradlew -q help --task activateDevelopmentLocal)"
+grep -Fq 'Activates one prepared local development generation without rebuilding it.' <<<"$activate_help" \
+  || die 'activateDevelopmentLocal must expose the no-build activation boundary'
 rollback_help="$(${repo_root}/gradlew -q help --task rollbackDevelopmentLocal)"
 grep -Fq 'Idempotently reactivates the explicitly selected validated previous local generation.' <<<"$rollback_help" \
   || die 'rollbackDevelopmentLocal must expose validated generation rollback'
@@ -58,6 +64,28 @@ attest_help="$(
 )"
 grep -Fq 'Bind one built artifact to the captured source snapshot and its exact bytes' <<<"$attest_help" \
   || die 'developer local attest must expose source-bound artifact provenance'
+prepare_cli_help="$(
+  cargo run \
+    --quiet \
+    --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
+    --locked \
+    --bin kast \
+    -- \
+    developer local prepare --help
+)"
+grep -Fq 'Publish one immutable source-attested generation for reuse' <<<"$prepare_cli_help" \
+  || die 'developer local prepare must expose the immutable producer boundary'
+activate_cli_help="$(
+  cargo run \
+    --quiet \
+    --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
+    --locked \
+    --bin kast \
+    -- \
+    developer local activate --help
+)"
+grep -Fq 'Activate one already-prepared generation without rebuilding it' <<<"$activate_cli_help" \
+  || die 'developer local activate must expose the no-build consumer boundary'
 
 rollback_cli_help="$(
   cargo run \
@@ -124,6 +152,13 @@ grep -Eq '"sourceTreeSha256": "[0-9a-f]{64}"' "$snapshot_file" \
   || die 'local snapshot must record a SHA-256 over current checkout content'
 grep -Fq '"sourceTreeSha256"' <<<"$snapshot_json" \
   || die 'local snapshot must print machine-readable source identity'
+static_snapshot_file="${tmp_root}/static-source-snapshot.json"
+"${repo_root}/scripts/capture-local-source-snapshot.py" \
+  --source-root "$repo_root" \
+  --output-file "$static_snapshot_file" \
+  >/dev/null
+cmp -s "$snapshot_file" "$static_snapshot_file" \
+  || die 'the static source snapshot producer must exactly match the typed Rust authority'
 
 cli_binary="${repo_root}/cli-rs/target/debug/kast"
 cli_provenance="${tmp_root}/cli-provenance.json"
@@ -155,9 +190,28 @@ for required_task in \
   stageDevelopmentBackend \
   attestDevelopmentCli \
   attestDevelopmentBackend \
+  prepareDevelopmentLocalGeneration \
+  activateDevelopmentLocal \
   refreshDevelopmentLocal; do
   grep -Fq ":${required_task}" <<<"$dry_run" \
     || die "refreshDevelopmentLocal must include ${required_task}"
+done
+activation_dry_run="$(${repo_root}/gradlew -m activateDevelopmentLocal --no-daemon)"
+grep -Fq ':activateDevelopmentLocal' <<<"$activation_dry_run" \
+  || die 'activateDevelopmentLocal must remain directly executable'
+for forbidden_task in \
+  buildLocalDevelopmentCli \
+  captureDevelopmentSourceSnapshot \
+  rebuildLocalDevelopmentCli \
+  syncPortableDist \
+  writeLocalBackendComponentManifest \
+  stageDevelopmentBackend \
+  attestDevelopmentCli \
+  attestDevelopmentBackend \
+  prepareDevelopmentLocalGeneration; do
+  if grep -Fq ":${forbidden_task}" <<<"$activation_dry_run"; then
+    die "activateDevelopmentLocal must not include producer task ${forbidden_task}"
+  fi
 done
 capture_line="$(grep -nF ':captureDevelopmentSourceSnapshot' <<<"$dry_run" | head -1 | cut -d: -f1)"
 rebuild_line="$(grep -nF ':rebuildLocalDevelopmentCli' <<<"$dry_run" | head -1 | cut -d: -f1)"

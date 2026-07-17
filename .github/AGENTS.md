@@ -54,7 +54,9 @@ absent.
 
 The `workflow-contracts` job is the static CI fanout gate. It must not install
 Java, initialize Gradle, install Rust, or execute an installed-development
-workflow. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
+workflow. It captures and ledgers the immutable source snapshot consumed by
+the existing Rust and Linux producers; this static identity step must not turn
+into a second build owner. `.github/ci/issue-401-workflow-model.json` records the expanded DAG,
 stable proof-output ownership, and timing samples. Keep output equivalence
 blocking, keep timing provisional until five comparable successful candidate
 runs exist, and list integrated non-PR proofs explicitly in `canaryTaskIds` so
@@ -99,7 +101,12 @@ write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
 built, and downstream packaging or publication jobs must verify that receipt
 against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
-the publisher consume an existing one.
+the publisher consume an existing one. Pull-request Linux packaging is owned
+by `prepared-generation`: it verifies the static source snapshot plus the
+single Rust CLI and Linux backend outputs, publishes one immutable prepared
+generation, and derives the Ubuntu/Debian and `kast-action` inputs exactly
+once. Container and action jobs are validation-only consumers and must not
+rebuild or repackage those inputs.
 
 ## Copilot Package Source
 

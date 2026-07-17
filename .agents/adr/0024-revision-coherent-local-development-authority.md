@@ -77,6 +77,40 @@ Dirty checkouts are supported because the source-content digest, rather than
 the commit alone, is the local generation identity. A linked worktree never
 inherits another checkout's snapshot or prefix implicitly.
 
+### Prepare once, consume without rebuilding
+
+Artifact production and authority activation are separate typed operations.
+`prepareDevelopmentLocalGeneration` captures or consumes one strict source
+snapshot, builds the CLI and backend once, attests their exact bytes, and
+publishes one immutable prepared directory. `activateDevelopmentLocal`
+verifies and activates an explicitly selected prepared directory without a
+Cargo or Gradle producer dependency. `refreshDevelopmentLocal` remains the
+convenience aggregate that orders those two operations for local use.
+
+The prepared directory has one closed layout rooted by `generation.json`. The
+ledger denies unknown fields and records the source identity, generation ID,
+implementation version, fixed relative path, and SHA-256 of the source
+snapshot, CLI, CLI provenance, backend tree, backend provenance, standalone
+backend component manifest, skill, guidance inputs, and configuration. The
+artifact provenance stored inside the directory is path-independent, so the
+whole directory may be relocated without weakening byte identity. Verification
+rejects missing or extra files and directories, symlinks, special entries,
+renamed component paths, source drift, digest drift, version drift, and any
+difference between the standalone backend manifest and the manifest embedded
+by its producer.
+
+Pull-request automation applies the same separation across jobs. The static
+fanout gate captures the source snapshot without installing Java, Gradle, or
+Rust. The existing Rust job compiles that digest into its one release binary,
+and the existing Linux Gradle job embeds the same snapshot into its one
+source-bound headless backend. A single `prepared-generation` job verifies the
+outer CI ledgers, re-attests the extracted component bytes, prepares and
+verifies the immutable generation with its exact CLI, and derives the Linux
+bundle, headless runtime, runtime manifest, and Gradle read-only cache once.
+Each published file receives an outer CI artifact ledger. Container and action
+jobs consume those files and ledgers as validation-only jobs; they do not rerun
+Rust, Kotlin, Gradle, installation packaging, or release packaging.
+
 ### Activation and effective paths
 
 The local prefix has immutable generations plus stable indirection:
@@ -203,6 +237,8 @@ into or inferred by the local prefix.
 | Local command and receipt types | `cli-rs/src/local_development/` and `cli-rs/src/cli/local_development.rs` | focused Rust unit and smoke tests |
 | Generation staging, validation, activation, rollback, removal | `cli-rs/src/local_development/` | failure-injection and idempotence tests |
 | Checkout build orchestration | root `build.gradle.kts` and typed tasks under `build-logic/` | `.github/scripts/test-local-development-refresh-contract.sh` |
+| Immutable prepared generation and activation | `cli-rs/src/local_development/prepared_generation.rs`, root `build.gradle.kts`, and `scripts/package-prepared-local-generation.sh` | focused Rust tests, local-development source contract, and CI artifact ledgers |
+| Pull-request generation assembly and derived Linux packages | `.github/workflows/ci.yml` and `scripts/assemble-prepared-local-generation.sh` | release workflow contract plus exact proof-output graph model |
 | Headless development backend | `backend-headless/` portable distribution | layout verification plus semantic probes |
 | Installed semantic boundary | `.github/scripts/test-local-development-semantic-e2e.sh` | integrated main/nightly/manual/release canary for refresh/reuse, readiness, exact semantic reads, plan-only mutation, stop, and removal |
 | Skill source | `cli-rs/resources/kast-skill/SKILL.md` | command/help lockstep contract |

@@ -68,11 +68,33 @@ Required manifest fields are:
 Missing fields, unsupported platforms, unsupported schema versions, and digest
 mismatches are install failures.
 
+## Prepared Generation Archive
+
+Pull-request Linux artifacts originate from one source-attested archive:
+
+```text
+kast-local-prepared-generation.tar.zst
+```
+
+Its unpacked root contains `generation.json`, the captured source snapshot,
+the exact executable CLI, the source-bound headless backend, portable artifact
+provenance, the producer-emitted backend component manifest, and the skill,
+guidance, and configuration inputs. The generation is verified with its own
+CLI before packaging. Relocation is allowed; changing component bytes, fixed
+relative paths, layout entries, source identity, or embedded backend evidence
+is not.
+
+CI has one producer for this generation and its derived Linux packages. The
+Ubuntu/Debian bundle, headless runtime archive, runtime manifest, and Gradle
+read-only cache are produced once by the prepared-generation job. Container
+and action jobs download and verify those ledgered files; they do not rebuild
+the CLI or backend and do not repackage the downloads.
+
 ## Build Ledger
 
-Release and snapshot automation builds each publishable artifact once for a
-commit, then records a CI artifact ledger with artifact kind, producer job,
-build command, source SHA, and SHA-256 digest.
+Release, snapshot, and pull-request generation automation builds each
+publishable artifact once for a commit, then records a CI artifact ledger with
+artifact kind, producer job, build command, source SHA, and SHA-256 digest.
 
 Packaging and publication jobs must verify the ledger against the exact
 downloaded file before using it.

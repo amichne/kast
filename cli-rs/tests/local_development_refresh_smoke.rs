@@ -346,6 +346,10 @@ fn initialize_repository(root: &std::path::Path) {
         &root.join("cli-rs/resources/kast-skill/SKILL.md"),
         b"---\nname: kast\ndescription: fixture\n---\nUse `kast agent verify`.\n",
     );
+    write_file(
+        &root.join("cli-rs/resources/local-development/config.toml"),
+        b"[runtime]\ndefaultBackend = \"headless\"\n\n[projectOpen]\nprofileAutoInit = false\n",
+    );
     run_git(root, &["add", "."]);
     run_git(root, &["commit", "--quiet", "-m", "initial"]);
 }

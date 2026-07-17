@@ -29,35 +29,6 @@ compute_sha256() {
   die "Neither sha256sum nor shasum is available"
 }
 
-extract_zip_archive() {
-  local archive_path="$1"
-  local output_dir="$2"
-
-  python3 - "$archive_path" "$output_dir" <<'PY'
-import stat
-import sys
-import zipfile
-from pathlib import Path
-
-archive_path = Path(sys.argv[1])
-output_dir = Path(sys.argv[2])
-output_dir.mkdir(parents=True, exist_ok=True)
-resolved_output = output_dir.resolve()
-
-with zipfile.ZipFile(archive_path) as archive:
-    for info in archive.infolist():
-        member = info.filename
-        destination = (output_dir / member).resolve()
-        if destination != resolved_output and not str(destination).startswith(str(resolved_output) + "/"):
-            raise SystemExit(f"unsafe zip member: {member}")
-        mode = info.external_attr >> 16
-        member_type = stat.S_IFMT(mode)
-        if not info.is_dir() and member_type not in (0, stat.S_IFREG):
-            raise SystemExit(f"unsafe zip member type: {member}")
-    archive.extractall(output_dir)
-PY
-}
-
 usage() {
   cat >&2 <<'USAGE'
 Usage: scripts/package-headless-runtime.sh --cli-archive <zip> --backend-archive <zip> --version <version> --output <tar.zst> --manifest-output <json>
@@ -139,8 +110,8 @@ mkdir -p "$cli_extract" "$backend_extract" "$staging_root" \
   "$(dirname -- "$output_path")" \
   "$(dirname -- "$manifest_output")"
 
-extract_zip_archive "$cli_archive" "$cli_extract"
-extract_zip_archive "$backend_archive" "$backend_extract"
+"${repo_root}/scripts/extract-safe-zip.py" "$cli_archive" "$cli_extract"
+"${repo_root}/scripts/extract-safe-zip.py" "$backend_archive" "$backend_extract"
 
 backend_root="${backend_extract}/backend-headless"
 [[ -f "${cli_extract}/kast" ]] || die "CLI archive must contain kast at its root"

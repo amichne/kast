@@ -11,6 +11,12 @@ pub enum LocalDevelopmentCommand {
     Snapshot(LocalDevelopmentSnapshotArgs),
     /// Bind one built artifact to the captured source snapshot and its exact bytes.
     Attest(LocalDevelopmentAttestArgs),
+    /// Publish one immutable source-attested generation for reuse.
+    Prepare(LocalDevelopmentPrepareArgs),
+    /// Verify every source and component digest in a prepared generation.
+    Verify(LocalDevelopmentVerifyArgs),
+    /// Activate one already-prepared generation without rebuilding it.
+    Activate(LocalDevelopmentActivateArgs),
     /// Refresh one isolated, revision-coherent local development authority.
     Refresh(LocalDevelopmentRefreshArgs),
     /// Reactivate the validated previous local generation.
@@ -80,6 +86,57 @@ pub struct LocalDevelopmentRefreshArgs {
     /// Source-bound provenance for the exact backend directory bytes.
     #[arg(long)]
     pub backend_provenance: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct LocalDevelopmentPrepareArgs {
+    /// Canonical checkout whose captured source owns the generation.
+    #[arg(long)]
+    pub source_root: PathBuf,
+    /// Captured source snapshot that must still match every prepared input.
+    #[arg(long)]
+    pub expected_source_snapshot: PathBuf,
+    /// Exact source-bound development CLI.
+    #[arg(long)]
+    pub cli_binary: PathBuf,
+    /// Provenance for the exact source-bound CLI.
+    #[arg(long)]
+    pub cli_provenance: PathBuf,
+    /// Exact source-bound portable headless backend directory.
+    #[arg(long)]
+    pub backend_directory: PathBuf,
+    /// Provenance for the exact source-bound backend tree.
+    #[arg(long)]
+    pub backend_provenance: PathBuf,
+    /// Immutable generation directory to publish atomically.
+    #[arg(long)]
+    pub output_directory: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct LocalDevelopmentVerifyArgs {
+    /// Canonical checkout whose current source must match the generation.
+    #[arg(long)]
+    pub source_root: PathBuf,
+    /// Prepared generation directory to verify without mutation.
+    #[arg(long)]
+    pub prepared_generation: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct LocalDevelopmentActivateArgs {
+    /// Canonical checkout whose source identity owns the generation.
+    #[arg(long)]
+    pub source_root: PathBuf,
+    /// Exact workspace that receives revision-matched agent guidance.
+    #[arg(long)]
+    pub workspace_root: PathBuf,
+    /// Isolated local-development prefix. Defaults to a checkout-derived path.
+    #[arg(long)]
+    pub prefix: Option<PathBuf>,
+    /// Already-prepared generation to verify and activate without builds.
+    #[arg(long)]
+    pub prepared_generation: PathBuf,
 }
 
 #[derive(Debug, Args, Clone)]

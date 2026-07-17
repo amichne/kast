@@ -11,7 +11,7 @@ enum LocalRefreshPhase {
 
 fn refresh_local_development_with_observer(
     request: LocalDevelopmentRefreshRequest,
-    mut observe: impl FnMut(LocalRefreshPhase) -> Result<()>,
+    observe: impl FnMut(LocalRefreshPhase) -> Result<()>,
 ) -> Result<LocalDevelopmentRefreshResult> {
     let expected = SourceSnapshot::read_strict(&request.expected_source_snapshot)?;
     let source = SourceSnapshot::capture(&request.source_root)?;
@@ -59,12 +59,61 @@ fn refresh_local_development_with_observer(
             ),
         ));
     }
+    let skill_source = canonical_file(&request.skill_source, "local skill source")?;
+    let config_source = canonical_file(&request.config_source, "local configuration source")?;
     let artifacts = LocalDevelopmentArtifactSet {
         cli: cli_provenance,
         backend: backend_provenance,
     };
 
-    let requested_prefix = absolute_path(request.prefix)?;
+    activate_local_development_artifact_set(
+        LocalDevelopmentArtifactActivationRequest {
+            source_root: &request.source_root,
+            workspace_root,
+            prefix: request.prefix,
+            source,
+            expected,
+            cli_binary,
+            backend_directory,
+            skill_source,
+            config_source,
+            artifacts,
+        },
+        observe,
+    )
+}
+
+struct LocalDevelopmentArtifactActivationRequest<'a> {
+    source_root: &'a Path,
+    workspace_root: PathBuf,
+    prefix: PathBuf,
+    source: SourceSnapshot,
+    expected: SourceSnapshot,
+    cli_binary: PathBuf,
+    backend_directory: PathBuf,
+    skill_source: PathBuf,
+    config_source: PathBuf,
+    artifacts: LocalDevelopmentArtifactSet,
+}
+
+fn activate_local_development_artifact_set(
+    request: LocalDevelopmentArtifactActivationRequest<'_>,
+    mut observe: impl FnMut(LocalRefreshPhase) -> Result<()>,
+) -> Result<LocalDevelopmentRefreshResult> {
+    let LocalDevelopmentArtifactActivationRequest {
+        source_root,
+        workspace_root,
+        prefix,
+        source,
+        expected,
+        cli_binary,
+        backend_directory,
+        skill_source,
+        config_source,
+        artifacts,
+    } = request;
+
+    let requested_prefix = absolute_path(prefix)?;
     reject_symlink_selected_prefix(&requested_prefix)?;
     let generation_id = LocalGenerationId::from_source(&source);
 
@@ -131,7 +180,7 @@ fn refresh_local_development_with_observer(
                 ));
             }
             validate_physical_component(&current_receipt.components.backend)?;
-            let after_validation = SourceSnapshot::capture(&request.source_root)?;
+            let after_validation = SourceSnapshot::capture(source_root)?;
             if after_validation != expected {
                 return Err(source_snapshot_mismatch(&expected, &after_validation));
             }
@@ -172,6 +221,8 @@ fn refresh_local_development_with_observer(
                 workspace_root: &workspace_root,
                 cli_binary: &cli_binary,
                 backend_directory: &backend_directory,
+                skill_source: &skill_source,
+                config_source: &config_source,
                 artifacts: &artifacts,
                 previous_generation: previous_generation.as_ref(),
             })?;
@@ -180,7 +231,7 @@ fn refresh_local_development_with_observer(
             (true, receipt)
         };
 
-        let after_staging = SourceSnapshot::capture(&request.source_root)?;
+        let after_staging = SourceSnapshot::capture(source_root)?;
         if after_staging != expected {
             if generation_created {
                 let _ = fs::remove_dir_all(&generation);
@@ -342,6 +393,8 @@ struct GenerationStageRequest<'a> {
     workspace_root: &'a Path,
     cli_binary: &'a Path,
     backend_directory: &'a Path,
+    skill_source: &'a Path,
+    config_source: &'a Path,
     artifacts: &'a LocalDevelopmentArtifactSet,
     previous_generation: Option<&'a LocalGenerationId>,
 }
@@ -355,6 +408,8 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         workspace_root,
         cli_binary,
         backend_directory,
+        skill_source,
+        config_source,
         artifacts,
         previous_generation,
     } = request;
@@ -381,10 +436,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
 
         let entrypoint_target = prefix.join("bin/kast-dev");
         let physical_skill = staged.join("lib/skills/kast/SKILL.md");
-        let source_skill = source
-            .canonical_root
-            .join("cli-rs/resources/kast-skill/SKILL.md");
-        let rendered_skill = render_local_skill(&source_skill, &entrypoint_target)?;
+        let rendered_skill = render_local_skill(skill_source, &entrypoint_target)?;
         validate_rendered_command_lockstep(&rendered_skill, &entrypoint_target)?;
         write_bytes(&physical_skill, rendered_skill.as_bytes())?;
         let effective_skill = prefix.join("current/lib/skills/kast/SKILL.md");
@@ -393,10 +445,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         validate_rendered_command_lockstep(&rendered_guidance, &entrypoint_target)?;
         write_bytes(&physical_guidance, rendered_guidance.as_bytes())?;
         let physical_config = staged.join("config/config.toml");
-        write_bytes(
-            &physical_config,
-            b"[runtime]\ndefaultBackend = \"headless\"\n\n[projectOpen]\nprofileAutoInit = false\n",
-        )?;
+        write_bytes(&physical_config, &fs::read(config_source)?)?;
 
         let install_manifest = local_install_manifest(prefix, source, workspace_root);
         crate::manifest::write_manifest_atomic(&staged.join("install.json"), &install_manifest)?;

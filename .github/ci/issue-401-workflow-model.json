@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 2,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate pull-request timing is the first comparable final-shape run after relocating the full Kast-on-Kast E2E to an explicit canary; that canary retains its latest observed duration so exact integrated proof remains represented outside the pull-request critical path. Timing remains provisional until five comparable final-shape runs exist.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. Candidate pull-request timing is the first comparable run after relocating the full Kast-on-Kast E2E to an explicit canary. The new prepared-generation node uses a conservative 300-second pre-CI estimate until an exact final-shape run replaces it; proof outputs remain exactly equivalent because the node assumes ownership of the existing agent headless build proof. Timing remains provisional until five comparable final-shape runs exist.",
     "observedAt": "2026-07-17",
     "source": "https://github.com/amichne/kast/pull/409",
     "baselineRunIds": [
@@ -413,8 +413,7 @@
           "headless-portable-no-fat-jar-linux",
           "build-test-reports-linux",
           "headless-portable-artifact-linux",
-          "ci-artifact-ledger-headless-linux",
-          "agent-headless-portable-build-linux"
+          "ci-artifact-ledger-headless-linux"
         ],
         "durationSamplesSeconds": [
           520
@@ -437,6 +436,21 @@
           552
         ],
         "executionClass": "gradle-cache"
+      },
+      {
+        "id": "prepared-generation",
+        "needs": [
+          "workflow-contracts",
+          "rust-cli",
+          "build-and-test-linux"
+        ],
+        "outputs": [
+          "agent-headless-portable-build-linux"
+        ],
+        "durationSamplesSeconds": [
+          300
+        ],
+        "executionClass": "artifact-consumer"
       },
       {
         "id": "analysis-server-transport",
@@ -472,8 +486,7 @@
       {
         "id": "install-container-ubuntu-22.04",
         "needs": [
-          "build-and-test-linux",
-          "rust-cli"
+          "prepared-generation"
         ],
         "outputs": [
           "ubuntu-22.04-java-21-install-contract"
@@ -486,8 +499,7 @@
       {
         "id": "install-container-ubuntu-24.04",
         "needs": [
-          "build-and-test-linux",
-          "rust-cli"
+          "prepared-generation"
         ],
         "outputs": [
           "ubuntu-24.04-java-21-install-contract"
@@ -500,8 +512,7 @@
       {
         "id": "kast-action",
         "needs": [
-          "build-and-test-linux",
-          "rust-cli"
+          "prepared-generation"
         ],
         "outputs": [
           "kast-action-v2-installed-runtime-contract"
@@ -529,7 +540,7 @@
     "maximumCandidateCriticalPathSeconds": 1800,
     "minimumFanoutGateReductionSeconds": 800,
     "maximumCandidateFanoutGateSeconds": 90,
-    "maximumCandidateTaskCountIncrease": 1,
+    "maximumCandidateTaskCountIncrease": 2,
     "maximumMedianModelDriftRatio": 0.25,
     "minimumTaskSamples": 5,
     "minimumWorkflowSamples": 5

@@ -26,10 +26,10 @@ if report["status"] != "provisional":
     raise SystemExit(f"expected provisional timing evidence, received {report['status']}")
 if not report["comparison"]["outputEquivalent"]:
     raise SystemExit("candidate proof outputs must exactly match the baseline")
-if report["comparison"]["taskCountIncrease"] != 1:
-    raise SystemExit("the fanout split must add exactly one execution node")
-if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"]:
-    raise SystemExit("canary relocation must not add a pull-request execution node")
+if report["comparison"]["taskCountIncrease"] != 2:
+    raise SystemExit("the fanout split and immutable generation producer must add exactly two execution nodes")
+if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 1:
+    raise SystemExit("the immutable generation producer must be the only added pull-request execution node")
 if report["candidate"]["fanoutGateSeconds"] > 90:
     raise SystemExit("the modeled static fanout gate must not exceed 90 seconds")
 if report["candidate"]["canaryTaskIds"] != ["local-development-semantic-e2e"]:

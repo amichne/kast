@@ -172,12 +172,15 @@ mod provenance_tests {
 #[cfg(test)]
 mod refresh_tests {
     use super::{
-        LocalArtifactKind, LocalArtifactProvenance, LocalDevelopmentAuthority,
-        LocalDevelopmentRefreshRequest, LocalDevelopmentRemoveRequest,
-        LocalDevelopmentRollbackRequest, LocalRefreshPhase, LocalRemovalPhase, SourceSnapshot,
-        refresh_local_development, refresh_local_development_with_observer,
-        remove_local_development, remove_local_development_with_observer, render_local_guidance,
-        render_local_skill, rollback_local_development, validate_backend_distribution,
+        LocalArtifactKind, LocalArtifactProvenance, LocalDevelopmentActivateRequest,
+        LocalDevelopmentAuthority, LocalDevelopmentPrepareRequest, LocalDevelopmentRefreshRequest,
+        LocalDevelopmentRemoveRequest, LocalDevelopmentRollbackRequest, LocalRefreshPhase,
+        LocalRemovalPhase, SourceSnapshot, activate_local_development_generation,
+        prepare_local_development_generation, refresh_local_development,
+        refresh_local_development_with_observer, remove_local_development,
+        remove_local_development_with_observer, render_local_guidance, render_local_skill,
+        rollback_local_development, validate_backend_distribution,
+        validate_prepared_layout,
         validate_rendered_command_lockstep, validate_rendered_command_path,
         with_local_authority_lock, with_local_runtime_start_lock_after_validation,
     };
@@ -361,6 +364,169 @@ mod refresh_tests {
         assert!(second.skipped);
         assert_eq!(current_after, current_before);
         assert_eq!(generation_count, 1);
+    }
+
+    #[test]
+    fn one_prepared_generation_activates_idempotently_without_rebuilding_inputs() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let prepared = fixture.path().join("prepared-generation");
+        let skill_source = repository
+            .path()
+            .join("cli-rs/resources/kast-skill/SKILL.md");
+        write_file(
+            &skill_source,
+            b"---\nname: kast\ndescription: fixture\n---\nRun `kast agent verify --workspace-root \"$PWD\"`.\n",
+        );
+        let raw = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "prepared",
+        );
+        let prepared_result = prepare_local_development_generation(
+            LocalDevelopmentPrepareRequest {
+                source_root: raw.source_root.clone(),
+                expected_source_snapshot: raw.expected_source_snapshot.clone(),
+                cli_binary: raw.cli_binary.clone(),
+                cli_provenance: raw.cli_provenance.clone(),
+                backend_directory: raw.backend_directory.clone(),
+                backend_provenance: raw.backend_provenance.clone(),
+                skill_source,
+                output_directory: prepared.clone(),
+            },
+        )
+        .expect("prepare generation");
+        assert!(!prepared_result.skipped);
+        assert!(prepared.join("generation.json").is_file());
+        assert!(prepared.join("source-snapshot.json").is_file());
+        assert!(prepared.join("bin/kast").is_file());
+        assert!(prepared.join("backend-headless").is_dir());
+        assert!(prepared.join("provenance/cli.json").is_file());
+        assert!(prepared.join("provenance/backend.json").is_file());
+        assert!(prepared.join("provenance/backend-components.json").is_file());
+        assert!(prepared.join("inputs/kast-skill/SKILL.md").is_file());
+        assert!(prepared.join("inputs/guidance.json").is_file());
+        assert!(prepared.join("inputs/config.toml").is_file());
+        let relocated = fixture.path().join("relocated-generation");
+        fs::rename(&prepared, &relocated).expect("relocate prepared generation");
+
+        let activation = LocalDevelopmentActivateRequest {
+            source_root: repository.path().to_path_buf(),
+            workspace_root: repository.path().to_path_buf(),
+            prefix: prefix.clone(),
+            prepared_generation: relocated,
+        };
+        let first = activate_local_development_generation(activation.clone())
+            .expect("first activation");
+        let second =
+            activate_local_development_generation(activation).expect("second activation");
+
+        assert!(!first.skipped);
+        assert!(second.skipped);
+        assert_eq!(first.receipt.generation_id, prepared_result.ledger.generation_id);
+        assert_eq!(second.receipt.generation_id, prepared_result.ledger.generation_id);
+    }
+
+    #[test]
+    fn prepared_generation_tampering_fails_before_activation() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let prepared = fixture.path().join("prepared-generation");
+        let skill_source = repository
+            .path()
+            .join("cli-rs/resources/kast-skill/SKILL.md");
+        write_file(
+            &skill_source,
+            b"---\nname: kast\ndescription: fixture\n---\nRun `kast agent verify --workspace-root \"$PWD\"`.\n",
+        );
+        let raw = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "tampered-prepared",
+        );
+        prepare_local_development_generation(LocalDevelopmentPrepareRequest {
+            source_root: raw.source_root,
+            expected_source_snapshot: raw.expected_source_snapshot,
+            cli_binary: raw.cli_binary,
+            cli_provenance: raw.cli_provenance,
+            backend_directory: raw.backend_directory,
+            backend_provenance: raw.backend_provenance,
+            skill_source,
+            output_directory: prepared.clone(),
+        })
+        .expect("prepare generation");
+        let ledger_path = prepared.join("generation.json");
+        let ledger_bytes = fs::read(&ledger_path).expect("prepared ledger");
+        let mut ledger_json: serde_json::Value =
+            serde_json::from_slice(&ledger_bytes).expect("prepared ledger JSON");
+        ledger_json
+            .as_object_mut()
+            .expect("prepared ledger object")
+            .insert("unknownField".to_string(), serde_json::Value::Bool(true));
+        fs::write(
+            &ledger_path,
+            serde_json::to_vec_pretty(&ledger_json).expect("tampered ledger JSON"),
+        )
+        .expect("tamper prepared ledger");
+        let unknown_error =
+            activate_local_development_generation(LocalDevelopmentActivateRequest {
+                source_root: repository.path().to_path_buf(),
+                workspace_root: repository.path().to_path_buf(),
+                prefix: prefix.clone(),
+                prepared_generation: prepared.clone(),
+            })
+            .expect_err("unknown ledger field");
+        assert_eq!(unknown_error.code, "LOCAL_PREPARED_GENERATION_INVALID");
+        assert!(unknown_error.message.contains("unknown field"));
+        fs::write(&ledger_path, ledger_bytes).expect("restore prepared ledger");
+        fs::write(
+            prepared.join("inputs/kast-skill/SKILL.md"),
+            b"tampered\n",
+        )
+        .expect("tamper prepared skill");
+
+        let error = activate_local_development_generation(LocalDevelopmentActivateRequest {
+            source_root: repository.path().to_path_buf(),
+            workspace_root: repository.path().to_path_buf(),
+            prefix,
+            prepared_generation: prepared,
+        })
+        .expect_err("tampered generation");
+
+        assert_eq!(error.code, "LOCAL_PREPARED_COMPONENT_CHECKSUM_MISMATCH");
+    }
+
+    #[test]
+    fn prepared_generation_layout_rejects_unexpected_empty_directories() {
+        let fixture = tempfile::tempdir().expect("fixture");
+        for path in [
+            "generation.json",
+            "source-snapshot.json",
+            "bin/kast",
+            "provenance/cli.json",
+            "provenance/backend.json",
+            "provenance/backend-components.json",
+            "inputs/kast-skill/SKILL.md",
+            "inputs/guidance.json",
+            "inputs/config.toml",
+        ] {
+            write_file(&fixture.path().join(path), b"fixture\n");
+        }
+        fs::create_dir_all(fixture.path().join("backend-headless/runtime-libs"))
+            .expect("backend tree");
+        fs::create_dir_all(fixture.path().join("unexpected/empty"))
+            .expect("unexpected empty directory");
+
+        let error = validate_prepared_layout(fixture.path()).expect_err("unexpected directory");
+
+        assert_eq!(error.code, "LOCAL_PREPARED_GENERATION_LAYOUT_INVALID");
+        assert!(error.message.contains("unexpected directory"));
     }
 
     #[test]
@@ -1742,6 +1908,12 @@ mod refresh_tests {
                 .join("cli-rs/resources/kast-skill/SKILL.md"),
             b"---\nname: kast\ndescription: fixture\n---\nUse `kast agent verify`.\n",
         );
+        write_file(
+            &repository
+                .path()
+                .join("cli-rs/resources/local-development/config.toml"),
+            super::LOCAL_DEVELOPMENT_CONFIG,
+        );
         run_git(repository.path(), &["add", "."]);
         run_git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
         repository
@@ -1814,6 +1986,8 @@ mod refresh_tests {
             &snapshot,
             &backend_directory,
         );
+        let skill_source = source_root.join("cli-rs/resources/kast-skill/SKILL.md");
+        let config_source = source_root.join("cli-rs/resources/local-development/config.toml");
         LocalDevelopmentRefreshRequest {
             source_root: source_root.to_path_buf(),
             workspace_root: workspace_root.to_path_buf(),
@@ -1823,6 +1997,8 @@ mod refresh_tests {
             cli_provenance,
             backend_directory,
             backend_provenance,
+            skill_source,
+            config_source,
         }
     }
 

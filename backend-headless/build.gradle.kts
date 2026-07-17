@@ -180,13 +180,19 @@ val headlessPluginImplementationJar by tasks.registering(Jar::class) {
 val localHeadlessPluginImplementationJar by tasks.registering(Jar::class) {
     group = "build"
     description = "Builds source-bound headless plugin bytes for local-development authority."
-    dependsOn(":captureDevelopmentSourceSnapshot", ":writeLocalBackendComponentManifest")
+    dependsOn(":writeLocalBackendComponentManifest")
+    if (!providers.gradleProperty("kastLocalSourceSnapshot").isPresent) {
+        dependsOn(":captureDevelopmentSourceSnapshot")
+    }
     archiveFileName.set("backend-headless-local-plugin.jar")
     destinationDirectory.set(layout.buildDirectory.dir("local-development"))
     from(sourceSets.named("main").map { it.output }) {
         exclude("META-INF/plugin.xml")
     }
-    from(rootProject.layout.buildDirectory.file("local-development/source-snapshot.json")) {
+    val localSourceSnapshot = providers.gradleProperty("kastLocalSourceSnapshot")
+        .map { path -> rootProject.layout.projectDirectory.file(path) }
+        .orElse(rootProject.layout.buildDirectory.file("local-development/source-snapshot.json"))
+    from(localSourceSnapshot) {
         into("META-INF/kast")
         rename { "local-source-snapshot.json" }
     }

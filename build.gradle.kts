@@ -207,6 +207,205 @@ abstract class BuildSourceBoundCliTask @Inject constructor(
     }
 }
 
+@DisableCachingByDefault(because = "Publishes and revalidates a local immutable generation")
+abstract class PrepareLocalDevelopmentGenerationTask @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    @get:Input
+    abstract val sourceRootPath: Property<String>
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val sourceSnapshotFile: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val cliBinary: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val cliProvenance: RegularFileProperty
+
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val backendDirectory: DirectoryProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val backendProvenance: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val skillSource: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val preparedGenerationsDirectory: DirectoryProperty
+
+    @get:OutputFile
+    abstract val preparedGenerationPointer: RegularFileProperty
+
+    init {
+        outputs.upToDateWhen { false }
+    }
+
+    @TaskAction
+    fun prepare() {
+        val snapshot = sourceSnapshotFile.get().asFile.readText()
+        val commit = Regex(""""gitCommit"\s*:\s*"([0-9a-f]{40,64})"""")
+            .find(snapshot)
+            ?.groupValues
+            ?.get(1)
+            ?: throw GradleException("Local-development source snapshot has no valid gitCommit")
+        val sourceSha256 = Regex(""""sourceTreeSha256"\s*:\s*"([0-9a-f]{64})"""")
+            .find(snapshot)
+            ?.groupValues
+            ?.get(1)
+            ?: throw GradleException(
+                "Local-development source snapshot has no valid sourceTreeSha256",
+            )
+        val generationId = "${commit.take(12)}-$sourceSha256"
+        val prepared = preparedGenerationsDirectory.get().dir(generationId).asFile
+        execOperations.exec {
+            commandLine(
+                cliBinary.get().asFile.absolutePath,
+                "--output",
+                "json",
+                "developer",
+                "local",
+                "prepare",
+                "--source-root",
+                sourceRootPath.get(),
+                "--expected-source-snapshot",
+                sourceSnapshotFile.get().asFile.absolutePath,
+                "--cli-binary",
+                cliBinary.get().asFile.absolutePath,
+                "--cli-provenance",
+                cliProvenance.get().asFile.absolutePath,
+                "--backend-directory",
+                backendDirectory.get().asFile.absolutePath,
+                "--backend-provenance",
+                backendProvenance.get().asFile.absolutePath,
+                "--output-directory",
+                prepared.absolutePath,
+            )
+        }.assertNormalExitValue()
+        preparedGenerationPointer.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("${prepared.absoluteFile.normalize().absolutePath}\n")
+        }
+    }
+}
+
+@DisableCachingByDefault(because = "Mutates receipt-owned local development state")
+abstract class ActivateLocalDevelopmentGenerationTask @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    @get:Input
+    abstract val sourceRootPath: Property<String>
+
+    @get:Input
+    abstract val workspaceRootPath: Property<String>
+
+    @get:Input
+    abstract val prefixPath: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val preparedGenerationPath: Property<String>
+
+    @get:Internal
+    abstract val preparedGenerationPointer: RegularFileProperty
+
+    @TaskAction
+    fun activate() {
+        val prepared = preparedGenerationPath.orNull
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.let(::File)
+            ?: preparedGenerationPointer.orNull
+                ?.asFile
+                ?.takeIf(File::isFile)
+                ?.readText()
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+                ?.let(::File)
+            ?: throw GradleException(
+                "No prepared local generation is selected. Run prepareDevelopmentLocalGeneration or pass " +
+                    "-PkastLocalPreparedGeneration=<directory>.",
+            )
+        val canonicalPrepared = prepared.absoluteFile.normalize()
+        val preparedCli = canonicalPrepared.resolve("bin/kast")
+        if (!preparedCli.isFile) {
+            throw GradleException(
+                "Prepared local generation has no executable CLI: ${preparedCli.absolutePath}",
+            )
+        }
+        execOperations.exec {
+            commandLine(
+                preparedCli.absolutePath,
+                "--output",
+                "json",
+                "developer",
+                "local",
+                "activate",
+                "--source-root",
+                sourceRootPath.get(),
+                "--workspace-root",
+                workspaceRootPath.get(),
+                "--prefix",
+                prefixPath.get(),
+                "--prepared-generation",
+                canonicalPrepared.absolutePath,
+            )
+        }.assertNormalExitValue()
+    }
+}
+
+@DisableCachingByDefault(because = "Packages one already-verified local generation")
+abstract class PackageLocalDevelopmentGenerationTask @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    @get:Input
+    abstract val sourceRootPath: Property<String>
+
+    @get:Internal
+    abstract val preparedGenerationPointer: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val packagerScript: RegularFileProperty
+
+    @get:OutputFile
+    abstract val archiveFile: RegularFileProperty
+
+    @get:OutputFile
+    abstract val checksumFile: RegularFileProperty
+
+    @TaskAction
+    fun packageGeneration() {
+        val prepared = preparedGenerationPointer.get().asFile
+            .takeIf(File::isFile)
+            ?.readText()
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.let(::File)
+            ?: throw GradleException(
+                "No prepared local generation is selected. Run prepareDevelopmentLocalGeneration.",
+            )
+        execOperations.exec {
+            commandLine(
+                packagerScript.get().asFile.absolutePath,
+                "--source-root",
+                sourceRootPath.get(),
+                "--prepared-generation",
+                prepared.absoluteFile.normalize().absolutePath,
+                "--output",
+                archiveFile.get().asFile.absolutePath,
+            )
+        }.assertNormalExitValue()
+    }
+}
+
 @DisableCachingByDefault(because = "Mutates receipt-owned local development state")
 abstract class RemoveDevelopmentLocalTask @Inject constructor(
     private val execOperations: ExecOperations,
@@ -484,14 +683,25 @@ val buildLocalDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::clas
     )
 }
 
-val developmentSourceSnapshotFile = layout.buildDirectory.file(
+val capturedDevelopmentSourceSnapshotFile = layout.buildDirectory.file(
     "local-development/source-snapshot.json"
 )
+val configuredDevelopmentSourceSnapshotFile = providers
+    .gradleProperty("kastLocalSourceSnapshot")
+    .map { path -> layout.projectDirectory.file(path) }
+val developmentSourceSnapshotFile = configuredDevelopmentSourceSnapshotFile
+    .orElse(capturedDevelopmentSourceSnapshotFile)
 val developmentCliProvenanceFile = layout.buildDirectory.file(
     "local-development/cli-provenance.json"
 )
 val developmentBackendProvenanceFile = layout.buildDirectory.file(
     "local-development/backend-provenance.json"
+)
+val developmentPreparedGenerationsDirectory = layout.buildDirectory.dir(
+    "local-development/prepared-generations"
+)
+val developmentPreparedGenerationPointer = layout.buildDirectory.file(
+    "local-development/prepared-generation-path.txt"
 )
 
 val captureDevelopmentSourceSnapshot: TaskProvider<Exec> by tasks.registering(Exec::class) {
@@ -508,7 +718,7 @@ val captureDevelopmentSourceSnapshot: TaskProvider<Exec> by tasks.registering(Ex
         "--source-root",
         rootDir.absolutePath,
         "--output-file",
-        developmentSourceSnapshotFile.get().asFile.absolutePath,
+        capturedDevelopmentSourceSnapshotFile.get().asFile.absolutePath,
     )
 }
 
@@ -517,7 +727,9 @@ val rebuildLocalDevelopmentCli: TaskProvider<BuildSourceBoundCliTask> by tasks.r
 ) {
     group = "build"
     description = "Rebuilds the local CLI after the source snapshot is fixed."
-    dependsOn(captureDevelopmentSourceSnapshot)
+    if (!configuredDevelopmentSourceSnapshotFile.isPresent) {
+        dependsOn(captureDevelopmentSourceSnapshot)
+    }
     sourceSnapshotFile.set(developmentSourceSnapshotFile)
     cargoExecutable.set(resolvedCargoExecutable)
     implementationVersion.set(project.version.toString())
@@ -536,7 +748,10 @@ val writeLocalBackendComponentManifest: TaskProvider<WriteLocalBackendComponentM
 ) {
     group = "build"
     description = "Binds every repo-produced headless backend JAR to the captured source build."
-    dependsOn(captureDevelopmentSourceSnapshot, ":backend-headless:syncPortableDist")
+    dependsOn(":backend-headless:syncPortableDist")
+    if (!configuredDevelopmentSourceSnapshotFile.isPresent) {
+        dependsOn(captureDevelopmentSourceSnapshot)
+    }
     sourceSnapshotFile.set(developmentSourceSnapshotFile)
     val portableBackend = layout.projectDirectory.dir(
         "backend-headless/build/portable-dist/backend-headless",
@@ -562,11 +777,13 @@ val stageDevelopmentBackend: TaskProvider<Sync> by tasks.registering(Sync::class
     group = "build"
     description = "Stages the headless backend with producer-emitted local source identity."
     dependsOn(
-        captureDevelopmentSourceSnapshot,
         writeLocalBackendComponentManifest,
         ":backend-headless:syncPortableDist",
         ":backend-headless:localHeadlessPluginImplementationJar",
     )
+    if (!configuredDevelopmentSourceSnapshotFile.isPresent) {
+        dependsOn(captureDevelopmentSourceSnapshot)
+    }
     from(
         layout.projectDirectory.dir(
             "backend-headless/build/portable-dist/backend-headless"
@@ -582,6 +799,19 @@ val stageDevelopmentBackend: TaskProvider<Sync> by tasks.registering(Sync::class
         into("idea-home/plugins/kast-headless/lib")
     }
     into(layout.buildDirectory.dir("local-development/backend-headless"))
+}
+
+tasks.register<org.gradle.api.tasks.bundling.Zip>("packageSourceBoundDevelopmentBackend") {
+    group = "distribution"
+    description = "Packages the already-built source-bound local headless backend."
+    dependsOn(stageDevelopmentBackend)
+    archiveFileName.set("kast-local-source-bound-backend.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    into("backend-headless") {
+        from(layout.buildDirectory.dir("local-development/backend-headless"))
+    }
 }
 
 val attestDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
@@ -634,6 +864,23 @@ val attestDevelopmentBackend: TaskProvider<Exec> by tasks.registering(Exec::clas
         "--output-file",
         developmentBackendProvenanceFile.get().asFile.absolutePath,
     )
+}
+
+val prepareDevelopmentLocalGeneration: TaskProvider<PrepareLocalDevelopmentGenerationTask> by tasks.registering(
+    PrepareLocalDevelopmentGenerationTask::class,
+) {
+    group = "build"
+    description = "Prepares one immutable source-attested local development generation."
+    dependsOn(attestDevelopmentCli, attestDevelopmentBackend)
+    sourceRootPath.set(rootDir.absolutePath)
+    sourceSnapshotFile.set(developmentSourceSnapshotFile)
+    cliBinary.set(cliLocalDevelopmentBinary)
+    cliProvenance.set(developmentCliProvenanceFile)
+    backendDirectory.set(layout.buildDirectory.dir("local-development/backend-headless"))
+    backendProvenance.set(developmentBackendProvenanceFile)
+    skillSource.set(layout.projectDirectory.file("cli-rs/resources/kast-skill/SKILL.md"))
+    preparedGenerationsDirectory.set(developmentPreparedGenerationsDirectory)
+    preparedGenerationPointer.set(developmentPreparedGenerationPointer)
 }
 
 tasks.register<Copy>("installDevelopmentCli") {
@@ -751,40 +998,37 @@ fun configuredLocalDevelopmentWorkspace(): File =
         ?.let(::file)
     ?: rootDir
 
-val refreshDevelopmentLocal: TaskProvider<Exec> by tasks.registering(Exec::class) {
+val activateDevelopmentLocal: TaskProvider<ActivateLocalDevelopmentGenerationTask> by tasks.registering(
+    ActivateLocalDevelopmentGenerationTask::class,
+) {
+    group = "distribution"
+    description = "Activates one prepared local development generation without rebuilding it."
+    sourceRootPath.set(rootDir.absolutePath)
+    workspaceRootPath.set(configuredLocalDevelopmentWorkspace().absoluteFile.normalize().absolutePath)
+    prefixPath.set(configuredLocalDevelopmentPrefix().absoluteFile.normalize().absolutePath)
+    providers.gradleProperty("kastLocalPreparedGeneration").orNull?.let(preparedGenerationPath::set)
+    preparedGenerationPointer.set(developmentPreparedGenerationPointer)
+}
+
+val refreshDevelopmentLocal by tasks.registering {
     group = "distribution"
     description = "Refreshes one revision-coherent local Kast development authority."
-    dependsOn(attestDevelopmentCli, attestDevelopmentBackend)
-    val localPrefix = configuredLocalDevelopmentPrefix()
-    val workspaceRoot = configuredLocalDevelopmentWorkspace()
-    commandLine(
-        cliLocalDevelopmentBinary.asFile.absolutePath,
-        "--output",
-        "json",
-        "developer",
-        "local",
-        "refresh",
-        "--source-root",
-        rootDir.absolutePath,
-        "--workspace-root",
-        workspaceRoot.absoluteFile.normalize().absolutePath,
-        "--prefix",
-        localPrefix.absoluteFile.normalize().absolutePath,
-        "--expected-source-snapshot",
-        developmentSourceSnapshotFile.get().asFile.absolutePath,
-        "--cli-binary",
-        cliLocalDevelopmentBinary.asFile.absolutePath,
-        "--cli-provenance",
-        developmentCliProvenanceFile.get().asFile.absolutePath,
-        "--backend-directory",
-        layout.buildDirectory
-            .dir("local-development/backend-headless")
-            .get()
-            .asFile
-            .absolutePath,
-        "--backend-provenance",
-        developmentBackendProvenanceFile.get().asFile.absolutePath,
-    )
+    dependsOn(prepareDevelopmentLocalGeneration, activateDevelopmentLocal)
+}
+
+activateDevelopmentLocal.configure {
+    mustRunAfter(prepareDevelopmentLocalGeneration)
+}
+
+tasks.register<PackageLocalDevelopmentGenerationTask>("packageDevelopmentLocalGeneration") {
+    group = "distribution"
+    description = "Packages the immutable prepared local generation without rebuilding its components."
+    dependsOn(prepareDevelopmentLocalGeneration)
+    sourceRootPath.set(rootDir.absolutePath)
+    preparedGenerationPointer.set(developmentPreparedGenerationPointer)
+    packagerScript.set(layout.projectDirectory.file("scripts/package-prepared-local-generation.sh"))
+    archiveFile.set(layout.buildDirectory.file("distributions/kast-local-prepared-generation.tar.zst"))
+    checksumFile.set(layout.buildDirectory.file("distributions/kast-local-prepared-generation.sha256"))
 }
 
 tasks.register<Exec>("rollbackDevelopmentLocal") {
