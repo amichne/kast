@@ -86,6 +86,9 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
             mdln!(document, "- Safe cleanup: `{command}`");
         }
     }
+    if let Some(environment) = &result.agent_environment {
+        print_agent_environment(&mut document, environment);
+    }
     print_path_resolution(&mut document, &result.path_resolution);
     print_messages(&mut document, "Issues", &result.issues);
     print_warnings(&mut document, &result.warnings);
@@ -132,6 +135,79 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
         mdln!(document, "No blocking issues were found.");
     }
     print_markdown(&document.into_string())
+}
+
+fn print_agent_environment(
+    document: &mut MarkdownDocument,
+    environment: &crate::self_mgmt::DoctorAgentEnvironmentDiagnostic,
+) {
+    mdln!(document);
+    mdln!(document, "## Effective agent environment");
+    mdln!(document, "- Compatible: {}", yes_no(environment.ok));
+    mdln!(
+        document,
+        "- Authority: `{}`",
+        install_authority_label(environment.install_authority)
+    );
+    mdln!(
+        document,
+        "- Binary: `{}` version `{}` revision `{}` dialect `{}` (source `{}`)",
+        compact_path_for_output(&environment.binary.path),
+        environment.binary.version,
+        environment.binary.revision,
+        environment.binary.dialect_revision,
+        compact_path_for_output(&environment.binary.source_path)
+    );
+    mdln!(
+        document,
+        "- Backend: `{}` kind `{}` version `{}` revision `{}` (source `{}`)",
+        agent_resource_state_label(environment.backend.state),
+        environment.backend.kind.as_deref().unwrap_or("-"),
+        environment.backend.version.as_deref().unwrap_or("-"),
+        environment.backend.revision.as_deref().unwrap_or("-"),
+        environment
+            .backend
+            .source_path
+            .as_deref()
+            .map(compact_path_for_output)
+            .unwrap_or_else(|| "-".to_string())
+    );
+    mdln!(
+        document,
+        "- Guidance: `{}` from `{}` at `{}`",
+        agent_resource_state_label(environment.guidance.state),
+        environment.guidance.source,
+        compact_path_for_output(&environment.guidance.path)
+    );
+    if let Some(command) = &environment.guidance.repair_command {
+        mdln!(document, "  - Repair: `{command}`");
+    }
+    mdln!(
+        document,
+        "- Skills compatible: {}",
+        yes_no(environment.skills.compatible)
+    );
+    for skill in &environment.skills.candidates {
+        mdln!(
+            document,
+            "  - `{}`: `{}` from `{}`, dialect `{}`",
+            compact_path_for_output(&skill.path),
+            agent_resource_state_label(skill.state),
+            skill.source,
+            skill
+                .dialect_revision
+                .map_or_else(|| "-".to_string(), |revision| revision.to_string())
+        );
+        if let Some(command) = &skill.repair_command {
+            mdln!(document, "    - Repair: `{command}`");
+        }
+    }
+}
+
+fn agent_resource_state_label(
+    state: crate::self_mgmt::AgentResourceState,
+) -> &'static str {
+    state.as_str()
 }
 
 fn install_authority_label(authority: crate::self_mgmt::InstallAuthority) -> &'static str {

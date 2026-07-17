@@ -26,6 +26,10 @@ fn machine_ready_prefers_homebrew_receipt_without_local_manifest() {
     );
     let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("ready json");
     assert_eq!(stdout["installAuthority"], "macos-homebrew", "{stdout}");
+    assert!(
+        stdout["agentEnvironment"].is_null(),
+        "machine readiness must not report an agent-environment verdict: {stdout}"
+    );
     assert_eq!(
         stdout["homebrewInstall"]["cli"]["binary"],
         homebrew_binary.display().to_string(),
@@ -487,12 +491,26 @@ fn ready_for_targets_apply_task_specific_readiness_checks() {
         );
     } else {
         assert!(
-            agent.status.success(),
-            "default agent readiness should converge with repair --apply: stdout={}, stderr={}",
-            String::from_utf8_lossy(&agent.stdout),
-            String::from_utf8_lossy(&agent.stderr)
+            !agent.status.success(),
+            "install repair must not claim agent readiness without effective agent resources"
         );
-        assert_eq!(agent_stdout["ok"], true, "{agent_stdout}");
+        assert_eq!(agent_stdout["ok"], false, "{agent_stdout}");
+        assert_eq!(
+            agent_stdout["ready"]["agentEnvironment"]["ok"], false,
+            "{agent_stdout}"
+        );
+        assert!(
+            agent_stdout["ready"]["issues"]
+                .as_array()
+                .expect("agent issues")
+                .iter()
+                .any(|issue| {
+                    issue.as_str().is_some_and(|issue| {
+                        issue.contains("Kast skill") && issue.contains("missing")
+                    })
+                }),
+            "{agent_stdout}"
+        );
     }
 
     let kotlin = kast(&home, &config_home)

@@ -379,34 +379,52 @@ fn smoke_core_cli_commands() {
     );
     assert!(!install_manifest_path(&home).exists());
 
+    let doctor = kast(&home, &config_home)
+        .args(["--output", "json", "doctor"])
+        .output()
+        .expect("legacy doctor alias");
+    assert!(
+        !doctor.status.success(),
+        "doctor should still fail before machine installation exists"
+    );
+    let doctor_json: serde_json::Value =
+        serde_json::from_slice(&doctor.stdout).expect("doctor json");
+    assert_eq!(doctor_json["target"], "machine", "{doctor_json:#}");
+    assert!(
+        doctor_json["agentEnvironment"].is_null(),
+        "the kast-action compatibility alias must verify machine installation, not agent resources: {doctor_json:#}"
+    );
+
     let repair = kast(&home, &config_home)
         .args(["--output", "json", "repair", "--apply"])
         .output()
         .expect("repair apply");
+    assert!(
+        !repair.status.success(),
+        "install-state repair must not claim agent readiness without effective agent resources"
+    );
+    let repair_json: serde_json::Value =
+        serde_json::from_slice(&repair.stdout).expect("repair json");
+    assert_eq!(repair_json["type"], "KAST_REPAIR");
+    assert_eq!(repair_json["applied"], true);
+    assert_eq!(repair_json["ready"]["agentEnvironment"]["ok"], false);
     #[cfg(not(target_os = "macos"))]
     {
         assert!(
-            repair.status.success(),
-            "repair --apply should converge the install: stdout={}, stderr={}",
-            String::from_utf8_lossy(&repair.stdout),
-            String::from_utf8_lossy(&repair.stderr)
+            repair_json["ready"]["issues"]
+                .as_array()
+                .expect("ready issues")
+                .iter()
+                .any(|issue| {
+                    issue.as_str().is_some_and(|issue| {
+                        issue.contains("Kast skill") && issue.contains("missing")
+                    })
+                }),
+            "{repair_json:#}"
         );
-        let repair_json: serde_json::Value =
-            serde_json::from_slice(&repair.stdout).expect("repair json");
-        assert_eq!(repair_json["type"], "KAST_REPAIR");
-        assert_eq!(repair_json["applied"], true);
-        assert!(install_manifest_path(&home).is_file());
     }
     #[cfg(target_os = "macos")]
     {
-        assert!(
-            !repair.status.success(),
-            "macOS repair --apply should not report agent-ready without plugin metadata"
-        );
-        let repair_json: serde_json::Value =
-            serde_json::from_slice(&repair.stdout).expect("repair json");
-        assert_eq!(repair_json["type"], "KAST_REPAIR");
-        assert_eq!(repair_json["applied"], true);
         assert!(
             repair_json["ready"]["issues"]
                 .as_array()
@@ -417,8 +435,8 @@ fn smoke_core_cli_commands() {
                     .is_some_and(|issue| issue.contains("plugin-prepared workspace metadata"))),
             "{repair_json:#}"
         );
-        assert!(install_manifest_path(&home).is_file());
     }
+    assert!(install_manifest_path(&home).is_file());
 
     let skill_dir = temp.path().join("skills");
     let skill = kast(&home, &config_home)

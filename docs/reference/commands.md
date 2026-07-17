@@ -51,6 +51,26 @@ not public reader paths.
 | Release | `kast developer release package|activate|generate|validate` | Build, activate, regenerate, and validate release artifacts |
 | Agent | `kast agent verify|symbol|impact|diagnostics|rename|add-file|add-declaration|add-implementation|add-statement|replace-declaration|lsp` | Run typed semantic and editor-adapter commands |
 
+## Readiness Evidence
+
+Agent and Kotlin readiness includes an `agentEnvironment` object in JSON and
+an equivalent **Effective agent environment** section in human output. The
+verdict is read-only and covers the resources the agent can actually discover.
+
+| Field | Evidence |
+| --- | --- |
+| `installAuthority` | Local-development, Homebrew, managed-local, or missing authority |
+| `binary` | Running path, version, revision, source path, and CLI dialect revision |
+| `backend` | Ownership state, kind, version, revision, and source path |
+| `skills.candidates` | Every discovered Kast skill path, source, state, dialect revision, compatibility verdict, and repair command |
+| `guidance` | Effective context path, source, state, and repair command |
+
+Resource state is one of `missing`, `modified`, `user-owned`, `managed`, or
+`foreign`. Every discoverable Kast skill must declare the same
+`kast-cli-dialect-revision` as the running binary. An incompatible candidate
+or untrusted effective guidance makes agent and Kotlin readiness fail. A
+reported repair command is advisory; readiness never moves or rewrites files.
+
 ## Workspace And Backend Flags
 
 Many commands accept `--workspace-root <path>` and `--backend <idea|headless>`.

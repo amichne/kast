@@ -52,7 +52,7 @@ pub enum Command {
     Developer(DeveloperArgs),
     /// Backward-compatible alias for `ready`. Used by kast-action v2.
     #[command(hide = true)]
-    Doctor(ReadyArgs),
+    Doctor(DoctorArgs),
     /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
     Agent(AgentArgs),
 }
@@ -86,6 +86,24 @@ pub struct ReadyArgs {
     /// Task surface to verify.
     #[arg(long = "for", value_enum, default_value = "agent")]
     pub target: ReadyTarget,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct DoctorArgs {
+    #[command(flatten)]
+    pub runtime: RuntimeArgs,
+    /// Task surface to verify. The compatibility alias preserves machine-install semantics.
+    #[arg(long = "for", value_enum, default_value = "machine")]
+    pub target: ReadyTarget,
+}
+
+impl From<DoctorArgs> for ReadyArgs {
+    fn from(args: DoctorArgs) -> Self {
+        Self {
+            runtime: args.runtime,
+            target: args.target,
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]
