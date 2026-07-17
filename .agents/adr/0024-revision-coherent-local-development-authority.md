@@ -105,7 +105,9 @@ Rust. An independent `source-bound-cli` producer compiles that digest into its
 one release binary while the required Rust job owns formatting, Clippy, and
 tests in parallel. A dedicated `source-bound-headless-backend` producer embeds
 the same snapshot into the one backend artifact while the Linux Gradle job owns
-the full Kotlin test boundary independently. `prepared-generation` verifies the
+the full Kotlin test boundary independently. The macOS Gradle job owns only its
+portable headless distribution proof and does not rerun that Linux-owned test
+suite. `prepared-generation` verifies the
 outer CI ledgers, re-attests the extracted component bytes, and publishes and
 verifies the immutable generation with its exact CLI. The representative
 semantic fixture can consume that artifact immediately. The Ubuntu/Debian

@@ -442,6 +442,8 @@ require_not_contains "$ci_workflow" "idea-plugin-dist-cache" "CI must not use a 
 
 require_contains "$ci_build_and_test_workflow" "workflow_call:" "CI build-and-test implementation must be reusable by independent platform jobs"
 require_contains "$ci_build_and_test_workflow" 'runs-on: ${{ inputs.runner }}' "CI build-and-test implementation must use its typed runner input"
+require_block_contains "$ci_build_and_test_workflow" "      - name: Test JVM backend modules" "      - name: Build headless backend distribution" "if: runner.os == 'Linux'" "Linux must exclusively own JVM backend test execution"
+require_block_contains "$ci_build_and_test_workflow" "      - name: Upload build-and-test test reports" "      - name: Upload portable headless backend distribution" "if: always() && runner.os == 'Linux'" "Only the Linux JVM test owner may publish JVM test reports"
 require_block_contains "$ci_workflow" "  build-and-test-linux:" "  build-and-test-macos:" "    uses: ./.github/workflows/ci-build-and-test.yml" "CI must call the reusable build-and-test workflow for Linux"
 require_block_contains "$ci_workflow" "  build-and-test-linux:" "  build-and-test-macos:" "    needs: workflow-contracts" "CI Linux build-and-test must wait for the static workflow preflight"
 require_block_contains "$ci_workflow" "  build-and-test-linux:" "  build-and-test-macos:" "      runner: ubuntu-latest" "CI Linux build-and-test must select the Ubuntu runner"

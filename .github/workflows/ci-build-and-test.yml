@@ -60,6 +60,7 @@ jobs:
             intellij-runtime-${{ runner.os }}-
 
       - name: Test JVM backend modules
+        if: runner.os == 'Linux'
         run: >
           ./scripts/ci-gradle-retry.sh
           ./gradlew
@@ -84,7 +85,7 @@ jobs:
           fi
 
       - name: Upload build-and-test test reports
-        if: always()
+        if: always() && runner.os == 'Linux'
         uses: actions/upload-artifact@v6
         with:
           name: build-and-test-reports-${{ inputs.runner }}

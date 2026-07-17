@@ -52,6 +52,11 @@ contracts run once in their named jobs. A focused Rust integration test must
 not return success by skipping when an outer installer environment variable is
 absent.
 
+The Linux build-and-test job exclusively owns the JVM backend test suite and
+its reports. The macOS build-and-test job owns the macOS portable headless
+distribution, no-fat-jar assertion, artifact, and ledger only; it must not
+rerun Linux-owned JVM tests.
+
 The `workflow-contracts` job is the static CI fanout gate. It must not install
 Java, initialize Gradle, install Rust, or execute an installed-development
 workflow. It captures and ledgers the immutable source snapshot consumed by

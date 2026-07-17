@@ -148,9 +148,9 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-linux",
+          "jvm-backend-tests",
           "headless-portable-no-fat-jar-linux",
-          "build-test-reports-linux",
+          "build-test-reports",
           "headless-portable-artifact-linux",
           "ci-artifact-ledger-headless-linux",
           "agent-headless-portable-build-linux"
@@ -170,9 +170,7 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-macos",
           "headless-portable-no-fat-jar-macos",
-          "build-test-reports-macos",
           "headless-portable-artifact-macos",
           "ci-artifact-ledger-headless-macos"
         ],
@@ -435,8 +433,8 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-linux",
-          "build-test-reports-linux"
+          "jvm-backend-tests",
+          "build-test-reports"
         ],
         "durationSamplesSeconds": [
           360
@@ -449,9 +447,7 @@
           "workflow-contracts"
         ],
         "outputs": [
-          "jvm-backend-tests-macos",
           "headless-portable-no-fat-jar-macos",
-          "build-test-reports-macos",
           "headless-portable-artifact-macos",
           "ci-artifact-ledger-headless-macos"
         ],
