@@ -1,5 +1,6 @@
 mod support;
 
+#[cfg(target_os = "macos")]
 use support::*;
 
 #[cfg(target_os = "macos")]

@@ -313,7 +313,7 @@ PY
 
   KAST_INSTALL_ROOT="$root_dir" \
   KAST_CONFIG_HOME="$config_home" \
-    "$bin_path" ready >/dev/null
+    "$bin_path" ready --for machine >/dev/null
 }
 
 install_bundle() {
