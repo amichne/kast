@@ -2,6 +2,10 @@ pub fn version() -> &'static str {
     option_env!("KAST_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
+pub fn release_revision() -> &'static str {
+    env!("KAST_RELEASE_REVISION")
+}
+
 pub fn print_topic_help(topic: &[String]) -> crate::error::Result<()> {
     let mut command = Cli::command();
     let mut selected = &mut command;

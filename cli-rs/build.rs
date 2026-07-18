@@ -1,8 +1,17 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir.parent().expect("repo root");
+    println!("cargo:rerun-if-env-changed=KAST_RELEASE_REVISION");
+    let release_revision =
+        env::var("KAST_RELEASE_REVISION").unwrap_or_else(|_| git_release_revision(repo_root));
+    require_release_revision(&release_revision);
+    println!("cargo:rustc-env=KAST_RELEASE_REVISION={release_revision}");
+
     println!("cargo:rerun-if-env-changed=KAST_LOCAL_SOURCE_SHA256");
     if let Ok(source_sha256) = env::var("KAST_LOCAL_SOURCE_SHA256") {
         if source_sha256.len() != 64 || !source_sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
@@ -12,7 +21,6 @@ fn main() {
         println!("cargo:rustc-env=KAST_LOCAL_SOURCE_SHA256={source_sha256}");
     }
 
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
     let release_state = manifest_dir
         .parent()
@@ -45,6 +53,46 @@ fn main() {
     });
     fs::write(out_dir.join("lsp_custom_routes.rs"), routes)
         .expect("write generated LSP custom routes");
+}
+
+fn git_release_revision(repo_root: &std::path::Path) -> String {
+    let head_path = Command::new("git")
+        .args(["rev-parse", "--git-path", "HEAD"])
+        .current_dir(repo_root)
+        .output()
+        .expect("git must be available or KAST_RELEASE_REVISION must be set");
+    if !head_path.status.success() {
+        panic!("git metadata is unavailable; set KAST_RELEASE_REVISION explicitly");
+    }
+    let head_path = String::from_utf8(head_path.stdout)
+        .expect("git HEAD path must be UTF-8")
+        .trim()
+        .to_string();
+    let head_path = repo_root.join(head_path);
+    println!("cargo:rerun-if-changed={}", head_path.display());
+
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(repo_root)
+        .output()
+        .expect("git must be available or KAST_RELEASE_REVISION must be set");
+    if !output.status.success() {
+        panic!("git revision is unavailable; set KAST_RELEASE_REVISION explicitly");
+    }
+    String::from_utf8(output.stdout)
+        .expect("git revision must be UTF-8")
+        .trim()
+        .to_string()
+}
+
+fn require_release_revision(revision: &str) {
+    if revision.len() != 40
+        || !revision
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        panic!("KAST_RELEASE_REVISION must be exactly 40 lowercase hexadecimal characters");
+    }
 }
 
 fn source_index_schema_version(content: &str) -> Result<i64, String> {
