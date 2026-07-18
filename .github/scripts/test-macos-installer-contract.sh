@@ -152,6 +152,15 @@ run_installer_source_noninteractive() {
 
 repo_root="$(resolve_repo_root)"
 installer="${repo_root}/install.sh"
+if grep -Fq -- 'run `install.sh update` to install the release-matched plugin' \
+  "${repo_root}/cli-rs/src/install/repair.rs" \
+  "${repo_root}/cli-rs/src/runtime/descriptors.rs"; then
+  die "missing-plugin recovery must use the installer install command"
+fi
+if grep -F 'Kast plugin does not appear' "${repo_root}/docs/troubleshoot.md" \
+  | grep -Fq 'install.sh update'; then
+  die "missing-plugin troubleshooting must use the installer install command"
+fi
 if grep -Fq -- "sudo" "$installer"; then
   die "installer must not invoke or recommend sudo"
 fi
