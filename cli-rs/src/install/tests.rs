@@ -77,7 +77,7 @@ mod tests {
     }
 
     #[test]
-    fn repair_classifies_an_exact_stale_schema_2_receipt_for_homebrew_upgrade() {
+    fn repair_classifies_an_exact_stale_schema_3_receipt_for_homebrew_upgrade() {
         let temp = tempfile::tempdir().expect("tempdir");
         let stale_version = "0.12.9";
         let formula_prefix = temp.path().join(format!("Cellar/kast/{stale_version}"));
@@ -95,7 +95,7 @@ mod tests {
 
         assert!(matches!(
             state,
-            ExistingMacosHomebrewReceiptForRepair::StaleSchema2
+            ExistingMacosHomebrewReceiptForRepair::StaleSchema3
         ));
     }
 

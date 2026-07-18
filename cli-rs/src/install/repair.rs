@@ -490,7 +490,8 @@ fn repair_macos_homebrew_cli_authority(
                         validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
                         return Ok(());
                     }
-                    ExistingMacosHomebrewReceiptForRepair::StaleSchema2
+                    ExistingMacosHomebrewReceiptForRepair::StaleSchema3
+                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema2
                     | ExistingMacosHomebrewReceiptForRepair::LegacySchema1(_) => {
                         discover_running_homebrew_receipt()?.ok_or_else(|| {
                             CliError::new(

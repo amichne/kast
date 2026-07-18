@@ -1,4 +1,4 @@
-const MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION: u32 = 2;
+const MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -12,6 +12,7 @@ pub struct MacosHomebrewCliReceipt {
     pub binary: PathBuf,
     pub formula_prefix: PathBuf,
     pub version: String,
+    pub release_revision: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,9 +29,26 @@ pub struct MacosHomebrewInstallReceipt {
 struct LegacyMacosHomebrewInstallReceipt {
     schema_version: u32,
     authority: MacosInstallAuthority,
-    cli: MacosHomebrewCliReceipt,
+    cli: LegacyMacosHomebrewCliReceipt,
     plugin: LegacyPluginFields,
     updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LegacySchema2MacosHomebrewInstallReceipt {
+    schema_version: u32,
+    authority: MacosInstallAuthority,
+    cli: LegacyMacosHomebrewCliReceipt,
+    updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LegacyMacosHomebrewCliReceipt {
+    binary: PathBuf,
+    formula_prefix: PathBuf,
+    version: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +61,8 @@ struct LegacyPluginFields {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ExistingMacosHomebrewReceiptForRepair {
     Current(MacosHomebrewInstallReceipt),
-    StaleSchema2,
+    StaleSchema3,
+    LegacySchema2,
     LegacySchema1(MacosHomebrewInstallReceipt),
 }
 
@@ -56,6 +75,7 @@ impl MacosHomebrewInstallReceipt {
                 binary: cli_binary,
                 formula_prefix,
                 version: cli_version,
+                release_revision: cli::release_revision().to_string(),
             },
             updated_at: current_timestamp(),
         }
@@ -155,7 +175,7 @@ pub fn read_macos_homebrew_receipt_at(path: &Path) -> Result<MacosHomebrewInstal
         CliError::new(
             "MACOS_HOMEBREW_RECEIPT_INVALID",
             format!(
-                "macOS Homebrew CLI receipt is not valid schema-2 JSON at {}; run `kast repair --for machine --apply` with this Homebrew-installed CLI to migrate recognized legacy state: {error}",
+                "macOS Homebrew CLI receipt is not valid schema-3 JSON at {}; run `kast repair --for machine --apply` with this Homebrew-installed CLI to migrate recognized legacy state: {error}",
                 path.display()
             ),
         )
@@ -181,6 +201,7 @@ fn validate_macos_homebrew_receipt(
     if !receipt.cli.binary.is_absolute()
         || !receipt.cli.formula_prefix.is_absolute()
         || receipt.cli.version.trim().is_empty()
+        || !is_release_revision(&receipt.cli.release_revision)
         || receipt.updated_at.trim().is_empty()
     {
         return Err(invalid_receipt(path, "contains an invalid CLI authority projection"));
@@ -193,6 +214,17 @@ fn validate_macos_homebrew_receipt(
                 receipt.cli.version,
                 cli::version(),
                 path.display()
+            ),
+        ));
+    }
+    if receipt.cli.release_revision != cli::release_revision() {
+        return Err(CliError::new(
+            "MACOS_HOMEBREW_RECEIPT_REVISION_MISMATCH",
+            format!(
+                "macOS Homebrew CLI receipt records release revision {}; update Kast and rerun `kast repair --for machine --apply` with running revision {} at {}",
+                receipt.cli.release_revision,
+                cli::release_revision(),
+                path.display(),
             ),
         ));
     }
@@ -225,6 +257,13 @@ fn invalid_receipt(path: &Path, reason: &str) -> CliError {
         "MACOS_HOMEBREW_RECEIPT_INVALID",
         format!("macOS Homebrew CLI receipt {reason} at {}", path.display()),
     )
+}
+
+fn is_release_revision(value: &str) -> bool {
+    value.len() == 40
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn receipt_binary_is_executable(path: &Path) -> bool {
@@ -306,8 +345,11 @@ fn classify_existing_macos_homebrew_receipt_for_repair(
     if let Ok(receipt) = read_macos_homebrew_receipt_at(path) {
         return Ok(ExistingMacosHomebrewReceiptForRepair::Current(receipt));
     }
-    if exact_stale_schema_2_macos_homebrew_receipt(path)? {
-        return Ok(ExistingMacosHomebrewReceiptForRepair::StaleSchema2);
+    if exact_stale_schema_3_macos_homebrew_receipt(path)? {
+        return Ok(ExistingMacosHomebrewReceiptForRepair::StaleSchema3);
+    }
+    if exact_legacy_schema_2_macos_homebrew_receipt(path)? {
+        return Ok(ExistingMacosHomebrewReceiptForRepair::LegacySchema2);
     }
     if let Some(receipt) = exact_legacy_macos_homebrew_receipt(path)? {
         return Ok(ExistingMacosHomebrewReceiptForRepair::LegacySchema1(
@@ -317,19 +359,40 @@ fn classify_existing_macos_homebrew_receipt_for_repair(
     Err(CliError::new(
         "MACOS_HOMEBREW_RECEIPT_INVALID",
         format!(
-            "Homebrew receipt at {} is not current schema 2, an exact stale schema-2 CLI receipt, or the exact recognized schema-1 joint receipt; it was preserved unchanged",
+            "Homebrew receipt at {} is not current schema 3, an exact stale schema-3 CLI receipt, an exact schema-2 CLI receipt, or the exact recognized schema-1 joint receipt; it was preserved unchanged",
             path.display(),
         ),
     ))
 }
 
-fn exact_stale_schema_2_macos_homebrew_receipt(path: &Path) -> Result<bool> {
+fn exact_stale_schema_3_macos_homebrew_receipt(path: &Path) -> Result<bool> {
     let raw = fs::read(path)?;
     let Ok(receipt) = serde_json::from_slice::<MacosHomebrewInstallReceipt>(&raw) else {
         return Ok(false);
     };
     Ok(receipt.schema_version == MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION
-        && receipt.cli.version != cli::version()
+        && (receipt.cli.version != cli::version()
+            || receipt.cli.release_revision != cli::release_revision())
+        && !receipt.cli.version.trim().is_empty()
+        && is_release_revision(&receipt.cli.release_revision)
+        && !receipt.updated_at.trim().is_empty()
+        && path_is_normalized_absolute(&receipt.cli.binary)
+        && path_is_normalized_absolute(&receipt.cli.formula_prefix)
+        && path_is_lexically_below(&receipt.cli.binary, &receipt.cli.formula_prefix)
+        && is_lexical_kast_homebrew_formula_prefix(
+            &receipt.cli.formula_prefix,
+            &receipt.cli.version,
+        ))
+}
+
+fn exact_legacy_schema_2_macos_homebrew_receipt(path: &Path) -> Result<bool> {
+    let raw = fs::read(path)?;
+    let Ok(receipt) = serde_json::from_slice::<LegacySchema2MacosHomebrewInstallReceipt>(&raw)
+    else {
+        return Ok(false);
+    };
+    let _legacy_authority = receipt.authority;
+    Ok(receipt.schema_version == 2
         && !receipt.cli.version.trim().is_empty()
         && !receipt.updated_at.trim().is_empty()
         && path_is_normalized_absolute(&receipt.cli.binary)

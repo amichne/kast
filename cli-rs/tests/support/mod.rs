@@ -52,12 +52,13 @@ pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Pa
     std::fs::write(
         &receipt,
         serde_json::to_vec_pretty(&serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "authority": "macos-homebrew",
             "cli": {
                 "binary": cli_binary.display().to_string(),
                 "formulaPrefix": cli_binary.parent().expect("formula bin").parent().expect("formula prefix").display().to_string(),
-                "version": env!("CARGO_PKG_VERSION")
+                "version": env!("CARGO_PKG_VERSION"),
+                "releaseRevision": env!("KAST_RELEASE_REVISION")
             },
             "updatedAt": "unix:1"
         }))
