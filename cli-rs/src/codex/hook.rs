@@ -768,7 +768,10 @@ fn tool_command(input: &Value) -> Option<&str> {
 fn parsed_agent_command(command: &str) -> Option<AgentCommand> {
     let arguments = shlex::split(command)?;
     let executable = arguments.first()?;
-    if Path::new(executable).file_name()?.to_str()? != "kast" {
+    if !matches!(
+        Path::new(executable).file_name()?.to_str()?,
+        "kast" | "kast-dev"
+    ) {
         return None;
     }
     let cli = Cli::try_parse_from(arguments).ok()?;
