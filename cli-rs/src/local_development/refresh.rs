@@ -413,7 +413,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         artifacts,
         previous_generation,
     } = request;
-    let staged = prefix.join(format!(".staging-{}", std::process::id()));
+    let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
     if staged.exists() {
         fs::remove_dir_all(&staged)?;
     }
@@ -599,6 +599,7 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
             ),
         )
     })?;
+    let allowed_staging_name = format!(".staging-{}", allowed_generation_name.to_string_lossy());
     for entry in fs::read_dir(prefix)? {
         let entry = entry?;
         let path = entry.path();
@@ -662,6 +663,12 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
             }
             Some("install.json") => {
                 if read_relative_symlink(&path)? != Some(PathBuf::from("current/install.json")) {
+                    return Err(unowned_prefix_conflict(&path));
+                }
+            }
+            Some(name) if name == allowed_staging_name => {
+                let metadata = entry.file_type()?;
+                if !metadata.is_dir() || metadata.is_symlink() {
                     return Err(unowned_prefix_conflict(&path));
                 }
             }
