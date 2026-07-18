@@ -147,6 +147,36 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
+    fun `release revision skew fails before workspace preparation`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        val pluginRevision = currentPluginRevision()
+        val otherRevision = ReleaseRevision(
+            if (pluginRevision.value.startsWith("a")) "b".repeat(40) else "a".repeat(40),
+        )
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = binary),
+            loadHomebrewReceipt = {
+                MacosHomebrewReceiptLoadResult.Loaded(
+                    MacosHomebrewInstallReceipt(
+                        cliBinary = binary,
+                        formulaPrefix = binary.parent,
+                        cliVersion = CliImplementationVersion("0.13.0"),
+                        cliRevision = otherRevision,
+                    ),
+                )
+            },
+            prepareWorkspace = { error("revision skew must fail before workspace preparation") },
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
+        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("revision"))
+        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
+    }
+
+    @Test
     fun `non-macOS project-open setup keeps configured binary authority`() {
         val workspace = gradleWorkspace()
         val configuredBinary = fakeKastBinary()
