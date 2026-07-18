@@ -489,6 +489,67 @@ mod refresh_tests {
     }
 
     #[test]
+    fn prepared_rebuilds_from_same_source_select_artifact_bound_directories() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("unused-local-authority");
+        let prepared_generations = fixture.path().join("prepared-generations");
+        let first_inputs = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first-prepared",
+        );
+        let first = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
+            source_root: first_inputs.source_root,
+            expected_source_snapshot: first_inputs.expected_source_snapshot,
+            cli_binary: first_inputs.cli_binary,
+            cli_provenance: first_inputs.cli_provenance,
+            backend_directory: first_inputs.backend_directory,
+            backend_provenance: first_inputs.backend_provenance,
+            skill_source: first_inputs.skill_source,
+            output_directory: prepared_generations.clone(),
+        })
+        .expect("first prepared generation");
+
+        write_file(
+            &fixture.path().join("build/kast"),
+            b"#!/bin/sh\necho rebuilt\n",
+        );
+        make_executable(&fixture.path().join("build/kast"));
+        let rebuilt_inputs = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "rebuilt-prepared",
+        );
+        let rebuilt = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
+            source_root: rebuilt_inputs.source_root,
+            expected_source_snapshot: rebuilt_inputs.expected_source_snapshot,
+            cli_binary: rebuilt_inputs.cli_binary,
+            cli_provenance: rebuilt_inputs.cli_provenance,
+            backend_directory: rebuilt_inputs.backend_directory,
+            backend_provenance: rebuilt_inputs.backend_provenance,
+            skill_source: rebuilt_inputs.skill_source,
+            output_directory: prepared_generations.clone(),
+        })
+        .expect("rebuilt prepared generation");
+
+        assert_ne!(first.ledger.generation_id, rebuilt.ledger.generation_id);
+        assert_ne!(first.directory, rebuilt.directory);
+        assert_eq!(first.directory.parent(), Some(prepared_generations.as_path()));
+        assert_eq!(rebuilt.directory.parent(), Some(prepared_generations.as_path()));
+        assert_eq!(
+            fs::read_dir(prepared_generations)
+                .expect("prepared generations")
+                .count(),
+            2,
+        );
+    }
+
+    #[test]
     fn prepared_generation_tampering_fails_before_activation() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
