@@ -4,6 +4,10 @@ import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileKind
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
+import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -21,7 +25,7 @@ object KastProjectOpenProfileAutoInit {
     internal fun executeWithConfiguredBinary(
         workspaceRoot: Path,
         config: KastConfig,
-        loadCliVersion: (Path) -> CliImplementationVersion? = ::loadConfiguredCliVersion,
+        loadCliIdentity: (Path) -> CliBuildIdentity? = ::loadConfiguredCliIdentity,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
             PluginWorkspaceBootstrap::prepare,
     ): ProjectOpenProfileAutoInitResult =
@@ -33,13 +37,17 @@ object KastProjectOpenProfileAutoInit {
                 if (!Files.isRegularFile(binary)) {
                     CliAuthorityLoadResult.Rejected("Kast CLI binary is missing at $binary")
                 } else {
-                    val version = loadCliVersion(binary)
-                    if (version == null) {
+                    val identity = loadCliIdentity(binary)
+                    if (identity == null) {
                         CliAuthorityLoadResult.Rejected(
-                            "Configured Kast CLI at $binary did not report a valid implementation version; update the CLI and reopen this exact project.",
+                            "Configured Kast CLI at $binary did not report a valid build identity; update the CLI and reopen this exact project.",
                         )
                     } else {
-                        CliAuthorityLoadResult.Loaded(binary = binary, version = version)
+                        CliAuthorityLoadResult.Loaded(
+                            binary = binary,
+                            version = identity.version,
+                            revision = identity.revision,
+                        )
                     }
                 }
             },
@@ -62,6 +70,7 @@ object KastProjectOpenProfileAutoInit {
                         CliAuthorityLoadResult.Loaded(
                             binary = result.receipt.cliBinary,
                             version = result.receipt.cliVersion,
+                            revision = result.receipt.cliRevision,
                         )
                     is MacosHomebrewReceiptLoadResult.Rejected ->
                         CliAuthorityLoadResult.Rejected(result.message)
@@ -90,16 +99,32 @@ object KastProjectOpenProfileAutoInit {
             ?: return ProjectOpenProfileAutoInitResult.Failed(
                 "Kast plugin version resource is missing or invalid; refusing workspace setup.",
             )
+        val pluginRevision = kastPluginRevision()
+            ?: return ProjectOpenProfileAutoInitResult.Failed(
+                "Kast plugin revision resource is missing or invalid; refusing workspace setup.",
+            )
         val cliAuthority = when (val result = resolveCliAuthority(pluginVersion)) {
             is CliAuthorityLoadResult.Loaded -> result
             is CliAuthorityLoadResult.Rejected ->
                 return ProjectOpenProfileAutoInitResult.Failed(result.message)
         }
+        if (pluginVersion.value != cliAuthority.version.value) {
+            return ProjectOpenProfileAutoInitResult.Failed(
+                "Kast plugin version ${pluginVersion.value} does not match CLI version ${cliAuthority.version.value}; update both before workspace setup.",
+            )
+        }
+        if (pluginRevision != cliAuthority.revision) {
+            return ProjectOpenProfileAutoInitResult.Failed(
+                "Kast plugin revision ${pluginRevision.value} does not match CLI revision ${cliAuthority.revision.value}; update both before workspace setup.",
+            )
+        }
         val request = PluginWorkspaceBootstrapRequest(
             workspaceRoot = workspaceRoot.toAbsolutePath().normalize(),
             cliBinary = cliAuthority.binary,
             cliVersion = cliAuthority.version,
+            cliRevision = cliAuthority.revision,
             pluginVersion = pluginVersion,
+            pluginRevision = pluginRevision,
         )
         return when (val result = prepareWorkspace(request)) {
             is PluginWorkspaceBootstrapResult.Prepared ->
@@ -119,6 +144,7 @@ object KastProjectOpenProfileAutoInit {
         data class Loaded(
             val binary: Path,
             val version: CliImplementationVersion,
+            val revision: ReleaseRevision,
         ) : CliAuthorityLoadResult
 
         data class Rejected(val message: String) : CliAuthorityLoadResult
@@ -145,9 +171,9 @@ object KastProjectOpenProfileAutoInit {
     }
 }
 
-private fun loadConfiguredCliVersion(binary: Path): CliImplementationVersion? {
+private fun loadConfiguredCliIdentity(binary: Path): CliBuildIdentity? {
     val process = runCatching {
-        ProcessBuilder(binary.toString(), "version")
+        ProcessBuilder(binary.toString(), "--output", "json", "version")
             .redirectErrorStream(true)
             .start()
     }.getOrNull() ?: return null
@@ -156,11 +182,19 @@ private fun loadConfiguredCliVersion(binary: Path): CliImplementationVersion? {
         return null
     }
     if (process.exitValue() != 0) return null
-    val output = process.inputStream.bufferedReader().use { reader -> reader.readText() }.trim()
-    val version = output.removePrefix("Kast CLI ").takeIf { value ->
-        output.startsWith("Kast CLI ") && value.isNotBlank() && value.none(Char::isWhitespace)
-    } ?: return null
-    return runCatching { CliImplementationVersion(version) }.getOrNull()
+    val output = process.inputStream.bufferedReader().use { reader -> reader.readText() }
+    val document = runCatching { Json.parseToJsonElement(output).jsonObject }.getOrNull() ?: return null
+    if (document.keys != setOf("type", "version", "releaseRevision", "schemaVersion")) return null
+    if (document["type"]?.jsonPrimitive?.content != "KAST_CLI_BUILD_IDENTITY") return null
+    if (document["schemaVersion"]?.jsonPrimitive?.content != "1") return null
+    val version = document["version"]?.jsonPrimitive?.content ?: return null
+    val revision = document["releaseRevision"]?.jsonPrimitive?.content ?: return null
+    return runCatching {
+        CliBuildIdentity(
+            version = CliImplementationVersion(version),
+            revision = ReleaseRevision(revision),
+        )
+    }.getOrNull()
 }
 
 private fun kastPluginVersion(): PluginVersion? =
@@ -171,3 +205,10 @@ private fun kastPluginVersion(): PluginVersion? =
         ?.takeIf(String::isNotBlank)
         ?.takeIf { version -> version != "unknown" }
         ?.let(::PluginVersion)
+
+private fun kastPluginRevision(): ReleaseRevision? =
+    KastPluginBackend::class.java
+        .getResource("/kast-backend-revision.txt")
+        ?.readText()
+        ?.trim()
+        ?.let { revision -> runCatching { ReleaseRevision(revision) }.getOrNull() }

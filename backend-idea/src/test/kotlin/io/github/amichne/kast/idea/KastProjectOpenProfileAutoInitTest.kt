@@ -127,7 +127,7 @@ class KastProjectOpenProfileAutoInitTest {
                     MacosHomebrewInstallReceipt(
                         cliBinary = homebrewBinary,
                         formulaPrefix = homebrewBinary.parent,
-                        cliVersion = CliImplementationVersion("receipt-cli-version"),
+                        cliVersion = currentPluginVersion(),
                         cliRevision = currentPluginRevision(),
                     ),
                 )
@@ -143,7 +143,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(homebrewBinary, requests.single().cliBinary)
-        assertEquals("receipt-cli-version", requests.single().cliVersion.value)
+        assertEquals(currentPluginVersion(), requests.single().cliVersion)
     }
 
     @Test
@@ -163,7 +163,7 @@ class KastProjectOpenProfileAutoInitTest {
                     MacosHomebrewInstallReceipt(
                         cliBinary = binary,
                         formulaPrefix = binary.parent,
-                        cliVersion = CliImplementationVersion("0.13.0"),
+                        cliVersion = currentPluginVersion(),
                         cliRevision = otherRevision,
                     ),
                 )
@@ -213,7 +213,7 @@ class KastProjectOpenProfileAutoInitTest {
             config = autoInitConfig(binaryPath = configuredBinary),
             loadCliIdentity = {
                 CliBuildIdentity(
-                    version = CliImplementationVersion("configured-cli-version"),
+                    version = currentPluginVersion(),
                     revision = currentPluginRevision(),
                 )
             },
@@ -228,7 +228,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(configuredBinary, requests.single().cliBinary)
-        assertEquals("configured-cli-version", requests.single().cliVersion.value)
+        assertEquals(currentPluginVersion(), requests.single().cliVersion)
         assertEquals(currentPluginRevision(), requests.single().cliRevision)
     }
 
@@ -310,7 +310,7 @@ class KastProjectOpenProfileAutoInitTest {
             MacosHomebrewInstallReceipt(
                 cliBinary = binary,
                 formulaPrefix = binary.parent,
-                cliVersion = CliImplementationVersion("0.13.0"),
+                cliVersion = currentPluginVersion(),
                 cliRevision = currentPluginRevision(),
             ),
         )
@@ -318,6 +318,12 @@ class KastProjectOpenProfileAutoInitTest {
 
     private fun currentPluginRevision(): ReleaseRevision = ReleaseRevision(
         requireNotNull(KastPluginBackend::class.java.getResource("/kast-backend-revision.txt"))
+            .readText()
+            .trim(),
+    )
+
+    private fun currentPluginVersion(): CliImplementationVersion = CliImplementationVersion(
+        requireNotNull(KastPluginBackend::class.java.getResource("/kast-backend-version.txt"))
             .readText()
             .trim(),
     )

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
+import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
@@ -10,10 +11,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 internal object MacosHomebrewReceiptLoader {
-    private const val schemaVersion = 2
+    private const val schemaVersion = 3
     private const val authority = "macos-homebrew"
     private val rootKeys = setOf("schemaVersion", "authority", "cli", "updatedAt")
-    private val cliKeys = setOf("binary", "formulaPrefix", "version")
+    private val cliKeys = setOf("binary", "formulaPrefix", "version", "releaseRevision")
     private val canonicalKeyPatterns = (rootKeys + cliKeys).associateWith { key ->
         Regex("""(?:\{|,)\s*"${Regex.escape(key)}"\s*:""")
     }
@@ -47,6 +48,8 @@ internal object MacosHomebrewReceiptLoader {
         val cliBinary = cli?.path("binary")
         val formulaPrefix = cli?.path("formulaPrefix")
         val cliVersion = cli?.string("version")
+        val cliRevision = cli?.string("releaseRevision")
+            ?.let { value -> runCatching { ReleaseRevision(value) }.getOrNull() }
         if (
             root.keys != rootKeys ||
             cli?.keys != cliKeys ||
@@ -58,9 +61,10 @@ internal object MacosHomebrewReceiptLoader {
             !formulaPrefix.isAbsolute ||
             cliVersion.isNullOrBlank() ||
             cliVersion.any(Char::isWhitespace) ||
+            cliRevision == null ||
             root.string("updatedAt").isNullOrBlank()
         ) {
-            return invalid(path, "invalid schema-2 authority projection")
+            return invalid(path, "invalid schema-3 authority projection")
         }
         if (
             !Files.isDirectory(formulaPrefix) ||
@@ -92,6 +96,7 @@ internal object MacosHomebrewReceiptLoader {
                 cliBinary = canonicalCliBinary,
                 formulaPrefix = canonicalFormulaPrefix,
                 cliVersion = CliImplementationVersion(cliVersion),
+                cliRevision = cliRevision,
             ),
         )
     }

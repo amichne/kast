@@ -142,9 +142,16 @@ intellijPlatform {
 }
 
 val generatedResourcesDir = layout.buildDirectory.dir("generated-resources")
+val backendSourceRevision = providers.environmentVariable("KAST_RELEASE_REVISION").orElse(
+    providers.exec {
+        commandLine("git", "rev-parse", "HEAD")
+    }.standardOutput.asText.map(String::trim),
+)
 val writeBackendVersion by tasks.registering(WriteBackendVersionTask::class) {
     backendVersion.set(version.toString())
+    backendRevision.set(backendSourceRevision)
     versionFile.set(generatedResourcesDir.map { it.file("kast-backend-version.txt") })
+    revisionFile.set(generatedResourcesDir.map { it.file("kast-backend-revision.txt") })
 }
 
 val defaultExcludedTestTags = linkedSetOf("concurrency", "performance", "parity")
