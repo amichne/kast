@@ -29,7 +29,8 @@ mod tests {
         assert_eq!(loaded, receipt);
         let raw = fs::read_to_string(receipt_path).expect("receipt text");
         assert!(!raw.contains("plugin"), "{raw}");
-        assert_eq!(loaded.schema_version, 2);
+        assert_eq!(loaded.schema_version, 3);
+        assert_eq!(loaded.cli.release_revision, cli::release_revision());
     }
 
     #[test]
