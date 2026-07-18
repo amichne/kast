@@ -100,7 +100,7 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Idea => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No idea backend is installed or running for {}. Install or update the signed Kast plugin through JetBrains, open the project in IDEA or Android Studio, then start with: kast developer runtime up --backend=idea",
+                "No idea backend is installed or running for {}. Install or update the GitHub-hosted Kast plugin through JetBrains, open the project in IDEA or Android Studio, then start with: kast developer runtime up --backend=idea",
                 workspace_root.display()
             ),
         ),
@@ -134,7 +134,7 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Idea => {
             error.details.insert(
                 "installHint".to_string(),
-                "Install or update the signed plugin through JetBrains, reopen this exact project, and refresh workspace metadata.".to_string(),
+                "Quit the IDE, run `install.sh install` to install the release-matched plugin through JetBrains, then reopen this exact project.".to_string(),
             );
         }
     }

@@ -13,10 +13,8 @@ REQUIRED_PLATFORMS = {
     "codex-plugin",
     "gradle-ro-cache",
     "headless-linux-x64",
-    "idea",
     "openapi",
     "runtime-manifest",
-    "runtime-compatibility",
     "ubuntu-debian-headless-x86_64",
 }
 OPTIONAL_PLATFORMS: set[str] = set()
@@ -95,30 +93,6 @@ def validate(entries: list[dict], *, release_tag: str) -> None:
             or asset_digest == "sha256:"
         ):
             fail(f"provenance entry for {platform} has no SHA-256 assetDigest")
-        if platform == "idea":
-            if entry.get("pluginId") != "io.github.amichne.kast":
-                fail("IDEA provenance must name pluginId io.github.amichne.kast")
-            signer = entry.get("signerCertificateSha256")
-            if not isinstance(signer, str) or len(signer) != 64 or any(
-                character not in "0123456789abcdef" for character in signer
-            ):
-                fail("IDEA provenance signerCertificateSha256 must be lowercase SHA-256")
-            if entry.get("signatureVerified") is not True:
-                fail("IDEA provenance signatureVerified must be true")
-            if entry.get("ref") != f"refs/tags/{release_tag}":
-                fail(f"IDEA provenance ref must be refs/tags/{release_tag}")
-            release_sha = entry.get("sha")
-            if not isinstance(release_sha, str) or len(release_sha) != 40 or any(
-                character not in "0123456789abcdef" for character in release_sha
-            ):
-                fail("IDEA provenance sha must be a full lowercase Git commit SHA")
-            if entry.get("verificationTasks") != [
-                ":backend-idea:verifyPluginStructure",
-                ":backend-idea:verifyPluginXmlPresent",
-                ":backend-idea:verifyPlugin",
-                ":backend-idea:verifyPluginSignature",
-            ]:
-                fail("IDEA provenance must carry the complete signed compatibility gate")
         if platform == "codex-plugin":
             if entry.get("ref") != f"refs/tags/{release_tag}":
                 fail(f"Codex plugin provenance ref must be refs/tags/{release_tag}")

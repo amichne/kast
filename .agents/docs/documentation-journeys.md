@@ -19,7 +19,7 @@ or navigation.
 
 | Reader | Entry point | Reader job | Next page |
 | --- | --- | --- | --- |
-| macOS developer | `docs/install/macos.md` | Install Kast, restart the IDE, and open the project | `docs/learn/evidence-model.md` |
+| macOS developer | `docs/install/macos.md` | Install the matched CLI and plugin, then open the project | `docs/learn/evidence-model.md` |
 | Linux or hosted-agent operator | `docs/install/headless-linux.md` | Install a headless bundle for CI, hosted agents, or server images | `docs/distribute/runtime-artifact-contract.md` |
 | Developer evaluator | `docs/learn/repository-demo.md` | Explore semantic evidence from the Kotlin repository already open | `docs/learn/evidence-model.md` |
 | Agent or script author | `docs/use/automate-with-agents.md` | Understand the typed semantic operations agents use behind the scenes | `docs/reference/agent-commands.md` |

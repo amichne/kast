@@ -62,8 +62,9 @@ if payload.get("ok") is False:
     assert payload["method"] == "setup", payload
     assert payload["error"]["code"] == "AGENT_COMMAND_REMOVED", payload
     replacements = set(payload["error"].get("details", {}).get("replacements", []))
-    assert "brew install amichne/kast/kast" in replacements, payload
-    assert "Install the signed plugin with JetBrains Install Plugin from Disk" in replacements, payload
+    assert '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- install' in replacements, payload
+    assert '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update' not in replacements, payload
+    assert "Add https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml as a custom plugin repository" in replacements, payload
     assert "kast agent verify --workspace-root <repo>" in replacements, payload
     sys.exit(0)
 

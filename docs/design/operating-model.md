@@ -34,8 +34,8 @@ flowchart LR
 
 | Layer | What it owns | What it does not own |
 | --- | --- | --- |
-| CLI distribution | Homebrew formula, CLI-only receipt, Linux headless bundle | JetBrains plugin installation, trust, or repository enrollment |
-| Plugin distribution | Signed ZIP, certificate fingerprint, JetBrains custom repository and updates | Homebrew formula or CLI receipt |
+| CLI distribution | Homebrew formula, CLI-only receipt, Linux headless bundle | Installed JetBrains plugin files or update application |
+| Plugin distribution | Unsigned GitHub Release ZIP and custom-repository feed | Homebrew formula, CLI receipt, or direct IDE profile writes |
 | Workspace setup | Agent skill, managed guidance region, plugin-prepared metadata | Machine runtime installation |
 | Runtime backend | IDEA or headless analysis state | Public command taxonomy |
 | Typed commands | Readiness, repair, runtime lifecycle, semantic inspection, plan-first mutations | Arbitrary raw RPC as a public workflow |

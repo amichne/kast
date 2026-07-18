@@ -67,10 +67,10 @@ resources.
   integration consumers.
 
 The broader public product surface, workflows, and AXI contract live in
-`.agents/adr/0006-forward-system-definition-and-audit-scope.md`. IDEA plugin
-distribution, runtime compatibility, index privacy, lifecycle, and semantic
-cockpit authority live in
-`.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`.
+`.agents/adr/0006-forward-system-definition-and-audit-scope.md`. IDEA runtime
+compatibility, index privacy, lifecycle, and semantic cockpit authority live
+in `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`;
+ADR 0028 supersedes its plugin distribution decisions.
 The Codex CLI-only plugin, exhaustive Rust exposure classifier, hook state, and
 release coupling live in
 `.agents/adr/0026-codex-cli-plugin-and-rust-exposure-authority.md`.
@@ -146,7 +146,7 @@ release coupling live in
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
   `protocol/`; regenerate them through the Gradle docs generators.
-- Runtime compatibility release truth lives in
+- Runtime compatibility admission truth lives in
   `../packaging/jetbrains/runtime-compatibility.json`; the Rust metadata parser
   consumes exact-root facts but does not own supported-pair policy.
 

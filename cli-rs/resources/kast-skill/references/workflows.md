@@ -16,10 +16,11 @@ the repository agent assets:
 - `.agents/skills/kast/SKILL.md`
 - one managed `<kast>...</kast>` guidance region in the selected repo context file
 
-Install the signed plugin with JetBrains **Install Plugin from Disk**, enroll
-the published certificate and custom plugin repository in the IDE, and let
-JetBrains own subsequent updates. `kast repair --for machine --apply` repairs
-only the CLI receipt and recognized one-release legacy state.
+Use the root `install.sh` to install or update the Homebrew CLI and delegate its
+release-matched plugin to a closed JetBrains IDE. Enroll
+`https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml`
+as a custom plugin repository for native discovery. `kast repair --for machine
+--apply` repairs only the CLI receipt and recognized one-release legacy state.
 
 Setup does not install Copilot packages, portable Markdown instruction
 packages, session hooks, generated catalog copies, or workflow helper assets.

@@ -10,18 +10,24 @@ are real, or whether a planned edit is safe to apply.
 
 ## Install
 
-For a macOS developer machine, install the CLI first. Then install the signed
-plugin ZIP through JetBrains and open your project in IntelliJ IDEA or Android Studio.
+For a macOS developer machine, quit IntelliJ IDEA or Android Studio, then run
+the developer installer:
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer defaults to the public `amichne/kast` Homebrew tap and establishes
-the fail-closed CLI receipt. Homebrew owns only the macOS CLI. JetBrains owns
-plugin installation and updates; certificate trust and custom repository
-enrollment are explicit IDE actions. Reopen the exact project after either side
-updates so the plugin refreshes compatibility metadata.
+The installer establishes the fail-closed Homebrew CLI receipt, derives its
+exact release tag, and delegates the matching plugin's initial installation to
+JetBrains' `installPlugins` command. That command does not replace an existing
+plugin. If no standard IDE launcher is found, the installer prints the exact
+GitHub Release ZIP for **Install Plugin from Disk**. Add
+`https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml`
+as a custom plugin repository for native updates, then open the exact project
+so the plugin writes compatibility metadata. `install.sh verify` rejects an
+unsupported CLI/plugin pair after that metadata refresh.
+In normal use, open your project in IntelliJ IDEA or Android Studio after the
+installer completes.
 
 Use the Linux headless bundle when a CI runner, hosted agent, server image, or
 air-gapped host needs its own binary and backend runtime:
@@ -94,7 +100,7 @@ Kast has two runtime modes behind the same command surface:
 
 | Runtime mode | Best when | Install path |
 | --- | --- | --- |
-| **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew CLI plus JetBrains-installed signed plugin |
+| **IDEA / Android Studio plugin backend** | A macOS developer machine uses IDEA or Android Studio for local Kotlin state | Homebrew CLI plus GitHub-hosted, JetBrains-installed plugin |
 | **Headless CLI + backend** | A CI runner, server, or hosted Linux image needs its own runtime | Linux headless bundle |
 
 Repository agent guidance can use either runtime because agents call the same

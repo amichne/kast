@@ -1,13 +1,14 @@
-# JetBrains Repository Packaging Guide
+# JetBrains Packaging Guide
 
-This directory owns the authored configuration for Kast's off-Marketplace
-JetBrains plugin repository.
+This directory owns Kast's off-Marketplace JetBrains feed template and typed
+runtime compatibility source.
 
-`plugin-repository.json` is the checked-in owner for the stable feed URL,
-plugin identity, immutable GitHub Release asset URL template, active signing
-certificate fingerprint, and explicit certificate-rotation state. Keep the
-production signer unconfigured until its public certificate fingerprint is
-known; never substitute a fixture, secret, or workflow variable.
+`updatePlugins.xml` is the hand-authored custom-repository template. Its plugin
+ID and IDEA build floor must match `backend-idea`; its URL must name the exact
+GitHub Release tag and unsigned ZIP. The release workflow replaces only
+`#tag#` and `#version#` and uploads the rendered file beside the ZIP. There is
+no Pages repository, signer source, certificate rotation, or generated
+repository manifest.
 
 `runtime-compatibility.json` is the only checked-in owner for the IDEA build
 range and explicit runtime compatibility pairs. A pair names exact plugin and
@@ -16,21 +17,13 @@ metadata revisions, runtime identity, and a complete disjoint classification
 of required and optional capabilities. Do not infer a range, wildcard releases,
 or compatibility fallback from the repository feed source.
 
-`updatePlugins.xml` and `plugin-repository-manifest.json` are generated Pages
-outputs. `kast-runtime-compatibility.json` is a generated immutable release
-asset with its own artifact ledger and release provenance. Do not edit any of
-these outputs by hand. The renderers must validate
-the finalized signed ZIP cryptographically against its public certificate and
-signer-bound release provenance before either file is emitted. Feed advancement
-also requires GitHub's immutable-release attestation and an exact tag-to-commit
-match. A rotation overlap must name two distinct enrolled signers; unknown or
-incomplete rotation state fails closed.
+`runtime-compatibility.json` is compiled into runtime admission and remains
+covered by its focused contract. It is not a JetBrains feed input and is not
+published as a release asset.
 
 After changing this boundary, run:
 
 ```console
-.github/scripts/test-jetbrains-plugin-repository-contract.sh
 .github/scripts/test-runtime-compatibility-contract.sh
-.github/scripts/test-idea-plugin-signing-contract.sh
 .github/scripts/test-release-workflow-contract.sh
 ```
