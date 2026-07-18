@@ -11,6 +11,10 @@ data class RuntimeCompatibilityFacts(
     val pluginVersion: PluginImplementationVersion,
     @DocField(description = "CLI release version reported by the workspace.")
     val cliVersion: CliImplementationVersion,
+    @DocField(description = "Full source revision embedded in the IDEA plugin artifact.")
+    val pluginRevision: ReleaseRevision,
+    @DocField(description = "Full source revision embedded in the CLI artifact.")
+    val cliRevision: ReleaseRevision,
     @DocField(description = "Negotiation protocol revision reported by the workspace.")
     val protocolRevision: ProtocolRevision,
     @DocField(description = "Revision of the exact-workspace-root metadata document.")
