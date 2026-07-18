@@ -141,6 +141,73 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
         String::from_utf8_lossy(&refresh.stdout),
         String::from_utf8_lossy(&refresh.stderr)
     );
+    let refresh_payload: serde_json::Value =
+        serde_json::from_slice(&refresh.stdout).expect("refresh JSON");
+    let generation_id = refresh_payload["receipt"]["generationId"]
+        .as_str()
+        .expect("local generation ID");
+    let local_marketplace = temp.path().join("local-codex-marketplace");
+    let codex_projection = std::process::Command::new(prefix.join("bin/kast"))
+        .env("HOME", &home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "codex",
+            "generate",
+            "--local",
+            "--output-dir",
+        ])
+        .arg(&local_marketplace)
+        .output()
+        .expect("local Codex projection");
+    assert!(
+        codex_projection.status.success(),
+        "local Codex projection failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&codex_projection.stdout),
+        String::from_utf8_lossy(&codex_projection.stderr),
+    );
+    let projection_payload: serde_json::Value =
+        serde_json::from_slice(&codex_projection.stdout).expect("projection JSON");
+    assert_eq!(projection_payload["mode"], "local");
+    assert_eq!(projection_payload["generationId"], generation_id);
+    assert_eq!(
+        projection_payload["entrypoint"],
+        std::fs::canonicalize(&prefix)
+            .expect("canonical prefix")
+            .join("bin/kast")
+            .display()
+            .to_string(),
+    );
+    let hooks = std::fs::read_to_string(
+        local_marketplace.join("plugins/kast/hooks/hooks.json"),
+    )
+    .expect("local hooks");
+    assert!(
+        hooks.contains(
+            &std::fs::canonicalize(&prefix)
+                .expect("canonical prefix")
+                .join("bin/kast")
+                .display()
+                .to_string(),
+        ),
+        "local hooks must bind the stable local entrypoint: {hooks}",
+    );
+    assert!(
+        hooks.contains(generation_id),
+        "local hooks must bind the exact generation: {hooks}",
+    );
+    let manifest: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(
+            local_marketplace.join("plugins/kast/.codex-plugin/plugin.json"),
+        )
+        .expect("local plugin manifest"),
+    )
+    .expect("local plugin manifest JSON");
+    assert_eq!(
+        manifest["version"],
+        format!("{}+codex.{generation_id}", env!("CARGO_PKG_VERSION")),
+    );
 
     let inactive_runtime = std::process::Command::new(prefix.join("bin/kast-dev"))
         .env("HOME", &home)

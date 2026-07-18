@@ -285,9 +285,13 @@ mod refresh_tests {
             "local headless authority must not invoke release-owned project-open bootstrap",
         );
         assert!(prefix.join("current/authority.json").is_file());
-        assert!(prefix.join("bin/kast-dev").is_file());
+        assert!(prefix.join("bin/kast").is_file());
+        assert!(
+            fs::symlink_metadata(prefix.join("bin/kast-dev")).is_err(),
+            "local authority must not invent a second command name",
+        );
         let entrypoint =
-            fs::read_to_string(prefix.join("bin/kast-dev")).expect("local development entrypoint");
+            fs::read_to_string(prefix.join("bin/kast")).expect("local development entrypoint");
         assert!(
             entrypoint.contains("export KAST_DATA_HOME=\"$state/data\""),
             "local entrypoint must isolate Kotlin workspace data by generation"
@@ -296,7 +300,7 @@ mod refresh_tests {
         let quoted_entrypoint = format!(
             "'{}'",
             canonical_prefix
-                .join("bin/kast-dev")
+                .join("bin/kast")
                 .display()
                 .to_string()
                 .replace('\'', "'\"'\"'")
