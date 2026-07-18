@@ -56,20 +56,20 @@ fn main() {
 }
 
 fn git_release_revision(repo_root: &std::path::Path) -> String {
-    let head_path = Command::new("git")
-        .args(["rev-parse", "--git-path", "HEAD"])
+    watch_git_path(repo_root, "HEAD");
+    watch_git_path(repo_root, "packed-refs");
+    let symbolic_ref = Command::new("git")
+        .args(["symbolic-ref", "--quiet", "HEAD"])
         .current_dir(repo_root)
         .output()
         .expect("git must be available or KAST_RELEASE_REVISION must be set");
-    if !head_path.status.success() {
-        panic!("git metadata is unavailable; set KAST_RELEASE_REVISION explicitly");
+    if symbolic_ref.status.success() {
+        let reference = String::from_utf8(symbolic_ref.stdout)
+            .expect("git symbolic ref must be UTF-8")
+            .trim()
+            .to_string();
+        watch_git_path(repo_root, &reference);
     }
-    let head_path = String::from_utf8(head_path.stdout)
-        .expect("git HEAD path must be UTF-8")
-        .trim()
-        .to_string();
-    let head_path = repo_root.join(head_path);
-    println!("cargo:rerun-if-changed={}", head_path.display());
 
     let output = Command::new("git")
         .args(["rev-parse", "HEAD"])
@@ -83,6 +83,22 @@ fn git_release_revision(repo_root: &std::path::Path) -> String {
         .expect("git revision must be UTF-8")
         .trim()
         .to_string()
+}
+
+fn watch_git_path(repo_root: &std::path::Path, git_path: &str) {
+    let output = Command::new("git")
+        .args(["rev-parse", "--git-path", git_path])
+        .current_dir(repo_root)
+        .output()
+        .expect("git must be available or KAST_RELEASE_REVISION must be set");
+    if !output.status.success() {
+        panic!("git metadata is unavailable; set KAST_RELEASE_REVISION explicitly");
+    }
+    let path = String::from_utf8(output.stdout)
+        .expect("git metadata path must be UTF-8")
+        .trim()
+        .to_string();
+    println!("cargo:rerun-if-changed={}", repo_root.join(path).display());
 }
 
 fn require_release_revision(revision: &str) {
