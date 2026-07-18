@@ -663,7 +663,15 @@ fn process_identity(pid: u64) -> Result<WorkspaceLeaseProcessIdentity> {
 }
 
 fn process_identity_is_live(identity: &WorkspaceLeaseProcessIdentity) -> bool {
-    process_identity(identity.pid).is_ok_and(|current| current == *identity)
+    let current = process_identity(identity.pid).ok();
+    process_identity_matches(identity, current.as_ref())
+}
+
+fn process_identity_matches(
+    expected: &WorkspaceLeaseProcessIdentity,
+    current: Option<&WorkspaceLeaseProcessIdentity>,
+) -> bool {
+    current == Some(expected)
 }
 
 fn owner_identity_is_live(identity: &WorkspaceLeaseOwnerIdentity) -> bool {
@@ -717,9 +725,11 @@ fn exact_runtime_observation(
         StaleDescriptorPolicy::Preserve,
     )?;
     for candidate in &inspection.candidates {
-        if candidate.descriptor == expected.descriptor
-            && candidate.descriptor_path == expected.descriptor_path
-        {
+        if runtime_descriptor_matches(
+            &candidate.descriptor,
+            &candidate.descriptor_path,
+            expected,
+        ) {
             if !process_identity_is_live(&expected.process) {
                 return Ok(ExactRuntimeObservation::Unavailable);
             }
@@ -739,6 +749,14 @@ fn exact_runtime_observation(
     } else {
         Ok(ExactRuntimeObservation::Unavailable)
     }
+}
+
+fn runtime_descriptor_matches(
+    descriptor: &ServerInstanceDescriptor,
+    descriptor_path: &str,
+    expected: &WorkspaceLeaseRuntimeIdentity,
+) -> bool {
+    descriptor == &expected.descriptor && descriptor_path == expected.descriptor_path
 }
 
 fn observe_active_binding(
@@ -808,8 +826,11 @@ fn stop_exact_runtime(
         StaleDescriptorPolicy::Preserve,
     )?;
     let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
-        candidate.descriptor == expected.descriptor
-            && candidate.descriptor_path == expected.descriptor_path
+        runtime_descriptor_matches(
+            &candidate.descriptor,
+            &candidate.descriptor_path,
+            expected,
+        )
             && process_identity_is_live(&expected.process)
     }) else {
         return Ok(false);
@@ -1388,14 +1409,57 @@ mod workspace_lease_tests {
     }
 
     #[test]
-    fn process_identity_rejects_pid_reuse_shape() {
-        let current = process_identity(u64::from(std::process::id())).expect("current process");
-        let replaced = WorkspaceLeaseProcessIdentity {
-            pid: current.pid,
-            started_at: format!("{}-different", current.started_at),
+    fn fake_process_identity_rejects_pid_reuse_shape() {
+        let expected = WorkspaceLeaseProcessIdentity {
+            pid: 42,
+            started_at: "fake-start-1".to_string(),
         };
-        assert!(process_identity_is_live(&current));
-        assert!(!process_identity_is_live(&replaced));
+        let replaced = WorkspaceLeaseProcessIdentity {
+            pid: 42,
+            started_at: "fake-start-2".to_string(),
+        };
+        assert!(process_identity_matches(&expected, Some(&expected)));
+        assert!(!process_identity_matches(&expected, Some(&replaced)));
+        assert!(!process_identity_matches(&expected, None));
+    }
+
+    #[test]
+    fn fake_runtime_identity_rejects_same_pid_with_replaced_descriptor_or_registry_entry() {
+        let descriptor = ServerInstanceDescriptor {
+            workspace_root: "/workspace".to_string(),
+            backend_name: "headless".to_string(),
+            backend_version: "revision-1".to_string(),
+            transport: "uds".to_string(),
+            socket_path: "/tmp/runtime-1.sock".to_string(),
+            pid: 42,
+            schema_version: SCHEMA_VERSION,
+        };
+        let expected = WorkspaceLeaseRuntimeIdentity {
+            descriptor_path: "registry-entry-1".to_string(),
+            descriptor: descriptor.clone(),
+            process: WorkspaceLeaseProcessIdentity {
+                pid: 42,
+                started_at: "fake-start-1".to_string(),
+            },
+        };
+        assert!(runtime_descriptor_matches(
+            &descriptor,
+            "registry-entry-1",
+            &expected,
+        ));
+
+        let mut replacement = descriptor;
+        replacement.socket_path = "/tmp/runtime-2.sock".to_string();
+        assert!(!runtime_descriptor_matches(
+            &replacement,
+            "registry-entry-1",
+            &expected,
+        ));
+        assert!(!runtime_descriptor_matches(
+            &expected.descriptor,
+            "registry-entry-2",
+            &expected,
+        ));
     }
 
     #[test]

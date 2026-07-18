@@ -325,7 +325,7 @@ raise SystemExit(completed.returncode)
 
 #[cfg(target_os = "macos")]
 #[test]
-fn runtime_loss_is_failed_before_a_leased_semantic_session_opens() {
+fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_boundedly() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -397,6 +397,51 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens() {
         .expect("verify after runtime loss");
     assert_error(&verify, "WORKSPACE_LEASE_RUNTIME_UNAVAILABLE");
     assert_eq!(backend.join().expect("scripted backend").len(), 4);
+
+    let failed_release = lease_command(
+        &binary,
+        &home,
+        &config_home,
+        &["release", "--backend", "idea", "--lease-id", &lease_id],
+        &workspace,
+    );
+    assert_success(&failed_release, "release failed lease");
+    assert_eq!(
+        output_json(&failed_release)["result"]["releaseReceipt"]["reason"],
+        "BORROWED_RUNTIME_PRESERVED"
+    );
+
+    std::fs::remove_file(&socket).expect("stale socket cleanup");
+    let replacement = spawn_scripted_idea_backend_for_invocations(
+        &home,
+        &config_home,
+        &workspace,
+        &socket,
+        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
+        2,
+        vec![],
+    );
+    let recovery = lease_command(
+        &binary,
+        &home,
+        &config_home,
+        &["acquire", "--backend", "idea"],
+        &workspace,
+    );
+    assert_success(&recovery, "bounded recovery acquire");
+    let recovery_id = output_json(&recovery)["result"]["leaseId"]
+        .as_str()
+        .expect("recovery lease id")
+        .to_string();
+    let recovery_release = lease_command(
+        &binary,
+        &home,
+        &config_home,
+        &["release", "--backend", "idea", "--lease-id", &recovery_id],
+        &workspace,
+    );
+    assert_success(&recovery_release, "bounded recovery release");
+    assert_eq!(replacement.join().expect("replacement backend").len(), 4);
 }
 
 #[cfg(target_os = "macos")]
