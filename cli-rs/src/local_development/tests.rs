@@ -1153,6 +1153,32 @@ mod refresh_tests {
     }
 
     #[test]
+    fn first_activation_retry_reconciles_receipt_owned_pre_current_state() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let request = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        );
+        let first = refresh_local_development(request.clone()).expect("first activation");
+        fs::remove_file(prefix.join("current")).expect("simulate crash before current cutover");
+
+        let recovered = refresh_local_development(request).expect("retry activation");
+
+        assert_eq!(recovered.receipt.generation_id, first.receipt.generation_id);
+        assert_eq!(
+            fs::read_link(prefix.join("current")).expect("recovered current"),
+            Path::new("generations").join(first.receipt.generation_id.as_str()),
+        );
+        super::validate_receipt_components(&recovered.receipt)
+            .expect("complete recovered generation");
+    }
+
+    #[test]
     fn refresh_rejects_switching_an_existing_prefix_to_another_workspace() {
         let source = initialized_repository();
         let other_workspace = initialized_repository();
