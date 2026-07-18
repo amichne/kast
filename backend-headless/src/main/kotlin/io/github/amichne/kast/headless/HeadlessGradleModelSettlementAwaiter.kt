@@ -9,7 +9,7 @@ class HeadlessGradleModelSettlementAwaiter internal constructor(
     private val nanoTime: () -> Long,
     private val pause: (Duration) -> Unit,
 ) {
-    fun await(observer: HeadlessGradleImportObserver): HeadlessGradleModelSettlementOutcome {
+    fun await(observer: () -> HeadlessGradleImportObservation): HeadlessGradleModelSettlementOutcome {
         val startedAt = nanoTime()
         val transitions = ArrayDeque<HeadlessGradleImportTransition>()
         var lastObservation: HeadlessGradleImportObservation? = null
@@ -19,7 +19,7 @@ class HeadlessGradleModelSettlementAwaiter internal constructor(
 
         while (true) {
             val elapsed = elapsedSince(startedAt)
-            val observation = observer.observe()
+            val observation = observer()
             totalObservations += 1
 
             if (observation == lastObservation) {

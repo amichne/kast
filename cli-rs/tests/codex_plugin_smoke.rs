@@ -108,6 +108,37 @@ fn codex_generator_check_reports_drift() {
 }
 
 #[test]
+fn codex_generator_check_does_not_require_a_writable_temporary_directory() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let output = temp.path().join("generated");
+    let invalid_temp_directory = temp.path().join("not-a-directory");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::write(&invalid_temp_directory, "file").expect("invalid temp directory");
+
+    let generated = kast(&home, &config_home)
+        .args(["developer", "codex", "generate", "--output-dir"])
+        .arg(&output)
+        .output()
+        .expect("generate");
+    assert!(generated.status.success());
+
+    let checked = kast(&home, &config_home)
+        .env("TMPDIR", &invalid_temp_directory)
+        .args(["developer", "codex", "generate", "--check", "--output-dir"])
+        .arg(&output)
+        .output()
+        .expect("check without scratch storage");
+
+    assert!(
+        checked.status.success(),
+        "check unexpectedly used TMPDIR: {}",
+        String::from_utf8_lossy(&checked.stdout)
+    );
+}
+
+#[test]
 fn codex_hooks_guard_kotlin_mutations_and_current_diagnostics() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

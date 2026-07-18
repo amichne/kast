@@ -1,7 +1,28 @@
 mod support;
 
+use std::ffi::OsStr;
+use std::path::Path;
 use support::metrics::{seed_high_cardinality_impact, seed_source_index};
 use support::{kast, spawn_scripted_idea_backend};
+
+fn run_agent_json<I, S>(home: &Path, config: &Path, args: I) -> serde_json::Value
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let output = kast(home, config)
+        .args(["--output", "json", "agent"])
+        .args(args)
+        .output()
+        .expect("agent command");
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    serde_json::from_slice(&output.stdout).expect("agent JSON")
+}
 
 fn exact_selector() -> [&'static str; 6] {
     [
@@ -547,28 +568,18 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
         &temp.path().join("complete-zero-count.sock"),
         vec![("symbol/references", response())],
     );
-    let count = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let count = run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--selector-handle",
             selector_handle,
             "--count",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("count complete zero");
-    assert!(
-        count.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&count.stdout),
-        String::from_utf8_lossy(&count.stderr),
+        ],
     );
-    let count: serde_json::Value =
-        serde_json::from_slice(&count.stdout).expect("count complete zero json");
     assert_eq!(count["result"]["page"]["cardinality"]["type"], "EXACT");
     assert_eq!(count["result"]["page"]["cardinality"]["totalCount"], 0);
     assert_eq!(count["result"]["coverage"]["type"], "COMPLETE");
@@ -582,11 +593,10 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
         &temp.path().join("complete-zero-selected.sock"),
         vec![("symbol/references", response())],
     );
-    let selected = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let selected = run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--selector-handle",
             selector_handle,
@@ -594,17 +604,8 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
             "subject",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("selected complete zero");
-    assert!(
-        selected.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&selected.stdout),
-        String::from_utf8_lossy(&selected.stderr),
+        ],
     );
-    let selected: serde_json::Value =
-        serde_json::from_slice(&selected.stdout).expect("selected complete zero json");
     assert!(selected["result"].get("page").is_none());
     assert_eq!(selected["result"]["coverage"]["type"], "COMPLETE");
     assert_eq!(selected["result"]["limitations"], serde_json::json!([]));
@@ -644,29 +645,18 @@ fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations()
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let stdout = run_agent_json(
+        &home,
+        &config,
+        [
             "callers",
             "--selector-handle",
             selector_handle,
             "--count",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("degraded relationship evidence");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("degraded relationship json");
     assert_eq!(stdout["result"]["outcome"], "DEGRADED");
     assert_eq!(
         stdout["result"]["cardinality"],
@@ -710,29 +700,18 @@ fn handle_backed_stale_relationship_preserves_known_minimum_and_limitations() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let stdout = run_agent_json(
+        &home,
+        &config,
+        [
             "callers",
             "--selector-handle",
             selector_handle,
             "--count",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("stale relationship evidence");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("stale relationship json");
     assert_eq!(stdout["result"]["outcome"], "CURSOR_STALE");
     assert_eq!(
         stdout["result"]["cardinality"],
@@ -855,11 +834,10 @@ fn selector_handle_drives_impact_without_position_resolution() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let result = run_agent_json(
+        &home,
+        &config,
+        [
             "impact",
             "--selector-handle",
             selector_handle,
@@ -869,18 +847,8 @@ fn selector_handle_drives_impact_without_position_resolution() {
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("impact by selector handle");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let result: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("handle impact JSON");
     assert_eq!(result["result"]["query"]["symbol"], "lib.Foo");
     assert_eq!(result["result"]["nodes"].as_array().map(Vec::len), Some(4));
     let page_token = result["result"]["nextPageToken"]
@@ -952,28 +920,17 @@ fn selector_handle_impact_preserves_rejection_before_sql() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let result = run_agent_json(
+        &home,
+        &config,
+        [
             "impact",
             "--selector-handle",
             "ksh1.stale-impact-selector-handle",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("stale impact selector handle");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let result: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("impact rejection JSON");
     assert_eq!(result["result"]["outcome"], "SELECTOR_HANDLE_REJECTED");
     assert_eq!(result["result"]["reason"], "STALE");
     assert_eq!(result["result"]["recovery"], "RESOLVE_AGAIN");
@@ -1011,9 +968,6 @@ fn impact_pages_are_query_bound_and_do_not_overlap() {
             vec![("raw/resolve", resolved.clone())],
         );
         let mut args = vec![
-            "--output",
-            "json",
-            "agent",
             "impact",
             "--symbol",
             "lib.Foo",
@@ -1033,10 +987,7 @@ fn impact_pages_are_query_bound_and_do_not_overlap() {
         if let Some(token) = page_token {
             args.extend(["--page-token", token]);
         }
-        let output = kast(&home, &config)
-            .args(args)
-            .output()
-            .expect("impact page");
+        let result = run_agent_json(&home, &config, args);
         let requests = backend.join().expect("impact backend");
         assert_eq!(
             requests.last().expect("resolve request")["method"],
@@ -1046,13 +997,7 @@ fn impact_pages_are_query_bound_and_do_not_overlap() {
             requests.last().expect("resolve request")["params"]["position"]["offset"],
             1
         );
-        assert!(
-            output.status.success(),
-            "stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
-        serde_json::from_slice::<serde_json::Value>(&output.stdout).expect("impact page json")
+        result
     };
 
     let first = run_page(1, None);
@@ -1141,11 +1086,10 @@ fn impact_stops_before_sql_for_mismatched_and_unsupported_subjects() {
                 }),
             )],
         );
-        let output = kast(&home, &config)
-            .args([
-                "--output",
-                "json",
-                "agent",
+        let result = run_agent_json(
+            &home,
+            &config,
+            [
                 "impact",
                 "--symbol",
                 "sample.Service",
@@ -1155,18 +1099,9 @@ fn impact_stops_before_sql_for_mismatched_and_unsupported_subjects() {
                 "15",
                 "--workspace-root",
                 workspace.to_str().expect("workspace"),
-            ])
-            .output()
-            .expect("closed impact outcome");
-        backend.join().expect("closed impact backend");
-        assert!(
-            output.status.success(),
-            "stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
+            ],
         );
-        let result: serde_json::Value =
-            serde_json::from_slice(&output.stdout).expect("closed impact json");
+        backend.join().expect("closed impact backend");
         assert_eq!(result["result"]["outcome"], expected_outcome, "{result}");
     }
 }
@@ -1250,27 +1185,17 @@ fn exact_symbol_returns_one_reusable_anchored_identity() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let stdout = run_agent_json(
+        &home,
+        &config,
+        [
             "symbol",
             "--query",
             "sample.Service.run",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("exact symbol");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let stdout: serde_json::Value = serde_json::from_slice(&output.stdout).expect("symbol json");
     assert_eq!(
         stdout["result"]["identity"],
         serde_json::json!({
@@ -1320,27 +1245,17 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
         )],
     );
 
-    let resolved = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let resolved_json = run_agent_json(
+        &home,
+        &config,
+        [
             "symbol",
             "--query",
             "sample.Service.run",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("resolve selector handle");
-    assert!(
-        resolved.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&resolved.stdout),
-        String::from_utf8_lossy(&resolved.stderr),
+        ],
     );
-    let resolved_json: serde_json::Value =
-        serde_json::from_slice(&resolved.stdout).expect("resolved handle json");
     assert_eq!(resolved_json["result"]["identity"], selector);
     assert_eq!(
         resolved_json["result"]["selectorHandle"], selector_handle,
@@ -1364,24 +1279,16 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
             }),
         )],
     );
-    let references = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--selector-handle",
             selector_handle,
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("references by selector handle");
-    assert!(
-        references.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&references.stdout),
-        String::from_utf8_lossy(&references.stderr),
+        ],
     );
     requests.extend(references_backend.join().expect("references backend"));
 
@@ -1479,25 +1386,10 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 .join(format!("selector-handle-{command_name}-{index}.sock")),
             vec![(method, response)],
         );
-        let mut command = kast(&home, &config);
-        command.args([
-            "--output",
-            "json",
-            "agent",
-            command_name,
-            "--selector-handle",
-            selector_handle,
-        ]);
-        command.args(extra_args);
-        command.args(["--workspace-root", workspace.to_str().expect("workspace")]);
-        let output = command.output().expect("relationship by selector handle");
-
-        assert!(
-            output.status.success(),
-            "command={command_name} stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
+        let mut args = vec![command_name, "--selector-handle", selector_handle];
+        args.extend(extra_args);
+        args.extend(["--workspace-root", workspace.to_str().expect("workspace")]);
+        run_agent_json(&home, &config, args);
         let requests = backend.join().expect("relationship backend");
         assert_eq!(requests[2]["method"], method);
         assert_eq!(requests[2]["params"]["selectorHandle"], selector_handle);
@@ -1564,28 +1456,17 @@ fn selector_handle_rejections_stay_distinct_and_actionable_in_cli_projection() {
                 }),
             )],
         );
-        let output = kast(&home, &config)
-            .args([
-                "--output",
-                "json",
-                "agent",
+        let result = run_agent_json(
+            &home,
+            &config,
+            [
                 command_name,
                 "--selector-handle",
                 selector_handle,
                 "--workspace-root",
                 workspace.to_str().expect("workspace"),
-            ])
-            .output()
-            .expect("relationship handle rejection");
-
-        assert!(
-            output.status.success(),
-            "command={command_name} reason={reason} stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
+            ],
         );
-        let result: serde_json::Value =
-            serde_json::from_slice(&output.stdout).expect("rejection projection JSON");
         assert_eq!(result["result"]["outcome"], "SELECTOR_HANDLE_REJECTED");
         assert_eq!(result["result"]["reason"], reason);
         assert_eq!(result["result"]["recovery"], recovery);
@@ -1632,27 +1513,17 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             }),
         )],
     );
-    let resolved = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let resolved_json = run_agent_json(
+        &home,
+        &config,
+        [
             "symbol",
             "--query",
             "lib.Bar",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("resolve identity");
-    assert!(
-        resolved.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&resolved.stdout),
-        String::from_utf8_lossy(&resolved.stderr),
+        ],
     );
-    let resolved_json: serde_json::Value =
-        serde_json::from_slice(&resolved.stdout).expect("resolved identity json");
     assert_eq!(resolved_json["result"]["identity"], selector);
     let mut semantic_requests = resolve_backend.join().expect("resolve backend");
 
@@ -1680,11 +1551,10 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             }),
         )],
     );
-    let references = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let references_json = run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--symbol",
             "lib.Bar",
@@ -1698,12 +1568,8 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("references");
-    assert!(references.status.success());
-    let references_json: serde_json::Value =
-        serde_json::from_slice(&references.stdout).expect("references json");
+        ],
+    );
     assert_eq!(references_json["result"]["outcome"], "AVAILABLE");
     let reference_page_token = references_json["result"]["page"]["nextPageToken"]
         .as_str()
@@ -1731,11 +1597,10 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             }),
         )],
     );
-    let reference_continuation = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--symbol",
             "lib.Bar",
@@ -1751,10 +1616,8 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             &reference_page_token,
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("reference continuation");
-    assert!(reference_continuation.status.success());
+        ],
+    );
     semantic_requests.extend(
         second_reference_backend
             .join()
@@ -1788,11 +1651,10 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             }),
         )],
     );
-    let callers = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let callers_json = run_agent_json(
+        &home,
+        &config,
+        [
             "callers",
             "--symbol",
             "lib.Bar",
@@ -1808,12 +1670,8 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("callers");
-    assert!(callers.status.success());
-    let callers_json: serde_json::Value =
-        serde_json::from_slice(&callers.stdout).expect("callers json");
+        ],
+    );
     assert_eq!(callers_json["result"]["outcome"], "AVAILABLE");
     semantic_requests.extend(caller_backend.join().expect("callers backend"));
 
@@ -1837,11 +1695,10 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             }),
         )],
     );
-    let impact = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let impact_json = run_agent_json(
+        &home,
+        &config,
+        [
             "impact",
             "--symbol",
             "lib.Bar",
@@ -1857,12 +1714,8 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("impact");
-    assert!(impact.status.success());
-    let impact_json: serde_json::Value =
-        serde_json::from_slice(&impact.stdout).expect("impact json");
+        ],
+    );
     assert_eq!(impact_json["result"]["outcome"], "DEGRADED");
     assert_eq!(
         impact_json["result"]["reason"],
@@ -1934,22 +1787,17 @@ fn exact_symbol_does_not_publish_a_partial_identity() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let stdout = run_agent_json(
+        &home,
+        &config,
+        [
             "symbol",
             "--query",
             "sample.Service.run",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("partial exact symbol");
-
-    assert!(output.status.success());
-    let stdout: serde_json::Value = serde_json::from_slice(&output.stdout).expect("symbol json");
+        ],
+    );
     assert_eq!(stdout["result"]["outcome"], "IDENTITY_ANCHOR_UNAVAILABLE");
     assert!(stdout["result"]["identity"].is_null(), "{stdout}");
     backend.join().expect("scripted backend");
@@ -2014,11 +1862,10 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let stdout = run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--symbol",
             "sample.Service",
@@ -2030,18 +1877,8 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
             "class",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("references");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("references json");
     assert_eq!(stdout["result"]["outcome"], "AVAILABLE");
     assert_eq!(stdout["result"]["relation"], "references");
     assert_eq!(stdout["result"]["subject"]["fqName"], "sample.Service");
@@ -2094,11 +1931,10 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
             }),
         )],
     );
-    let continuation = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--symbol",
             "sample.Service",
@@ -2112,14 +1948,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
             &public_token,
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("reference continuation");
-    assert!(
-        continuation.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&continuation.stdout),
-        String::from_utf8_lossy(&continuation.stderr),
+        ],
     );
     let continuation_requests = continuation_backend.join().expect("continuation backend");
     assert_eq!(
@@ -2190,11 +2019,10 @@ fn references_preserve_a_zero_known_minimum_while_search_remains_resumable() {
         )],
     );
 
-    let output = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let stdout = run_agent_json(
+        &home,
+        &config,
+        [
             "references",
             "--symbol",
             "sample.Service",
@@ -2206,18 +2034,8 @@ fn references_preserve_a_zero_known_minimum_while_search_remains_resumable() {
             "class",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("resumable empty reference page");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
+        ],
     );
-    let stdout: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("resumable reference json");
     assert_eq!(stdout["result"]["page"]["returnedCount"], 0);
     assert_eq!(
         stdout["result"]["page"]["cardinality"],
@@ -2309,11 +2127,10 @@ fn references_project_every_closed_non_available_outcome() {
             &socket,
             vec![("symbol/references", response)],
         );
-        let output = kast(&home, &config)
-            .args([
-                "--output",
-                "json",
-                "agent",
+        let stdout = run_agent_json(
+            &home,
+            &config,
+            [
                 "references",
                 "--symbol",
                 "sample.Service",
@@ -2325,17 +2142,8 @@ fn references_project_every_closed_non_available_outcome() {
                 "class",
                 "--workspace-root",
                 workspace.to_str().expect("workspace"),
-            ])
-            .output()
-            .expect("closed references outcome");
-        assert!(
-            output.status.success(),
-            "outcome={expected_outcome} stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
+            ],
         );
-        let stdout: serde_json::Value =
-            serde_json::from_slice(&output.stdout).expect("references outcome json");
         assert_eq!(stdout["result"]["outcome"], expected_outcome);
         assert_eq!(stdout["result"]["selector"]["fqName"], "sample.Service");
         backend.join().expect("scripted backend");
@@ -2722,11 +2530,10 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                 }),
             )],
         );
-        let output = kast(&home, &config)
-            .args([
-                "--output",
-                "json",
-                "agent",
+        let stdout = run_agent_json(
+            &home,
+            &config,
+            [
                 command,
                 "--symbol",
                 "sample.Service.run",
@@ -2742,17 +2549,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                 "4",
                 "--workspace-root",
                 workspace.to_str().expect("workspace"),
-            ])
-            .output()
-            .expect("call relationship");
-        assert!(
-            output.status.success(),
-            "command={command} stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
+            ],
         );
-        let stdout: serde_json::Value =
-            serde_json::from_slice(&output.stdout).expect("call relationship json");
         assert_eq!(stdout["result"]["outcome"], "AVAILABLE");
         assert_eq!(stdout["result"]["relation"], command);
         assert_eq!(
@@ -2807,11 +2605,10 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
             }),
         )],
     );
-    let implementations = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let implementations_json = run_agent_json(
+        &home,
+        &config,
+        [
             "implementations",
             "--symbol",
             "sample.Service",
@@ -2825,12 +2622,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("implementations");
-    assert!(implementations.status.success());
-    let implementations_json: serde_json::Value =
-        serde_json::from_slice(&implementations.stdout).expect("implementations json");
+        ],
+    );
     assert_eq!(
         implementations_json["result"]["records"][0]["relation"],
         "IMPLEMENTATION"
@@ -2879,11 +2672,10 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
             }),
         )],
     );
-    let hierarchy = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let hierarchy_json = run_agent_json(
+        &home,
+        &config,
+        [
             "hierarchy",
             "--symbol",
             "sample.Service",
@@ -2901,12 +2693,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("hierarchy");
-    assert!(hierarchy.status.success());
-    let hierarchy_json: serde_json::Value =
-        serde_json::from_slice(&hierarchy.stdout).expect("hierarchy json");
+        ],
+    );
     assert_eq!(
         hierarchy_json["result"]["records"][0]["relation"],
         "SUBTYPE"
@@ -2958,11 +2746,10 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
             }),
         )],
     );
-    let first = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let first_json = run_agent_json(
+        &home,
+        &config,
+        [
             "callers",
             "--symbol",
             "sample.Service.run",
@@ -2978,17 +2765,8 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
             "4",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("first call page");
-    assert!(
-        first.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&first.stdout),
-        String::from_utf8_lossy(&first.stderr),
+        ],
     );
-    let first_json: serde_json::Value =
-        serde_json::from_slice(&first.stdout).expect("first page json");
     let public_token = first_json["result"]["page"]["nextPageToken"]
         .as_str()
         .expect("public traversal token")
@@ -3027,11 +2805,10 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
             }),
         )],
     );
-    let second = kast(&home, &config)
-        .args([
-            "--output",
-            "json",
-            "agent",
+    let second_json = run_agent_json(
+        &home,
+        &config,
+        [
             "callers",
             "--symbol",
             "sample.Service.run",
@@ -3049,17 +2826,8 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
             &public_token,
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("second call page");
-    assert!(
-        second.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&second.stdout),
-        String::from_utf8_lossy(&second.stderr),
+        ],
     );
-    let second_json: serde_json::Value =
-        serde_json::from_slice(&second.stdout).expect("second page json");
     let first_names = first_json["result"]["records"]
         .as_array()
         .expect("first records")
@@ -3178,9 +2946,6 @@ fn typed_relationship_commands_project_closed_non_available_outcomes() {
             vec![(method, response)],
         );
         let mut args = vec![
-            "--output".to_string(),
-            "json".to_string(),
-            "agent".to_string(),
             command.to_string(),
             "--symbol".to_string(),
             "sample.Service".to_string(),
@@ -3198,18 +2963,7 @@ fn typed_relationship_commands_project_closed_non_available_outcomes() {
             "--workspace-root".to_string(),
             workspace.to_string_lossy().into_owned(),
         ]);
-        let output = kast(&home, &config)
-            .args(args)
-            .output()
-            .expect("closed relationship outcome");
-        assert!(
-            output.status.success(),
-            "command={command} stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
-        let stdout: serde_json::Value =
-            serde_json::from_slice(&output.stdout).expect("relationship outcome json");
+        let stdout = run_agent_json(&home, &config, args);
         assert_eq!(stdout["result"]["outcome"], expected_outcome);
         assert!(stdout["result"].get("records").is_none());
         backend.join().expect("outcome backend");

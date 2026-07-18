@@ -36,6 +36,15 @@ local_prefix="${tmp_root}/local-development"
 runtime_started=false
 installed_kast=""
 
+run_installed_kast() {
+  local evidence_name="$1"
+  shift
+  "$installed_kast" --output json "$@" \
+    --workspace-root "$fixture_root" \
+    --backend headless \
+    >"${evidence_dir}/${evidence_name}.json"
+}
+
 cleanup() {
   local status=$?
   if [[ "$runtime_started" == true && -x "$installed_kast" ]]; then
@@ -102,17 +111,12 @@ installed_kast="${local_prefix}/bin/kast-dev"
 hash_kotlin_tree "$fixture_root" >"${evidence_dir}/kotlin-before.sha256"
 
 runtime_started=true
-if ! "$installed_kast" --output json developer runtime up \
-  --workspace-root "$fixture_root" \
-  --backend headless >"${evidence_dir}/runtime-up.json"; then
+if ! run_installed_kast runtime-up developer runtime up; then
   cat "${evidence_dir}/runtime-up.json" >&2
   die 'Installed headless runtime failed to start for the representative fixture'
 fi
 
-"$installed_kast" --output json agent verify \
-  --workspace-root "$fixture_root" \
-  --backend headless \
-  --explain >"${evidence_dir}/verify.json"
+run_installed_kast verify agent verify --explain
 jq -e \
   '.ok == true and
    .result.semanticWorkspace.backendName == "headless" and
@@ -125,10 +129,7 @@ jq -e \
   || die 'Representative fixture did not reach compiler-backed READY state with only the expected cold-index limitation'
 
 type_symbol='fixture.domain.RenderToken'
-"$installed_kast" --output json agent symbol \
-  --query "$type_symbol" \
-  --workspace-root "$fixture_root" \
-  --backend headless >"${evidence_dir}/symbol.json"
+run_installed_kast symbol agent symbol --query "$type_symbol"
 jq -e \
   --arg symbol "$type_symbol" \
   '.ok == true and
@@ -141,12 +142,10 @@ jq -e \
   || die 'Representative fixture exact symbol did not expose a compiler-issued selector handle'
 selector_handle="$(jq -er '.result.selectorHandle' "${evidence_dir}/symbol.json")"
 
-"$installed_kast" --output json agent references \
+run_installed_kast references agent references \
   --selector-handle "$selector_handle" \
-  --workspace-root "$fixture_root" \
-  --backend headless \
   --limit 100 \
-  --explain >"${evidence_dir}/references.json"
+  --explain
 jq -e \
   '.ok == true and
    .result.outcome == "AVAILABLE" and
@@ -158,12 +157,10 @@ jq -e \
   "${evidence_dir}/references.json" >/dev/null \
   || die 'Representative fixture references were not exact, exhaustive, and nonzero'
 
-"$installed_kast" --output json agent rename \
+run_installed_kast rename-plan agent rename \
   --selector-handle "$selector_handle" \
   --new-name RenderTokenProof \
-  --workspace-root "$fixture_root" \
-  --backend headless \
-  --explain >"${evidence_dir}/rename-plan.json"
+  --explain
 jq -e \
   --arg handle "$selector_handle" \
   '.ok == true and
@@ -187,30 +184,27 @@ diagnostic_args=()
 for clean_file in "${clean_files[@]}"; do
   diagnostic_args+=(--file-path "$clean_file")
 done
-"$installed_kast" --output json agent diagnostics \
+run_installed_kast diagnostics-clean agent diagnostics \
   "${diagnostic_args[@]}" \
-  --workspace-root "$fixture_root" \
-  --backend headless \
-  --explain >"${evidence_dir}/diagnostics-clean.json"
+  --explain
 jq -e \
   --argjson expected "${#clean_files[@]}" \
-  '.ok == true and
+  '(.result.steps[] | select(.name == "diagnostics").result) as $diagnostics |
+   .ok == true and
    (.result.filePaths | length) == $expected and
-   (.result.steps[] | select(.name == "diagnostics").result.semanticOutcome) == "COMPLETE" and
-   (.result.steps[] | select(.name == "diagnostics").result.analyzedFileCount) == $expected and
-   (.result.steps[] | select(.name == "diagnostics").result.skippedFileCount) == 0 and
-   (.result.steps[] | select(.name == "diagnostics").result.cardinality) == {"type": "EXACT", "totalCount": 0} and
-   (.result.steps[] | select(.name == "diagnostics").result.diagnostics) == []' \
+   $diagnostics.semanticOutcome == "COMPLETE" and
+   $diagnostics.analyzedFileCount == $expected and
+   $diagnostics.skippedFileCount == 0 and
+   $diagnostics.cardinality == {"type": "EXACT", "totalCount": 0} and
+   $diagnostics.diagnostics == []' \
   "${evidence_dir}/diagnostics-clean.json" >/dev/null \
   || die 'Representative main, test, and test-fixture diagnostics were not exactly clean'
 
 broken_file="${fixture_root}/consumer/src/main/kotlin/fixture/consumer/BrokenReference.kt"
 cp "${fixture_root}/broken/BrokenReference.kt" "$broken_file"
-"$installed_kast" --output json agent diagnostics \
+run_installed_kast diagnostics-broken agent diagnostics \
   --file-path "$broken_file" \
-  --workspace-root "$fixture_root" \
-  --backend headless \
-  --explain >"${evidence_dir}/diagnostics-broken.json"
+  --explain
 jq -e \
   '.ok == true and
    (.result.steps[] | select(.name == "diagnostics").result.semanticOutcome) == "COMPLETE" and
@@ -227,9 +221,7 @@ hash_kotlin_tree "$fixture_root" >"${evidence_dir}/kotlin-after.sha256"
 cmp "${evidence_dir}/kotlin-before.sha256" "${evidence_dir}/kotlin-after.sha256" \
   || die 'Representative semantic proof changed fixture Kotlin bytes'
 
-"$installed_kast" --output json developer runtime stop \
-  --workspace-root "$fixture_root" \
-  --backend headless >"${evidence_dir}/runtime-stop.json"
+run_installed_kast runtime-stop developer runtime stop
 runtime_started=false
 jq -e '.stopped == true and .stoppedCount == 1' "${evidence_dir}/runtime-stop.json" >/dev/null \
   || die 'Representative fixture did not stop exactly one runtime'

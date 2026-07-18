@@ -22,7 +22,6 @@ class HeadlessGradleModelSettlementException(
             val evidence = outcome.evidence
             return "$failure: " +
                 "lastObservation=${evidence.lastObservation}, " +
-                "transitionProgress=${evidence.transitionProgress}, " +
                 "totalObservations=${evidence.totalObservations}, " +
                 "totalTransitions=${evidence.totalTransitions}, " +
                 "stableObservations=${evidence.stableObservations}, " +

@@ -18,9 +18,9 @@ pub enum AgentCommand {
     /// Find bounded references to one compiler-anchored declaration.
     References(AgentReferencesArgs),
     /// Find bounded incoming callers of one compiler-anchored function.
-    Callers(AgentCallersArgs),
+    Callers(AgentCallsArgs),
     /// Find bounded outgoing callees of one compiler-anchored function.
-    Callees(AgentCalleesArgs),
+    Callees(AgentCallsArgs),
     /// Find bounded implementations of one compiler-anchored type.
     Implementations(AgentImplementationsArgs),
     /// Navigate a bounded type hierarchy from one compiler-anchored type.
@@ -854,7 +854,7 @@ pub struct AgentReferencesArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct AgentCallersArgs {
+pub struct AgentCallsArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
@@ -865,26 +865,7 @@ pub struct AgentCallersArgs {
     /// Maximum relationship records to return.
     #[arg(long, default_value_t)]
     pub limit: AgentRelationLimit,
-    /// Opaque query-bound token from the preceding callers page.
-    #[arg(long)]
-    pub page_token: Option<AgentRelationPageToken>,
-    #[command(flatten)]
-    pub view: AgentRelationViewArgs,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AgentCalleesArgs {
-    #[command(flatten)]
-    pub runtime: AgentRuntimeArgs,
-    #[command(flatten)]
-    pub selector: AgentReusableSymbolSelectorArgs,
-    /// Maximum call traversal depth.
-    #[arg(long, default_value_t)]
-    pub depth: AgentRelationDepth,
-    /// Maximum relationship records to return.
-    #[arg(long, default_value_t)]
-    pub limit: AgentRelationLimit,
-    /// Opaque query-bound token from the preceding callees page.
+    /// Opaque query-bound token from the preceding page.
     #[arg(long)]
     pub page_token: Option<AgentRelationPageToken>,
     #[command(flatten)]

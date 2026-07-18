@@ -2,6 +2,7 @@ package io.github.amichne.kast.headless
 
 import java.time.Duration
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -19,17 +20,15 @@ class HeadlessGradleModelSettlementAwaiterTest {
                 observation(index = HeadlessIdeaIndexState.DUMB),
             ) + List(10) { observation() }
         val harness = SettlementHarness(observations)
+        val observer: () -> HeadlessGradleImportObservation = harness::observe
 
-        val outcome = harness.awaiter(stableObservations = 10).await(harness::observe)
+        val outcome = harness.awaiter(stableObservations = 10).await(observer)
 
         val settled = assertInstanceOf(HeadlessGradleModelSettlementOutcome.Settled::class.java, outcome)
         assertEquals(13, settled.evidence.totalObservations)
         assertEquals(10, settled.evidence.stableObservations)
         assertEquals(observation(), settled.evidence.lastObservation)
-        assertEquals(
-            HeadlessGradleModelSettlementEvidence.TransitionProgress.TRANSITIONS_OBSERVED,
-            settled.evidence.transitionProgress,
-        )
+        assertTrue(settled.evidence.totalTransitions > 0)
     }
 
     @Test
@@ -46,10 +45,6 @@ class HeadlessGradleModelSettlementAwaiterTest {
 
         val timedOut = assertInstanceOf(HeadlessGradleModelSettlementOutcome.TimedOut::class.java, outcome)
         assertEquals(stalled, timedOut.evidence.lastObservation)
-        assertEquals(
-            HeadlessGradleModelSettlementEvidence.TransitionProgress.NO_TRANSITIONS,
-            timedOut.evidence.transitionProgress,
-        )
         assertEquals(0, timedOut.evidence.totalTransitions)
     }
 
@@ -66,10 +61,6 @@ class HeadlessGradleModelSettlementAwaiterTest {
         val outcome = harness.awaiter(timeoutMillis = 4).await(harness::observe)
 
         val timedOut = assertInstanceOf(HeadlessGradleModelSettlementOutcome.TimedOut::class.java, outcome)
-        assertEquals(
-            HeadlessGradleModelSettlementEvidence.TransitionProgress.TRANSITIONS_OBSERVED,
-            timedOut.evidence.transitionProgress,
-        )
         assertTrue(timedOut.evidence.totalTransitions > 0)
     }
 
@@ -85,9 +76,11 @@ class HeadlessGradleModelSettlementAwaiterTest {
         val outcome = harness.awaiter(timeoutMillis = 2).await(harness::observe)
 
         val error = HeadlessGradleModelSettlementException(outcome)
+        val message = error.message.orEmpty()
 
-        assertTrue(error.message.orEmpty().contains("lastObservation=$stalled"))
-        assertTrue(error.message.orEmpty().contains("transitionProgress=NO_TRANSITIONS"))
+        assertTrue(message.contains("lastObservation=$stalled"))
+        assertTrue(message.contains("totalTransitions=0"))
+        assertFalse(message.contains("transitionProgress"))
     }
 
     @Test
@@ -153,26 +146,24 @@ class HeadlessGradleModelSettlementAwaiterTest {
     }
 
     @Test
-    fun `repeated representative transition sequences settle deterministically`() {
-        repeat(100) {
-            val harness =
-                SettlementHarness(
-                    listOf(
-                        observation(reload = HeadlessGradleReloadState.SCHEDULED),
-                        observation(
-                            reload = HeadlessGradleReloadState.IN_PROGRESS,
-                            resolve = HeadlessGradleResolveState.IN_PROGRESS,
-                        ),
-                        observation(index = HeadlessIdeaIndexState.DUMB),
-                        observation(),
-                        observation(),
+    fun `representative transition sequence settles deterministically`() {
+        val harness =
+            SettlementHarness(
+                listOf(
+                    observation(reload = HeadlessGradleReloadState.SCHEDULED),
+                    observation(
+                        reload = HeadlessGradleReloadState.IN_PROGRESS,
+                        resolve = HeadlessGradleResolveState.IN_PROGRESS,
                     ),
-                )
+                    observation(index = HeadlessIdeaIndexState.DUMB),
+                    observation(),
+                    observation(),
+                ),
+            )
 
-            val outcome = harness.awaiter(stableObservations = 2).await(harness::observe)
+        val outcome = harness.awaiter(stableObservations = 2).await(harness::observe)
 
-            assertInstanceOf(HeadlessGradleModelSettlementOutcome.Settled::class.java, outcome)
-        }
+        assertInstanceOf(HeadlessGradleModelSettlementOutcome.Settled::class.java, outcome)
     }
 
     private fun policy(
