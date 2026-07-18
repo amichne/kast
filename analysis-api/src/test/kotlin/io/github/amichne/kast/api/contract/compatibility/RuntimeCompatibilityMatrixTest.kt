@@ -69,11 +69,11 @@ class RuntimeCompatibilityMatrixTest {
         assertEquals(
             RuntimeCompatibilityOutcome.UpdateRequired(
                 RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision(
-                    actual = WorkspaceMetadataRevision(4),
+                    actual = WorkspaceMetadataRevision(5),
                     supported = setOf(CURRENT_METADATA),
                 ),
             ),
-            matrix.assess(facts(workspaceMetadataRevision = WorkspaceMetadataRevision(4))),
+            matrix.assess(facts(workspaceMetadataRevision = WorkspaceMetadataRevision(5))),
         )
     }
 
@@ -143,7 +143,7 @@ class RuntimeCompatibilityMatrixTest {
         }
         assertThrows<IllegalArgumentException> {
             RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision(
-                actual = WorkspaceMetadataRevision(3),
+                actual = WorkspaceMetadataRevision(4),
                 supported = emptySet(),
             )
         }
@@ -217,7 +217,7 @@ class RuntimeCompatibilityMatrixTest {
         val CURRENT_CLI = CliImplementationVersion("0.13.0")
         val CURRENT_RELEASE = ReleaseRevision("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         val CURRENT_PROTOCOL = ProtocolRevision(1)
-        val CURRENT_METADATA = WorkspaceMetadataRevision(3)
+        val CURRENT_METADATA = WorkspaceMetadataRevision(4)
         val CURRENT_RUNTIME = RuntimeIdentity(
             implementationVersion = RuntimeImplementationVersion("0.13.0"),
             backendKind = RuntimeBackendKind.IDEA,

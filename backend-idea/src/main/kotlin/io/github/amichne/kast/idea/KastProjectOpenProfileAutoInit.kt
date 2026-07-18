@@ -108,12 +108,10 @@ object KastProjectOpenProfileAutoInit {
             is CliAuthorityLoadResult.Rejected ->
                 return ProjectOpenProfileAutoInitResult.Failed(result.message)
         }
-        if (pluginVersion.value != cliAuthority.version.value) {
-            return ProjectOpenProfileAutoInitResult.Failed(
-                "Kast plugin version ${pluginVersion.value} does not match CLI version ${cliAuthority.version.value}; update both before workspace setup.",
-            )
-        }
-        if (pluginRevision != cliAuthority.revision) {
+        if (
+            pluginVersion.value == cliAuthority.version.value &&
+            pluginRevision != cliAuthority.revision
+        ) {
             return ProjectOpenProfileAutoInitResult.Failed(
                 "Kast plugin revision ${pluginRevision.value} does not match CLI revision ${cliAuthority.revision.value}; update both before workspace setup.",
             )

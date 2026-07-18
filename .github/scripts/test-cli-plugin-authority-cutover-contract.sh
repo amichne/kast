@@ -106,8 +106,8 @@ require_not_contains "cli-rs/src/runtime/descriptors.rs" "IntelliJ plugin throug
 require_contains "cli-rs/src/runtime/descriptors.rs" "GitHub-hosted Kast plugin through JetBrains"
 require_not_contains "cli-rs/src/output/install.rs" "InstallIdeaPluginResult"
 
-require_contains "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/WorkspaceMetadataRevision.kt" "CURRENT = WorkspaceMetadataRevision(3)"
-require_contains "packaging/jetbrains/runtime-compatibility.json" '"workspaceMetadataRevision": 3'
+require_contains "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/WorkspaceMetadataRevision.kt" "CURRENT = WorkspaceMetadataRevision(4)"
+require_contains "packaging/jetbrains/runtime-compatibility.json" '"workspaceMetadataRevision": 4'
 require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/MacosHomebrewInstallReceipt.kt" "expectedPluginVersion"
 require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/MacosHomebrewInstallReceipt.kt" "caskToken"
 require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/MacosHomebrewInstallReceipt.kt" "pluginVersion"

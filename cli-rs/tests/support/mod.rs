@@ -164,7 +164,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
         std::fs::write(
             metadata,
             serde_json::to_string_pretty(&serde_json::json!({
-                "schemaVersion": 3,
+                "schemaVersion": 4,
                 "preparedBy": "kast-intellij-plugin",
                 "workspaceRoot": workspace.display().to_string(),
                 "cliBinary": cli_binary.display().to_string(),
@@ -176,7 +176,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
                     "pluginRevision": env!("KAST_RELEASE_REVISION"),
                     "cliRevision": env!("KAST_RELEASE_REVISION"),
                     "protocolRevision": 1,
-                    "workspaceMetadataRevision": 3,
+                    "workspaceMetadataRevision": 4,
                     "readCapabilities": [
                         "RESOLVE_SYMBOL",
                         "FIND_REFERENCES",

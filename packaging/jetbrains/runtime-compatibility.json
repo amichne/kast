@@ -12,7 +12,7 @@
       "pluginRevision": "{releaseRevision}",
       "cliRevision": "{releaseRevision}",
       "protocolRevision": 1,
-      "workspaceMetadataRevision": 3,
+      "workspaceMetadataRevision": 4,
       "runtime": {
         "implementationVersion": "{releaseVersion}",
         "backendKind": "IDEA"
