@@ -1022,4 +1022,12 @@ mod tests {
         assert!(!versions_coherent("1.2.3+codex.", "1.2.3"));
         assert!(!versions_coherent("1.2.3+other.local", "1.2.3"));
     }
+
+    #[test]
+    fn local_stable_entrypoint_is_recognized_as_a_typed_agent_command() {
+        assert!(matches!(
+            parsed_agent_command("/tmp/worktree/.kast/local-development/bin/kast-dev agent verify"),
+            Some(AgentCommand::Verify(_)),
+        ));
+    }
 }
