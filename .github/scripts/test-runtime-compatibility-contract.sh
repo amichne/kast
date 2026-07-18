@@ -111,6 +111,20 @@ from pathlib import Path
 source = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 scratch = Path(sys.argv[2])
 
+adjacent = copy.deepcopy(source["supportedPairs"][0])
+adjacent["relation"] = "adjacent-release"
+adjacent["pluginVersion"] = "0.13.0"
+adjacent["cliVersion"] = "0.12.9"
+adjacent["pluginRevision"] = "a" * 40
+adjacent["cliRevision"] = "b" * 40
+adjacent["runtime"]["implementationVersion"] = "0.13.0"
+valid_adjacent = copy.deepcopy(source)
+valid_adjacent["supportedPairs"].append(adjacent)
+(scratch / "valid-adjacent-source.json").write_text(
+    json.dumps(valid_adjacent, indent=2) + "\n",
+    encoding="utf-8",
+)
+
 def write(name, mutate):
     value = copy.deepcopy(source)
     mutate(value)
@@ -128,6 +142,8 @@ write("duplicate-pair", lambda value: value["supportedPairs"].append(copy.deepco
 write("mismatched-revision", lambda value: value["supportedPairs"][0].__setitem__("cliRevision", "b" * 40))
 write("short-revision", lambda value: value["supportedPairs"][0].__setitem__("pluginRevision", "abc123"))
 PY
+
+"$renderer" validate-source --source "$scratch_dir/valid-adjacent-source.json"
 
 python3 - "$source_file" "$scratch_dir/invalid-duplicate-key.json" <<'PY'
 import sys

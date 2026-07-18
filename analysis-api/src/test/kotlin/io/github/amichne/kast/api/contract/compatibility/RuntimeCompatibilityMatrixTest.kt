@@ -31,15 +31,24 @@ class RuntimeCompatibilityMatrixTest {
     @Test
     fun `an explicitly listed adjacent-release row is compatible`() {
         val adjacentCli = CliImplementationVersion("0.12.9")
+        val adjacentCliRevision = ReleaseRevision("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
         val matrix = RuntimeCompatibilityMatrix(
             setOf(
                 supportedPair(),
-                supportedPair(cliVersion = adjacentCli),
+                supportedPair(
+                    cliVersion = adjacentCli,
+                    cliRevision = adjacentCliRevision,
+                ),
             ),
         )
 
         assertTrue(
-            matrix.assess(facts(cliVersion = adjacentCli)) is
+            matrix.assess(
+                facts(
+                    cliVersion = adjacentCli,
+                    cliRevision = adjacentCliRevision,
+                ),
+            ) is
                 RuntimeCompatibilityOutcome.Compatible,
         )
     }

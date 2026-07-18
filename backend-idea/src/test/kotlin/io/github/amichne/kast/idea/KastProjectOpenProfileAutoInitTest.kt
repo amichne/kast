@@ -18,6 +18,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -93,14 +94,14 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(metadata.contains("\"preparedBy\": \"kast-intellij-plugin\""), metadata)
         assertTrue(metadata.contains("\"cliBinary\": \"${binary.toString().jsonEscaped()}\""), metadata)
         val metadataObject = Json.parseToJsonElement(metadata).jsonObject
-        assertEquals(3, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
+        assertEquals(4, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
         assertFalse(metadataObject.containsKey("pluginVersion"))
         assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
         assertEquals(currentPluginRevision().value, compatibility.getValue("pluginRevision").jsonPrimitive.content)
         assertEquals(currentPluginRevision().value, compatibility.getValue("cliRevision").jsonPrimitive.content)
         assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
-        assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
+        assertEquals(4, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
         assertTrue(
             compatibility.getValue("readCapabilities").jsonArray
@@ -177,9 +178,11 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
-    fun `release version skew fails before workspace preparation`() {
+    fun `explicit adjacent release identity reaches workspace preparation`() {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
+        val adjacentRevision = ReleaseRevision("b".repeat(40))
+        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
 
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
@@ -189,17 +192,42 @@ class KastProjectOpenProfileAutoInitTest {
                     MacosHomebrewInstallReceipt(
                         cliBinary = binary,
                         formulaPrefix = binary.parent,
-                        cliVersion = CliImplementationVersion("definitely-not-the-plugin-version"),
-                        cliRevision = currentPluginRevision(),
+                        cliVersion = CliImplementationVersion("0.12.9"),
+                        cliRevision = adjacentRevision,
                     ),
                 )
             },
-            prepareWorkspace = { error("version skew must fail before workspace preparation") },
+            prepareWorkspace = { request ->
+                requests.add(request)
+                PluginWorkspaceBootstrapResult.Prepared(
+                    workspace.resolve(".kast/setup/workspace.json"),
+                    emptyList(),
+                )
+            },
         )
 
-        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
-        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("version"))
-        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertEquals(CliImplementationVersion("0.12.9"), requests.single().cliVersion)
+        assertEquals(adjacentRevision, requests.single().cliRevision)
+    }
+
+    @Test
+    fun `bootstrap request rejects same-version mixed revisions before mutation`() {
+        val revision = currentPluginRevision()
+        val otherRevision = ReleaseRevision(
+            if (revision.value.startsWith("a")) "b".repeat(40) else "a".repeat(40),
+        )
+
+        assertThrows<IllegalArgumentException> {
+            PluginWorkspaceBootstrapRequest(
+                workspaceRoot = gradleWorkspace(),
+                cliBinary = fakeKastBinary(),
+                cliVersion = currentPluginVersion(),
+                cliRevision = otherRevision,
+                pluginVersion = PluginVersion(currentPluginVersion().value),
+                pluginRevision = revision,
+            )
+        }
     }
 
     @Test
