@@ -261,6 +261,26 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
+    fun `configured CLI identity requires exact JSON scalar types`() {
+        val version = currentPluginVersion()
+        val revision = currentPluginRevision()
+        val valid =
+            """{"type":"KAST_CLI_BUILD_IDENTITY","version":"${version.value}","releaseRevision":"${revision.value}","schemaVersion":1}"""
+
+        assertEquals(
+            CliBuildIdentity(version = version, revision = revision),
+            parseCliBuildIdentityDocument(valid),
+        )
+        for (invalid in listOf(
+            valid.replace("\"schemaVersion\":1", "\"schemaVersion\":\"1\""),
+            valid.replace("\"version\":\"${version.value}\"", "\"version\":13"),
+            valid.replace("\"releaseRevision\":\"${revision.value}\"", "\"releaseRevision\":${"1".repeat(40)}"),
+        )) {
+            assertEquals(null, parseCliBuildIdentityDocument(invalid), invalid)
+        }
+    }
+
+    @Test
     fun `plugin bootstrap backs up and removes unknown prior managed artifacts`() {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
