@@ -24,6 +24,21 @@ fn smoke_core_cli_commands() {
     assert!(version.status.success());
     assert!(String::from_utf8_lossy(&version.stdout).contains("Kast CLI"));
 
+    let version_json = kast(&home, &config_home)
+        .args(["--output", "json", "version"])
+        .output()
+        .expect("structured version");
+    assert!(version_json.status.success());
+    let version_identity: serde_json::Value =
+        serde_json::from_slice(&version_json.stdout).expect("structured version JSON");
+    assert_eq!(version_identity["type"], "KAST_CLI_BUILD_IDENTITY");
+    assert_eq!(version_identity["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(
+        version_identity["releaseRevision"],
+        env!("KAST_RELEASE_REVISION"),
+    );
+    assert_eq!(version_identity["schemaVersion"], 1);
+
     let help = kast(&home, &config_home)
         .arg("--help")
         .output()
