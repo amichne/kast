@@ -373,6 +373,51 @@ mod refresh_tests {
     }
 
     #[test]
+    fn rebuilt_artifacts_from_the_same_source_activate_as_a_new_generation() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let first = refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        ))
+        .expect("first refresh");
+        write_file(
+            &fixture.path().join("build/kast"),
+            b"#!/bin/sh\necho rebuilt\n",
+        );
+        make_executable(&fixture.path().join("build/kast"));
+
+        let second = refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "rebuilt",
+        ))
+        .expect("rebuilt refresh");
+
+        assert_ne!(first.receipt.generation_id, second.receipt.generation_id);
+        assert_eq!(
+            fs::read_link(prefix.join("current")).expect("current generation"),
+            Path::new("generations").join(second.receipt.generation_id.as_str()),
+        );
+        assert_eq!(
+            fs::read_link(prefix.join("previous")).expect("previous generation"),
+            Path::new("generations").join(first.receipt.generation_id.as_str()),
+        );
+        assert_eq!(
+            fs::read_dir(prefix.join("generations"))
+                .expect("generations")
+                .count(),
+            2,
+        );
+    }
+
+    #[test]
     fn one_prepared_generation_activates_idempotently_without_rebuilding_inputs() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
