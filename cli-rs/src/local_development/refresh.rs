@@ -640,6 +640,31 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
                     }
                 }
             }
+            Some("bin") => {
+                let metadata = entry.file_type()?;
+                if !metadata.is_dir() || metadata.is_symlink() {
+                    return Err(unowned_prefix_conflict(&path));
+                }
+                for launcher in fs::read_dir(&path)? {
+                    let launcher = launcher?;
+                    if launcher.file_name() != "kast-dev"
+                        || read_relative_symlink(&launcher.path())?
+                            != Some(PathBuf::from("../current/entrypoint/kast-dev"))
+                    {
+                        return Err(unowned_prefix_conflict(&launcher.path()));
+                    }
+                }
+            }
+            Some("authority.json") => {
+                if read_relative_symlink(&path)? != Some(PathBuf::from("current/authority.json")) {
+                    return Err(unowned_prefix_conflict(&path));
+                }
+            }
+            Some("install.json") => {
+                if read_relative_symlink(&path)? != Some(PathBuf::from("current/install.json")) {
+                    return Err(unowned_prefix_conflict(&path));
+                }
+            }
             _ => return Err(unowned_prefix_conflict(&path)),
         }
     }
