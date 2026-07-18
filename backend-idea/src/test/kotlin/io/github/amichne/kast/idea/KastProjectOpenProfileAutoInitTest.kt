@@ -9,6 +9,7 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
+import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -96,6 +97,8 @@ class KastProjectOpenProfileAutoInitTest {
         assertFalse(metadataObject.containsKey("pluginVersion"))
         assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
+        assertEquals(currentPluginRevision().value, compatibility.getValue("pluginRevision").jsonPrimitive.content)
+        assertEquals(currentPluginRevision().value, compatibility.getValue("cliRevision").jsonPrimitive.content)
         assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
         assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
@@ -125,6 +128,7 @@ class KastProjectOpenProfileAutoInitTest {
                         cliBinary = homebrewBinary,
                         formulaPrefix = homebrewBinary.parent,
                         cliVersion = CliImplementationVersion("receipt-cli-version"),
+                        cliRevision = currentPluginRevision(),
                     ),
                 )
             },
@@ -152,6 +156,7 @@ class KastProjectOpenProfileAutoInitTest {
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = configuredBinary),
             loadCliVersion = { CliImplementationVersion("configured-cli-version") },
+            loadCliRevision = { currentPluginRevision() },
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(
@@ -164,6 +169,7 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(configuredBinary, requests.single().cliBinary)
         assertEquals("configured-cli-version", requests.single().cliVersion.value)
+        assertEquals(currentPluginRevision(), requests.single().cliRevision)
     }
 
     @Test
@@ -245,9 +251,16 @@ class KastProjectOpenProfileAutoInitTest {
                 cliBinary = binary,
                 formulaPrefix = binary.parent,
                 cliVersion = CliImplementationVersion("0.13.0"),
+                cliRevision = currentPluginRevision(),
             ),
         )
     }
+
+    private fun currentPluginRevision(): ReleaseRevision = ReleaseRevision(
+        requireNotNull(KastPluginBackend::class.java.getResource("/kast-backend-revision.txt"))
+            .readText()
+            .trim(),
+    )
 }
 
 private fun Path.exists(): Boolean = Files.exists(this)
