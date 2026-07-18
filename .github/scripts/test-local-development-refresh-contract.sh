@@ -132,6 +132,18 @@ grep -Fq 'targetDirectory.set(cliLocalDevelopmentTargetDirectory)' \
 grep -Fq 'cliLocalDevelopmentTargetDirectory.file("release/kast")' \
   "${repo_root}/build.gradle.kts" \
   || die 'the attested release binary must derive from the source-bound Cargo target directory'
+prepare_generation_task="$(
+  sed -n \
+    '/^abstract class PrepareLocalDevelopmentGenerationTask/,/^}/p' \
+    "${repo_root}/build.gradle.kts"
+)"
+if grep -Fq 'val generationId' <<<"$prepare_generation_task"; then
+  die 'Gradle must not shadow the artifact-bound Rust generation identity'
+fi
+grep -Fq 'preparedGenerations.absolutePath' <<<"$prepare_generation_task" \
+  || die 'Gradle must pass the prepared-generation parent to the typed CLI'
+grep -Fq '"--selection-file",' <<<"$prepare_generation_task" \
+  || die 'the typed CLI must atomically select the artifact-bound prepared generation'
 
 snapshot_file="${tmp_root}/source-snapshot.json"
 snapshot_json="$(

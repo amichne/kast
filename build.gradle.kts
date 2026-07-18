@@ -105,21 +105,8 @@ abstract class PrepareLocalDevelopmentGenerationTask @Inject constructor(
 
     @TaskAction
     fun prepare() {
-        val snapshot = sourceSnapshotFile.get().asFile.readText()
-        val commit = Regex(""""gitCommit"\s*:\s*"([0-9a-f]{40,64})"""")
-            .find(snapshot)
-            ?.groupValues
-            ?.get(1)
-            ?: throw GradleException("Local-development source snapshot has no valid gitCommit")
-        val sourceSha256 = Regex(""""sourceTreeSha256"\s*:\s*"([0-9a-f]{64})"""")
-            .find(snapshot)
-            ?.groupValues
-            ?.get(1)
-            ?: throw GradleException(
-                "Local-development source snapshot has no valid sourceTreeSha256",
-            )
-        val generationId = "${commit.take(12)}-$sourceSha256"
-        val prepared = preparedGenerationsDirectory.get().dir(generationId).asFile
+        val preparedGenerations = preparedGenerationsDirectory.get().asFile
+        val selection = preparedGenerationPointer.get().asFile
         execOperations.exec {
             commandLine(
                 cliBinary.get().asFile.absolutePath,
@@ -141,12 +128,25 @@ abstract class PrepareLocalDevelopmentGenerationTask @Inject constructor(
                 "--backend-provenance",
                 backendProvenance.get().asFile.absolutePath,
                 "--output-directory",
-                prepared.absolutePath,
+                preparedGenerations.absolutePath,
+                "--selection-file",
+                selection.absolutePath,
             )
         }.assertNormalExitValue()
-        preparedGenerationPointer.get().asFile.apply {
-            parentFile.mkdirs()
-            writeText("${prepared.absoluteFile.normalize().absolutePath}\n")
+        val prepared = selection
+            .takeIf(File::isFile)
+            ?.readText()
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.let(::File)
+            ?.absoluteFile
+            ?.normalize()
+            ?: throw GradleException("Local prepare did not select a prepared generation")
+        val parent = prepared.parentFile?.canonicalFile
+        if (parent != preparedGenerations.canonicalFile || !prepared.resolve("generation.json").isFile) {
+            throw GradleException(
+                "Local prepare selected an invalid generation directory: ${prepared.absolutePath}",
+            )
         }
     }
 }

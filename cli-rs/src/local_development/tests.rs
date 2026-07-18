@@ -429,7 +429,7 @@ mod refresh_tests {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
-        let prepared = fixture.path().join("prepared-generation");
+        let prepared_generations = fixture.path().join("prepared-generations");
         let skill_source = repository
             .path()
             .join("cli-rs/resources/kast-skill/SKILL.md");
@@ -453,11 +453,12 @@ mod refresh_tests {
                 backend_directory: raw.backend_directory.clone(),
                 backend_provenance: raw.backend_provenance.clone(),
                 skill_source,
-                output_directory: prepared.clone(),
+                output_directory: prepared_generations,
             },
         )
         .expect("prepare generation");
         assert!(!prepared_result.skipped);
+        let prepared = prepared_result.directory.clone();
         assert!(prepared.join("generation.json").is_file());
         assert!(prepared.join("source-snapshot.json").is_file());
         assert!(prepared.join("bin/kast").is_file());
@@ -539,6 +540,8 @@ mod refresh_tests {
 
         assert_ne!(first.ledger.generation_id, rebuilt.ledger.generation_id);
         assert_ne!(first.directory, rebuilt.directory);
+        let prepared_generations =
+            fs::canonicalize(prepared_generations).expect("canonical prepared generations");
         assert_eq!(first.directory.parent(), Some(prepared_generations.as_path()));
         assert_eq!(rebuilt.directory.parent(), Some(prepared_generations.as_path()));
         assert_eq!(
@@ -554,7 +557,7 @@ mod refresh_tests {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
-        let prepared = fixture.path().join("prepared-generation");
+        let prepared_generations = fixture.path().join("prepared-generations");
         let skill_source = repository
             .path()
             .join("cli-rs/resources/kast-skill/SKILL.md");
@@ -569,7 +572,7 @@ mod refresh_tests {
             &prefix,
             "tampered-prepared",
         );
-        prepare_local_development_generation(LocalDevelopmentPrepareRequest {
+        let prepared = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
             source_root: raw.source_root,
             expected_source_snapshot: raw.expected_source_snapshot,
             cli_binary: raw.cli_binary,
@@ -577,9 +580,10 @@ mod refresh_tests {
             backend_directory: raw.backend_directory,
             backend_provenance: raw.backend_provenance,
             skill_source,
-            output_directory: prepared.clone(),
+            output_directory: prepared_generations,
         })
-        .expect("prepare generation");
+        .expect("prepare generation")
+        .directory;
         let ledger_path = prepared.join("generation.json");
         let ledger_bytes = fs::read(&ledger_path).expect("prepared ledger");
         let mut ledger_json: serde_json::Value =
