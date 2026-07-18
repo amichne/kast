@@ -16,11 +16,6 @@ repo_root="$(resolve_repo_root)"
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-refresh-contract.XXXXXX")"
 tmp_root="$(cd -- "$tmp_root" && pwd -P)"
 cleanup() {
-  local guidance="${repo_root}/AGENTS.local.md"
-  if [[ -L "$guidance" ]] \
-    && [[ "$(readlink "$guidance")" == "${tmp_root}/missing-prefix/current/guidance/AGENTS.local.md" ]]; then
-    rm -f "$guidance"
-  fi
   rm -rf "$tmp_root"
 }
 trap cleanup EXIT
@@ -282,12 +277,14 @@ cargo build \
   --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
   --locked
 missing_prefix="${tmp_root}/missing-prefix"
-missing_guidance="${repo_root}/AGENTS.local.md"
+missing_workspace="${tmp_root}/missing-workspace"
+mkdir -p "$missing_workspace"
+missing_guidance="${missing_workspace}/AGENTS.local.md"
 ln -s "${missing_prefix}/current/guidance/AGENTS.local.md" "$missing_guidance"
 KAST_RECOVERY_LOG="$recovery_log" CARGO="${tmp_root}/unbuildable-cargo" \
   "${repo_root}/gradlew" removeDevelopmentLocal \
     -PkastLocalPrefix="$missing_prefix" \
-    -PkastLocalWorkspaceRoot="$repo_root" \
+    -PkastLocalWorkspaceRoot="$missing_workspace" \
     -PkastLocalRecoveryController="${repo_root}/cli-rs/target/debug/kast" \
     --no-daemon >/dev/null
 [[ ! -e "$missing_guidance" && ! -L "$missing_guidance" ]] \
