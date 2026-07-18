@@ -1133,7 +1133,7 @@ fn local_install_manifest(
     source: &SourceSnapshot,
     workspace_root: &Path,
 ) -> crate::manifest::KastInstallManifest {
-    let generation = prefix.join(generation_target(&generation_id));
+    let generation = prefix.join(generation_target(generation_id));
     let state = prefix.join("state").join(generation_id.as_str());
     let now = crate::manifest::current_timestamp();
     crate::manifest::KastInstallManifest {

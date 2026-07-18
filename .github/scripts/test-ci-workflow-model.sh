@@ -27,13 +27,14 @@ if report["status"] != "provisional":
 if not report["comparison"]["outputEquivalent"]:
     raise SystemExit("candidate proof outputs must match or have an explicit replacement")
 expected_replacements = {
+    "development-cli-install-contract": "local-development-clean-break-contract",
     "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux",
     "headless-portable-artifact-macos": "headless-portable-artifact-linux",
     "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
 }
 actual_replacements = report["comparison"]["retiredProofOutputReplacements"]
 if actual_replacements != expected_replacements:
-    raise SystemExit(f"retired macOS proofs must name their Linux replacements: {actual_replacements}")
+    raise SystemExit(f"retired proofs must name their exact replacements: {actual_replacements}")
 if report["comparison"]["taskCountIncrease"] != 4:
     raise SystemExit("the final graph must add exactly four execution nodes after removing the duplicate macOS producer")
 if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 3:
