@@ -94,6 +94,35 @@ class RuntimeCompatibilityMatrixTest {
     }
 
     @Test
+    fun `same-version artifacts from different release revisions fail closed`() {
+        val pluginRevision = ReleaseRevision("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        val cliRevision = ReleaseRevision("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        val matrix = RuntimeCompatibilityMatrix(
+            setOf(
+                supportedPair(
+                    pluginRevision = pluginRevision,
+                    cliRevision = pluginRevision,
+                ),
+            ),
+        )
+
+        assertEquals(
+            RuntimeCompatibilityOutcome.UpdateRequired(
+                RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision(
+                    pluginRevision = pluginRevision,
+                    cliRevision = cliRevision,
+                ),
+            ),
+            matrix.assess(
+                facts(
+                    pluginRevision = pluginRevision,
+                    cliRevision = cliRevision,
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun `typed update requirements reject empty supported evidence`() {
         assertThrows<IllegalArgumentException> {
             RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision(
