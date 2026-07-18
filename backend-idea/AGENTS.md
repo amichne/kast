@@ -1,24 +1,18 @@
 # IDEA Backend Guidelines
 
-## Signed distribution boundary
+## Distribution and dynamic lifecycle boundary
 
-`backend-idea/build.gradle.kts` owns the JetBrains signing task wiring. The
-certificate chain is a file-backed Gradle property so signature verification
-uses the same public certificate without exposing it on a command line. The
-private key and password come only from `PRIVATE_KEY` and
-`PRIVATE_KEY_PASSWORD`; do not add checked-in credentials, fallback keys, or
-logging of signing inputs.
+`backend-idea/build.gradle.kts` owns the unsigned ZIP produced by `buildPlugin`.
+Do not add Marketplace publication, signing tasks, certificate properties, or
+signature-verifier staging. GitHub Release distribution and feed rendering are
+owned outside this module by ADR 0028.
 
-`verifyPluginSignature` must consume `signPlugin.signedArchiveFile` through its
-typed task provider. `stageIdeaPluginSignatureVerifier` exports the same
-Gradle-resolved Marketplace ZIP Signer CLI so the staged release bytes are
-verified again against the enrolled certificate before provenance is written.
-Release builds also run `verifyPluginStructure`, `verifyPluginXmlPresent`, and
-`verifyPlugin`, and must prove checked-out `HEAD` equals the peeled release-tag
-target before recording signer-bound provenance. Exercise the real
-ephemeral-key path with `.github/scripts/test-idea-plugin-signing-contract.sh`;
-missing or unenrolled production credentials fail in release preflight rather
-than producing an unsigned artifact.
+`plugin.xml` owns dynamic-unload eligibility. Register Kotlin plugin mode only
+under `org.jetbrains.kotlin`; an identically named `com.intellij` extension is
+invalid and blocks unload. Project services must release their work through
+normal disposal. Dynamic update application remains IDE-dependent: retain the
+IDE's restart fallback and do not claim restart-free support without a real
+N-to-N-plus-one lifecycle probe on the named IDE build.
 
 ## Workspace inventory authority
 
@@ -26,7 +20,7 @@ than producing an unsigned artifact.
 It serializes the shared `analysis-api` compatibility facts for the plugin,
 CLI, protocol, metadata, capability, and IDEA runtime identity alongside the
 existing fields. The CLI version comes from the strict CLI-only Homebrew
-receipt; the plugin and runtime versions come from the signed plugin. Do not
+receipt; the plugin and runtime versions come from the installed plugin. Do not
 reintroduce duplicate top-level versions or exact plugin/CLI equality.
 
 `IdeaProjectModelWorkspaceFileInventory` owns complete raw `.kt` and `.kts`

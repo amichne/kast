@@ -10,6 +10,18 @@ Use this guide when you are building, promoting, mirroring, or image-layering
 Kast artifacts. Most macOS developers should use the [macOS install
 guide](../install/macos.md) instead.
 
+## Publish The IDEA Plugin
+
+The release workflow builds one unsigned `kast-idea-<tag>.zip` and renders one
+`updatePlugins.xml` whose URL names that exact ZIP. Both are ordinary GitHub
+Release assets. There is no JetBrains Marketplace publication, signing,
+certificate enrollment, Pages repository, IDEA provenance entry, or plugin
+checksum requirement.
+
+Mirror both files together if an internal JetBrains custom repository should
+serve the plugin. The public stable feed is
+`https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml`.
+
 ## Package The Codex Plugin
 
 The Codex marketplace is generated from the release-built Rust command
@@ -47,8 +59,8 @@ export KAST_RELEASE_TAG="v1.2.3"
 The producer records `build-ledger-codex-plugin.json` with artifact kind
 `release-codex-plugin` and provenance platform `codex-plugin`. The immutable
 uploader publishes the ZIP before aggregate checksums are generated. Release
-verification must prove one release version across the CLI, IDEA plugin,
-Codex manifest, generated exposure asset, build ledger, and provenance.
+verification must prove one release version across the CLI, Codex manifest,
+generated exposure asset, build ledger, and provenance.
 `scripts/verify-release-assets.sh` reapplies the package validator to the
 downloaded archive and binds its digest, version, and generator identity to the
 Codex provenance record.

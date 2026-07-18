@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 DEFAULT_TAP="amichne/kast"
 INSTALL_URL="https://raw.githubusercontent.com/amichne/kast/main/install.sh"
+PLUGIN_ID="io.github.amichne.kast"
+RELEASE_BASE_URL="https://github.com/amichne/kast/releases"
 
 usage() {
   cat >&2 <<'USAGE'
@@ -13,13 +15,14 @@ Usage:
 macOS-only Kast developer-machine installer.
 
 Commands:
-  install   Tap Homebrew, install the Kast CLI, and establish its receipt.
-  update    Refresh Homebrew metadata, update the Kast CLI, and repair its receipt.
-  verify    Check the Homebrew formula and repository readiness.
+  install   Install the Homebrew CLI and, when absent, its release-matched IDEA plugin.
+  update    Update the Homebrew CLI and print the matching IDEA update target.
+  verify    Run typed CLI/plugin/workspace admission against the IDEA backend.
 
 Options:
   --tap <owner/repo>       Homebrew tap name. Defaults to amichne/kast.
   --tap-url <git-url>      Optional Git URL for custom-host taps.
+  --ide-launcher <path>    JetBrains IDE launcher for initial install. Auto-detected on macOS.
   --workspace-root <path>  Repository to verify and show in guidance. Defaults to the current directory.
   -h, --help               Show this help.
 
@@ -165,14 +168,14 @@ print_mutation_plan() {
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - install the Homebrew formula kast"
       log_note "  - establish the CLI-only Homebrew receipt with kast repair"
-      log_note "  - leave signed plugin installation and updates to JetBrains"
+      log_note "  - ask a closed JetBrains IDE to install the release-matched plugin when absent"
       ;;
     update)
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - run brew update"
       log_note "  - upgrade or reinstall the Homebrew formula kast"
       log_note "  - repair the CLI-only Homebrew receipt"
-      log_note "  - leave signed plugin updates and workspace metadata refresh to JetBrains"
+      log_note "  - leave the installed plugin update to JetBrains' custom-repository flow"
       ;;
     *)
       die "No mutation plan for command: ${command_name}"
@@ -220,10 +223,79 @@ resolve_homebrew_kast() {
   printf '%s\n' "$kast_binary"
 }
 
+validate_ide_launcher() {
+  local launcher="$1"
+  [[ -x "$launcher" ]] || die "IDE launcher is missing or not executable: ${launcher}"
+}
+
+resolve_ide_launcher() {
+  local requested_launcher="$1"
+  if [[ -n "$requested_launcher" ]]; then
+    printf '%s\n' "$requested_launcher"
+    return
+  fi
+
+  local candidate
+  for candidate in \
+    "/Applications/IntelliJ IDEA.app/Contents/MacOS/idea" \
+    "/Applications/IntelliJ IDEA CE.app/Contents/MacOS/idea" \
+    "/Applications/Android Studio.app/Contents/MacOS/studio" \
+    "${HOME}/Applications/IntelliJ IDEA.app/Contents/MacOS/idea" \
+    "${HOME}/Applications/IntelliJ IDEA CE.app/Contents/MacOS/idea" \
+    "${HOME}/Applications/Android Studio.app/Contents/MacOS/studio"
+  do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  return 1
+}
+
+installed_release_tag() {
+  local kast_binary="$1"
+  local version_output
+  version_output="$("$kast_binary" version)" || die "Could not read the installed Kast version"
+  if [[ "$version_output" =~ ^Kast\ CLI\ ([0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?)$ ]]; then
+    printf 'v%s\n' "${BASH_REMATCH[1]}"
+    return
+  fi
+  die "Unexpected Kast version output: ${version_output}"
+}
+
+install_release_matched_plugin() {
+  local kast_binary="$1"
+  local requested_launcher="$2"
+  local tag
+  local feed_url
+  local launcher
+  tag="$(installed_release_tag "$kast_binary")"
+  feed_url="${RELEASE_BASE_URL}/download/${tag}/updatePlugins.xml"
+
+  if ! launcher="$(resolve_ide_launcher "$requested_launcher")"; then
+    log_note "No standard JetBrains launcher found; install ${RELEASE_BASE_URL}/download/${tag}/kast-idea-${tag}.zip from disk."
+    log_note "For native updates, add ${RELEASE_BASE_URL}/latest/download/updatePlugins.xml as a custom plugin repository."
+    return
+  fi
+
+  log_note "JetBrains installPlugins installs an absent plugin; existing installations update through the custom repository."
+  run "$launcher" installPlugins "$PLUGIN_ID" "$feed_url"
+}
+
+print_release_matched_plugin_update() {
+  local kast_binary="$1"
+  local tag
+  tag="$(installed_release_tag "$kast_binary")"
+  log_note "Expected IDEA plugin release: ${tag}"
+  log_note "Update it from ${RELEASE_BASE_URL}/latest/download/updatePlugins.xml in JetBrains."
+  log_note "If native update is unavailable, install ${RELEASE_BASE_URL}/download/${tag}/kast-idea-${tag}.zip from disk."
+}
+
 install_kast() {
   local tap="$1"
   local tap_url="$2"
   local workspace_root="$3"
+  local ide_launcher="$4"
 
   log_section "Kast developer install"
   log_note "Workspace: ${workspace_root}"
@@ -233,7 +305,8 @@ install_kast() {
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
   run "$kast_binary" repair --for machine --apply
-  log_note "Install the signed plugin through JetBrains, then open ${workspace_root} so it can prepare workspace metadata."
+  install_release_matched_plugin "$kast_binary" "$ide_launcher"
+  log_note "Open ${workspace_root} so the plugin can prepare workspace metadata."
   log_success "Install complete"
 }
 
@@ -255,7 +328,8 @@ update_kast() {
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
   run "$kast_binary" repair --for machine --apply
-  log_note "Update the signed plugin through JetBrains, then reopen ${workspace_root} to refresh workspace metadata."
+  print_release_matched_plugin_update "$kast_binary"
+  log_note "After JetBrains applies the plugin update, open ${workspace_root} so it can refresh workspace metadata."
   log_success "Update complete"
 }
 
@@ -268,7 +342,7 @@ verify_kast() {
   log_step "brew --prefix kast"
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
-  run "$kast_binary" ready --for agent --workspace-root "$workspace_root"
+  run "$kast_binary" agent verify --workspace-root "$workspace_root" --backend idea
   log_success "Verification complete"
 }
 
@@ -276,6 +350,7 @@ main() {
   local command_name="install"
   local tap="$DEFAULT_TAP"
   local tap_url=""
+  local ide_launcher=""
   local workspace_root=""
 
   if [[ $# -gt 0 ]]; then
@@ -317,6 +392,15 @@ main() {
         tap_url="${1#--tap-url=}"
         shift
         ;;
+      --ide-launcher)
+        [[ $# -ge 2 ]] || die "Missing value for --ide-launcher"
+        ide_launcher="$2"
+        shift 2
+        ;;
+      --ide-launcher=*)
+        ide_launcher="${1#--ide-launcher=}"
+        shift
+        ;;
       --workspace-root)
         [[ $# -ge 2 ]] || die "Missing value for --workspace-root"
         workspace_root="$2"
@@ -341,6 +425,9 @@ main() {
   if [[ -n "$tap_url" ]]; then
     validate_tap_url "$tap_url"
   fi
+  if [[ -n "$ide_launcher" ]]; then
+    validate_ide_launcher "$ide_launcher"
+  fi
   require_macos
 
   if [[ -z "$workspace_root" ]]; then
@@ -357,7 +444,7 @@ main() {
 
   case "$command_name" in
     install)
-      install_kast "$tap" "$tap_url" "$workspace_root"
+      install_kast "$tap" "$tap_url" "$workspace_root" "$ide_launcher"
       ;;
     update)
       update_kast "$tap" "$tap_url" "$workspace_root"

@@ -22,8 +22,9 @@ Use durable agent-only ADRs for product and agent-surface decisions.
 `.agents/adr/0006-forward-system-definition-and-audit-scope.md` owns the broader
 public product surface, system boundaries, supported workflows, AXI contract,
 and audit scope. `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`
-supersedes it for IDEA plugin distribution, runtime compatibility, index
-privacy, lifecycle, and semantic cockpit contracts.
+owns runtime compatibility, index privacy, lifecycle, and semantic cockpit
+contracts. `.agents/adr/0028-unsigned-github-idea-plugin-distribution.md`
+supersedes its IDEA distribution and publication decisions.
 
 When a change expands or contracts the public product surface, add a
 superseding ADR before rewriting docs or generated assets. When a change alters
@@ -56,27 +57,26 @@ decision, or superseding ADR. When revision coherence cannot be proved, fail
 closed and treat compatibility as a deliberate product decision rather than an
 accidental parser feature.
 
-## Signed IDEA Plugin Release Authority
+## GitHub IDEA Plugin Release Authority
 
 The release tag owns the only production IDEA plugin build. The
-`build-idea-plugin` release job must run JetBrains structure and compatibility
-verification, sign exactly one ZIP with protected inputs, verify the signature
-against the file-backed enrolled certificate, and record signer-bound
-provenance before upload. Private keys and passwords remain GitHub secrets;
-certificate fingerprints are owned by
-`packaging/jetbrains/plugin-repository.json` and never derive from a secret,
-mutable repository variable, or shared release version.
+`build-idea-plugin` release job builds one unsigned ZIP with
+`:backend-idea:buildPlugin`, renders `packaging/jetbrains/updatePlugins.xml`
+with the exact release tag and version, and uploads both files to the draft
+GitHub release. It must not require Marketplace verification, signing inputs,
+certificate enrollment, IDEA provenance, GitHub Pages, or immutable-release
+configuration. Stable releases update the matching Homebrew CLI before making
+the draft public so the IDE's `latest` feed cannot advertise an unavailable
+CLI pair.
 
-`.github/scripts/upload-immutable-release-asset.sh` owns release-asset replay:
-every asset uploads once, then proves byte identity or fails. Release workflows
-must never use `--clobber`.
-`scripts/verify-idea-plugin-artifact.py`, the release provenance assembler, and
-`scripts/verify-release-assets.sh` own the plugin ID, digest, signer, signature,
-and verification-task evidence. Run
-`.github/scripts/test-idea-plugin-signing-contract.sh`,
-`.github/scripts/test-release-workflow-contract.sh`,
-`.github/scripts/test-release-provenance-assembler.sh`, and
-`.github/scripts/test-release-asset-verifier.sh` after changing this boundary.
+`install.sh` may delegate initial plugin installation to a closed IDE through
+its supported `installPlugins` command and the installed CLI's
+version-specific feed. That command must not be presented as an updater because
+JetBrains skips an already-installed plugin. Existing updates remain IDE-owned.
+The script must not write plugin directories or recreate profile links. Run
+`.github/scripts/test-release-workflow-contract.sh` and
+`.github/scripts/test-macos-installer-contract.sh` after changing this
+boundary.
 
 ## Build, Test, and Development Commands
 

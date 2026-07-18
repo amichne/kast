@@ -189,24 +189,15 @@ impl WorkspaceLeasePaths {
 pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
     let requested_root = exact_lease_root(&args.workspace_root)?;
     let admission = admitted_lease_workspace(requested_root, args.backend_name)?;
-    let initial_installation = lease_installation_identity(
-        &admission.workspace_root,
-        admission.backend_name,
-    )?;
+    let initial_installation =
+        lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
     let paths = WorkspaceLeasePaths::resolve()?;
 
     with_workspace_lease_lock(&paths, || {
         let secret = read_or_create_workspace_lease_secret(&paths.secret)?;
-        recover_or_reject_existing_lease(
-            &paths,
-            &secret,
-            &admission,
-            &initial_installation,
-        )?;
-        let locked_installation = lease_installation_identity(
-            &admission.workspace_root,
-            admission.backend_name,
-        )?;
+        recover_or_reject_existing_lease(&paths, &secret, &admission, &initial_installation)?;
+        let locked_installation =
+            lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
         if locked_installation != initial_installation {
             return Err(stale_environment_error(
                 "The effective agent environment changed before workspace lease acquisition began.",
@@ -224,16 +215,18 @@ pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceL
         let acquired_at = crate::manifest::current_timestamp();
 
         let finalization = (|| {
-            let final_installation = lease_installation_identity(
-                &admission.workspace_root,
-                admission.backend_name,
-            )?;
+            let final_installation =
+                lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
             if final_installation != initial_installation {
                 return Err(stale_environment_error(
                     "The effective agent environment changed while the semantic runtime settled.",
                 ));
             }
-            require_exact_ready_runtime(&admission.workspace_root, admission.backend_name, &runtime)?;
+            require_exact_ready_runtime(
+                &admission.workspace_root,
+                admission.backend_name,
+                &runtime,
+            )?;
             let record_id = uuid::Uuid::new_v4();
             let binding = WorkspaceLeaseBinding {
                 schema_version: WORKSPACE_LEASE_SCHEMA_VERSION,
@@ -330,15 +323,9 @@ fn access_workspace_lease(
     with_workspace_lease_lock(&paths, || {
         let secret = read_workspace_lease_secret(&paths.secret)?;
         let claims = verify_workspace_lease_token(&secret, args.lease_id.as_str())?;
-        validate_token_request_identity(
-            &claims,
-            &requested_root,
-            args.backend_name,
-        )?;
-        let installation = lease_installation_identity(
-            &claims.workspace_root,
-            claims.backend_name,
-        )?;
+        validate_token_request_identity(&claims, &requested_root, args.backend_name)?;
+        let installation =
+            lease_installation_identity(&claims.workspace_root, claims.backend_name)?;
         validate_token_environment(&claims, &installation)?;
         let record_path = paths.record(claims.record_id);
         let record = read_workspace_lease_record(&record_path)?;
@@ -386,34 +373,34 @@ fn access_workspace_lease(
             WorkspaceLeaseRecord::Active { binding, .. } => {
                 require_current_lease_owner(&binding.owner)?;
                 match access {
-                WorkspaceLeaseAccess::Release => {
-                    let receipt = release_active_binding(&binding)?;
-                    write_workspace_lease_record(
-                        &record_path,
-                        &released_workspace_lease_record(
-                            &secret,
-                            binding.clone(),
-                            receipt.clone(),
-                        )?,
-                    )?;
-                    Ok(workspace_lease_result(
-                        args.lease_id.as_str().to_string(),
-                        WorkspaceLeaseState::Released,
-                        binding,
-                        None,
-                        Some(receipt),
-                    ))
-                }
-                WorkspaceLeaseAccess::Status | WorkspaceLeaseAccess::Validate => {
-                    let (state, failure) = observe_active_binding(&binding)?;
-                    Ok(workspace_lease_result(
-                        args.lease_id.as_str().to_string(),
-                        state,
-                        binding,
-                        failure,
-                        None,
-                    ))
-                }
+                    WorkspaceLeaseAccess::Release => {
+                        let receipt = release_active_binding(&binding)?;
+                        write_workspace_lease_record(
+                            &record_path,
+                            &released_workspace_lease_record(
+                                &secret,
+                                binding.clone(),
+                                receipt.clone(),
+                            )?,
+                        )?;
+                        Ok(workspace_lease_result(
+                            args.lease_id.as_str().to_string(),
+                            WorkspaceLeaseState::Released,
+                            binding,
+                            None,
+                            Some(receipt),
+                        ))
+                    }
+                    WorkspaceLeaseAccess::Status | WorkspaceLeaseAccess::Validate => {
+                        let (state, failure) = observe_active_binding(&binding)?;
+                        Ok(workspace_lease_result(
+                            args.lease_id.as_str().to_string(),
+                            state,
+                            binding,
+                            failure,
+                            None,
+                        ))
+                    }
                 }
             }
         }
@@ -459,11 +446,7 @@ fn lease_installation_identity(
     workspace_root: &Path,
     backend_name: BackendName,
 ) -> Result<WorkspaceLeaseInstallationIdentity> {
-    let doctor = self_mgmt::doctor(
-        false,
-        crate::cli::ReadyTarget::Agent,
-        Some(workspace_root),
-    )?;
+    let doctor = self_mgmt::doctor(false, crate::cli::ReadyTarget::Agent, Some(workspace_root))?;
     let environment = doctor.agent_environment.as_ref().ok_or_else(|| {
         CliError::new(
             "WORKSPACE_LEASE_ENVIRONMENT_NOT_READY",
@@ -509,7 +492,10 @@ fn lease_installation_identity(
         ),
         self_mgmt::InstallAuthority::ManagedLocal => (
             WorkspaceLeaseInstallAuthority::ManagedLocal,
-            doctor.install.as_ref().map(|install| install.install_id.clone()),
+            doctor
+                .install
+                .as_ref()
+                .map(|install| install.install_id.clone()),
         ),
         self_mgmt::InstallAuthority::Missing => {
             return Err(CliError::new(
@@ -518,12 +504,14 @@ fn lease_installation_identity(
             ));
         }
     };
-    let generation = generation.filter(|value| !value.is_empty()).ok_or_else(|| {
-        CliError::new(
-            "WORKSPACE_LEASE_GENERATION_MISSING",
-            "The effective install authority did not provide a generation identity.",
-        )
-    })?;
+    let generation = generation
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CliError::new(
+                "WORKSPACE_LEASE_GENERATION_MISSING",
+                "The effective install authority did not provide a generation identity.",
+            )
+        })?;
     Ok(WorkspaceLeaseInstallationIdentity {
         authority,
         generation,
@@ -555,7 +543,10 @@ fn ensure_lease_runtime(
             started: false,
             log_file: None,
             selected,
-            note: Some("Borrowed the exact IDEA-hosted runtime; acquisition never launches IDEA.".to_string()),
+            note: Some(
+                "Borrowed the exact IDEA-hosted runtime; acquisition never launches IDEA."
+                    .to_string(),
+            ),
             schema_version: SCHEMA_VERSION,
         });
     }
@@ -725,11 +716,7 @@ fn exact_runtime_observation(
         StaleDescriptorPolicy::Preserve,
     )?;
     for candidate in &inspection.candidates {
-        if runtime_descriptor_matches(
-            &candidate.descriptor,
-            &candidate.descriptor_path,
-            expected,
-        ) {
+        if runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected) {
             if !process_identity_is_live(&expected.process) {
                 return Ok(ExactRuntimeObservation::Unavailable);
             }
@@ -785,14 +772,11 @@ fn observe_active_binding(
     }
 }
 
-fn release_active_binding(
-    binding: &WorkspaceLeaseBinding,
-) -> Result<WorkspaceLeaseReleaseReceipt> {
+fn release_active_binding(binding: &WorkspaceLeaseBinding) -> Result<WorkspaceLeaseReleaseReceipt> {
     let (runtime_stopped, reason) = match binding.ownership {
-        WorkspaceLeaseOwnership::Borrowed => (
-            false,
-            WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
-        ),
+        WorkspaceLeaseOwnership::Borrowed => {
+            (false, WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved)
+        }
         WorkspaceLeaseOwnership::Started => {
             if stop_exact_runtime(
                 &binding.workspace_root,
@@ -826,11 +810,7 @@ fn stop_exact_runtime(
         StaleDescriptorPolicy::Preserve,
     )?;
     let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
-        runtime_descriptor_matches(
-            &candidate.descriptor,
-            &candidate.descriptor_path,
-            expected,
-        )
+        runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected)
             && process_identity_is_live(&expected.process)
     }) else {
         return Ok(false);
@@ -883,9 +863,10 @@ fn recover_or_reject_existing_lease(
                     binding.backend_name.canonical()
                 ),
             );
-            error
-                .details
-                .insert("ownerPid".to_string(), binding.owner.process.pid.to_string());
+            error.details.insert(
+                "ownerPid".to_string(),
+                binding.owner.process.pid.to_string(),
+            );
             return Err(error);
         }
         let runtime_stopped = if binding.ownership == WorkspaceLeaseOwnership::Started {
@@ -1111,10 +1092,7 @@ fn released_workspace_lease_record(
     })
 }
 
-fn validate_workspace_lease_record_mac(
-    secret: &[u8],
-    record: &WorkspaceLeaseRecord,
-) -> Result<()> {
+fn validate_workspace_lease_record_mac(secret: &[u8], record: &WorkspaceLeaseRecord) -> Result<()> {
     let (payload, encoded_mac) = match record {
         WorkspaceLeaseRecord::Active {
             binding,
@@ -1249,10 +1227,7 @@ fn read_workspace_lease_secret(path: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-fn sign_workspace_lease_token(
-    secret: &[u8],
-    claims: &WorkspaceLeaseTokenClaims,
-) -> Result<String> {
+fn sign_workspace_lease_token(secret: &[u8], claims: &WorkspaceLeaseTokenClaims) -> Result<String> {
     let payload = serde_json::to_vec(claims)?;
     let signature = workspace_lease_hmac_sha256(secret, &payload);
     Ok(format!(
@@ -1262,10 +1237,7 @@ fn sign_workspace_lease_token(
     ))
 }
 
-fn verify_workspace_lease_token(
-    secret: &[u8],
-    token: &str,
-) -> Result<WorkspaceLeaseTokenClaims> {
+fn verify_workspace_lease_token(secret: &[u8], token: &str) -> Result<WorkspaceLeaseTokenClaims> {
     let mut parts = token.split('.');
     let version = parts.next();
     let payload = parts.next();
@@ -1277,8 +1249,8 @@ fn verify_workspace_lease_token(
     {
         return Err(tampered_lease_error());
     }
-    let payload = hex::decode(payload.expect("checked token payload"))
-        .map_err(|_| tampered_lease_error())?;
+    let payload =
+        hex::decode(payload.expect("checked token payload")).map_err(|_| tampered_lease_error())?;
     let signature = hex::decode(signature.expect("checked token signature"))
         .map_err(|_| tampered_lease_error())?;
     let expected = workspace_lease_hmac_sha256(secret, &payload);
@@ -1327,7 +1299,9 @@ fn constant_time_equal(actual: &[u8], expected: &[u8]) -> bool {
     actual
         .iter()
         .zip(expected)
-        .fold(0_u8, |difference, (left, right)| difference | (left ^ right))
+        .fold(0_u8, |difference, (left, right)| {
+            difference | (left ^ right)
+        })
         == 0
 }
 

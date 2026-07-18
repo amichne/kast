@@ -14,7 +14,7 @@ Kast or prepare a workspace.
 
 Install the Kast release that matches the Codex plugin release. On macOS, open
 the exact project or linked worktree in IntelliJ IDEA or Android Studio with
-the signed Kast plugin active. On a supported Linux host, prepare the exact
+the GitHub-hosted Kast plugin active. On a supported Linux host, prepare the exact
 root through the headless installation path.
 
 The existing provider-neutral `kast` skill owns readiness, repair, and

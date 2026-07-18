@@ -45,12 +45,6 @@ done
 [[ -f "${release_dir}/build-provenance.json" ]] || die "build-provenance.json not found in $release_dir"
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-compatibility_renderer="${repo_root}/.github/scripts/render-runtime-compatibility.py"
-[[ -x "$compatibility_renderer" ]] \
-  || die "Runtime compatibility renderer is missing or not executable: $compatibility_renderer"
-"$compatibility_renderer" validate-manifest \
-  --manifest "${release_dir}/kast-runtime-compatibility.json" \
-  --release-tag "$tag"
 
 python3 - "$release_dir" "$tag" "$repo_root" <<'PY'
 import hashlib
@@ -72,10 +66,8 @@ required = {
     "codex-plugin": f"kast-codex-plugin-{tag}.zip",
     "gradle-ro-cache": "gradle-ro-dep-cache.tar.zst",
     "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
-    "idea": f"kast-idea-{tag}.zip",
     "openapi": "openapi.yaml",
     "runtime-manifest": "kast-runtime-manifest.json",
-    "runtime-compatibility": "kast-runtime-compatibility.json",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
 optional = {}
@@ -91,9 +83,10 @@ actual_assets = {
         path.name.endswith(".zip")
         or path.name.endswith(".tar.gz")
         or path.name.endswith(".tar.zst")
-        or path.name in ("kast-runtime-manifest.json", "kast-runtime-compatibility.json")
+        or path.name == "kast-runtime-manifest.json"
         or path.name == "openapi.yaml"
     )
+    and path.name != f"kast-idea-{tag}.zip"
     and not path.name.endswith(".tar.gz.sha256")
     and not path.name.endswith(".tar.zst.sha256")
 }
@@ -120,32 +113,12 @@ unexpected_provenance = sorted(set(by_platform) - set(supported))
 if unexpected_provenance:
     fail(f"unexpected provenance for {unexpected_provenance}")
 
-idea_provenance = by_platform["idea"]
-if idea_provenance.get("pluginId") != "io.github.amichne.kast":
-    fail("IDEA plugin provenance pluginId must be io.github.amichne.kast")
-signer_fingerprint = idea_provenance.get("signerCertificateSha256")
-if not isinstance(signer_fingerprint, str) or re.fullmatch(r"[0-9a-f]{64}", signer_fingerprint) is None:
-    fail("IDEA plugin provenance signerCertificateSha256 must be lowercase SHA-256")
-if idea_provenance.get("signatureVerified") is not True:
-    fail("IDEA plugin provenance signatureVerified must be true")
-if idea_provenance.get("ref") != f"refs/tags/{tag}":
-    fail(f"IDEA plugin provenance ref must be refs/tags/{tag}")
-release_sha = idea_provenance.get("sha")
-if not isinstance(release_sha, str) or re.fullmatch(r"[0-9a-f]{40}", release_sha) is None:
-    fail("IDEA plugin provenance sha must be a full lowercase Git commit SHA")
-if idea_provenance.get("verificationTasks") != [
-    ":backend-idea:verifyPluginStructure",
-    ":backend-idea:verifyPluginXmlPresent",
-    ":backend-idea:verifyPlugin",
-    ":backend-idea:verifyPluginSignature",
-]:
-    fail("IDEA plugin provenance must carry the complete signed compatibility gate")
-
 codex_provenance = by_platform["codex-plugin"]
 if codex_provenance.get("ref") != f"refs/tags/{tag}":
     fail(f"Codex plugin provenance ref must be refs/tags/{tag}")
-if codex_provenance.get("sha") != release_sha:
-    fail("Codex plugin provenance sha must match signed IDEA provenance")
+release_sha = codex_provenance.get("sha")
+if not isinstance(release_sha, str) or re.fullmatch(r"[0-9a-f]{40}", release_sha) is None:
+    fail("Codex plugin provenance sha must be a full lowercase Git commit SHA")
 if codex_provenance.get("pluginVersion") != tag.removeprefix("v"):
     fail("Codex plugin provenance pluginVersion must match release tag")
 if codex_provenance.get("generatorCommand") != "kast developer codex generate --release":
@@ -273,12 +246,6 @@ if not isinstance(manifest["artifactSha256"], str) or not re.fullmatch(r"[0-9a-f
 runtime_asset = "kast-headless-linux-x64.tar.zst"
 if manifest["artifactSha256"] != sha_entries.get(runtime_asset):
     fail("runtime manifest artifactSha256 must match kast-headless-linux-x64.tar.zst")
-
-compatibility = json.loads(
-    (release_dir / "kast-runtime-compatibility.json").read_text(encoding="utf-8")
-)
-if compatibility["releaseSha"] != release_sha:
-    fail("runtime compatibility manifest releaseSha must match signed IDEA provenance")
 
 codex_asset = release_dir / supported["codex-plugin"]
 subprocess.run(

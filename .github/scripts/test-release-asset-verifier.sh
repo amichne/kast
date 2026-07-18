@@ -146,13 +146,6 @@ payload = {
 }
 manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
-  rm -f "${release_dir}/kast-runtime-compatibility.json"
-  "${repo_root}/.github/scripts/render-runtime-compatibility.py" render \
-    --source "${repo_root}/packaging/jetbrains/runtime-compatibility.json" \
-    --release-tag "$tag" \
-    --release-sha "0123456789abcdef0123456789abcdef01234567" \
-    --output "${release_dir}/kast-runtime-compatibility.json" \
-    >/dev/null
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-headless-linux-x64.tar.zst")" \
     "kast-headless-linux-x64.tar.zst" \
@@ -200,9 +193,7 @@ entries = [
     ("headless-linux-x64", "kast-headless-linux-x64.tar.zst"),
     ("openapi", "openapi.yaml"),
     ("runtime-manifest", "kast-runtime-manifest.json"),
-    ("runtime-compatibility", "kast-runtime-compatibility.json"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
-    ("idea", f"kast-idea-{tag}.zip"),
 ]
 builds = [
         {
@@ -214,20 +205,6 @@ builds = [
         if (release_dir / asset).is_file()
 ]
 for entry in builds:
-    if entry["platformId"] == "idea":
-        entry.update({
-            "pluginId": "io.github.amichne.kast",
-            "signerCertificateSha256": "a" * 64,
-            "signatureVerified": True,
-            "sha": "0123456789abcdef0123456789abcdef01234567",
-            "ref": f"refs/tags/{tag}",
-            "verificationTasks": [
-                ":backend-idea:verifyPluginStructure",
-                ":backend-idea:verifyPluginXmlPresent",
-                ":backend-idea:verifyPlugin",
-                ":backend-idea:verifyPluginSignature",
-            ],
-        })
     if entry["platformId"] == "codex-plugin":
         entry.update({
             "sha": "0123456789abcdef0123456789abcdef01234567",
@@ -264,9 +241,7 @@ assets=(
   "kast-headless-linux-x64.tar.zst"
   "openapi.yaml"
   "kast-runtime-manifest.json"
-  "kast-runtime-compatibility.json"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-  "kast-idea-${tag}.zip"
 )
 
 write_expected_assets
@@ -295,26 +270,6 @@ grep -Fq "Codex plugin provenance pluginVersion" "${scratch_dir}/codex-version.e
   || die "Codex plugin version failure did not name the provenance contract"
 write_provenance
 
-python3 - "${release_dir}/kast-runtime-compatibility.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-payload = json.loads(path.read_text(encoding="utf-8"))
-payload["supportedPairs"][0]["requiredCapabilities"][0]["name"] = "UNKNOWN_CAPABILITY"
-path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-PY
-write_sha256sums "$release_dir" "${assets[@]}"
-write_provenance
-if "$verifier" --release-dir "$release_dir" --tag "$tag" \
-  >"${scratch_dir}/compatibility-schema.out" \
-  2>"${scratch_dir}/compatibility-schema.err"; then
-  die "release with an unknown runtime capability unexpectedly verified"
-fi
-grep -Fq "known READ capability" "${scratch_dir}/compatibility-schema.err" \
-  || die "invalid runtime compatibility failure did not name the capability contract"
-
 rm -rf "$release_dir"
 mkdir -p "$release_dir"
 core_assets=(
@@ -327,8 +282,6 @@ core_assets=(
   "kast-headless-linux-x64.tar.zst"
   "openapi.yaml"
   "kast-runtime-manifest.json"
-  "kast-runtime-compatibility.json"
-  "kast-idea-${tag}.zip"
 )
 write_expected_assets
 rm -f \
@@ -366,7 +319,7 @@ path = Path(sys.argv[1])
 payload = json.loads(path.read_text(encoding="utf-8"))
 payload["builds"] = [
     entry for entry in payload["builds"]
-    if entry.get("platformId") != "idea"
+    if entry.get("platformId") != "openapi"
 ]
 path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
@@ -375,26 +328,6 @@ if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch
   die "missing provenance unexpectedly verified"
 fi
 grep -Fq "missing provenance" "${scratch_dir}/provenance.err" || die "missing provenance failure did not mention missing provenance"
-
-write_expected_assets
-write_sha256sums "$release_dir" "${assets[@]}"
-write_provenance
-python3 - "${release_dir}/build-provenance.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-payload = json.loads(path.read_text(encoding="utf-8"))
-idea = next(entry for entry in payload["builds"] if entry.get("platformId") == "idea")
-idea["signatureVerified"] = False
-path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-PY
-if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/signature.err"; then
-  die "unsigned IDEA provenance unexpectedly verified"
-fi
-grep -Fq "signatureVerified" "${scratch_dir}/signature.err" \
-  || die "unsigned IDEA provenance failure did not mention signature verification"
 
 write_expected_assets
 python3 - "${release_dir}/kast-runtime-manifest.json" <<'PY'

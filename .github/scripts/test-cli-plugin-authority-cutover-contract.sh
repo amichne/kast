@@ -102,7 +102,7 @@ require_not_contains "cli-rs/src/runtime/idea_launch.rs" "plugin_installed"
 require_not_contains "cli-rs/src/runtime/idea_launch.rs" "IDEA_PLUGIN_NOT_INSTALLED"
 require_not_contains "cli-rs/src/runtime/descriptors.rs" "developer machine plugin"
 require_not_contains "cli-rs/src/runtime/descriptors.rs" "IntelliJ plugin through Homebrew"
-require_contains "cli-rs/src/runtime/descriptors.rs" "signed Kast plugin through JetBrains"
+require_contains "cli-rs/src/runtime/descriptors.rs" "GitHub-hosted Kast plugin through JetBrains"
 require_not_contains "cli-rs/src/output/install.rs" "InstallIdeaPluginResult"
 
 require_contains "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/WorkspaceMetadataRevision.kt" "CURRENT = WorkspaceMetadataRevision(3)"
@@ -115,10 +115,11 @@ require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/P
 
 require_contains "docs/install/macos.md" "Install Plugin from Disk"
 require_contains "docs/install/macos.md" "custom plugin repository"
+require_contains "docs/install/macos.md" "idea installPlugins io.github.amichne.kast"
+require_contains "docs/install/macos.md" "releases/latest/download/updatePlugins.xml"
 require_not_contains "docs/install/macos.md" "developer machine plugin"
-require_not_contains "README.md" "matching plugin"
-require_not_contains "docs/use/choose-a-command.md" "CLI and matching JetBrains plugin"
-require_contains "docs/use/choose-a-command.md" "signed plugin separately through JetBrains"
+require_contains "README.md" "matching plugin's initial installation"
+require_contains "docs/use/choose-a-command.md" "initial release-matched JetBrains plugin"
 require_not_contains "cli-rs/resources/kast-skill/SKILL.md" "developer machine plugin"
 
 bash -n install.sh

@@ -250,7 +250,7 @@ fn setup_fails_closed_on_macos_without_writing_partial_workspace_state() {
         stdout["error"]["message"]
             .as_str()
             .expect("message")
-            .contains("JetBrains-installed signed plugin"),
+            .contains("JetBrains-installed Kast plugin"),
         "{stdout}"
     );
 }

@@ -13,9 +13,14 @@ The repair command writes the fail-closed CLI-only receipt and, for the 0.13.0
 cutover release only, can remove exactly recognized legacy Homebrew plugin
 symlinks. It never creates an IDE profile or plugin link.
 
-Install the signed plugin ZIP with JetBrains **Install Plugin from Disk**. Add
-the published signing certificate and custom plugin repository in the IDE,
-then reopen the exact project. JetBrains owns subsequent plugin updates.
+For an absent plugin, the root `install.sh` reads the installed CLI version and
+delegates release-matched installation to a closed IDE's `installPlugins`
+command. The command does not replace an installed plugin. For native updates,
+add
+`https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml`
+as a custom plugin repository. JetBrains owns the installed plugin files and
+update application. If no launcher is available for initial installation, use
+JetBrains' **Install Plugin from Disk** with the matching GitHub Release ZIP.
 
 ## Release mirrors
 
@@ -28,5 +33,5 @@ export HOMEBREW_KAST_CLI_RELEASE_ROOT="https://artifactory.example.com/kast/rele
 curl -LO "$HOMEBREW_KAST_CLI_RELEASE_ROOT/v0.7.29/kast-v0.7.29-macos-arm64.zip"
 ```
 
-The signed IDEA ZIP, update feed, checksums, and provenance remain release
-assets, but they are not Homebrew packages.
+The unsigned IDEA ZIP and update feed remain GitHub Release assets, not
+Homebrew packages or inputs to the non-IDEA checksum/provenance bundle.
