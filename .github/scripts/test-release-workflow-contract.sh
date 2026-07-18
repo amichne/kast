@@ -376,6 +376,8 @@ require_block_contains "$ci_workflow" "  source-bound-headless-backend:" "  inst
 require_block_contains "$ci_workflow" "  source-bound-headless-backend:" "  install-ubuntu-debian-container:" "compression-level: 0" "The source-bound backend upload must not recompress its ephemeral stored archive"
 require_block_not_contains "$ci_workflow" "  source-bound-headless-backend:" "  install-ubuntu-debian-container:" "Free disk for" "Source-bound backend production must not spend its critical path deleting unrelated runner SDKs"
 require_block_contains "$ci_workflow" "  prepared-generation:" "  install-ubuntu-debian-container:" "scripts/assemble-prepared-local-generation.sh" "CI must assemble and verify one immutable prepared generation"
+require_contains "$prepared_generation_assembler" '--selection-file "$prepared_generation_selection"' "Prepared-generation assembly must consume the artifact-qualified Rust selection"
+require_contains "$prepared_generation_assembler" '--prepared-generation "$selected_prepared_generation"' "Prepared-generation packaging must use the selected immutable child"
 require_block_contains "$ci_workflow" "  prepared-generation:" "  install-ubuntu-debian-container:" "ci-artifact-ledger-prepared-generation" "CI must ledger and publish prepared-generation outputs once"
 require_block_contains "$ci_workflow" "  prepared-generation:" "  prepared-ubuntu-debian-bundle:" "compression-level: 0" "The prepared-generation upload must not recompress its zstd archive"
 require_block_contains "$ci_workflow" "  prepared-generation:" "  prepared-ubuntu-debian-bundle:" "      - source-bound-headless-backend" "Prepared-generation publication must consume the focused backend producer"
