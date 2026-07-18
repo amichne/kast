@@ -114,9 +114,22 @@ for arg in "$@"; do
   printf ' %s' "$arg" >>"${KAST_INSTALL_TEST_LOG:?}"
 done
 printf '\n' >>"${KAST_INSTALL_TEST_LOG:?}"
+if [[ "$*" == "version" ]]; then
+  printf '%s\n' "Kast CLI 0.13.0"
+fi
 SH
 
-  chmod +x "${bin_dir}/brew" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
+  cat >"${bin_dir}/idea" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'idea' >>"${KAST_INSTALL_TEST_LOG:?}"
+for arg in "$@"; do
+  printf ' %s' "$arg" >>"${KAST_INSTALL_TEST_LOG:?}"
+done
+printf '\n' >>"${KAST_INSTALL_TEST_LOG:?}"
+SH
+
+  chmod +x "${bin_dir}/brew" "${bin_dir}/idea" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
 }
 
 run_installer() {
@@ -178,7 +191,7 @@ require_no_tool_calls "$log_file" "declined confirmation must fail before invoki
 
 : >"$log_file"
 install_stderr="${tmp_root}/install.stderr"
-CLICOLOR_FORCE=1 run_installer_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$install_stderr"
+CLICOLOR_FORCE=1 run_installer_noninteractive "$repo_root" install --ide-launcher "$fake_bin/idea" --workspace-root "$workspace" 2>"$install_stderr"
 require_stderr_contains "$install_stderr" $'\033[1;36mKast developer install\033[0m' "install should use the Kast section style"
 require_stderr_contains "$install_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "install should render the Kast banner"
 require_stderr_contains "$install_stderr" "Kotlin semantic analysis — from your terminal" "install should render the tagline"
@@ -187,6 +200,8 @@ require_log_contains "$log_file" "brew tap amichne/kast" "install should tap the
 require_log_contains "$log_file" "brew install kast" "install should install the formula"
 require_log_contains "$log_file" "brew --prefix kast" "install should resolve the formula-owned binary"
 require_log_contains "$log_file" "kast repair --for machine --apply" "install should establish the CLI-only receipt"
+require_log_contains "$log_file" "kast version" "install should derive the plugin feed from the installed CLI"
+require_log_contains "$log_file" "idea installPlugins io.github.amichne.kast https://github.com/amichne/kast/releases/download/v0.13.0/updatePlugins.xml" "install should delegate exact-version plugin installation to the IDE"
 require_log_count "$log_file" "kast repair --for machine --apply" 1 "install should repair authority exactly once"
 require_log_not_contains_prefix "$log_file" "kast setup" "install should leave workspace setup to JetBrains"
 
@@ -201,6 +216,11 @@ require_log_contains "$log_file" "brew tap custom/tap https://git.example.test/h
 require_log_contains "$log_file" "brew update" "update should refresh Homebrew metadata"
 require_log_contains "$log_file" "brew upgrade kast" "update should upgrade the formula"
 require_log_contains "$log_file" "kast repair --for machine --apply" "update should repair the CLI-only receipt"
+require_log_contains "$log_file" "kast version" "update should derive the expected plugin release from the installed CLI"
+require_log_not_contains_prefix "$log_file" "idea installPlugins" "update must not claim that JetBrains' install-only command replaces an existing plugin"
+require_stderr_contains "$update_stderr" "Expected IDEA plugin release: v0.13.0" "update should name the plugin release expected by the updated CLI"
+require_stderr_contains "$update_stderr" "releases/latest/download/updatePlugins.xml" "update should direct native plugin discovery to the stable feed"
+require_stderr_contains "$update_stderr" "releases/download/v0.13.0/kast-idea-v0.13.0.zip" "update should provide the exact disk-install fallback"
 require_log_count "$log_file" "kast repair --for machine --apply" 1 "update should repair authority exactly once"
 require_log_not_contains_prefix "$log_file" "kast setup" "update should leave workspace setup to JetBrains"
 
@@ -209,7 +229,7 @@ verify_stderr="${tmp_root}/verify.stderr"
 run_installer "$repo_root" verify --workspace-root "$workspace" 2>"$verify_stderr"
 require_stderr_not_contains "$verify_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "verify should remain banner-free"
 require_log_contains "$log_file" "brew --prefix kast" "verify should prove Homebrew formula authority"
-require_log_contains "$log_file" "kast ready --for agent --workspace-root ${workspace}" "verify should check repository readiness"
+require_log_contains "$log_file" "kast agent verify --workspace-root ${workspace} --backend idea" "verify should run typed IDEA admission on demand"
 
 help_stderr="${tmp_root}/help.stderr"
 run_installer "$repo_root" --help 2>"$help_stderr"
@@ -217,7 +237,7 @@ require_stderr_not_contains "$help_stderr" "██╗  ██╗ █████
 
 : >"$log_file"
 source_stderr="${tmp_root}/source-entrypoint.stderr"
-run_installer_source_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$source_stderr"
+run_installer_source_noninteractive "$repo_root" install --ide-launcher "$fake_bin/idea" --workspace-root "$workspace" 2>"$source_stderr"
 require_log_contains "$log_file" "brew install kast" "the curl-style source entrypoint should install the formula"
 require_log_contains "$log_file" "kast repair --for machine --apply" "the source entrypoint should establish CLI authority"
 
@@ -262,4 +282,4 @@ require_stderr_contains "$stderr_file" "Workspace root does not exist" "missing 
 require_no_tool_calls "$log_file" "missing workspace root must fail before invoking brew or kast"
 
 bash -n "$installer"
-printf '%s\n' "macOS CLI-only installer contract passed"
+printf '%s\n' "macOS developer installer contract passed"

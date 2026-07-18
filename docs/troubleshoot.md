@@ -15,7 +15,9 @@ sequence when needed.
 | Symptom | Likely cause | Next action |
 | --- | --- | --- |
 | Kast CLI does not appear after install | Homebrew formula or CLI receipt repair did not complete | Rerun the installer, then run `kast ready --for machine` |
-| Kast plugin does not appear | The signed ZIP was not installed or the custom repository is not enrolled | Use **Install Plugin from Disk** or update the repository settings in JetBrains |
+| Kast plugin does not appear | JetBrains did not install the release ZIP | Quit the IDE and rerun `install.sh update`, or use **Install Plugin from Disk** with the exact release ZIP |
+| The IDE does not discover Kast updates | The GitHub Release feed is not enrolled | Add `https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml` as a custom plugin repository |
+| A plugin update asks for restart | The IDE refused dynamic unload for this build or runtime state | Accept the JetBrains restart fallback; Kast does not force hot replacement |
 | `kast@kast` does not appear in Codex | The extracted Kast marketplace is not configured, or the plugin was not installed from it | Add the marketplace root, run `codex plugin add kast@kast`, and start a new Codex task |
 | Codex reports a Kast/plugin version mismatch | The marketplace archive and active Kast binary came from different releases | Install the matching CLI and Codex plugin release, reinstall `kast@kast`, and start a new task |
 | A generic Kotlin edit is denied | The typed Kast mutation route has not produced target-bound fallback evidence | Let Codex try the corresponding typed mutation first; fall back only after its typed failure is recorded |
@@ -43,7 +45,7 @@ It also preserves `daemons.json` exactly; use an explicit lifecycle command if
 stale runtime state should be pruned.
 
 On macOS, open the exact checkout root in IntelliJ IDEA or Android Studio with
-the signed JetBrains-installed Kast plugin enabled. After the plugin has prepared that
+the JetBrains-installed Kast plugin enabled. After the plugin has prepared that
 root, rerun verification and the read-only semantic commands against the same
 absolute path.
 

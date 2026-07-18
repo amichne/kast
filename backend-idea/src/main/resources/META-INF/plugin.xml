@@ -32,6 +32,5 @@
                 parentId="tools"/>
         <notificationGroup id="Kast Activity" displayType="TOOL_WINDOW" toolWindowId="Kast"/>
         <notificationGroup id="Kast" displayType="BALLOON"/>
-        <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
     </extensions>
 </idea-plugin>

@@ -39,34 +39,10 @@ concurrency:
 
 jobs:
   release-preflight:
-    name: Preflight stable release automation
+    name: Preflight release automation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
-      - name: Validate enrolled IDEA plugin repository identity
-        run: >
-          .github/scripts/render-jetbrains-plugin-repository.py
-          validate-source
-          --source packaging/jetbrains/plugin-repository.json
-          --compatibility-source packaging/jetbrains/runtime-compatibility.json
-          --require-configured
-
-      - name: Require immutable GitHub Releases
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ -n "$GH_TOKEN" ]] || {
-            echo "::error::RELEASE_GITHUB_TOKEN with repository Administration read access is required."
-            exit 1
-          }
-          immutable_releases="$(gh api repos/amichne/kast/immutable-releases --jq '.enabled')"
-          [[ "$immutable_releases" == "true" ]] || {
-            echo "::error::GitHub Release immutability must be enabled before creating a release."
-            exit 1
-          }
 
       - name: Classify release
         id: classify
@@ -96,27 +72,6 @@ jobs:
           set -euo pipefail
           if [[ -z "${HOMEBREW_TAP_TOKEN:-}" ]]; then
             echo "::error::Missing HOMEBREW_TAP_TOKEN secret; stable releases cannot update amichne/homebrew-kast."
-            exit 1
-          fi
-
-      - name: Require IDEA plugin signing credentials and enrolled identity
-        env:
-          IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
-          IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}
-          IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          missing=()
-          for name in \
-            IDEA_PLUGIN_CERTIFICATE_CHAIN \
-            IDEA_PLUGIN_PRIVATE_KEY \
-            IDEA_PLUGIN_PRIVATE_KEY_PASSWORD
-          do
-            [[ -n "${!name:-}" ]] || missing+=("$name")
-          done
-          if [[ "${#missing[@]}" -gt 0 ]]; then
-            printf '::error::Missing required IDEA plugin signing inputs: %s\n' "${missing[*]}"
             exit 1
           fi
 
@@ -382,93 +337,6 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: openapi-spec-${{ github.run_id }}
-          path: dist/
-          if-no-files-found: error
-
-  build-runtime-compatibility-manifest:
-    name: Build runtime compatibility manifest
-    needs:
-      - prepare-release
-      - validate-jvm
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Render runtime compatibility manifest
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          .github/scripts/render-runtime-compatibility.py validate-source \
-            --source packaging/jetbrains/runtime-compatibility.json
-          .github/scripts/render-runtime-compatibility.py render \
-            --source packaging/jetbrains/runtime-compatibility.json \
-            --release-tag "${{ needs.prepare-release.outputs.release_tag }}" \
-            --release-sha "$GITHUB_SHA" \
-            --output dist/kast-runtime-compatibility.json
-
-      - name: Generate runtime compatibility provenance
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - "dist/kast-runtime-compatibility.json" "dist/build-provenance-runtime-compatibility.json" <<'PY'
-          import hashlib
-          import json
-          import os
-          import sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "runtime-compatibility",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-runtime-compatibility.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-runtime-compatibility \
-            --artifact-name kast-runtime-compatibility.json \
-            --artifact-path dist/kast-runtime-compatibility.json \
-            --producer-job build-runtime-compatibility-manifest \
-            --build-command-id release-render-runtime-compatibility
-
-      - name: Upload runtime compatibility release asset
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger dist/build-ledger-runtime-compatibility.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind release-runtime-compatibility \
-            --artifact release-runtime-compatibility=dist/kast-runtime-compatibility.json
-          .github/scripts/upload-immutable-release-asset.sh \
-            --tag "$tag" \
-            --asset dist/kast-runtime-compatibility.json
-
-      - name: Upload runtime compatibility workflow artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: runtime-compatibility-${{ github.run_id }}
           path: dist/
           if-no-files-found: error
 
@@ -908,143 +776,38 @@ jobs:
           restore-keys: |
             release-idea-plugin-inputs-${{ runner.os }}-
 
-      - name: Build and verify IDEA plugin
+      - name: Build unsigned IDEA plugin
         run: >
           ./scripts/ci-gradle-retry.sh
           ./gradlew
           :backend-idea:buildPlugin
-          :backend-idea:verifyPluginStructure
-          :backend-idea:verifyPluginXmlPresent
-          :backend-idea:verifyPlugin
           -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
-      - name: Materialize IDEA plugin signing certificate
-        id: idea-signing-certificate
-        env:
-          IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          certificate_path="${RUNNER_TEMP}/kast-idea-plugin-signing-chain.crt"
-          umask 077
-          printf '%s\n' "$IDEA_PLUGIN_CERTIFICATE_CHAIN" > "$certificate_path"
-          openssl x509 -in "$certificate_path" -noout
-          printf 'path=%s\n' "$certificate_path" >> "$GITHUB_OUTPUT"
-
-      - name: Sign and verify IDEA plugin
-        env:
-          PRIVATE_KEY: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY }}
-          PRIVATE_KEY_PASSWORD: ${{ secrets.IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          :backend-idea:signPlugin
-          :backend-idea:verifyPluginSignature
-          :backend-idea:stageIdeaPluginSignatureVerifier
-          -Pkast.idea.signing.certificateChainFile="${{ steps.idea-signing-certificate.outputs.path }}"
-          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
-
-      - name: Stage and upload immutable signed IDEA plugin asset
+      - name: Upload IDEA plugin and update feed
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          release_sha="$(git rev-parse HEAD)"
-          tag_sha="$(git rev-list -n1 "$tag")"
-          [[ "$release_sha" == "$tag_sha" ]] || {
-            echo "Checked-out HEAD ${release_sha} does not match ${tag} target ${tag_sha}" >&2
-            exit 1
-          }
+          version="${{ needs.prepare-release.outputs.release_version }}"
           asset_name="kast-idea-${tag}.zip"
-          signature_verifier_jar="backend-idea/build/idea-plugin-signature-verifier/marketplace-zip-signer-cli.jar"
-          [[ -f "$signature_verifier_jar" ]] || {
-            echo "Marketplace ZIP Signer CLI was not staged: ${signature_verifier_jar}" >&2
-            exit 1
-          }
           mapfile -t source_zips < <(
-            find backend-idea/build/distributions -maxdepth 1 -name '*-signed.zip' -print | sort
+            find backend-idea/build/distributions -maxdepth 1 -name '*.zip' -print | sort
           )
           [[ "${#source_zips[@]}" -eq 1 ]] || {
-            echo "Expected exactly one signed IDEA plugin zip, found ${#source_zips[@]}" >&2
+            echo "Expected exactly one IDEA plugin zip, found ${#source_zips[@]}" >&2
             exit 1
           }
-          source_zip="${source_zips[0]}"
           mkdir -p dist
-          cp "$source_zip" "dist/${asset_name}"
-          cp "$signature_verifier_jar" dist/marketplace-zip-signer-cli.jar
-          mapfile -t enrolled_signers < <(
-            .github/scripts/render-jetbrains-plugin-repository.py \
-              enrolled-signers \
-              --source packaging/jetbrains/plugin-repository.json \
-              --compatibility-source packaging/jetbrains/runtime-compatibility.json \
-              --require-configured
-          )
-          [[ "${#enrolled_signers[@]}" -gt 0 ]] || {
-            echo "No enrolled IDEA plugin signers were provided by the typed repository source" >&2
-            exit 1
-          }
-          signer_args=()
-          for signer in "${enrolled_signers[@]}"; do
-            signer_args+=(--expected-signer-sha256 "$signer")
-          done
-          scripts/verify-idea-plugin-artifact.py record \
-            --plugin-zip "dist/${asset_name}" \
-            --certificate-chain "${{ steps.idea-signing-certificate.outputs.path }}" \
-            --signature-verifier-jar "$signature_verifier_jar" \
-            --release-tag "$tag" \
-            --release-sha "$release_sha" \
-            --output dist/build-provenance-idea.json \
-            --asset-name "$asset_name" \
-            "${signer_args[@]}"
-          scripts/verify-idea-plugin-artifact.py verify \
-            --plugin-zip "dist/${asset_name}" \
-            --certificate-chain "${{ steps.idea-signing-certificate.outputs.path }}" \
-            --signature-verifier-jar "$signature_verifier_jar" \
-            --release-tag "$tag" \
-            --release-sha "$release_sha" \
-            --provenance dist/build-provenance-idea.json \
-            "${signer_args[@]}"
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-idea.json \
-            --git-sha "$release_sha" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-idea \
-            --artifact-name "$asset_name" \
-            --artifact-path "dist/${asset_name}" \
-            --producer-job build-idea-plugin \
-            --build-command-id release-idea-plugin-build
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-idea-signature-verifier.json \
-            --git-sha "$release_sha" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-idea-signature-verifier \
-            --artifact-name marketplace-zip-signer-cli.jar \
-            --artifact-path dist/marketplace-zip-signer-cli.jar \
-            --producer-job build-idea-plugin \
-            --build-command-id stage-idea-plugin-signature-verifier
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger dist/build-ledger-idea.json \
-            --ledger dist/build-ledger-idea-signature-verifier.json \
-            --git-sha "$release_sha" \
-            --require-kind release-idea \
-            --require-kind release-idea-signature-verifier \
-            --artifact "release-idea=dist/${asset_name}" \
-            --artifact release-idea-signature-verifier=dist/marketplace-zip-signer-cli.jar
-          .github/scripts/upload-immutable-release-asset.sh \
-            --tag "$tag" \
-            --asset "dist/${asset_name}"
-
-      - name: Upload plugin artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: idea-plugin-${{ github.run_id }}
-          path: dist/
-          if-no-files-found: error
+          asset_path="dist/${asset_name}"
+          feed_path="dist/updatePlugins.xml"
+          cp "${source_zips[0]}" "$asset_path"
+          sed \
+            -e "s/#tag#/${tag}/g" \
+            -e "s/#version#/${version}/g" \
+            packaging/jetbrains/updatePlugins.xml > "$feed_path"
+          gh release upload "$tag" "$asset_path" "$feed_path" --clobber
 
   build-headless-backend:
     name: Build headless backend
@@ -1446,14 +1209,13 @@ jobs:
       - prepare-release
       - validate-jvm
       - build-openapi-spec
-      - build-runtime-compatibility-manifest
       - build-cli
       - build-codex-plugin
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
       - installed-semantic-canary
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-runtime-compatibility-manifest.result == 'success' && needs.build-cli.result == 'success' && needs.build-codex-plugin.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.installed-semantic-canary.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-codex-plugin.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.installed-semantic-canary.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1465,13 +1227,6 @@ jobs:
         with:
           path: provenance-cli
           pattern: rust-cli-*-${{ github.run_id }}
-          merge-multiple: true
-
-      - name: Download IDEA plugin provenance
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-idea
-          pattern: idea-plugin-*
           merge-multiple: true
 
       - name: Download Codex plugin provenance
@@ -1495,13 +1250,6 @@ jobs:
           pattern: openapi-spec-*
           merge-multiple: true
 
-      - name: Download runtime compatibility provenance
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-runtime-compatibility
-          pattern: runtime-compatibility-*
-          merge-multiple: true
-
       - name: Verify release build ledgers
         shell: bash
         run: |
@@ -1513,41 +1261,32 @@ jobs:
             --ledger provenance-cli/build-ledger-cli-macos-x64.json \
             --ledger provenance-cli/build-ledger-cli-macos-arm64.json \
             --ledger provenance-codex-plugin/build-ledger-codex-plugin.json \
-            --ledger provenance-idea/build-ledger-idea.json \
-            --ledger provenance-idea/build-ledger-idea-signature-verifier.json \
             --ledger provenance-linux-headless/build-ledger-ubuntu-debian-headless.json \
             --ledger provenance-linux-headless/build-ledger-headless-linux-x64.json \
             --ledger provenance-linux-headless/build-ledger-runtime-manifest.json \
             --ledger provenance-linux-headless/build-ledger-gradle-ro-cache.json \
             --ledger provenance-openapi/build-ledger-openapi.json \
-            --ledger provenance-runtime-compatibility/build-ledger-runtime-compatibility.json \
             --git-sha "$GITHUB_SHA" \
             --require-kind release-cli-linux-x64 \
             --require-kind release-cli-linux-arm64 \
             --require-kind release-cli-macos-x64 \
             --require-kind release-cli-macos-arm64 \
             --require-kind release-codex-plugin \
-            --require-kind release-idea \
-            --require-kind release-idea-signature-verifier \
             --require-kind release-ubuntu-debian-headless-x86_64 \
             --require-kind release-headless-linux-x64 \
             --require-kind release-runtime-manifest \
             --require-kind release-gradle-ro-cache \
             --require-kind release-openapi \
-            --require-kind release-runtime-compatibility \
             --artifact "release-cli-linux-x64=provenance-cli/kast-${tag}-linux-x64.zip" \
             --artifact "release-cli-linux-arm64=provenance-cli/kast-${tag}-linux-arm64.zip" \
             --artifact "release-cli-macos-x64=provenance-cli/kast-${tag}-macos-x64.zip" \
             --artifact "release-cli-macos-arm64=provenance-cli/kast-${tag}-macos-arm64.zip" \
             --artifact "release-codex-plugin=provenance-codex-plugin/kast-codex-plugin-${tag}.zip" \
-            --artifact "release-idea=provenance-idea/kast-idea-${tag}.zip" \
-            --artifact release-idea-signature-verifier=provenance-idea/marketplace-zip-signer-cli.jar \
             --artifact "release-ubuntu-debian-headless-x86_64=provenance-linux-headless/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
             --artifact "release-headless-linux-x64=provenance-linux-headless/kast-headless-linux-x64.tar.zst" \
             --artifact "release-runtime-manifest=provenance-linux-headless/kast-runtime-manifest.json" \
             --artifact "release-gradle-ro-cache=provenance-linux-headless/gradle-ro-dep-cache.tar.zst" \
-            --artifact "release-openapi=provenance-openapi/openapi.yaml" \
-            --artifact "release-runtime-compatibility=provenance-runtime-compatibility/kast-runtime-compatibility.json"
+            --artifact "release-openapi=provenance-openapi/openapi.yaml"
 
       - name: Upload Gradle read-only cache release asset
         env:
@@ -1577,9 +1316,7 @@ jobs:
             provenance-cli \
             provenance-codex-plugin \
             provenance-linux-headless \
-            provenance-idea \
-            provenance-openapi \
-            provenance-runtime-compatibility
+            provenance-openapi
 
       - name: Upload combined provenance
         env:
@@ -1607,7 +1344,6 @@ jobs:
           gh release download "$tag" --dir release-assets --pattern '*.sha256' || true
           gh release download "$tag" --dir release-assets --pattern 'openapi.yaml'
           gh release download "$tag" --dir release-assets --pattern 'kast-runtime-manifest.json'
-          gh release download "$tag" --dir release-assets --pattern 'kast-runtime-compatibility.json'
           gh release download "$tag" --dir release-assets --pattern 'build-provenance.json'
           mapfile -t expected_assets < <(python3 - release-assets/build-provenance.json <<'PY'
           import json
@@ -1640,26 +1376,6 @@ jobs:
           .github/scripts/upload-immutable-release-asset.sh \
             --tag "$tag" \
             --asset SHA256SUMS
-
-      - name: Publish draft release with provenance annotation
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          release_flags=("--draft=false")
-          if [[ "$tag" == *-* ]]; then
-            release_flags+=(--prerelease)
-          else
-            release_flags+=(--latest)
-          fi
-          gh release edit "$tag" "${release_flags[@]}" \
-            --notes "$(gh release view "$tag" --json body -q .body)
-
-          ---
-          **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"
 
       - name: Render and push Homebrew tap
         if: ${{ !contains(needs.prepare-release.outputs.release_tag, '-') }}
@@ -1718,110 +1434,25 @@ jobs:
           git -C homebrew-tap commit -m "kast ${tag}"
           git -C homebrew-tap push
 
-  build-jetbrains-plugin-repository-pages:
-    name: Build JetBrains plugin repository documentation
-    needs:
-      - prepare-release
-      - publish-release
-    if: always() && needs.prepare-release.result == 'success' && needs.publish-release.result == 'success' && !contains(needs.prepare-release.outputs.release_tag, '-')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-docs.txt
-
-      - run: pip install -r requirements-docs.txt
-      - run: ./.github/scripts/test-docs-navigation-contract.sh
-      - run: ./.github/scripts/test-docs-content-contract.sh
-      - run: zensical build --clean
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: jetbrains-repository-site-${{ github.run_id }}
-          path: site
-          if-no-files-found: error
-
-  deploy-jetbrains-plugin-repository-pages:
-    name: Deploy finalized JetBrains plugin repository Pages
-    needs:
-      - prepare-release
-      - build-jetbrains-plugin-repository-pages
-    if: always() && needs.prepare-release.result == 'success' && needs.build-jetbrains-plugin-repository-pages.result == 'success'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: github-pages
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - uses: actions/download-artifact@v7
-        with:
-          name: jetbrains-repository-site-${{ github.run_id }}
-          path: site
-
-      - uses: actions/download-artifact@v7
-        with:
-          name: idea-plugin-${{ github.run_id }}
-          path: idea-verification
-
-      - uses: actions/configure-pages@v6
-
-      - name: Materialize IDEA plugin signing certificate
-        id: idea-repository-certificate
-        env:
-          IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.IDEA_PLUGIN_CERTIFICATE_CHAIN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          certificate_path="${RUNNER_TEMP}/kast-idea-plugin-signing-chain.crt"
-          umask 077
-          printf '%s\n' "$IDEA_PLUGIN_CERTIFICATE_CHAIN" > "$certificate_path"
-          openssl x509 -in "$certificate_path" -noout
-          printf 'path=%s\n' "$certificate_path" >> "$GITHUB_OUTPUT"
-
-      - name: Verify finalized plugin asset and render repository feed
+      - name: Publish draft release with provenance annotation
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          release_sha="$(git rev-parse HEAD)"
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger idea-verification/build-ledger-idea-signature-verifier.json \
-            --git-sha "$release_sha" \
-            --require-kind release-idea-signature-verifier \
-            --artifact release-idea-signature-verifier=idea-verification/marketplace-zip-signer-cli.jar
-          .github/scripts/materialize-jetbrains-plugin-repository-pages.sh \
-            --source packaging/jetbrains/plugin-repository.json \
-            --compatibility-source packaging/jetbrains/runtime-compatibility.json \
-            --output-directory site/jetbrains \
-            --tag "${{ needs.prepare-release.outputs.release_tag }}" \
-            --certificate-chain "${{ steps.idea-repository-certificate.outputs.path }}" \
-            --signature-verifier-jar idea-verification/marketplace-zip-signer-cli.jar
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          release_flags=("--draft=false")
+          if [[ "$tag" == *-* ]]; then
+            release_flags+=(--prerelease)
+          else
+            release_flags+=(--latest)
+          fi
+          gh release edit "$tag" "${release_flags[@]}" \
+            --notes "$(gh release view "$tag" --json body -q .body)
 
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
-
-      - uses: actions/deploy-pages@v5
-        id: deployment
+          ---
+          **Build provenance:** [CI Run #${{ github.run_number }}]($run_url)"
 
   verify-release-state:
     name: Verify published release state
@@ -1829,7 +1460,6 @@ jobs:
       - prepare-release
       - publish-maven-central
       - publish-release
-      - deploy-jetbrains-plugin-repository-pages
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -1845,11 +1475,6 @@ jobs:
           set -euo pipefail
           if [[ "${{ needs.publish-release.result }}" != "success" ]]; then
             echo "::error::Publish release finished with result ${{ needs.publish-release.result }}."
-            exit 1
-          fi
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          if [[ "$tag" != *-* && "${{ needs.deploy-jetbrains-plugin-repository-pages.result }}" != "success" ]]; then
-            echo "::error::JetBrains repository Pages deployment finished with result ${{ needs.deploy-jetbrains-plugin-repository-pages.result }}."
             exit 1
           fi
           echo "Maven Central job result: ${{ needs.publish-maven-central.result }}"

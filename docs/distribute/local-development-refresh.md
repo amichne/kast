@@ -86,7 +86,7 @@ Pull requests run focused proof at the boundary that owns each change. The
 static workflow gate captures one source snapshot. Independent source-bound
 CLI and backend jobs produce one CLI and backend from it while Rust and Kotlin
 validation run in parallel. Linux owns the JVM backend tests. The macOS product
-surface remains the signed IDEA plugin release boundary. The source-bound Linux
+surface remains the GitHub-hosted IDEA plugin release boundary. The source-bound Linux
 producer owns the only pull-request portable headless distribution, its
 no-fat-jar layout assertion, and its artifact ledger; the former unconsumed
 macOS archive proofs are explicitly replaced by those production-input proofs
@@ -162,7 +162,7 @@ first registered process instead of spawning a duplicate. Lock-wait time does
 not consume the post-spawn cold-import budget, and a child that exits before
 registration is reaped and reported immediately.
 
-The local headless process disables the signed plugin's project-open setup
+The local headless process disables the release plugin's project-open setup
 hook before IDEA starts. It does not read Homebrew release authority, install a
 JetBrains profile, or rewrite workspace setup metadata.
 

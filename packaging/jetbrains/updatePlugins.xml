@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugins>
+  <plugin
+      id="io.github.amichne.kast"
+      url="https://github.com/amichne/kast/releases/download/#tag#/kast-idea-#tag#.zip"
+      version="#version#">
+    <name>Kast Analysis Backend</name>
+    <idea-version since-build="253" />
+    <vendor url="https://github.com/amichne/kast">amichne</vendor>
+    <description>Kast Kotlin analysis backend for IDEA-based IDEs</description>
+  </plugin>
+</plugins>

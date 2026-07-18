@@ -42,9 +42,9 @@ class Kast < Formula
       Homebrew owns only the Kast CLI. Establish or repair its fail-closed receipt with:
         #{opt_bin}/kast repair --for machine --apply
 
-      Install the signed Kast plugin ZIP with JetBrains "Install Plugin from Disk",
-      enroll the published certificate and custom plugin repository in the IDE,
-      then reopen the exact project. JetBrains owns subsequent plugin updates.
+      Install the matching Kast plugin ZIP from the GitHub release, then add this
+      custom plugin repository in JetBrains for subsequent updates:
+        https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml
 
       The recommended installer configures the CLI authority:
         curl -fsSL https://kast.dev/install.sh | bash

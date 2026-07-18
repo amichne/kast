@@ -94,7 +94,7 @@ repackage the downloads.
 The source-bound Linux backend is the sole pull-request portable-backend
 producer. Its archive, no-fat-jar layout assertion, and ledger replace the
 retired macOS portable proofs, whose artifact had no consumer or release path.
-macOS release authority is the separately signed and verified IDEA plugin.
+macOS release authority is the separate GitHub-hosted IDEA plugin.
 
 ## Build Ledger
 

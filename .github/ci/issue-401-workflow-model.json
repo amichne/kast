@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 3,
   "provenance": {
-    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, source-bound backend production, full Kotlin validation, and prepared-generation publication are independent nodes. The Ubuntu bundle producer and kast-action validation each derive only their owned package family directly from that generation. The unshipped macOS portable producer is retired: the source-bound Linux producer owns its archive, no-fat-jar layout proof, and ledger replacements. Conservative estimates remain provisional until five comparable final-shape runs replace them.",
+    "description": "Issue 401 fanout split with current focused proof ownership. The first four baseline static-gate samples predate the selector-handle contract and are normalized by its observed three-second warm execution; the fifth baseline predates duplicate-owner removal and full-E2E relocation. The representative installed-semantic fixture starts a new comparison epoch in both graphs: the baseline rebuild path depends on the original CLI and Linux producers, while the candidate consumes the prepared generation. Source-bound CLI production, Rust validation, source-bound backend production, full Kotlin validation, and prepared-generation publication are independent nodes. The Ubuntu bundle producer and kast-action validation each derive only their owned package family directly from that generation. The unshipped macOS portable producer is retired: the source-bound Linux producer owns its archive, no-fat-jar layout proof, and ledger replacements. ADR 0028 intentionally retires the JetBrains signing, immutability, and Pages-repository proofs from both normalized graphs. Conservative estimates remain provisional until five comparable final-shape runs replace them.",
     "observedAt": "2026-07-17",
     "source": "https://github.com/amichne/kast/pull/413",
     "baselineRunIds": [
@@ -21,7 +21,6 @@
         "needs": [],
         "outputs": [
           "release-workflow-contract",
-          "jetbrains-plugin-repository-contract",
           "kast-build-contract",
           "docs-navigation-contract",
           "docs-content-contract",
@@ -222,7 +221,6 @@
           "idea-plugin-distribution-verification",
           "idea-plugin-artifact",
           "ci-artifact-ledger-idea-plugin",
-          "idea-plugin-signing-immutability-contract",
           "idea-plugin-performance-baselines"
         ],
         "durationSamplesSeconds": [
@@ -308,7 +306,6 @@
         "needs": [],
         "outputs": [
           "release-workflow-contract",
-          "jetbrains-plugin-repository-contract",
           "kast-build-contract",
           "docs-navigation-contract",
           "docs-content-contract",
@@ -516,7 +513,6 @@
           "idea-plugin-distribution-verification",
           "idea-plugin-artifact",
           "ci-artifact-ledger-idea-plugin",
-          "idea-plugin-signing-immutability-contract",
           "idea-plugin-performance-baselines"
         ],
         "durationSamplesSeconds": [

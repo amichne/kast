@@ -513,11 +513,11 @@ fn macos_plugin_bootstrap_required(
 ) -> Result<i32> {
     removed_operator_command(
         method,
-        "macOS workspace setup is owned by the JetBrains-installed signed plugin. The CLI does not install runtime, plugin, resource, or skill-only workspace state on macOS.",
+        "macOS workspace setup is owned by the JetBrains-installed Kast plugin. The CLI does not write plugin directories, runtime state, or skill-only workspace state on macOS.",
         &[
-            "brew install amichne/kast/kast",
-            "Install the signed plugin with JetBrains Install Plugin from Disk",
-            "Open the workspace in IntelliJ IDEA or Android Studio with the signed Kast plugin enabled",
+            "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)\" -- update",
+            "Add https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml as a custom plugin repository",
+            "Open the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled",
             "kast agent verify --workspace-root <repo>",
         ],
         output_format,

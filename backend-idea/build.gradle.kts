@@ -6,12 +6,9 @@ import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.attributes.Usage
 import org.gradle.api.attributes.java.TargetJvmEnvironment
 import org.gradle.api.attributes.java.TargetJvmVersion
-import org.gradle.api.tasks.Sync
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
-import org.jetbrains.intellij.platform.gradle.tasks.SignPluginTask
-import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginSignatureTask
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
@@ -37,7 +34,6 @@ kotlin {
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaDistributionVersion = catalog.findVersion("idea").get().requiredVersion
-private val signingCertificateChainPath = providers.gradleProperty("kast.idea.signing.certificateChainFile")
 
 val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
@@ -143,12 +139,6 @@ intellijPlatform {
             create(IntelliJPlatformType.AndroidStudio, "2025.3.1.7")
         }
     }
-
-    signing {
-        certificateChainFile.set(project.layout.file(signingCertificateChainPath.map(project::file)))
-        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
-        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
-    }
 }
 
 val generatedResourcesDir = layout.buildDirectory.dir("generated-resources")
@@ -181,17 +171,6 @@ tasks.register<VerifyPluginXmlPresentTask>("verifyPluginXmlPresent") {
     distributionsDirectory.set(layout.buildDirectory.dir("distributions"))
     expectedPluginId.set("io.github.amichne.kast")
     rejectedPluginId.set("io.github.amichne.kast.idea")
-}
-
-val signIdeaPlugin = tasks.named<SignPluginTask>("signPlugin")
-val verifyIdeaPluginSignature = tasks.named<VerifyPluginSignatureTask>("verifyPluginSignature") {
-    inputArchiveFile.set(signIdeaPlugin.flatMap { it.signedArchiveFile })
-}
-
-tasks.register<Sync>("stageIdeaPluginSignatureVerifier") {
-    from(verifyIdeaPluginSignature.flatMap { it.zipSignerExecutable })
-    into(layout.buildDirectory.dir("idea-plugin-signature-verifier"))
-    rename { "marketplace-zip-signer-cli.jar" }
 }
 
 tasks.withType<Test>().configureEach {

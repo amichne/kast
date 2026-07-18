@@ -18,28 +18,6 @@ write_provenance() {
   local asset="$3"
 
   mkdir -p "$(dirname -- "$path")"
-  if [[ "$platform" == "idea" ]]; then
-    cat > "$path" <<JSON
-{
-  "platformId": "${platform}",
-  "assetName": "${asset}",
-  "assetDigest": "sha256:$(printf '%064d' 1)",
-  "sha": "0123456789abcdef0123456789abcdef01234567",
-  "ref": "refs/tags/v9.8.7",
-  "pluginId": "io.github.amichne.kast",
-  "signerCertificateSha256": "$(printf 'a%.0s' {1..64})",
-  "signatureVerified": true,
-  "verificationTasks": [
-    ":backend-idea:verifyPluginStructure",
-    ":backend-idea:verifyPluginXmlPresent",
-    ":backend-idea:verifyPlugin",
-    ":backend-idea:verifyPluginSignature"
-  ]
-}
-JSON
-    return
-  fi
-
   if [[ "$platform" == "codex-plugin" ]]; then
     cat > "$path" <<JSON
 {
@@ -96,10 +74,6 @@ write_provenance \
   "codex-plugin" \
   "kast-codex-plugin-${tag}.zip"
 write_provenance \
-  "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json" \
-  "idea" \
-  "kast-idea-${tag}.zip"
-write_provenance \
   "${scratch_dir}/provenance-gradle-ro-cache/dist/build-provenance-gradle-ro-cache.json" \
   "gradle-ro-cache" \
   "gradle-ro-dep-cache.tar.zst"
@@ -116,10 +90,6 @@ write_provenance \
   "runtime-manifest" \
   "kast-runtime-manifest.json"
 write_provenance \
-  "${scratch_dir}/provenance-runtime-compatibility/dist/build-provenance-runtime-compatibility.json" \
-  "runtime-compatibility" \
-  "kast-runtime-compatibility.json"
-write_provenance \
   "${scratch_dir}/provenance-ubuntu-debian-headless/dist/build-provenance-ubuntu-debian-headless.json" \
   "ubuntu-debian-headless-x86_64" \
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
@@ -135,10 +105,8 @@ output="${scratch_dir}/dist/build-provenance.json"
   "${scratch_dir}/provenance-codex-plugin" \
   "${scratch_dir}/provenance-gradle-ro-cache" \
   "${scratch_dir}/provenance-headless-linux-x64" \
-  "${scratch_dir}/provenance-idea" \
   "${scratch_dir}/provenance-openapi" \
   "${scratch_dir}/provenance-runtime-manifest" \
-  "${scratch_dir}/provenance-runtime-compatibility" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 python3 - "$output" <<'PY'
@@ -156,9 +124,7 @@ expected = [
     "codex-plugin",
     "gradle-ro-cache",
     "headless-linux-x64",
-    "idea",
     "openapi",
-    "runtime-compatibility",
     "runtime-manifest",
     "ubuntu-debian-headless-x86_64",
 ]
@@ -176,10 +142,8 @@ PY
   "${scratch_dir}/provenance-codex-plugin" \
   "${scratch_dir}/provenance-gradle-ro-cache" \
   "${scratch_dir}/provenance-headless-linux-x64" \
-  "${scratch_dir}/provenance-idea" \
   "${scratch_dir}/provenance-openapi" \
   "${scratch_dir}/provenance-runtime-manifest" \
-  "${scratch_dir}/provenance-runtime-compatibility" \
   "${scratch_dir}/provenance-ubuntu-debian-headless"
 
 python3 - "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" <<'PY'
@@ -203,11 +167,11 @@ write_provenance \
   "codex-plugin" \
   "kast-codex-plugin-${tag}.zip"
 
-rm "${scratch_dir}/provenance-idea/dist/build-provenance-idea.json"
-if "$assembler" --output "$output" --tag "$tag" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-codex-plugin" "${scratch_dir}/provenance-gradle-ro-cache" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-idea" "${scratch_dir}/provenance-openapi" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-runtime-compatibility" "${scratch_dir}/provenance-ubuntu-debian-headless" \
+rm "${scratch_dir}/provenance-openapi/dist/build-provenance-openapi.json"
+if "$assembler" --output "$output" --tag "$tag" "${scratch_dir}/provenance-cli-linux-arm64" "${scratch_dir}/provenance-cli-linux-x64" "${scratch_dir}/provenance-cli-macos-arm64" "${scratch_dir}/provenance-cli-macos-x64" "${scratch_dir}/provenance-codex-plugin" "${scratch_dir}/provenance-gradle-ro-cache" "${scratch_dir}/provenance-headless-linux-x64" "${scratch_dir}/provenance-openapi" "${scratch_dir}/provenance-runtime-manifest" "${scratch_dir}/provenance-ubuntu-debian-headless" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
-  die "assembler unexpectedly passed with missing idea provenance"
+  die "assembler unexpectedly passed with missing OpenAPI provenance"
 fi
-grep -Fq "missing=['idea']" "${scratch_dir}/missing.err" || die "missing provenance failure did not name idea"
+grep -Fq "missing=['openapi']" "${scratch_dir}/missing.err" || die "missing provenance failure did not name OpenAPI"
 
 printf '%s\n' "Release provenance assembler test passed"
