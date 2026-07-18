@@ -96,6 +96,10 @@ if any(pair.get("pluginVersion") != "0.13.0" for pair in pairs):
     raise SystemExit("same-release plugin template was not resolved")
 if any(pair.get("cliVersion") != "0.13.0" for pair in pairs):
     raise SystemExit("same-release CLI template was not resolved")
+if any(pair.get("pluginRevision") != manifest["releaseSha"] for pair in pairs):
+    raise SystemExit("same-release plugin revision template was not resolved")
+if any(pair.get("cliRevision") != manifest["releaseSha"] for pair in pairs):
+    raise SystemExit("same-release CLI revision template was not resolved")
 PY
 
 python3 - "$source_file" "$scratch_dir" <<'PY'
@@ -121,6 +125,8 @@ write("missing-capability", lambda value: value["supportedPairs"][0]["optionalCa
 write("invalid-build-range", lambda value: value["ideaBuildRange"].__setitem__("untilBuild", "252"))
 write("missing-same-release", lambda value: value.__setitem__("supportedPairs", []))
 write("duplicate-pair", lambda value: value["supportedPairs"].append(copy.deepcopy(value["supportedPairs"][0])))
+write("mismatched-revision", lambda value: value["supportedPairs"][0].__setitem__("cliRevision", "b" * 40))
+write("short-revision", lambda value: value["supportedPairs"][0].__setitem__("pluginRevision", "abc123"))
 PY
 
 python3 - "$source_file" "$scratch_dir/invalid-duplicate-key.json" <<'PY'
@@ -129,7 +135,7 @@ from pathlib import Path
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
 Path(sys.argv[2]).write_text(
-    source.replace('"schemaVersion": 1,', '"schemaVersion": 1,\n  "schemaVersion": 1,', 1),
+    source.replace('"schemaVersion": 2,', '"schemaVersion": 2,\n  "schemaVersion": 2,', 1),
     encoding="utf-8",
 )
 PY
