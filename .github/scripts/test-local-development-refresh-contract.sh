@@ -119,6 +119,8 @@ grep -Fq '"--target-dir",' <<<"$source_bound_cli_task" \
   || die 'the source-bound CLI rebuild must override ambient Cargo target configuration'
 grep -Fq 'targetDirectory.get().asFile.absolutePath' <<<"$source_bound_cli_task" \
   || die 'the source-bound CLI rebuild must write to its declared target directory'
+grep -Fq 'environment("KAST_RELEASE_REVISION", gitCommit)' <<<"$source_bound_cli_task" \
+  || die 'the source-bound CLI rebuild must embed the captured source commit'
 source_bound_cli_registration="$(
   sed -n \
     '/^val rebuildLocalDevelopmentCli:/,/^}/p' \
