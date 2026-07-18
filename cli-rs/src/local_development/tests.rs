@@ -1212,6 +1212,57 @@ mod refresh_tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn first_activation_retry_reconciles_exact_atomic_symlink_temporaries() {
+        use std::os::unix::fs::symlink;
+
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let request = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        );
+        let first = refresh_local_development(request.clone()).expect("first activation");
+        fs::remove_file(prefix.join("current")).expect("remove incomplete current");
+        fs::rename(
+            prefix.join("bin/kast-dev"),
+            prefix.join("bin/kast-dev.next"),
+        )
+        .expect("interrupted launcher temporary");
+        fs::rename(
+            prefix.join("authority.json"),
+            prefix.join("authority.next"),
+        )
+        .expect("interrupted authority temporary");
+        symlink(
+            Path::new("generations").join(first.receipt.generation_id.as_str()),
+            prefix.join("current.next"),
+        )
+        .expect("interrupted current temporary");
+
+        let recovered = refresh_local_development(request).expect("retry activation");
+
+        assert_eq!(recovered.receipt.generation_id, first.receipt.generation_id);
+        for temporary in [
+            prefix.join("bin/kast-dev.next"),
+            prefix.join("authority.next"),
+            prefix.join("current.next"),
+        ] {
+            assert!(
+                fs::symlink_metadata(&temporary).is_err(),
+                "temporary must be consumed: {}",
+                temporary.display(),
+            );
+        }
+        super::validate_receipt_components(&recovered.receipt)
+            .expect("complete recovered generation");
+    }
+
     #[test]
     fn refresh_rejects_switching_an_existing_prefix_to_another_workspace() {
         let source = initialized_repository();
