@@ -15,7 +15,7 @@ sequence when needed.
 | Symptom | Likely cause | Next action |
 | --- | --- | --- |
 | Kast CLI does not appear after install | Homebrew formula or CLI receipt repair did not complete | Rerun the installer, then run `kast ready --for machine` |
-| Kast plugin does not appear | JetBrains did not install the release ZIP | Quit the IDE and rerun `install.sh update`, or use **Install Plugin from Disk** with the exact release ZIP |
+| Kast plugin does not appear | JetBrains did not install the release ZIP | Quit the IDE and rerun `install.sh install`, or use **Install Plugin from Disk** with the exact release ZIP |
 | The IDE does not discover Kast updates | The GitHub Release feed is not enrolled | Add `https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml` as a custom plugin repository |
 | A plugin update asks for restart | The IDE refused dynamic unload for this build or runtime state | Accept the JetBrains restart fallback; Kast does not force hot replacement |
 | `kast@kast` does not appear in Codex | The extracted Kast marketplace is not configured, or the plugin was not installed from it | Add the marketplace root, run `codex plugin add kast@kast`, and start a new Codex task |

@@ -557,7 +557,7 @@ fn repair_recognized_legacy_idea_plugin_links(
                 "Back up and remove the recognized legacy Homebrew plugin link to {}; JetBrains now owns plugin installation and updates.",
                 owned.target.display()
             ),
-            Some("Quit the IDE, run `install.sh update` to install the release-matched plugin through JetBrains, then reopen this exact project.".to_string()),
+            Some("Quit the IDE, run `install.sh install` to install the release-matched plugin through JetBrains, then reopen this exact project.".to_string()),
         );
     }
     if args.apply && !owned_links.is_empty() {

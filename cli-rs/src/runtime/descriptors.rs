@@ -134,7 +134,7 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Idea => {
             error.details.insert(
                 "installHint".to_string(),
-                "Quit the IDE, run `install.sh update` to install the release-matched plugin through JetBrains, then reopen this exact project.".to_string(),
+                "Quit the IDE, run `install.sh install` to install the release-matched plugin through JetBrains, then reopen this exact project.".to_string(),
             );
         }
     }
