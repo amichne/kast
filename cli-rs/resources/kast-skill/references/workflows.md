@@ -1,7 +1,7 @@
 # Kast command ownership
 
 Use this file when a task needs install-state ownership, readiness boundaries, or
-repeatable semantic command choices. It documents the v1 public dialect; generated
+repeatable semantic command choices. It documents the v2 public dialect; generated
 RPC catalogs and protocol samples remain internal contracts.
 
 ## Install and readiness
@@ -31,14 +31,16 @@ Use these health boundaries:
 | --- | --- |
 | workspace/runtime state | `kast status --workspace-root "$PWD"` |
 | readiness for a task | `kast ready --for agent --workspace-root "$PWD"` |
-| semantic backend capability | `kast agent verify --workspace-root "$PWD"` |
-| daemon lifecycle | `kast developer runtime status --workspace-root "$PWD"` |
+| exact-root semantic lifecycle | `kast agent lease acquire|status|release` |
+| semantic backend capability | `kast agent verify --workspace-root "$PWD" --backend <name> --lease-id <id>` |
 | install-state repair plan | `kast repair --for agent --workspace-root "$PWD"` |
 | install-state repair apply | `kast repair --for agent --workspace-root "$PWD" --apply` |
 
 `ready` is read-only. `repair` is plan-only unless `--apply` is present.
 
 ## Semantic command patterns
+
+Acquire once with `kast agent lease acquire --workspace-root "$PWD" --backend <idea|headless>`. Preserve its returned backend and opaque ID, append `--backend <name> --lease-id <id>` to every command below, and release that exact lease when the worker finishes.
 
 Use compiler identity and typed selectors instead of offsets:
 
@@ -66,7 +68,7 @@ before requesting references or callers.
 
 ## Removed surfaces
 
-The following commands are intentionally not public v1 assets: `kast agent up`,
+The following commands are intentionally not public v2 assets: `kast agent up`,
 `kast agent ready`, `kast agent setup`, `kast agent tools`, `kast agent call`,
 `kast agent workflow`, workflow package verification, `rename-plan`,
 `write-validate`, Copilot package installers, and portable instruction package

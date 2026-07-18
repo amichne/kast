@@ -3,7 +3,7 @@
 ## Public dialect
 
 Use the installed `SKILL.md`, `kast`, and `kast help` as the agent-facing source of
-truth. In v1 the repository setup asset is deliberately small: one packaged
+truth. In v2 the repository setup asset is deliberately small: one packaged
 skill plus one managed `<kast>...</kast>` guidance region.
 
 ```console
@@ -26,6 +26,16 @@ kast repair --workspace-root "$PWD" --apply
 `kast agent` results are compact by default. Add `--output json` for parsed
 scripts. JSON consumers can use family-specific `--fields` or `--count`;
 request `--verbose` or `--explain` only when detailed evidence is required.
+
+Acquire one exact-root lease before the first semantic command, preserve the
+returned `leaseId` and `backendName`, and pass both to every semantic and
+operation command until release:
+
+```console
+kast --output json agent lease acquire --workspace-root "$PWD" --backend <idea|headless>
+# append: --workspace-root "$PWD" --backend <backendName> --lease-id <leaseId>
+kast agent lease status --workspace-root "$PWD" --backend <backendName> --lease-id <leaseId>
+```
 
 ```console
 kast agent verify --workspace-root "$PWD"
@@ -123,6 +133,13 @@ kast agent operation cancel --workspace-root "$PWD" --idempotency-key rename-eve
 Use a direct filesystem fallback only when retrieved terminal state proves
 `editApplicationState` is `NOT_STARTED`. Missing state after daemon restart is
 ambiguous and requires workspace inspection.
+
+Release is terminal and idempotent. It stops only an exact headless runtime
+that this lease started; borrowed headless and IDEA runtimes remain running:
+
+```console
+kast agent lease release --workspace-root "$PWD" --backend <backendName> --lease-id <leaseId>
+```
 
 When `--workspace-root` is explicit, diagnostics and mutation target files may
 be repository-relative. Kast validates containment and reports the canonical

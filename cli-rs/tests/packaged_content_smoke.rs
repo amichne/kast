@@ -48,7 +48,7 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         .unwrap_or_else(|error| panic!("read {}: {error}", skill_path.display()));
 
     assert!(
-        skill.contains("kast-cli-dialect-revision: \"1\""),
+        skill.contains("kast-cli-dialect-revision: \"2\""),
         "packaged skill must identify the CLI dialect it teaches: {skill}"
     );
     assert!(
@@ -94,6 +94,13 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
     );
     assert!(skill.contains("edit application never started"), "{skill}");
     assert!(skill.contains("read-only readiness"), "{skill}");
+    assert!(
+        skill.contains("agent lease acquire")
+            && skill.contains("agent lease status")
+            && skill.contains("agent lease release")
+            && skill.contains("--lease-id <id>"),
+        "packaged skill must teach the complete exact-root lease lifecycle: {skill}"
+    );
     assert!(
         skill.contains("Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`"),
         "{skill}"
@@ -142,8 +149,8 @@ fn skill_dialect_revision_stays_revision_coherent_with_the_idea_plugin() {
     let packaged_skill = include_str!("../resources/kast-skill/SKILL.md");
 
     assert!(
-        packaged_skill.contains("kast-cli-dialect-revision: \"1\"")
-            && plugin_bootstrap.contains("CLI_DIALECT_REVISION = 1"),
+        packaged_skill.contains("kast-cli-dialect-revision: \"2\"")
+            && plugin_bootstrap.contains("CLI_DIALECT_REVISION = 2"),
         "the packaged and IDEA-rendered skills must declare the same CLI dialect revision",
     );
 }
@@ -193,7 +200,8 @@ fn packaged_workflow_reference_uses_current_runtime_surface() {
         .unwrap_or_else(|error| panic!("read {}: {error}", workflows_path.display()));
 
     assert!(
-        workflows.contains("`kast developer runtime status --workspace-root \"$PWD\"`"),
+        workflows.contains("`kast agent lease acquire|status|release`")
+            && workflows.contains("--lease-id <id>"),
         "{workflows}"
     );
     assert!(

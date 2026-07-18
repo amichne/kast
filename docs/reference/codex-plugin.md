@@ -31,6 +31,7 @@ Rust classifies it deliberately and regeneration updates the package.
 
 | Family | Commands | Behavior |
 | --- | --- | --- |
+| Lifecycle | `lease acquire`, `lease status`, `lease release` | Authenticate one exact root/backend/runtime/install-generation session and release only its owned resource |
 | Workspace | `workspace-files` | Read-only, bounded discovery for the exact root |
 | Identity | `symbol` | Read-only exact symbol resolution |
 | Relationships | `references`, `callers`, `callees`, `implementations`, `hierarchy`, `impact` | Read-only semantic navigation and impact evidence |
@@ -38,7 +39,7 @@ Rust classifies it deliberately and regeneration updates the package.
 | Mutation | `rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, `replace-declaration` | Plan by default; apply only through each typed command's explicit gate and stable idempotency key |
 | Operation | `operation status`, `operation cancel` | Observe or request cancellation of an admitted mutation |
 
-Setup, readiness, repair, verification, LSP, runtime management, developer
+Setup, readiness, repair, verification, LSP, developer runtime management,
 commands, and retired catalog/workflow calls are absent from normal
 `kast-codex` routing. Internal hooks may use the read-only or plan-only subset
 needed to establish readiness and recovery evidence.

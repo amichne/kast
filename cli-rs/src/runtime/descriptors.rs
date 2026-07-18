@@ -84,7 +84,7 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Headless if let Some(entrypoint) = &local_entrypoint => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "The local-development headless backend is installed but not running for {}. Start the receipt-owned backend with: {} developer runtime up --workspace-root {} --backend=headless",
+                "The local-development headless backend is installed but not running for {}. Acquire the receipt-owned backend lease with: {} agent lease acquire --workspace-root {} --backend=headless",
                 workspace_root.display(),
                 shell_single_quoted_path(entrypoint),
                 shell_single_quoted_path(workspace_root),
@@ -93,14 +93,14 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
         BackendName::Headless => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then start with: kast developer runtime up --backend=headless",
+                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then acquire with: kast agent lease acquire --workspace-root <root> --backend=headless",
                 workspace_root.display()
             ),
         ),
         BackendName::Idea => CliError::new(
             "NO_BACKEND_AVAILABLE",
             format!(
-                "No idea backend is installed or running for {}. Install or update the GitHub-hosted Kast plugin through JetBrains, open the project in IDEA or Android Studio, then start with: kast developer runtime up --backend=idea",
+                "No idea backend is installed or running for {}. Install or update the GitHub-hosted Kast plugin through JetBrains, open the project in IDEA or Android Studio, then acquire with: kast agent lease acquire --workspace-root <root> --backend=idea",
                 workspace_root.display()
             ),
         ),
@@ -113,9 +113,9 @@ fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) ->
                     "local-development".to_string(),
                 );
                 error.details.insert(
-                    "startCommand".to_string(),
+                    "leaseCommand".to_string(),
                     format!(
-                        "{} developer runtime up --workspace-root {} --backend=headless",
+                        "{} agent lease acquire --workspace-root {} --backend=headless",
                         shell_single_quoted_path(&entrypoint),
                         shell_single_quoted_path(workspace_root),
                     ),

@@ -3,6 +3,14 @@
 This directory owns backend lifecycle, status inspection, descriptor
 management, workspace identity, backend selection, and IDEA autolaunch.
 
+`lease.rs` owns the coordinator-safe exact-root agent lease. Its authenticated
+record binds workspace classification, backend descriptor and process-start
+identity, effective install generation, caller session, and started-versus-
+borrowed disposition. It may compose the existing lifecycle and readiness
+authorities but must not become another runtime manager. Release may stop only
+the still-matching headless runtime recorded as started; IDEA and borrowed
+resources are preserved.
+
 Keep lifecycle mutation separate from read-only inspection. Descriptor parsing,
 backend selection, workspace identity, and launch side effects must remain in
 named part files so callers can see the boundary they depend on.

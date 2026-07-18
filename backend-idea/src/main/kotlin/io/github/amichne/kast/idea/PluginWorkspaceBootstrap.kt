@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
 
 object PluginWorkspaceBootstrap {
     private val SCHEMA_VERSION = WorkspaceMetadataRevision.CURRENT.value
-    private const val CLI_DIALECT_REVISION = 1
+    private const val CLI_DIALECT_REVISION = 2
     private const val REQUIRED_SKILL_RELATIVE = ".agents/skills/kast/SKILL.md"
     private const val METADATA_RELATIVE = ".kast/setup/workspace.json"
     private const val KAST_MANAGED_FENCE_START = "<kast>"
@@ -189,8 +189,8 @@ object PluginWorkspaceBootstrap {
         |
         |This workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.
         |
-        |Use `kast agent verify --workspace-root "${'$'}PWD"` before Kotlin semantic work when state is uncertain.
-        |Use typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename`.
+        |Acquire with `kast agent lease acquire --workspace-root "${'$'}PWD" --backend idea`; pass its `leaseId` to every typed semantic command and release it when the worker finishes.
+        |Use typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename` under that exact-root lease.
         |Do not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.
         |
         |## Linked Worktrees
@@ -198,7 +198,7 @@ object PluginWorkspaceBootstrap {
         |For every delegated worker using a linked Git worktree:
         |
         |1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.
-        |2. Wait for `.kast/setup/workspace.json`, then run `kast agent verify --workspace-root "${'$'}PWD"` from that worktree.
+        |2. Wait for `.kast/setup/workspace.json`, then acquire an IDEA lease for `"${'$'}PWD"` from that worktree.
         |3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.
         |4. Keep that IDE project open while the worker and worktree are active.
         |5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.
@@ -213,10 +213,10 @@ object PluginWorkspaceBootstrap {
             KAST_MANAGED_FENCE_START,
             "## Kast routing",
             "Use `$skillPath` before Kotlin or Gradle semantic work.",
-            "Use `kast agent verify --workspace-root \"\$PWD\"` to verify the plugin-prepared workspace.",
-            "Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.",
+            "Acquire with `kast agent lease acquire --workspace-root \"\$PWD\" --backend idea`; preserve its lease ID and release it when the worker finishes.",
+            "Pass `--workspace-root \"\$PWD\" --backend idea --lease-id <id>` to typed commands such as `kast agent symbol`, `kast agent diagnostics`, and `kast agent rename`.",
             "Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.",
-            "Before each linked worker starts, open the exact worktree root as its own IDE project and run `kast agent verify --workspace-root \"\$PWD\"` from that worktree.",
+            "Before each linked worker starts, open the exact worktree root as its own IDE project and acquire its lease from that worktree.",
             "Never reuse another worktree's Kast runtime, metadata, or semantic evidence.",
             "Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.",
             KAST_MANAGED_FENCE_END,

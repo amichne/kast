@@ -6,7 +6,7 @@ description: >
   source-index impact, semantic rename, typed scope mutation, or focused Gradle
   validation.
 metadata:
-  kast-cli-dialect-revision: "1"
+  kast-cli-dialect-revision: "2"
 ---
 
 # Kast
@@ -18,7 +18,7 @@ the first iteration surface.
 
 ## Loop
 
-1. Orient with `kast`, `kast help agent`, and read-only `kast ready --workspace-root "$PWD"` when install or backend state matters.
+1. Orient with `kast` and `kast help agent`, then acquire an exact-root lease with `kast --output json agent lease acquire --workspace-root "$PWD" --backend <idea|headless>`. Preserve its `leaseId` and `backendName`; append both as `--lease-id <id> --backend <name>` to every later semantic and operation command.
 2. Discover owned Kotlin paths with `kast agent workspace-files --workspace-root "$PWD"`; narrow with typed filters and continue only with its opaque page token. Then pass its `filePath` directly to diagnostics or exact symbol `--file-hint`.
 3. Resolve identity with `kast agent symbol --query <name> --workspace-root "$PWD"`; exact lookup is the default. Use `--mode discovery` only for fuzzy candidates, then rerun exact lookup. Preserve the returned `fqName`, `declarationFile`, `declarationStartOffset`, and optional `kind`/`containingType` together as one selector.
 4. Pass that complete selector to `kast agent references`, `callers`, `callees`, `implementations`, or `hierarchy`. Compact mode returns four typed records by default; repeat the same selector and options with `--page-token <nextPageToken>` to continue without rediscovery.
@@ -27,9 +27,7 @@ the first iteration surface.
 7. Mutate only through typed plans. First run `kast agent rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, or `replace-declaration` without `--apply`; then add `--apply --idempotency-key <stable-key>` after reviewing the plan and content file.
 8. Agent results are compact by default. Treat `EXACT` and `KNOWN_MINIMUM` relationship cardinality distinctly. Use `--output json` for JSON-only parsed scripts, `--fields <family-fields>` for a typed subset, `--count` for aggregates, and `--verbose` or `--explain` only when the task needs detailed evidence.
 
-Completion criterion: every Kotlin semantic claim, edit target, relationship set,
-and validation result is backed by a typed `kast agent` command, or the remaining
-work is explicitly outside Kotlin semantics.
+Completion criterion: every Kotlin semantic claim, edit target, relationship set, and validation result is backed by a typed `kast agent` command, or the remaining work is explicitly outside Kotlin semantics. Release the lease with `kast agent lease release --workspace-root "$PWD" --backend <name> --lease-id <id>`; the same release is safe to retry.
 
 ## Mutation Commands
 
@@ -59,9 +57,8 @@ readiness evidence, or backend state is part of the task.
 - `kast ready --for agent --workspace-root "$PWD"` is read-only readiness; use `kotlin`, `release`, or `machine` when that is the actual target.
 - `kast repair --for agent --workspace-root "$PWD"` is plan-only repair; use `kotlin`, `release`, or `machine` when that is the actual target.
 - Add `--apply` to `kast repair` only after the repair plan or readiness output asks for install-state mutation.
-- `kast agent verify --workspace-root "$PWD"` proves backend health, runtime status, and capabilities for semantic work.
+- `kast agent lease status --workspace-root "$PWD" --backend <name> --lease-id <id>` proves owner, environment, and exact-runtime continuity; `agent verify` proves backend capabilities under that lease.
 - On macOS, Homebrew owns only the CLI and JetBrains owns plugin installation and updates. If metadata is stale, update as needed, reopen the exact project, and refresh it.
-- `kast developer runtime status --workspace-root "$PWD"` reports daemon lifecycle only.
 
 Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`, `kast rpc`,
 generated protocol paths, LSP capability internals, backend implementation classes,

@@ -2,6 +2,24 @@
 
 Generated from the exhaustive Rust exposure contract. Replace angle-bracket placeholders with exact values.
 
+## `agent lease acquire`
+
+```console
+kast --output toon agent lease acquire --workspace-root <root> --backend <backend>
+```
+
+## `agent lease status`
+
+```console
+kast --output toon agent lease status --workspace-root <root> --backend <backend> --lease-id <id>
+```
+
+## `agent lease release`
+
+```console
+kast --output toon agent lease release --workspace-root <root> --backend <backend> --lease-id <id>
+```
+
 ## `agent workspace-files`
 
 ```console
