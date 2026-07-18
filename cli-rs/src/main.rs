@@ -194,6 +194,7 @@ fn default_runtime_args() -> cli::RuntimeArgs {
 }
 
 fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
+    let requested_output_format = cli.output;
     let command = cli
         .command
         .unwrap_or_else(|| Command::Context(default_runtime_args()));
@@ -209,7 +210,11 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
             Ok(0)
         }
         Command::Version => {
-            println!("Kast CLI {}", cli::version());
+            if requested_output_format.is_some_and(OutputFormat::is_structured) {
+                output::print_structured(&cli::build_identity(), output_format)?;
+            } else {
+                println!("Kast CLI {}", cli::version());
+            }
             Ok(0)
         }
         Command::Context(args) => run_context(args, output_format),
