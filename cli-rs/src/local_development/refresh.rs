@@ -115,7 +115,7 @@ fn activate_local_development_artifact_set(
 
     let requested_prefix = absolute_path(prefix)?;
     reject_symlink_selected_prefix(&requested_prefix)?;
-    let generation_id = LocalGenerationId::from_source(&source);
+    let generation_id = LocalGenerationId::from_artifact_set(&source, &artifacts);
 
     with_local_authority_lock(&requested_prefix, || {
         fs::create_dir_all(&requested_prefix)?;
@@ -447,7 +447,8 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         let physical_config = staged.join("config/config.toml");
         write_bytes(&physical_config, &fs::read(config_source)?)?;
 
-        let install_manifest = local_install_manifest(prefix, source, workspace_root);
+        let install_manifest =
+            local_install_manifest(prefix, generation_id, source, workspace_root);
         crate::manifest::write_manifest_atomic(&staged.join("install.json"), &install_manifest)?;
 
         let components = LocalDevelopmentComponents {
@@ -661,7 +662,8 @@ fn validate_receipt_identity(
     generation: &Path,
     workspace_root: &Path,
 ) -> Result<()> {
-    let expected_generation_id = LocalGenerationId::from_source(&receipt.source);
+    let expected_generation_id =
+        LocalGenerationId::from_artifact_set(&receipt.source, &receipt.artifacts);
     if receipt.generation_id != expected_generation_id {
         return Err(CliError::new(
             "LOCAL_AUTHORITY_RECEIPT_INVALID",
@@ -1085,10 +1087,10 @@ fn is_bare_command_path(arguments: &[String]) -> bool {
 
 fn local_install_manifest(
     prefix: &Path,
+    generation_id: &LocalGenerationId,
     source: &SourceSnapshot,
     workspace_root: &Path,
 ) -> crate::manifest::KastInstallManifest {
-    let generation_id = LocalGenerationId::from_source(source);
     let generation = prefix.join(generation_target(&generation_id));
     let state = prefix.join("state").join(generation_id.as_str());
     let now = crate::manifest::current_timestamp();

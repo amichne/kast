@@ -814,11 +814,11 @@ mod refresh_tests {
     }
 
     #[test]
-    fn inactive_generation_reuse_rejects_different_rebuilt_artifacts() {
+    fn rebuilt_artifacts_preserve_an_inactive_generation_from_the_same_source() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
-        refresh_local_development(refresh_request(
+        let first = refresh_local_development(refresh_request(
             repository.path(),
             repository.path(),
             fixture.path(),
@@ -856,9 +856,19 @@ mod refresh_tests {
             "rebuilt-a",
         );
 
-        let error = refresh_local_development(request).expect_err("artifact mismatch");
+        let rebuilt = refresh_local_development(request).expect("rebuilt A refresh");
 
-        assert_eq!(error.code, "LOCAL_GENERATION_ARTIFACT_MISMATCH");
+        assert_ne!(first.receipt.generation_id, rebuilt.receipt.generation_id);
+        assert_eq!(
+            fs::read(
+                prefix
+                    .join("generations")
+                    .join(first.receipt.generation_id.as_str())
+                    .join("bin/kast"),
+            )
+            .expect("preserved first CLI"),
+            b"#!/bin/sh\nexit 0\n",
+        );
     }
 
     #[test]

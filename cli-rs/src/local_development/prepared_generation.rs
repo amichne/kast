@@ -171,37 +171,36 @@ pub fn prepare_local_development_generation(
             &prepared_backend_provenance,
         )?;
 
+        let components = LocalPreparedGenerationComponents {
+            source_snapshot: prepared_component(&staged, PREPARED_SOURCE_SNAPSHOT_PATH)?,
+            cli: prepared_component(&staged, PREPARED_CLI_PATH)?,
+            cli_provenance: prepared_component(&staged, PREPARED_CLI_PROVENANCE_PATH)?,
+            backend: prepared_component(&staged, PREPARED_BACKEND_PATH)?,
+            backend_provenance: prepared_component(
+                &staged,
+                PREPARED_BACKEND_PROVENANCE_PATH,
+            )?,
+            backend_component_manifest: prepared_component(
+                &staged,
+                PREPARED_BACKEND_COMPONENT_MANIFEST_PATH,
+            )?,
+            skill: prepared_component(&staged, PREPARED_SKILL_PATH)?,
+            guidance_inputs: prepared_component(&staged, PREPARED_GUIDANCE_INPUTS_PATH)?,
+            config: prepared_component(&staged, PREPARED_CONFIG_PATH)?,
+        };
+        let generation_id = LocalGenerationId::from_verified_artifacts(
+            &source,
+            &components.cli.sha256,
+            &cli_provenance.implementation_version,
+            &components.backend.sha256,
+            &backend_provenance.implementation_version,
+        );
         let ledger = LocalPreparedGenerationLedger {
             schema_version: LOCAL_PREPARED_GENERATION_SCHEMA_VERSION,
-            generation_id: LocalGenerationId::from_source(&source),
+            generation_id,
             source: source.clone(),
             implementation_version: cli_provenance.implementation_version,
-            components: LocalPreparedGenerationComponents {
-                source_snapshot: prepared_component(
-                    &staged,
-                    PREPARED_SOURCE_SNAPSHOT_PATH,
-                )?,
-                cli: prepared_component(&staged, PREPARED_CLI_PATH)?,
-                cli_provenance: prepared_component(
-                    &staged,
-                    PREPARED_CLI_PROVENANCE_PATH,
-                )?,
-                backend: prepared_component(&staged, PREPARED_BACKEND_PATH)?,
-                backend_provenance: prepared_component(
-                    &staged,
-                    PREPARED_BACKEND_PROVENANCE_PATH,
-                )?,
-                backend_component_manifest: prepared_component(
-                    &staged,
-                    PREPARED_BACKEND_COMPONENT_MANIFEST_PATH,
-                )?,
-                skill: prepared_component(&staged, PREPARED_SKILL_PATH)?,
-                guidance_inputs: prepared_component(
-                    &staged,
-                    PREPARED_GUIDANCE_INPUTS_PATH,
-                )?,
-                config: prepared_component(&staged, PREPARED_CONFIG_PATH)?,
-            },
+            components,
         };
         write_json_atomic(&staged.join(PREPARED_GENERATION_LEDGER_PATH), &ledger)?;
         fs::rename(&staged, &output)?;
@@ -293,10 +292,18 @@ pub fn verify_local_development_generation(
     if current_source != ledger.source {
         return Err(source_snapshot_mismatch(&ledger.source, &current_source));
     }
-    if ledger.generation_id != LocalGenerationId::from_source(&ledger.source) {
+    if ledger.generation_id
+        != LocalGenerationId::from_verified_artifacts(
+            &ledger.source,
+            &ledger.components.cli.sha256,
+            &ledger.implementation_version,
+            &ledger.components.backend.sha256,
+            &ledger.implementation_version,
+        )
+    {
         return Err(CliError::new(
             "LOCAL_PREPARED_GENERATION_INVALID",
-            "Prepared generation identity does not match its source snapshot.",
+            "Prepared generation identity does not match its source-bound artifact set.",
         ));
     }
     for (component, expected_path) in [
