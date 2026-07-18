@@ -177,6 +177,32 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
+    fun `release version skew fails before workspace preparation`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = binary),
+            loadHomebrewReceipt = {
+                MacosHomebrewReceiptLoadResult.Loaded(
+                    MacosHomebrewInstallReceipt(
+                        cliBinary = binary,
+                        formulaPrefix = binary.parent,
+                        cliVersion = CliImplementationVersion("definitely-not-the-plugin-version"),
+                        cliRevision = currentPluginRevision(),
+                    ),
+                )
+            },
+            prepareWorkspace = { error("version skew must fail before workspace preparation") },
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
+        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("version"))
+        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
+    }
+
+    @Test
     fun `non-macOS project-open setup keeps configured binary authority`() {
         val workspace = gradleWorkspace()
         val configuredBinary = fakeKastBinary()
@@ -185,8 +211,12 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithConfiguredBinary(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = configuredBinary),
-            loadCliVersion = { CliImplementationVersion("configured-cli-version") },
-            loadCliRevision = { currentPluginRevision() },
+            loadCliIdentity = {
+                CliBuildIdentity(
+                    version = CliImplementationVersion("configured-cli-version"),
+                    revision = currentPluginRevision(),
+                )
+            },
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(
