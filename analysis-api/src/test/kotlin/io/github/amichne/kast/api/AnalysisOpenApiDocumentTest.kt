@@ -68,6 +68,25 @@ class AnalysisOpenApiDocumentTest {
     }
 
     @Test
+    fun `release revision and mismatch outcome keep their wire invariants`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val revision = yaml.componentSchema("ReleaseRevision")
+        val requirement = yaml.componentSchema("RuntimeCompatibilityUpdateRequirement")
+        val mismatch = yaml.componentSchema(
+            "RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision",
+        )
+
+        assertTrue(revision.contains("minLength: 40"))
+        assertTrue(revision.contains("maxLength: 40"))
+        assertTrue(revision.contains("pattern: \"^[0-9a-f]{40}\$\""))
+        assertTrue(requirement.contains("MISMATCHED_RELEASE_REVISION:"))
+        assertTrue(requirement.contains("RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision"))
+        assertTrue(mismatch.contains("const: MISMATCHED_RELEASE_REVISION"))
+        assertTrue(mismatch.contains("pluginRevision:"))
+        assertTrue(mismatch.contains("cliRevision:"))
+    }
+
+    @Test
     fun `read and mutation operations include capability extensions`() {
         val yaml = OpenApiDocument.renderYaml()
         val capabilities = listOf(
