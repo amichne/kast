@@ -165,7 +165,7 @@ fn replace_relative_symlink(path: &Path, target: &Path) -> Result<()> {
         )
     })?;
     fs::create_dir_all(parent)?;
-    let temporary = path.with_extension(format!("next-{}", std::process::id()));
+    let temporary = path.with_extension("next");
     if fs::symlink_metadata(&temporary).is_ok() {
         fs::remove_file(&temporary)?;
     }

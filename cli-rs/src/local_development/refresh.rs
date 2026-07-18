@@ -648,7 +648,10 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
                 }
                 for launcher in fs::read_dir(&path)? {
                     let launcher = launcher?;
-                    if launcher.file_name() != "kast-dev"
+                    if !matches!(
+                        launcher.file_name().to_str(),
+                        Some("kast-dev" | "kast-dev.next")
+                    )
                         || read_relative_symlink(&launcher.path())?
                             != Some(PathBuf::from("../current/entrypoint/kast-dev"))
                     {
@@ -656,13 +659,20 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
                     }
                 }
             }
-            Some("authority.json") => {
+            Some("authority.json" | "authority.next") => {
                 if read_relative_symlink(&path)? != Some(PathBuf::from("current/authority.json")) {
                     return Err(unowned_prefix_conflict(&path));
                 }
             }
-            Some("install.json") => {
+            Some("install.json" | "install.next") => {
                 if read_relative_symlink(&path)? != Some(PathBuf::from("current/install.json")) {
+                    return Err(unowned_prefix_conflict(&path));
+                }
+            }
+            Some("current.next") => {
+                if read_relative_symlink(&path)?
+                    != Some(Path::new("generations").join(allowed_generation_name))
+                {
                     return Err(unowned_prefix_conflict(&path));
                 }
             }
