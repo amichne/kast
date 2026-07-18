@@ -1179,6 +1179,40 @@ mod refresh_tests {
     }
 
     #[test]
+    fn first_activation_retry_discards_only_its_matching_incomplete_staging() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let request = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        );
+        let source = SourceSnapshot::read_strict(&request.expected_source_snapshot)
+            .expect("source snapshot");
+        let artifacts = super::LocalDevelopmentArtifactSet {
+            cli: super::read_local_artifact_provenance(&request.cli_provenance)
+                .expect("CLI provenance"),
+            backend: super::read_local_artifact_provenance(&request.backend_provenance)
+                .expect("backend provenance"),
+        };
+        let generation_id = super::LocalGenerationId::from_artifact_set(&source, &artifacts);
+        let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
+        write_file(&staged.join("partial"), b"interrupted staging\n");
+
+        let recovered = refresh_local_development(request).expect("retry activation");
+
+        assert_eq!(recovered.receipt.generation_id, generation_id);
+        assert!(!staged.exists(), "matching incomplete staging must be replaced");
+        assert_eq!(
+            fs::read_link(prefix.join("current")).expect("recovered current"),
+            Path::new("generations").join(generation_id.as_str()),
+        );
+    }
+
+    #[test]
     fn refresh_rejects_switching_an_existing_prefix_to_another_workspace() {
         let source = initialized_repository();
         let other_workspace = initialized_repository();
