@@ -74,12 +74,78 @@ fn write_macos_homebrew_receipt_at(
     path: &Path,
     receipt: &MacosHomebrewInstallReceipt,
 ) -> Result<()> {
+    use std::io::Write as _;
+
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
     let temporary = path.with_extension(format!("json.{}.tmp", std::process::id()));
-    fs::write(&temporary, serde_json::to_vec_pretty(receipt)?)?;
-    fs::rename(temporary, path)?;
+    let mut file = fs::File::create(&temporary)?;
+    file.write_all(&serde_json::to_vec_pretty(receipt)?)?;
+    file.write_all(b"\n")?;
+    file.sync_all()?;
+    fs::rename(&temporary, path)?;
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent)?.sync_all()?;
+    }
+    Ok(())
+}
+
+fn with_macos_homebrew_receipt_lock<T>(
+    receipt_path: &Path,
+    action: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    let parent = receipt_path.parent().ok_or_else(|| {
+        CliError::new(
+            "MACOS_HOMEBREW_RECEIPT_PATH_INVALID",
+            format!(
+                "macOS Homebrew receipt has no parent directory: {}",
+                receipt_path.display(),
+            ),
+        )
+    })?;
+    fs::create_dir_all(parent)?;
+    let lock = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(parent.join("homebrew-install.lock"))?;
+    lock_macos_homebrew_receipt(&lock)?;
+    let result = action();
+    unlock_macos_homebrew_receipt(&lock)?;
+    result
+}
+
+#[cfg(unix)]
+fn lock_macos_homebrew_receipt(file: &fs::File) -> Result<()> {
+    use std::os::fd::AsRawFd as _;
+
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error().into())
+    }
+}
+
+#[cfg(unix)]
+fn unlock_macos_homebrew_receipt(file: &fs::File) -> Result<()> {
+    use std::os::fd::AsRawFd as _;
+
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_UN) } == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error().into())
+    }
+}
+
+#[cfg(not(unix))]
+fn lock_macos_homebrew_receipt(_file: &fs::File) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn unlock_macos_homebrew_receipt(_file: &fs::File) -> Result<()> {
     Ok(())
 }
 
@@ -319,22 +385,23 @@ fn exact_legacy_macos_homebrew_receipt(
         )
     })?;
     let recognized = legacy.schema_version == 1
-        && legacy.cli.version == cli::version()
-        && legacy.plugin.version == cli::version()
+        && legacy.cli.version == legacy.plugin.version
+        && !legacy.cli.version.trim().is_empty()
         && legacy.plugin.cask_token == "amichne/kast/kast-plugin"
         && !legacy.updated_at.trim().is_empty()
-        && legacy.cli.binary.is_absolute()
-        && legacy.cli.formula_prefix.is_absolute()
-        && receipt_binary_is_executable(&legacy.cli.binary)
-        && path_is_below_homebrew_formula(&legacy.cli.binary, &legacy.cli.formula_prefix)
-        && is_kast_homebrew_formula_prefix(&legacy.cli.formula_prefix, &legacy.cli.version);
+        && path_is_normalized_absolute(&legacy.cli.binary)
+        && path_is_normalized_absolute(&legacy.cli.formula_prefix)
+        && path_is_lexically_below(&legacy.cli.binary, &legacy.cli.formula_prefix)
+        && is_lexical_kast_homebrew_formula_prefix(
+            &legacy.cli.formula_prefix,
+            &legacy.cli.version,
+        );
     if !recognized {
         let mut error = CliError::new(
             "MACOS_HOMEBREW_RECEIPT_INVALID",
             format!(
-                "Legacy Homebrew receipt at {} is not an exact schema-1 Kast joint receipt for running CLI version {}; it was preserved unchanged",
+                "Legacy Homebrew receipt at {} is not an exact schema-1 Kast joint receipt; it was preserved unchanged",
                 path.display(),
-                cli::version(),
             ),
         );
         error.details.insert(
@@ -362,27 +429,16 @@ fn exact_legacy_macos_homebrew_receipt(
         legacy.cli.formula_prefix,
         legacy.cli.version,
     );
-    if !running_cli_matches_receipt(&migrated) {
-        return Err(CliError::new(
-            "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
-            format!(
-                "Legacy Homebrew receipt at {} does not name the running Kast executable; it was preserved unchanged",
-                path.display(),
-            ),
-        ));
-    }
     Ok(Some(migrated))
 }
 
 #[cfg(target_os = "macos")]
 fn discover_running_homebrew_receipt() -> Result<Option<MacosHomebrewInstallReceipt>> {
-    let output = match ProcessCommand::new("brew").args(["--prefix", "kast"]).output() {
-        Ok(output) if output.status.success() => output,
-        _ => return Ok(None),
+    let running = fs::canonicalize(env::current_exe()?)?;
+    let Some(formula_prefix) = running.parent().and_then(Path::parent).map(Path::to_path_buf) else {
+        return Ok(None);
     };
-    let formula_prefix = PathBuf::from(String::from_utf8_lossy(&output.stdout).trim());
-    let running = env::current_exe()?;
-    if formula_prefix.as_os_str().is_empty()
+    if !receipt_binary_is_executable(&running)
         || !is_kast_homebrew_formula_prefix(&formula_prefix, cli::version())
         || !path_is_below_homebrew_formula(&running, &formula_prefix)
     {

@@ -144,10 +144,19 @@ fn repair_recovers_exact_stale_joint_receipt_after_formula_upgrade() {
             .expect("refreshed JSON");
     assert_eq!(refreshed["schemaVersion"], 2);
     assert_eq!(refreshed["cli"]["version"], env!("CARGO_PKG_VERSION"));
-    assert_eq!(refreshed["cli"]["binary"], binary.display().to_string());
+    assert_eq!(
+        refreshed["cli"]["binary"],
+        std::fs::canonicalize(&binary)
+            .expect("canonical binary")
+            .display()
+            .to_string()
+    );
     assert_eq!(
         refreshed["cli"]["formulaPrefix"],
-        formula_prefix.display().to_string()
+        std::fs::canonicalize(formula_prefix)
+            .expect("canonical formula prefix")
+            .display()
+            .to_string()
     );
     assert!(refreshed.get("plugin").is_none(), "{refreshed}");
 }
@@ -218,10 +227,19 @@ fn repair_refreshes_exact_stale_schema_2_receipt_after_homebrew_upgrade() {
             .expect("refreshed JSON");
     assert_eq!(refreshed["schemaVersion"], 2);
     assert_eq!(refreshed["cli"]["version"], env!("CARGO_PKG_VERSION"));
-    assert_eq!(refreshed["cli"]["binary"], binary.display().to_string());
+    assert_eq!(
+        refreshed["cli"]["binary"],
+        std::fs::canonicalize(&binary)
+            .expect("canonical binary")
+            .display()
+            .to_string()
+    );
     assert_eq!(
         refreshed["cli"]["formulaPrefix"],
-        formula_prefix.display().to_string()
+        std::fs::canonicalize(formula_prefix)
+            .expect("canonical formula prefix")
+            .display()
+            .to_string()
     );
     assert!(refreshed.get("plugin").is_none(), "{refreshed}");
 }

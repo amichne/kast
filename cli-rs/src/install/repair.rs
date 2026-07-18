@@ -483,43 +483,47 @@ fn repair_macos_homebrew_cli_authority(
     #[cfg(target_os = "macos")]
     {
         let receipt_path = default_macos_homebrew_receipt_path();
-        let replacement = if receipt_path.is_file() {
-            match classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)? {
-                ExistingMacosHomebrewReceiptForRepair::Current(receipt) => {
-                    validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
+        with_macos_homebrew_receipt_lock(&receipt_path, || {
+            let replacement = if receipt_path.is_file() {
+                match classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)? {
+                    ExistingMacosHomebrewReceiptForRepair::Current(receipt) => {
+                        validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
+                        return Ok(());
+                    }
+                    ExistingMacosHomebrewReceiptForRepair::StaleSchema2
+                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema1(_) => {
+                        discover_running_homebrew_receipt()?.ok_or_else(|| {
+                            CliError::new(
+                                "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
+                                format!(
+                                    "Recognized stale Homebrew receipt state at {}, but the running Kast executable is not the exact current Cellar/kast formula binary; the receipt was preserved unchanged",
+                                    receipt_path.display(),
+                                ),
+                            )
+                        })?
+                    }
+                }
+            } else {
+                let Some(discovered) = discover_running_homebrew_receipt()? else {
                     return Ok(());
-                }
-                ExistingMacosHomebrewReceiptForRepair::StaleSchema2 => {
-                    discover_running_homebrew_receipt()?.ok_or_else(|| {
-                        CliError::new(
-                            "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH",
-                            format!(
-                                "Recognized a stale schema-2 Homebrew CLI receipt at {}, but the running Kast executable is not provably the current Homebrew formula; the receipt was preserved unchanged",
-                                receipt_path.display(),
-                            ),
-                        )
-                    })?
-                }
-                ExistingMacosHomebrewReceiptForRepair::LegacySchema1(receipt) => receipt,
-            }
-        } else {
-            let Some(discovered) = discover_running_homebrew_receipt()? else {
-                return Ok(());
+                };
+                discovered
             };
-            discovered
-        };
-        push_repair_action(
-            result,
-            "establish-homebrew-cli-receipt",
-            &receipt_path,
-            "Back up recognized legacy or stale receipt state and write the current CLI-only Homebrew authority receipt.",
-            Some("kast repair --for machine --apply".to_string()),
-        );
-        if args.apply {
-            backup_existing_path(&receipt_path, backup_root, result)?;
-            write_macos_homebrew_receipt_at(&receipt_path, &replacement)?;
-        }
-        Ok(())
+            push_repair_action(
+                result,
+                "establish-homebrew-cli-receipt",
+                &receipt_path,
+                "Back up recognized legacy or stale receipt state and write the current CLI-only Homebrew authority receipt.",
+                Some("kast repair --for machine --apply".to_string()),
+            );
+            if args.apply {
+                backup_existing_path(&receipt_path, backup_root, result)?;
+                write_macos_homebrew_receipt_at(&receipt_path, &replacement)?;
+                let written = read_macos_homebrew_receipt_at(&receipt_path)?;
+                validate_running_macos_homebrew_receipt(&receipt_path, written)?;
+            }
+            Ok(())
+        })
     }
 }
 
