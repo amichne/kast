@@ -89,6 +89,16 @@ elif kind == "codex":
             for codex_event, rust_event in hook_events.items()
         }
     }
+    authority = {
+        "schemaVersion": 1,
+        "authority": {
+            "kind": "release",
+            "command": "kast",
+            "pluginVersion": "9.8.7",
+            "cliVersion": "9.8.7",
+            "releaseRevision": "0123456789abcdef0123456789abcdef01234567",
+        },
+    }
     files = {
         "marketplace.json": json.dumps(marketplace).encode(),
         ".agents/plugins/marketplace.json": json.dumps(marketplace).encode(),
@@ -101,6 +111,7 @@ elif kind == "codex":
         "plugins/kast/skills/kast-codex/references/examples.md": b"# Examples\n",
         "plugins/kast/assets/codex-exposure.toon": b"version: 9.8.7\n",
         "plugins/kast/assets/hook-recovery-messages.toon": b"messages[0]:\n",
+        "plugins/kast/assets/kast-authority.json": json.dumps(authority).encode(),
         "plugins/kast/assets/kast.svg": b"<svg/>\n",
     }
     with zipfile.ZipFile(asset_path, "w") as archive:
