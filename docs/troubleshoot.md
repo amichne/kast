@@ -96,11 +96,12 @@ descriptor discovery.
 ## Recover The Codex Plugin
 
 Use this sequence when Codex does not load the Kast skill or hooks, or when it
-reports a release mismatch.
+reports a release or declared-command mismatch.
 
 1. Confirm that the active `kast` binary came from the intended release.
-2. Confirm that the configured marketplace root contains `marketplace.json`
-   and `plugins/kast/.codex-plugin/plugin.json` from that same release.
+2. Confirm that the configured marketplace root contains `marketplace.json`,
+   `plugins/kast/.codex-plugin/plugin.json`, and
+   `plugins/kast/assets/kast-authority.json` from that same release.
 3. Reinstall and inspect the plugin:
 
     ```console

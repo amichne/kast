@@ -146,8 +146,12 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
     let generation_id = refresh_payload["receipt"]["generationId"]
         .as_str()
         .expect("local generation ID");
-    let local_marketplace = temp.path().join("local-codex-marketplace");
-    let codex_projection = std::process::Command::new(prefix.join("bin/kast"))
+    let canonical_prefix = std::fs::canonicalize(&prefix).expect("canonical local prefix");
+    let local_entrypoint = canonical_prefix.join("bin/kast");
+    let local_marketplace = canonical_prefix
+        .join("codex-marketplaces")
+        .join(generation_id);
+    let codex_projection = std::process::Command::new(&local_entrypoint)
         .env("HOME", &home)
         .args([
             "--output",
@@ -156,9 +160,7 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
             "codex",
             "generate",
             "--local",
-            "--output-dir",
         ])
-        .arg(&local_marketplace)
         .output()
         .expect("local Codex projection");
     assert!(
@@ -172,25 +174,17 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
     assert_eq!(projection_payload["mode"], "local");
     assert_eq!(projection_payload["generationId"], generation_id);
     assert_eq!(
-        projection_payload["entrypoint"],
-        std::fs::canonicalize(&prefix)
-            .expect("canonical prefix")
-            .join("bin/kast")
-            .display()
-            .to_string(),
+        projection_payload["outputDirectory"],
+        local_marketplace.display().to_string(),
     );
-    let hooks = std::fs::read_to_string(
-        local_marketplace.join("plugins/kast/hooks/hooks.json"),
-    )
-    .expect("local hooks");
+    assert_eq!(
+        projection_payload["entrypoint"],
+        local_entrypoint.display().to_string(),
+    );
+    let hooks = std::fs::read_to_string(local_marketplace.join("plugins/kast/hooks/hooks.json"))
+        .expect("local hooks");
     assert!(
-        hooks.contains(
-            &std::fs::canonicalize(&prefix)
-                .expect("canonical prefix")
-                .join("bin/kast")
-                .display()
-                .to_string(),
-        ),
+        hooks.contains(&local_entrypoint.display().to_string(),),
         "local hooks must bind the stable local entrypoint: {hooks}",
     );
     assert!(
@@ -198,18 +192,96 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
         "local hooks must bind the exact generation: {hooks}",
     );
     let manifest: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(
-            local_marketplace.join("plugins/kast/.codex-plugin/plugin.json"),
-        )
-        .expect("local plugin manifest"),
+        &std::fs::read(local_marketplace.join("plugins/kast/.codex-plugin/plugin.json"))
+            .expect("local plugin manifest"),
     )
     .expect("local plugin manifest JSON");
     assert_eq!(
         manifest["version"],
         format!("{}+codex.{generation_id}", env!("CARGO_PKG_VERSION")),
     );
+    let repeated_projection = std::process::Command::new(&local_entrypoint)
+        .env("HOME", &home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "codex",
+            "generate",
+            "--local",
+        ])
+        .output()
+        .expect("repeated local Codex projection");
+    assert!(
+        repeated_projection.status.success(),
+        "an exact generated marketplace must be idempotent: stdout={}, stderr={}",
+        String::from_utf8_lossy(&repeated_projection.stdout),
+        String::from_utf8_lossy(&repeated_projection.stderr),
+    );
+    let conflicting_marketplace = temp.path().join("user-owned-codex-marketplace");
+    write_file(&conflicting_marketplace.join("keep.txt"), b"preserve me\n");
+    let conflicting_projection = std::process::Command::new(&local_entrypoint)
+        .env("HOME", &home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "codex",
+            "generate",
+            "--local",
+            "--output-dir",
+        ])
+        .arg(&conflicting_marketplace)
+        .output()
+        .expect("conflicting local Codex projection");
+    assert!(
+        !conflicting_projection.status.success(),
+        "unknown output must not be replaced"
+    );
+    let conflict_payload: serde_json::Value =
+        serde_json::from_slice(&conflicting_projection.stdout).expect("conflict JSON");
+    assert_eq!(conflict_payload["code"], "CODEX_LOCAL_OUTPUT_CONFLICT");
+    assert_eq!(
+        std::fs::read(conflicting_marketplace.join("keep.txt")).expect("preserved output"),
+        b"preserve me\n",
+    );
 
-    let inactive_runtime = std::process::Command::new(prefix.join("bin/kast-dev"))
+    let plugin_root = local_marketplace.join("plugins/kast");
+    let plugin_data = temp.path().join("local-codex-plugin-data");
+    let accepted_hook = local_codex_hook(
+        &local_entrypoint,
+        generation_id,
+        &home,
+        &repository,
+        &plugin_root,
+        &plugin_data,
+    );
+    assert!(
+        accepted_hook.status.success(),
+        "manifest-bound local hook failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&accepted_hook.stdout),
+        String::from_utf8_lossy(&accepted_hook.stderr),
+    );
+    let stale_hook = local_codex_hook(
+        &local_entrypoint,
+        &"0".repeat(64),
+        &home,
+        &repository,
+        &plugin_root,
+        &plugin_data,
+    );
+    assert!(
+        !stale_hook.status.success(),
+        "stale local hook must fail closed"
+    );
+    let stale_payload: serde_json::Value =
+        serde_json::from_slice(&stale_hook.stdout).expect("stale hook JSON");
+    assert_eq!(
+        stale_payload["systemMessage"]["code"], "CODEX_LOCAL_GENERATION_MISMATCH",
+        "{stale_payload}",
+    );
+
+    let inactive_runtime = std::process::Command::new(&local_entrypoint)
         .env("HOME", &home)
         .args([
             "--output",
@@ -229,12 +301,11 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
     );
     let inactive_payload: serde_json::Value =
         serde_json::from_slice(&inactive_runtime.stdout).expect("inactive local runtime JSON");
-    let canonical_prefix = std::fs::canonicalize(&prefix).expect("canonical local prefix");
     assert_eq!(
         inactive_payload["details"]["leaseCommand"],
         format!(
             "'{}' agent lease acquire --workspace-root '{}' --backend=headless",
-            canonical_prefix.join("bin/kast-dev").display(),
+            canonical_prefix.join("bin/kast").display(),
             repository.display(),
         ),
         "inactive local authority must teach a shell-safe receipt-owned lease command: {inactive_payload}"
@@ -246,7 +317,7 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
         "inactive local authority must not send agents to release installation: {inactive_payload}"
     );
 
-    let ready = std::process::Command::new(prefix.join("bin/kast-dev"))
+    let ready = std::process::Command::new(&local_entrypoint)
         .env("HOME", &home)
         .env("CODEX_HOME", home.join(".codex"))
         .args(["--output", "json", "ready", "--for", "agent"])
@@ -333,7 +404,7 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
     let quoted_entrypoint = format!(
         "'{}'",
         canonical_prefix
-            .join("bin/kast-dev")
+            .join("bin/kast")
             .display()
             .to_string()
             .replace('\'', "'\"'\"'")
@@ -349,7 +420,7 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
 
     let release_receipt_before =
         std::fs::read(&stale_homebrew_receipt).expect("release receipt before repair");
-    let rejected_repair = std::process::Command::new(prefix.join("bin/kast-dev"))
+    let rejected_repair = std::process::Command::new(prefix.join("bin/kast"))
         .env("HOME", &home)
         .args(["--output", "json", "repair", "--for", "machine", "--apply"])
         .output()
@@ -377,7 +448,7 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
         prefix.join("current/lib/backends/headless/current/runtime-libs/backend.jar");
     std::fs::write(&installed_backend_jar, b"tampered backend\n")
         .expect("tampered installed backend");
-    let tampered_runtime = std::process::Command::new(prefix.join("bin/kast-dev"))
+    let tampered_runtime = std::process::Command::new(prefix.join("bin/kast"))
         .env("HOME", &home)
         .args([
             "--output",
@@ -409,7 +480,7 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
         "tampered mixed authority\n",
     )
     .expect("tampered skill");
-    let tampered = std::process::Command::new(prefix.join("bin/kast-dev"))
+    let tampered = std::process::Command::new(prefix.join("bin/kast"))
         .env("HOME", &home)
         .args(["--output", "json", "ready", "--for", "machine"])
         .output()
@@ -568,6 +639,37 @@ fn write_artifact_provenance(
         }))
         .expect("artifact provenance JSON"),
     );
+}
+
+fn local_codex_hook(
+    entrypoint: &std::path::Path,
+    generation_id: &str,
+    home: &std::path::Path,
+    workspace: &std::path::Path,
+    plugin_root: &std::path::Path,
+    plugin_data: &std::path::Path,
+) -> std::process::Output {
+    let mut child = std::process::Command::new(entrypoint)
+        .args(["developer", "codex", "hook", "session-start"])
+        .env("HOME", home)
+        .env("PLUGIN_ROOT", plugin_root)
+        .env("PLUGIN_DATA", plugin_data)
+        .env("KAST_CODEX_BINARY", entrypoint)
+        .env("KAST_CODEX_GENERATION", generation_id)
+        .current_dir(workspace)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn local Codex hook");
+    serde_json::to_writer(
+        child.stdin.as_mut().expect("local hook stdin"),
+        &serde_json::json!({
+            "session_id": "local-generation",
+            "cwd": workspace,
+        }),
+    )
+    .expect("local hook input");
+    child.wait_with_output().expect("local hook output")
 }
 
 fn component_sha256(root: &std::path::Path) -> String {

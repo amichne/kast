@@ -152,10 +152,9 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-local-development-refresh-contract.sh
 
-      - name: Test development CLI and IDEA profile install contract
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Test local development clean break
         shell: bash
-        run: ./.github/scripts/test-development-cli-install-contract.sh
+        run: ./.github/scripts/test-local-development-clean-break-contract.sh
 
       - name: Test CLI and plugin authority cutover contract
         shell: bash

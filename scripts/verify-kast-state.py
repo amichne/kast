@@ -36,7 +36,7 @@ def recovery_commands(kast_executable: str | None) -> dict[str, str]:
     executable = kast_executable or "kast"
     return {
         "ready": shlex.join([executable, "repair", "--apply"]),
-        "development": "./gradlew installDevelopmentLocal",
+        "development": "./gradlew refreshDevelopmentLocal",
     }
 
 

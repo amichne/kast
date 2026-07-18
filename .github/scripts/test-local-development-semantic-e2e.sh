@@ -23,7 +23,7 @@ sha256_file() {
 repo_root="$(resolve_repo_root)"
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-semantic-e2e.XXXXXX")"
 local_prefix="${repo_root}/.kast/local-development"
-kast="${local_prefix}/bin/kast-dev"
+kast="${local_prefix}/bin/kast"
 runtime_started=false
 
 cleanup() {
@@ -57,7 +57,7 @@ if ! ./gradlew refreshDevelopmentLocal --no-daemon >"$first_refresh_log" 2>&1; t
   cat "$first_refresh_log" >&2
   die 'the first local-development refresh failed'
 fi
-[[ -x "$kast" ]] || die 'refresh did not install the receipt-owned kast-dev entrypoint'
+[[ -x "$kast" ]] || die 'refresh did not install the receipt-owned kast entrypoint'
 
 receipt="${local_prefix}/authority.json"
 first_generation="$(jq -er '.generationId' "$receipt")"

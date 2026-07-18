@@ -105,13 +105,29 @@ rollback selects a validated `previous`. Removal exposes ordinary release
 resolution only after the local authority is fully gone; no invocation
 silently switches from local to release.
 
-The source-bound `kast-dev` entrypoint remains the only local execution path.
+The source-bound `bin/kast` entrypoint is the only local execution path. This
+cleanly retires the separate `kast-dev` command name and the legacy tasks that
+partially installed a global development CLI or directly mutated a JetBrains
+profile. It does not replace the released `kast` selected by the user's shell:
+the local selector remains an absolute path under its exact worktree prefix.
+
 Local Codex projection remains an explicit, idempotent post-activation action
-because a running Codex task cannot reload plugins atomically. Generated hooks
-must bind the absolute `kast-dev` entrypoint and local generation token. The
-healthy release plugin remains installed and becomes the ordinary fallback in
-a newly started task after local authority is removed; Kast does not mutate the
-current task or auto-upgrade Homebrew or JetBrains.
+because a running Codex task cannot reload plugins atomically. Every generated
+plugin carries one strict authority manifest. A local manifest declares the
+absolute stable `bin/kast` path, local generation token, CLI version, and
+generation-qualified plugin version. Hooks execute and recognize agent
+commands only through that declared path, and reject a missing, stale, or
+different receipt before semantic work. They never infer authority from an
+executable basename. Release packaging replaces the source template with a
+manifest bound to the embedded release revision. Local generation publishes a
+generation-qualified marketplace with one directory rename, is idempotent for
+the exact tree, and refuses to replace different or user-owned output.
+
+Codex retains one stable `kast@kast` identity. Switching its marketplace removes
+the selected plugin before reinstalling the other complete snapshot, so local
+and release hooks are not loaded together. The previously verified release
+marketplace root is the deterministic fallback for a newly started task; Kast
+does not mutate the current task or auto-upgrade Homebrew or JetBrains.
 
 ## Source ownership
 
@@ -124,7 +140,8 @@ current task or auto-upgrade Homebrew or JetBrains.
 - `cli-rs/src/local_development/` owns content generation identity, pointer
   transitions, receipt-owned reconciliation, rollback, and removal.
 - `cli-rs/src/codex/` and its resource tree own explicit local Codex
-  projection. They do not become another installation authority.
+  projection and its generated authority manifest. They do not become another
+  installation authority.
 
 ## Validation
 
@@ -148,5 +165,7 @@ the end-to-end gates. No second permanent full-workflow job is introduced.
   fallback duplicates existing owners and risks mixed state.
 - Extending the legacy `installDevelopmentLocal` mutation path would recreate
   the partial install ADR 0024 replaced.
+- Keeping `kast-dev` as a second globally named executable would preserve the
+  ambiguous selector problem without adding authority.
 - Deleting unknown state to make repair succeed would trade availability for
   silent data loss.

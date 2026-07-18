@@ -241,7 +241,7 @@ fn activate_local_development_artifact_set(
 
         let stable_entrypoint_before = current_receipt
             .as_ref()
-            .map(|_| fs::read_link(prefix.join("bin/kast-dev")))
+            .map(|_| fs::read_link(prefix.join("bin/kast")))
             .transpose()?;
         let mut transaction = LocalRefreshTransaction::new(
             &prefix,
@@ -351,13 +351,13 @@ impl LocalRefreshTransaction {
         if self.stable_entrypoints_installed {
             if let Some(contents) = &self.stable_entrypoint_before {
                 if let Err(error) =
-                    replace_relative_symlink(&self.prefix.join("bin/kast-dev"), contents)
+                    replace_relative_symlink(&self.prefix.join("bin/kast"), contents)
                 {
                     failures.push(error.to_string());
                 }
             } else {
                 for path in [
-                    self.prefix.join("bin/kast-dev"),
+                    self.prefix.join("bin/kast"),
                     self.prefix.join("authority.json"),
                     self.prefix.join("install.json"),
                 ] {
@@ -419,7 +419,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
     }
     fs::create_dir_all(&staged)?;
     let result = (|| -> Result<()> {
-        let physical_entrypoint = staged.join("entrypoint/kast-dev");
+        let physical_entrypoint = staged.join("entrypoint/kast");
         write_bytes(
             &physical_entrypoint,
             local_entrypoint_script(prefix).as_bytes(),
@@ -434,7 +434,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         copy_directory_tree(backend_directory, &physical_backend)?;
         validate_backend_distribution(&physical_backend)?;
 
-        let entrypoint_target = prefix.join("bin/kast-dev");
+        let entrypoint_target = prefix.join("bin/kast");
         let physical_skill = staged.join("lib/skills/kast/SKILL.md");
         let rendered_skill = render_local_skill(skill_source, &entrypoint_target)?;
         validate_rendered_command_lockstep(&rendered_skill, &entrypoint_target)?;
@@ -491,7 +491,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
             workspace_root: workspace_root.to_path_buf(),
             prefix: prefix.to_path_buf(),
             entrypoint: LocalDevelopmentEntrypoint {
-                physical_target: generation.join("entrypoint/kast-dev"),
+                physical_target: generation.join("entrypoint/kast"),
                 effective_target: entrypoint_target.clone(),
                 sha256: Sha256Digest::try_from(crate::manifest::sha256_file(
                     &physical_entrypoint,
@@ -650,10 +650,10 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
                     let launcher = launcher?;
                     if !matches!(
                         launcher.file_name().to_str(),
-                        Some("kast-dev" | "kast-dev.next")
+                        Some("kast" | "kast.next")
                     )
                         || read_relative_symlink(&launcher.path())?
-                            != Some(PathBuf::from("../current/entrypoint/kast-dev"))
+                            != Some(PathBuf::from("../current/entrypoint/kast"))
                     {
                         return Err(unowned_prefix_conflict(&launcher.path()));
                     }
@@ -791,8 +791,8 @@ fn validate_receipt_identity(
             ));
         }
     }
-    if receipt.entrypoint.physical_target != generation.join("entrypoint/kast-dev")
-        || receipt.entrypoint.effective_target != prefix.join("bin/kast-dev")
+    if receipt.entrypoint.physical_target != generation.join("entrypoint/kast")
+        || receipt.entrypoint.effective_target != prefix.join("bin/kast")
         || receipt.install_manifest != generation.join("install.json")
     {
         return Err(CliError::new(
@@ -838,8 +838,8 @@ fn artifact_sets_equivalent(
 fn install_stable_entrypoints(prefix: &Path, receipt: &LocalDevelopmentReceipt) -> Result<()> {
     validate_physical_entrypoint(receipt)?;
     replace_relative_symlink(
-        &prefix.join("bin/kast-dev"),
-        Path::new("../current/entrypoint/kast-dev"),
+        &prefix.join("bin/kast"),
+        Path::new("../current/entrypoint/kast"),
     )?;
     replace_relative_symlink(
         &prefix.join("authority.json"),
@@ -967,7 +967,7 @@ fn remove_owned_workspace_guidance_link(workspace_root: &Path, prefix: &Path) ->
 fn local_entrypoint_script(prefix: &Path) -> String {
     let prefix = shell_single_quote(&prefix.display().to_string());
     format!(
-        "#!/bin/sh\nset -eu\nprefix='{prefix}'\ntarget=$(readlink \"$prefix/current\")\ncase \"$target\" in\n  generations/*) generation=${{target#generations/}} ;;\n  *) echo 'kast-dev: invalid local generation authority' >&2; exit 70 ;;\nesac\ncase \"$generation\" in\n  ''|*[!0-9a-f-]*|*-*-*) echo 'kast-dev: invalid local generation identity' >&2; exit 70 ;;\nesac\ngeneration_root=\"$prefix/$target\"\nstate=\"$prefix/state/$generation\"\nexport KAST_LOCAL_DEVELOPMENT_RECEIPT=\"$generation_root/authority.json\"\nexport KAST_INSTALL_ROOT=\"$prefix\"\nexport KAST_CONFIG_HOME=\"$generation_root/config\"\nexport KAST_DATA_HOME=\"$state/data\"\nexport KAST_CACHE_HOME=\"$state/cache\"\nexec \"$generation_root/bin/kast\" \"$@\"\n"
+        "#!/bin/sh\nset -eu\nprefix='{prefix}'\ntarget=$(readlink \"$prefix/current\")\ncase \"$target\" in\n  generations/*) generation=${{target#generations/}} ;;\n  *) echo 'kast: invalid local generation authority' >&2; exit 70 ;;\nesac\ncase \"$generation\" in\n  ''|*[!0-9a-f-]*|*-*-*) echo 'kast: invalid local generation identity' >&2; exit 70 ;;\nesac\ngeneration_root=\"$prefix/$target\"\nstate=\"$prefix/state/$generation\"\nexport KAST_LOCAL_DEVELOPMENT_RECEIPT=\"$generation_root/authority.json\"\nexport KAST_INSTALL_ROOT=\"$prefix\"\nexport KAST_CONFIG_HOME=\"$generation_root/config\"\nexport KAST_DATA_HOME=\"$state/data\"\nexport KAST_CACHE_HOME=\"$state/cache\"\nexec \"$generation_root/bin/kast\" \"$@\"\n"
     )
 }
 
@@ -1155,7 +1155,7 @@ fn local_install_manifest(
             locks: state.join("locks").display().to_string(),
         },
         entrypoints: crate::manifest::ManifestEntrypoints {
-            shim: prefix.join("bin/kast-dev").display().to_string(),
+            shim: prefix.join("bin/kast").display().to_string(),
             active_binary: generation.join("bin/kast").display().to_string(),
         },
         schemas: crate::manifest::ManifestSchemas::default(),
@@ -1191,7 +1191,7 @@ fn local_install_manifest(
         managed_paths: vec![
             "generations".to_string(),
             format!("state/{}", generation_id.as_str()),
-            "bin/kast-dev".to_string(),
+            "bin/kast".to_string(),
         ],
         owned_paths: vec![prefix.display().to_string()],
         shell_rc_patches: vec![],
@@ -1486,7 +1486,7 @@ fn validate_stable_authority(
         ));
     }
     let entrypoint_target = read_relative_symlink(&receipt.entrypoint.effective_target)?;
-    if entrypoint_target.as_deref() != Some(Path::new("../current/entrypoint/kast-dev"))
+    if entrypoint_target.as_deref() != Some(Path::new("../current/entrypoint/kast"))
         || fs::canonicalize(&receipt.entrypoint.effective_target)?
             != fs::canonicalize(&receipt.entrypoint.physical_target)?
     {

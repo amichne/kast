@@ -31,6 +31,7 @@ Do not hand-edit these files to change the contract:
 - `.agents/plugins/marketplace.json`, the byte-identical Codex discovery copy;
 - `plugins/kast/.codex-plugin/plugin.json`;
 - `plugins/kast/hooks/hooks.json`;
+- `plugins/kast/assets/kast-authority.json`;
 - `plugins/kast/skills/kast-codex/references/commands.md`;
 - `plugins/kast/skills/kast-codex/references/examples.md`;
 - `plugins/kast/assets/codex-exposure.toon`;
@@ -38,8 +39,10 @@ Do not hand-edit these files to change the contract:
 - Codex package and routing fixtures named by the generator.
 
 Change the Rust exposure types, descriptors, templates, or hook policy, then
-regenerate. Generated output must be deterministic and must not contain a
-timestamp, host path, or environment-specific value.
+regenerate. Release output must be deterministic and must not contain a
+timestamp, host path, or environment-specific value. Explicit `--local`
+projection instead binds its generated authority manifest and hooks to the
+absolute receipt-owned worktree command and generation.
 
 ## Package boundary
 
@@ -48,10 +51,11 @@ generated metadata/assets. It must not contain `.mcp.json`, `.app.json`, MCP
 server code, an app connector, a custom agent profile, raw RPC payloads, or a
 copy of the internal command catalog.
 
-The launcher accepts only the generated hook event, resolves an executable
-absolute `KAST_CODEX_BINARY` override or `kast` from `PATH`, and executes the
-hidden Rust hook entrypoint with stdin unchanged. It must not parse events,
-make workflow decisions, write session state, or transform output.
+The launcher accepts only the generated hook event, resolves the binary named
+by generated hook environment or released `kast` from `PATH`, and executes the
+hidden Rust hook entrypoint with stdin unchanged. Rust validates that choice
+against `assets/kast-authority.json`; the launcher must not parse events, make
+workflow decisions, write session state, or transform output.
 
 Rust writes atomic owner-readable session evidence only under
 `$PLUGIN_DATA/sessions/<session-id>.json`. Hooks may perform read-only

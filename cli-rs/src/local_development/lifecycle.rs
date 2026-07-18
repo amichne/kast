@@ -81,7 +81,7 @@ pub fn rollback_local_development(
             Some(current_target.clone()),
             Some(previous_target.clone()),
             None,
-            Some(fs::read_link(prefix.join("bin/kast-dev"))?),
+            Some(fs::read_link(prefix.join("bin/kast"))?),
         );
         let activation = (|| -> Result<LocalDevelopmentRollbackResult> {
             transaction.stable_entrypoints_installed = true;
@@ -360,7 +360,7 @@ fn reject_live_local_runtimes(prefix: &Path) -> Result<()> {
                             format!(
                                 "'{}' developer runtime stop --workspace-root '{}' --backend={}",
                                 shell_single_quote(
-                                    &prefix.join("bin/kast-dev").display().to_string(),
+                                    &prefix.join("bin/kast").display().to_string(),
                                 ),
                                 shell_single_quote(&descriptor.workspace_root),
                                 descriptor.backend_name,

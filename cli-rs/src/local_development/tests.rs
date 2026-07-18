@@ -204,7 +204,7 @@ mod refresh_tests {
         .expect("source skill");
         let entrypoint = fixture
             .path()
-            .join("agent's local authority/bin/kast-dev");
+            .join("agent's local authority/bin/kast");
         let quoted_entrypoint = format!(
             "'{}'",
             entrypoint.display().to_string().replace('\'', "'\"'\"'")
@@ -286,9 +286,12 @@ mod refresh_tests {
         );
         assert!(prefix.join("current/authority.json").is_file());
         assert!(prefix.join("bin/kast").is_file());
-        assert!(
-            fs::symlink_metadata(prefix.join("bin/kast-dev")).is_err(),
-            "local authority must not invent a second command name",
+        assert_eq!(
+            fs::read_dir(prefix.join("bin"))
+                .expect("stable command directory")
+                .count(),
+            1,
+            "local authority must expose one command name",
         );
         let entrypoint =
             fs::read_to_string(prefix.join("bin/kast")).expect("local development entrypoint");
@@ -624,8 +627,8 @@ mod refresh_tests {
             "first",
         );
         let first = refresh_local_development(request.clone()).expect("first refresh");
-        fs::remove_file(prefix.join("bin/kast-dev")).expect("remove stable launcher");
-        symlink("../current/bin/kast", prefix.join("bin/kast-dev")).expect("bypassing launcher");
+        fs::remove_file(prefix.join("bin/kast")).expect("remove stable launcher");
+        symlink("../current/bin/kast", prefix.join("bin/kast")).expect("bypassing launcher");
 
         let error = refresh_local_development(request).expect_err("bypassing launcher");
 
@@ -756,7 +759,7 @@ mod refresh_tests {
     #[test]
     fn command_lockstep_accepts_a_complete_templated_rename_invocation() {
         validate_rendered_command_path(
-            "/tmp/kast-dev agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"",
+            "/tmp/kast agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"",
             " agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"",
         )
         .expect("valid templated invocation");
@@ -764,14 +767,14 @@ mod refresh_tests {
 
     #[test]
     fn command_lockstep_accepts_a_bare_command_path_reference() {
-        validate_rendered_command_path("/tmp/kast-dev agent rename", " agent rename")
+        validate_rendered_command_path("/tmp/kast agent rename", " agent rename")
             .expect("valid bare command path");
     }
 
     #[test]
     fn command_lockstep_rejects_an_invocation_missing_a_required_argument() {
         let error = validate_rendered_command_path(
-            "/tmp/kast-dev agent symbol --workspace-root \"$PWD\"",
+            "/tmp/kast agent symbol --workspace-root \"$PWD\"",
             " agent symbol --workspace-root \"$PWD\"",
         )
         .expect_err("missing required query");
@@ -781,9 +784,9 @@ mod refresh_tests {
 
     #[test]
     fn command_lockstep_checks_positive_invocations_on_a_mixed_negative_guidance_line() {
-        let entrypoint = Path::new("/tmp/kast-dev");
+        let entrypoint = Path::new("/tmp/kast");
         let error = validate_rendered_command_lockstep(
-            "Do not teach `'/tmp/kast-dev' agent tools`; instead run `'/tmp/kast-dev' agent imaginary --bad`.",
+            "Do not teach `'/tmp/kast' agent tools`; instead run `'/tmp/kast' agent imaginary --bad`.",
             entrypoint,
         )
         .expect_err("positive stale invocation must not inherit the negative exemption");
@@ -794,8 +797,8 @@ mod refresh_tests {
     #[test]
     fn command_lockstep_accepts_only_the_closed_negative_command_references() {
         validate_rendered_command_lockstep(
-            "Do not teach `'/tmp/kast-dev' agent tools`, `'/tmp/kast-dev' agent call`, `'/tmp/kast-dev' agent workflow`, or `'/tmp/kast-dev' rpc`.",
-            Path::new("/tmp/kast-dev"),
+            "Do not teach `'/tmp/kast' agent tools`, `'/tmp/kast' agent call`, `'/tmp/kast' agent workflow`, or `'/tmp/kast' rpc`.",
+            Path::new("/tmp/kast"),
         )
         .expect("closed negative references");
     }
@@ -1106,7 +1109,7 @@ mod refresh_tests {
         ))
         .expect("first refresh");
         let current_before = fs::read_link(prefix.join("current")).expect("current link");
-        let entrypoint_before = fs::read(prefix.join("bin/kast-dev")).expect("entrypoint bytes");
+        let entrypoint_before = fs::read(prefix.join("bin/kast")).expect("entrypoint bytes");
         fs::write(
             repository.path().join("settings.gradle.kts"),
             "rootProject.name = \"changed\"\n",
@@ -1122,7 +1125,7 @@ mod refresh_tests {
 
         let error = refresh_local_development_with_observer(second_request, |phase| {
             assert_eq!(phase, LocalRefreshPhase::AfterActivation);
-            fs::write(prefix.join("bin/kast-dev"), b"incompatible wrapper\n")
+            fs::write(prefix.join("bin/kast"), b"incompatible wrapper\n")
                 .expect("simulate changed stable entrypoint");
             Err(super::CliError::new(
                 "TEST_INJECTED_FAILURE",
@@ -1150,7 +1153,7 @@ mod refresh_tests {
             .expect("restored active receipt");
         assert_eq!(active.generation_id, first.receipt.generation_id);
         assert_eq!(
-            fs::read(prefix.join("bin/kast-dev")).expect("restored entrypoint bytes"),
+            fs::read(prefix.join("bin/kast")).expect("restored entrypoint bytes"),
             entrypoint_before,
             "rollback must restore the stable entrypoint owned by the prior receipt"
         );
@@ -1234,8 +1237,8 @@ mod refresh_tests {
         let first = refresh_local_development(request.clone()).expect("first activation");
         fs::remove_file(prefix.join("current")).expect("remove incomplete current");
         fs::rename(
-            prefix.join("bin/kast-dev"),
-            prefix.join("bin/kast-dev.next"),
+            prefix.join("bin/kast"),
+            prefix.join("bin/kast.next"),
         )
         .expect("interrupted launcher temporary");
         fs::rename(
@@ -1253,7 +1256,7 @@ mod refresh_tests {
 
         assert_eq!(recovered.receipt.generation_id, first.receipt.generation_id);
         for temporary in [
-            prefix.join("bin/kast-dev.next"),
+            prefix.join("bin/kast.next"),
             prefix.join("authority.next"),
             prefix.join("current.next"),
         ] {

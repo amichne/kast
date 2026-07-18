@@ -246,8 +246,8 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -euo pipefail' \
   'printf "%s\n" "$@" >"${KAST_RECOVERY_LOG:?}"' \
-  >"${recovery_prefix}/bin/kast-dev"
-chmod 755 "${recovery_prefix}/bin/kast-dev"
+  >"${recovery_prefix}/bin/kast"
+chmod 755 "${recovery_prefix}/bin/kast"
 KAST_RECOVERY_LOG="$recovery_log" CARGO="${tmp_root}/unbuildable-cargo" \
   "${repo_root}/gradlew" rollbackDevelopmentLocal \
     -PkastLocalPrefix="$recovery_prefix" \
@@ -280,22 +280,5 @@ KAST_RECOVERY_LOG="$recovery_log" CARGO="${tmp_root}/unbuildable-cargo" \
     --no-daemon >/dev/null
 [[ ! -e "$missing_guidance" && ! -L "$missing_guidance" ]] \
   || die 'removeDevelopmentLocal must clean owned dangling guidance after the prefix is missing'
-
-profile_free_config_root="${tmp_root}/profile-free-jetbrains-config"
-profile_free_install_args=(
-  -m
-  installDevelopmentLocal
-  -PkastDevJetBrainsConfigRoot="$profile_free_config_root"
-  --configuration-cache
-  --no-daemon
-)
-legacy_install_dry_run="$("${repo_root}/gradlew" "${profile_free_install_args[@]}")"
-for required_task in installDevelopmentCli installDevelopmentIdeaPlugin configureDevelopmentMachineDefaults; do
-  grep -Fq ":${required_task}" <<<"$legacy_install_dry_run" \
-    || die "installDevelopmentLocal must preserve its established ${required_task} contract"
-done
-legacy_install_reuse="$("${repo_root}/gradlew" "${profile_free_install_args[@]}")"
-grep -Fq 'Configuration cache entry reused.' <<<"$legacy_install_reuse" \
-  || die 'profile-free legacy install planning must reuse configuration cache state'
 
 printf '%s\n' 'Local development refresh contract passed'

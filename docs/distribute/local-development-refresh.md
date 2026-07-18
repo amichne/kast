@@ -115,7 +115,7 @@ Ask the receipt-owned launcher for machine-readable readiness before relying on
 the local generation.
 
 ```console title="Inspect the active source and component authority"
-./.kast/local-development/bin/kast-dev \
+./.kast/local-development/bin/kast \
   --output json \
   ready \
   --for machine \
@@ -132,7 +132,7 @@ exact checkout. Runtime launch revalidates the full receipt, including backend
 bytes, before it consumes the selected classpath.
 
 ```console title="Start the exact local headless backend"
-./.kast/local-development/bin/kast-dev developer runtime up \
+./.kast/local-development/bin/kast developer runtime up \
   --workspace-root "$PWD" \
   --backend=headless
 ```
@@ -169,7 +169,7 @@ JetBrains profile, or rewrite workspace setup metadata.
 Then verify backend identity, health, and compiler-backed workspace evidence.
 
 ```console title="Verify headless semantic capabilities"
-./.kast/local-development/bin/kast-dev agent verify \
+./.kast/local-development/bin/kast agent verify \
   --workspace-root "$PWD" \
   --backend=headless \
   --explain
@@ -181,13 +181,13 @@ lookup and diagnostics then run through the installed generation, not a
 checkout build output.
 
 ```console title="Exercise exact compiler evidence"
-./.kast/local-development/bin/kast-dev agent symbol \
+./.kast/local-development/bin/kast agent symbol \
   --query io.github.amichne.kast.headless.HeadlessWorkspaceKind \
   --workspace-root "$PWD" \
   --backend=headless \
   --explain
 
-./.kast/local-development/bin/kast-dev agent diagnostics \
+./.kast/local-development/bin/kast agent diagnostics \
   --file-path backend-headless/src/main/kotlin/io/github/amichne/kast/headless/HeadlessWorkspaceKind.kt \
   --workspace-root "$PWD" \
   --backend=headless \
@@ -218,6 +218,68 @@ references remain valid, but a stale flag or incomplete runnable example
 fails before activation. Only the closed set of explicitly prohibited command
 references is exempt as negative guidance; a positive invocation on that same
 line is still parsed.
+
+## Exercise The Local Generation In Codex
+
+Generate a Codex marketplace only after the local generation is active. The
+local launcher derives a generation-qualified output directory under its own
+prefix and publishes the complete tree with one directory rename.
+
+```console title="Generate the active worktree's Codex plugin"
+./.kast/local-development/bin/kast \
+  --output json \
+  developer codex generate \
+  --local
+```
+
+Record the returned `outputDirectory`. Repeating the command for the same
+generation is an exact no-op. Kast refuses to overwrite a different or
+user-owned output directory.
+
+The generated `assets/kast-authority.json` declares the absolute stable
+`bin/kast` path, generation identifier, CLI version, and
+generation-qualified plugin version. Generated hook commands carry that exact
+path and token to the launcher; the invoked CLI reads the manifest and
+revalidates both against the active receipt before doing work. An executable
+with the same basename at another path is not accepted.
+
+Codex uses the stable `kast@kast` identity for both release and local
+marketplaces. Before switching, inspect `codex plugin marketplace list --json`
+and record the healthy released marketplace root as
+`KAST_RELEASE_CODEX_MARKETPLACE_ROOT`. Then replace the marketplace snapshot
+and reinstall the one plugin identity.
+
+```console title="Select the generated local plugin for the next Codex task"
+export KAST_LOCAL_CODEX_MARKETPLACE_ROOT="/absolute/outputDirectory/from/generate"
+
+codex plugin marketplace remove kast
+codex plugin marketplace add "$KAST_LOCAL_CODEX_MARKETPLACE_ROOT"
+codex plugin add kast@kast
+codex plugin list --json
+```
+
+`marketplace remove` also removes the installed `kast@kast`, so released and
+local hooks are never enabled together. Finish the whole switch and confirm
+the generation-qualified version before starting a new Codex task. The task
+that performed the switch keeps its original plugin generation.
+
+If local generation or installation fails, restore the recorded release
+snapshot before starting another task. This is also the normal clean reset
+after local testing.
+
+```console title="Restore the released Codex plugin"
+codex plugin marketplace remove kast
+codex plugin marketplace add "$KAST_RELEASE_CODEX_MARKETPLACE_ROOT"
+codex plugin add kast@kast
+codex plugin list --json
+
+./gradlew removeDevelopmentLocal
+```
+
+Confirm that `kast@kast` reports the released version, then start a new task.
+If no healthy release marketplace was recorded, download and verify the latest
+release first by following [Install the Codex plugin](../install/codex.md); do
+not guess a cache path or keep a broken local plugin selected.
 
 ## Keep Linked Worktrees Isolated
 

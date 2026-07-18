@@ -118,8 +118,8 @@ prepared_kast="${prepared_generation}/bin/kast"
   --prepared-generation "$prepared_generation" \
   >"${evidence_dir}/activation.json"
 
-installed_kast="${local_prefix}/bin/kast-dev"
-[[ -x "$installed_kast" ]] || die 'Prepared generation activation did not install kast-dev'
+installed_kast="${local_prefix}/bin/kast"
+[[ -x "$installed_kast" ]] || die 'Prepared generation activation did not install kast'
 active_generation="$(jq -er '.receipt.generationId' "${evidence_dir}/activation.json")"
 hash_kotlin_tree "$fixture_root" >"${evidence_dir}/kotlin-before.sha256"
 

@@ -48,6 +48,8 @@ unzip -q "$KAST_CODEX_ASSET" -d "$KAST_CODEX_MARKETPLACE_ROOT"
 The extracted root contains `marketplace.json`, a byte-identical
 `.agents/plugins/marketplace.json` discovery manifest, and `plugins/kast/`.
 It does not contain a Kast binary, MCP server, or app connector.
+Its strict `assets/kast-authority.json` selects the released `kast` command and
+binds the plugin and CLI to the same full release source revision.
 
 ## Add The Plugin
 
@@ -74,9 +76,9 @@ codex plugin add kast@kast
 codex plugin list
 ```
 
-Start another new Codex task after the update. The CLI and plugin manifest
-must have the same release version; do not combine a plugin archive from one
-release with a Kast binary from another.
+Start another new Codex task after the update. The CLI and plugin authority
+manifest must have the same release version and embedded source revision; do
+not combine a plugin archive from one release with a Kast binary from another.
 
 ## Keep Existing Workspace Guidance
 

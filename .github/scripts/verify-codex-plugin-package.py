@@ -24,6 +24,7 @@ REQUIRED_FILES = {
     "plugins/kast/skills/kast-codex/references/examples.md",
     "plugins/kast/assets/codex-exposure.toon",
     "plugins/kast/assets/hook-recovery-messages.toon",
+    "plugins/kast/assets/kast-authority.json",
     "plugins/kast/assets/kast.svg",
 }
 FORBIDDEN_FILE_NAMES = {".mcp.json", ".app.json", "commands.json"}
@@ -38,6 +39,7 @@ HOOKS = {
 }
 SKILL = "plugins/kast/skills/kast-codex/SKILL.md"
 OPENAI_METADATA = "plugins/kast/skills/kast-codex/agents/openai.yaml"
+AUTHORITY = "plugins/kast/assets/kast-authority.json"
 
 
 def fail(message: str) -> None:
@@ -155,6 +157,29 @@ def validate_skill(archive: zipfile.ZipFile) -> None:
         fail("kast-codex openai.yaml must enable implicit invocation")
 
 
+def validate_authority(archive: zipfile.ZipFile, expected_version: str) -> None:
+    payload = read_json(archive, AUTHORITY)
+    if set(payload) != {"schemaVersion", "authority"} or payload["schemaVersion"] != 1:
+        fail("Kast authority manifest must use the closed revision-1 envelope")
+    authority = payload["authority"]
+    expected_keys = {
+        "kind",
+        "command",
+        "pluginVersion",
+        "cliVersion",
+        "releaseRevision",
+    }
+    if not isinstance(authority, dict) or set(authority) != expected_keys:
+        fail("published Kast authority must contain exactly the release identity fields")
+    if authority["kind"] != "release" or authority["command"] != "kast":
+        fail("published Kast authority must select the released kast command")
+    if authority["pluginVersion"] != expected_version or authority["cliVersion"] != expected_version:
+        fail("published Kast authority versions must match the plugin version")
+    revision = authority["releaseRevision"]
+    if not isinstance(revision, str) or re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+        fail("published Kast authority must contain one full release revision")
+
+
 def validate_archive(path: str, expected_version: str) -> None:
     if not expected_version or expected_version.startswith("v"):
         fail("--version must be a semantic version without a leading v")
@@ -228,6 +253,7 @@ def validate_archive(path: str, expected_version: str) -> None:
 
         validate_hooks(archive)
         validate_skill(archive)
+        validate_authority(archive, expected_version)
 
         exposure = archive.read("plugins/kast/assets/codex-exposure.toon").decode("utf-8")
         version_match = re.search(r"(?m)^version:\s*['\"]?([^'\"\s]+)['\"]?\s*$", exposure)
